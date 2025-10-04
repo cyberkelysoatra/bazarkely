@@ -57,81 +57,115 @@ const AuthPage = () => {
   // Gérer le callback OAuth et les changements d'état d'authentification
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      // PRIORITY 1: Check sessionStorage for pre-captured tokens
+      const savedTokens = sessionStorage.getItem('bazarkely-oauth-tokens');
       const hash = window.location.hash;
       const search = window.location.search;
       
+      console.log('🔍 OAuth Detection - Saved tokens:', !!savedTokens);
       console.log('🔍 OAuth Detection - Hash:', hash);
       console.log('🔍 OAuth Detection - Search:', search);
       
-      if (hash && hash.includes('access_token')) {
+      let accessToken: string | null = null;
+      let refreshToken: string | null = null;
+      let tokenType: string | null = null;
+      let expiresIn: string | null = null;
+      
+      if (savedTokens) {
+        // Use pre-captured tokens from sessionStorage
+        console.log('✅ Using pre-captured tokens from sessionStorage...');
+        try {
+          const tokenData = JSON.parse(savedTokens);
+          accessToken = tokenData.access_token;
+          refreshToken = tokenData.refresh_token;
+          tokenType = tokenData.token_type;
+          expiresIn = tokenData.expires_in;
+          
+          console.log('🔍 Pre-captured access_token (first 20 chars):', accessToken?.substring(0, 20) + '...');
+          console.log('🔍 Pre-captured refresh_token (first 20 chars):', refreshToken?.substring(0, 20) + '...');
+          
+          // Clear saved tokens after use
+          sessionStorage.removeItem('bazarkely-oauth-tokens');
+          console.log('🧹 Pre-captured tokens cleared from sessionStorage');
+        } catch (error) {
+          console.error('❌ Error parsing saved tokens:', error);
+          sessionStorage.removeItem('bazarkely-oauth-tokens');
+        }
+      } else if (hash && hash.includes('access_token')) {
+        // Fallback: Extract from hash (if not cleared by Service Worker)
         console.log('✅ Hash fragments detected, extracting tokens...');
-        
         try {
           const hashParams = new URLSearchParams(hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+          tokenType = hashParams.get('token_type') || 'bearer';
+          expiresIn = hashParams.get('expires_in');
           
           console.log('🔍 Raw access_token (first 20 chars):', accessToken?.substring(0, 20) + '...');
           console.log('🔍 Raw refresh_token (first 20 chars):', refreshToken?.substring(0, 20) + '...');
+        } catch (error) {
+          console.error('❌ Error parsing hash tokens:', error);
+        }
+      }
+      
+      if (accessToken && refreshToken) {
+        console.log('✅ Tokens available, setting session...');
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          // Set session with extracted tokens
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
           
-          if (accessToken && refreshToken) {
-            console.log('✅ Tokens extracted, setting session...');
-            setIsLoading(true);
-            setError(null);
-            
-            // Set session with extracted tokens
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
-            
-            if (error) {
-              console.error('❌ Error setting session:', error);
-              setError(`Erreur de session: ${error.message}`);
-              setIsLoading(false);
-              return;
-            }
-            
-            if (data.session) {
-              console.log('✅ Session established:', data.session.user.id);
-              
-              // Use authService to handle the OAuth callback properly
-              const result = await authService.handleOAuthCallback();
-              
-              if (result.success && result.user) {
-                console.log('✅ User profile created/retrieved:', result.user.username);
-                
-                // Set user state and wait for state update
-                localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
-                setUser(result.user);
-                setAuthenticated(true);
-                
-                // Clear hash first
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-                // Small delay to ensure state is updated before navigation
-                setTimeout(() => {
-                  navigate('/dashboard');
-                }, 100);
-              } else {
-                console.error('❌ Error handling OAuth callback:', result.error);
-                setError(`Erreur de profil: ${result.error}`);
-              }
-            } else {
-              console.error('❌ No session established after setSession');
-              setError('Aucune session établie');
-            }
-            
+          if (error) {
+            console.error('❌ Error setting session:', error);
+            setError(`Erreur de session: ${error.message}`);
             setIsLoading(false);
+            return;
+          }
+          
+          if (data.session) {
+            console.log('✅ Session established:', data.session.user.id);
+            
+            // Use authService to handle the OAuth callback properly
+            const result = await authService.handleOAuthCallback();
+            
+            if (result.success && result.user) {
+              console.log('✅ User profile created/retrieved:', result.user.username);
+              
+              // Set user state and wait for state update
+              localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
+              setUser(result.user);
+              setAuthenticated(true);
+              
+              // Clear hash if still present
+              if (hash) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+              
+              // Small delay to ensure state is updated before navigation
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 100);
+            } else {
+              console.error('❌ Error handling OAuth callback:', result.error);
+              setError(`Erreur de profil: ${result.error}`);
+            }
           } else {
-            console.error('❌ Missing tokens in hash');
-            setError('Tokens manquants dans l\'URL');
+            console.error('❌ No session established after setSession');
+            setError('Aucune session établie');
           }
         } catch (error) {
           console.error('❌ Error processing OAuth callback:', error);
           setError(`Erreur de traitement OAuth: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+        } finally {
           setIsLoading(false);
         }
+      } else {
+        console.log('ℹ️ No OAuth tokens found in sessionStorage or hash');
       }
     };
 
