@@ -1,6 +1,6 @@
 [build]
   # Build command to run in the frontend directory
-  command = "cd frontend && npm install && npm run build"
+  command = "npm install && npm run build"
   
   # Directory to publish (relative to the repository root)
   publish = "frontend/dist"
