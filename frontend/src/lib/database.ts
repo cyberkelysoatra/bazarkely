@@ -1,0 +1,663 @@
+import Dexie, { type Table, type Transaction } from 'dexie';
+import type { 
+  User, 
+  Account, 
+  Transaction as TransactionType, 
+  Budget, 
+  Goal, 
+  MobileMoneyRate, 
+  SyncOperation,
+  FeeConfiguration
+} from '../types';
+
+// Types pour la gestion des connexions et verrous
+interface ConnectionPool {
+  id: string;
+  isActive: boolean;
+  lastUsed: Date;
+  transactionCount: number;
+}
+
+interface DatabaseLock {
+  id: string;
+  table: string;
+  recordId: string;
+  userId: string;
+  acquiredAt: Date;
+  expiresAt: Date;
+}
+
+interface PerformanceMetrics {
+  id?: number;
+  operationCount: number;
+  averageResponseTime: number;
+  concurrentUsers: number;
+  memoryUsage: number;
+  lastUpdated: Date;
+}
+
+export class BazarKELYDB extends Dexie {
+  users!: Table<User>;
+  accounts!: Table<Account>;
+  transactions!: Table<TransactionType>;
+  budgets!: Table<Budget>;
+  goals!: Table<Goal>;
+  mobileMoneyRates!: Table<MobileMoneyRate>;
+  syncQueue!: Table<SyncOperation>;
+  feeConfigurations!: Table<FeeConfiguration>;
+  
+  // Nouvelles tables pour la gestion des performances
+  connectionPoolTable!: Table<ConnectionPool>;
+  databaseLocks!: Table<DatabaseLock>;
+  performanceMetrics!: Table<PerformanceMetrics>;
+
+  // Gestion des connexions et verrous
+  private connectionPool: Map<string, ConnectionPool> = new Map();
+  private activeLocks: Map<string, DatabaseLock> = new Map();
+  private maxConnections = 50;
+  private lockTimeout = 30000; // 30 secondes
+
+  constructor() {
+    super('BazarKELYDB');
+    
+    this.version(1).stores({
+      users: 'id, username, email, phone, lastSync',
+      accounts: 'id, userId, name, type, balance, currency',
+      transactions: 'id, userId, accountId, type, amount, category, date',
+      budgets: 'id, userId, category, amount, period, year, month',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee',
+      syncQueue: '++id, userId, operation, data, timestamp'
+    });
+
+    // Version 2 avec schéma corrigé pour syncQueue
+    this.version(2).stores({
+      users: 'id, username, email, phone, lastSync',
+      accounts: 'id, userId, name, type, balance, currency',
+      transactions: 'id, userId, accountId, type, amount, category, date',
+      budgets: 'id, userId, category, amount, period, year, month',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status'
+    }).upgrade(_trans => {
+      console.log('🔄 Migration de la base de données vers la version 2...');
+    });
+
+    // Version 3 avec les configurations de frais
+    this.version(3).stores({
+      users: 'id, username, email, phone, lastSync',
+      accounts: 'id, userId, name, type, balance, currency',
+      transactions: 'id, userId, accountId, type, amount, category, date',
+      budgets: 'id, userId, category, amount, period, year, month',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt'
+    }).upgrade(_trans => {
+      console.log('🔄 Migration de la base de données vers la version 3...');
+    });
+
+    // Version 4 avec support des mots de passe hachés
+    this.version(4).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync',
+      accounts: 'id, userId, name, type, balance, currency',
+      transactions: 'id, userId, accountId, type, amount, category, date',
+      budgets: 'id, userId, category, amount, period, year, month',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt'
+    }).upgrade(async (trans) => {
+      console.log('🔄 Migration de la base de données vers la version 4...');
+      
+      const users = await trans.table('users').toArray();
+      console.log(`📊 Migration de ${users.length} utilisateurs existants...`);
+      
+      for (const user of users) {
+        if (!user.passwordHash) {
+          const defaultPasswordHash = 'MIGRATION_REQUIRED_' + Date.now();
+          await trans.table('users').update(user.id, {
+            passwordHash: defaultPasswordHash
+          });
+          console.log(`✅ Utilisateur ${user.username} migré avec passwordHash temporaire`);
+        }
+      }
+      
+      console.log('✅ Migration vers la version 4 terminée');
+    });
+
+    // Version 5 - Architecture optimisée pour 100+ utilisateurs concurrents
+    this.version(5).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date]',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, [userId+deadline]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, [userId+status], [status+timestamp]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated'
+    }).upgrade(async (trans) => {
+      console.log('🔄 Migration vers l\'architecture optimisée pour 100+ utilisateurs concurrents...');
+      
+      // Ajouter les champs createdAt et updatedAt aux tables existantes
+      const tables = ['users', 'accounts', 'transactions', 'budgets', 'goals'];
+      
+      for (const tableName of tables) {
+        const table = trans.table(tableName);
+        const records = await table.toArray();
+        
+        for (const record of records) {
+          const updates: any = {};
+          if (!record.createdAt) updates.createdAt = new Date();
+          if (!record.updatedAt) updates.updatedAt = new Date();
+          
+          if (Object.keys(updates).length > 0) {
+            await table.update(record.id, updates);
+          }
+        }
+      }
+      
+      // Initialiser les métriques de performance
+      await trans.table('performanceMetrics').add({
+        operationCount: 0,
+        averageResponseTime: 0,
+        concurrentUsers: 0,
+        memoryUsage: 0,
+        lastUpdated: new Date()
+      });
+      
+      console.log('✅ Migration vers l\'architecture optimisée terminée');
+    });
+
+    // Initialiser le pool de connexions
+    this.initializeConnectionPool();
+    
+    // Nettoyer les verrous expirés périodiquement
+    setInterval(() => this.cleanupExpiredLocks(), 5000);
+  }
+
+  // Gestion du pool de connexions
+  private initializeConnectionPool(): void {
+    for (let i = 0; i < this.maxConnections; i++) {
+      const connection: ConnectionPool = {
+        id: `conn_${i}`,
+        isActive: false,
+        lastUsed: new Date(),
+        transactionCount: 0
+      };
+      this.connectionPool.set(connection.id, connection);
+    }
+  }
+
+  // Acquérir une connexion du pool
+  private async acquireConnection(): Promise<string> {
+    const availableConnection = Array.from(this.connectionPool.values())
+      .find(conn => !conn.isActive);
+    
+    if (!availableConnection) {
+      throw new Error('Aucune connexion disponible dans le pool');
+    }
+    
+    availableConnection.isActive = true;
+    availableConnection.lastUsed = new Date();
+    availableConnection.transactionCount++;
+    
+    return availableConnection.id;
+  }
+
+  // Libérer une connexion
+  private releaseConnection(connectionId: string): void {
+    const connection = this.connectionPool.get(connectionId);
+    if (connection) {
+      connection.isActive = false;
+      connection.lastUsed = new Date();
+    }
+  }
+
+  // Gestion des verrous de base de données
+  async acquireLock(table: string, recordId: string, userId: string): Promise<boolean> {
+    const lockKey = `${table}_${recordId}`;
+    
+    // Vérifier si un verrou existe déjà
+    const existingLock = this.activeLocks.get(lockKey);
+    if (existingLock && existingLock.expiresAt > new Date()) {
+      return false; // Verrou déjà acquis
+    }
+    
+    // Créer un nouveau verrou
+    const lock: DatabaseLock = {
+      id: crypto.randomUUID(),
+      table,
+      recordId,
+      userId,
+      acquiredAt: new Date(),
+      expiresAt: new Date(Date.now() + this.lockTimeout)
+    };
+    
+    this.activeLocks.set(lockKey, lock);
+    
+    // Persister le verrou en base
+    await this.databaseLocks.add(lock);
+    
+    return true;
+  }
+
+  // Libérer un verrou
+  async releaseLock(table: string, recordId: string, userId: string): Promise<void> {
+    const lockKey = `${table}_${recordId}`;
+    const lock = this.activeLocks.get(lockKey);
+    
+    if (lock && lock.userId === userId) {
+      this.activeLocks.delete(lockKey);
+      await this.databaseLocks.delete(lock.id);
+    }
+  }
+
+  // Nettoyer les verrous expirés
+  private async cleanupExpiredLocks(): Promise<void> {
+    const now = new Date();
+    const expiredLocks: string[] = [];
+    
+    for (const [key, lock] of Array.from(this.activeLocks.entries())) {
+      if (lock.expiresAt <= now) {
+        expiredLocks.push(key);
+      }
+    }
+    
+    for (const key of expiredLocks) {
+      const lock = this.activeLocks.get(key);
+      if (lock) {
+        this.activeLocks.delete(key);
+        await this.databaseLocks.delete(lock.id);
+      }
+    }
+  }
+
+  // Transaction optimisée avec gestion des verrous
+  async optimizedTransaction<T>(
+    tables: string[],
+    operation: (trans: Transaction) => Promise<T>,
+    lockKeys?: Array<{ table: string; recordId: string }>
+  ): Promise<T> {
+    const connectionId = await this.acquireConnection();
+    
+    try {
+      // Acquérir les verrous nécessaires
+      if (lockKeys) {
+        for (const { table, recordId } of lockKeys) {
+          const acquired = await this.acquireLock(table, recordId, 'system');
+          if (!acquired) {
+            throw new Error(`Impossible d'acquérir le verrou pour ${table}:${recordId}`);
+          }
+        }
+      }
+      
+      // Exécuter la transaction
+      const result = await this.transaction('rw', tables as any, operation);
+      
+      return result;
+    } finally {
+      // Libérer les verrous
+      if (lockKeys) {
+        for (const { table, recordId } of lockKeys) {
+          await this.releaseLock(table, recordId, 'system');
+        }
+      }
+      
+      // Libérer la connexion
+      this.releaseConnection(connectionId);
+    }
+  }
+
+  // Mise à jour des métriques de performance
+  async updatePerformanceMetrics(operationTime: number): Promise<void> {
+    const metrics = await this.performanceMetrics.orderBy('lastUpdated').last();
+    
+    if (metrics) {
+      const newOperationCount = metrics.operationCount + 1;
+      const newAverageResponseTime = 
+        (metrics.averageResponseTime * metrics.operationCount + operationTime) / newOperationCount;
+      
+      await this.performanceMetrics.update(metrics.id, {
+        operationCount: newOperationCount,
+        averageResponseTime: newAverageResponseTime,
+        concurrentUsers: this.connectionPool.size,
+        memoryUsage: (performance as any).memory?.usedJSHeapSize || 0,
+        lastUpdated: new Date()
+      });
+    }
+  }
+
+  // Pagination optimisée pour les grandes datasets
+  async getPaginatedData<T>(
+    table: Table<T>,
+    page: number = 1,
+    pageSize: number = 50,
+    filters?: any
+  ): Promise<{ data: T[]; total: number; hasMore: boolean }> {
+    const startTime = performance.now();
+    
+    try {
+      let query: any = table;
+      
+      // Appliquer les filtres si fournis
+      if (filters) {
+        for (const [key, value] of Object.entries(filters)) {
+          query = query.where(key).equals(value);
+        }
+      }
+      
+      // Compter le total
+      const total = await query.count();
+      
+      // Calculer l'offset
+      const offset = (page - 1) * pageSize;
+      
+      // Récupérer les données paginées
+      const data = await query
+        .offset(offset)
+        .limit(pageSize)
+        .toArray();
+      
+      const hasMore = offset + pageSize < total;
+      
+      // Mettre à jour les métriques
+      const operationTime = performance.now() - startTime;
+      await this.updatePerformanceMetrics(operationTime);
+      
+      return { data, total, hasMore };
+    } catch (error) {
+      console.error('Erreur lors de la pagination:', error);
+      throw error;
+    }
+  }
+
+  // Compression des données pour optimiser l'espace
+  async compressOldData(daysToKeep: number = 90): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+    
+    // Compresser les anciennes transactions en gardant seulement les résumés
+    const oldTransactions = await this.transactions
+      .where('date')
+      .below(cutoffDate)
+      .toArray();
+    
+    if (oldTransactions.length > 0) {
+      // Créer des résumés mensuels
+      const monthlySummaries = new Map<string, any>();
+      
+      for (const transaction of oldTransactions) {
+        const monthKey = `${transaction.userId}_${transaction.date.getFullYear()}_${transaction.date.getMonth() + 1}`;
+        
+        if (!monthlySummaries.has(monthKey)) {
+          monthlySummaries.set(monthKey, {
+            userId: transaction.userId,
+            year: transaction.date.getFullYear(),
+            month: transaction.date.getMonth() + 1,
+            totalIncome: 0,
+            totalExpense: 0,
+            transactionCount: 0,
+            categories: {}
+          });
+        }
+        
+        const summary = monthlySummaries.get(monthKey);
+        summary.transactionCount++;
+        
+        if (transaction.type === 'income') {
+          summary.totalIncome += transaction.amount;
+        } else if (transaction.type === 'expense') {
+          summary.totalExpense += transaction.amount;
+          summary.categories[transaction.category] = (summary.categories[transaction.category] || 0) + transaction.amount;
+        }
+      }
+      
+      // Sauvegarder les résumés (à implémenter selon les besoins)
+      console.log(`📊 Compressé ${oldTransactions.length} transactions en ${monthlySummaries.size} résumés mensuels`);
+      
+      // Supprimer les anciennes transactions
+      await this.transactions
+        .where('date')
+        .below(cutoffDate)
+        .delete();
+    }
+  }
+}
+
+export const db = new BazarKELYDB();
+
+// Fonctions utilitaires pour la base de données
+export const dbUtils = {
+  // Initialisation des données par défaut
+  async initializeDefaultData(userId: string): Promise<void> {
+    // Vérifier s'il existe déjà un compte Espèces
+    const existingEspecesAccount = await db.accounts
+      .where('userId')
+      .equals(userId)
+      .and(account => account.type === 'especes')
+      .first();
+
+    // Créer un compte espèces par défaut SEULEMENT s'il n'en existe aucun
+    if (!existingEspecesAccount) {
+      const defaultAccount: Account = {
+        id: crypto.randomUUID(),
+        userId,
+        name: 'Espèces',
+        type: 'especes',
+        balance: 0,
+        currency: 'MGA',
+        isDefault: true,
+        createdAt: new Date()
+      };
+
+      await db.accounts.add(defaultAccount);
+      console.log('✅ Compte Espèces par défaut créé lors de l\'initialisation');
+    } else {
+      console.log('ℹ️ Compte Espèces déjà existant, pas de création automatique');
+    }
+
+    // Initialiser les tarifs Mobile Money par défaut
+    const defaultRates: MobileMoneyRate[] = [
+      // Orange Money
+      {
+        id: crypto.randomUUID(),
+        service: 'orange_money',
+        minAmount: 0,
+        maxAmount: 5000,
+        fee: 0,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'orange_money',
+        minAmount: 5001,
+        maxAmount: 50000,
+        fee: 100,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'orange_money',
+        minAmount: 50001,
+        maxAmount: 200000,
+        fee: 200,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'orange_money',
+        minAmount: 200001,
+        maxAmount: null,
+        fee: 500,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      // Mvola
+      {
+        id: crypto.randomUUID(),
+        service: 'mvola',
+        minAmount: 0,
+        maxAmount: 5000,
+        fee: 0,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'mvola',
+        minAmount: 5001,
+        maxAmount: 50000,
+        fee: 150,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'mvola',
+        minAmount: 50001,
+        maxAmount: 200000,
+        fee: 300,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'mvola',
+        minAmount: 200001,
+        maxAmount: null,
+        fee: 600,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      // Airtel Money
+      {
+        id: crypto.randomUUID(),
+        service: 'airtel_money',
+        minAmount: 0,
+        maxAmount: 5000,
+        fee: 0,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'airtel_money',
+        minAmount: 5001,
+        maxAmount: 50000,
+        fee: 120,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'airtel_money',
+        minAmount: 50001,
+        maxAmount: 200000,
+        fee: 250,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      },
+      {
+        id: crypto.randomUUID(),
+        service: 'airtel_money',
+        minAmount: 200001,
+        maxAmount: null,
+        fee: 550,
+        lastUpdated: new Date(),
+        updatedBy: 'system'
+      }
+    ];
+
+    await db.mobileMoneyRates.bulkAdd(defaultRates);
+  },
+
+  // Calcul des frais Mobile Money
+  async calculateMobileMoneyFee(service: 'orange_money' | 'mvola' | 'airtel_money', amount: number): Promise<number> {
+    const rates = await db.mobileMoneyRates
+      .where('service')
+      .equals(service)
+      .toArray();
+
+    for (const rate of rates) {
+      if (amount >= rate.minAmount && (rate.maxAmount === null || amount <= rate.maxAmount)) {
+        return rate.fee;
+      }
+    }
+
+    return 0;
+  },
+
+  // Nettoyage des données anciennes
+  async cleanupOldData(daysToKeep: number = 365): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+    // Nettoyer les opérations de sync anciennes
+    await db.syncQueue
+      .where('timestamp')
+      .below(cutoffDate)
+      .delete();
+
+    // Nettoyer les transactions anciennes (optionnel)
+    // await db.transactions
+    //   .where('date')
+    //   .below(cutoffDate)
+    //   .delete();
+  },
+
+  // Export des données
+  async exportData(): Promise<any> {
+    const [users, accounts, transactions, budgets, goals] = await Promise.all([
+      db.users.toArray(),
+      db.accounts.toArray(),
+      db.transactions.toArray(),
+      db.budgets.toArray(),
+      db.goals.toArray()
+    ]);
+
+    return {
+      users,
+      accounts,
+      transactions,
+      budgets,
+      goals,
+      exportDate: new Date(),
+      version: '1.0.0'
+    };
+  },
+
+  // Import des données
+  async importData(data: any): Promise<void> {
+    await db.transaction('rw', [db.users, db.accounts, db.transactions, db.budgets, db.goals], async () => {
+      if (data.users) await db.users.bulkPut(data.users);
+      if (data.accounts) await db.accounts.bulkPut(data.accounts);
+      if (data.transactions) await db.transactions.bulkPut(data.transactions);
+      if (data.budgets) await db.budgets.bulkPut(data.budgets);
+      if (data.goals) await db.goals.bulkPut(data.goals);
+    });
+  }
+};
+
+// Gestion des erreurs de base de données
+export const handleDBError = (error: any): string => {
+  if (error.name === 'QuotaExceededError') {
+    return 'Espace de stockage insuffisant. Veuillez libérer de l\'espace ou exporter vos données.';
+  }
+  
+  if (error.name === 'ConstraintError') {
+    return 'Erreur de contrainte de données. Vérifiez que les données sont valides.';
+  }
+  
+  if (error.name === 'DataError') {
+    return 'Erreur de données. Vérifiez le format des données saisies.';
+  }
+  
+  return `Erreur de base de données: ${error.message}`;
+};

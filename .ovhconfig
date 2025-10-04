@@ -1,0 +1,16 @@
+app.engine=php
+app.engine.version=8.2
+environment=production
+http.firewall=none
+container.image=stable
+; Note: even for SPA static hosting, OVH likes an .ovhconfig. No PHP code required.
+
+
+
+
+
+
+
+
+
+

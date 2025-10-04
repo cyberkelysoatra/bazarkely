@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+## 📌 ROOT-ONLY POLICY
+PROJECT RULES — BAZARKELY
+1. Primary technical reference = README-TECHNIQUE.md (must be followed strictly).
+2. Also consult CAHIER-DES-CHARGES.md, ETAT-TECHNIQUE.md, GAP-TECHNIQUE.md in this order before any action.
+3. Root-Only Policy:
+   - Root = folder with .git or main package.json
+   - Never create/init sub-projects in subfolders
+   - No nested package.json/node_modules outside root
+   - Only one README.md at root, never generate others
+4. On violation → ABORT task, DELETE offending files, LOG "ROOT POLICY VIOLATION".
+5. All npm commands run only at root.
+6. Always keep docs consistent: update only README.md + README-TECHNIQUE.md at root.
+
+## 📌 GAP-TECHNIQUE UPDATE POLICY
+- After each change, always update GAP-TECHNIQUE.md.
+- Process:
+  1. Compare CAHIER-DES-CHARGES.md (objectives) with ETAT-TECHNIQUE.md (current status).
+  2. Identify remaining gaps or tasks not yet satisfied.
+  3. Update GAP-TECHNIQUE.md to reflect those pending tasks.
+- GAP-TECHNIQUE.md must always reflect the exact delta between objectives and current state.
+
+## 📌 CONTEXT VERIFICATION POLICY
+MANDATORY: Before executing any task, always check the full project context 
+(CAHIER-DES-CHARGES.md, ETAT-TECHNIQUE.md, GAP-TECHNIQUE.md, and actual code) — 
+never rely only on ETAT-TECHNIQUE.md.
+
+### 📌 RULE: UPDATE CAHIER-DES-CHARGES.md
+Always update `CAHIER-DES-CHARGES.md` by integrating new requirements directly into the most relevant existing section.
+Never create a separate “Improvements” section unless no logical fit exists.
+Use the same style, headings, and emojis as the document.
+Keep text short, concrete, and accessible (suitable for users not comfortable with numbers).
+Visual aids must complement numbers, never replace them.
+The application must remain SIMPLE and INTUITIVE.

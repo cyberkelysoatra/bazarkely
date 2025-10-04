@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Persistance des Données - BazarKELY</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .data-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnostic Persistance des Données - BazarKELY</h1>
+        
+        <div class="info">
+            <h3>📋 Instructions</h3>
+            <p>1. Cliquez sur "Analyser la Base de Données" pour voir l'état actuel</p>
+            <p>2. Testez la persistance en créant des données de test</p>
+            <p>3. Vérifiez que les données persistent après rechargement</p>
+        </div>
+
+        <button onclick="analyzeDatabase()">🔍 Analyser la Base de Données</button>
+        <button onclick="createTestData()">🧪 Créer des Données de Test</button>
+        <button onclick="testPersistence()">🔄 Tester la Persistance</button>
+        <button onclick="clearTestData()">🗑️ Nettoyer les Données de Test</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        // Import des modules nécessaires
+        import { db } from './lib/database.js';
+        import authService from './services/authService.js';
+
+        // Fonction pour afficher les résultats
+        function displayResult(title, content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `data-section ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            resultsDiv.appendChild(div);
+        }
+
+        // Analyser la base de données
+        window.analyzeDatabase = async function() {
+            try {
+                displayResult('🔍 Analyse de la Base de Données', 'Analyse en cours...', 'info');
+                
+                // Compter les utilisateurs
+                const userCount = await db.users.count();
+                const users = await db.users.toArray();
+                
+                // Compter les comptes
+                const accountCount = await db.accounts.count();
+                const accounts = await db.accounts.toArray();
+                
+                // Compter les transactions
+                const transactionCount = await db.transactions.count();
+                const transactions = await db.transactions.toArray();
+                
+                // Compter les budgets
+                const budgetCount = await db.budgets.count();
+                const budgets = await db.budgets.toArray();
+                
+                // Compter les objectifs
+                const goalCount = await db.goals.count();
+                const goals = await db.goals.toArray();
+
+                let analysis = `📊 STATISTIQUES GÉNÉRALES:\n`;
+                analysis += `Utilisateurs: ${userCount}\n`;
+                analysis += `Comptes: ${accountCount}\n`;
+                analysis += `Transactions: ${transactionCount}\n`;
+                analysis += `Budgets: ${budgetCount}\n`;
+                analysis += `Objectifs: ${goalCount}\n\n`;
+
+                if (users.length > 0) {
+                    analysis += `👥 UTILISATEURS:\n`;
+                    users.forEach(user => {
+                        analysis += `- ${user.username} (ID: ${user.id})\n`;
+                        analysis += `  Email: ${user.email}\n`;
+                        analysis += `  Créé: ${user.createdAt}\n\n`;
+                    });
+                }
+
+                if (accounts.length > 0) {
+                    analysis += `💳 COMPTES:\n`;
+                    accounts.forEach(account => {
+                        analysis += `- ${account.name} (${account.type}) - ${account.balance} MGA\n`;
+                        analysis += `  Utilisateur: ${account.userId}\n\n`;
+                    });
+                }
+
+                if (transactions.length > 0) {
+                    analysis += `💰 TRANSACTIONS (5 dernières):\n`;
+                    const recentTransactions = transactions.slice(-5);
+                    recentTransactions.forEach(transaction => {
+                        analysis += `- ${transaction.description}: ${transaction.amount} MGA\n`;
+                        analysis += `  Type: ${transaction.type} | Utilisateur: ${transaction.userId}\n\n`;
+                    });
+                }
+
+                displayResult('✅ Analyse Terminée', analysis, 'success');
+                
+            } catch (error) {
+                displayResult('❌ Erreur d\'Analyse', error.message, 'error');
+            }
+        };
+
+        // Créer des données de test
+        window.createTestData = async function() {
+            try {
+                displayResult('🧪 Création des Données de Test', 'Création en cours...', 'info');
+                
+                // Créer un utilisateur de test
+                const testUser = await authService.findOrCreateUser('testuser', {
+                    email: 'test@example.com',
+                    phone: '+261 34 00 000 00'
+                });
+
+                // Créer des comptes de test
+                const testAccount1 = {
+                    id: crypto.randomUUID(),
+                    userId: testUser.id,
+                    name: 'Compte Test 1',
+                    type: 'especes',
+                    balance: 100000,
+                    currency: 'MGA',
+                    createdAt: new Date()
+                };
+
+                const testAccount2 = {
+                    id: crypto.randomUUID(),
+                    userId: testUser.id,
+                    name: 'Compte Test 2',
+                    type: 'orange_money',
+                    balance: 50000,
+                    currency: 'MGA',
+                    createdAt: new Date()
+                };
+
+                await db.accounts.bulkAdd([testAccount1, testAccount2]);
+
+                // Créer des transactions de test
+                const testTransactions = [
+                    {
+                        id: crypto.randomUUID(),
+                        userId: testUser.id,
+                        accountId: testAccount1.id,
+                        type: 'income',
+                        amount: 50000,
+                        description: 'Test Revenu',
+                        category: 'salaire',
+                        date: new Date(),
+                        createdAt: new Date()
+                    },
+                    {
+                        id: crypto.randomUUID(),
+                        userId: testUser.id,
+                        accountId: testAccount1.id,
+                        type: 'expense',
+                        amount: -25000,
+                        description: 'Test Dépense',
+                        category: 'nourriture',
+                        date: new Date(),
+                        createdAt: new Date()
+                    },
+                    {
+                        id: crypto.randomUUID(),
+                        userId: testUser.id,
+                        accountId: testAccount1.id,
+                        type: 'transfer',
+                        amount: -10000,
+                        description: 'Test Transfert',
+                        category: 'autres',
+                        date: new Date(),
+                        targetAccountId: testAccount2.id,
+                        createdAt: new Date()
+                    }
+                ];
+
+                await db.transactions.bulkAdd(testTransactions);
+
+                displayResult('✅ Données de Test Créées', 
+                    `Utilisateur: ${testUser.username} (${testUser.id})\n` +
+                    `Comptes: 2\n` +
+                    `Transactions: 3\n\n` +
+                    `Rechargez la page pour tester la persistance.`, 
+                    'success');
+
+            } catch (error) {
+                displayResult('❌ Erreur de Création', error.message, 'error');
+            }
+        };
+
+        // Tester la persistance
+        window.testPersistence = async function() {
+            try {
+                displayResult('🔄 Test de Persistance', 'Test en cours...', 'info');
+                
+                // Vérifier si les données existent toujours
+                const userCount = await db.users.count();
+                const accountCount = await db.accounts.count();
+                const transactionCount = await db.transactions.count();
+
+                let testResult = `📊 DONNÉES ACTUELLES:\n`;
+                testResult += `Utilisateurs: ${userCount}\n`;
+                testResult += `Comptes: ${accountCount}\n`;
+                testResult += `Transactions: ${transactionCount}\n\n`;
+
+                if (userCount > 0) {
+                    const users = await db.users.toArray();
+                    testResult += `👥 UTILISATEURS TROUVÉS:\n`;
+                    users.forEach(user => {
+                        testResult += `- ${user.username} (ID: ${user.id})\n`;
+                    });
+                    testResult += `\n`;
+                }
+
+                if (accountCount > 0) {
+                    const accounts = await db.accounts.toArray();
+                    testResult += `💳 COMPTES TROUVÉS:\n`;
+                    accounts.forEach(account => {
+                        testResult += `- ${account.name} (${account.type}) - ${account.balance} MGA\n`;
+                    });
+                    testResult += `\n`;
+                }
+
+                if (transactionCount > 0) {
+                    const transactions = await db.transactions.toArray();
+                    testResult += `💰 TRANSACTIONS TROUVÉES:\n`;
+                    transactions.forEach(transaction => {
+                        testResult += `- ${transaction.description}: ${transaction.amount} MGA\n`;
+                    });
+                }
+
+                const isDataPersistent = userCount > 0 && accountCount > 0 && transactionCount > 0;
+                
+                displayResult(
+                    isDataPersistent ? '✅ Persistance Confirmée' : '❌ Problème de Persistance', 
+                    testResult, 
+                    isDataPersistent ? 'success' : 'error'
+                );
+
+            } catch (error) {
+                displayResult('❌ Erreur de Test', error.message, 'error');
+            }
+        };
+
+        // Nettoyer les données de test
+        window.clearTestData = async function() {
+            try {
+                displayResult('🗑️ Nettoyage des Données de Test', 'Nettoyage en cours...', 'info');
+                
+                // Supprimer l'utilisateur de test et toutes ses données
+                const testUser = await authService.getUserByUsername('testuser');
+                if (testUser) {
+                    await authService.deleteUser(testUser.id);
+                    displayResult('✅ Données de Test Supprimées', 
+                        `Utilisateur ${testUser.username} et toutes ses données ont été supprimés.`, 
+                        'success');
+                } else {
+                    displayResult('ℹ️ Aucune Donnée de Test', 
+                        'Aucun utilisateur de test trouvé à supprimer.', 
+                        'info');
+                }
+
+            } catch (error) {
+                displayResult('❌ Erreur de Nettoyage', error.message, 'error');
+            }
+        };
+
+        // Analyser automatiquement au chargement
+        window.addEventListener('load', () => {
+            analyzeDatabase();
+        });
+    </script>
+</body>
+</html>

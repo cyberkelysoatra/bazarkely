@@ -1,0 +1,587 @@
+/**
+ * Optimisations CSS spécifiques iOS/Safari pour BazarKELY PWA
+ * Gère les safe areas, les gestes tactiles et les limitations Safari
+ */
+
+/* ===== DÉTECTION SAFARI/iOS ===== */
+.safari {
+  /* Styles spécifiques Safari */
+}
+
+.ios {
+  /* Styles spécifiques iOS */
+}
+
+.iphone {
+  /* Styles spécifiques iPhone */
+}
+
+.ipad {
+  /* Styles spécifiques iPad */
+}
+
+.no-pwa {
+  /* Styles quand PWA non supporté */
+}
+
+.no-sw {
+  /* Styles quand Service Worker non supporté */
+}
+
+.no-indexeddb {
+  /* Styles quand IndexedDB non supporté */
+}
+
+.no-notifications {
+  /* Styles quand notifications non supportées */
+}
+
+/* ===== SAFE AREAS iOS ===== */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-all {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ===== VIEWPORT iOS ===== */
+.ios .app-container {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  position: relative;
+}
+
+.ios .main-content {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ===== GESTES TACTILES iOS ===== */
+.ios .touchable {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ios .touchable:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+.ios .swipeable {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ios .scrollable {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+/* ===== BOUTONS iOS ===== */
+.ios .btn-ios {
+  min-height: 44px; /* Taille minimale recommandée iOS */
+  min-width: 44px;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.ios .btn-ios:active {
+  transform: scale(0.95);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.ios .btn-ios-primary {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.ios .btn-ios-primary:active {
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.5);
+}
+
+/* ===== FORMULAIRES iOS ===== */
+.ios input[type="text"],
+.ios input[type="email"],
+.ios input[type="password"],
+.ios input[type="number"],
+.ios textarea,
+.ios select {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 12px 16px;
+  font-size: 16px; /* Évite le zoom automatique */
+  min-height: 44px;
+  background-color: white;
+}
+
+.ios input:focus,
+.ios textarea:focus,
+.ios select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ios input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.ios input[type="number"]::-webkit-outer-spin-button,
+.ios input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ===== MODALES iOS ===== */
+.ios .modal-ios {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.ios .modal-content-ios {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.ios .modal-ios.open .modal-content-ios {
+  transform: translateY(0);
+}
+
+.ios .modal-handle {
+  width: 40px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 2px;
+  margin: 12px auto;
+}
+
+/* ===== NAVIGATION iOS ===== */
+.ios .bottom-nav-ios {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding: 8px env(safe-area-inset-right) calc(8px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+}
+
+.ios .nav-item-ios {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios .nav-item-ios:active {
+  background-color: rgba(59, 130, 246, 0.1);
+  transform: scale(0.95);
+}
+
+.ios .nav-item-ios.active {
+  color: #3b82f6;
+}
+
+.ios .nav-item-ios svg {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+.ios .nav-item-ios span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ===== CARDS iOS ===== */
+.ios .card-ios {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.ios .card-ios:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ios .card-header-ios {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.ios .card-content-ios {
+  padding: 16px;
+}
+
+/* ===== LISTES iOS ===== */
+.ios .list-ios {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 8px;
+}
+
+.ios .list-item-ios {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios .list-item-ios:last-child {
+  border-bottom: none;
+}
+
+.ios .list-item-ios:active {
+  background-color: #f3f4f6;
+}
+
+.ios .list-item-ios .icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  color: #6b7280;
+}
+
+.ios .list-item-ios .content {
+  flex: 1;
+}
+
+.ios .list-item-ios .title {
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.ios .list-item-ios .subtitle {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.ios .list-item-ios .chevron {
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+}
+
+/* ===== ALERTES iOS ===== */
+.ios .alert-ios {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.ios .alert-ios .icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ios .alert-ios .icon.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ios .alert-ios .icon.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.ios .alert-ios .icon.error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ios .alert-ios .icon.info {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.ios .alert-ios .title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+.ios .alert-ios .message {
+  font-size: 16px;
+  color: #6b7280;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* ===== LOADING iOS ===== */
+.ios .loading-ios {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.ios .spinner-ios {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin-ios 1s linear infinite;
+}
+
+@keyframes spin-ios {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ios .loading-text {
+  margin-top: 16px;
+  font-size: 16px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* ===== PULL TO REFRESH iOS ===== */
+.ios .pull-to-refresh {
+  position: relative;
+  overflow: hidden;
+}
+
+.ios .pull-to-refresh-indicator {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: #3b82f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: top 0.3s ease;
+}
+
+.ios .pull-to-refresh.triggered .pull-to-refresh-indicator {
+  top: 20px;
+}
+
+.ios .pull-to-refresh.refreshing .pull-to-refresh-indicator {
+  top: 20px;
+  animation: spin-ios 1s linear infinite;
+}
+
+/* ===== HAPTIC FEEDBACK iOS ===== */
+.ios .haptic-light {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.ios .haptic-medium {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.2);
+}
+
+.ios .haptic-heavy {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.3);
+}
+
+/* ===== ORIENTATION iOS ===== */
+@media screen and (orientation: landscape) {
+  .ios .landscape-hidden {
+    display: none !important;
+  }
+  
+  .ios .landscape-only {
+    display: block !important;
+  }
+}
+
+@media screen and (orientation: portrait) {
+  .ios .portrait-hidden {
+    display: none !important;
+  }
+  
+  .ios .portrait-only {
+    display: block !important;
+  }
+}
+
+/* ===== DARK MODE iOS ===== */
+@media (prefers-color-scheme: dark) {
+  .ios .card-ios {
+    background: #1f2937;
+    color: white;
+  }
+  
+  .ios .list-ios {
+    background: #1f2937;
+  }
+  
+  .ios .list-item-ios {
+    border-bottom-color: #374151;
+    color: white;
+  }
+  
+  .ios .list-item-ios .title {
+    color: white;
+  }
+  
+  .ios .list-item-ios .subtitle {
+    color: #9ca3af;
+  }
+  
+  .ios .bottom-nav-ios {
+    background: #1f2937;
+    border-top-color: #374151;
+  }
+  
+  .ios .modal-content-ios {
+    background: #1f2937;
+    color: white;
+  }
+  
+  .ios .alert-ios {
+    background: #1f2937;
+    color: white;
+  }
+}
+
+/* ===== ACCESSIBILITÉ iOS ===== */
+.ios .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ios .focus-visible:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ===== PERFORMANCE iOS ===== */
+.ios .will-change-transform {
+  will-change: transform;
+}
+
+.ios .will-change-opacity {
+  will-change: opacity;
+}
+
+.ios .gpu-accelerated {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* ===== FIXES SPÉCIFIQUES SAFARI ===== */
+.safari .webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+
+.safari input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.safari input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.safari input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.safari textarea {
+  resize: none;
+}
+
+.safari select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+
+
+
+
+
+
+
+
+
+

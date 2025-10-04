@@ -1,0 +1,69 @@
+[build]
+  # Build command to run in the frontend directory
+  command = "cd frontend && npm run build"
+  
+  # Directory to publish (relative to the repository root)
+  publish = "frontend/dist"
+  
+  # Functions directory (if using Netlify Functions)
+  functions = "netlify/functions"
+  
+  # Edge functions directory (if using Netlify Edge Functions)
+  edge_functions = "netlify/edge-functions"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "20"
+  
+  # Build environment variables
+  NODE_ENV = "production"
+
+# Redirect rules for React Router (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and PWA
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Security headers
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # PWA headers
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Specific headers for static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Headers for service worker
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Headers for manifest
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=86400"
+
+# Headers for HTML files
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Form handling (if needed)
+[build.processing]
+  skip_processing = false
+

@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-blue-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-200 text-slate-800 px-6 py-3 rounded-lg font-semibold border border-slate-300 transition-all duration-200 hover:bg-slate-300 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-200;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-green-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-200;
+  }
+  
+  .btn-warning {
+    @apply bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-yellow-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-200;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-red-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg border border-slate-200 shadow-md p-6 transition-all duration-200 hover:shadow-lg;
+  }
+  
+  .card-interactive {
+    @apply card cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg border border-slate-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 hover:border-slate-400;
+  }
+  
+  .input-field-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-200;
+  }
+  
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center p-3 text-sm font-semibold transition-all duration-200 rounded-lg;
+  }
+  
+  .mobile-nav-item.active {
+    @apply text-blue-600 bg-blue-50 scale-105;
+  }
+  
+  .mobile-nav-item:not(.active) {
+    @apply text-slate-600 hover:text-blue-600 hover:bg-blue-50 hover:scale-105;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
