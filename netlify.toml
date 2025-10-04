@@ -1,4 +1,7 @@
 [build]
+  # Base directory for the build
+  base = "frontend"
+  
   # Build command to run in the frontend directory
   command = "npm install && npm run build"
   
