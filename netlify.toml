@@ -19,7 +19,7 @@
   NODE_VERSION = "20"
   
   # Build environment variables
-  NODE_ENV = "production"
+  NODE_ENV = "development"
 
 # Redirect rules for React Router (SPA)
 [[redirects]]
