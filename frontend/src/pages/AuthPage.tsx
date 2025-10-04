@@ -101,14 +101,18 @@ const AuthPage = () => {
               if (result.success && result.user) {
                 console.log('✅ User profile created/retrieved:', result.user.username);
                 
-                // Set user state
+                // Set user state and wait for state update
                 localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
                 setUser(result.user);
                 setAuthenticated(true);
                 
-                // Clear hash and navigate
+                // Clear hash first
                 window.history.replaceState({}, document.title, window.location.pathname);
-                navigate('/dashboard');
+                
+                // Small delay to ensure state is updated before navigation
+                setTimeout(() => {
+                  navigate('/dashboard');
+                }, 100);
               } else {
                 console.error('❌ Error handling OAuth callback:', result.error);
                 setError(`Erreur de profil: ${result.error}`);
