@@ -100,6 +100,7 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      console.log('🔍 Querying Supabase accounts for user:', userId);
       const { data, error } = await db.accounts()
         .select('*')
         .eq('user_id', userId)
@@ -107,6 +108,7 @@ class ApiService {
       
       if (error) throw error;
 
+      console.log('✅ Supabase accounts query successful:', data?.length || 0, 'accounts');
       return { success: true, data: data || [] };
     } catch (error) {
       return this.handleError(error, 'getAccounts');

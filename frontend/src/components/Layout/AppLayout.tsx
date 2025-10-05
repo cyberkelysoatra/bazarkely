@@ -5,7 +5,11 @@ import { useAppStore } from '../../stores/appStore'
 import AuthPage from '../../pages/AuthPage'
 import DashboardPage from '../../pages/DashboardPage'
 import TransactionsPage from '../../pages/TransactionsPage'
+import TransactionDetailPage from '../../pages/TransactionDetailPage'
+import AddTransactionPage from '../../pages/AddTransactionPage'
+import TransferPage from '../../pages/TransferPage'
 import AccountsPage from '../../pages/AccountsPage'
+import AccountDetailPage from '../../pages/AccountDetailPage'
 import AddAccountPage from '../../pages/AddAccountPage'
 import BudgetsPage from '../../pages/BudgetsPage'
 import GoalsPage from '../../pages/GoalsPage'
@@ -43,7 +47,11 @@ const AppLayout = () => {
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/transaction/:transactionId" element={<TransactionDetailPage />} />
+          <Route path="/add-transaction" element={<AddTransactionPage />} />
+          <Route path="/transfer" element={<TransferPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/account/:accountId" element={<AccountDetailPage />} />
           <Route path="/add-account" element={<AddAccountPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/goals" element={<GoalsPage />} />

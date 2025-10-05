@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, TrendingDown, Save, X } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
-import { db } from '../lib/database';
+import accountService from '../services/accountService';
 import type { Account, TransactionCategory } from '../types';
 
 const AddTransactionPage = () => {
@@ -34,20 +34,17 @@ const AddTransactionPage = () => {
   // Charger les comptes de l'utilisateur
   useEffect(() => {
     const loadAccounts = async () => {
-      if (user) {
-        try {
-          const userAccounts = await db.accounts
-            .where('userId')
-            .equals(user.id)
-            .toArray();
-          setAccounts(userAccounts);
-        } catch (error) {
-          console.error('Erreur lors du chargement des comptes:', error);
-        }
+      try {
+        console.log('🔍 Chargement des comptes depuis Supabase...');
+        const userAccounts = await accountService.getAccounts();
+        console.log('📊 Comptes récupérés:', userAccounts);
+        setAccounts(userAccounts);
+      } catch (error) {
+        console.error('Erreur lors du chargement des comptes:', error);
       }
     };
     loadAccounts();
-  }, [user]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

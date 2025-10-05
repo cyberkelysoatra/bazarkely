@@ -1,4 +1,5 @@
 import apiService from './apiService';
+import accountService from './accountService';
 import type { Transaction } from '../types';
 // TEMPORARY FIX: Comment out problematic import to unblock the app
 // import notificationService from './notificationService';
@@ -22,7 +23,23 @@ class TransactionService {
         console.error('❌ Erreur lors de la récupération des transactions:', response.error);
         return [];
       }
-      return (response.data as Transaction[]) || [];
+      
+      // Transformer les données Supabase vers le format local
+      const supabaseTransactions = response.data as any[];
+      const transactions: Transaction[] = supabaseTransactions.map((t: any) => ({
+        id: t.id,
+        userId: t.user_id,
+        accountId: t.account_id,
+        type: t.type,
+        amount: t.amount,
+        description: t.description,
+        category: t.category,
+        date: new Date(t.date),
+        targetAccountId: t.target_account_id,
+        createdAt: new Date(t.created_at)
+      }));
+      
+      return transactions;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des transactions:', error);
       return [];
@@ -36,11 +53,24 @@ class TransactionService {
   /**
    * Récupérer une transaction par ID
    */
-  async getTransaction(id: string): Promise<Transaction | null> {
+  async getTransaction(id: string, userId?: string): Promise<Transaction | null> {
     try {
+      console.log('🔍 getTransaction called with ID:', id, 'userId:', userId);
+      
       // Pour l'instant, on récupère toutes les transactions et on filtre
       const transactions = await this.getTransactions();
-      return transactions.find(t => t.id === id) || null;
+      console.log('🔍 All transactions loaded:', transactions.length);
+      
+      const transaction = transactions.find(t => t.id === id) || null;
+      console.log('🔍 Found transaction:', transaction);
+      
+      // Vérifier que la transaction appartient à l'utilisateur si userId fourni
+      if (userId && transaction && transaction.userId !== userId) {
+        console.error('❌ Transaction does not belong to user:', transaction.userId, 'vs', userId);
+        return null;
+      }
+      
+      return transaction;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération de la transaction:', error);
       return null;
@@ -52,7 +82,25 @@ class TransactionService {
    */
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>): Promise<Transaction | null> {
     try {
-      const response = await apiService.createTransaction(transactionData);
+      // Transformer camelCase vers snake_case pour Supabase
+      const supabaseData = {
+        user_id: userId,
+        account_id: transactionData.accountId,
+        amount: transactionData.amount,
+        type: transactionData.type,
+        category: transactionData.category,
+        description: transactionData.description,
+        date: transactionData.date.toISOString(),
+        target_account_id: transactionData.targetAccountId || null,
+        transfer_fee: 0,
+        tags: null,
+        location: null,
+        status: 'completed'
+      };
+
+      console.log('🔍 Données transformées pour Supabase:', supabaseData);
+
+      const response = await apiService.createTransaction(supabaseData);
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la création de la transaction:', response.error);
         return null;
@@ -64,13 +112,31 @@ class TransactionService {
       }, 1000);
 
       console.log('✅ Transaction créée avec succès');
-      // L'API retourne l'ID de la transaction créée, on reconstruit l'objet
+      
+      // Transformer la réponse Supabase vers le format local
+      const supabaseTransaction = response.data as any;
       const transaction: Transaction = {
-        ...transactionData,
-        id: (response.data as any)?.transactionId || crypto.randomUUID(),
-        userId,
-        createdAt: new Date()
+        id: supabaseTransaction.id,
+        userId: supabaseTransaction.user_id,
+        accountId: supabaseTransaction.account_id,
+        type: supabaseTransaction.type,
+        amount: supabaseTransaction.amount,
+        description: supabaseTransaction.description,
+        category: supabaseTransaction.category,
+        date: new Date(supabaseTransaction.date),
+        targetAccountId: supabaseTransaction.target_account_id,
+        createdAt: new Date(supabaseTransaction.created_at)
       };
+
+      // Mettre à jour le solde du compte
+      try {
+        await this.updateAccountBalanceAfterTransaction(transaction.accountId, transaction.amount, userId);
+        console.log('✅ Solde du compte mis à jour');
+      } catch (balanceError) {
+        console.error('❌ Erreur lors de la mise à jour du solde:', balanceError);
+        // Ne pas faire échouer la transaction pour une erreur de solde
+      }
+      
       return transaction;
     } catch (error) {
       console.error('❌ Erreur lors de la création de la transaction:', error);
@@ -83,7 +149,20 @@ class TransactionService {
    */
   async updateTransaction(id: string, transactionData: Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>): Promise<Transaction | null> {
     try {
-      const response = await apiService.updateTransaction(id, transactionData);
+      // Transformer camelCase vers snake_case pour Supabase
+      const supabaseData: any = {};
+      
+      if (transactionData.accountId !== undefined) supabaseData.account_id = transactionData.accountId;
+      if (transactionData.amount !== undefined) supabaseData.amount = transactionData.amount;
+      if (transactionData.type !== undefined) supabaseData.type = transactionData.type;
+      if (transactionData.category !== undefined) supabaseData.category = transactionData.category;
+      if (transactionData.description !== undefined) supabaseData.description = transactionData.description;
+      if (transactionData.date !== undefined) supabaseData.date = transactionData.date.toISOString();
+      if (transactionData.targetAccountId !== undefined) supabaseData.target_account_id = transactionData.targetAccountId;
+
+      console.log('🔍 Données de mise à jour transformées pour Supabase:', supabaseData);
+
+      const response = await apiService.updateTransaction(id, supabaseData);
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la mise à jour de la transaction:', response.error);
         return null;
@@ -131,36 +210,15 @@ class TransactionService {
     }
   ): Promise<{ success: boolean; transactions?: Transaction[]; error?: string }> {
     try {
-      console.log('💸 Création du transfert:', transferData);
+      console.log('💸 TRANSFER START - fromAccountId:', transferData.fromAccountId, 'toAccountId:', transferData.toAccountId, 'amount:', transferData.amount);
 
-      // Créer la transaction de débit (sortie du compte source)
-      const debitTransaction = {
-        userId,
-        accountId: transferData.fromAccountId,
-        type: 'transfer',
-        amount: -Math.abs(transferData.amount), // Montant négatif pour la sortie
-        description: transferData.description,
-        category: 'transfer',
-        date: new Date().toISOString(),
-        notes: transferData.notes || `Transfert vers ${transferData.toAccountId}`
-      };
-
-      // Créer la transaction de crédit (entrée du compte destination)
-      const creditTransaction = {
-        userId,
-        accountId: transferData.toAccountId,
-        type: 'transfer',
-        amount: Math.abs(transferData.amount), // Montant positif pour l'entrée
-        description: transferData.description,
-        category: 'transfer',
-        date: new Date().toISOString(),
-        notes: transferData.notes || `Transfert depuis ${transferData.fromAccountId}`
-      };
-
-      // Utiliser l'API de transfert
+      // Appeler l'API de transfert avec les paramètres directs
       const response = await apiService.createTransfer({
-        debitTransaction,
-        creditTransaction
+        fromAccountId: transferData.fromAccountId,
+        toAccountId: transferData.toAccountId,
+        amount: transferData.amount,
+        description: transferData.description,
+        transferFee: 0
       });
 
       if (!response.success || response.error) {
@@ -169,10 +227,87 @@ class TransactionService {
       }
 
       console.log('✅ Transfert créé avec succès');
-      return { success: true, transactions: response.data as Transaction[] };
+      
+      // Transformer les données Supabase vers le format local
+      const { fromTransaction, toTransaction } = response.data as any;
+      console.log('🔍 Debit transaction:', fromTransaction);
+      console.log('🔍 Credit transaction:', toTransaction);
+      
+      const transactions: Transaction[] = [
+        {
+          id: fromTransaction.id,
+          userId: fromTransaction.user_id,
+          accountId: fromTransaction.account_id,
+          type: fromTransaction.type,
+          amount: fromTransaction.amount,
+          description: fromTransaction.description,
+          category: fromTransaction.category,
+          date: new Date(fromTransaction.date),
+          targetAccountId: fromTransaction.target_account_id,
+          createdAt: new Date(fromTransaction.created_at)
+        },
+        {
+          id: toTransaction.id,
+          userId: toTransaction.user_id,
+          accountId: toTransaction.account_id,
+          type: toTransaction.type,
+          amount: toTransaction.amount,
+          description: toTransaction.description,
+          category: toTransaction.category,
+          date: new Date(toTransaction.date),
+          targetAccountId: toTransaction.target_account_id,
+          createdAt: new Date(toTransaction.created_at)
+        }
+      ];
+
+      // Mettre à jour les soldes des deux comptes - UTILISER LES PARAMÈTRES ORIGINAUX
+      try {
+        console.log('🔍 Updating source account:', transferData.fromAccountId, 'with amount:', -Math.abs(transferData.amount));
+        await this.updateAccountBalanceAfterTransaction(transferData.fromAccountId, -Math.abs(transferData.amount), userId);
+        
+        console.log('🔍 Updating destination account:', transferData.toAccountId, 'with amount:', Math.abs(transferData.amount));
+        await this.updateAccountBalanceAfterTransaction(transferData.toAccountId, Math.abs(transferData.amount), userId);
+        
+        console.log('✅ TRANSFER COMPLETE - Both account balances updated');
+      } catch (balanceError) {
+        console.error('❌ Erreur lors de la mise à jour des soldes:', balanceError);
+        // Ne pas faire échouer le transfert pour une erreur de solde
+      }
+      
+      return { success: true, transactions };
     } catch (error) {
       console.error('❌ Erreur lors de la création du transfert:', error);
       return { success: false, error: 'Erreur lors de la création du transfert' };
+    }
+  }
+
+  /**
+   * Mettre à jour le solde d'un compte après une transaction
+   */
+  private async updateAccountBalanceAfterTransaction(accountId: string, transactionAmount: number, userId: string): Promise<void> {
+    try {
+      console.log(`🔍 Mise à jour du solde pour le compte ${accountId} avec ${transactionAmount}`);
+      
+      // Récupérer le compte actuel
+      const account = await accountService.getAccount(accountId, userId);
+      if (!account) {
+        throw new Error(`Compte ${accountId} non trouvé`);
+      }
+
+      // Calculer le nouveau solde
+      const newBalance = account.balance + transactionAmount;
+      console.log(`💰 Nouveau solde: ${account.balance} + ${transactionAmount} = ${newBalance}`);
+
+      // Mettre à jour le compte
+      const updatedAccount = await accountService.updateAccount(accountId, userId, { balance: newBalance });
+      if (!updatedAccount) {
+        throw new Error(`Échec de la mise à jour du solde pour le compte ${accountId}`);
+      }
+
+      console.log(`✅ Solde mis à jour: ${account.balance} → ${newBalance}`);
+    } catch (error) {
+      console.error(`❌ Erreur lors de la mise à jour du solde du compte ${accountId}:`, error);
+      throw error;
     }
   }
 

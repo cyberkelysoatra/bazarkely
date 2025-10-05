@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRightLeft, Save, X, Settings } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
+import accountService from '../services/accountService';
 import feeService from '../services/feeService';
-import { db } from '../lib/database';
 import type { Account, CalculatedFees } from '../types';
 
 const TransferPage = () => {
@@ -29,20 +29,17 @@ const TransferPage = () => {
   // Charger les comptes de l'utilisateur
   useEffect(() => {
     const loadAccounts = async () => {
-      if (user) {
-        try {
-          const userAccounts = await db.accounts
-            .where('userId')
-            .equals(user.id)
-            .toArray();
-          setAccounts(userAccounts);
-        } catch (error) {
-          console.error('Erreur lors du chargement des comptes:', error);
-        }
+      try {
+        console.log('🔍 Chargement des comptes depuis Supabase...');
+        const userAccounts = await accountService.getAccounts();
+        console.log('📊 Comptes récupérés:', userAccounts);
+        setAccounts(userAccounts);
+      } catch (error) {
+        console.error('Erreur lors du chargement des comptes:', error);
       }
     };
     loadAccounts();
-  }, [user]);
+  }, []);
 
   // Calculer les frais de transfert
   useEffect(() => {

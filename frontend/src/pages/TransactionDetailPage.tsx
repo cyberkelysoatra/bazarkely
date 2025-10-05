@@ -35,13 +35,19 @@ const TransactionDetailPage = () => {
       
       try {
         setIsLoading(true);
-        const transactionData = await db.transactions.get(transactionId);
+        console.log('🔍 Loading transaction with ID:', transactionId, 'for user:', user.id);
+        
+        // Utiliser le service de transaction au lieu d'IndexedDB direct
+        const transactionData = await transactionService.getTransaction(transactionId, user.id);
         
         if (!transactionData || transactionData.userId !== user.id) {
           console.error('❌ Transaction non trouvée ou non autorisée');
+          console.log('🔍 Query result:', transactionData);
           navigate('/transactions');
           return;
         }
+        
+        console.log('✅ Transaction loaded successfully:', transactionData);
         
         setTransaction(transactionData);
         setEditData({
@@ -113,12 +119,22 @@ const TransactionDetailPage = () => {
     
     try {
       setIsDeleting(true);
+      console.log('🗑️ Starting transaction deletion for ID:', transaction.id);
       
-      // Restaurer le solde du compte
+      // 1. Supprimer de Supabase d'abord
+      const deleteSuccess = await transactionService.deleteTransaction(transaction.id);
+      if (!deleteSuccess) {
+        throw new Error('Échec de la suppression dans Supabase');
+      }
+      console.log('✅ Transaction supprimée de Supabase');
+      
+      // 2. Restaurer le solde du compte
       await transactionService.updateAccountBalancePublic(transaction.accountId, -transaction.amount);
+      console.log('✅ Solde du compte restauré');
       
-      // Supprimer la transaction
+      // 3. Supprimer de l'IndexedDB local
       await db.transactions.delete(transaction.id);
+      console.log('✅ Transaction supprimée de l\'IndexedDB local');
       
       console.log('✅ Transaction supprimée avec succès !');
       navigate('/transactions');
@@ -126,6 +142,7 @@ const TransactionDetailPage = () => {
     } catch (error) {
       console.error('❌ Erreur lors de la suppression:', error);
       console.error('❌ Erreur lors de la suppression de la transaction');
+      // Ne pas naviguer si la suppression a échoué
     } finally {
       setIsDeleting(false);
     }
@@ -201,7 +218,7 @@ const TransactionDetailPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !transaction) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -209,21 +226,6 @@ const TransactionDetailPage = () => {
     );
   }
 
-  if (!transaction) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Transaction non trouvée</h2>
-          <button
-            onClick={() => navigate('/transactions')}
-            className="btn-primary"
-          >
-            Retour aux transactions
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -296,7 +298,7 @@ const TransactionDetailPage = () => {
                 )}
               </h2>
               <p className="text-sm text-gray-500">
-                {TRANSACTION_CATEGORIES[transaction.category].name} • {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                {TRANSACTION_CATEGORIES[transaction.category]?.name || transaction.category || 'Autres'} • {new Date(transaction.date).toLocaleDateString('fr-FR')}
                 {transaction.type === 'transfer' && (
                   <span className={`ml-2 ${transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     • {transaction.amount < 0 ? 'Débit' : 'Crédit'}
@@ -345,7 +347,7 @@ const TransactionDetailPage = () => {
                   ))}
                 </select>
               ) : (
-                <p className="text-gray-900">{TRANSACTION_CATEGORIES[transaction.category].name}</p>
+                <p className="text-gray-900">{TRANSACTION_CATEGORIES[transaction.category]?.name || transaction.category || 'Autres'}</p>
               )}
             </div>
 
@@ -374,7 +376,7 @@ const TransactionDetailPage = () => {
             {transaction.type === 'transfer' && targetAccount && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Compte de destination</label>
-                <p className="text-gray-900">{targetAccount.name}</p>
+                <p className="text-gray-900">{targetAccount?.name || 'Compte inconnu'}</p>
               </div>
             )}
 

@@ -13,12 +13,15 @@ class AccountService {
    */
   async getAccounts(): Promise<Account[]> {
     try {
+      console.log('🔍 Fetching accounts from Supabase...');
       const response = await apiService.getAccounts();
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la récupération des comptes:', response.error);
         return [];
       }
-      return (response.data as Account[]) || [];
+      const accounts = (response.data as Account[]) || [];
+      console.log('✅ Accounts fetched from Supabase:', accounts.length);
+      return accounts;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des comptes:', error);
       return [];

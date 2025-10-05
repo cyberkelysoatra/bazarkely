@@ -61,6 +61,12 @@ const DashboardPage = () => {
         const sortedTransactions = allTransactions
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 4);
+        console.log('📅 Recent transactions sorted (newest first):', sortedTransactions.map(t => ({
+          id: t.id,
+          description: t.description,
+          date: t.date,
+          amount: t.amount
+        })));
         setRecentTransactions(sortedTransactions);
 
         // Calculer les revenus et dépenses du mois

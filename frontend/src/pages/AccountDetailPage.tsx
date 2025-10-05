@@ -27,8 +27,10 @@ const AccountDetailPage = () => {
       if (user && accountId) {
         try {
           setIsLoading(true);
+          console.log('🔄 Loading account detail from Supabase for ID:', accountId);
           const accountData = await accountService.getAccount(accountId, user.id);
           if (accountData) {
+            console.log(`💰 Account loaded: ${accountData.name} (${accountData.type}): ${accountData.balance} Ar`);
             setAccount(accountData);
             setEditData({
               name: accountData.name,
@@ -36,6 +38,7 @@ const AccountDetailPage = () => {
               balance: accountData.balance
             });
           } else {
+            console.error('❌ Account not found:', accountId);
             navigate('/accounts');
           }
         } catch (error) {

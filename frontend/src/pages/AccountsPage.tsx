@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
@@ -8,6 +8,7 @@ import type { Account } from '../types';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAppStore();
   const [showBalances, setShowBalances] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -19,7 +20,12 @@ const AccountsPage = () => {
       if (user) {
         try {
           setIsLoading(true);
+          console.log('🔄 Loading accounts from Supabase...');
           const userAccounts = await accountService.getUserAccounts(user.id);
+          console.log('📊 Accounts loaded:', userAccounts.length);
+          userAccounts.forEach(account => {
+            console.log(`💰 ${account.name} (${account.type}): ${account.balance} Ar`);
+          });
           setAccounts(userAccounts);
         } catch (error) {
           console.error('Erreur lors du chargement des comptes:', error);
@@ -29,7 +35,7 @@ const AccountsPage = () => {
       }
     };
     loadAccounts();
-  }, [user]);
+  }, [user, location.pathname]); // Refresh when returning from other pages
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('fr-FR')} Ar`;
@@ -139,6 +145,7 @@ const AccountsPage = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    console.log('🔍 Navigating to account:', account.id, 'Account name:', account.name);
                     navigate(`/account/${account.id}`);
                   }}
                   className="w-full text-center text-sm text-gray-600 hover:text-blue-600 transition-colors"

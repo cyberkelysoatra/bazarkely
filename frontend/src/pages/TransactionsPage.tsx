@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
@@ -10,6 +10,7 @@ import type { Transaction, Account } from '../types';
 const TransactionsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
@@ -26,7 +27,9 @@ const TransactionsPage = () => {
       if (user) {
         try {
           setIsLoading(true);
+          console.log('🔄 Loading transactions from Supabase...');
           const userTransactions = await transactionService.getUserTransactions(user.id);
+          console.log('📊 Transactions loaded:', userTransactions.length);
           setTransactions(userTransactions);
         } catch (error) {
           console.error('Erreur lors du chargement des transactions:', error);
@@ -36,7 +39,7 @@ const TransactionsPage = () => {
       }
     };
     loadTransactions();
-  }, [user]);
+  }, [user, location.pathname]); // Refresh when returning from detail page
 
   // Charger les informations du compte filtré
   useEffect(() => {
@@ -64,6 +67,11 @@ const TransactionsPage = () => {
     return `${Math.abs(amount).toLocaleString('fr-FR')} Ar`;
   };
 
+  // Helper function to sort transactions by date (newest first)
+  const sortTransactionsByDateDesc = (transactions: Transaction[]) => {
+    return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
@@ -83,6 +91,15 @@ const TransactionsPage = () => {
     
     return matchesSearch && matchesFilter && matchesAccount;
   });
+
+  // Sort filtered transactions by date (newest first)
+  const sortedTransactions = sortTransactionsByDateDesc(filteredTransactions);
+  console.log('📅 Transactions sorted (newest first):', sortedTransactions.slice(0, 3).map(t => ({
+    id: t.id,
+    description: t.description,
+    date: t.date,
+    amount: t.amount
+  })));
 
   const totalIncome = transactions
     .filter(t => t.type === 'income')
@@ -144,7 +161,7 @@ const TransactionsPage = () => {
                   Transactions du compte : {filteredAccount.name}
                 </h3>
                 <p className="text-xs text-blue-700">
-                  {filteredTransactions.length} transaction(s) trouvée(s)
+                  {sortedTransactions.length} transaction(s) trouvée(s)
                 </p>
               </div>
             </div>
@@ -246,7 +263,7 @@ const TransactionsPage = () => {
 
       {/* Liste des transactions */}
       <div className="space-y-3">
-        {filteredTransactions.map((transaction) => {
+        {sortedTransactions.map((transaction) => {
           const category = TRANSACTION_CATEGORIES[transaction.category] || {
             name: transaction.category,
             icon: 'MoreHorizontal',
@@ -276,7 +293,10 @@ const TransactionsPage = () => {
           return (
             <div 
               key={transaction.id} 
-              onClick={() => navigate(`/transaction/${transaction.id}`)}
+              onClick={() => {
+                console.log('🔍 Navigating to transaction:', transaction.id, 'Transaction type:', transaction.type);
+                navigate(`/transaction/${transaction.id}`);
+              }}
               className="card hover:shadow-lg transition-shadow cursor-pointer"
             >
               <div className="flex items-center justify-between">
@@ -336,7 +356,7 @@ const TransactionsPage = () => {
         })}
       </div>
 
-      {filteredTransactions.length === 0 && (
+      {sortedTransactions.length === 0 && (
         <div className="text-center py-8">
           <ArrowUpDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune transaction</h3>
