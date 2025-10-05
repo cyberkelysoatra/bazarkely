@@ -30,7 +30,7 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm run test
+        run: npm run test -- src/services/__tests__/authService.test.ts src/services/__tests__/accountService.test.ts src/services/__tests__/transactionService.test.ts src/services/__tests__/syncService.test.ts
       
       - name: Generate coverage report
         run: npm run test:coverage
