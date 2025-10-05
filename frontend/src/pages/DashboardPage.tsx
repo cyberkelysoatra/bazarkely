@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Wallet, TrendingUp, TrendingDown, Target, PieChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
-import { db } from '../lib/database';
+import accountService from '../services/accountService';
 import transactionService from '../services/transactionService';
 import type { Transaction } from '../types';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
@@ -44,22 +44,20 @@ const DashboardPage = () => {
       try {
         setIsLoading(true);
 
-        // Charger les comptes
-        // Vérifier que user.id est valide pour Dexie
-        if (!user?.id) {
-          console.warn('⚠️ User ID manquant, impossible de charger les comptes');
-          setUserAccounts([]);
-          return;
-        }
-        
-        const userId = String(user.id); // Convertir en string pour Dexie
-        const userAccounts = await db.accounts.where('userId').equals(userId).toArray();
+        // Charger les comptes depuis Supabase
+        console.log('🔍 Chargement des comptes depuis Supabase...');
+        const userAccounts = await accountService.getAccounts();
+        console.log('📊 Comptes récupérés:', userAccounts);
+        setUserAccounts(userAccounts);
 
         // Calculer le solde total
         const totalBalance = userAccounts.reduce((sum, account) => sum + account.balance, 0);
+        console.log('💰 Solde total calculé:', totalBalance);
 
         // Charger les transactions récentes
-        const allTransactions = await transactionService.getUserTransactions(userId);
+        console.log('🔍 Chargement des transactions depuis Supabase...');
+        const allTransactions = await transactionService.getTransactions();
+        console.log('📊 Transactions récupérées:', allTransactions.length);
         const sortedTransactions = allTransactions
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 4);
@@ -83,16 +81,22 @@ const DashboardPage = () => {
           .filter(t => t.type === 'expense')
           .reduce((sum, t) => sum + t.amount, 0));
 
+        console.log('📈 Revenus mensuels:', monthlyIncome);
+        console.log('📉 Dépenses mensuelles:', monthlyExpenses);
+
         // Calculer l'utilisation du budget (simulation)
         const budgetUtilization = monthlyExpenses > 0 ? Math.min((monthlyExpenses / (monthlyIncome || 1)) * 100, 100) : 0;
 
-        setStats({
+        const finalStats = {
           totalBalance,
           monthlyIncome,
           monthlyExpenses,
           budgetUtilization: Math.round(budgetUtilization),
           goalsProgress: 45 // Simulation pour l'instant
-        });
+        };
+
+        console.log('📊 Statistiques finales:', finalStats);
+        setStats(finalStats);
 
       } catch (error) {
         console.error('Erreur lors du chargement des données du dashboard:', error);

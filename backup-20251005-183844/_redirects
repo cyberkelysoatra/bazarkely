@@ -1,0 +1,33 @@
+# Netlify redirects for React Router SPA
+# This file handles client-side routing for React Router
+
+# Redirect all routes to index.html for React Router
+/*    /index.html   200
+
+# API routes (if you have any API endpoints)
+# /api/*  https://your-api-domain.com/api/:splat  200
+
+# Specific redirects for common paths
+/dashboard    /index.html   200
+/accounts    /index.html   200
+/transactions    /index.html   200
+/budgets    /index.html   200
+/goals    /index.html   200
+/transfer    /index.html   200
+/auth    /index.html   200
+/education    /index.html   200
+/fees    /index.html   200
+/notifications    /index.html   200
+
+# PWA routes
+/manifest.webmanifest    /manifest.webmanifest   200
+/sw.js    /sw.js   200
+
+# Fallback for any other routes
+/*    /index.html   200
+
+
+
+
+
+

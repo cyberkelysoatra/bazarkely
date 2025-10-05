@@ -1,0 +1,82 @@
+{
+  "Timestamp": "2025-10-05 19:16:09",
+  "Success": true,
+  "URL": "https://1sakely.org",
+  "Tests": [
+    {
+      "Details": "HTTP 200",
+      "Status": "PASS",
+      "Name": "Basic Connectivity"
+    },
+    {
+      "Details": "Not found in page content",
+      "Status": "WARN",
+      "Name": "React app loaded"
+    },
+    {
+      "Details": "Found in page content",
+      "Status": "PASS",
+      "Name": "CSS bundle"
+    },
+    {
+      "Details": "Found in page content",
+      "Status": "PASS",
+      "Name": "JavaScript bundle"
+    },
+    {
+      "Details": "Found in page content",
+      "Status": "PASS",
+      "Name": "BazarKELY title"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: beforeinstallprompt"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: browserDetection"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: isSafari"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: isStandalone"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: InstallPrompt component"
+    },
+    {
+      "Details": "Not found in bundled assets",
+      "Status": "WARN",
+      "Name": "Asset: isIOS"
+    },
+    {
+      "Details": "Requires manual browser testing",
+      "Status": "SKIP",
+      "Name": "InstallPrompt Functionality"
+    },
+    {
+      "Details": "Manifest accessible at https://1sakely.org/manifest.webmanifest",
+      "Status": "PASS",
+      "Name": "PWA Manifest"
+    },
+    {
+      "Details": "SW accessible at https://1sakely.org/sw.js",
+      "Status": "PASS",
+      "Name": "Service Worker"
+    },
+    {
+      "Details": "Load time: 1258ms",
+      "Status": "PASS",
+      "Name": "Performance"
+    }
+  ]
+}
