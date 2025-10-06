@@ -97,6 +97,7 @@ export interface Database {
           tags: Json
           location: string | null
           status: string
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -114,6 +115,7 @@ export interface Database {
           tags?: Json
           location?: string | null
           status?: string
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -131,6 +133,7 @@ export interface Database {
           tags?: Json
           location?: string | null
           status?: string
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }

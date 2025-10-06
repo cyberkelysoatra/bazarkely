@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
-import { db } from '../lib/database';
+import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import type { Transaction, Account } from '../types';
 
@@ -15,17 +15,21 @@ const TransactionDetailPage = () => {
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [targetAccount, setTargetAccount] = useState<Account | null>(null);
+  const [userAccounts, setUserAccounts] = useState<Account[]>([]);
+  const [originalAccountId, setOriginalAccountId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showAccountChangeWarning, setShowAccountChangeWarning] = useState(false);
   
   const [editData, setEditData] = useState({
     description: '',
     amount: '',
     category: 'autres' as keyof typeof TRANSACTION_CATEGORIES,
     date: '',
-    notes: ''
+    notes: '',
+    accountId: ''
   });
 
   // Charger la transaction
@@ -50,21 +54,31 @@ const TransactionDetailPage = () => {
         console.log('✅ Transaction loaded successfully:', transactionData);
         
         setTransaction(transactionData);
+        setOriginalAccountId(transactionData.accountId);
         setEditData({
           description: transactionData.description,
           amount: Math.abs(transactionData.amount).toString(),
           category: transactionData.category,
           date: new Date(transactionData.date).toISOString().split('T')[0],
-          notes: transactionData.notes || ''
+          notes: transactionData.notes || '',
+          accountId: transactionData.accountId
         });
         
-        // Charger les comptes
-        const accountData = await db.accounts.get(transactionData.accountId);
-        setAccount(accountData || null);
+        // Charger tous les comptes de l'utilisateur
+        const allAccounts = await accountService.getUserAccounts(user.id);
+        setUserAccounts(allAccounts);
+        console.log('✅ User accounts loaded:', allAccounts.length);
         
+        // Charger le compte principal de la transaction
+        const accountData = await accountService.getAccount(transactionData.accountId, user.id);
+        setAccount(accountData);
+        console.log('✅ Transaction account loaded:', accountData?.name || 'Not found');
+        
+        // Charger le compte de destination pour les transferts
         if (transactionData.targetAccountId) {
-          const targetAccountData = await db.accounts.get(transactionData.targetAccountId);
-          setTargetAccount(targetAccountData || null);
+          const targetAccountData = await accountService.getAccount(transactionData.targetAccountId, user.id);
+          setTargetAccount(targetAccountData);
+          console.log('✅ Target account loaded:', targetAccountData?.name || 'Not found');
         }
         
       } catch (error) {
@@ -87,25 +101,108 @@ const TransactionDetailPage = () => {
     if (!transaction || !user) return;
     
     try {
-      const updatedTransaction = {
-        ...transaction,
+      const updatedTransactionData = {
         description: editData.description,
         amount: transaction.type === 'income' ? parseFloat(editData.amount) : -parseFloat(editData.amount),
         category: editData.category,
         date: new Date(editData.date),
-        notes: editData.notes
+        notes: editData.notes,
+        accountId: editData.accountId
       };
       
-      await db.transactions.update(transaction.id, updatedTransaction);
+      // Check if account was changed
+      const accountChanged = editData.accountId !== originalAccountId;
       
-      // Mettre à jour le solde du compte si le montant a changé
-      if (transaction.amount !== updatedTransaction.amount) {
-        const difference = updatedTransaction.amount - transaction.amount;
-        await transactionService.updateAccountBalancePublic(transaction.accountId, difference);
+      if (accountChanged) {
+        console.log('🔄 Account change detected - implementing balance adjustment logic');
+        console.log('📊 Original account ID:', originalAccountId);
+        console.log('📊 New account ID:', editData.accountId);
+        console.log('💰 Transaction amount:', updatedTransactionData.amount);
+        
+        // STEP 1: Get current account balances
+        const oldAccount = await accountService.getAccount(originalAccountId, user.id);
+        const newAccount = await accountService.getAccount(editData.accountId, user.id);
+        
+        if (!oldAccount || !newAccount) {
+          throw new Error('Impossible de charger les comptes pour l\'ajustement des soldes');
+        }
+        
+        console.log('💰 Old account balance before adjustment:', oldAccount.balance);
+        console.log('💰 New account balance before adjustment:', newAccount.balance);
+        
+        // STEP 2: Calculate reverse amount to neutralize old account impact
+        const reverseAmount = -transaction.amount; // Reverse the original transaction impact
+        const newAmount = updatedTransactionData.amount; // Apply new transaction amount
+        
+        console.log('🔄 Reverse amount for old account:', reverseAmount);
+        console.log('🔄 New amount for new account:', newAmount);
+        
+        // STEP 3: Update old account balance (reverse the original transaction)
+        const oldAccountNewBalance = oldAccount.balance + reverseAmount;
+        console.log('💰 Old account new balance after reverse:', oldAccountNewBalance);
+        
+        const oldAccountUpdate = await accountService.updateAccount(originalAccountId, user.id, {
+          balance: oldAccountNewBalance
+        });
+        
+        if (!oldAccountUpdate) {
+          throw new Error('Échec de la mise à jour du solde de l\'ancien compte');
+        }
+        
+        // STEP 4: Update new account balance (apply new transaction)
+        const newAccountNewBalance = newAccount.balance + newAmount;
+        console.log('💰 New account new balance after new transaction:', newAccountNewBalance);
+        
+        const newAccountUpdate = await accountService.updateAccount(editData.accountId, user.id, {
+          balance: newAccountNewBalance
+        });
+        
+        if (!newAccountUpdate) {
+          // Rollback old account if new account update fails
+          console.error('❌ Rolling back old account balance due to new account update failure');
+          await accountService.updateAccount(originalAccountId, user.id, {
+            balance: oldAccount.balance
+          });
+          throw new Error('Échec de la mise à jour du solde du nouveau compte');
+        }
+        
+        console.log('✅ Balance adjustments completed successfully');
+        console.log('✅ Old account final balance:', oldAccountNewBalance);
+        console.log('✅ New account final balance:', newAccountNewBalance);
       }
       
+      // STEP 5: Update transaction record with new accountId
+      const updatedTransaction = await transactionService.updateTransaction(transaction.id, updatedTransactionData);
+      
+      if (!updatedTransaction) {
+        // If account was changed, we need to rollback the balance changes
+        if (accountChanged) {
+          console.error('❌ Rolling back balance changes due to transaction update failure');
+          const oldAccount = await accountService.getAccount(originalAccountId, user.id);
+          const newAccount = await accountService.getAccount(editData.accountId, user.id);
+          
+          if (oldAccount && newAccount) {
+            await accountService.updateAccount(originalAccountId, user.id, {
+              balance: oldAccount.balance + transaction.amount
+            });
+            await accountService.updateAccount(editData.accountId, user.id, {
+              balance: newAccount.balance - updatedTransactionData.amount
+            });
+          }
+        }
+        throw new Error('Échec de la mise à jour de la transaction');
+      }
+      
+      // Update local state
       setTransaction(updatedTransaction);
+      setOriginalAccountId(editData.accountId);
       setIsEditing(false);
+      setShowAccountChangeWarning(false);
+      
+      // Update account display
+      const newAccount = await accountService.getAccount(editData.accountId, user.id);
+      setAccount(newAccount);
+      
       console.log('✅ Transaction mise à jour avec succès !');
       
     } catch (error) {
@@ -151,12 +248,14 @@ const TransactionDetailPage = () => {
   const handleCancel = () => {
     if (isEditing) {
       setIsEditing(false);
+      setShowAccountChangeWarning(false);
       setEditData({
         description: transaction?.description || '',
         amount: transaction ? Math.abs(transaction.amount).toString() : '',
         category: transaction?.category || 'autres',
         date: transaction ? new Date(transaction.date).toISOString().split('T')[0] : '',
-        notes: transaction?.notes || ''
+        notes: transaction?.notes || '',
+        accountId: transaction?.accountId || ''
       });
     } else {
       navigate('/transactions');
@@ -369,7 +468,42 @@ const TransactionDetailPage = () => {
             {/* Compte */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Compte</label>
-              <p className="text-gray-900">{account?.name || 'Compte non trouvé'}</p>
+              {isEditing ? (
+                <select
+                  value={editData.accountId}
+                  onChange={(e) => {
+                    const newAccountId = e.target.value;
+                    setEditData(prev => ({ ...prev, accountId: newAccountId }));
+                    
+                    // Show warning if account is being changed
+                    if (newAccountId !== originalAccountId) {
+                      setShowAccountChangeWarning(true);
+                    } else {
+                      setShowAccountChangeWarning(false);
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {userAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.type})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-gray-900">{account?.name || 'Compte non trouvé'}</p>
+              )}
+              
+              {/* Warning message for account change */}
+              {isEditing && showAccountChangeWarning && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium">Changement de compte détecté</p>
+                    <p>Les soldes des comptes seront ajustés automatiquement lors de la sauvegarde.</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Compte de destination (pour les transferts) */}

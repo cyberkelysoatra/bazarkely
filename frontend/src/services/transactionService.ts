@@ -36,6 +36,7 @@ class TransactionService {
         category: t.category,
         date: new Date(t.date),
         targetAccountId: t.target_account_id,
+        notes: t.notes || undefined,
         createdAt: new Date(t.created_at)
       }));
       
@@ -95,7 +96,8 @@ class TransactionService {
         transfer_fee: 0,
         tags: null,
         location: null,
-        status: 'completed'
+        status: 'completed',
+        notes: transactionData.notes || null
       };
 
       console.log('🔍 Données transformées pour Supabase:', supabaseData);
@@ -107,9 +109,10 @@ class TransactionService {
       }
 
       // Vérifier les alertes de budget après création
-      setTimeout(() => {
-        notificationService.checkBudgetAlerts(userId);
-      }, 1000);
+      // TODO: Implement budget alerts when notificationService is fully implemented
+      // setTimeout(() => {
+      //   notificationService.checkBudgetAlerts(userId);
+      // }, 1000);
 
       console.log('✅ Transaction créée avec succès');
       
@@ -125,6 +128,7 @@ class TransactionService {
         category: supabaseTransaction.category,
         date: new Date(supabaseTransaction.date),
         targetAccountId: supabaseTransaction.target_account_id,
+        notes: supabaseTransaction.notes || undefined,
         createdAt: new Date(supabaseTransaction.created_at)
       };
 
@@ -159,6 +163,7 @@ class TransactionService {
       if (transactionData.description !== undefined) supabaseData.description = transactionData.description;
       if (transactionData.date !== undefined) supabaseData.date = transactionData.date.toISOString();
       if (transactionData.targetAccountId !== undefined) supabaseData.target_account_id = transactionData.targetAccountId;
+      if (transactionData.notes !== undefined) supabaseData.notes = transactionData.notes || null;
 
       console.log('🔍 Données de mise à jour transformées pour Supabase:', supabaseData);
 
@@ -244,6 +249,7 @@ class TransactionService {
           category: fromTransaction.category,
           date: new Date(fromTransaction.date),
           targetAccountId: fromTransaction.target_account_id,
+          notes: fromTransaction.notes || undefined,
           createdAt: new Date(fromTransaction.created_at)
         },
         {
@@ -256,6 +262,7 @@ class TransactionService {
           category: toTransaction.category,
           date: new Date(toTransaction.date),
           targetAccountId: toTransaction.target_account_id,
+          notes: toTransaction.notes || undefined,
           createdAt: new Date(toTransaction.created_at)
         }
       ];
