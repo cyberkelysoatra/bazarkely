@@ -345,7 +345,40 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_all_users_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          username: string
+          email: string
+          role: string
+          created_at: string
+          last_sync: string | null
+        }[]
+      }
+      get_admin_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_users: number
+          total_transactions: number
+          total_accounts: number
+          total_budgets: number
+          total_goals: number
+        }
+      }
+      delete_user_admin: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: {
+          success: boolean
+          message?: string
+          user_deleted?: string
+          transactions_deleted?: number
+          error?: string
+          user_id?: string
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -388,6 +421,7 @@ export type SyncQueueUpdate = Database['public']['Tables']['sync_queue']['Update
 export type FeeConfiguration = Database['public']['Tables']['fee_configurations']['Row']
 export type FeeConfigurationInsert = Database['public']['Tables']['fee_configurations']['Insert']
 export type FeeConfigurationUpdate = Database['public']['Tables']['fee_configurations']['Update']
+
 
 
 

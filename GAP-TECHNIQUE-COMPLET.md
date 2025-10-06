@@ -126,6 +126,12 @@
 - [ ] **Rapports personnalisés** - Templates utilisateur
 - [ ] **Thèmes personnalisés** - Couleurs et styles
 
+#### **Priorité 0 - Administration** ✅ COMPLET (2024-12-19)
+- [x] **Page d'administration** - Interface de gestion des utilisateurs
+- [x] **Suppression complète d'utilisateurs** - Suppression de toutes les données associées
+- [x] **Contrôle d'accès admin** - Restriction à joelsoatra@gmail.com uniquement
+- [x] **Intégrité des données** - Suppression en cascade de toutes les tables
+
 #### **Priorité 2 - Fonctionnalités Avancées** (Q2 2025)
 - [ ] **Multi-utilisateurs par famille** - Gestion familiale
 - [ ] **Intégration bancaire** - APIs bancaires (si disponibles)
@@ -236,4 +242,5 @@ Les tâches d'amélioration sont reportées à la Phase 2 car elles ne sont pas 
 ---
 
 *Document généré automatiquement le 2024-12-19 - BazarKELY v2.0*
+
 

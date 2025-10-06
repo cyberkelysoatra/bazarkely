@@ -1,8 +1,9 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../../services/apiService';
+import adminService from '../../services/adminService';
 
 const Header = () => {
   const { user, logout } = useAppStore();
@@ -10,6 +11,7 @@ const Header = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const messages = [
     "Gérez votre budget familial en toute simplicité",
@@ -45,6 +47,18 @@ const Header = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Vérifier les privilèges admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user?.email) {
+        const adminStatus = await adminService.isAdmin();
+        setIsAdmin(adminStatus);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user?.email]);
+
   const handleLogout = async () => {
     try {
       console.log('🚪 Déconnexion depuis le header...');
@@ -76,6 +90,14 @@ const Header = () => {
     // Ici on ferme le menu et on peut ajouter d'autres fonctionnalités
     handleMenuClose();
     // TODO: Implémenter la navigation vers les paramètres ou l'ouverture d'un modal
+  };
+
+  const handleAdminClick = (event: React.MouseEvent) => {
+    event.stopPropagation(); // Empêcher la propagation vers le gestionnaire de clic extérieur
+    console.log('Admin cliqué');
+    handleMenuClose();
+    // Navigation vers la page admin
+    window.location.href = '/admin';
   };
 
   // Fermer le menu en cliquant à l'extérieur
@@ -169,6 +191,15 @@ const Header = () => {
                     <Settings className="w-5 h-5" />
                     <span className="text-sm font-medium">Paramètres</span>
                   </button>
+                  {isAdmin && (
+                    <button 
+                      className="flex items-center space-x-3 p-3 text-purple-100 hover:text-white hover:bg-red-500/20 rounded-xl transition-all duration-200 backdrop-blur-sm w-full text-left"
+                      onClick={handleAdminClick}
+                    >
+                      <Shield className="w-5 h-5" />
+                      <span className="text-sm font-medium">Administration</span>
+                    </button>
+                  )}
                   <button 
                     onClick={handleLogoutClick}
                     className="flex items-center space-x-3 p-3 text-purple-100 hover:text-white hover:bg-red-500/30 rounded-xl transition-all duration-200 backdrop-blur-sm w-full text-left"

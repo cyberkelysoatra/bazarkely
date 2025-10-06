@@ -16,6 +16,7 @@ import GoalsPage from '../../pages/GoalsPage'
 import EducationPage from '../../pages/EducationPage'
 // import SettingsPage from '../../pages/SettingsPage'
 import NotificationPreferencesPage from '../../pages/NotificationPreferencesPage'
+import AdminPage from '../../pages/AdminPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -58,6 +59,9 @@ const AppLayout = () => {
           <Route path="/education" element={<EducationPage />} />
                   {/* <Route path="/settings" element={<SettingsPage />} /> */}
           <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
+          
+          {/* Admin Route - Protected */}
+          <Route path="/admin" element={<AdminPage />} />
           
           {/* Analytics Routes */}
           <Route path="/analytics" element={<AdvancedAnalytics />} />
