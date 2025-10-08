@@ -33,6 +33,21 @@ export default defineConfig({
         scope: '/',
         orientation: 'portrait-primary',
         categories: ['finance', 'productivity', 'utilities'],
+        // Icônes PWA requises pour beforeinstallprompt
+        icons: [
+          {
+            src: '/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ],
         shortcuts: [
           {
             name: 'Nouvelle transaction',
