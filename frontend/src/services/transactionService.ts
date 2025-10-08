@@ -5,12 +5,12 @@ import type { Transaction } from '../types';
 // import notificationService from './notificationService';
 
 // TEMPORARY: Mock notification service to unblock the app
-const notificationService = {
-  sendNotification: async (notification: any): Promise<boolean> => {
-    console.log('🔔 Notification temporarily disabled:', notification?.title || 'Unknown');
-    return false;
-  }
-};
+// const notificationService = {
+//   sendNotification: async (notification: any): Promise<boolean> => {
+//     console.log('🔔 Notification temporarily disabled:', notification?.title || 'Unknown');
+//     return false;
+//   }
+// };
 
 class TransactionService {
   /**
@@ -74,6 +74,35 @@ class TransactionService {
       return transaction;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération de la transaction:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Trouver la transaction jumelle d'un transfert
+   */
+  async getPairedTransferTransaction(transaction: Transaction): Promise<Transaction | null> {
+    try {
+      if (transaction.type !== 'transfer' || !transaction.targetAccountId) {
+        return null;
+      }
+
+      console.log('🔍 Looking for paired transfer transaction for:', transaction.id);
+      console.log('🔍 Target account ID:', transaction.targetAccountId);
+      
+      const transactions = await this.getTransactions();
+      const pairedTransaction = transactions.find(t => 
+        t.type === 'transfer' && 
+        t.targetAccountId === transaction.accountId &&
+        t.accountId === transaction.targetAccountId &&
+        Math.abs(t.amount) === Math.abs(transaction.amount) &&
+        t.id !== transaction.id
+      );
+      
+      console.log('🔍 Found paired transaction:', pairedTransaction);
+      return pairedTransaction || null;
+    } catch (error) {
+      console.error('❌ Erreur lors de la recherche de la transaction jumelle:', error);
       return null;
     }
   }
@@ -212,10 +241,12 @@ class TransactionService {
       amount: number;
       description: string;
       notes?: string;
+      date?: Date;
     }
   ): Promise<{ success: boolean; transactions?: Transaction[]; error?: string }> {
     try {
       console.log('💸 TRANSFER START - fromAccountId:', transferData.fromAccountId, 'toAccountId:', transferData.toAccountId, 'amount:', transferData.amount);
+      console.log('📅 Transfer date provided:', transferData.date ? transferData.date.toISOString().split('T')[0] : 'Using current date');
 
       // Appeler l'API de transfert avec les paramètres directs
       const response = await apiService.createTransfer({
@@ -223,7 +254,8 @@ class TransactionService {
         toAccountId: transferData.toAccountId,
         amount: transferData.amount,
         description: transferData.description,
-        transferFee: 0
+        transferFee: 0,
+        date: transferData.date
       });
 
       if (!response.success || response.error) {

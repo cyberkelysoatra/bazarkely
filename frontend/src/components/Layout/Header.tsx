@@ -1,9 +1,10 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiService from '../../services/apiService';
 import adminService from '../../services/adminService';
+import usePWAInstall from '../../hooks/usePWAInstall';
 
 const Header = () => {
   const { user, logout } = useAppStore();
@@ -12,6 +13,9 @@ const Header = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Hook PWA pour l'installation/désinstallation
+  const { isInstallable, isInstalled, install, uninstall } = usePWAInstall();
 
   const messages = [
     "Gérez votre budget familial en toute simplicité",
@@ -100,6 +104,20 @@ const Header = () => {
     window.location.href = '/admin';
   };
 
+  const handlePWAInstallClick = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      if (isInstalled) {
+        await uninstall();
+      } else {
+        await install();
+      }
+      handleMenuClose();
+    } catch (error) {
+      console.error('Erreur PWA:', error);
+    }
+  };
+
   // Fermer le menu en cliquant à l'extérieur
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -167,6 +185,26 @@ const Header = () => {
             {isMenuOpen && (
               <div className="dropdown-menu absolute top-full right-0 mt-2 bg-purple-500/80 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg z-50 min-w-[200px]">
                 <div className="flex flex-col space-y-2">
+                  {/* Bouton PWA Install/Uninstall - PREMIER ÉLÉMENT */}
+                  {isInstallable && (
+                    <button 
+                      className="w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 text-white hover:bg-white/10"
+                      onClick={handlePWAInstallClick}
+                    >
+                      {isInstalled ? (
+                        <>
+                          <Trash2 className="w-5 h-5" />
+                          <span className="text-sm font-medium">Désinstaller l'application</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-5 h-5" />
+                          <span className="text-sm font-medium">Installer l'application</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  
                   {/* Indicateur de sauvegarde complet */}
                   <div className="p-3 bg-purple-500/20 rounded-xl border border-purple-300/30">
                     <div className="flex items-center justify-between mb-2">

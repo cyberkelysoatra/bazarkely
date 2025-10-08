@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
+import { db } from '../lib/database';
 import type { Transaction, Account } from '../types';
 
 const TransactionDetailPage = () => {
@@ -22,6 +23,7 @@ const TransactionDetailPage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAccountChangeWarning, setShowAccountChangeWarning] = useState(false);
+  const [isTransfer, setIsTransfer] = useState(false);
   
   const [editData, setEditData] = useState({
     description: '',
@@ -55,6 +57,12 @@ const TransactionDetailPage = () => {
         
         setTransaction(transactionData);
         setOriginalAccountId(transactionData.accountId);
+        
+        // Detect if this is a transfer transaction
+        const isTransferTransaction = transactionData.type === 'transfer';
+        setIsTransfer(isTransferTransaction);
+        console.log('🔍 Transaction type:', transactionData.type, 'Is transfer:', isTransferTransaction);
+        
         setEditData({
           description: transactionData.description,
           amount: Math.abs(transactionData.amount).toString(),
@@ -94,6 +102,11 @@ const TransactionDetailPage = () => {
   }, [transactionId, user, navigate]);
 
   const handleEdit = () => {
+    // Prevent editing transfers
+    if (isTransfer) {
+      console.log('⚠️ Transfer editing is not allowed');
+      return;
+    }
     setIsEditing(true);
   };
 
@@ -217,23 +230,66 @@ const TransactionDetailPage = () => {
     try {
       setIsDeleting(true);
       console.log('🗑️ Starting transaction deletion for ID:', transaction.id);
+      console.log('🔍 Transaction type:', transaction.type);
       
-      // 1. Supprimer de Supabase d'abord
-      const deleteSuccess = await transactionService.deleteTransaction(transaction.id);
-      if (!deleteSuccess) {
-        throw new Error('Échec de la suppression dans Supabase');
+      // Check if this is a transfer transaction
+      if (transaction.type === 'transfer') {
+        console.log('💸 TRANSFER DELETION - Starting atomic deletion process');
+        
+        // 1. Find the paired transfer transaction
+        const pairedTransaction = await transactionService.getPairedTransferTransaction(transaction);
+        if (!pairedTransaction) {
+          console.warn('⚠️ Paired transfer transaction not found - proceeding with single transaction deletion');
+          // Fall back to single transaction deletion if paired transaction not found
+          await handleSingleTransactionDeletion(transaction);
+          return;
+        }
+        
+        console.log('🔍 Found paired transaction:', pairedTransaction.id);
+        console.log('💰 Source account (current):', transaction.accountId, 'Amount:', transaction.amount);
+        console.log('💰 Destination account (paired):', pairedTransaction.accountId, 'Amount:', pairedTransaction.amount);
+        
+        // 2. Delete BOTH transactions from Supabase atomically
+        console.log('🗑️ Deleting source transaction from Supabase:', transaction.id);
+        const sourceDeleteSuccess = await transactionService.deleteTransaction(transaction.id);
+        if (!sourceDeleteSuccess) {
+          throw new Error('Échec de la suppression de la transaction source dans Supabase');
+        }
+        
+        console.log('🗑️ Deleting paired transaction from Supabase:', pairedTransaction.id);
+        const pairedDeleteSuccess = await transactionService.deleteTransaction(pairedTransaction.id);
+        if (!pairedDeleteSuccess) {
+          throw new Error('Échec de la suppression de la transaction jumelle dans Supabase');
+        }
+        
+        console.log('✅ Both transactions deleted from Supabase');
+        
+        // 3. Restore balances for BOTH accounts
+        console.log('💰 Restoring source account balance:', transaction.accountId, 'Amount:', -transaction.amount);
+        await transactionService.updateAccountBalancePublic(transaction.accountId, -transaction.amount);
+        
+        console.log('💰 Restoring destination account balance:', pairedTransaction.accountId, 'Amount:', -pairedTransaction.amount);
+        await transactionService.updateAccountBalancePublic(pairedTransaction.accountId, -pairedTransaction.amount);
+        
+        console.log('✅ Both account balances restored');
+        
+        // 4. Delete BOTH transactions from IndexedDB
+        console.log('🗑️ Deleting source transaction from IndexedDB:', transaction.id);
+        await db.transactions.delete(transaction.id);
+        
+        console.log('🗑️ Deleting paired transaction from IndexedDB:', pairedTransaction.id);
+        await db.transactions.delete(pairedTransaction.id);
+        
+        console.log('✅ Both transactions deleted from IndexedDB');
+        console.log('✅ TRANSFER DELETION COMPLETE - Both transactions and balances restored');
+        
+      } else {
+        // Regular transaction deletion (non-transfer)
+        console.log('📝 REGULAR TRANSACTION DELETION');
+        await handleSingleTransactionDeletion(transaction);
       }
-      console.log('✅ Transaction supprimée de Supabase');
       
-      // 2. Restaurer le solde du compte
-      await transactionService.updateAccountBalancePublic(transaction.accountId, -transaction.amount);
-      console.log('✅ Solde du compte restauré');
-      
-      // 3. Supprimer de l'IndexedDB local
-      await db.transactions.delete(transaction.id);
-      console.log('✅ Transaction supprimée de l\'IndexedDB local');
-      
-      console.log('✅ Transaction supprimée avec succès !');
+      console.log('✅ Transaction deletion completed successfully !');
       navigate('/transactions');
       
     } catch (error) {
@@ -243,6 +299,26 @@ const TransactionDetailPage = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Helper function for single transaction deletion (non-transfer)
+  const handleSingleTransactionDeletion = async (transactionToDelete: Transaction) => {
+    console.log('📝 Starting single transaction deletion for ID:', transactionToDelete.id);
+    
+    // 1. Supprimer de Supabase d'abord
+    const deleteSuccess = await transactionService.deleteTransaction(transactionToDelete.id);
+    if (!deleteSuccess) {
+      throw new Error('Échec de la suppression dans Supabase');
+    }
+    console.log('✅ Transaction supprimée de Supabase');
+    
+    // 2. Restaurer le solde du compte
+    await transactionService.updateAccountBalancePublic(transactionToDelete.accountId, -transactionToDelete.amount);
+    console.log('✅ Solde du compte restauré');
+    
+    // 3. Supprimer de l'IndexedDB local
+    await db.transactions.delete(transactionToDelete.id);
+    console.log('✅ Transaction supprimée de l\'IndexedDB local');
   };
 
   const handleCancel = () => {
@@ -344,13 +420,16 @@ const TransactionDetailPage = () => {
             <div className="flex items-center space-x-2">
               {!isEditing && (
                 <>
-                  <button
-                    onClick={handleEdit}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Modifier"
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
+                  {/* Hide Edit button for transfers */}
+                  {!isTransfer && (
+                    <button
+                      onClick={handleEdit}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Modifier"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -374,6 +453,24 @@ const TransactionDetailPage = () => {
         </div>
       </div>
 
+      {/* Warning banner for transfers */}
+      {isTransfer && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                <span className="font-medium">⚠️ Les transferts ne peuvent pas être modifiés.</span>
+                <br />
+                Pour changer ce transfert, supprimez-le et recréez-le avec les bonnes informations.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-md mx-auto p-4">
         {/* Informations de la transaction */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -383,7 +480,7 @@ const TransactionDetailPage = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-gray-900">
-                {isEditing ? (
+                {isEditing && !isTransfer ? (
                   <input
                     type="text"
                     value={editData.description}
@@ -410,8 +507,11 @@ const TransactionDetailPage = () => {
           <div className="space-y-4">
             {/* Montant */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Montant</label>
-              {isEditing ? (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Montant
+                {isTransfer && <span className="text-gray-500 text-xs ml-2">(Lecture seule)</span>}
+              </label>
+              {isEditing && !isTransfer ? (
                 <div className="relative">
                   <input
                     type="number"
@@ -434,8 +534,11 @@ const TransactionDetailPage = () => {
 
             {/* Catégorie */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
-              {isEditing ? (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Catégorie
+                {isTransfer && <span className="text-gray-500 text-xs ml-2">(Lecture seule)</span>}
+              </label>
+              {isEditing && !isTransfer ? (
                 <select
                   value={editData.category}
                   onChange={(e) => setEditData(prev => ({ ...prev, category: e.target.value as any }))}
@@ -452,8 +555,11 @@ const TransactionDetailPage = () => {
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-              {isEditing ? (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date
+                {isTransfer && <span className="text-gray-500 text-xs ml-2">(Lecture seule)</span>}
+              </label>
+              {isEditing && !isTransfer ? (
                 <input
                   type="date"
                   value={editData.date}
@@ -467,8 +573,11 @@ const TransactionDetailPage = () => {
 
             {/* Compte */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Compte</label>
-              {isEditing ? (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Compte
+                {isTransfer && <span className="text-gray-500 text-xs ml-2">(Lecture seule)</span>}
+              </label>
+              {isEditing && !isTransfer ? (
                 <select
                   value={editData.accountId}
                   onChange={(e) => {
@@ -516,8 +625,11 @@ const TransactionDetailPage = () => {
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-              {isEditing ? (
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+                {isTransfer && <span className="text-gray-500 text-xs ml-2">(Lecture seule)</span>}
+              </label>
+              {isEditing && !isTransfer ? (
                 <textarea
                   value={editData.notes}
                   onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
@@ -563,14 +675,29 @@ const TransactionDetailPage = () => {
                   <Trash2 className="w-5 h-5 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Supprimer la transaction</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {transaction?.type === 'transfer' ? 'Supprimer le transfert' : 'Supprimer la transaction'}
+                  </h3>
                   <p className="text-sm text-gray-600">Cette action est irréversible</p>
                 </div>
               </div>
               
               <p className="text-gray-700 mb-6">
-                Êtes-vous sûr de vouloir supprimer la transaction "{transaction.description}" ?
-                Le solde du compte sera mis à jour automatiquement.
+                {transaction?.type === 'transfer' ? (
+                  <>
+                    Êtes-vous sûr de vouloir supprimer le transfert "{transaction.description}" ?
+                    <br /><br />
+                    <span className="font-medium text-red-600">
+                      ⚠️ Cette action supprimera les deux transactions du transfert (débit et crédit) 
+                      et restaurera les soldes des deux comptes concernés.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Êtes-vous sûr de vouloir supprimer la transaction "{transaction.description}" ?
+                    Le solde du compte sera mis à jour automatiquement.
+                  </>
+                )}
               </p>
               
               <div className="flex space-x-3">
@@ -590,7 +717,12 @@ const TransactionDetailPage = () => {
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}
-                  <span>{isDeleting ? 'Suppression...' : 'Supprimer'}</span>
+                  <span>
+                    {isDeleting 
+                      ? (transaction?.type === 'transfer' ? 'Suppression du transfert...' : 'Suppression...') 
+                      : (transaction?.type === 'transfer' ? 'Supprimer le transfert' : 'Supprimer')
+                    }
+                  </span>
                 </button>
               </div>
             </div>

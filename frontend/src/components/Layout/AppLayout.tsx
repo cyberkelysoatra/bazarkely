@@ -17,6 +17,7 @@ import EducationPage from '../../pages/EducationPage'
 // import SettingsPage from '../../pages/SettingsPage'
 import NotificationPreferencesPage from '../../pages/NotificationPreferencesPage'
 import AdminPage from '../../pages/AdminPage'
+import PWAInstructionsPage from '../../pages/PWAInstructionsPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -62,6 +63,9 @@ const AppLayout = () => {
           
           {/* Admin Route - Protected */}
           <Route path="/admin" element={<AdminPage />} />
+          
+          {/* PWA Instructions Route */}
+          <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
           
           {/* Analytics Routes */}
           <Route path="/analytics" element={<AdvancedAnalytics />} />

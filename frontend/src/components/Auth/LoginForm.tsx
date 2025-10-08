@@ -1,24 +1,12 @@
 import React, { useState } from 'react'
-import { Eye, EyeOff, User, Lock } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import Button from '../UI/Button'
-import Input from '../UI/Input'
-import Alert from '../UI/Alert'
-
-const loginSchema = z.object({
-  username: z.string().min(1, 'Le nom d\'utilisateur est requis'),
-  password: z.string().min(1, 'Le mot de passe est requis'),
-  rememberMe: z.boolean().optional()
-})
-
-type LoginFormData = z.infer<typeof loginSchema>
+import { Eye, EyeOff, User as UserIcon, Lock } from 'lucide-react'
 
 export interface LoginFormProps {
-  onSubmit: (data: LoginFormData) => Promise<void>
+  onSubmit: (data: { username: string; password: string }) => Promise<void>
   loading?: boolean
-  error?: string
+  error?: string | null
+  onToggleMode?: () => void
+  onPasswordReset?: () => void
   className?: string
 }
 
@@ -26,117 +14,211 @@ const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
   loading = false,
   error,
-  className
+  onToggleMode,
+  onPasswordReset,
+  className = ''
 }) => {
+  // État interne du formulaire
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  })
+  
+  // État pour l'affichage du mot de passe
   const [showPassword, setShowPassword] = useState(false)
   
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting }
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      rememberMe: false
-    }
-  })
+  // État pour les erreurs de validation
+  const [validationErrors, setValidationErrors] = useState<{
+    username?: string
+    password?: string
+  }>({})
 
-  const handleFormSubmit = async (data: LoginFormData) => {
+  // Gestionnaire de changement d'input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Effacer l'erreur de validation pour ce champ
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }))
+    }
+  }
+
+  // Validation côté client
+  const validateForm = (): boolean => {
+    const errors: { username?: string; password?: string } = {}
+    
+    // Validation username
+    if (!formData.username.trim()) {
+      errors.username = 'Le nom d\'utilisateur est requis'
+    } else if (formData.username.trim().length < 3) {
+      errors.username = 'Le nom d\'utilisateur doit contenir au moins 3 caractères'
+    }
+    
+    // Validation password
+    if (!formData.password) {
+      errors.password = 'Le mot de passe est requis'
+    } else if (formData.password.length < 6) {
+      errors.password = 'Le mot de passe doit contenir au moins 6 caractères'
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Gestionnaire de soumission du formulaire
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validation avant soumission
+    if (!validateForm()) {
+      return
+    }
+    
     try {
-      await onSubmit(data)
+      await onSubmit({
+        username: formData.username.trim(),
+        password: formData.password
+      })
     } catch (err) {
-      // Error is handled by parent component
+      // L'erreur est gérée par le composant parent via la prop error
       console.error('Login error:', err)
     }
   }
 
-  const isLoading = loading || isSubmitting
+  // Toggle pour l'affichage du mot de passe
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
+  // Vérifier s'il y a des erreurs (validation ou prop error)
+  const hasErrors = error || Object.values(validationErrors).some(err => err)
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Connexion
-        </h2>
-        <p className="text-gray-600">
-          Connectez-vous à votre compte BazarKELY
-        </p>
-      </div>
-
+    <div className={`space-y-4 ${className}`}>
+      {/* Affichage des erreurs globales */}
       {error && (
-        <Alert type="error" title="Erreur de connexion">
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-        </Alert>
+        </div>
       )}
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        <Input
-          {...register('username')}
-          label="Nom d'utilisateur ou email"
-          placeholder="Entrez votre nom d'utilisateur ou email"
-          leftIcon={User}
-          error={errors.username?.message}
-          required
-          disabled={isLoading}
-        />
-
-        <Input
-          {...register('password')}
-          type="password"
-          label="Mot de passe"
-          placeholder="Entrez votre mot de passe"
-          leftIcon={Lock}
-          showPasswordToggle
-          error={errors.password?.message}
-          required
-          disabled={isLoading}
-        />
-
-        <div className="flex items-center justify-between">
-          <label className="flex items-center">
-            <input
-              {...register('rememberMe')}
-              type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm text-gray-700">
-              Se souvenir de moi
-            </span>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Champ nom d'utilisateur */}
+        <div>
+          <label 
+            htmlFor="username" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Nom d'utilisateur
           </label>
+          <div className="relative">
+            <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="Votre nom d'utilisateur"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.username ? 'username-error' : undefined}
+            />
+          </div>
+          {validationErrors.username && (
+            <p id="username-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.username}
+            </p>
+          )}
+        </div>
 
+        {/* Champ mot de passe */}
+        <div>
+          <label 
+            htmlFor="password" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Mot de passe
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 pr-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="Votre mot de passe"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.password ? 'password-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={loading}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {validationErrors.password && (
+            <p id="password-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.password}
+            </p>
+          )}
+        </div>
+
+        {/* Bouton de soumission */}
+        <button
+          type="submit"
+          disabled={loading || hasErrors}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Connexion...</span>
+            </div>
+          ) : (
+            'Se connecter'
+          )}
+        </button>
+      </form>
+
+      {/* Liens d'action */}
+      <div className="flex items-center justify-between text-sm">
+        {onPasswordReset && (
           <button
             type="button"
-            className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-            disabled={isLoading}
+            onClick={onPasswordReset}
+            className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            disabled={loading}
           >
             Mot de passe oublié ?
           </button>
-        </div>
-
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={isLoading}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Connexion...' : 'Se connecter'}
-        </Button>
-      </form>
-
-      <div className="text-center">
-        <p className="text-sm text-gray-600">
-          Pas encore de compte ?{' '}
-          <button
-            type="button"
-            className="text-blue-600 hover:text-blue-500 font-medium"
-            disabled={isLoading}
-          >
-            Créer un compte
-          </button>
-        </p>
+        )}
+        
+        {onToggleMode && (
+          <div className="text-center flex-1">
+            <span className="text-gray-600">Pas encore de compte ? </span>
+            <button
+              type="button"
+              onClick={onToggleMode}
+              className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              disabled={loading}
+            >
+              Créer un compte
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

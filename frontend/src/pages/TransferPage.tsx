@@ -126,13 +126,16 @@ const TransferPage = () => {
     setIsLoading(true);
 
     try {
+      console.log('📅 Transfer form date:', formData.date);
+      
       // Créer le transfert avec la méthode dédiée
       await transactionService.createTransfer(user.id, {
         amount: amount,
         description: formData.description,
         fromAccountId: formData.fromAccountId,
         toAccountId: formData.toAccountId,
-        notes: formData.notes
+        notes: formData.notes,
+        date: new Date(formData.date)
       });
 
       // Si il y a des frais, créer des transactions de frais

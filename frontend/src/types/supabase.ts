@@ -378,6 +378,8 @@ export interface Database {
           message?: string
           user_deleted?: string
           transactions_deleted?: number
+          auth_user_deleted?: boolean
+          auth_deletion_error?: string
           error?: string
           user_id?: string
         }

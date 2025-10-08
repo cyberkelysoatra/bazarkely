@@ -1,43 +1,17 @@
 import React, { useState } from 'react'
-import { User, Mail, Lock, Phone } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import Button from '../UI/Button'
-import Input from '../UI/Input'
-import Alert from '../UI/Alert'
-
-const registerSchema = z.object({
-  username: z
-    .string()
-    .min(3, 'Le nom d\'utilisateur doit contenir au moins 3 caractères')
-    .max(20, 'Le nom d\'utilisateur ne peut pas dépasser 20 caractères')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres et underscores'),
-  email: z
-    .string()
-    .min(1, 'L\'email est requis')
-    .email('Format d\'email invalide'),
-  phone: z
-    .string()
-    .min(1, 'Le numéro de téléphone est requis')
-    .regex(/^[0-9+\-\s()]+$/, 'Format de téléphone invalide'),
-  password: z
-    .string()
-    .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre'),
-  confirmPassword: z.string().min(1, 'La confirmation du mot de passe est requise'),
-  acceptTerms: z.boolean().refine(val => val === true, 'Vous devez accepter les conditions d\'utilisation')
-}).refine(data => data.password === data.confirmPassword, {
-  message: 'Les mots de passe ne correspondent pas',
-  path: ['confirmPassword']
-})
-
-type RegisterFormData = z.infer<typeof registerSchema>
+import { Eye, EyeOff, User as UserIcon, Mail, Phone, Lock } from 'lucide-react'
 
 export interface RegisterFormProps {
-  onSubmit: (data: Omit<RegisterFormData, 'confirmPassword' | 'acceptTerms'>) => Promise<void>
+  onSubmit: (data: { 
+    username: string
+    email: string
+    phone: string
+    password: string
+    confirmPassword: string
+  }) => Promise<void>
   loading?: boolean
-  error?: string
+  error?: string | null
+  onToggleMode?: () => void
   className?: string
 }
 
@@ -45,179 +19,350 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onSubmit,
   loading = false,
   error,
-  className
+  onToggleMode,
+  className = ''
 }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    watch
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      acceptTerms: false
-    }
+  // État interne du formulaire
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
   })
+  
+  // États pour l'affichage des mots de passe
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
+  // État pour les erreurs de validation
+  const [validationErrors, setValidationErrors] = useState<{
+    username?: string
+    email?: string
+    phone?: string
+    password?: string
+    confirmPassword?: string
+  }>({})
 
-  const password = watch('password')
+  // Gestionnaire de changement d'input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Effacer l'erreur de validation pour ce champ
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }))
+    }
+  }
 
-  const handleFormSubmit = async (data: RegisterFormData) => {
+  // Validation email avec regex
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  // Validation téléphone Madagascar
+  const isValidPhone = (phone: string): boolean => {
+    if (!phone.trim()) return true // Phone is optional
+    // Format Madagascar: +261 34 12 345 67 ou 0 34 12 345 67
+    const phoneRegex = /^(\+261|0)[0-9]{9}$/
+    return phoneRegex.test(phone.replace(/\s/g, ''))
+  }
+
+  // Validation côté client
+  const validateForm = (): boolean => {
+    const errors: { 
+      username?: string
+      email?: string
+      phone?: string
+      password?: string
+      confirmPassword?: string
+    } = {}
+    
+    // Validation username
+    if (!formData.username.trim()) {
+      errors.username = 'Le nom d\'utilisateur est requis'
+    } else if (formData.username.trim().length < 3) {
+      errors.username = 'Le nom d\'utilisateur doit contenir au moins 3 caractères'
+    }
+    
+    // Validation email
+    if (!formData.email.trim()) {
+      errors.email = 'L\'email est requis'
+    } else if (!isValidEmail(formData.email)) {
+      errors.email = 'Format d\'email invalide'
+    }
+    
+    // Validation phone (optionnel)
+    if (formData.phone.trim() && !isValidPhone(formData.phone)) {
+      errors.phone = 'Format de téléphone invalide (ex: +261 34 12 345 67)'
+    }
+    
+    // Validation password
+    if (!formData.password) {
+      errors.password = 'Le mot de passe est requis'
+    } else if (formData.password.length < 6) {
+      errors.password = 'Le mot de passe doit contenir au moins 6 caractères'
+    }
+    
+    // Validation confirm password
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = 'La confirmation du mot de passe est requise'
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Les mots de passe ne correspondent pas'
+    }
+    
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Gestionnaire de soumission du formulaire
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validation avant soumission
+    if (!validateForm()) {
+      return
+    }
+    
     try {
-      const { confirmPassword, acceptTerms, ...submitData } = data
-      await onSubmit(submitData)
+      await onSubmit({
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      })
     } catch (err) {
-      // Error is handled by parent component
+      // L'erreur est gérée par le composant parent via la prop error
       console.error('Registration error:', err)
     }
   }
 
-  const isLoading = loading || isSubmitting
+  // Toggle pour l'affichage du mot de passe
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
+  // Toggle pour l'affichage de la confirmation du mot de passe
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword)
+  }
+
+  // Vérifier s'il y a des erreurs (validation ou prop error)
+  const hasErrors = error || Object.values(validationErrors).some(err => err)
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Créer un compte
-        </h2>
-        <p className="text-gray-600">
-          Rejoignez BazarKELY pour gérer vos finances familiales
-        </p>
-      </div>
-
+    <div className={`space-y-4 ${className}`}>
+      {/* Affichage des erreurs globales */}
       {error && (
-        <Alert type="error" title="Erreur d'inscription">
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-        </Alert>
+        </div>
       )}
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        <Input
-          {...register('username')}
-          label="Nom d'utilisateur"
-          placeholder="Choisissez un nom d'utilisateur"
-          leftIcon={User}
-          error={errors.username?.message}
-          required
-          disabled={isLoading}
-          helperText="3-20 caractères, lettres, chiffres et underscores uniquement"
-        />
-
-        <Input
-          {...register('email')}
-          type="email"
-          label="Adresse email"
-          placeholder="votre@email.com"
-          leftIcon={Mail}
-          error={errors.email?.message}
-          required
-          disabled={isLoading}
-        />
-
-        <Input
-          {...register('phone')}
-          type="tel"
-          label="Numéro de téléphone"
-          placeholder="+261 34 12 345 67"
-          leftIcon={Phone}
-          error={errors.phone?.message}
-          required
-          disabled={isLoading}
-          helperText="Format: +261 34 12 345 67"
-        />
-
-        <Input
-          {...register('password')}
-          type="password"
-          label="Mot de passe"
-          placeholder="Créez un mot de passe sécurisé"
-          leftIcon={Lock}
-          error={errors.password?.message}
-          required
-          disabled={isLoading}
-          helperText="Au moins 8 caractères avec majuscule, minuscule et chiffre"
-        />
-
-        <Input
-          {...register('confirmPassword')}
-          type="password"
-          label="Confirmer le mot de passe"
-          placeholder="Confirmez votre mot de passe"
-          leftIcon={Lock}
-          error={errors.confirmPassword?.message}
-          required
-          disabled={isLoading}
-        />
-
-        <div className="space-y-3">
-          <label className="flex items-start">
-            <input
-              {...register('acceptTerms')}
-              type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm text-gray-700">
-              J'accepte les{' '}
-              <button
-                type="button"
-                className="text-blue-600 hover:text-blue-500 font-medium underline"
-                disabled={isLoading}
-              >
-                conditions d'utilisation
-              </button>{' '}
-              et la{' '}
-              <button
-                type="button"
-                className="text-blue-600 hover:text-blue-500 font-medium underline"
-                disabled={isLoading}
-              >
-                politique de confidentialité
-              </button>
-            </span>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Champ nom d'utilisateur */}
+        <div>
+          <label 
+            htmlFor="username" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Nom d'utilisateur
           </label>
-          
-          {errors.acceptTerms && (
-            <p className="text-sm text-red-600">{errors.acceptTerms.message}</p>
+          <div className="relative">
+            <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="Votre nom d'utilisateur"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.username ? 'username-error' : undefined}
+            />
+          </div>
+          {validationErrors.username && (
+            <p id="username-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.username}
+            </p>
           )}
         </div>
 
-        <Button
+        {/* Champ email */}
+        <div>
+          <label 
+            htmlFor="email" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Email
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="votre@email.com"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.email ? 'email-error' : undefined}
+            />
+          </div>
+          {validationErrors.email && (
+            <p id="email-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.email}
+            </p>
+          )}
+        </div>
+
+        {/* Champ téléphone */}
+        <div>
+          <label 
+            htmlFor="phone" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Téléphone (optionnel)
+          </label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="+261 34 00 000 00"
+              disabled={loading}
+              aria-describedby={validationErrors.phone ? 'phone-error' : undefined}
+            />
+          </div>
+          {validationErrors.phone && (
+            <p id="phone-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.phone}
+            </p>
+          )}
+        </div>
+
+        {/* Champ mot de passe */}
+        <div>
+          <label 
+            htmlFor="password" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Mot de passe
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 pr-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="Votre mot de passe"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.password ? 'password-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={loading}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {validationErrors.password && (
+            <p id="password-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.password}
+            </p>
+          )}
+        </div>
+
+        {/* Champ confirmation mot de passe */}
+        <div>
+          <label 
+            htmlFor="confirmPassword" 
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Confirmer le mot de passe
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 pl-10 pr-10 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-colors"
+              placeholder="Confirmez votre mot de passe"
+              required
+              disabled={loading}
+              aria-describedby={validationErrors.confirmPassword ? 'confirmPassword-error' : undefined}
+            />
+            <button
+              type="button"
+              onClick={toggleConfirmPasswordVisibility}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={loading}
+              aria-label={showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'}
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {validationErrors.confirmPassword && (
+            <p id="confirmPassword-error" className="text-red-600 text-sm mt-1">
+              {validationErrors.confirmPassword}
+            </p>
+          )}
+        </div>
+
+        {/* Bouton de soumission */}
+        <button
           type="submit"
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={isLoading}
-          disabled={isLoading}
+          disabled={loading || hasErrors}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isLoading ? 'Création du compte...' : 'Créer mon compte'}
-        </Button>
+          {loading ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Inscription...</span>
+            </div>
+          ) : (
+            'S\'inscrire'
+          )}
+        </button>
       </form>
 
-      <div className="text-center">
-        <p className="text-sm text-gray-600">
-          Déjà un compte ?{' '}
+      {/* Lien de basculement vers connexion */}
+      {onToggleMode && (
+        <div className="text-center">
+          <span className="text-gray-600">Déjà un compte ? </span>
           <button
             type="button"
-            className="text-blue-600 hover:text-blue-500 font-medium"
-            disabled={isLoading}
+            onClick={onToggleMode}
+            className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            disabled={loading}
           >
             Se connecter
           </button>
-        </p>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">
-          Pourquoi créer un compte BazarKELY ?
-        </h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Gestion complète de votre budget familial</li>
-          <li>• Synchronisation multi-appareils</li>
-          <li>• Support des Mobile Money malgaches</li>
-          <li>• Rappels et alertes personnalisés</li>
-          <li>• Mode hors ligne disponible</li>
-        </ul>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

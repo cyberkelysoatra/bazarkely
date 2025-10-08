@@ -1,13 +1,20 @@
 import { supabase } from '../lib/supabase';
 
 // Define User type locally to avoid import issues
+export interface UserPreferences {
+  theme: 'light' | 'dark';
+  language: 'fr' | 'mg';
+  currency: 'MGA' | 'EUR' | 'USD';
+  notifications: boolean;
+}
+
 export interface User {
   id: string;
   username: string;
   email: string;
   phone: string | null;
-  role: string;
-  preferences: any;
+  role: 'user' | 'admin';
+  preferences: UserPreferences;
   created_at: string;
   updated_at: string;
   last_sync: string | null;
@@ -28,6 +35,23 @@ export interface AdminResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+export interface RPCDeleteUserResult {
+  success: boolean;
+  user_deleted: boolean;
+  auth_user_deleted: boolean;
+  auth_deletion_error?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface RPCStatsResult {
+  total_users: number;
+  total_transactions: number;
+  total_accounts: number;
+  total_budgets: number;
+  total_goals: number;
 }
 
 class AdminService {
@@ -142,36 +166,45 @@ class AdminService {
       }
 
       // Check RPC result
-      if (!result || !(result as any).success) {
-        console.error('❌ RPC delete_user_admin failed:', result);
+      const rpcResult = result as RPCDeleteUserResult;
+      if (!rpcResult || !rpcResult.success) {
+        console.error('❌ RPC delete_user_admin failed:', rpcResult);
         return { 
           success: false, 
-          error: (result as any)?.error || 'Erreur lors de la suppression de l\'utilisateur' 
+          error: rpcResult?.error || 'Erreur lors de la suppression de l\'utilisateur' 
         };
       }
 
-      console.log(`✅ RPC delete_user_admin success:`, result);
+      console.log(`✅ RPC delete_user_admin success:`, rpcResult);
 
-      // Try to delete from auth.users (requires admin privileges)
-      try {
-        const { error: authUserError } = await supabase.auth.admin.deleteUser(userId);
+      // Check if auth.users deletion was successful
+      const authUserDeleted = rpcResult.auth_user_deleted;
+      const authDeletionError = rpcResult.auth_deletion_error;
+
+      if (authUserDeleted) {
+        console.log('✅ Utilisateur supprimé de auth.users via RPC');
+      } else {
+        console.warn('⚠️ Échec de la suppression de auth.users via RPC:', authDeletionError);
         
-        if (authUserError) {
-          console.warn('⚠️ Impossible de supprimer de auth.users (privilèges insuffisants):', authUserError);
-          // Don't fail the deletion since public data is deleted
-        } else {
-          console.log('✅ Utilisateur supprimé de auth.users');
+        // Try fallback method using Supabase admin API
+        try {
+          const { error: authUserError } = await supabase.auth.admin.deleteUser(userId);
+          
+          if (authUserError) {
+            console.warn('⚠️ Fallback auth.users deletion also failed:', authUserError);
+          } else {
+            console.log('✅ Utilisateur supprimé de auth.users via fallback admin API');
+          }
+        } catch (authError) {
+          console.warn('⚠️ Erreur lors de la suppression de auth.users via fallback:', authError);
         }
-      } catch (authError) {
-        console.warn('⚠️ Erreur lors de la suppression de auth.users:', authError);
-        // Don't fail the deletion since public data is deleted
       }
 
-      console.log(`✅ Utilisateur supprimé avec succès: ${(result as any).user_deleted}`);
+      console.log(`✅ Utilisateur supprimé avec succès: ${rpcResult.user_deleted}`);
 
       return { 
         success: true, 
-        message: (result as any).message || `Utilisateur supprimé avec succès`,
+        message: rpcResult.message || `Utilisateur supprimé avec succès`,
         data: true
       };
 
@@ -219,14 +252,15 @@ class AdminService {
 
       console.log(`✅ Admin: Statistiques application-wide récupérées via RPC:`, stats);
 
+      const rpcStats = stats as RPCStatsResult;
       return {
         success: true,
         data: {
-          totalUsers: (stats as any)?.total_users || 0,
-          totalTransactions: (stats as any)?.total_transactions || 0,
-          totalAccounts: (stats as any)?.total_accounts || 0,
-          totalBudgets: (stats as any)?.total_budgets || 0,
-          totalGoals: (stats as any)?.total_goals || 0,
+          totalUsers: rpcStats?.total_users || 0,
+          totalTransactions: rpcStats?.total_transactions || 0,
+          totalAccounts: rpcStats?.total_accounts || 0,
+          totalBudgets: rpcStats?.total_budgets || 0,
+          totalGoals: rpcStats?.total_goals || 0,
         }
       };
 
