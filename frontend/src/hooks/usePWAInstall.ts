@@ -231,7 +231,7 @@ export const usePWAInstall = (): PWAInstallState => {
   }, [])
 
   // Fonction d'installation avec mécanisme d'attente et retry
-  const install = useCallback(async () => {
+  const install = useCallback(() => {
     const browser = getUserBrowser()
     const isChromium = isChromiumBrowser()
     
@@ -240,28 +240,31 @@ export const usePWAInstall = (): PWAInstallState => {
     
     if (deferredPrompt) {
       // Utiliser le prompt natif si disponible immédiatement
-      try {
-        console.log('✅ Using native install prompt immediately')
-        showToast('Installation en cours...', 'info')
-        
-        await deferredPrompt.prompt()
-        
-        const { outcome } = await deferredPrompt.userChoice
-        
-        if (outcome === 'accepted') {
-          console.log('✅ Utilisateur a accepté l\'installation')
-          showToast('Installation réussie!', 'success')
-        } else {
-          console.log('❌ Utilisateur a refusé l\'installation')
-          showToast('Installation annulée', 'warning')
-        }
-        
-        setDeferredPrompt(null)
-        setPromptCaptured(false)
-      } catch (error) {
-        console.error('❌ Erreur lors de l\'installation:', error)
-        showToast('Erreur lors de l\'installation', 'error')
-      }
+      console.log('✅ Using native install prompt immediately')
+      showToast('Installation en cours...', 'info')
+      
+      // Appeler prompt() SYNCHRONIQUEMENT pour préserver le user gesture
+      deferredPrompt.prompt()
+        .then(() => {
+          console.log('✅ Prompt affiché avec succès')
+          return deferredPrompt.userChoice
+        })
+        .then(({ outcome }) => {
+          if (outcome === 'accepted') {
+            console.log('✅ Utilisateur a accepté l\'installation')
+            showToast('Installation réussie!', 'success')
+          } else {
+            console.log('❌ Utilisateur a refusé l\'installation')
+            showToast('Installation annulée', 'warning')
+          }
+          
+          setDeferredPrompt(null)
+          setPromptCaptured(false)
+        })
+        .catch((error) => {
+          console.error('❌ Erreur lors de l\'installation:', error)
+          showToast('Erreur lors de l\'installation', 'error')
+        })
     } else if (promptCaptured) {
       // Prompt pré-capturé mais pas d'événement natif - utiliser instructions manuelles
       console.log('📋 Using pre-captured prompt data - redirecting to manual instructions')
@@ -279,7 +282,7 @@ export const usePWAInstall = (): PWAInstallState => {
       let attempts = 0
       const maxAttempts = 20 // 10 secondes total (500ms * 20)
       
-      const checkPrompt = setInterval(async () => {
+      const checkPrompt = setInterval(() => {
         attempts++
         console.log(`🔄 Retry attempt ${attempts}/${maxAttempts} - Checking for prompt (${attempts * 500}ms elapsed)`)
         
@@ -289,24 +292,28 @@ export const usePWAInstall = (): PWAInstallState => {
           console.log('🎉 Prompt now available, triggering installation immediately')
           showToast('Installation disponible!', 'success')
           
-          try {
-            await deferredPrompt.prompt()
-            const { outcome } = await deferredPrompt.userChoice
-            
-            if (outcome === 'accepted') {
-              console.log('✅ Installation accepted during retry')
-              showToast('Installation réussie!', 'success')
-            } else {
-              console.log('❌ Installation rejected during retry')
-              showToast('Installation annulée', 'warning')
-            }
-            
-            setDeferredPrompt(null)
-            setPromptCaptured(false)
-          } catch (error) {
-            console.error('❌ Error during retry installation:', error)
-            showToast('Erreur lors de l\'installation', 'error')
-          }
+          // Appeler prompt() SYNCHRONIQUEMENT pour préserver le user gesture
+          deferredPrompt.prompt()
+            .then(() => {
+              console.log('✅ Prompt affiché avec succès (retry)')
+              return deferredPrompt.userChoice
+            })
+            .then(({ outcome }) => {
+              if (outcome === 'accepted') {
+                console.log('✅ Installation accepted during retry')
+                showToast('Installation réussie!', 'success')
+              } else {
+                console.log('❌ Installation rejected during retry')
+                showToast('Installation annulée', 'warning')
+              }
+              
+              setDeferredPrompt(null)
+              setPromptCaptured(false)
+            })
+            .catch((error) => {
+              console.error('❌ Error during retry installation:', error)
+              showToast('Erreur lors de l\'installation', 'error')
+            })
         } else if (attempts >= maxAttempts) {
           // Abandonner après le nombre maximum de tentatives
           clearInterval(checkPrompt)
