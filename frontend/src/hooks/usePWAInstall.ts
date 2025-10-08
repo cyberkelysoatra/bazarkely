@@ -123,6 +123,15 @@ export const usePWAInstall = (): PWAInstallState => {
     return () => clearInterval(intervalId)
   }, [deferredPrompt, promptCaptured])
 
+  // Diagnostic PWA automatique après 2 secondes
+  useEffect(() => {
+    const diagnosticTimeout = setTimeout(() => {
+      runPWADiagnostics()
+    }, 2000)
+    
+    return () => clearTimeout(diagnosticTimeout)
+  }, [])
+
   // Détecter si l'app est déjà installée
   useEffect(() => {
     const checkInstalled = () => {
@@ -301,6 +310,193 @@ export const usePWAInstall = (): PWAInstallState => {
     
     // Log pour le debugging
     console.log(`Toast ${type}:`, message)
+  }
+
+  // Fonction de diagnostic PWA pour identifier les problèmes d'installabilité
+  const runPWADiagnostics = async () => {
+    console.log('🔍 === DIAGNOSTIC PWA - VÉRIFICATION DES PRÉREQUIS ===')
+    
+    const results = {
+      manifest: {
+        valid: false,
+        errors: [] as string[],
+        data: null as any
+      },
+      serviceWorker: {
+        registered: false,
+        active: false,
+        errors: [] as string[]
+      },
+      icons: {
+        valid: false,
+        errors: [] as string[],
+        found: [] as string[]
+      },
+      installable: false
+    }
+
+    try {
+      // 1. Vérification du manifest
+      console.log('📋 Vérification du manifest...')
+      try {
+        const manifestResponse = await fetch('/manifest.webmanifest')
+        if (!manifestResponse.ok) {
+          results.manifest.errors.push(`❌ Manifest non accessible: ${manifestResponse.status} ${manifestResponse.statusText}`)
+        } else {
+          const manifest = await manifestResponse.json()
+          results.manifest.data = manifest
+          
+          // Vérifier les champs requis
+          const requiredFields = ['name', 'short_name', 'start_url', 'display', 'icons']
+          for (const field of requiredFields) {
+            if (!manifest[field]) {
+              results.manifest.errors.push(`❌ Champ manquant dans le manifest: ${field}`)
+            }
+          }
+          
+          // Vérifier le display mode
+          if (manifest.display && !['standalone', 'fullscreen'].includes(manifest.display)) {
+            results.manifest.errors.push(`❌ Display mode invalide: ${manifest.display} (doit être 'standalone' ou 'fullscreen')`)
+          }
+          
+          // Vérifier les icônes
+          if (manifest.icons && Array.isArray(manifest.icons)) {
+            const iconSizes = manifest.icons.map((icon: any) => icon.sizes).filter(Boolean)
+            const has192 = iconSizes.some((size: string) => size.includes('192'))
+            const has512 = iconSizes.some((size: string) => size.includes('512'))
+            
+            if (!has192) {
+              results.icons.errors.push('❌ Icône 192x192 manquante')
+            } else {
+              results.icons.found.push('✅ Icône 192x192 trouvée')
+            }
+            
+            if (!has512) {
+              results.icons.errors.push('❌ Icône 512x512 manquante')
+            } else {
+              results.icons.found.push('✅ Icône 512x512 trouvée')
+            }
+            
+            // Vérifier l'accessibilité des icônes
+            for (const icon of manifest.icons) {
+              if (icon.src) {
+                try {
+                  const iconResponse = await fetch(icon.src)
+                  if (!iconResponse.ok) {
+                    results.icons.errors.push(`❌ Icône non accessible: ${icon.src} (${iconResponse.status})`)
+                  } else {
+                    results.icons.found.push(`✅ Icône accessible: ${icon.src}`)
+                  }
+                } catch (error) {
+                  results.icons.errors.push(`❌ Erreur lors de la vérification de l'icône ${icon.src}: ${error}`)
+                }
+              }
+            }
+          } else {
+            results.icons.errors.push('❌ Aucune icône définie dans le manifest')
+          }
+          
+          if (results.manifest.errors.length === 0) {
+            results.manifest.valid = true
+            console.log('✅ Manifest valide et accessible')
+          } else {
+            console.log('❌ Manifest invalide:', results.manifest.errors)
+          }
+        }
+      } catch (error) {
+        results.manifest.errors.push(`❌ Erreur lors de la récupération du manifest: ${error}`)
+        console.log('❌ Erreur manifest:', error)
+      }
+
+      // 2. Vérification du service worker
+      console.log('⚙️ Vérification du service worker...')
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration()
+          if (registration) {
+            results.serviceWorker.registered = true
+            console.log('✅ Service Worker enregistré')
+            
+            if (registration.active) {
+              results.serviceWorker.active = true
+              console.log('✅ Service Worker actif')
+            } else {
+              results.serviceWorker.errors.push('❌ Service Worker enregistré mais non actif')
+              console.log('❌ Service Worker non actif')
+            }
+          } else {
+            results.serviceWorker.errors.push('❌ Aucun Service Worker enregistré')
+            console.log('❌ Aucun Service Worker enregistré')
+          }
+        } catch (error) {
+          results.serviceWorker.errors.push(`❌ Erreur lors de la vérification du Service Worker: ${error}`)
+          console.log('❌ Erreur Service Worker:', error)
+        }
+      } else {
+        results.serviceWorker.errors.push('❌ Service Worker non supporté par ce navigateur')
+        console.log('❌ Service Worker non supporté')
+      }
+
+      // 3. Vérification de l'URL de démarrage
+      console.log('🌐 Vérification de l\'URL de démarrage...')
+      if (results.manifest.data && results.manifest.data.start_url) {
+        try {
+          const startUrl = new URL(results.manifest.data.start_url, window.location.origin)
+          const startResponse = await fetch(startUrl.toString(), { method: 'HEAD' })
+          if (!startResponse.ok) {
+            results.manifest.errors.push(`❌ URL de démarrage non accessible: ${startUrl} (${startResponse.status})`)
+          } else {
+            console.log('✅ URL de démarrage accessible')
+          }
+        } catch (error) {
+          results.manifest.errors.push(`❌ Erreur lors de la vérification de l'URL de démarrage: ${error}`)
+        }
+      }
+
+      // 4. Calcul du statut d'installabilité global
+      results.installable = results.manifest.valid && results.serviceWorker.active && results.icons.valid
+      
+      // 5. Affichage des résultats
+      console.log('📊 === RÉSULTATS DU DIAGNOSTIC PWA ===')
+      console.log('📋 Manifest:', results.manifest.valid ? '✅ Valide' : '❌ Invalide')
+      if (results.manifest.errors.length > 0) {
+        console.log('   Erreurs:', results.manifest.errors)
+      }
+      
+      console.log('⚙️ Service Worker:', results.serviceWorker.active ? '✅ Actif' : '❌ Inactif')
+      if (results.serviceWorker.errors.length > 0) {
+        console.log('   Erreurs:', results.serviceWorker.errors)
+      }
+      
+      console.log('🖼️ Icônes:', results.icons.valid ? '✅ Valides' : '❌ Invalides')
+      if (results.icons.found.length > 0) {
+        console.log('   Trouvées:', results.icons.found)
+      }
+      if (results.icons.errors.length > 0) {
+        console.log('   Erreurs:', results.icons.errors)
+      }
+      
+      console.log('🎯 Installable:', results.installable ? '✅ OUI' : '❌ NON')
+      
+      if (!results.installable) {
+        console.log('💡 === ACTIONS RECOMMANDÉES ===')
+        if (!results.manifest.valid) {
+          console.log('1. Corriger les erreurs du manifest.webmanifest')
+        }
+        if (!results.serviceWorker.active) {
+          console.log('2. Vérifier que le service worker est correctement enregistré et actif')
+        }
+        if (!results.icons.valid) {
+          console.log('3. Ajouter les icônes 192x192 et 512x512 dans le manifest')
+        }
+        console.log('4. Vérifier que l\'application respecte les critères PWA de Chrome')
+      }
+      
+      console.log('🔍 === FIN DU DIAGNOSTIC PWA ===')
+      
+    } catch (error) {
+      console.error('❌ Erreur lors du diagnostic PWA:', error)
+    }
   }
 
   return {
