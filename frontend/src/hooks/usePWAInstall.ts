@@ -13,11 +13,56 @@ interface PWAInstallState {
   uninstall: () => void
 }
 
+// Fonctions de détection de navigateur
+const isChromiumBrowser = (): boolean => {
+  const userAgent = navigator.userAgent.toLowerCase()
+  const hasChrome = userAgent.includes('chrome') || userAgent.includes('chromium') || userAgent.includes('edg')
+  const hasWindowChrome = typeof window !== 'undefined' && 'chrome' in window
+  const isNotFirefox = !userAgent.includes('firefox')
+  const isNotSafari = !userAgent.includes('safari') || userAgent.includes('chrome')
+  
+  return (hasChrome || hasWindowChrome) && isNotFirefox && isNotSafari
+}
+
+const isBraveDetected = (): boolean => {
+  return typeof navigator !== 'undefined' && 
+         'brave' in navigator && 
+         typeof (navigator as any).brave === 'object'
+}
+
+const getUserBrowser = (): string => {
+  const userAgent = navigator.userAgent.toLowerCase()
+  
+  if (isBraveDetected()) return 'Brave'
+  if (userAgent.includes('edg')) return 'Edge'
+  if (userAgent.includes('chrome')) return 'Chrome'
+  if (userAgent.includes('firefox')) return 'Firefox'
+  if (userAgent.includes('safari')) return 'Safari'
+  if (userAgent.includes('opera')) return 'Opera'
+  
+  return 'Unknown'
+}
+
 export const usePWAInstall = (): PWAInstallState => {
   const [isInstallable, setIsInstallable] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const navigate = useNavigate()
+
+  // Initialisation avec détection de navigateur et logging
+  useEffect(() => {
+    const browser = getUserBrowser()
+    const isChromium = isChromiumBrowser()
+    const isBrave = isBraveDetected()
+    
+    console.log(`PWA Install Hook initialized - Browser: ${browser}, Chromium: ${isChromium}, Brave: ${isBrave}`)
+    
+    // Définir isInstallable par défaut pour les navigateurs Chromium
+    if (isChromium && !isInstalled) {
+      setIsInstallable(true)
+      console.log('isInstallable set to true - Reason: Chromium browser detected')
+    }
+  }, [isInstalled])
 
   // Détecter si l'app est déjà installée
   useEffect(() => {
@@ -43,7 +88,7 @@ export const usePWAInstall = (): PWAInstallState => {
     }
   }, [])
 
-  // Écouter l'événement beforeinstallprompt
+  // Écouter l'événement beforeinstallprompt (amélioration, pas requis)
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       // Empêcher l'affichage automatique du prompt
@@ -51,6 +96,7 @@ export const usePWAInstall = (): PWAInstallState => {
       // Stocker l'événement pour l'utiliser plus tard
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       setIsInstallable(true)
+      console.log(`beforeinstallprompt event fired at ${new Date().toISOString()}`)
     }
 
     const handleAppInstalled = () => {
@@ -70,36 +116,51 @@ export const usePWAInstall = (): PWAInstallState => {
     }
   }, [])
 
-  // Fonction d'installation
+  // Fonction d'installation avec fallback vers instructions
   const install = useCallback(async () => {
-    if (!deferredPrompt) {
-      console.warn('Prompt d\'installation non disponible')
-      showToast('Installation non disponible sur ce navigateur', 'error')
-      return
-    }
-
-    try {
-      // Afficher le prompt d'installation
-      await deferredPrompt.prompt()
-      
-      // Attendre la réponse de l'utilisateur
-      const { outcome } = await deferredPrompt.userChoice
-      
-      if (outcome === 'accepted') {
-        console.log('Utilisateur a accepté l\'installation')
-        showToast('Installation en cours...', 'info')
-      } else {
-        console.log('Utilisateur a refusé l\'installation')
-        showToast('Installation annulée', 'warning')
+    const browser = getUserBrowser()
+    const isChromium = isChromiumBrowser()
+    
+    console.log(`Install button clicked - Prompt available: ${!!deferredPrompt}, Browser: ${browser}`)
+    
+    if (deferredPrompt) {
+      // Utiliser le prompt natif si disponible
+      try {
+        console.log('Using native install prompt')
+        await deferredPrompt.prompt()
+        
+        const { outcome } = await deferredPrompt.userChoice
+        
+        if (outcome === 'accepted') {
+          console.log('Utilisateur a accepté l\'installation')
+          showToast('Installation en cours...', 'info')
+        } else {
+          console.log('Utilisateur a refusé l\'installation')
+          showToast('Installation annulée', 'warning')
+        }
+        
+        setDeferredPrompt(null)
+      } catch (error) {
+        console.error('Erreur lors de l\'installation:', error)
+        showToast('Erreur lors de l\'installation', 'error')
       }
+    } else if (isChromium) {
+      // Fallback pour navigateurs Chromium sans prompt natif
+      console.log('No native prompt available, redirecting to instructions for Chromium browser')
+      showToast('L\'installation n\'est pas encore disponible, redirection vers les instructions...', 'info')
       
-      // Nettoyer le prompt
-      setDeferredPrompt(null)
-    } catch (error) {
-      console.error('Erreur lors de l\'installation:', error)
-      showToast('Erreur lors de l\'installation', 'error')
+      // Attendre 2 secondes pour que l'utilisateur lise le message
+      setTimeout(() => {
+        console.log('Redirecting to PWA instructions page')
+        navigate('/pwa-instructions')
+      }, 2000)
+    } else {
+      // Navigateur non supporté
+      console.log('Browser not supported for PWA installation')
+      showToast('Installation non disponible sur ce navigateur', 'error')
+      navigate('/pwa-instructions')
     }
-  }, [deferredPrompt])
+  }, [deferredPrompt, navigate])
 
   // Fonction de désinstallation
   const uninstall = useCallback(() => {
