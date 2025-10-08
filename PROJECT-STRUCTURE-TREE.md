@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 2.1 (Corrigée)  
-**Date de mise à jour:** 2024-12-19  
-**Statut:** ✅ PRODUCTION - Structure mise à jour selon l'audit du codebase
+**Version:** 2.2 (Mise à jour PWA)  
+**Date de mise à jour:** 2025-01-08  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Composants UI
 
 ---
 
@@ -12,10 +12,11 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors de cette session.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 200+ fichiers
+- **Total fichiers:** 210+ fichiers
 - **Composants UI:** 7/8 implémentés (87.5%)
 - **Composants Auth:** 2/2 implémentés (100%)
-- **Pages principales:** 8/8 implémentées (100%)
+- **Pages principales:** 9/9 implémentées (100%)
+- **Hooks personnalisés:** 4/4 implémentés (100%)
 - **Services:** 15+ services implémentés
 
 ---
@@ -88,6 +89,7 @@ bazarkely-2/
 │   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets
 │   │   │   ├── 📄 GoalsPage.tsx         # ✅ Gestion des objectifs
 │   │   │   ├── 📄 EducationPage.tsx     # ✅ Contenu éducatif
+│   │   │   ├── 📄 PWAInstructionsPage.tsx # ✅ NOUVEAU - Instructions installation PWA multi-navigateurs
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration
 │   │   ├── 📁 services/                  # Services métier
 │   │   │   ├── 📄 authService.ts         # ✅ Service d'authentification
@@ -114,7 +116,8 @@ bazarkely-2/
 │   │   ├── 📁 hooks/                     # Hooks personnalisés
 │   │   │   ├── 📄 useNotifications.ts    # ✅ Hook notifications
 │   │   │   ├── 📄 useDeviceDetection.ts  # ✅ Hook détection appareil
-│   │   │   └── 📄 usePWAFeatures.ts     # ✅ Hook fonctionnalités PWA
+│   │   │   ├── 📄 usePWAFeatures.ts     # ✅ Hook fonctionnalités PWA
+│   │   │   └── 📄 usePWAInstall.ts      # ✅ NOUVEAU - Hook installation PWA avec détection navigateur
 │   │   ├── 📁 utils/                     # Fonctions utilitaires
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
 │   │   │   ├── 📄 passwordUtils.ts       # ✅ Utilitaires mots de passe
@@ -200,18 +203,19 @@ bazarkely-2/
 ### **Composants par Catégorie**
 - **UI Components:** 7/8 (87.5%) ✅
 - **Auth Components:** 2/2 (100%) ✅
-- **Page Components:** 8/8 (100%) ✅
+- **Page Components:** 9/9 (100%) ✅
+- **Hooks personnalisés:** 4/4 (100%) ✅
 - **Service Components:** 15+ (100%) ✅
 
 ### **Fichiers par Dossier**
 - **frontend/src/components/UI/:** 8 fichiers (7 composants + 1 index)
 - **frontend/src/components/Auth/:** 3 fichiers (2 composants + 1 index)
-- **frontend/src/pages/:** 8 fichiers
+- **frontend/src/pages/:** 9 fichiers (8 pages + 1 nouvelle PWAInstructionsPage)
 - **frontend/src/services/:** 15+ fichiers
 - **frontend/src/stores/:** 6 fichiers
 - **frontend/src/types/:** 2 fichiers
 - **frontend/src/lib/:** 3 fichiers
-- **frontend/src/hooks/:** 3 fichiers
+- **frontend/src/hooks/:** 4 fichiers (3 hooks + 1 nouveau usePWAInstall)
 - **frontend/src/utils/:** 3 fichiers
 
 ### **Tests et Qualité**
@@ -222,7 +226,7 @@ bazarkely-2/
 
 ---
 
-## 🆕 NOUVEAUX COMPOSANTS CRÉÉS (Cette Session)
+## 🆕 NOUVEAUX COMPOSANTS CRÉÉS (Session 8 Janvier 2025)
 
 ### **Modal.tsx** ✅ NOUVEAU
 - **Localisation:** `frontend/src/components/UI/Modal.tsx`
@@ -233,17 +237,31 @@ bazarkely-2/
 
 ### **LoginForm.tsx** ✅ NOUVEAU
 - **Localisation:** `frontend/src/components/Auth/LoginForm.tsx`
-- **Fonctionnalités:** Formulaire standalone avec validation
+- **Fonctionnalités:** Formulaire standalone avec validation + password toggle
 - **Statut:** Composant autonome (non intégré dans AuthPage)
 - **Tests:** `frontend/src/components/Auth/__tests__/LoginForm.test.tsx`
 - **Export:** Inclus dans `frontend/src/components/Auth/index.ts`
 
 ### **RegisterForm.tsx** ✅ NOUVEAU
 - **Localisation:** `frontend/src/components/Auth/RegisterForm.tsx`
-- **Fonctionnalités:** Formulaire standalone avec validation Madagascar
+- **Fonctionnalités:** Formulaire standalone avec 5 champs + validation Madagascar
 - **Statut:** Composant autonome (non intégré dans AuthPage)
 - **Tests:** `frontend/src/components/Auth/__tests__/RegisterForm.test.tsx`
 - **Export:** Inclus dans `frontend/src/components/Auth/index.ts`
+
+### **usePWAInstall.ts** ✅ NOUVEAU
+- **Localisation:** `frontend/src/hooks/usePWAInstall.ts`
+- **Fonctionnalités:** Hook installation PWA avec détection navigateur + mécanisme d'attente/retry
+- **Statut:** Intégré dans Header.tsx pour bouton d'installation
+- **Tests:** Diagnostic PWA automatique intégré
+- **Export:** Hook personnalisé avec état isInstallable/isInstalled
+
+### **PWAInstructionsPage.tsx** ✅ NOUVEAU
+- **Localisation:** `frontend/src/pages/PWAInstructionsPage.tsx`
+- **Fonctionnalités:** Instructions installation PWA multi-navigateurs (Chrome, Firefox, Safari, Edge)
+- **Statut:** Page accessible via route `/pwa-instructions`
+- **Tests:** Page responsive avec navigation
+- **Export:** Composant de page standalone
 
 ---
 
@@ -265,6 +283,13 @@ bazarkely-2/
 - **Prêts à l'emploi** avec validation complète
 - **Tests inclus** pour chaque composant
 
+### **Fonctionnalités PWA**
+- **usePWAInstall.ts** - Hook d'installation PWA avec détection navigateur
+- **PWAInstructionsPage.tsx** - Instructions manuelles multi-navigateurs
+- **Bouton d'installation** intégré dans Header.tsx
+- **Mécanisme d'attente/retry** pour beforeinstallprompt
+- **Diagnostic PWA automatique** avec vérification des prérequis
+
 ### **Structure Modulaire**
 - **Séparation claire** entre UI et Auth
 - **Exports centralisés** via index.ts
@@ -276,6 +301,8 @@ bazarkely-2/
 - **Création** de LoadingSpinner.tsx
 - **Amélioration** des tests de couverture
 - **Documentation** des composants manquants
+- **Optimisation** du mécanisme beforeinstallprompt
+- **Tests PWA** complets pour tous les navigateurs
 
 ---
 
@@ -284,6 +311,8 @@ bazarkely-2/
 ### **Statut de la Structure**
 - **Composants UI:** 87.5% implémentés (7/8)
 - **Composants Auth:** 100% implémentés (2/2)
+- **Pages principales:** 100% implémentées (9/9)
+- **Hooks personnalisés:** 100% implémentés (4/4)
 - **Structure modulaire:** ✅ Organisée
 - **Tests inclus:** ✅ Complets
 - **Documentation:** ✅ À jour
@@ -293,7 +322,9 @@ bazarkely-2/
 2. **Intégrer Auth components** - Dans AuthPage si nécessaire
 3. **Améliorer tests** - Couverture complète
 4. **Documentation** - Guides d'utilisation
+5. **Optimiser PWA** - Améliorer fiabilité beforeinstallprompt
+6. **Tests PWA** - Validation sur tous les navigateurs
 
 ---
 
-*Structure mise à jour le 2024-12-19 - BazarKELY v2.1 (Corrigée)*
+*Structure mise à jour le 2025-01-08 - BazarKELY v2.2 (Mise à jour PWA)*
