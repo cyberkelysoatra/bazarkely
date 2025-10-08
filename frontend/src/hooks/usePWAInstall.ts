@@ -156,7 +156,36 @@ export const usePWAInstall = (): PWAInstallState => {
     }
   }, [])
 
-  // Écouter l'événement beforeinstallprompt avec logging détaillé
+  // Vérifier si un prompt a été pré-capturé dans main.tsx
+  useEffect(() => {
+    const checkPreCapturedPrompt = () => {
+      try {
+        const savedPrompt = sessionStorage.getItem('bazarkely-pwa-prompt')
+        if (savedPrompt) {
+          const promptData = JSON.parse(savedPrompt)
+          console.log('🎉 PWA Pre-Captured prompt found:', promptData)
+          
+          // Marquer comme installable car le prompt était disponible
+          setIsInstallable(true)
+          setPromptCaptured(true)
+          
+          // Nettoyer les données sauvegardées
+          sessionStorage.removeItem('bazarkely-pwa-prompt')
+          console.log('🧹 Pre-captured prompt data cleaned up')
+          
+          showToast('Installation directe disponible!', 'success')
+        } else {
+          console.log('ℹ️ No pre-captured PWA prompt found')
+        }
+      } catch (error) {
+        console.error('❌ Error checking pre-captured prompt:', error)
+      }
+    }
+
+    checkPreCapturedPrompt()
+  }, [])
+
+  // Écouter l'événement beforeinstallprompt avec logging détaillé (fallback)
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       // Empêcher l'affichage automatique du prompt
@@ -190,7 +219,7 @@ export const usePWAInstall = (): PWAInstallState => {
       showToast('Application installée avec succès !', 'success')
     }
 
-    console.log('🔍 Setting up beforeinstallprompt event listener')
+    console.log('🔍 Setting up beforeinstallprompt event listener (fallback)')
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
 
@@ -233,6 +262,15 @@ export const usePWAInstall = (): PWAInstallState => {
         console.error('❌ Erreur lors de l\'installation:', error)
         showToast('Erreur lors de l\'installation', 'error')
       }
+    } else if (promptCaptured) {
+      // Prompt pré-capturé mais pas d'événement natif - utiliser instructions manuelles
+      console.log('📋 Using pre-captured prompt data - redirecting to manual instructions')
+      showToast('Utilisez le menu du navigateur pour installer', 'info')
+      
+      setTimeout(() => {
+        console.log('🔗 Redirecting to PWA instructions page')
+        navigate('/pwa-instructions')
+      }, 2000)
     } else if (isChromium) {
       // Prompt pas disponible - attendre et réessayer
       console.log('⏳ No native prompt available, starting wait-and-retry mechanism')
