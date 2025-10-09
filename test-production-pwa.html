@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Production PWA - BazarKELY</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #4f46e5;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background: rgba(34, 197, 94, 0.3); border: 1px solid #22c55e; }
+        .error { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; }
+        .info { background: rgba(59, 130, 246, 0.3); border: 1px solid #3b82f6; }
+        .warning { background: rgba(245, 158, 11, 0.3); border: 1px solid #f59e0b; }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { background: #4338ca; transform: translateY(-2px); }
+        .log {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .step h3 {
+            margin: 0 0 10px 0;
+            color: #10b981;
+        }
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .progress {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            height: 8px;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .test-result {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test Production PWA - BazarKELY</h1>
+        <p><strong>URL de test :</strong> <a href="https://1sakely.org" target="_blank" style="color: #60a5fa;">https://1sakely.org</a></p>
+        <p>Ce script teste la fonctionnalité PWA pre-capture en production.</p>
+
+        <div class="progress">
+            <h3>📊 Progression du Test</h3>
+            <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            <div id="progress-text">Prêt à commencer...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>1. 🌐 ENVIRONMENT SETUP</h2>
+            <div id="env-status" class="status info">
+                ⏳ Vérification de l'environnement...
+            </div>
+            <div class="step">
+                <h3>Configuration Chrome</h3>
+                <div id="chrome-info">Vérification en cours...</div>
+            </div>
+            <div class="step">
+                <h3>Mode Incognito</h3>
+                <div id="incognito-info">Vérification en cours...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 📱 INITIAL PAGE LOAD</h2>
+            <div id="load-status" class="status info">
+                ⏳ Chargement de la page de production...
+            </div>
+            <div class="iframe-container">
+                <iframe id="production-frame" src="https://1sakely.org" title="BazarKELY Production"></iframe>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 🔍 PRE-CAPTURE VERIFICATION</h2>
+            <div id="precapture-status" class="status info">
+                ⏳ Vérification des logs pre-capture...
+            </div>
+            <div class="test-controls">
+                <button onclick="checkPreCaptureLogs()">Vérifier Logs Pre-Capture</button>
+                <button onclick="simulateBeforeInstallPrompt()">Simuler beforeinstallprompt</button>
+                <button onclick="clearTestData()">Nettoyer Données Test</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. 💾 SESSIONSTORAGE INSPECTION</h2>
+            <div id="storage-status" class="status info">
+                ⏳ Inspection du sessionStorage...
+            </div>
+            <div class="test-controls">
+                <button onclick="inspectSessionStorage()">Inspecter sessionStorage</button>
+                <button onclick="exportStorageData()">Exporter Données</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. 🔘 INSTALLATION BUTTON TEST</h2>
+            <div id="button-status" class="status info">
+                ⏳ Test du bouton d'installation...
+            </div>
+            <div class="test-controls">
+                <button onclick="testInstallButton()">Tester Bouton Install</button>
+                <button onclick="checkButtonVisibility()">Vérifier Visibilité</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. 📦 INSTALLATION DIALOG</h2>
+            <div id="dialog-status" class="status info">
+                ⏳ Test du dialogue d'installation...
+            </div>
+            <div class="test-controls">
+                <button onclick="triggerInstallDialog()">Déclencher Installation</button>
+                <button onclick="checkInstallationStatus()">Vérifier Statut</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>7. 🖥️ STANDALONE MODE</h2>
+            <div id="standalone-status" class="status info">
+                ⏳ Test du mode standalone...
+            </div>
+            <div class="test-controls">
+                <button onclick="checkStandaloneMode()">Vérifier Mode Standalone</button>
+                <button onclick="testAppFunctionality()">Tester Fonctionnalités</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>8. ⚠️ CONSOLE ERRORS</h2>
+            <div id="errors-status" class="status info">
+                ⏳ Vérification des erreurs...
+            </div>
+            <div class="test-controls">
+                <button onclick="checkConsoleErrors()">Vérifier Erreurs</button>
+                <button onclick="clearConsole()">Nettoyer Console</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>9. 📊 COMPARISON WITH PREVIOUS</h2>
+            <div id="comparison-status" class="status info">
+                ⏳ Comparaison avec l'implémentation précédente...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>10. 🎯 FINAL VERDICT</h2>
+            <div id="verdict-status" class="status info">
+                ⏳ Évaluation finale...
+            </div>
+            <div class="test-controls">
+                <button onclick="generateFinalReport()">Générer Rapport Final</button>
+                <button onclick="exportTestResults()">Exporter Résultats</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 LOGS DE TEST</h2>
+            <div id="log" class="log">
+                <div>📝 Logs de test en temps réel :</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            environment: {},
+            pageLoad: {},
+            preCapture: {},
+            sessionStorage: {},
+            installButton: {},
+            installDialog: {},
+            standalone: {},
+            errors: {},
+            comparison: {},
+            verdict: {}
+        };
+
+        // Initialisation au chargement
+        window.addEventListener('load', async () => {
+            await initializeTest();
+        });
+
+        async function initializeTest() {
+            updateProgress(10, 'Initialisation du test...');
+            log('🚀 Initialisation du test de production PWA');
+            
+            // 1. Vérification de l'environnement
+            await checkEnvironment();
+            updateProgress(20, 'Environnement vérifié');
+            
+            // 2. Chargement de la page
+            await checkPageLoad();
+            updateProgress(30, 'Page chargée');
+            
+            // 3. Vérification pre-capture
+            setTimeout(async () => {
+                await checkPreCapture();
+                updateProgress(50, 'Pre-capture vérifié');
+            }, 5000);
+            
+            // 4. Inspection sessionStorage
+            setTimeout(async () => {
+                await inspectSessionStorage();
+                updateProgress(70, 'SessionStorage inspecté');
+            }, 10000);
+            
+            // 5. Test bouton installation
+            setTimeout(async () => {
+                await testInstallButton();
+                updateProgress(90, 'Bouton installation testé');
+            }, 15000);
+            
+            // 6. Rapport final
+            setTimeout(async () => {
+                await generateFinalReport();
+                updateProgress(100, 'Test terminé');
+            }, 20000);
+        }
+
+        async function checkEnvironment() {
+            log('🔍 Vérification de l\'environnement...');
+            
+            const chromeVersion = navigator.userAgent.match(/Chrome\/(\d+)/);
+            const isIncognito = window.chrome && window.chrome.extension;
+            
+            testResults.environment = {
+                userAgent: navigator.userAgent,
+                chromeVersion: chromeVersion ? chromeVersion[1] : 'Unknown',
+                isIncognito: isIncognito,
+                platform: navigator.platform,
+                language: navigator.language,
+                timestamp: new Date().toISOString()
+            };
+            
+            updateStatus('env-status', 'success', `✅ Chrome ${chromeVersion ? chromeVersion[1] : 'Unknown'} - ${isIncognito ? 'Mode Incognito' : 'Mode Normal'}`);
+            updateStatus('chrome-info', 'info', `Version: ${chromeVersion ? chromeVersion[1] : 'Unknown'}`);
+            updateStatus('incognito-info', 'info', `Mode: ${isIncognito ? 'Incognito' : 'Normal'}`);
+            
+            log(`✅ Environnement: Chrome ${chromeVersion ? chromeVersion[1] : 'Unknown'}, ${isIncognito ? 'Incognito' : 'Normal'}`);
+        }
+
+        async function checkPageLoad() {
+            log('📱 Vérification du chargement de la page...');
+            
+            try {
+                const response = await fetch('https://1sakely.org');
+                if (response.ok) {
+                    testResults.pageLoad = {
+                        status: 'success',
+                        statusCode: response.status,
+                        headers: Object.fromEntries(response.headers.entries()),
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    updateStatus('load-status', 'success', '✅ Page de production accessible');
+                    log('✅ Page de production chargée avec succès');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                testResults.pageLoad = {
+                    status: 'error',
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                };
+                
+                updateStatus('load-status', 'error', `❌ Erreur de chargement: ${error.message}`);
+                log(`❌ Erreur de chargement: ${error.message}`);
+            }
+        }
+
+        async function checkPreCapture() {
+            log('🔍 Vérification des logs pre-capture...');
+            
+            // Simuler la vérification des logs (en réalité, on ne peut pas accéder aux logs de l'iframe)
+            const expectedLogs = [
+                '🔍 PWA Pre-Capture - Checking for beforeinstallprompt event...',
+                '🧹 Cleared any existing PWA prompt data',
+                '👂 PWA event listener attached, waiting for beforeinstallprompt...'
+            ];
+            
+            testResults.preCapture = {
+                expectedLogs: expectedLogs,
+                timestamp: new Date().toISOString(),
+                note: 'Logs vérifiés dans la console du navigateur'
+            };
+            
+            updateStatus('precapture-status', 'info', 'ℹ️ Vérifiez la console du navigateur pour les logs pre-capture');
+            log('ℹ️ Logs pre-capture à vérifier dans la console du navigateur');
+        }
+
+        async function inspectSessionStorage() {
+            log('💾 Inspection du sessionStorage...');
+            
+            try {
+                const pwaPrompt = sessionStorage.getItem('bazarkely-pwa-prompt');
+                const oauthTokens = sessionStorage.getItem('bazarkely-oauth-tokens');
+                
+                testResults.sessionStorage = {
+                    pwaPrompt: pwaPrompt ? JSON.parse(pwaPrompt) : null,
+                    oauthTokens: oauthTokens ? JSON.parse(oauthTokens) : null,
+                    allKeys: Object.keys(sessionStorage),
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (pwaPrompt) {
+                    const data = JSON.parse(pwaPrompt);
+                    updateStatus('storage-status', 'success', '✅ Données PWA pre-capture trouvées');
+                    log('✅ Données PWA pre-capture trouvées: ' + JSON.stringify(data, null, 2));
+                } else {
+                    updateStatus('storage-status', 'warning', '⚠️ Aucune donnée PWA pre-capture trouvée');
+                    log('⚠️ Aucune donnée PWA pre-capture dans sessionStorage');
+                }
+                
+                log('📋 Toutes les clés sessionStorage: ' + Object.keys(sessionStorage).join(', '));
+                
+            } catch (error) {
+                updateStatus('storage-status', 'error', `❌ Erreur sessionStorage: ${error.message}`);
+                log(`❌ Erreur sessionStorage: ${error.message}`);
+            }
+        }
+
+        async function testInstallButton() {
+            log('🔘 Test du bouton d\'installation...');
+            
+            try {
+                const iframe = document.getElementById('production-frame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                // Chercher le bouton d'installation
+                const installButton = iframeDoc.querySelector('button[onclick*="install"], button:contains("Installer")');
+                
+                testResults.installButton = {
+                    found: !!installButton,
+                    timestamp: new Date().toISOString(),
+                    note: 'Test limité par CORS'
+                };
+                
+                if (installButton) {
+                    updateStatus('button-status', 'success', '✅ Bouton d\'installation détecté');
+                    log('✅ Bouton d\'installation trouvé');
+                } else {
+                    updateStatus('button-status', 'warning', '⚠️ Bouton d\'installation non trouvé (CORS)');
+                    log('⚠️ Bouton d\'installation non trouvé (limité par CORS)');
+                }
+                
+            } catch (error) {
+                updateStatus('button-status', 'warning', '⚠️ Test limité par CORS');
+                log(`⚠️ Test du bouton limité par CORS: ${error.message}`);
+            }
+        }
+
+        async function checkConsoleErrors() {
+            log('⚠️ Vérification des erreurs console...');
+            
+            // Simuler la vérification des erreurs
+            testResults.errors = {
+                errors: [],
+                warnings: [],
+                timestamp: new Date().toISOString(),
+                note: 'Vérifiez manuellement la console du navigateur'
+            };
+            
+            updateStatus('errors-status', 'info', 'ℹ️ Vérifiez la console du navigateur pour les erreurs');
+            log('ℹ️ Vérifiez la console du navigateur pour les erreurs PWA');
+        }
+
+        async function generateFinalReport() {
+            log('🎯 Génération du rapport final...');
+            
+            const report = {
+                timestamp: new Date().toISOString(),
+                testResults: testResults,
+                summary: {
+                    environment: testResults.environment.chromeVersion ? 'OK' : 'Unknown',
+                    pageLoad: testResults.pageLoad.status === 'success' ? 'OK' : 'Error',
+                    preCapture: testResults.preCapture.expectedLogs ? 'Expected' : 'Unknown',
+                    sessionStorage: testResults.sessionStorage.pwaPrompt ? 'Found' : 'Not Found',
+                    installButton: testResults.installButton.found ? 'Found' : 'Not Found',
+                    errors: testResults.errors.errors.length === 0 ? 'None' : 'Present'
+                }
+            };
+            
+            updateStatus('verdict-status', 'success', '✅ Rapport final généré');
+            log('✅ Rapport final généré avec succès');
+            
+            // Afficher le résumé
+            const summary = report.summary;
+            log('📊 RÉSUMÉ DU TEST:');
+            log(`- Environnement: ${summary.environment}`);
+            log(`- Chargement page: ${summary.pageLoad}`);
+            log(`- Pre-capture: ${summary.preCapture}`);
+            log(`- SessionStorage: ${summary.sessionStorage}`);
+            log(`- Bouton install: ${summary.installButton}`);
+            log(`- Erreurs: ${summary.errors}`);
+        }
+
+        // Fonctions utilitaires
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(elementId, type, message) {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function updateProgress(percentage, text) {
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = text;
+        }
+
+        // Fonctions de test manuelles
+        function checkPreCaptureLogs() {
+            log('🔍 Vérification manuelle des logs pre-capture...');
+            log('📋 Logs attendus dans la console:');
+            log('  🔍 PWA Pre-Capture - Checking for beforeinstallprompt event...');
+            log('  🧹 Cleared any existing PWA prompt data');
+            log('  👂 PWA event listener attached, waiting for beforeinstallprompt...');
+            log('  🎉 PWA Pre-Capture - beforeinstallprompt event fired! (si déclenché)');
+            log('  ✅ PWA prompt data saved to sessionStorage (si capturé)');
+        }
+
+        function simulateBeforeInstallPrompt() {
+            log('🎭 Simulation du beforeinstallprompt event...');
+            const event = new Event('beforeinstallprompt');
+            window.dispatchEvent(event);
+            log('✅ Événement beforeinstallprompt simulé');
+        }
+
+        function clearTestData() {
+            log('🧹 Nettoyage des données de test...');
+            sessionStorage.removeItem('bazarkely-pwa-prompt');
+            sessionStorage.removeItem('bazarkely-oauth-tokens');
+            log('✅ Données de test nettoyées');
+        }
+
+        function inspectSessionStorage() {
+            log('💾 Inspection détaillée du sessionStorage...');
+            const keys = Object.keys(sessionStorage);
+            log(`📋 Clés trouvées: ${keys.join(', ')}`);
+            
+            keys.forEach(key => {
+                const value = sessionStorage.getItem(key);
+                log(`  ${key}: ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}`);
+            });
+        }
+
+        function exportStorageData() {
+            log('📤 Export des données sessionStorage...');
+            const data = {};
+            Object.keys(sessionStorage).forEach(key => {
+                data[key] = sessionStorage.getItem(key);
+            });
+            console.log('SessionStorage Data:', data);
+            log('✅ Données exportées dans la console');
+        }
+
+        function testInstallButton() {
+            log('🔘 Test manuel du bouton d\'installation...');
+            log('📋 Instructions:');
+            log('  1. Cliquez sur le menu utilisateur (avatar) en haut à droite');
+            log('  2. Cherchez le bouton "Installer l\'application"');
+            log('  3. Cliquez sur le bouton pour déclencher l\'installation');
+            log('  4. Vérifiez que le dialogue d\'installation Chrome apparaît');
+        }
+
+        function checkButtonVisibility() {
+            log('👁️ Vérification de la visibilité du bouton...');
+            log('📋 Le bouton devrait être visible si:');
+            log('  - L\'application n\'est pas déjà installée');
+            log('  - Le navigateur supporte PWA');
+            log('  - Les critères PWA sont remplis');
+        }
+
+        function triggerInstallDialog() {
+            log('📦 Déclenchement du dialogue d\'installation...');
+            log('📋 Utilisez le bouton d\'installation dans l\'application');
+            log('📋 Ou utilisez le menu Chrome > Installer l\'application');
+        }
+
+        function checkInstallationStatus() {
+            log('📊 Vérification du statut d\'installation...');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            const isFromHomeScreen = window.navigator.standalone === true;
+            log(`Mode standalone: ${isStandalone}`);
+            log(`Depuis écran d'accueil: ${isFromHomeScreen}`);
+        }
+
+        function checkStandaloneMode() {
+            log('🖥️ Vérification du mode standalone...');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            log(`Mode standalone actuel: ${isStandalone}`);
+        }
+
+        function testAppFunctionality() {
+            log('🧪 Test des fonctionnalités de l\'application...');
+            log('📋 Testez les fonctionnalités principales:');
+            log('  - Navigation entre les pages');
+            log('  - Fonctionnalités de budget');
+            log('  - Synchronisation des données');
+        }
+
+        function checkConsoleErrors() {
+            log('⚠️ Vérification des erreurs console...');
+            log('📋 Vérifiez manuellement la console pour:');
+            log('  - Erreurs JavaScript');
+            log('  - Erreurs de réseau');
+            log('  - Erreurs PWA');
+        }
+
+        function clearConsole() {
+            log('🧹 Nettoyage de la console...');
+            console.clear();
+            log('✅ Console nettoyée');
+        }
+
+        function exportTestResults() {
+            log('📤 Export des résultats de test...');
+            console.log('Test Results:', testResults);
+            log('✅ Résultats exportés dans la console');
+        }
+    </script>
+</body>
+</html>
+
+

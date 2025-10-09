@@ -2,7 +2,7 @@ import { db } from '../lib/database'
 
 export interface NotificationData {
   id: string
-  type: 'budget_alert' | 'goal_reminder' | 'transaction_reminder' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day'
+  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day'
   title: string
   body: string
   icon?: string
@@ -14,12 +14,17 @@ export interface NotificationData {
   read: boolean
   scheduled?: Date
   priority: 'low' | 'normal' | 'high'
+  sent: boolean
+  clickAction?: string
 }
 
-export interface NotificationPreferences {
+export interface NotificationSettings {
+  id: string
+  userId: string
   budgetAlerts: boolean
   goalReminders: boolean
-  transactionReminders: boolean
+  transactionAlerts: boolean
+  dailySummary: boolean
   syncNotifications: boolean
   securityAlerts: boolean
   mobileMoneyAlerts: boolean
@@ -32,17 +37,34 @@ export interface NotificationPreferences {
     end: string // HH:MM format
   }
   frequency: 'immediate' | 'hourly' | 'daily' | 'weekly'
+  maxDailyNotifications: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface NotificationHistory {
+  id: string
+  userId: string
+  notificationId: string
+  sentAt: Date
+  clickedAt?: Date
+  dismissedAt?: Date
+  action?: string
+  data?: any
 }
 
 class NotificationService {
   private permission: NotificationPermission = 'default'
-  private preferences: NotificationPreferences | null = null
+  private settings: NotificationSettings | null = null
   private isSupported: boolean = false
+  private serviceWorkerRegistration: ServiceWorkerRegistration | null = null
+  private dailyNotificationCount: Map<string, number> = new Map()
+  private intervals: Map<string, NodeJS.Timeout> = new Map()
 
   constructor() {
-    this.isSupported = 'Notification' in window && 'serviceWorker' in navigator
-    this.permission = Notification.permission
-    this.loadPreferences()
+    this.isSupported = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
+    this.permission = this.isSupported ? Notification.permission : 'denied'
+    this.initializeService()
   }
 
   /**
@@ -50,23 +72,38 @@ class NotificationService {
    */
   async initialize(): Promise<boolean> {
     if (!this.isSupported) {
-      console.warn('Notifications non supportées par ce navigateur')
+      console.warn('🔔 Notifications non supportées par ce navigateur')
       return false
     }
 
-    // Enregistrer le service worker pour les notifications
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.ready
-        console.log('Service Worker prêt pour les notifications')
-        return true
-      } catch (error) {
-        console.error('Erreur lors de l\'initialisation du Service Worker:', error)
-        return false
+    try {
+      // Enregistrer le service worker pour les notifications
+      if ('serviceWorker' in navigator) {
+        this.serviceWorkerRegistration = await navigator.serviceWorker.ready
+        console.log('🔔 Service Worker prêt pour les notifications')
+        
+        // Écouter les messages du service worker
+        navigator.serviceWorker.addEventListener('message', this.handleServiceWorkerMessage.bind(this))
       }
-    }
 
-    return false
+      // Charger les paramètres de l'utilisateur
+      await this.loadSettings()
+
+      // Démarrer les vérifications périodiques
+      this.startPeriodicChecks()
+
+      return true
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'initialisation du service de notifications:', error)
+      return false
+    }
+  }
+
+  /**
+   * Vérifie le support des notifications
+   */
+  checkSupport(): boolean {
+    return this.isSupported
   }
 
   /**
@@ -79,9 +116,14 @@ class NotificationService {
 
     try {
       this.permission = await Notification.requestPermission()
+      
+      // Sauvegarder l'état de permission
+      localStorage.setItem('bazarkely-notification-permission', this.permission)
+      
+      console.log(`🔔 Permission de notification: ${this.permission}`)
       return this.permission
     } catch (error) {
-      console.error('Erreur lors de la demande de permission:', error)
+      console.error('❌ Erreur lors de la demande de permission:', error)
       throw error
     }
   }
@@ -94,23 +136,28 @@ class NotificationService {
   }
 
   /**
-   * Envoie une notification immédiate
+   * Affiche une notification immédiate
    */
-  async sendNotification(notification: Omit<NotificationData, 'id' | 'timestamp' | 'read'>): Promise<boolean> {
+  async showNotification(notification: Omit<NotificationData, 'id' | 'timestamp' | 'read' | 'sent'>): Promise<boolean> {
     if (!this.isPermissionGranted()) {
-      console.warn('Permission de notification non accordée')
+      console.warn('🔔 Permission de notification non accordée')
       return false
     }
 
     if (!this.shouldSendNotification(notification.type)) {
-      console.log('Notification filtrée par les préférences')
+      console.log('🔔 Notification filtrée par les préférences')
       return false
     }
 
     if (this.isQuietHours()) {
-      console.log('Notification différée (heures silencieuses)')
+      console.log('🔔 Notification différée (heures silencieuses)')
       await this.scheduleNotification(notification, this.getNextAvailableTime())
       return true
+    }
+
+    if (this.hasReachedDailyLimit(notification.userId)) {
+      console.log('🔔 Limite quotidienne de notifications atteinte')
+      return false
     }
 
     try {
@@ -118,18 +165,22 @@ class NotificationService {
         ...notification,
         id: this.generateId(),
         timestamp: new Date(),
-        read: false
+        read: false,
+        sent: false
       }
 
       // Sauvegarder en base
       await this.saveNotification(notificationData)
 
       // Envoyer la notification
-      await this.showNotification(notificationData)
+      await this.displayNotification(notificationData)
+
+      // Mettre à jour le compteur quotidien
+      this.incrementDailyCount(notification.userId)
 
       return true
     } catch (error) {
-      console.error('Erreur lors de l\'envoi de la notification:', error)
+      console.error('❌ Erreur lors de l\'envoi de la notification:', error)
       return false
     }
   }
@@ -137,58 +188,30 @@ class NotificationService {
   /**
    * Programme une notification pour plus tard
    */
-  async scheduleNotification(notification: Omit<NotificationData, 'id' | 'timestamp' | 'read'>, scheduledTime: Date): Promise<boolean> {
+  async scheduleNotification(notification: Omit<NotificationData, 'id' | 'timestamp' | 'read' | 'sent'>, scheduledTime: Date): Promise<boolean> {
     try {
       const notificationData: NotificationData = {
         ...notification,
         id: this.generateId(),
         timestamp: new Date(),
         scheduled: scheduledTime,
-        read: false
+        read: false,
+        sent: false
       }
 
       await this.saveNotification(notificationData)
+      console.log(`🔔 Notification programmée pour ${scheduledTime.toLocaleString()}`)
       return true
     } catch (error) {
-      console.error('Erreur lors de la programmation de la notification:', error)
+      console.error('❌ Erreur lors de la programmation de la notification:', error)
       return false
     }
   }
 
   /**
-   * Affiche une notification via le Service Worker
+   * Vérifie les alertes de budget (appelée toutes les heures)
    */
-  private async showNotification(notification: NotificationData): Promise<void> {
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        notification: {
-          title: notification.title,
-          body: notification.body,
-          icon: notification.icon || '/icon-192.png',
-          badge: notification.badge || '/icon-192.png',
-          tag: notification.tag || notification.type,
-          data: notification.data,
-          requireInteraction: notification.priority === 'high'
-        }
-      })
-    } else {
-      // Fallback pour les navigateurs sans Service Worker
-      new Notification(notification.title, {
-        body: notification.body,
-        icon: notification.icon || '/icon-192.png',
-        badge: notification.badge || '/icon-192.png',
-        tag: notification.tag || notification.type,
-        data: notification.data,
-        requireInteraction: notification.priority === 'high'
-      })
-    }
-  }
-
-  /**
-   * Vérifie les alertes de budget
-   */
-  async checkBudgetAlerts(userId: string): Promise<void> {
+  async scheduleBudgetCheck(userId: string): Promise<void> {
     try {
       const budgets = await db.budgets.where('userId').equals(userId).toArray()
       const currentMonth = new Date().getMonth()
@@ -200,310 +223,366 @@ class NotificationService {
 
           // Alerte à 80%
           if (spentPercentage >= 80 && spentPercentage < 100) {
-            await this.sendNotification({
+            await this.showNotification({
               type: 'budget_alert',
               title: '⚠️ Alerte Budget',
               body: `Votre budget ${budget.category} atteint ${Math.round(spentPercentage)}% (${this.formatCurrency(budget.spent)}/${this.formatCurrency(budget.amount)})`,
               priority: 'normal',
               userId,
+              clickAction: '/budgets',
               data: { budgetId: budget.id, percentage: spentPercentage }
             })
           }
 
           // Alerte à 100%
           if (spentPercentage >= 100 && spentPercentage < 120) {
-            await this.sendNotification({
+            await this.showNotification({
               type: 'budget_alert',
               title: '🚨 Budget Dépassé',
               body: `Votre budget ${budget.category} est dépassé de ${Math.round(spentPercentage - 100)}% !`,
               priority: 'high',
               userId,
+              clickAction: '/budgets',
               data: { budgetId: budget.id, percentage: spentPercentage }
             })
           }
 
           // Alerte critique à 120%
           if (spentPercentage >= 120) {
-            await this.sendNotification({
+            await this.showNotification({
               type: 'budget_alert',
               title: '🔥 Budget Critique',
               body: `Votre budget ${budget.category} est dépassé de ${Math.round(spentPercentage - 100)}% ! Action requise.`,
               priority: 'high',
               userId,
+              clickAction: '/budgets',
               data: { budgetId: budget.id, percentage: spentPercentage }
             })
           }
         }
       }
     } catch (error) {
-      console.error('Erreur lors de la vérification des alertes de budget:', error)
+      console.error('❌ Erreur lors de la vérification des alertes de budget:', error)
     }
   }
 
   /**
-   * Vérifie les rappels d'objectifs
+   * Vérifie les rappels d'objectifs (appelée quotidiennement à 9h)
    */
-  async checkGoalReminders(userId: string): Promise<void> {
+  async scheduleGoalCheck(userId: string): Promise<void> {
     try {
       const goals = await db.goals.where('userId').equals(userId).toArray()
       const now = new Date()
 
       for (const goal of goals) {
+        if (goal.isCompleted) continue
+
         const daysUntilDeadline = Math.ceil((goal.deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         const progressPercentage = (goal.currentAmount / goal.targetAmount) * 100
 
-        // Rappel hebdomadaire
-        if (daysUntilDeadline > 7 && daysUntilDeadline % 7 === 0) {
-          await this.sendNotification({
+        // Rappel 3 jours avant la deadline si progression < 50%
+        if (daysUntilDeadline === 3 && progressPercentage < 50) {
+          await this.showNotification({
             type: 'goal_reminder',
-            title: '🎯 Objectif d\'Épargne',
+            title: '🎯 Rappel Objectif',
             body: `${goal.name}: ${Math.round(progressPercentage)}% atteint. ${daysUntilDeadline} jours restants.`,
             priority: 'normal',
             userId,
+            clickAction: '/goals',
             data: { goalId: goal.id, progress: progressPercentage, daysLeft: daysUntilDeadline }
           })
         }
 
         // Rappel de deadline
-        if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
-          await this.sendNotification({
+        if (daysUntilDeadline <= 1 && daysUntilDeadline > 0) {
+          await this.showNotification({
             type: 'goal_reminder',
             title: '⏰ Deadline Approche',
             body: `${goal.name}: ${daysUntilDeadline} jour(s) restant(s) ! Progression: ${Math.round(progressPercentage)}%`,
             priority: 'high',
             userId,
+            clickAction: '/goals',
             data: { goalId: goal.id, progress: progressPercentage, daysLeft: daysUntilDeadline }
           })
         }
-
-        // Objectif atteint
-        if (progressPercentage >= 100) {
-          await this.sendNotification({
-            type: 'goal_reminder',
-            title: '🎉 Objectif Atteint !',
-            body: `Félicitations ! Vous avez atteint votre objectif "${goal.name}" !`,
-            priority: 'normal',
-            userId,
-            data: { goalId: goal.id, progress: progressPercentage }
-          })
-        }
       }
     } catch (error) {
-      console.error('Erreur lors de la vérification des rappels d\'objectifs:', error)
+      console.error('❌ Erreur lors de la vérification des rappels d\'objectifs:', error)
     }
   }
 
   /**
-   * Vérifie les rappels de transactions récurrentes
+   * Surveille les transactions importantes (immédiat)
    */
-  async checkTransactionReminders(userId: string): Promise<void> {
+  async scheduleTransactionWatch(userId: string, transaction: any): Promise<void> {
     try {
-      // Vérifier les transactions récurrentes (à implémenter selon la logique métier)
-      const recurringTransactions = await this.getRecurringTransactions(userId)
+      // Alerte pour les transactions importantes (> 100,000 MGA)
+      if (transaction.amount > 100000) {
+        await this.showNotification({
+          type: 'transaction_alert',
+          title: '💳 Transaction Importante',
+          body: `Transaction de ${this.formatCurrency(transaction.amount)} enregistrée (${transaction.category})`,
+          priority: 'normal',
+          userId,
+          clickAction: '/transactions',
+          data: { transactionId: transaction.id, amount: transaction.amount, category: transaction.category }
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la surveillance des transactions:', error)
+    }
+  }
+
+  /**
+   * Résumé quotidien (appelé à 20h)
+   */
+  async scheduleDailySummary(userId: string): Promise<void> {
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+
+      // Récupérer les transactions du jour
+      const todayTransactions = await db.transactions
+        .where('userId')
+        .equals(userId)
+        .and(t => t.date >= today && t.date < tomorrow)
+        .toArray()
+
+      const totalIncome = todayTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      const totalExpense = todayTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      const netAmount = totalIncome - totalExpense
+
+      await this.showNotification({
+        type: 'daily_summary',
+        title: '📊 Résumé Quotidien',
+        body: `Aujourd'hui: +${this.formatCurrency(totalIncome)} -${this.formatCurrency(totalExpense)} = ${this.formatCurrency(netAmount)}`,
+        priority: 'low',
+        userId,
+        clickAction: '/dashboard',
+        data: { 
+          totalIncome, 
+          totalExpense, 
+          netAmount, 
+          transactionCount: todayTransactions.length 
+        }
+      })
+    } catch (error) {
+      console.error('❌ Erreur lors de la génération du résumé quotidien:', error)
+    }
+  }
+
+  /**
+   * Affiche une notification via le Service Worker ou l'API native
+   */
+  private async displayNotification(notification: NotificationData): Promise<void> {
+    const notificationOptions: NotificationOptions = {
+      body: notification.body,
+      icon: notification.icon || '/icon-192x192.png',
+      badge: notification.badge || '/icon-192x192.png',
+      tag: notification.tag || notification.type,
+      data: {
+        ...notification.data,
+        clickAction: notification.clickAction,
+        notificationId: notification.id
+      },
+      requireInteraction: notification.priority === 'high',
+      silent: notification.priority === 'low'
+    }
+
+    if (this.serviceWorkerRegistration) {
+      // Utiliser le Service Worker pour les notifications en arrière-plan
+      await this.serviceWorkerRegistration.showNotification(notification.title, notificationOptions)
+    } else {
+      // Fallback pour les navigateurs sans Service Worker
+      const nativeNotification = new Notification(notification.title, notificationOptions)
       
-      for (const transaction of recurringTransactions) {
-        const daysSinceLast = this.getDaysSinceLastTransaction(transaction)
-        
-        if (daysSinceLast >= transaction.reminderDays) {
-          await this.sendNotification({
-            type: 'transaction_reminder',
-            title: '💳 Rappel Transaction',
-            body: `N\'oubliez pas: ${transaction.description} (${this.formatCurrency(transaction.amount)})`,
-            priority: 'normal',
-            userId,
-            data: { transactionId: transaction.id, type: 'recurring' }
-          })
-        }
+      // Gérer le clic sur la notification
+      nativeNotification.onclick = () => {
+        this.handleNotificationClick(notification)
+        nativeNotification.close()
       }
-    } catch (error) {
-      console.error('Erreur lors de la vérification des rappels de transactions:', error)
+    }
+
+    // Marquer comme envoyée
+    await db.notifications.update(notification.id, { sent: true })
+
+    // Enregistrer dans l'historique
+    await this.recordNotificationHistory(notification)
+  }
+
+  /**
+   * Gère le clic sur une notification
+   */
+  private handleNotificationClick(notification: NotificationData): void {
+    console.log(`🔔 Notification cliquée: ${notification.title}`)
+    
+    // Enregistrer le clic
+    this.recordNotificationClick(notification.id)
+
+    // Naviguer vers la page appropriée
+    if (notification.clickAction) {
+      window.focus()
+      window.location.href = notification.clickAction
     }
   }
 
   /**
-   * Notifications spécifiques à Madagascar
+   * Gère les messages du Service Worker
    */
-  async checkMadagascarSpecificNotifications(userId: string): Promise<void> {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const month = now.getMonth()
-
-    // Rappel du marché du vendredi (Zoma)
-    if (dayOfWeek === 5) { // Vendredi
-      await this.sendNotification({
-        type: 'market_day',
-        title: '🛒 Marché du Vendredi',
-        body: 'C\'est le jour du Zoma ! N\'oubliez pas vos courses hebdomadaires.',
-        priority: 'normal',
-        userId,
-        data: { type: 'zoma_reminder' }
-      })
+  private handleServiceWorkerMessage(event: MessageEvent): void {
+    if (event.data.type === 'NOTIFICATION_CLICK') {
+      const notificationId = event.data.notificationId
+      this.recordNotificationClick(notificationId)
     }
-
-    // Rappels saisonniers
-    if (month === 3 || month === 4) { // Avril-Mai (saison des récoltes)
-      await this.sendNotification({
-        type: 'seasonal',
-        title: '🌾 Saison des Récoltes',
-        body: 'Pensez à planifier vos revenus agricoles pour les mois à venir.',
-        priority: 'normal',
-        userId,
-        data: { type: 'harvest_planning' }
-      })
-    }
-
-    // Rappels d'événements familiaux
-    await this.checkFamilyEventReminders(userId)
   }
 
   /**
-   * Vérifie les rappels d'événements familiaux
+   * Charge les paramètres de notification
    */
-  private async checkFamilyEventReminders(userId: string): Promise<void> {
-    // Logique pour vérifier les événements familiaux (anniversaires, fêtes, etc.)
-    // À implémenter selon les besoins spécifiques
-  }
-
-  /**
-   * Notifications de synchronisation
-   */
-  async sendSyncNotification(userId: string, status: 'success' | 'error', details?: string): Promise<void> {
-    const title = status === 'success' ? '✅ Synchronisation Réussie' : '❌ Erreur de Synchronisation'
-    const body = status === 'success' 
-      ? 'Vos données ont été synchronisées avec succès.'
-      : `Erreur lors de la synchronisation: ${details || 'Erreur inconnue'}`
-
-    await this.sendNotification({
-      type: 'sync_notification',
-      title,
-      body,
-      priority: status === 'error' ? 'high' : 'low',
-      userId,
-      data: { status, details }
-    })
-  }
-
-  /**
-   * Notifications de sécurité
-   */
-  async sendSecurityAlert(userId: string, type: 'new_device' | 'suspicious_activity', details?: string): Promise<void> {
-    const title = type === 'new_device' ? '🔒 Nouvel Appareil' : '⚠️ Activité Suspecte'
-    const body = type === 'new_device' 
-      ? 'Connexion détectée depuis un nouvel appareil.'
-      : `Activité suspecte détectée: ${details || 'Veuillez vérifier votre compte'}`
-
-    await this.sendNotification({
-      type: 'security_alert',
-      title,
-      body,
-      priority: 'high',
-      userId,
-      data: { alertType: type, details }
-    })
-  }
-
-  /**
-   * Notifications Mobile Money
-   */
-  async sendMobileMoneyNotification(userId: string, type: 'transaction' | 'fee' | 'balance', data: any): Promise<void> {
-    let title = ''
-    let body = ''
-
-    switch (type) {
-      case 'transaction':
-        title = '💳 Transaction Mobile Money'
-        body = `${data.operator}: ${this.formatCurrency(data.amount)} ${data.direction === 'sent' ? 'envoyé' : 'reçu'}`
-        break
-      case 'fee':
-        title = '💰 Frais Mobile Money'
-        body = `Frais ${data.operator}: ${this.formatCurrency(data.fee)} pour ${this.formatCurrency(data.amount)}`
-        break
-      case 'balance':
-        title = '💵 Solde Mobile Money'
-        body = `Solde ${data.operator}: ${this.formatCurrency(data.balance)}`
-        break
-    }
-
-    await this.sendNotification({
-      type: 'mobile_money',
-      title,
-      body,
-      priority: 'normal',
-      userId,
-      data
-    })
-  }
-
-  /**
-   * Charge les préférences de notification
-   */
-  private async loadPreferences(): Promise<void> {
+  private async loadSettings(): Promise<void> {
     try {
-      const user = await this.getCurrentUser()
-      if (user && user.notificationPreferences) {
-        this.preferences = user.notificationPreferences
-      } else {
-        this.preferences = this.getDefaultPreferences()
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des préférences:', error)
-      this.preferences = this.getDefaultPreferences()
-    }
-  }
-
-  /**
-   * Sauvegarde les préférences de notification
-   */
-  async savePreferences(preferences: NotificationPreferences): Promise<boolean> {
-    try {
-      this.preferences = preferences
       const user = await this.getCurrentUser()
       if (user) {
-        await db.users.put(user.id, {
-          ...user,
-          notificationPreferences: preferences
-        })
-        return true
+        const settings = await db.notificationSettings.where('userId').equals(user.id).first()
+        this.settings = settings || this.getDefaultSettings(user.id)
       }
-      return false
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde des préférences:', error)
+      console.error('❌ Erreur lors du chargement des paramètres:', error)
+      this.settings = this.getDefaultSettings('')
+    }
+  }
+
+  /**
+   * Sauvegarde les paramètres de notification
+   */
+  async saveSettings(settings: Partial<NotificationSettings>): Promise<boolean> {
+    try {
+      const user = await this.getCurrentUser()
+      if (!user) return false
+
+      const existingSettings = await db.notificationSettings.where('userId').equals(user.id).first()
+      
+      if (existingSettings) {
+        await db.notificationSettings.update(existingSettings.id, {
+          ...settings,
+          updatedAt: new Date()
+        })
+      } else {
+        const newSettings: NotificationSettings = {
+          id: this.generateId(),
+          userId: user.id,
+          ...this.getDefaultSettings(user.id),
+          ...settings,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        await db.notificationSettings.add(newSettings)
+      }
+
+      // Sauvegarder aussi dans localStorage
+      localStorage.setItem('bazarkely-notification-settings', JSON.stringify(settings))
+      
+      await this.loadSettings()
+      return true
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde des paramètres:', error)
       return false
     }
   }
 
   /**
-   * Obtient les préférences actuelles
+   * Obtient les paramètres actuels
    */
-  getPreferences(): NotificationPreferences | null {
-    return this.preferences
+  getSettings(): NotificationSettings | null {
+    return this.settings
+  }
+
+  /**
+   * Démarre les vérifications périodiques
+   */
+  private startPeriodicChecks(): void {
+    // Vérification des budgets toutes les heures
+    this.intervals.set('budget', setInterval(async () => {
+      const user = await this.getCurrentUser()
+      if (user) {
+        await this.scheduleBudgetCheck(user.id)
+      }
+    }, 60 * 60 * 1000)) // 1 heure
+
+    // Vérification des objectifs quotidiennement à 9h
+    this.intervals.set('goals', setInterval(async () => {
+      const now = new Date()
+      if (now.getHours() === 9) {
+        const user = await this.getCurrentUser()
+        if (user) {
+          await this.scheduleGoalCheck(user.id)
+        }
+      }
+    }, 60 * 60 * 1000)) // 1 heure
+
+    // Résumé quotidien à 20h
+    this.intervals.set('daily', setInterval(async () => {
+      const now = new Date()
+      if (now.getHours() === 20) {
+        const user = await this.getCurrentUser()
+        if (user) {
+          await this.scheduleDailySummary(user.id)
+        }
+      }
+    }, 60 * 60 * 1000)) // 1 heure
+
+    // Réinitialiser le compteur quotidien à minuit
+    this.intervals.set('reset', setInterval(() => {
+      const now = new Date()
+      if (now.getHours() === 0) {
+        this.dailyNotificationCount.clear()
+      }
+    }, 60 * 60 * 1000)) // 1 heure
+  }
+
+  /**
+   * Arrête les vérifications périodiques
+   */
+  stopPeriodicChecks(): void {
+    this.intervals.forEach(interval => clearInterval(interval))
+    this.intervals.clear()
   }
 
   /**
    * Vérifie si une notification doit être envoyée selon les préférences
    */
   private shouldSendNotification(type: NotificationData['type']): boolean {
-    if (!this.preferences) return true
+    if (!this.settings) return true
 
     switch (type) {
       case 'budget_alert':
-        return this.preferences.budgetAlerts
+        return this.settings.budgetAlerts
       case 'goal_reminder':
-        return this.preferences.goalReminders
-      case 'transaction_reminder':
-        return this.preferences.transactionReminders
+        return this.settings.goalReminders
+      case 'transaction_alert':
+        return this.settings.transactionAlerts
+      case 'daily_summary':
+        return this.settings.dailySummary
       case 'sync_notification':
-        return this.preferences.syncNotifications
+        return this.settings.syncNotifications
       case 'security_alert':
-        return this.preferences.securityAlerts
+        return this.settings.securityAlerts
       case 'mobile_money':
-        return this.preferences.mobileMoneyAlerts
+        return this.settings.mobileMoneyAlerts
       case 'seasonal':
-        return this.preferences.seasonalReminders
+        return this.settings.seasonalReminders
       case 'family_event':
-        return this.preferences.familyEventReminders
+        return this.settings.familyEventReminders
       case 'market_day':
-        return this.preferences.marketDayReminders
+        return this.settings.marketDayReminders
       default:
         return true
     }
@@ -513,12 +592,12 @@ class NotificationService {
    * Vérifie si on est en heures silencieuses
    */
   private isQuietHours(): boolean {
-    if (!this.preferences?.quietHours.enabled) return false
+    if (!this.settings?.quietHours.enabled) return false
 
     const now = new Date()
     const currentTime = now.getHours() * 60 + now.getMinutes()
-    const startTime = this.timeToMinutes(this.preferences.quietHours.start)
-    const endTime = this.timeToMinutes(this.preferences.quietHours.end)
+    const startTime = this.timeToMinutes(this.settings.quietHours.start)
+    const endTime = this.timeToMinutes(this.settings.quietHours.end)
 
     if (startTime <= endTime) {
       return currentTime >= startTime && currentTime <= endTime
@@ -529,23 +608,32 @@ class NotificationService {
   }
 
   /**
-   * Convertit une heure HH:MM en minutes
+   * Vérifie si la limite quotidienne est atteinte
    */
-  private timeToMinutes(time: string): number {
-    const [hours, minutes] = time.split(':').map(Number)
-    return hours * 60 + minutes
+  private hasReachedDailyLimit(userId: string): boolean {
+    const count = this.dailyNotificationCount.get(userId) || 0
+    const maxDaily = this.settings?.maxDailyNotifications || 5
+    return count >= maxDaily
+  }
+
+  /**
+   * Incrémente le compteur quotidien
+   */
+  private incrementDailyCount(userId: string): void {
+    const count = this.dailyNotificationCount.get(userId) || 0
+    this.dailyNotificationCount.set(userId, count + 1)
   }
 
   /**
    * Obtient la prochaine heure disponible (après les heures silencieuses)
    */
   private getNextAvailableTime(): Date {
-    if (!this.preferences?.quietHours.enabled) {
+    if (!this.settings?.quietHours.enabled) {
       return new Date(Date.now() + 60000) // 1 minute plus tard
     }
 
     const now = new Date()
-    const endTime = this.timeToMinutes(this.preferences.quietHours.end)
+    const endTime = this.timeToMinutes(this.settings.quietHours.end)
     const currentTime = now.getHours() * 60 + now.getMinutes()
 
     if (currentTime < endTime) {
@@ -564,14 +652,53 @@ class NotificationService {
   }
 
   /**
+   * Convertit une heure HH:MM en minutes
+   */
+  private timeToMinutes(time: string): number {
+    const [hours, minutes] = time.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+
+  /**
    * Sauvegarde une notification en base
    */
   private async saveNotification(notification: NotificationData): Promise<void> {
-    // À implémenter selon la structure de base de données
-    // Pour l'instant, on utilise localStorage comme fallback
-    const notifications = JSON.parse(localStorage.getItem('bazarkely-notifications') || '[]')
-    notifications.push(notification)
-    localStorage.setItem('bazarkely-notifications', JSON.stringify(notifications))
+    await db.notifications.add(notification)
+  }
+
+  /**
+   * Enregistre l'historique d'une notification
+   */
+  private async recordNotificationHistory(notification: NotificationData): Promise<void> {
+    const history: NotificationHistory = {
+      id: this.generateId(),
+      userId: notification.userId,
+      notificationId: notification.id,
+      sentAt: new Date(),
+      data: notification.data
+    }
+
+    await db.notificationHistory.add(history)
+  }
+
+  /**
+   * Enregistre un clic sur une notification
+   */
+  private async recordNotificationClick(notificationId: string): Promise<void> {
+    try {
+      const history = await db.notificationHistory
+        .where('notificationId')
+        .equals(notificationId)
+        .first()
+
+      if (history) {
+        await db.notificationHistory.update(history.id, {
+          clickedAt: new Date()
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'enregistrement du clic:', error)
+    }
   }
 
   /**
@@ -583,13 +710,16 @@ class NotificationService {
   }
 
   /**
-   * Obtient les préférences par défaut
+   * Obtient les paramètres par défaut
    */
-  private getDefaultPreferences(): NotificationPreferences {
+  private getDefaultSettings(userId: string): NotificationSettings {
     return {
+      id: this.generateId(),
+      userId,
       budgetAlerts: true,
       goalReminders: true,
-      transactionReminders: true,
+      transactionAlerts: true,
+      dailySummary: true,
       syncNotifications: false,
       securityAlerts: true,
       mobileMoneyAlerts: true,
@@ -601,24 +731,11 @@ class NotificationService {
         start: '22:00',
         end: '07:00'
       },
-      frequency: 'immediate'
+      frequency: 'immediate',
+      maxDailyNotifications: 5,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
-  }
-
-  /**
-   * Obtient les transactions récurrentes
-   */
-  private async getRecurringTransactions(userId: string): Promise<any[]> {
-    // À implémenter selon la logique métier
-    return []
-  }
-
-  /**
-   * Calcule les jours depuis la dernière transaction
-   */
-  private getDaysSinceLastTransaction(transaction: any): number {
-    // À implémenter selon la logique métier
-    return 0
   }
 
   /**
@@ -637,6 +754,28 @@ class NotificationService {
    */
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2)
+  }
+
+  /**
+   * Initialise le service
+   */
+  private async initializeService(): Promise<void> {
+    // Charger l'état de permission depuis localStorage
+    const savedPermission = localStorage.getItem('bazarkely-notification-permission')
+    if (savedPermission && this.isSupported) {
+      this.permission = savedPermission as NotificationPermission
+    }
+
+    // Charger les paramètres depuis localStorage
+    const savedSettings = localStorage.getItem('bazarkely-notification-settings')
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings)
+        this.settings = { ...this.getDefaultSettings(''), ...settings }
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des paramètres depuis localStorage:', error)
+      }
+    }
   }
 }
 

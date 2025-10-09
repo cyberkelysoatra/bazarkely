@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 // Build test - force new hash generation
 import { useAppStore, useSyncStore, useErrorStore } from './stores/appStore';
 import feeService from './services/feeService';
 import apiService from './services/apiService';
+import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
 // TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
 // import safariCompatibility from './services/safariCompatibility';
@@ -76,6 +78,9 @@ function App() {
       try {
         console.log('🚀 Initialisation de BazarKELY (API-first)...');
         
+        // Initialiser le service de dialogues modernes
+        dialogService.initialize();
+        
         // Initialiser les services de base
         await feeService.initializeDefaultFees();
         
@@ -120,6 +125,40 @@ function App() {
           <div className="min-h-screen bg-gray-50">
             <AppLayout />
             <IOSInstallPrompt />
+            
+            {/* Toast Notifications */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 4000,
+                  style: {
+                    background: '#10B981',
+                    color: '#fff',
+                  },
+                  iconTheme: {
+                    primary: '#fff',
+                    secondary: '#10B981',
+                  },
+                },
+                error: {
+                  duration: 5000,
+                  style: {
+                    background: '#EF4444',
+                    color: '#fff',
+                  },
+                  iconTheme: {
+                    primary: '#fff',
+                    secondary: '#EF4444',
+                  },
+                },
+              }}
+            />
             
             {/* Bouton de débogage API - Removed - no longer needed with Supabase */}
             {/* <button

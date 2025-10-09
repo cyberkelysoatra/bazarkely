@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { showToast } from '../services/toastService'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -345,17 +346,7 @@ export const usePWAInstall = (): PWAInstallState => {
     }
   }, [isInstalled, navigate])
 
-  // Fonction pour afficher les toasts
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    // Utiliser le système de notification existant si disponible
-    if (typeof window !== 'undefined' && window.alert) {
-      // Fallback vers alert si pas de système de toast
-      window.alert(message)
-    }
-    
-    // Log pour le debugging
-    console.log(`Toast ${type}:`, message)
-  }
+  // Note: showToast is now imported from toastService
 
   // Fonction de diagnostic PWA pour identifier les problèmes d'installabilité
   const runPWADiagnostics = async () => {

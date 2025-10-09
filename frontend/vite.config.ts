@@ -19,6 +19,13 @@ export default defineConfig({
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 }
             }
           }
+        ],
+        // Intégrer le service worker personnalisé pour les notifications
+        additionalManifestEntries: [
+          {
+            url: '/sw-notifications.js',
+            revision: null
+          }
         ]
       },
       manifest: {

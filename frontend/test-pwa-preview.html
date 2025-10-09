@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PWA Preview - BazarKELY</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success { background: rgba(34, 197, 94, 0.3); border: 1px solid #22c55e; }
+        .error { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; }
+        .info { background: rgba(59, 130, 246, 0.3); border: 1px solid #3b82f6; }
+        .warning { background: rgba(245, 158, 11, 0.3); border: 1px solid #f59e0b; }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #4338ca; }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test PWA Preview - BazarKELY</h1>
+        <p>Cette page teste la fonctionnalité PWA pre-capture en mode production.</p>
+        
+        <div class="test-section">
+            <h2>📊 Statut du Serveur</h2>
+            <div id="server-status" class="status info">
+                ⏳ Vérification du serveur de prévisualisation...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🌐 Application Preview</h2>
+            <p>L'application BazarKELY en mode production :</p>
+            <iframe id="preview-frame" src="http://localhost:4173" title="BazarKELY Preview"></iframe>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Tests PWA</h2>
+            <div>
+                <button onclick="testPWACapture()">Tester Pre-Capture</button>
+                <button onclick="checkSessionStorage()">Vérifier sessionStorage</button>
+                <button onclick="clearSessionStorage()">Nettoyer sessionStorage</button>
+                <button onclick="testInstallButton()">Tester Bouton Install</button>
+            </div>
+            <div id="pwa-status" class="status info">
+                ⏳ En attente des tests PWA...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Logs de Test</h2>
+            <div id="log" class="log">
+                <div>📝 Logs de test :</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Vérification du serveur au chargement
+        window.addEventListener('load', async () => {
+            await checkServerStatus();
+        });
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:4173');
+                if (response.ok) {
+                    updateStatus('server-status', 'success', '✅ Serveur de prévisualisation actif sur http://localhost:4173');
+                    log('✅ Serveur de prévisualisation accessible');
+                } else {
+                    updateStatus('server-status', 'error', '❌ Serveur de prévisualisation non accessible');
+                    log('❌ Erreur serveur: ' + response.status);
+                }
+            } catch (error) {
+                updateStatus('server-status', 'error', '❌ Serveur de prévisualisation non accessible');
+                log('❌ Erreur de connexion: ' + error.message);
+            }
+        }
+
+        function testPWACapture() {
+            log('🔍 Test de la fonctionnalité PWA pre-capture...');
+            
+            // Simuler la vérification du code pre-capture
+            const previewFrame = document.getElementById('preview-frame');
+            try {
+                // Vérifier si l'iframe peut accéder au contenu
+                const iframeDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                log('✅ Iframe accessible pour les tests');
+                
+                // Vérifier la présence du code pre-capture dans la page
+                const iframeContent = iframeDoc.documentElement.innerHTML;
+                if (iframeContent.includes('capturePWAPrompt') || iframeContent.includes('bazarkely-pwa-prompt')) {
+                    log('✅ Code pre-capture PWA détecté dans l\'application');
+                    updateStatus('pwa-status', 'success', '✅ Code pre-capture PWA présent');
+                } else {
+                    log('⚠️ Code pre-capture PWA non détecté dans l\'application');
+                    updateStatus('pwa-status', 'warning', '⚠️ Code pre-capture PWA non détecté');
+                }
+            } catch (error) {
+                log('❌ Impossible d\'accéder au contenu de l\'iframe (CORS): ' + error.message);
+                updateStatus('pwa-status', 'warning', '⚠️ Test limité par CORS');
+            }
+        }
+
+        function checkSessionStorage() {
+            log('🔍 Vérification du sessionStorage...');
+            
+            try {
+                // Vérifier les clés PWA
+                const pwaPrompt = sessionStorage.getItem('bazarkely-pwa-prompt');
+                const oauthTokens = sessionStorage.getItem('bazarkely-oauth-tokens');
+                
+                if (pwaPrompt) {
+                    const data = JSON.parse(pwaPrompt);
+                    log('✅ Données PWA trouvées dans sessionStorage: ' + JSON.stringify(data, null, 2));
+                    updateStatus('pwa-status', 'success', '✅ Données PWA pré-capturées trouvées');
+                } else {
+                    log('ℹ️ Aucune donnée PWA dans sessionStorage');
+                }
+                
+                if (oauthTokens) {
+                    log('✅ Tokens OAuth trouvés dans sessionStorage');
+                } else {
+                    log('ℹ️ Aucun token OAuth dans sessionStorage');
+                }
+                
+                // Lister toutes les clés
+                const allKeys = Object.keys(sessionStorage);
+                log('📋 Toutes les clés sessionStorage: ' + allKeys.join(', '));
+                
+            } catch (error) {
+                log('❌ Erreur lors de la vérification du sessionStorage: ' + error.message);
+            }
+        }
+
+        function clearSessionStorage() {
+            log('🧹 Nettoyage du sessionStorage...');
+            sessionStorage.removeItem('bazarkely-pwa-prompt');
+            sessionStorage.removeItem('bazarkely-oauth-tokens');
+            log('✅ sessionStorage nettoyé');
+            updateStatus('pwa-status', 'info', 'ℹ️ sessionStorage nettoyé');
+        }
+
+        function testInstallButton() {
+            log('🔘 Test du bouton d\'installation...');
+            
+            try {
+                const previewFrame = document.getElementById('preview-frame');
+                const iframeDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                
+                // Chercher le bouton d'installation
+                const installButton = iframeDoc.querySelector('button[onclick*="install"], button:contains("Installer")');
+                if (installButton) {
+                    log('✅ Bouton d\'installation trouvé');
+                    updateStatus('pwa-status', 'success', '✅ Bouton d\'installation détecté');
+                } else {
+                    log('⚠️ Bouton d\'installation non trouvé');
+                    updateStatus('pwa-status', 'warning', '⚠️ Bouton d\'installation non trouvé');
+                }
+            } catch (error) {
+                log('❌ Impossible de tester le bouton d\'installation: ' + error.message);
+                updateStatus('pwa-status', 'warning', '⚠️ Test du bouton limité par CORS');
+            }
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(elementId, type, message) {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        // Vérification périodique du serveur
+        setInterval(checkServerStatus, 30000); // Toutes les 30 secondes
+    </script>
+</body>
+</html>
+
+

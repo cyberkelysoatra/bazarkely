@@ -347,3 +347,5 @@ L'AdminPage de BazarKELY est **fonctionnellement complète et sécurisée**, mai
 *Document généré le 2024-12-19 - BazarKELY v2.0*
 
 
+
+

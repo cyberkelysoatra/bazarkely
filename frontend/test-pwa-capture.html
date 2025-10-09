@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PWA Capture - BazarKELY</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: rgba(34, 197, 94, 0.3); border: 1px solid #22c55e; }
+        .error { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; }
+        .info { background: rgba(59, 130, 246, 0.3); border: 1px solid #3b82f6; }
+        .warning { background: rgba(245, 158, 11, 0.3); border: 1px solid #f59e0b; }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #4338ca; }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Test PWA Pre-Capture - BazarKELY</h1>
+        <p>Cette page teste la fonction de pré-capture du beforeinstallprompt event.</p>
+        
+        <div id="status" class="status info">
+            ⏳ En attente du beforeinstallprompt event...
+        </div>
+        
+        <div>
+            <button onclick="checkSessionStorage()">Vérifier sessionStorage</button>
+            <button onclick="clearSessionStorage()">Nettoyer sessionStorage</button>
+            <button onclick="simulatePrompt()">Simuler Prompt</button>
+        </div>
+        
+        <div id="log" class="log">
+            <div>📝 Logs de test :</div>
+        </div>
+    </div>
+
+    <script>
+        // Copie de la fonction capturePWAPrompt de main.tsx
+        const capturePWAPrompt = () => {
+            log('🔍 PWA Pre-Capture - Checking for beforeinstallprompt event...');
+            
+            // Clear any existing saved prompt to avoid stale data
+            sessionStorage.removeItem('bazarkely-pwa-prompt');
+            log('🧹 Cleared any existing PWA prompt data');
+            
+            const handleBeforeInstallPrompt = (e) => {
+                log('🎉 PWA Pre-Capture - beforeinstallprompt event fired!');
+                
+                // Prevent default behavior to control when prompt shows
+                e.preventDefault();
+                
+                try {
+                    // Store essential prompt properties (event cannot be serialized directly)
+                    const promptData = {
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform,
+                        timestamp: Date.now(),
+                        ready: true,
+                        captured_at: new Date().toISOString()
+                    };
+                    
+                    // Save to sessionStorage for usePWAInstall hook
+                    sessionStorage.setItem('bazarkely-pwa-prompt', JSON.stringify(promptData));
+                    
+                    log('✅ PWA prompt data saved to sessionStorage: ' + JSON.stringify(promptData, null, 2));
+                    
+                    // Remove event listener after capture
+                    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                    log('🧹 PWA event listener removed after capture');
+                    
+                    updateStatus('success', '✅ PWA prompt capturé avec succès !');
+                    
+                } catch (error) {
+                    log('❌ Error capturing PWA prompt: ' + error.message);
+                    updateStatus('error', '❌ Erreur lors de la capture');
+                }
+            };
+            
+            // Listen for beforeinstallprompt event
+            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            log('👂 PWA event listener attached, waiting for beforeinstallprompt...');
+        };
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function checkSessionStorage() {
+            const saved = sessionStorage.getItem('bazarkely-pwa-prompt');
+            if (saved) {
+                const data = JSON.parse(saved);
+                log('📋 Données trouvées dans sessionStorage: ' + JSON.stringify(data, null, 2));
+                updateStatus('success', '✅ Données PWA trouvées dans sessionStorage');
+            } else {
+                log('ℹ️ Aucune donnée PWA dans sessionStorage');
+                updateStatus('warning', '⚠️ Aucune donnée PWA dans sessionStorage');
+            }
+        }
+
+        function clearSessionStorage() {
+            sessionStorage.removeItem('bazarkely-pwa-prompt');
+            log('🧹 sessionStorage nettoyé');
+            updateStatus('info', 'ℹ️ sessionStorage nettoyé');
+        }
+
+        function simulatePrompt() {
+            log('🎭 Simulation du beforeinstallprompt event...');
+            const event = new Event('beforeinstallprompt');
+            window.dispatchEvent(event);
+        }
+
+        // Démarrer la capture au chargement de la page
+        window.addEventListener('load', () => {
+            log('🚀 Page chargée, démarrage de la capture PWA...');
+            capturePWAPrompt();
+        });
+
+        // Vérifier périodiquement si des données sont capturées
+        setInterval(() => {
+            const saved = sessionStorage.getItem('bazarkely-pwa-prompt');
+            if (saved && document.getElementById('status').textContent.includes('En attente')) {
+                checkSessionStorage();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
+
+

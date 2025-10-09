@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Target, PieChart } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import transactionService from '../services/transactionService';
+import notificationService from '../services/notificationService';
 import type { Transaction } from '../types';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
+import NotificationSettings from '../components/NotificationSettings';
+import Button from '../components/UI/Button';
+import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
 
 const DashboardPage = () => {
@@ -22,6 +26,80 @@ const DashboardPage = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [userAccounts, setUserAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+
+  // Vérifier si l'utilisateur a déjà fermé le banner de notifications
+  useEffect(() => {
+    const checkBannerDismissed = () => {
+      const dismissed = localStorage.getItem('bazarkely-notification-banner-dismissed');
+      if (dismissed) {
+        setIsNotificationBannerDismissed(true);
+        console.log('🔔 Banner de notifications déjà fermé par l\'utilisateur');
+      }
+    };
+    
+    checkBannerDismissed();
+  }, []);
+
+  // Gérer la fermeture du banner de notifications
+  const handleNotificationBannerDismiss = () => {
+    const timestamp = new Date().toISOString();
+    localStorage.setItem('bazarkely-notification-banner-dismissed', timestamp);
+    setIsNotificationBannerDismissed(true);
+    console.log('🔔 Banner de notifications fermé par l\'utilisateur:', timestamp);
+  };
+
+  // Pour les tests : réinitialiser l'état du banner
+  // localStorage.removeItem('bazarkely-notification-banner-dismissed');
+  // setIsNotificationBannerDismissed(false);
+
+  // Initialiser le système de notifications
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      if (!user) return;
+
+      try {
+        // Initialiser le service de notifications
+        await notificationService.initialize();
+        
+        // Vérifier la permission actuelle
+        const permission = notificationService.isPermissionGranted() ? 'granted' : Notification.permission;
+        setNotificationPermission(permission);
+
+        // Démarrer les vérifications périodiques
+        if (permission === 'granted') {
+          // Vérifier les budgets toutes les heures
+          setInterval(() => {
+            if (user?.id) {
+              notificationService.scheduleBudgetCheck(user.id);
+            }
+          }, 60 * 60 * 1000); // 1 heure
+
+          // Vérifier les objectifs quotidiennement à 9h
+          setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 9 && user?.id) {
+              notificationService.scheduleGoalCheck(user.id);
+            }
+          }, 60 * 60 * 1000); // 1 heure
+
+          // Résumé quotidien à 20h
+          setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 20 && user?.id) {
+              notificationService.scheduleDailySummary(user.id);
+            }
+          }, 60 * 60 * 1000); // 1 heure
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation des notifications:', error);
+      }
+    };
+
+    initializeNotifications();
+  }, [user]);
 
   // Charger les données réelles
   useEffect(() => {
@@ -34,7 +112,7 @@ const DashboardPage = () => {
       console.log('🔍 User object:', user);
       console.log('🔍 User ID:', user?.id);
 
-      // Vérifier les notifications
+      // Vérifier les notifications (ancien système)
       if (user?.id) {
         checkBudgetAlerts(user.id);
         checkGoalReminders(user.id);
@@ -68,6 +146,15 @@ const DashboardPage = () => {
           amount: t.amount
         })));
         setRecentTransactions(sortedTransactions);
+
+        // Surveiller les transactions importantes pour les notifications
+        if (user?.id) {
+          for (const transaction of sortedTransactions) {
+            if (transaction.amount > 100000) {
+              await notificationService.scheduleTransactionWatch(user.id, transaction);
+            }
+          }
+        }
 
         // Calculer les revenus et dépenses du mois
         const now = new Date();
@@ -137,7 +224,27 @@ const DashboardPage = () => {
   return (
     <div className="p-4 pb-20 space-y-4">
       {/* Demande de permission pour les notifications */}
-      <NotificationPermissionRequest />
+      {!isNotificationBannerDismissed && (
+        <NotificationPermissionRequest 
+          onDismiss={handleNotificationBannerDismiss}
+          onPermissionGranted={() => setNotificationPermission('granted')}
+          onPermissionDenied={() => setNotificationPermission('denied')}
+        />
+      )}
+
+      {/* Bouton de paramètres de notifications */}
+      {notificationPermission === 'granted' && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => setShowNotificationSettings(true)}
+            className="flex items-center space-x-2"
+          >
+            <Bell className="h-4 w-4" />
+            <span>Paramètres Notifications</span>
+          </Button>
+        </div>
+      )}
       
       {/* Statistiques principales */}
       <div className="grid grid-cols-2 gap-6">
@@ -303,6 +410,16 @@ const DashboardPage = () => {
           <p className="text-sm font-semibold text-gray-900">Ajouter dépense</p>
         </button>
       </div>
+
+      {/* Modal des paramètres de notifications */}
+      <Modal
+        isOpen={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
+        title="Paramètres de Notifications"
+        size="lg"
+      >
+        <NotificationSettings onClose={() => setShowNotificationSettings(false)} />
+      </Modal>
     </div>
   );
 };

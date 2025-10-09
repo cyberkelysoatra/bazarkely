@@ -162,3 +162,5 @@ SELECT 'Base de données BazarKELY configurée avec succès!' as message;
 
 
 
+
+

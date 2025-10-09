@@ -10,6 +10,60 @@ import type {
   FeeConfiguration
 } from '../types';
 
+// Types pour les notifications
+interface NotificationData {
+  id: string;
+  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day';
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  data?: any;
+  timestamp: Date;
+  userId: string;
+  read: boolean;
+  scheduled?: Date;
+  priority: 'low' | 'normal' | 'high';
+  sent: boolean;
+  clickAction?: string;
+}
+
+interface NotificationSettings {
+  id: string;
+  userId: string;
+  budgetAlerts: boolean;
+  goalReminders: boolean;
+  transactionAlerts: boolean;
+  dailySummary: boolean;
+  syncNotifications: boolean;
+  securityAlerts: boolean;
+  mobileMoneyAlerts: boolean;
+  seasonalReminders: boolean;
+  familyEventReminders: boolean;
+  marketDayReminders: boolean;
+  quietHours: {
+    enabled: boolean;
+    start: string; // HH:MM format
+    end: string; // HH:MM format
+  };
+  frequency: 'immediate' | 'hourly' | 'daily' | 'weekly';
+  maxDailyNotifications: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface NotificationHistory {
+  id: string;
+  userId: string;
+  notificationId: string;
+  sentAt: Date;
+  clickedAt?: Date;
+  dismissedAt?: Date;
+  action?: string;
+  data?: any;
+}
+
 // Types pour la gestion des connexions et verrous
 interface ConnectionPool {
   id: string;
@@ -50,6 +104,11 @@ export class BazarKELYDB extends Dexie {
   connectionPoolTable!: Table<ConnectionPool>;
   databaseLocks!: Table<DatabaseLock>;
   performanceMetrics!: Table<PerformanceMetrics>;
+  
+  // Tables pour les notifications
+  notifications!: Table<NotificationData>;
+  notificationSettings!: Table<NotificationSettings>;
+  notificationHistory!: Table<NotificationHistory>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -170,6 +229,59 @@ export class BazarKELYDB extends Dexie {
       });
       
       console.log('✅ Migration vers l\'architecture optimisée terminée');
+    });
+
+    // Version 6 - Support des notifications push
+    this.version(6).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date]',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, [userId+deadline]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, [userId+status], [status+timestamp]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 Migration vers le support des notifications push...');
+      
+      // Initialiser les paramètres de notification par défaut pour les utilisateurs existants
+      const users = await trans.table('users').toArray();
+      
+      for (const user of users) {
+        const defaultSettings: NotificationSettings = {
+          id: crypto.randomUUID(),
+          userId: user.id,
+          budgetAlerts: true,
+          goalReminders: true,
+          transactionAlerts: true,
+          dailySummary: true,
+          syncNotifications: false,
+          securityAlerts: true,
+          mobileMoneyAlerts: true,
+          seasonalReminders: true,
+          familyEventReminders: true,
+          marketDayReminders: true,
+          quietHours: {
+            enabled: true,
+            start: '22:00',
+            end: '07:00'
+          },
+          frequency: 'immediate',
+          maxDailyNotifications: 5,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        await trans.table('notificationSettings').add(defaultSettings);
+      }
+      
+      console.log('✅ Migration vers le support des notifications push terminée');
     });
 
     // Initialiser le pool de connexions

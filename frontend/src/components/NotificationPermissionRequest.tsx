@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Bell, BellOff, X, CheckCircle, AlertCircle } from 'lucide-react'
-// TEMPORARY FIX: Comment out problematic import to unblock the app
-// import notificationService from '../services/notificationService'
-
-// TEMPORARY: Mock notification service to unblock the app
-const notificationService = {
-  requestPermission: async (): Promise<NotificationPermission> => {
-    console.log('🔔 Notification service temporarily disabled')
-    return 'denied'
-  },
-  isSupported: (): boolean => {
-    return false
-  }
-}
+import notificationService from '../services/notificationService'
 
 interface NotificationPermissionRequestProps {
   onPermissionGranted?: () => void
@@ -30,10 +18,11 @@ const NotificationPermissionRequest: React.FC<NotificationPermissionRequestProps
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [isRequesting, setIsRequesting] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
 
   useEffect(() => {
     // Vérifier le support des notifications
-    const supported = 'Notification' in window && 'serviceWorker' in navigator
+    const supported = notificationService.checkSupport()
     setIsSupported(supported)
 
     if (supported) {
@@ -66,7 +55,9 @@ const NotificationPermissionRequest: React.FC<NotificationPermissionRequestProps
   }
 
   const handleDismiss = () => {
+    setIsDismissed(true)
     onDismiss?.()
+    console.log('🔔 Banner de notifications fermé par l\'utilisateur')
   }
 
   // Ne pas afficher si les notifications ne sont pas supportées
@@ -76,6 +67,11 @@ const NotificationPermissionRequest: React.FC<NotificationPermissionRequestProps
 
   // Ne pas afficher si la permission est déjà accordée
   if (permission === 'granted') {
+    return null
+  }
+
+  // Ne pas afficher si l'utilisateur a fermé le banner
+  if (isDismissed) {
     return null
   }
 
