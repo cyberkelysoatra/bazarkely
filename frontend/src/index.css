@@ -72,19 +72,6 @@
   }
 }
 
-/* Marquee scrolling animation for location text */
-.marquee-location {
-  animation: scroll-right-to-left 10s linear infinite;
-}
-
-@keyframes scroll-right-to-left {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}
 
 /* Single line carousel animation for rotating messages - REMOVED */
 /* .carousel-slide {

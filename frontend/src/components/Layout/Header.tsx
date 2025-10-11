@@ -240,7 +240,6 @@ const Header = () => {
                 {showUsername && (
                   <span className="text-white font-semibold text-sm">{user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase() : 'Utilisateur'}</span>
                 )}
-                <div className="text-xs text-purple-200 whitespace-nowrap overflow-hidden marquee-location">Madagascar</div> {/* HORIZONTAL SCROLLING MARQUEE */}
               </div>
               <div className="text-purple-100">
                 {isMenuOpen ? '▲' : '▼'}
