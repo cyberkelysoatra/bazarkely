@@ -18,11 +18,11 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-blue-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-200;
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:bg-blue-700 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-200; /* REDUCED PADDING FOR COMPACT BUTTONS */
   }
   
   .btn-secondary {
-    @apply bg-slate-200 text-slate-800 px-6 py-3 rounded-lg font-semibold border border-slate-300 transition-all duration-200 hover:bg-slate-300 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-200;
+    @apply bg-slate-200 text-slate-800 px-4 py-2 rounded-lg font-semibold border border-slate-300 transition-all duration-200 hover:bg-slate-300 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-200; /* REDUCED PADDING FOR COMPACT BUTTONS */
   }
   
   .btn-success {
@@ -38,7 +38,7 @@
   }
   
   .card {
-    @apply bg-white rounded-lg border border-slate-200 shadow-md p-6 transition-all duration-200 hover:shadow-lg;
+    @apply bg-white rounded-lg border border-slate-200 shadow-md p-4 transition-all duration-200 hover:shadow-lg; /* REDUCED PADDING FOR COMPACT APPEARANCE */
   }
   
   .card-interactive {
@@ -54,7 +54,7 @@
   }
   
   .mobile-nav-item {
-    @apply flex flex-col items-center justify-center p-3 text-sm font-semibold transition-all duration-200 rounded-lg;
+    @apply flex flex-col items-center justify-center p-1.5 text-sm font-semibold transition-all duration-200 rounded-lg;
   }
   
   .mobile-nav-item.active {
@@ -71,3 +71,37 @@
     text-wrap: balance;
   }
 }
+
+/* Marquee scrolling animation for location text */
+.marquee-location {
+  animation: scroll-right-to-left 10s linear infinite;
+}
+
+@keyframes scroll-right-to-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Single line carousel animation for rotating messages - REMOVED */
+/* .carousel-slide {
+  animation: slide-right-to-left 6s linear infinite;
+}
+
+@keyframes slide-right-to-left {
+  0% {
+    transform: translateX(100%);
+  }
+  40% {
+    transform: translateX(0%);
+  }
+  70% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+} */

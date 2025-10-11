@@ -1,7 +1,8 @@
 functionsDirectory = "D:\\bazarkely-2\\frontend\\netlify\\functions"
-functionsDirectoryOrigin = "ui"
+functionsDirectoryOrigin = "config-v1"
+headersOrigin = "config"
+redirectsOrigin = "config"
 plugins = []
-headers = []
 
 [functions]
 
@@ -9,15 +10,19 @@ headers = []
 
 [build]
 publish = "D:\\bazarkely-2\\frontend\\dist"
-publishOrigin = "ui"
-commandOrigin = "ui"
+publishOrigin = "config"
+commandOrigin = "config"
 base = "D:\\bazarkely-2\\frontend"
-command = "npm run build"
+command = "npm ci && npm run build"
+edge_functions = "D:\\bazarkely-2\\frontend\\netlify\\edge-functions"
 functions = "D:\\bazarkely-2\\frontend\\netlify\\functions"
 
 [build.environment]
+NODE_VERSION = "20"
+NODE_ENV = "development"
 
 [build.processing]
+skip_processing = false
 
 [build.processing.css]
 
@@ -28,6 +33,42 @@ functions = "D:\\bazarkely-2\\frontend\\netlify\\functions"
 [build.processing.js]
 
 [build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+X-XSS-Protection = "1; mode=block"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/assets/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/sw.js"
+
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
+Service-Worker-Allowed = "/"
+
+[[headers]]
+for = "/manifest.webmanifest"
+
+[headers.values]
+Content-Type = "application/manifest+json"
+Cache-Control = "public, max-age=86400"
+
+[[headers]]
+for = "/*.html"
+
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
 
 [[redirects]]
 from = "/dashboard"

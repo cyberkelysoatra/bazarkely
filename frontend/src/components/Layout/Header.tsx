@@ -14,6 +14,9 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
+  // DAILY SESSION 6AM RESET - Username visibility state
+  const [showUsername, setShowUsername] = useState(false);
+  
   // Hook PWA pour l'installation/désinstallation
   const { isInstallable, isInstalled, install, uninstall } = usePWAInstall();
 
@@ -21,6 +24,67 @@ const Header = () => {
     "Gérez votre budget familial en toute simplicité",
     "Voici un aperçu de vos finances"
   ];
+
+  // Helper function to check daily session with 6 AM threshold
+  const checkDailySession = () => {
+    try {
+      const now = new Date();
+      const currentHour = now.getHours();
+      
+      // Calculate daily period: 6 AM to 6 AM next day
+      // If current hour < 6, consider it previous day period
+      const isPreviousDay = currentHour < 6;
+      const sessionDate = isPreviousDay 
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const sessionKey = `bazarkely-username-display-session-${sessionDate.toDateString()}`;
+      const stored = localStorage.getItem(sessionKey);
+      
+      if (!stored) {
+        // New daily session - show username and store session
+        localStorage.setItem(sessionKey, 'true');
+        return true;
+      }
+      
+      // Session already exists for this day period - hide username
+      return false;
+    } catch (error) {
+      console.error('Error checking daily session:', error);
+      // Fallback: show username if localStorage fails
+      return true;
+    }
+  };
+
+  // Initialize username visibility based on daily session
+  useEffect(() => {
+    const shouldShow = checkDailySession();
+    setShowUsername(shouldShow);
+    
+    if (shouldShow) {
+      // 60 SECOND VISIBILITY TIMER - Hide username after 60 seconds
+      const timer = setTimeout(() => {
+        setShowUsername(false);
+        
+        // Mark as shown for current day period
+        try {
+          const now = new Date();
+          const currentHour = now.getHours();
+          const isPreviousDay = currentHour < 6;
+          const sessionDate = isPreviousDay 
+            ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+            : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          
+          const sessionKey = `bazarkely-username-display-session-${sessionDate.toDateString()}`;
+          localStorage.setItem(sessionKey, 'shown');
+        } catch (error) {
+          console.error('Error updating session status:', error);
+        }
+      }, 60000); // 60 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -173,8 +237,10 @@ const Header = () => {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <span className="text-white font-semibold text-sm">{user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase() : 'Utilisateur'}</span>
-                <div className="text-xs text-purple-200">Madagascar</div>
+                {showUsername && (
+                  <span className="text-white font-semibold text-sm">{user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase() : 'Utilisateur'}</span>
+                )}
+                <div className="text-xs text-purple-200 whitespace-nowrap overflow-hidden marquee-location">Madagascar</div> {/* HORIZONTAL SCROLLING MARQUEE */}
               </div>
               <div className="text-purple-100">
                 {isMenuOpen ? '▲' : '▼'}
@@ -255,12 +321,14 @@ const Header = () => {
         {/* Informations utilisateur */}
         {user && (
           <div className="mt-4 text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-4 border border-purple-300/50 shadow-lg">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-nowrap overflow-hidden"> {/* FORCE SINGLE LINE LAYOUT */}
               <div>
-                <span className="font-semibold text-white">Bonjour, {user.username?.charAt(0).toUpperCase() + user.username?.slice(1).toLowerCase()} !</span>
-                <span className={`text-purple-100 ml-2 transition-opacity duration-1000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+                {showUsername && (
+                  <span className="font-semibold text-white whitespace-nowrap">Bonjour, {user.username?.charAt(0).toUpperCase() + user.username?.slice(1).toLowerCase()} !</span>
+                )} {/* GREETING SYNCHRONIZED WITH USERNAME 60 SECOND TIMER */}
+                <span className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-opacity duration-1000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                   {messages[currentMessage]}
-                </span>
+                </span> {/* RESTORED FADE TRANSITION */}
               </div>
               <div className="flex items-center space-x-2">
                        {isOnline ? (
@@ -268,9 +336,9 @@ const Header = () => {
                        ) : (
                          <WifiOff className="w-4 h-4 text-red-500" />
                        )}
-                <span className="text-xs text-purple-100">
+                <span className="text-xs text-purple-100 whitespace-nowrap">
                   {isOnline ? 'En ligne' : 'Hors ligne'}
-                </span>
+                </span> {/* PREVENT TEXT WRAPPING KEEP ON SINGLE LINE */}
               </div>
             </div>
           </div>

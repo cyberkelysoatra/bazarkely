@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff } from 'lucide-react';
+import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff, ArrowRightLeft } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
@@ -73,19 +73,28 @@ const AccountsPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Mes comptes</h1>
           <p className="text-gray-600">Gérez vos comptes et portefeuilles</p>
         </div>
-        <button 
-          onClick={() => navigate('/add-account')}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Ajouter</span>
-        </button>
+        <div className="flex space-x-2"> {/* ADDED TRANSFERT BUTTON GROUP */}
+          <button 
+            onClick={() => navigate('/transfer')}
+            className="btn-secondary flex items-center space-x-2 sm:px-3 sm:py-1.5 sm:text-sm"
+          > {/* RESPONSIVE MOBILE SIZING */}
+            <ArrowRightLeft className="w-4 h-4" />
+            <span>Transfert</span>
+          </button>
+          <button 
+            onClick={() => navigate('/add-account')}
+            className="btn-primary flex items-center space-x-2 sm:px-3 sm:py-1.5 sm:text-sm"
+          > {/* RESPONSIVE MOBILE SIZING */}
+            <Plus className="w-4 h-4" />
+            <span>Ajouter</span>
+          </button>
+        </div>
       </div>
 
       {/* Solde total */}
       <div className="card-glass">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Solde total</h3>
+        <div className="flex items-center justify-between"> {/* REMOVED MB-4 TO ELIMINATE SPACING */}
+          <h3 className="text-lg font-semibold text-gray-900 leading-tight">Solde total</h3> {/* REDUCED LINE-HEIGHT FOR COMPACT TITLE */}
           <button
             onClick={() => setShowBalances(!showBalances)}
             className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -93,9 +102,9 @@ const AccountsPage = () => {
             {showBalances ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </button>
         </div>
-        <p className="text-3xl font-bold text-primary-600">
+        <p className="text-3xl font-bold text-primary-600 -mt-2">
           {showBalances ? formatCurrency(totalBalance) : '•••••• Ar'}
-        </p>
+        </p> {/* NEGATIVE 8PX MARGIN FOR ULTRA-CLOSE SPACING */}
       </div>
 
       {/* Liste des comptes */}
@@ -130,29 +139,29 @@ const AccountsPage = () => {
                   </div>
                 </div>
                 
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">
-                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'}
-                  </p>
-                  {account.isDefault && (
-                    <span className="text-xs text-primary-600 font-medium">Par défaut</span>
-                  )}
-                </div>
-              </div>
-              
-              {/* Bouton de détail du compte */}
-              <div className="mt-3 pt-3 border-t border-gray-100">
+                {/* NEW RIGHT SECTION STRUCTURE - Clickable container with amount and manage button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log('🔍 Navigating to account:', account.id, 'Account name:', account.name);
                     navigate(`/account/${account.id}`);
                   }}
-                  className="w-full text-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                  className="flex flex-col items-end text-right hover:bg-gray-50 p-1 rounded-lg transition-colors" /* REDUCED BUTTON PADDING */
                 >
-                  Gérer le compte
+                  <p className="font-semibold text-gray-900">
+                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'}
+                  </p>
+                  {account.isDefault && (
+                    <span className="text-xs text-primary-600 font-medium">Par défaut</span>
+                  )}
+                  {/* SPACING MATCHED TO TEXT-SM LINE-HEIGHT 20PX - Changed from mt-1 to mt-5 to match Actions rapides text-sm line-height */}
+                  <span className="text-xs text-gray-600 hover:text-blue-600 transition-colors mt-5">
+                    Gérer le compte
+                  </span>
                 </button>
               </div>
+              
+              {/* REMOVED BOTTOM SECTION - Completely removed bordered section with separate button */}
             </div>
           );
         })}
