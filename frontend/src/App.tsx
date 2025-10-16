@@ -57,6 +57,8 @@ function App() {
   const { setOnline } = useSyncStore();
   const { error, clearError } = useErrorStore();
   // const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false); // Removed - no longer needed with Supabase
+  
+
 
   // Gestion de l'état en ligne/hors ligne
   useEffect(() => {
@@ -110,6 +112,7 @@ function App() {
           console.log('ℹ️ Aucun utilisateur connecté');
         }
         
+        
       } catch (error) {
         console.error('❌ Erreur lors de l\'initialisation:', error);
       }
@@ -121,6 +124,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        
         <Router>
           <div className="min-h-screen bg-gray-50">
             <AppLayout />

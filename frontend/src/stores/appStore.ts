@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, AppState, AppError } from '../types';
+import type { AlertHistoryItem } from '../services/budgetMonitoringService';
 import authService from '../services/authService';
 
 interface AppStore extends AppState {
@@ -11,6 +12,10 @@ interface AppStore extends AppState {
   setLastSync: (lastSync: Date | null) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setLanguage: (language: 'fr' | 'mg') => void;
+  setAlerts: (alerts: AlertHistoryItem[]) => void;
+  addAlert: (alert: AlertHistoryItem) => void;
+  removeAlert: (alertId: string) => void;
+  markAlertRead: (alertId: string) => void;
   reset: () => void;
   logout: () => Promise<void>;
 }
@@ -21,7 +26,8 @@ const initialState: AppState = {
   isOnline: navigator.onLine,
   lastSync: null,
   theme: 'system',
-  language: 'fr'
+  language: 'fr',
+  alerts: []
 };
 
 export const useAppStore = create<AppStore>()(
@@ -40,6 +46,24 @@ export const useAppStore = create<AppStore>()(
       setTheme: (theme) => set({ theme }),
       
       setLanguage: (language) => set({ language }),
+      
+      setAlerts: (alerts) => set({ alerts }),
+      
+      addAlert: (alert) => set((state) => ({ 
+        alerts: [...state.alerts, alert] 
+      })),
+      
+      removeAlert: (alertId) => set((state) => ({ 
+        alerts: state.alerts.filter(alert => alert.id !== alertId) 
+      })),
+      
+      markAlertRead: (alertId) => set((state) => ({ 
+        alerts: state.alerts.map(alert => 
+          alert.id === alertId 
+            ? { ...alert, status: 'read' as const }
+            : alert
+        )
+      })),
       
       reset: () => set(initialState),
       

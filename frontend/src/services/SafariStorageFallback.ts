@@ -478,8 +478,14 @@ class SafariStorageFallback {
    * Chiffre une valeur
    */
   private async encrypt(value: string): Promise<string> {
-    // Implémentation simple de chiffrement (peut être améliorée)
-    return btoa(value); // Base64 encoding simple
+    try {
+      // Utiliser le nouveau système de chiffrement AES-256
+      const { migrationService } = await import('./migrationService');
+      return await migrationService.encryptNewValue(value);
+    } catch (error) {
+      console.error('❌ Erreur chiffrement AES-256, fallback Base64:', error);
+      return btoa(value); // Fallback vers Base64
+    }
   }
 
   /**
@@ -487,9 +493,17 @@ class SafariStorageFallback {
    */
   private async decrypt(value: string): Promise<string> {
     try {
-      return atob(value);
-    } catch {
-      return value; // Retourner la valeur originale si le déchiffrement échoue
+      // Essayer d'abord le nouveau système de déchiffrement
+      const { migrationService } = await import('./migrationService');
+      return await migrationService.decryptMigratedValue(value);
+    } catch (error) {
+      console.error('❌ Erreur déchiffrement AES-256, fallback Base64:', error);
+      try {
+        return atob(value); // Fallback vers Base64
+      } catch (fallbackError) {
+        console.error('❌ Erreur déchiffrement Base64:', fallbackError);
+        return value; // Retourner la valeur originale en cas d'erreur
+      }
     }
   }
 
@@ -564,6 +578,9 @@ class SafariStorageFallback {
 
 // Instance singleton
 export const safariStorageFallback = new SafariStorageFallback();
+
+
+
 
 
 

@@ -6,9 +6,9 @@
 
 import { supabase, db, handleSupabaseError } from '../lib/supabase';
 import type { 
-  User, Account, Transaction, Budget, Goal, 
-  UserInsert, AccountInsert, TransactionInsert, BudgetInsert, GoalInsert,
-  UserUpdate, AccountUpdate, TransactionUpdate, BudgetUpdate, GoalUpdate
+  User, Account, SupabaseTransaction, Budget, Goal, 
+  UserInsert, AccountInsert, SupabaseTransactionInsert, BudgetInsert, GoalInsert,
+  UserUpdate, AccountUpdate, SupabaseTransactionUpdate, BudgetUpdate, GoalUpdate
 } from '../types/supabase';
 
 export interface ApiResponse<T = any> {
@@ -178,7 +178,7 @@ class ApiService {
   }
 
   // === TRANSACTIONS ===
-  async getTransactions(): Promise<ApiResponse<Transaction[]>> {
+  async getTransactions(): Promise<ApiResponse<SupabaseTransaction[]>> {
     try {
       const userId = await this.getCurrentUserId();
       if (!userId) {
@@ -202,7 +202,7 @@ class ApiService {
     }
   }
 
-  async createTransaction(transactionData: TransactionInsert): Promise<ApiResponse<Transaction>> {
+  async createTransaction(transactionData: SupabaseTransactionInsert): Promise<ApiResponse<SupabaseTransaction>> {
     try {
       const userId = await this.getCurrentUserId();
       if (!userId) {
@@ -447,6 +447,57 @@ class ApiService {
       return { success: true, data: true };
     } catch (error) {
       return this.handleError(error, 'logout');
+    }
+  }
+
+  /**
+   * Mettre à jour les préférences utilisateur dans Supabase
+   * @param userId - ID de l'utilisateur
+   * @param preferences - Objet des préférences à sauvegarder
+   * @returns ApiResponse avec succès ou erreur
+   */
+  async updateUserPreferences(userId: string, preferences: any): Promise<ApiResponse<User>> {
+    try {
+      console.log('💾 Sauvegarde des préférences utilisateur vers Supabase...', { userId, preferences });
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({ 
+          preferences: preferences,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erreur Supabase lors de la mise à jour des préférences:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Aucune donnée retournée par Supabase');
+      }
+
+      console.log('✅ Préférences utilisateur sauvegardées avec succès');
+      
+      // Convertir les données Supabase en format User
+      const user: User = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        phone: data.phone || '',
+        role: data.role,
+        preferences: data.preferences,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        last_sync: data.last_sync
+      };
+
+      return { success: true, data: user };
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde des préférences:', error);
+      return this.handleError(error, 'updateUserPreferences');
     }
   }
 

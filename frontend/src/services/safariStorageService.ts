@@ -421,17 +421,31 @@ class SafariStorageService {
     
     try {
       if (operation === 'save') {
-        // Compression simple (JSON + base64)
+        // Utiliser le nouveau système de chiffrement AES-256
         const serialized = JSON.stringify(data);
-        return btoa(serialized);
+        const { migrationService } = await import('./migrationService');
+        return await migrationService.encryptNewValue(serialized);
       } else {
-        // Décompression
-        const decompressed = atob(data);
-        return JSON.parse(decompressed);
+        // Déchiffrement avec support des anciennes données Base64
+        const { migrationService } = await import('./migrationService');
+        const decrypted = await migrationService.decryptMigratedValue(data);
+        return JSON.parse(decrypted);
       }
     } catch (error) {
-      console.error('❌ Erreur compression:', error);
-      return data;
+      console.error('❌ Erreur chiffrement/déchiffrement:', error);
+      // Fallback vers Base64 en cas d'erreur
+      try {
+        if (operation === 'save') {
+          const serialized = JSON.stringify(data);
+          return btoa(serialized);
+        } else {
+          const decompressed = atob(data);
+          return JSON.parse(decompressed);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Erreur fallback Base64:', fallbackError);
+        return data;
+      }
     }
   }
 
@@ -514,6 +528,9 @@ class SafariStorageService {
 }
 
 export default new SafariStorageService();
+
+
+
 
 
 

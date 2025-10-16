@@ -12,12 +12,21 @@ import AccountsPage from '../../pages/AccountsPage'
 import AccountDetailPage from '../../pages/AccountDetailPage'
 import AddAccountPage from '../../pages/AddAccountPage'
 import BudgetsPage from '../../pages/BudgetsPage'
+import AddBudgetPage from '../../pages/AddBudgetPage'
+import BudgetReviewPage from '../../pages/BudgetReviewPage'
+import PriorityQuestionsPage from '../../pages/PriorityQuestionsPage'
+import ProfileCompletionPage from '../../pages/ProfileCompletionPage'
+// import QuizPage from '../../pages/QuizPage' // Disabled - converted to popup system
+import RecommendationsPage from '../../pages/RecommendationsPage'
 import GoalsPage from '../../pages/GoalsPage'
 import EducationPage from '../../pages/EducationPage'
 // import SettingsPage from '../../pages/SettingsPage'
 import NotificationPreferencesPage from '../../pages/NotificationPreferencesPage'
 import AdminPage from '../../pages/AdminPage'
 import PWAInstructionsPage from '../../pages/PWAInstructionsPage'
+import CertificationPage from '../../pages/CertificationPage'
+import QuizPage from '../../pages/QuizPage'
+import QuizResultsPage from '../../pages/QuizResultsPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -56,6 +65,12 @@ const AppLayout = () => {
           <Route path="/account/:accountId" element={<AccountDetailPage />} />
           <Route path="/add-account" element={<AddAccountPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />
+          <Route path="/add-budget" element={<AddBudgetPage />} />
+          <Route path="/budget-review" element={<BudgetReviewPage />} />
+            <Route path="/priority-questions" element={<PriorityQuestionsPage />} />
+            <Route path="/profile-completion" element={<ProfileCompletionPage />} />
+            {/* <Route path="/quiz" element={<QuizPage />} /> */} {/* Disabled - converted to popup system */}
+            <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/education" element={<EducationPage />} />
                   {/* <Route path="/settings" element={<SettingsPage />} /> */}
@@ -66,6 +81,13 @@ const AppLayout = () => {
           
           {/* PWA Instructions Route */}
           <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
+          
+          {/* Certification Route */}
+          <Route path="/certification" element={<CertificationPage />} />
+          
+          {/* Quiz Routes */}
+          <Route path="/quiz" element={<QuizPage />} />
+          <Route path="/quiz-results" element={<QuizResultsPage />} />
           
           {/* Analytics Routes */}
           <Route path="/analytics" element={<AdvancedAnalytics />} />

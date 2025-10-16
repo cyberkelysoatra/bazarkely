@@ -154,7 +154,7 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center p-4',
+        'fixed inset-0 z-50 flex items-start justify-center p-4 pt-8',
         'bg-black/50 backdrop-blur-sm',
         'transition-all duration-300 ease-in-out',
         isAnimating ? 'opacity-0' : 'opacity-100'
@@ -167,7 +167,7 @@ const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={cn(
-          'bg-white rounded-lg shadow-xl w-full',
+          'bg-white rounded-lg shadow-xl w-full max-h-[85vh] overflow-y-auto',
           'transform transition-all duration-300 ease-in-out',
           sizeClasses[size],
           isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100',

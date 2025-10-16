@@ -248,10 +248,19 @@ const DashboardPage = () => {
       
       {/* Statistiques principales */}
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+        <div 
+          onClick={() => navigate('/transactions?filter=transfer')}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-blue-100">Solde total</h3>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/transfer');
+              }}
+              className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-colors"
+            >
               <Wallet className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -260,10 +269,19 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+        <div 
+          onClick={() => navigate('/transactions?filter=income')}
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-green-100">Revenus</h3>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-transaction?type=income');
+              }}
+              className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-colors"
+            >
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -272,10 +290,19 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+        <div 
+          onClick={() => navigate('/transactions?filter=expense')}
+          className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-red-100">Dépenses</h3>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-transaction');
+              }}
+              className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-colors"
+            >
               <TrendingDown className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -284,10 +311,19 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+        <div 
+          onClick={() => navigate('/budgets')}
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-yellow-100">Budget</h3>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-budget');
+              }}
+              className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm cursor-pointer hover:bg-white/30 transition-colors"
+            >
               <PieChart className="w-6 h-6 text-white" />
             </div>
           </div>

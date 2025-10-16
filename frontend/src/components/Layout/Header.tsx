@@ -1,29 +1,260 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2 } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import apiService from '../../services/apiService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
+import QuizQuestionPopup, { questions } from '../Quiz/QuizQuestionPopup';
+import { useCertificationStore } from '../../store/certificationStore';
+import LevelBadge from '../Certification/LevelBadge';
+import { level1Questions } from '../../data/certificationQuestions';
+
+// Types pour les messages interactifs
+type MessageType = 'motivational' | 'priority_question' | 'quiz' | 'quiz_question';
+
+interface InteractiveMessage {
+  text: string;
+  type: MessageType;
+  action: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  questionId?: string; // For quiz questions
+}
 
 const Header = () => {
   const { user, logout } = useAppStore();
+  const { 
+    currentLevel, 
+    totalQuestionsAnswered, 
+    correctAnswers, 
+    detailedProfile, 
+    geolocation,
+    levelProgress,
+    badges,
+    certifications
+  } = useCertificationStore();
+
+  // Calculate scores for display
+  const quizScore = Math.min(40, Math.floor((correctAnswers / Math.max(1, totalQuestionsAnswered)) * 40));
+  const practiceScore = 0; // This would come from practice behavior tracking
+  const profileScore = detailedProfile.firstName ? 15 : 0; // Simplified profile completion score
+  const navigate = useNavigate();
   const [currentMessage, setCurrentMessage] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   
   // DAILY SESSION 6AM RESET - Username visibility state
   const [showUsername, setShowUsername] = useState(false);
   
+  // Quiz popup state
+  const [showQuizPopup, setShowQuizPopup] = useState(false);
+  const [currentQuizId, setCurrentQuizId] = useState<string>('');
+  const [completedQuizIds, setCompletedQuizIds] = useState<string[]>([]);
+  
   // Hook PWA pour l'installation/désinstallation
   const { isInstallable, isInstalled, install, uninstall } = usePWAInstall();
 
-  const messages = [
-    "Gérez votre budget familial en toute simplicité",
-    "Voici un aperçu de vos finances"
+  // Vérifier si l'utilisateur a complété le questionnaire de priorités
+  const hasCompletedPriorityQuestions = user?.preferences?.priorityAnswers && 
+    Object.keys(user.preferences.priorityAnswers).length > 0;
+
+  // Load completed quiz questions from localStorage
+  useEffect(() => {
+    const loadCompletedQuizIds = () => {
+      try {
+        const stored = localStorage.getItem('bazarkely-quiz-questions-completed');
+        if (stored) {
+          const completed = JSON.parse(stored);
+          setCompletedQuizIds(Array.isArray(completed) ? completed : []);
+        }
+      } catch (error) {
+        console.error('Error loading completed quiz questions:', error);
+        setCompletedQuizIds([]);
+      }
+    };
+    
+    loadCompletedQuizIds();
+  }, []);
+
+  // Messages interactifs avec cycle intelligent - construction sécurisée
+  const baseMessages: InteractiveMessage[] = [
+    // 2 messages motivationnels
+    {
+      text: "Gérez votre budget familial en toute simplicité",
+      type: 'motivational',
+      action: () => {
+        setShowTooltip(true);
+        setTimeout(() => setShowTooltip(false), 2000);
+      },
+      icon: Lightbulb
+    },
+    {
+      text: "Chaque économie compte pour votre avenir",
+      type: 'motivational',
+      action: () => {
+        setShowTooltip(true);
+        setTimeout(() => setShowTooltip(false), 2000);
+      },
+      icon: Lightbulb
+    }
   ];
+
+  // Message questionnaire conditionnel
+  const priorityQuestionMessage: InteractiveMessage = {
+    text: "Définissez vos priorités financières",
+    type: 'priority_question' as MessageType,
+    action: () => navigate('/priority-questions'),
+    icon: Target
+  };
+
+  // Message quiz
+  const quizMessage: InteractiveMessage = {
+    text: "Testez vos connaissances financières",
+    type: 'quiz',
+    action: () => {
+      // Find first unanswered financial quiz question
+      const financialQuizQuestions = questions.filter(q => q.id.startsWith('quiz-financial-'));
+      const unansweredFinancial = financialQuizQuestions.find(q => !completedQuizIds.includes(q.id));
+      
+      if (unansweredFinancial) {
+        setCurrentQuizId(unansweredFinancial.id);
+        setShowQuizPopup(true);
+        console.log('🎯 Opening financial quiz question:', unansweredFinancial.id);
+      } else {
+        console.log('✅ All financial quiz questions completed!');
+        // Could show a toast or message that all questions are completed
+      }
+    },
+    icon: Brain
+  };
+
+  // Quiz question messages
+  const quizQuestionMessages: InteractiveMessage[] = [
+    {
+      text: "Coiffeur va où ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('hairdresser');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'hairdresser'
+    },
+    {
+      text: "Abonnement salle ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('gym');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'gym'
+    },
+    {
+      text: "Netflix c'est quoi ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('netflix');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'netflix'
+    },
+    {
+      text: "Maquillage = ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('makeup');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'makeup'
+    },
+    {
+      text: "Cadeau famille ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('family-gift');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'family-gift'
+    },
+    {
+      text: "Fournitures scolaires ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('school-supplies');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'school-supplies'
+    },
+    {
+      text: "Facture internet ?",
+      type: 'quiz_question' as MessageType,
+      action: () => {
+        setCurrentQuizId('internet');
+        setShowQuizPopup(true);
+      },
+      icon: Brain,
+      questionId: 'internet'
+    }
+  ];
+
+  // Check if all financial quiz questions are completed
+  const financialQuizQuestions = questions.filter(q => q.id.startsWith('quiz-financial-'));
+  const allFinancialQuizCompleted = financialQuizQuestions.every(q => completedQuizIds.includes(q.id));
+
+  // Calculate quiz progress for current level
+  const calculateQuizProgress = () => {
+    const level1CompletedQuestions = completedQuizIds.filter(id => id.startsWith('cert-level1-'));
+    const totalLevel1Questions = level1Questions.length;
+    const completedCount = level1CompletedQuestions.length;
+    
+    return {
+      completed: completedCount,
+      total: totalLevel1Questions,
+      text: `Quiz Niveau ${currentLevel}: ${completedCount}/${totalLevel1Questions} questions complétées`
+    };
+  };
+
+  const quizProgress = calculateQuizProgress();
+
+  // Quiz progress message
+  const quizProgressMessage: InteractiveMessage = {
+    text: quizProgress.text,
+    type: 'quiz' as MessageType,
+    action: () => navigate('/profile-completion'),
+    icon: BookOpen
+  };
+
+  // Construction finale du tableau messages avec filtrage des undefined
+  const messages: InteractiveMessage[] = [
+    ...baseMessages,
+    ...(hasCompletedPriorityQuestions ? [] : [priorityQuestionMessage]),
+    // Only show quiz message if not all financial questions are completed
+    ...(allFinancialQuizCompleted ? [] : [quizMessage]),
+    // Add quiz progress message
+    ...(quizProgress.completed > 0 ? [quizProgressMessage] : []),
+    // Filter out completed quiz questions
+    ...quizQuestionMessages.filter(msg => {
+      if (msg.type === 'quiz_question' && msg.questionId) {
+        const isCompleted = completedQuizIds.includes(msg.questionId);
+        if (isCompleted) {
+          console.log('🚫 Filtering out completed quiz question:', msg.questionId);
+        }
+        return !isCompleted;
+      }
+      return true;
+    })
+  ].filter((message): message is InteractiveMessage => message !== undefined);
+
+  // Debug: Log current messages for quiz questions
+  console.log('📋 Current banner messages:', messages.filter(m => m.type === 'quiz_question').map(m => ({ text: m.text, questionId: m.questionId })));
 
   // Helper function to check daily session with 6 AM threshold
   const checkDailySession = () => {
@@ -87,7 +318,17 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
+    // S'assurer que currentMessage est dans les limites du tableau
+    if (messages.length > 0 && currentMessage >= messages.length) {
+      setCurrentMessage(0);
+    }
+  }, [messages.length, currentMessage]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
+      // Vérifier que le tableau messages n'est pas vide
+      if (messages.length === 0) return;
+      
       // Fade out
       setIsVisible(false);
       
@@ -219,14 +460,13 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
-            {/* Notifications */}
-            <Link 
-              to="/notification-preferences"
-              className="p-3 text-purple-100 hover:text-white hover:bg-purple-500/20 rounded-xl transition-all duration-200 relative group backdrop-blur-sm"
-            >
-              <Bell className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
-              <span className="absolute top-2 right-2 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-white shadow-lg"></span>
-            </Link>
+            {/* Level Badge */}
+            <LevelBadge
+              onClick={() => navigate('/certification')}
+              currentLevel={currentLevel}
+              levelName={currentLevel === 1 ? 'Débutant' : currentLevel === 2 ? 'Intermédiaire' : currentLevel === 3 ? 'Avancé' : currentLevel === 4 ? 'Expert' : 'Maître'}
+              totalScore={Math.min(115, (quizScore || 0) + (practiceScore || 0) + (profileScore || 0))}
+            />
 
             {/* Menu utilisateur */}
             <div 
@@ -325,9 +565,29 @@ const Header = () => {
                 {showUsername && (
                   <span className="font-semibold text-white whitespace-nowrap">Bonjour, {user.username?.charAt(0).toUpperCase() + user.username?.slice(1).toLowerCase()} !</span>
                 )} {/* GREETING SYNCHRONIZED WITH USERNAME 60 SECOND TIMER */}
-                <span className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-opacity duration-1000 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-                  {messages[currentMessage]}
-                </span> {/* RESTORED FADE TRANSITION */}
+                <div className="relative">
+                  {/* Vérification de sécurité pour le rendu des messages */}
+                  {messages.length > 0 && messages[currentMessage] && (
+                    <span 
+                      onClick={messages[currentMessage]?.action}
+                      className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-all duration-1000 ease-in-out cursor-pointer hover:bg-purple-500/20 hover:bg-opacity-80 px-3 py-1 rounded-lg flex items-center space-x-2 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                    >
+                      <span>{messages[currentMessage]?.text}</span>
+                      {(() => {
+                        const IconComponent = messages[currentMessage]?.icon;
+                        return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
+                      })()}
+                      <ChevronRight className="w-3 h-3" />
+                    </span>
+                  )}
+                  
+                  {/* Tooltip pour les messages motivationnels */}
+                  {showTooltip && messages[currentMessage]?.type === 'motivational' && (
+                    <div className="absolute top-full left-0 mt-2 bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border z-50 whitespace-nowrap">
+                      💡 Conseil : Cliquez pour plus d'inspiration !
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                        {isOnline ? (
@@ -343,6 +603,37 @@ const Header = () => {
           </div>
         )}
       </div>
+      
+      {/* Quiz Question Popup - Only render when needed */}
+      {/* Debug log commented out - was causing console clutter
+      {(() => {
+        console.log(`[Header] Rendering QuizQuestionPopup with showQuizPopup: ${showQuizPopup}, currentQuizId: ${currentQuizId} at ${Date.now()}`);
+        return null;
+      })()}
+      */}
+      {showQuizPopup && (
+        <QuizQuestionPopup
+          key={currentQuizId || 'quiz-popup'} // Force clean remount on each opening
+          isOpen={showQuizPopup}
+          onClose={() => {
+            console.log(`[Header] Closing quiz popup at ${Date.now()}`);
+            setShowQuizPopup(false);
+            setCurrentQuizId('');
+            // Reload completed quiz IDs to update banner
+            const stored = localStorage.getItem('bazarkely-quiz-questions-completed');
+            try {
+              const completed = stored ? JSON.parse(stored) : [];
+              setCompletedQuizIds(Array.isArray(completed) ? completed : []);
+              console.log('🔄 Reloaded completed quiz questions:', completed);
+            } catch (error) {
+              console.error('Error reloading completed quiz questions:', error);
+              setCompletedQuizIds([]);
+            }
+          }}
+          questionId={currentQuizId}
+        />
+      )}
+
     </header>
   );
 };

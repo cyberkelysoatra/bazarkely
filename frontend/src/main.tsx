@@ -4,6 +4,9 @@ import './index.css'
 import './styles/ios-optimizations.css'
 import App from './App.tsx'
 
+// Initialiser le système de chiffrement AES-256
+import './services/encryptionInit'
+
 // TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
 // import optimizationManager from './services/optimizationManager'
 // import safariCompatibility from './services/safariCompatibility'

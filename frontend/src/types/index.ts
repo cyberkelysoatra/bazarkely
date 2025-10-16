@@ -1,5 +1,6 @@
 // Types principaux pour BazarKELY
-import type { NotificationPreferences } from '../services/notificationService';
+import type { NotificationSettings } from '../services/notificationService';
+import type { CategoryBudgets } from '../services/budgetIntelligenceService';
 
 export interface User {
   id: string;
@@ -12,8 +13,54 @@ export interface User {
     theme: 'light' | 'dark' | 'system';
     language: 'fr' | 'mg';
     currency: 'MGA';
+    priorityAnswers?: Record<string, string>;
+    quizResults?: QuizResult[];
+    intelligentBudgets?: CategoryBudgets;
+    activeBudgets?: CategoryBudgets;
+    lastBudgetCalculation?: Date;
+    activeChallenges?: any[]; // ActiveChallenge[] - défini dans challengeService.ts
+    challengeHistory?: any[]; // CompletedChallenge[] - défini dans challengeService.ts
+    totalPoints?: number;
+    recommendationHistory?: any[]; // RecommendationWithFeedback[] - défini dans useRecommendations.ts
+    recommendationFeedback?: any[]; // Feedback[] - défini dans useRecommendations.ts
+    themePreferences?: Record<string, number>; // Préférences de thèmes pour ML
   };
-  notificationPreferences?: NotificationPreferences;
+  notificationPreferences?: NotificationSettings;
+  // Extended profile fields for certification system
+  detailedProfile?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string; // ISO date string
+    age?: number; // Calculated automatically
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed' | 'other';
+    spouse?: {
+      name?: string;
+      age?: number;
+      occupation?: string;
+    };
+    numberOfChildren?: number;
+    children?: Array<{
+      name?: string;
+      age?: number;
+      gender?: 'male' | 'female' | 'other';
+      schoolLevel?: 'preschool' | 'primary' | 'secondary' | 'university';
+    }>;
+    otherDependents?: Array<{
+      name?: string;
+      relationship?: string;
+      age?: number;
+    }>;
+    occupation?: string;
+    employer?: string;
+    employmentStatus?: 'employed' | 'self-employed' | 'unemployed' | 'student' | 'retired';
+  };
+  geolocation?: {
+    region: string; // One of 22 Madagascar regions
+    district?: string;
+    commune?: string;
+    habitatType: 'urban' | 'periurban' | 'rural_town' | 'rural_village' | 'isolated';
+  };
   createdAt: Date;
   lastSync?: Date;
 }
@@ -72,6 +119,14 @@ export interface Goal {
   category?: string;
   priority: 'low' | 'medium' | 'high';
   isCompleted?: boolean;
+}
+
+export interface QuizResult {
+  quizId: string;
+  score: number;
+  percentage: number;
+  completedAt: Date;
+  timeTaken: number; // in seconds
 }
 
 export interface MobileMoneyRate {
@@ -289,3 +344,17 @@ export interface ExportData {
 
 // Types pour les notifications - importés depuis notificationService.ts
 // Les interfaces NotificationData et NotificationPreferences sont définies dans notificationService.ts
+
+// Types pour le monitoring des budgets
+// AlertHistoryItem est défini dans budgetMonitoringService.ts
+
+// Interface pour l'état global de l'application
+export interface AppState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isOnline: boolean;
+  lastSync: Date | null;
+  theme: 'light' | 'dark' | 'system';
+  language: 'fr' | 'mg';
+  alerts: any[]; // AlertHistoryItem[] - défini dans budgetMonitoringService.ts
+}

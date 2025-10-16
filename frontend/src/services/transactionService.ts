@@ -1,6 +1,6 @@
 import apiService from './apiService';
 import accountService from './accountService';
-import type { Transaction } from '../types';
+import type { Transaction } from '../types/index.js';
 // TEMPORARY FIX: Comment out problematic import to unblock the app
 // import notificationService from './notificationService';
 

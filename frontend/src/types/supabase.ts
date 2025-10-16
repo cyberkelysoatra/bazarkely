@@ -403,9 +403,9 @@ export type Account = Database['public']['Tables']['accounts']['Row']
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert']
 export type AccountUpdate = Database['public']['Tables']['accounts']['Update']
 
-export type Transaction = Database['public']['Tables']['transactions']['Row']
-export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
-export type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
+export type SupabaseTransaction = Database['public']['Tables']['transactions']['Row']
+export type SupabaseTransactionInsert = Database['public']['Tables']['transactions']['Insert']
+export type SupabaseTransactionUpdate = Database['public']['Tables']['transactions']['Update']
 
 export type Budget = Database['public']['Tables']['budgets']['Row']
 export type BudgetInsert = Database['public']['Tables']['budgets']['Insert']

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Save, X } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
+import { TRANSACTION_CATEGORIES } from '../constants';
+import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
 import type { Account, TransactionCategory } from '../types';
 
 const AddTransactionPage = () => {
@@ -23,13 +25,14 @@ const AddTransactionPage = () => {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
 
   const categories: TransactionCategory[] = isIncome 
     ? ['autres'] // Pour les revenus, on utilise principalement 'autres'
-    : ['alimentation', 'transport', 'logement', 'sante', 'loisirs', 'autres'];
+    : ['alimentation', 'transport', 'logement', 'sante', 'education', 'communication', 'vetements', 'loisirs', 'famille', 'solidarite', 'autres'];
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -195,6 +198,14 @@ const AddTransactionPage = () => {
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
               Catégorie *
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(true)}
+                className="ml-2 inline-flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                title="Aide pour la catégorisation"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
             </label>
             <select
               id="category"
@@ -207,7 +218,7 @@ const AddTransactionPage = () => {
               <option value="">Sélectionner une catégorie</option>
               {categories.map((category) => (
                 <option key={category} value={category}>
-                  {category}
+                  {TRANSACTION_CATEGORIES[category]?.name || category}
                 </option>
               ))}
             </select>
@@ -291,6 +302,12 @@ const AddTransactionPage = () => {
           </div>
         </form>
       </div>
+
+      {/* Modal d'aide pour la catégorisation */}
+      <CategoryHelpModal 
+        isOpen={showHelpModal} 
+        onClose={() => setShowHelpModal(false)} 
+      />
     </div>
   );
 };

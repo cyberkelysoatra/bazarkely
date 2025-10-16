@@ -114,6 +114,25 @@ export const TRANSACTION_CATEGORIES = {
     icon: 'MoreHorizontal', 
     color: 'text-slate-500',
     bgColor: 'bg-slate-50'
+  },
+  // Ajout des catégories avec accents pour compatibilité avec l'intelligence budgétaire
+  'Habillement': { 
+    name: 'Habillement', 
+    icon: 'Shirt', 
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-50'
+  },
+  'Épargne': { 
+    name: 'Épargne', 
+    icon: 'PiggyBank', 
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-50'
+  },
+  'Solidarité': { 
+    name: 'Solidarité', 
+    icon: 'HandHeart', 
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-50'
   }
 } as const;
 

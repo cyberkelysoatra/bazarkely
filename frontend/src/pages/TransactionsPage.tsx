@@ -20,6 +20,28 @@ const TransactionsPage = () => {
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
+  
+  // Lire le paramètre de filtre depuis l'URL et l'appliquer
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      if (filterParam === 'expense') {
+        setFilterType('expense');
+      } else if (filterParam === 'income') {
+        setFilterType('income');
+      } else if (filterParam === 'transfer') {
+        setFilterType('transfer');
+      } else if (filterParam === 'all') {
+        setFilterType('all');
+      }
+      
+      // Nettoyer l'URL en supprimant le paramètre filter
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('filter');
+      const newUrl = `${location.pathname}${newSearchParams.toString() ? `?${newSearchParams.toString()}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, location.pathname]);
 
   // Charger les transactions de l'utilisateur
   useEffect(() => {

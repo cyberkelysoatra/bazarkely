@@ -4,7 +4,7 @@
  */
 
 import { db } from '../lib/database';
-import type { Transaction, Account, Budget, Goal } from '../types';
+import type { Transaction, Account, Budget, Goal } from '../types/index.js';
 
 export interface PaginationOptions {
   page: number;
@@ -559,6 +559,7 @@ class PaginationService {
 
 export const paginationService = new PaginationService();
 export default paginationService;
+
 
 
 

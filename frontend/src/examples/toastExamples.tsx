@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button } from '../components/UI/Button'
+import Button from '../components/UI/Button'
 import { showToast, showAlert, showConfirm, showPrompt, useDialogs } from '../utils/dialogUtils'
 
 /**
@@ -134,6 +134,7 @@ const name = await showPrompt('Votre nom:', 'Saisie', '')`}
 }
 
 export default ToastExamples
+
 
 
 
