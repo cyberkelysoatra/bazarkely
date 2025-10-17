@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 2.7 (Système de Certification Complet)  
-**Date de mise à jour:** 2025-10-16  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification
+**Version:** 2.8 (Système de Suivi des Pratiques + Certificats PDF + Classement)  
+**Date de mise à jour:** 2025-10-17  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement
 
 ---
 
@@ -12,20 +12,25 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 231+ fichiers
+- **Total fichiers:** 239+ fichiers
 - **Composants UI:** 13/14 implémentés (93%)
 - **Composants Auth:** 2/2 implémentés (100%)
 - **Composants Recommandations:** 3/3 implémentés (100%) 🆕
-- **Composants Certification:** 4/4 implémentés (100%) 🆕 NOUVEAU
+- **Composants Certification:** 6/6 implémentés (100%) 🆕 NOUVEAU
+- **Composants Leaderboard:** 1/1 implémenté (100%) 🆕 NOUVEAU
 - **Pages principales:** 16/16 implémentées (100%)
-- **Hooks personnalisés:** 5/5 implémentés (100%) ✅
-- **Services:** 20+ services implémentés
+- **Hooks personnalisés:** 6/6 implémentés (100%) ✅
+- **Services:** 22+ services implémentés
+- **Backend Docs:** 4 spécifications API
 - **PWA Installation:** 100% fonctionnelle ✅
 - **Notifications Push:** 100% fonctionnelles ✅
 - **Interface UI:** 100% optimisée ✅ (Session 2025-01-11)
 - **Système Recommandations:** 100% fonctionnel ✅ (Session 2025-10-12)
 - **Gamification:** 80% fonctionnel ✅ (Session 2025-10-12)
-- **Système Certification:** 75% fonctionnel ✅ (Session 2025-10-16)
+- **Système Certification:** 100% fonctionnel ✅ (Session 2025-10-17)
+- **Suivi des Pratiques:** 100% fonctionnel ✅ (Session 2025-10-17)
+- **Certificats PDF:** 100% fonctionnel ✅ (Session 2025-10-17)
+- **Classement Frontend:** 100% fonctionnel ✅ (Session 2025-10-17)
 
 ---
 
@@ -53,6 +58,9 @@ bazarkely-2/
 │   ├── 📄 setup-mysql-ovh.sql             # Configuration MySQL
 │   ├── 📄 setup.php                       # Script PHP
 │   └── 📄 cleanup-orphaned-auth-users.sql # Nettoyage
+├── 📁 backend/                            # Spécifications API backend
+│   ├── 📄 API-PRACTICE-TRACKING-SPEC.md  # 🆕 NOUVEAU - Spécification API suivi pratiques (2025-10-17)
+│   └── 📄 LEADERBOARD-API-SPEC.md        # 🆕 NOUVEAU - Spécification API classement (2025-10-17)
 ├── 📁 frontend/                           # 🎯 APPLICATION PRINCIPALE
 │   ├── 📁 dist/                          # 🎯 BUILD DE PRODUCTION
 │   │   ├── 📄 index.html                 # ✅ Point d'entrée React
@@ -92,7 +100,7 @@ bazarkely-2/
 │   │   │   │       ├── 📄 LoginForm.test.tsx
 │   │   │   │       └── 📄 RegisterForm.test.tsx
 │   │   │   ├── 📁 Layout/                    # Composants de layout
-│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations)
+│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel)
 │   │   │   │   ├── 📄 Footer.tsx             # ✅ Footer
 │   │   │   │   └── 📄 AppLayout.tsx          # ✅ Layout principal
 │   │   │   ├── 📁 Navigation/                # Composants de navigation
@@ -106,15 +114,21 @@ bazarkely-2/
 │   │   │   │   ├── 📄 LevelBadge.tsx         # 🆕 NOUVEAU - Badge niveau ultra-compact
 │   │   │   │   ├── 📄 CertificationModal.tsx # 🆕 NOUVEAU - Modal certification (legacy)
 │   │   │   │   ├── 📄 GeolocationSetupComponent.tsx # 🆕 NOUVEAU - Configuration GPS
-│   │   │   │   └── 📄 GPSPermissionComponent.tsx # 🆕 NOUVEAU - Permission GPS
+│   │   │   │   ├── 📄 GPSPermissionComponent.tsx # 🆕 NOUVEAU - Permission GPS
+│   │   │   │   ├── 📄 CertificateTemplate.tsx # 🆕 NOUVEAU - Prévisualisation certificat A4 (2025-10-17)
+│   │   │   │   └── 📄 CertificateDisplay.tsx # 🆕 NOUVEAU - Liste certificats téléchargement (2025-10-17)
+│   │   │   ├── 📁 Leaderboard/               # 🆕 NOUVEAU - Composants classement (2025-10-17)
+│   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
 │   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications
 │   │   ├── 📁 pages/                     # Pages principales
-│   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification
+│   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
 │   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (intégration notifications)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion des transactions
+│   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction)
+│   │   │   ├── 📄 AddBudgetPage.tsx      # ✅ Ajout budget (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 AccountsPage.tsx       # ✅ Gestion des comptes (MODIFIÉ 2025-01-11 - Layout 2 colonnes + Transfert)
-│   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets
+│   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 GoalsPage.tsx         # ✅ Gestion des objectifs
 │   │   │   ├── 📄 EducationPage.tsx     # ✅ Contenu éducatif
 │   │   │   ├── 📄 PWAInstructionsPage.tsx # ✅ Instructions installation PWA multi-navigateurs
@@ -122,7 +136,7 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizPage.tsx            # ✅ Quiz hebdomadaires éducatifs
 │   │   │   ├── 📄 RecommendationsPage.tsx # 🆕 NOUVEAU - Page recommandations complète (677 lignes)
 │   │   │   ├── 📄 ProfileCompletionPage.tsx # 🆕 NOUVEAU - Wizard profil 5 étapes + GPS
-│   │   │   ├── 📄 CertificationPage.tsx   # 🆕 NOUVEAU - Page certification + statistiques
+│   │   │   ├── 📄 CertificationPage.tsx   # 🆕 NOUVEAU - Page certification + statistiques (MODIFIÉ 2025-10-17 - Score réel + sections certificats/classement)
 │   │   │   ├── 📄 QuizPage.tsx            # 🆕 NOUVEAU - Interface quiz interactive + timer
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration
@@ -130,6 +144,8 @@ bazarkely-2/
 │   │   │   ├── 📄 authService.ts         # ✅ Service d'authentification
 │   │   │   ├── 📄 serverAuthService.ts   # ✅ Service auth serveur
 │   │   │   ├── 📄 adminService.ts        # ✅ Service d'administration
+│   │   │   ├── 📄 certificateService.ts  # 🆕 NOUVEAU - Service génération certificats PDF (2025-10-17)
+│   │   │   ├── 📄 leaderboardService.ts  # 🆕 NOUVEAU - Service classement API (2025-10-17)
 │   │   │   ├── 📄 notificationService.ts # ✅ NOUVEAU - Service notifications push complet
 │   │   │   ├── 📄 recommendationEngineService.ts # 🆕 NOUVEAU - Moteur recommandations IA (948 lignes)
 │   │   │   ├── 📄 challengeService.ts    # 🆕 NOUVEAU - Système gamification (929 lignes)
@@ -147,7 +163,7 @@ bazarkely-2/
 │   │   │   ├── 📄 preferencesStore.ts    # ✅ Store des préférences
 │   │   │   ├── 📄 loadingStore.ts        # ✅ Store de chargement
 │   │   │   ├── 📄 cacheStore.ts          # ✅ Store de cache
-│   │   │   └── 📄 certificationStore.ts  # 🆕 NOUVEAU - Store certification + persist + quiz sessions
+│   │   │   └── 📄 certificationStore.ts  # 🆕 NOUVEAU - Store certification + persist + quiz sessions (MODIFIÉ 2025-10-17 - État practiceTracking + actions)
 │   │   ├── 📁 types/                     # Types TypeScript
 │   │   │   ├── 📄 index.ts               # ✅ Types principaux (MODIFIÉ 2025-01-11 - priorityAnswers, quizResults, QuizResult)
 │   │   │   ├── 📄 supabase.ts            # ✅ Types Supabase
@@ -163,6 +179,7 @@ bazarkely-2/
 │   │   │   ├── 📄 useDeviceDetection.ts  # ✅ Hook détection appareil
 │   │   │   ├── 📄 usePWAFeatures.ts     # ✅ Hook fonctionnalités PWA
 │   │   │   ├── 📄 usePWAInstall.ts      # ✅ Hook installation PWA (user gesture fix appliqué) 🔧
+│   │   │   ├── 📄 usePracticeTracking.ts # 🆕 NOUVEAU - Hook suivi pratiques (2025-10-17)
 │   │   │   └── 📄 useRecommendations.ts # 🆕 NOUVEAU - Hook intégration recommandations (579 lignes)
 │   │   ├── 📁 utils/                     # Fonctions utilitaires
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
@@ -291,10 +308,11 @@ bazarkely-2/
 - **Auth Components:** 2/2 (100%) ✅
 - **Notification Components:** 2/2 (100%) ✅ NOUVEAU
 - **Recommendation Components:** 2/2 (100%) 🆕 NOUVEAU
-- **Certification Components:** 4/4 (100%) 🆕 NOUVEAU
+- **Certification Components:** 6/6 (100%) 🆕 NOUVEAU
+- **Leaderboard Components:** 1/1 (100%) 🆕 NOUVEAU
 - **Dashboard Components:** 1/1 (100%) 🆕 NOUVEAU
 - **Page Components:** 16/16 (100%) ✅
-- **Hooks personnalisés:** 5/5 (100%) ✅
+- **Hooks personnalisés:** 6/6 (100%) ✅
 - **Service Components:** 20+ (100%) ✅
 - **PWA Installation:** 100% fonctionnelle ✅
 - **Notifications Push:** 100% fonctionnelles ✅
@@ -305,18 +323,20 @@ bazarkely-2/
 - **frontend/src/components/Auth/:** 3 fichiers (2 composants + 1 index)
 - **frontend/src/components/Notifications/:** 2 fichiers (2 composants) ✅ NOUVEAU
 - **frontend/src/components/Recommendations/:** 2 fichiers (2 composants) 🆕 NOUVEAU
-- **frontend/src/components/Certification/:** 4 fichiers (4 composants) 🆕 NOUVEAU
+- **frontend/src/components/Certification/:** 6 fichiers (6 composants) 🆕 NOUVEAU
+- **frontend/src/components/Leaderboard/:** 1 fichier (1 composant) 🆕 NOUVEAU
 - **frontend/src/components/Dashboard/:** 1 fichier (1 composant) 🆕 NOUVEAU
 - **frontend/src/pages/:** 16 fichiers (15 pages + 1 PWAInstructionsPage + 1 RecommendationsPage + 4 Certification) 🆕 NOUVEAU
-- **frontend/src/services/:** 22+ fichiers (7 nouveaux services ajoutés) ✅
+- **frontend/src/services/:** 22+ fichiers (9 nouveaux services ajoutés) ✅
 - **frontend/src/stores/:** 7 fichiers (1 nouveau store certification) 🆕 NOUVEAU
 - **frontend/src/types/:** 3 fichiers (1 nouveau types certification) 🆕 NOUVEAU
 - **frontend/src/data/:** 1 fichier (250 questions certification) 🆕 NOUVEAU
 - **frontend/src/lib/:** 3 fichiers (database.ts Version 6) ✅
-- **frontend/src/hooks/:** 5 fichiers (5 hooks complets) 🆕 NOUVEAU
+- **frontend/src/hooks/:** 6 fichiers (6 hooks complets) 🆕 NOUVEAU
 - **frontend/src/utils/:** 4 fichiers (1 utilitaire ajouté)
 - **frontend/public/:** 3 fichiers (sw-notifications.js ajouté) ✅
 - **frontend/:** 2 fichiers documentation (NOTIFICATION-*.md) ✅
+- **backend/:** 2 fichiers (spécifications API) 🆕 NOUVEAU
 
 ### **Tests et Qualité**
 - **Tests unitaires:** 10+ fichiers de test
@@ -497,6 +517,103 @@ bazarkely-2/
 - **Composants:** 4 nouveaux composants (LevelBadge, CertificationModal, GeolocationSetup, GPSPermission)
 - **Fonctionnalités:** Système certification complet avec 250 questions et 5 niveaux
 - **Statut:** 75% fonctionnel (9/12 fonctionnalités complètes)
+
+---
+
+## 🆕 NOUVEAUX COMPOSANTS CRÉÉS (Session 17 Octobre 2025)
+
+### **Système de Suivi des Pratiques** 🆕 NOUVEAU
+
+#### **usePracticeTracking.ts** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/hooks/usePracticeTracking.ts`
+- **Fonctionnalités:** Hook personnalisé pour suivi des pratiques utilisateur
+- **Statut:** Hook complet avec accès simplifié aux actions de tracking
+- **Tests:** Intégration avec certificationStore et gestion d'état
+- **Export:** Hook personnalisé avec interface TypeScript
+
+#### **certificateService.ts** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/services/certificateService.ts`
+- **Fonctionnalités:** Service génération certificats PDF avec jsPDF 3.0.3
+- **Statut:** Service complet avec design diplôme traditionnel A4 paysage
+- **Tests:** Génération PDF et téléchargement automatique
+- **Export:** Service singleton avec toutes les fonctions PDF
+
+#### **leaderboardService.ts** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/services/leaderboardService.ts`
+- **Fonctionnalités:** Service communication API classement avec cache et retry
+- **Statut:** Service complet avec pagination et gestion d'erreurs
+- **Tests:** Cache 5 minutes et backoff exponentiel
+- **Export:** Service singleton avec toutes les fonctions API
+
+### **Composants Certificats PDF** 🆕 NOUVEAU
+
+#### **CertificateTemplate.tsx** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/components/Certification/CertificateTemplate.tsx`
+- **Fonctionnalités:** Prévisualisation visuelle certificat A4 paysage
+- **Statut:** Composant réutilisable avec design diplôme traditionnel
+- **Tests:** Affichage A4 et cohérence avec PDF généré
+- **Export:** Composant standalone avec props certification et profil
+
+#### **CertificateDisplay.tsx** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/components/Certification/CertificateDisplay.tsx`
+- **Fonctionnalités:** Liste certificats avec téléchargement et prévisualisation
+- **Statut:** Composant complet avec cartes responsives et boutons download
+- **Tests:** Affichage liste et gestion téléchargement
+- **Export:** Composant standalone avec intégration store
+
+### **Composant Classement** 🆕 NOUVEAU
+
+#### **LeaderboardComponent.tsx** 🆕 NOUVEAU
+- **Localisation:** `frontend/src/components/Leaderboard/LeaderboardComponent.tsx`
+- **Fonctionnalités:** Classement utilisateurs avec pagination et filtrage
+- **Statut:** Composant complet avec protection vie privée et pseudonymes
+- **Tests:** Pagination, filtrage niveau et affichage top 3
+- **Export:** Composant standalone avec intégration service
+
+### **Spécifications Backend** 🆕 NOUVEAU
+
+#### **API-PRACTICE-TRACKING-SPEC.md** 🆕 NOUVEAU
+- **Localisation:** `backend/API-PRACTICE-TRACKING-SPEC.md`
+- **Fonctionnalités:** Spécification complète API suivi pratiques (627 lignes)
+- **Statut:** Documentation complète avec endpoints et schéma base de données
+- **Tests:** Spécification prête pour implémentation PHP
+- **Export:** Documentation technique pour développement backend
+
+#### **LEADERBOARD-API-SPEC.md** 🆕 NOUVEAU
+- **Localisation:** `backend/LEADERBOARD-API-SPEC.md`
+- **Fonctionnalités:** Spécification API classement avec pseudonymes
+- **Statut:** Documentation complète avec algorithmes de classement
+- **Tests:** Spécification prête pour implémentation PHP
+- **Export:** Documentation technique pour développement backend
+
+### **Fichiers Modifiés** 🔧 MODIFIÉS
+
+#### **certificationStore.ts** 🔧 MODIFIÉ
+- **Localisation:** `frontend/src/store/certificationStore.ts`
+- **Modifications:** Ajout état `practiceTracking` et actions de suivi
+- **Fonctionnalités:** 3 actions trackDailyLogin, trackTransaction, trackBudgetUsage
+- **Statut:** Store étendu avec calcul automatique score 0-18 points
+
+#### **Pages avec Intégration Tracking** 🔧 MODIFIÉES
+- **AuthPage.tsx:** 3 points intégration trackDailyLogin
+- **AddTransactionPage.tsx:** Appel trackTransaction après création
+- **AddBudgetPage.tsx:** Appel trackBudgetUsage après création
+- **BudgetsPage.tsx:** Appel trackBudgetUsage après budgets intelligents
+
+#### **Composants avec Affichage Score** 🔧 MODIFIÉS
+- **Header.tsx:** Affichage score réel au lieu de 0
+- **CertificationPage.tsx:** Score réel + sections certificats/classement
+
+### **Statistiques Session 2025-10-17**
+- **Fichiers créés:** 8 nouveaux fichiers
+- **Lignes de code ajoutées:** 2,700+ lignes
+- **Services:** 2 nouveaux services (certificateService, leaderboardService)
+- **Hooks:** 1 nouveau hook (usePracticeTracking)
+- **Composants:** 3 nouveaux composants (CertificateTemplate, CertificateDisplay, LeaderboardComponent)
+- **Backend Docs:** 2 nouvelles spécifications API
+- **Fichiers modifiés:** 6 fichiers pour intégration
+- **Fonctionnalités:** Suivi pratiques + Certificats PDF + Classement frontend
+- **Statut:** 100% fonctionnel frontend (Backend en attente)
 
 ---
 

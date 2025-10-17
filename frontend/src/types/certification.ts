@@ -138,6 +138,49 @@ export interface PracticeMultiplier {
   description: string;
 }
 
+/**
+ * Practice behavior data for tracking user engagement
+ * Tracks three priority behaviors: daily login, transactions, and budget usage
+ */
+export interface PracticeBehaviorData {
+  /** Current daily login streak count */
+  dailyLoginStreak: number;
+  /** Last login date in ISO format */
+  lastLoginDate: string;
+  /** Total number of transactions recorded by user */
+  transactionsRecordedCount: number;
+  /** Last transaction recording date in ISO format */
+  lastTransactionDate: string;
+  /** Total number of budget updates/usage by user */
+  budgetUsageCount: number;
+  /** Last budget update date in ISO format */
+  lastBudgetUpdateDate: string;
+}
+
+/**
+ * Practice tracking state for certification scoring
+ * Manages practice behavior data and calculated scores
+ */
+export interface PracticeTrackingState {
+  /** User behavior data for practice tracking */
+  behaviors: PracticeBehaviorData;
+  /** Calculated practice score (0-18 for three behaviors × 6 points each) */
+  practiceScore: number;
+  /** Timestamp of last score calculation in ISO format */
+  lastScoreCalculation: string;
+  /** Practice multiplier (0.5-3.0) based on behavior consistency */
+  multiplier: number;
+}
+
+/**
+ * Practice action types for tracking user behaviors
+ * Union type for different practice tracking actions
+ */
+export type PracticeAction = 
+  | 'trackDailyLogin'
+  | 'trackTransaction'
+  | 'trackBudgetUsage';
+
 export interface ResponseTimeBonus {
   level: number;
   maxBonus: number;

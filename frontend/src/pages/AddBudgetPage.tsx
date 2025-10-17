@@ -4,11 +4,13 @@ import { ArrowLeft, X, PieChart } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
+import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import type { Budget, BudgetFormData, TransactionCategory } from '../types';
 
 const AddBudgetPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
+  const { trackBudgetUsage } = usePracticeTracking();
   
   const [formData, setFormData] = useState<BudgetFormData>({
     category: 'alimentation',
@@ -92,6 +94,7 @@ const AddBudgetPage = () => {
 
       // Succès
       console.log('✅ Budget créé avec succès !');
+      trackBudgetUsage();
       navigate('/budgets'); // Rediriger vers la page des budgets
       
     } catch (error) {

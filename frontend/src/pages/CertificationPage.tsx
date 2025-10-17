@@ -18,10 +18,14 @@ import {
   TrendingUp,
   BookOpen,
   Users,
-  MapPin
+  MapPin,
+  Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCertificationStore } from '../store/certificationStore';
+import LeaderboardComponent from '../components/Leaderboard/LeaderboardComponent';
+// TODO: Uncomment after CertificateDisplay component is created
+// import CertificateDisplay from '../components/Certification/CertificateDisplay';
 import type { CertificationLevel, Badge, QuizProgress } from '../types/certification';
 
 const CertificationPage: React.FC = () => {
@@ -33,12 +37,13 @@ const CertificationPage: React.FC = () => {
     detailedProfile, 
     levelProgress,
     badges,
-    certifications
+    certifications,
+    practiceTracking
   } = useCertificationStore();
 
   // Calculate scores for display
   const quizScore = Math.min(40, Math.floor((correctAnswers / Math.max(1, totalQuestionsAnswered)) * 40));
-  const practiceScore = 0; // This would come from practice behavior tracking
+  const practiceScore = practiceTracking.practiceScore;
   const profileScore = detailedProfile.firstName ? 15 : 0; // Simplified profile completion score
   const totalScore = quizScore + practiceScore + profileScore;
 
@@ -338,6 +343,46 @@ const CertificationPage: React.FC = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* TODO: Uncomment after CertificateDisplay component is created
+        Certificates Section */}
+        {/* {certifications.length > 0 && (
+          <div className="bg-white p-6 rounded-xl border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+              <Medal className="w-6 h-6 text-yellow-600 mr-3" />
+              Certificats Obtenus
+            </h3>
+            <CertificateDisplay />
+          </div>
+        )} */}
+
+        {/* Leaderboard Section */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+            <Trophy className="w-6 h-6 text-yellow-600 mr-3" />
+            Classement Général
+          </h3>
+          
+          {/* Privacy Notice */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">
+                  Protection de la Vie Privée
+                </h4>
+                <p className="text-sm text-blue-800">
+                  Tous les noms d'utilisateur sont automatiquement anonymisés avec des pseudonymes. 
+                  Vos vrais noms et informations personnelles ne sont jamais affichés dans le classement 
+                  pour protéger votre confidentialité.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard Component */}
+          <LeaderboardComponent />
         </div>
 
         {/* Footer Actions */}

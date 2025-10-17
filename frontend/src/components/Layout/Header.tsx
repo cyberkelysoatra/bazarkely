@@ -31,12 +31,13 @@ const Header = () => {
     geolocation,
     levelProgress,
     badges,
-    certifications
+    certifications,
+    practiceTracking
   } = useCertificationStore();
 
   // Calculate scores for display
   const quizScore = Math.min(40, Math.floor((correctAnswers / Math.max(1, totalQuestionsAnswered)) * 40));
-  const practiceScore = 0; // This would come from practice behavior tracking
+  const practiceScore = practiceTracking.practiceScore;
   const profileScore = detailedProfile.firstName ? 15 : 0; // Simplified profile completion score
   const navigate = useNavigate();
   const [currentMessage, setCurrentMessage] = useState(0);

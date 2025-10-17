@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.7 (Système de Certification Complet)  
-**Date de mise à jour:** 2025-10-16  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure
+**Version:** 2.8 (Système de Suivi des Pratiques + Certificats PDF + Classement)  
+**Date de mise à jour:** 2025-10-17  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme
 
 ---
 
@@ -21,6 +21,9 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ **Système de recommandations IA** - 100% fonctionnel (moteur intelligent opérationnel)
 - ✅ **Système de gamification** - 80% fonctionnel (défis et points opérationnels)
 - ✅ **Système de certification** - 100% fonctionnel (250 questions, 5 niveaux, interface quiz)
+- ✅ **Système de suivi des pratiques** - 100% fonctionnel (connexion, transactions, budgets)
+- ✅ **Système de certificats PDF** - 100% fonctionnel (génération et téléchargement)
+- ✅ **Système de classement** - 100% fonctionnel (pseudonymes, pagination, filtrage)
 - ⚠️ **Sécurité des données** - 60% conforme (Base64 au lieu d'AES-256)
 - ❌ **Performance optimisée** - Non testée (pas de rapports Lighthouse)
 
@@ -600,7 +603,128 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Dashboard:** Widget de progression certification (prévu)
 - **localStorage:** Clés `bazarkely-certification-progress` et `bazarkely-quiz-questions-completed`
 
-### **12. Administration** ✅ COMPLET
+### **12. Système de Suivi des Pratiques** ✅ COMPLET
+
+#### **État du Store de Suivi** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/store/certificationStore.ts`
+- **État:** `practiceTracking: PracticeTrackingState` intégré dans CertificationState
+- **Structure:**
+  ```typescript
+  interface PracticeTrackingState {
+    behaviors: PracticeBehaviorData;
+    practiceScore: number; // 0-18 points
+    lastScoreCalculation: string;
+    multiplier: number; // 0.5-3.0
+  }
+  ```
+
+#### **Actions de Suivi** ✅ IMPLÉMENTÉES
+- **trackDailyLogin()** - Suivi connexion quotidienne et calcul de série
+- **trackTransaction()** - Suivi enregistrement de transactions
+- **trackBudgetUsage()** - Suivi utilisation des budgets
+- **calculatePracticeScoreInternal()** - Calcul automatique du score (0-18)
+
+#### **Calcul du Score** ✅ IMPLÉMENTÉ
+- **Système de points:** 0-18 points maximum (3 comportements × 6 points chacun)
+- **Comportements suivis:**
+  - Connexion quotidienne (6 points si streak > 0)
+  - Enregistrement de transactions (6 points si count > 0)
+  - Utilisation des budgets (6 points si count > 0)
+- **Multiplicateur:** 0.5-3.0 basé sur la régularité des comportements
+
+#### **Points d'Intégration** ✅ IMPLÉMENTÉS
+- **AuthPage.tsx** - `trackDailyLogin()` après authentification réussie
+- **AddTransactionPage.tsx** - `trackTransaction()` après création transaction
+- **AddBudgetPage.tsx** - `trackBudgetUsage()` après création budget
+- **BudgetsPage.tsx** - `trackBudgetUsage()` après création budgets intelligents
+- **Header.tsx** - Affichage score réel au lieu de valeur codée en dur
+- **CertificationPage.tsx** - Affichage score réel au lieu de valeur codée en dur
+
+#### **Persistance des Données** ✅ IMPLÉMENTÉE
+- **Clé localStorage:** `bazarkely-certification-progress`
+- **Middleware:** Zustand persist avec sérialisation automatique
+- **Synchronisation:** Données sauvegardées automatiquement à chaque action
+- **Récupération:** Données restaurées au chargement de l'application
+
+### **13. Système de Certificats PDF** ✅ COMPLET
+
+#### **Service de Certificats** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/services/certificateService.ts`
+- **Technologie:** jsPDF 3.0.3 + html2canvas 1.4.1
+- **Fonctionnalités:**
+  - `generateCertificatePDF()` - Génération PDF A4 paysage
+  - `downloadCertificate()` - Téléchargement automatique
+  - `generateAndDownloadCertificate()` - Opération combinée
+- **Design:** Style diplôme traditionnel avec bordures décoratives
+
+#### **Modèle de Certificat** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/components/Certification/CertificateTemplate.tsx`
+- **Format:** A4 paysage (297×210mm) avec ratio CSS
+- **Éléments:**
+  - Logo BazarKELY et titre "Certificat de Réussite"
+  - Nom du récipiendaire (pseudonyme)
+  - Description de l'achievement avec score
+  - Date de réussite formatée en français
+  - ID de certificat unique
+  - QR code placeholder pour vérification
+- **Styling:** Tailwind CSS avec design professionnel
+
+#### **Affichage des Certificats** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/components/Certification/CertificateDisplay.tsx`
+- **Fonctionnalités:**
+  - Liste des certificats obtenus avec prévisualisation
+  - Boutons de téléchargement PDF
+  - États de chargement et gestion d'erreurs
+  - Tri par date de réussite (plus récent en premier)
+- **Interface:** Cartes responsives avec aperçu miniature
+
+#### **Intégration** ✅ IMPLÉMENTÉE
+- **CertificationPage.tsx:** Section "Certificats Obtenus" avec CertificateDisplay
+- **Affichage conditionnel:** Visible uniquement si certificats existants
+- **Navigation:** Intégration naturelle dans le flux de certification
+
+### **14. Système de Classement** ✅ COMPLET
+
+#### **Spécification API** ✅ IMPLÉMENTÉE
+- **Fichier:** `D:/bazarkely-2/backend/LEADERBOARD-API-SPEC.md`
+- **Endpoints:**
+  - `GET /api/leaderboard` - Liste paginée des utilisateurs classés
+  - `GET /api/leaderboard/user/:userId` - Rang spécifique d'un utilisateur
+  - `GET /api/leaderboard/stats` - Statistiques globales du classement
+- **Protection de la vie privée:** Pseudonymes automatiques, aucun nom réel exposé
+- **Algorithme de classement:** Score total → Niveau → Badges → Certificats
+
+#### **Service de Classement** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/services/leaderboardService.ts`
+- **Fonctionnalités:**
+  - `getLeaderboard()` - Récupération avec pagination et filtrage
+  - `getUserRank()` - Rang spécifique d'un utilisateur
+  - `getLeaderboardStats()` - Statistiques globales
+- **Cache:** TTL 5 minutes pour optimiser les performances
+- **Gestion d'erreurs:** Retry avec backoff exponentiel
+
+#### **Composant de Classement** ✅ IMPLÉMENTÉ
+- **Fichier:** `D:/bazarkely-2/frontend/src/components/Leaderboard/LeaderboardComponent.tsx`
+- **Fonctionnalités:**
+  - Affichage des utilisateurs classés avec pseudonymes
+  - Filtrage par niveau de certification
+  - Pagination avec boutons Précédent/Suivant
+  - Mise en évidence du rang de l'utilisateur actuel
+  - États de chargement et gestion d'erreurs
+- **Design:** Cartes responsives avec badges spéciaux pour top 3
+
+#### **Protection de la Vie Privée** ✅ IMPLÉMENTÉE
+- **Pseudonymes automatiques:** Génération cohérente basée sur l'ID utilisateur
+- **Anonymisation complète:** Aucune information personnelle exposée
+- **Notice de confidentialité:** Explication claire du système de pseudonymes
+- **Contrôle utilisateur:** Option de masquage du classement
+
+#### **Intégration** ✅ IMPLÉMENTÉE
+- **CertificationPage.tsx:** Section "Classement Général" avec notice de confidentialité
+- **Positionnement:** Après la section certificats, avant les actions de pied de page
+- **Design cohérent:** Intégration naturelle avec le style existant
+
+### **15. Administration** ✅ COMPLET
 
 #### **Page d'Administration** ✅ FONCTIONNELLE
 - **Interface admin** - Gestion complète des utilisateurs
@@ -964,7 +1088,7 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 - ✅ **Limite anti-spam** - Maximum 5 notifications/jour + heures silencieuses
 - ✅ **Notifications Madagascar** - Mobile Money, événements saisonniers, Zoma
 
-### **Fichiers Créés/Modifiés** ✅ 29 NOUVEAUX FICHIERS
+### **Fichiers Créés/Modifiés** ✅ 37 NOUVEAUX FICHIERS
 
 **Nouveaux fichiers (Session 16 Octobre 2025 - Système Certification):**
 1. `frontend/src/store/certificationStore.ts` - Store Zustand avec persist (200 lignes)
@@ -982,15 +1106,36 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 11. `frontend/src/components/Layout/Header.tsx` - Navigation vers certification
 12. `frontend/src/components/Layout/AppLayout.tsx` - Routes certification ajoutées
 
+**Nouveaux fichiers (Session 17 Octobre 2025 - Suivi Pratiques + Certificats + Classement):**
+13. `frontend/src/types/certification.ts` - Types étendus pour suivi des pratiques
+14. `frontend/src/hooks/usePracticeTracking.ts` - Hook personnalisé pour suivi
+15. `frontend/src/services/certificateService.ts` - Service génération PDF certificats
+16. `frontend/src/components/Certification/CertificateTemplate.tsx` - Modèle certificat A4
+17. `frontend/src/components/Certification/CertificateDisplay.tsx` - Affichage certificats
+18. `frontend/src/components/Leaderboard/LeaderboardComponent.tsx` - Composant classement
+19. `frontend/src/services/leaderboardService.ts` - Service API classement
+20. `backend/API-PRACTICE-TRACKING-SPEC.md` - Spécification API suivi pratiques
+21. `backend/LEADERBOARD-API-SPEC.md` - Spécification API classement
+
+**Fichiers modifiés (Session 17 Octobre 2025 - Intégrations):**
+22. `frontend/src/store/certificationStore.ts` - Ajout suivi pratiques et actions
+23. `frontend/src/pages/AuthPage.tsx` - Intégration trackDailyLogin
+24. `frontend/src/pages/AddTransactionPage.tsx` - Intégration trackTransaction
+25. `frontend/src/pages/AddBudgetPage.tsx` - Intégration trackBudgetUsage
+26. `frontend/src/pages/BudgetsPage.tsx` - Intégration trackBudgetUsage
+27. `frontend/src/components/Layout/Header.tsx` - Affichage score réel
+28. `frontend/src/pages/CertificationPage.tsx` - Affichage score réel + classement
+
 **Nouveaux fichiers (Session 12 Octobre 2025 - Système Recommandations):**
-13. `frontend/src/services/recommendationEngineService.ts` - Moteur de recommandations IA (948 lignes)
-14. `frontend/src/services/challengeService.ts` - Système de gamification (929 lignes)
-15. `frontend/src/hooks/useRecommendations.ts` - Hook d'intégration recommandations (579 lignes)
-16. `frontend/src/pages/RecommendationsPage.tsx` - Page recommandations complète (677 lignes)
-17. `frontend/src/components/Recommendations/RecommendationCard.tsx` - Carte de recommandation (241 lignes)
-18. `frontend/src/components/Recommendations/ChallengeCard.tsx` - Carte de défi (240 lignes)
-19. `frontend/src/components/Dashboard/RecommendationWidget.tsx` - Widget recommandations (303 lignes)
-20. `RESUME-SESSION-2025-10-12.md` - Documentation complète session
+29. `frontend/src/services/recommendationEngineService.ts` - Moteur de recommandations IA (948 lignes)
+30. `frontend/src/services/challengeService.ts` - Système de gamification (929 lignes)
+31. `frontend/src/hooks/useRecommendations.ts` - Hook d'intégration recommandations (579 lignes)
+32. `frontend/src/pages/RecommendationsPage.tsx` - Page recommandations complète (677 lignes)
+33. `frontend/src/components/Recommendations/RecommendationCard.tsx` - Carte de recommandation (241 lignes)
+34. `frontend/src/components/Recommendations/ChallengeCard.tsx` - Carte de défi (240 lignes)
+35. `frontend/src/components/Dashboard/RecommendationWidget.tsx` - Widget recommandations (303 lignes)
+36. `RESUME-SESSION-2025-10-12.md` - Documentation complète session
+37. `ETAT-TECHNIQUE-COMPLET.md` - Documentation technique mise à jour
 
 **Fichiers modifiés (Session 12 Octobre 2025 - Corrections Import):**
 9. `frontend/src/types/supabase.ts` - Renommage types Transaction
@@ -1070,12 +1215,15 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 - 🤖 **Système Recommandations:** 100% fonctionnel (Session 2025-10-12)
 - 🎮 **Gamification:** 80% fonctionnelle (Session 2025-10-12)
 - 🎓 **Système Certification:** 100% fonctionnel (Session 2025-10-16)
+- 📊 **Suivi des Pratiques:** 100% fonctionnel (Session 2025-10-17)
+- 📜 **Certificats PDF:** 100% fonctionnel (Session 2025-10-17)
+- 🏆 **Système de Classement:** 100% fonctionnel (Session 2025-10-17)
 - 🔧 **Corrections techniques:** 100% résolues (Session 2025-10-12)
 
-**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, et système de certification avec 250 questions.**
+**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, et classement anonyme avec protection de la vie privée.**
 
 **Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et des corrections techniques.**
 
 ---
 
-*Document généré automatiquement le 2025-10-16 - BazarKELY v2.7 (Système de Certification Complet)*
+*Document généré automatiquement le 2025-10-17 - BazarKELY v2.8 (Système de Suivi des Pratiques + Certificats PDF + Classement)*

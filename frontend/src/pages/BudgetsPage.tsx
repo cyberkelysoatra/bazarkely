@@ -3,6 +3,7 @@ import { Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3 } f
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { useAppStore } from '../stores/appStore';
 import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
+import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import apiService from '../services/apiService';
 import { toast } from 'react-hot-toast';
 import type { Budget } from '../types';
@@ -17,6 +18,7 @@ const BudgetsPage = () => {
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
   const { user } = useAppStore();
+  const { trackBudgetUsage } = usePracticeTracking();
 
   // Hook d'intelligence budgétaire pour les budgets suggérés
   const {
@@ -342,6 +344,7 @@ const BudgetsPage = () => {
       }
 
       console.log('🔍 DEBUG: All budgets created successfully, reloading budgets...');
+      trackBudgetUsage();
       // Recharger les budgets
       await loadBudgets();
       

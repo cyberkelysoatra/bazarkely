@@ -13,7 +13,9 @@ import type {
   UserDetailedProfile,
   UserGeolocation,
   LevelProgress,
-  CertificationScore
+  CertificationScore,
+  PracticeBehaviorData,
+  PracticeTrackingState
 } from '../types/certification';
 
 interface QuizSession {
@@ -56,6 +58,9 @@ interface CertificationState {
   practiceMultiplier: number;
   responseTimeBonus: boolean;
   
+  // Practice tracking
+  practiceTracking: PracticeTrackingState;
+  
   // Actions
   updateQuizProgress: (questionsAnswered: number, correctAnswers: number) => void;
   updateProfile: (profile: Partial<UserDetailedProfile>) => void;
@@ -72,6 +77,12 @@ interface CertificationState {
   startQuizSession: (session: QuizSession) => void;
   saveQuestionAnswer: (questionId: string, selectedOption: string, isCorrect: boolean, timeElapsed: number, timeBonus: number) => void;
   completeQuizSession: (session: QuizSession) => void;
+  
+  // Practice tracking actions
+  trackDailyLogin: () => void;
+  trackTransaction: () => void;
+  trackBudgetUsage: () => void;
+  calculatePracticeScoreInternal: (behaviors: PracticeBehaviorData) => number;
 }
 
 const initialQuizProgress: QuizProgress = {
@@ -91,6 +102,20 @@ const initialGeolocation: UserGeolocation = {
   habitatType: 'urban'
 };
 
+const initialPracticeTracking: PracticeTrackingState = {
+  behaviors: {
+    dailyLoginStreak: 0,
+    lastLoginDate: '',
+    transactionsRecordedCount: 0,
+    lastTransactionDate: '',
+    budgetUsageCount: 0,
+    lastBudgetUpdateDate: ''
+  },
+  practiceScore: 0,
+  lastScoreCalculation: '',
+  multiplier: 1.0
+};
+
 export const useCertificationStore = create<CertificationState>()(
   persist(
     (set, get) => ({
@@ -108,6 +133,7 @@ export const useCertificationStore = create<CertificationState>()(
       quizHistory: [],
       practiceMultiplier: 1.0,
       responseTimeBonus: true,
+      practiceTracking: initialPracticeTracking,
 
       // Actions
       updateQuizProgress: (questionsAnswered: number, correctAnswers: number) => {
@@ -353,6 +379,126 @@ export const useCertificationStore = create<CertificationState>()(
             }
           };
         });
+      },
+
+      // Practice tracking actions
+      trackDailyLogin: () => {
+        set((state) => {
+          const now = new Date();
+          const today = now.toISOString().split('T')[0];
+          const lastLoginDate = state.practiceTracking.behaviors.lastLoginDate;
+          
+          let newStreak = 1;
+          
+          // Check if last login was yesterday (consecutive day)
+          if (lastLoginDate) {
+            const lastLogin = new Date(lastLoginDate);
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (lastLogin.toISOString().split('T')[0] === yesterday.toISOString().split('T')[0]) {
+              // Consecutive day - increment streak
+              newStreak = state.practiceTracking.behaviors.dailyLoginStreak + 1;
+            } else if (lastLogin.toISOString().split('T')[0] !== today) {
+              // Not consecutive day - reset streak
+              newStreak = 1;
+            } else {
+              // Same day - keep current streak
+              newStreak = state.practiceTracking.behaviors.dailyLoginStreak;
+            }
+          }
+          
+          const updatedBehaviors = {
+            ...state.practiceTracking.behaviors,
+            dailyLoginStreak: newStreak,
+            lastLoginDate: today
+          };
+          
+          const newPracticeScore = get().calculatePracticeScoreInternal(updatedBehaviors);
+          
+          return {
+            ...state,
+            practiceTracking: {
+              ...state.practiceTracking,
+              behaviors: updatedBehaviors,
+              practiceScore: newPracticeScore,
+              lastScoreCalculation: now.toISOString()
+            }
+          };
+        });
+      },
+
+      trackTransaction: () => {
+        set((state) => {
+          const now = new Date();
+          const today = now.toISOString();
+          
+          const updatedBehaviors = {
+            ...state.practiceTracking.behaviors,
+            transactionsRecordedCount: state.practiceTracking.behaviors.transactionsRecordedCount + 1,
+            lastTransactionDate: today
+          };
+          
+          const newPracticeScore = get().calculatePracticeScoreInternal(updatedBehaviors);
+          
+          return {
+            ...state,
+            practiceTracking: {
+              ...state.practiceTracking,
+              behaviors: updatedBehaviors,
+              practiceScore: newPracticeScore,
+              lastScoreCalculation: now.toISOString()
+            }
+          };
+        });
+      },
+
+      trackBudgetUsage: () => {
+        set((state) => {
+          const now = new Date();
+          const today = now.toISOString();
+          
+          const updatedBehaviors = {
+            ...state.practiceTracking.behaviors,
+            budgetUsageCount: state.practiceTracking.behaviors.budgetUsageCount + 1,
+            lastBudgetUpdateDate: today
+          };
+          
+          const newPracticeScore = get().calculatePracticeScoreInternal(updatedBehaviors);
+          
+          return {
+            ...state,
+            practiceTracking: {
+              ...state.practiceTracking,
+              behaviors: updatedBehaviors,
+              practiceScore: newPracticeScore,
+              lastScoreCalculation: now.toISOString()
+            }
+          };
+        });
+      },
+
+      // Private method to calculate practice score based on three behaviors
+      calculatePracticeScoreInternal: (behaviors: PracticeBehaviorData): number => {
+        let score = 0;
+        
+        // Daily login streak > 0 adds 6 points
+        if (behaviors.dailyLoginStreak > 0) {
+          score += 6;
+        }
+        
+        // Transactions recorded > 0 adds 6 points
+        if (behaviors.transactionsRecordedCount > 0) {
+          score += 6;
+        }
+        
+        // Budget usage > 0 adds 6 points
+        if (behaviors.budgetUsageCount > 0) {
+          score += 6;
+        }
+        
+        // Maximum 18 points total (3 behaviors × 6 points each)
+        return Math.min(18, score);
       }
     }),
     {
@@ -369,7 +515,8 @@ export const useCertificationStore = create<CertificationState>()(
         levelProgress: state.levelProgress,
         quizHistory: state.quizHistory,
         practiceMultiplier: state.practiceMultiplier,
-        responseTimeBonus: state.responseTimeBonus
+        responseTimeBonus: state.responseTimeBonus,
+        practiceTracking: state.practiceTracking
       })
     }
   )

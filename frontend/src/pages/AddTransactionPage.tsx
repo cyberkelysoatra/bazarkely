@@ -6,6 +6,7 @@ import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
+import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import type { Account, TransactionCategory } from '../types';
 
 const AddTransactionPage = () => {
@@ -13,6 +14,7 @@ const AddTransactionPage = () => {
   const [searchParams] = useSearchParams();
   const transactionType = searchParams.get('type') || 'expense';
   const { user } = useAppStore();
+  const { trackTransaction } = usePracticeTracking();
   
   const [formData, setFormData] = useState({
     amount: '',
@@ -93,6 +95,7 @@ const AddTransactionPage = () => {
 
       // Succès
       console.log(`✅ ${isIncome ? 'Revenu' : 'Dépense'} ajouté avec succès !`);
+      trackTransaction();
       navigate('/transactions'); // Rediriger vers la page des transactions
       
     } catch (error) {

@@ -5,6 +5,7 @@ import authService from '../services/authService';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types';
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Phone } from 'lucide-react';
+import { usePracticeTracking } from '../hooks/usePracticeTracking';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +23,7 @@ const AuthPage = () => {
 
   const { setUser, setAuthenticated } = useAppStore();
   const navigate = useNavigate();
+  const { trackDailyLogin } = usePracticeTracking();
 
   // Vérifier la connexion automatique au chargement de la page
   useEffect(() => {
@@ -140,6 +142,7 @@ const AuthPage = () => {
               localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
               setUser(result.user);
               setAuthenticated(true);
+              trackDailyLogin();
               
               // Clear hash if still present
               if (hash) {
@@ -219,6 +222,7 @@ const AuthPage = () => {
           localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
           setUser(result.user);
           setAuthenticated(true);
+          trackDailyLogin();
         } else {
           // Erreur de connexion
           setError(result.error || 'Erreur de connexion');
@@ -252,6 +256,7 @@ const AuthPage = () => {
           localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
           setUser(result.user);
           setAuthenticated(true);
+          trackDailyLogin();
         } else {
           // Erreur d'inscription
           setError(result.error || 'Erreur d\'inscription');
