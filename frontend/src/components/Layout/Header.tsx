@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiService from '../../services/apiService';
@@ -11,7 +11,7 @@ import LevelBadge from '../Certification/LevelBadge';
 import { level1Questions } from '../../data/certificationQuestions';
 
 // Types pour les messages interactifs
-type MessageType = 'motivational' | 'priority_question' | 'quiz' | 'quiz_question';
+type MessageType = 'motivational' | 'priority_question' | 'quiz' | 'quiz_question' | 'priority-questionnaire';
 
 interface InteractiveMessage {
   text: string;
@@ -55,6 +55,9 @@ const Header = () => {
   const [currentQuizId, setCurrentQuizId] = useState<string>('');
   const [completedQuizIds, setCompletedQuizIds] = useState<string[]>([]);
   
+  // Priority questionnaire banner state
+  const [isPriorityQuestionnaireBannerDismissed, setIsPriorityQuestionnaireBannerDismissed] = useState(false);
+  
   // Hook PWA pour l'installation/désinstallation
   const { isInstallable, isInstalled, install, uninstall } = usePWAInstall();
 
@@ -78,6 +81,24 @@ const Header = () => {
     };
     
     loadCompletedQuizIds();
+  }, []);
+
+  // Load priority questionnaire banner dismissal state from localStorage
+  useEffect(() => {
+    const loadBannerDismissalState = () => {
+      try {
+        const stored = localStorage.getItem('bazarkely_priority_questionnaire_banner_dismissed');
+        if (stored) {
+          const dismissed = JSON.parse(stored);
+          setIsPriorityQuestionnaireBannerDismissed(dismissed === true);
+        }
+      } catch (error) {
+        console.error('Error loading priority questionnaire banner dismissal state:', error);
+        setIsPriorityQuestionnaireBannerDismissed(false);
+      }
+    };
+    
+    loadBannerDismissalState();
   }, []);
 
   // Messages interactifs avec cycle intelligent - construction sécurisée
@@ -233,6 +254,40 @@ const Header = () => {
     icon: BookOpen
   };
 
+  // Priority questionnaire banner message
+  const priorityQuestionnaireMessage: InteractiveMessage = {
+    text: "Complétez le questionnaire de priorités pour des budgets encore plus personnalisés",
+    type: 'priority-questionnaire' as MessageType,
+    action: () => navigate('/priority-questions'),
+    icon: Sparkles
+  };
+
+  // Check if user has budgets (for priority questionnaire banner)
+  const [hasBudgets, setHasBudgets] = useState(false);
+  
+  useEffect(() => {
+    const checkUserBudgets = async () => {
+      if (!user?.id) {
+        setHasBudgets(false);
+        return;
+      }
+      
+      try {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        const budgets = await apiService.getBudgets(user.id, currentYear, currentMonth);
+        setHasBudgets(budgets && budgets.length > 0);
+      } catch (error) {
+        console.error('Error checking user budgets:', error);
+        setHasBudgets(false);
+      }
+    };
+    
+    checkUserBudgets();
+  }, [user?.id]);
+
   // Construction finale du tableau messages avec filtrage des undefined
   const messages: InteractiveMessage[] = [
     ...baseMessages,
@@ -241,6 +296,8 @@ const Header = () => {
     ...(allFinancialQuizCompleted ? [] : [quizMessage]),
     // Add quiz progress message
     ...(quizProgress.completed > 0 ? [quizProgressMessage] : []),
+    // Priority questionnaire banner - show only if user has budgets but hasn't completed questionnaire and banner not dismissed
+    ...(hasBudgets && !hasCompletedPriorityQuestions && !isPriorityQuestionnaireBannerDismissed ? [priorityQuestionnaireMessage] : []),
     // Filter out completed quiz questions
     ...quizQuestionMessages.filter(msg => {
       if (msg.type === 'quiz_question' && msg.questionId) {
@@ -424,6 +481,15 @@ const Header = () => {
     }
   };
 
+  const handlePriorityQuestionnaireBannerDismiss = () => {
+    try {
+      localStorage.setItem('bazarkely_priority_questionnaire_banner_dismissed', 'true');
+      setIsPriorityQuestionnaireBannerDismissed(true);
+    } catch (error) {
+      console.error('Error dismissing priority questionnaire banner:', error);
+    }
+  };
+
   // Fermer le menu en cliquant à l'extérieur
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -569,17 +635,32 @@ const Header = () => {
                 <div className="relative">
                   {/* Vérification de sécurité pour le rendu des messages */}
                   {messages.length > 0 && messages[currentMessage] && (
-                    <span 
-                      onClick={messages[currentMessage]?.action}
-                      className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-all duration-1000 ease-in-out cursor-pointer hover:bg-purple-500/20 hover:bg-opacity-80 px-3 py-1 rounded-lg flex items-center space-x-2 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-                    >
-                      <span>{messages[currentMessage]?.text}</span>
-                      {(() => {
-                        const IconComponent = messages[currentMessage]?.icon;
-                        return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
-                      })()}
-                      <ChevronRight className="w-3 h-3" />
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span 
+                        onClick={messages[currentMessage]?.action}
+                        className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-all duration-1000 ease-in-out cursor-pointer hover:bg-purple-500/20 hover:bg-opacity-80 px-3 py-1 rounded-lg flex items-center space-x-2 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                      >
+                        <span>{messages[currentMessage]?.text}</span>
+                        {(() => {
+                          const IconComponent = messages[currentMessage]?.icon;
+                          return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
+                        })()}
+                        <ChevronRight className="w-3 h-3" />
+                      </span>
+                      {/* Close button for priority questionnaire banner */}
+                      {messages[currentMessage]?.type === 'priority-questionnaire' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePriorityQuestionnaireBannerDismiss();
+                          }}
+                          className="text-purple-200 hover:text-white transition-colors p-1 rounded-full hover:bg-purple-500/20"
+                          title="Fermer"
+                        >
+                          <span className="text-sm font-bold">×</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                   
                   {/* Tooltip pour les messages motivationnels */}

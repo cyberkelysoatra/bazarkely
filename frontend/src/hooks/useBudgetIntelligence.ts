@@ -63,6 +63,7 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
   const [deviationAlerts, setDeviationAlerts] = useState<readonly DeviationAlert[]>([]);
   const [lastCalculationDate, setLastCalculationDate] = useState<Date | null>(null);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [hasAutoCreated, setHasAutoCreated] = useState<boolean>(false);
 
   // Accès au store
   const user = useAppStore((state) => state.user);
@@ -135,46 +136,169 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
   }, [user]);
 
   /**
-   * Calcule les budgets intelligents basés sur les réponses prioritaires
+   * Calcule les budgets basés sur les revenus mensuels (fallback quand priorityAnswers manquants)
    */
-  const calculateIntelligentBudgets = useCallback(async (): Promise<void> => {
-    if (!user?.preferences?.priorityAnswers) {
-      console.log('❌ DEBUG useBudgetIntelligence - Pas de réponses prioritaires');
-      return;
+  const calculateIncomeBasedBudgets = useCallback((): CategoryBudgets | null => {
+    console.log('🔄 DEBUG calculateIncomeBasedBudgets - Début du calcul basé sur les revenus');
+    console.log('📊 DEBUG - Nombre de transactions disponibles:', transactions.length);
+
+    if (transactions.length === 0) {
+      console.log('⚠️ DEBUG calculateIncomeBasedBudgets - Aucune transaction disponible');
+      return null;
     }
 
+    try {
+      // Obtenir le mois et l'année actuels
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth();
+
+      console.log('📅 DEBUG calculateIncomeBasedBudgets - Période analysée:', {
+        year: currentYear,
+        month: currentMonth + 1
+      });
+
+      // Filtrer les transactions de revenus du mois en cours
+      const currentMonthIncomeTransactions = transactions.filter(transaction => {
+        const transactionDate = new Date(transaction.date);
+        return transaction.type === 'income' &&
+               transactionDate.getMonth() === currentMonth &&
+               transactionDate.getFullYear() === currentYear;
+      });
+
+      console.log('💰 DEBUG calculateIncomeBasedBudgets - Transactions de revenus trouvées:', currentMonthIncomeTransactions.length);
+
+      if (currentMonthIncomeTransactions.length === 0) {
+        console.log('⚠️ DEBUG calculateIncomeBasedBudgets - Aucune transaction de revenu pour le mois en cours');
+        return null;
+      }
+
+      // Calculer le revenu total du mois
+      const totalMonthlyIncome = currentMonthIncomeTransactions.reduce((sum, transaction) => 
+        sum + transaction.amount, 0
+      );
+
+      console.log('💵 DEBUG calculateIncomeBasedBudgets - Revenu mensuel total:', totalMonthlyIncome.toLocaleString('fr-FR'), 'Ar');
+
+      if (totalMonthlyIncome <= 0) {
+        console.log('⚠️ DEBUG calculateIncomeBasedBudgets - Revenu mensuel invalide ou nul');
+        return null;
+      }
+
+      // Allocation budgétaire standard (même que dans budgetIntelligenceService)
+      const standardAllocation = {
+        Alimentation: 0.36,    // 36%
+        Logement: 0.24,        // 24%
+        Transport: 0.10,       // 10%
+        Communication: 0.05,   // 5%
+        Santé: 0.05,           // 5%
+        Éducation: 0.10,       // 10%
+        Loisirs: 0.03,         // 3%
+        Habillement: 0.02,     // 2%
+        Solidarité: 0.05,      // 5%
+        Épargne: 0.00,         // 0% (calculé dynamiquement)
+        Autres: 0.00           // 0%
+      };
+
+      // Calculer l'épargne recommandée (10% du revenu)
+      const savingsAmount = Math.round(totalMonthlyIncome * 0.10);
+      const availableForSpending = totalMonthlyIncome - savingsAmount;
+
+      // Calculer les budgets pour chaque catégorie
+      const budgets: CategoryBudgets = {
+        Alimentation: Math.round(availableForSpending * standardAllocation.Alimentation),
+        Logement: Math.round(availableForSpending * standardAllocation.Logement),
+        Transport: Math.round(availableForSpending * standardAllocation.Transport),
+        Communication: Math.round(availableForSpending * standardAllocation.Communication),
+        Habillement: Math.round(availableForSpending * standardAllocation.Habillement),
+        Santé: Math.round(availableForSpending * standardAllocation.Santé),
+        Éducation: Math.round(availableForSpending * standardAllocation.Éducation),
+        Loisirs: Math.round(availableForSpending * standardAllocation.Loisirs),
+        Solidarité: Math.round(availableForSpending * standardAllocation.Solidarité),
+        Épargne: savingsAmount,
+        Autres: Math.round(availableForSpending * standardAllocation.Autres)
+      };
+
+      console.log('✅ DEBUG calculateIncomeBasedBudgets - Budgets calculés:');
+      Object.entries(budgets).forEach(([category, amount]) => {
+        console.log(`  ${category}: ${amount.toLocaleString('fr-FR')} Ar`);
+      });
+
+      const totalBudgets = Object.values(budgets).reduce((sum, amount) => sum + amount, 0);
+      console.log('💰 DEBUG calculateIncomeBasedBudgets - Total des budgets:', totalBudgets.toLocaleString('fr-FR'), 'Ar');
+      console.log('📊 DEBUG calculateIncomeBasedBudgets - Pourcentage du revenu:', ((totalBudgets / totalMonthlyIncome) * 100).toFixed(2) + '%');
+
+      return budgets;
+
+    } catch (error) {
+      console.error('❌ DEBUG calculateIncomeBasedBudgets - Erreur lors du calcul:', error);
+      return null;
+    }
+  }, [transactions]);
+
+  /**
+   * Calcule les budgets intelligents basés sur les réponses prioritaires ou les revenus
+   */
+  const calculateIntelligentBudgets = useCallback(async (): Promise<void> => {
     console.log('🚀 DEBUG useBudgetIntelligence - Début du calcul des budgets intelligents');
-    console.log('👤 DEBUG - Utilisateur:', user.id);
+    console.log('👤 DEBUG - Utilisateur:', user?.id);
     console.log('📊 DEBUG - Nombre de transactions dans le hook:', transactions.length);
-    console.log('📋 DEBUG - Réponses prioritaires:', user.preferences.priorityAnswers);
+    console.log('📋 DEBUG - Réponses prioritaires disponibles:', !!user?.preferences?.priorityAnswers);
 
     try {
       setIsCalculating(true);
       
-      // DEBUG: Verify transactions are passed correctly
-      console.log('🔍 DEBUG - Transactions array before analyzePriorityAnswers:', {
-        length: transactions.length,
-        sample: transactions.slice(0, 3).map(t => ({ id: t.id, type: t.type, amount: t.amount, category: t.category }))
-      });
+      let budgets: CategoryBudgets | null = null;
+      let calculationMethod = '';
+
+      // Priorité aux priorityAnswers si disponibles
+      if (user?.preferences?.priorityAnswers) {
+        console.log('🎯 DEBUG useBudgetIntelligence - Utilisation des priorityAnswers');
+        console.log('📋 DEBUG - Réponses prioritaires:', user.preferences.priorityAnswers);
+        
+        // DEBUG: Verify transactions are passed correctly
+        console.log('🔍 DEBUG - Transactions array before analyzePriorityAnswers:', {
+          length: transactions.length,
+          sample: transactions.slice(0, 3).map(t => ({ id: t.id, type: t.type, amount: t.amount, category: t.category }))
+        });
+        
+        budgets = analyzePriorityAnswers(user.preferences.priorityAnswers, transactions);
+        calculationMethod = 'priorityAnswers';
+        
+      } else {
+        console.log('💰 DEBUG useBudgetIntelligence - Fallback vers calcul basé sur les revenus');
+        budgets = calculateIncomeBasedBudgets();
+        calculationMethod = 'incomeBased';
+      }
+
+      if (!budgets) {
+        console.log('❌ DEBUG useBudgetIntelligence - Aucun budget calculé');
+        toast.error('Impossible de calculer les budgets. Vérifiez vos transactions de revenus.');
+        return;
+      }
       
-      const budgets = analyzePriorityAnswers(user.preferences.priorityAnswers, transactions);
-      
-      console.log('✅ DEBUG useBudgetIntelligence - Budgets calculés:', budgets);
+      console.log('✅ DEBUG useBudgetIntelligence - Budgets calculés via', calculationMethod, ':', budgets);
       
       setIntelligentBudgets(budgets);
       setLastCalculationDate(new Date());
 
       // Sauvegarde dans le store
-      setUser({
-        ...user,
-        preferences: {
-          ...user.preferences,
-          intelligentBudgets: budgets,
-          lastBudgetCalculation: new Date()
-        }
-      });
+      if (user) {
+        setUser({
+          ...user,
+          preferences: {
+            ...user.preferences,
+            intelligentBudgets: budgets,
+            lastBudgetCalculation: new Date()
+          }
+        });
+      }
 
-      toast.success('Budgets intelligents calculés avec succès !', {
+      const successMessage = calculationMethod === 'priorityAnswers' 
+        ? 'Budgets intelligents calculés avec succès !'
+        : 'Budgets calculés automatiquement basés sur vos revenus !';
+        
+      toast.success(successMessage, {
         duration: 3000,
         icon: '🎯'
       });
@@ -185,7 +309,7 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
     } finally {
       setIsCalculating(false);
     }
-  }, [user, setUser, transactions]);
+  }, [user, setUser, transactions, calculateIncomeBasedBudgets]);
 
   /**
    * Effectue une analyse mensuelle et ajuste les budgets si nécessaire
@@ -304,6 +428,124 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
   }, [intelligentBudgets, transactions]);
 
   /**
+   * Crée automatiquement les budgets en base de données
+   */
+  const autoCreateBudgets = useCallback(async (): Promise<void> => {
+    console.log('🔍 DEBUG autoCreateBudgets - Function called');
+    console.log('🔍 DEBUG autoCreateBudgets - intelligentBudgets:', !!intelligentBudgets);
+    console.log('🔍 DEBUG autoCreateBudgets - user:', !!user);
+    console.log('🔍 DEBUG autoCreateBudgets - hasAutoCreated:', hasAutoCreated);
+    
+    if (!intelligentBudgets || !user || hasAutoCreated) {
+      console.log('❌ DEBUG autoCreateBudgets - Early return due to conditions');
+      return;
+    }
+
+    console.log('🚀 DEBUG autoCreateBudgets - Début de la création automatique des budgets');
+    console.log('📊 DEBUG - Nombre de budgets à créer:', Object.keys(intelligentBudgets).length);
+    console.log('👤 DEBUG - Utilisateur:', user.id);
+    console.log('📋 DEBUG - intelligentBudgets content:', intelligentBudgets);
+
+    try {
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1;
+
+      console.log('🔍 DEBUG autoCreateBudgets - Vérification des budgets existants pour la période:', {
+        year: currentYear,
+        month: currentMonth
+      });
+
+      // Vérifier si des budgets existent déjà pour la période actuelle
+      const existingBudgetsResponse = await apiService.getBudgets();
+      
+      if (existingBudgetsResponse.success && existingBudgetsResponse.data) {
+        // Filtrer les budgets pour la période actuelle
+        const existingBudgetsForPeriod = existingBudgetsResponse.data.filter(budget => 
+          budget.month === currentMonth && budget.year === currentYear
+        );
+        
+        console.log('🔍 DEBUG autoCreateBudgets - Budgets existants trouvés pour la période:', existingBudgetsForPeriod.length);
+        console.log('🔍 DEBUG autoCreateBudgets - Détails des budgets existants:', existingBudgetsForPeriod.map(b => ({
+          id: b.id,
+          category: b.category,
+          amount: b.amount,
+          month: b.month,
+          year: b.year
+        })));
+
+        if (existingBudgetsForPeriod.length > 0) {
+          console.log('⚠️ DEBUG autoCreateBudgets - Budgets déjà existants pour la période, création ignorée');
+          console.log('⚠️ DEBUG autoCreateBudgets - Budgets existants détectés:', existingBudgetsForPeriod.length);
+          
+          // Marquer comme créé automatiquement pour éviter les tentatives futures
+          setHasAutoCreated(true);
+          
+          console.log('✅ DEBUG autoCreateBudgets - hasAutoCreated défini à true, aucune création effectuée');
+          return;
+        }
+      } else {
+        console.log('⚠️ DEBUG autoCreateBudgets - Erreur lors de la récupération des budgets existants:', existingBudgetsResponse.error);
+        // Continuer avec la création même en cas d'erreur de récupération
+      }
+
+      console.log('✅ DEBUG autoCreateBudgets - Aucun budget existant trouvé, procédure de création...');
+
+      // Créer les budgets pour chaque catégorie
+      const budgetPromises = Object.entries(intelligentBudgets).map(async ([category, amount]) => {
+        const budgetData = {
+          name: `Budget ${category}`,
+          category: category.toLowerCase(),
+          amount: amount,
+          spent: 0,
+          period: 'monthly' as const,
+          year: currentYear,
+          month: currentMonth,
+          alert_threshold: 80, // 80%
+          is_active: true,
+          user_id: user.id
+        };
+
+        console.log('🔍 DEBUG autoCreateBudgets - Création du budget pour catégorie:', category, 'avec montant:', amount);
+        return apiService.createBudget(budgetData);
+      });
+
+      console.log('⏳ DEBUG autoCreateBudgets - Attente de la création de tous les budgets...');
+      const results = await Promise.all(budgetPromises);
+      
+      // Vérifier les résultats
+      const failedBudgets = results.filter(result => !result.success);
+      const successfulBudgets = results.filter(result => result.success);
+      
+      console.log('📊 DEBUG autoCreateBudgets - Résultats:', {
+        total: results.length,
+        successful: successfulBudgets.length,
+        failed: failedBudgets.length
+      });
+
+      if (failedBudgets.length > 0) {
+        console.error('❌ DEBUG autoCreateBudgets - Échec de création de budgets:', failedBudgets);
+        toast.error(`${failedBudgets.length} budget(s) n'ont pas pu être créés automatiquement`);
+        return;
+      }
+
+      // Marquer comme créé automatiquement
+      setHasAutoCreated(true);
+      
+      console.log('✅ DEBUG autoCreateBudgets - Tous les budgets créés avec succès en base de données');
+      
+      toast.success('Budgets créés automatiquement avec succès !', {
+        duration: 4000,
+        icon: '🎯'
+      });
+
+    } catch (error) {
+      console.error('❌ DEBUG autoCreateBudgets - Erreur lors de la création automatique des budgets:', error);
+      toast.error('Erreur lors de la création automatique des budgets');
+    }
+  }, [intelligentBudgets, user, hasAutoCreated]);
+
+  /**
    * Vérifie si c'est un nouveau mois
    */
   const isNewMonth = useCallback((): boolean => {
@@ -358,22 +600,53 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
     console.log('⏳ DEBUG - Chargement des transactions en cours:', isLoadingTransactions);
     
     // Attendre que les transactions soient chargées ET que les conditions soient remplies
-    if (user?.preferences?.priorityAnswers && 
+    // Priorité aux priorityAnswers si disponibles, sinon utiliser les revenus des transactions
+    if (user && 
         !intelligentBudgets && 
-        !isLoadingTransactions && 
-        transactions.length > 0) {
+        !isLoadingTransactions) {
       console.log('🚀 DEBUG useBudgetIntelligence - Conditions remplies, lancement du calcul des budgets');
+      console.log('📊 DEBUG - Transactions count:', transactions.length);
+      console.log('📋 DEBUG - PriorityAnswers available:', !!user?.preferences?.priorityAnswers);
       calculateIntelligentBudgets();
     } else if (isLoadingTransactions) {
       console.log('⏳ DEBUG useBudgetIntelligence - En attente du chargement des transactions...');
-    } else if (transactions.length === 0 && !isLoadingTransactions) {
-      console.log('⚠️ DEBUG useBudgetIntelligence - Aucune transaction disponible après chargement');
-    } else if (!user?.preferences?.priorityAnswers) {
-      console.log('⚠️ DEBUG useBudgetIntelligence - Pas de réponses prioritaires');
+    } else if (!user) {
+      console.log('⚠️ DEBUG useBudgetIntelligence - Pas d\'utilisateur connecté');
     } else if (intelligentBudgets) {
       console.log('ℹ️ DEBUG useBudgetIntelligence - Budgets déjà calculés');
     }
-  }, [user?.preferences?.priorityAnswers, intelligentBudgets, calculateIntelligentBudgets, transactions, isLoadingTransactions]);
+  }, [user, intelligentBudgets, calculateIntelligentBudgets, transactions, isLoadingTransactions]);
+
+  // Effect 1.5: Création automatique des budgets quand intelligentBudgets est calculé
+  useEffect(() => {
+    console.log('🔄 DEBUG useBudgetIntelligence - Effect 1.5 déclenché (création automatique)');
+    console.log('💰 DEBUG - intelligentBudgets:', !!intelligentBudgets);
+    console.log('💰 DEBUG - intelligentBudgets length:', intelligentBudgets ? Object.keys(intelligentBudgets).length : 0);
+    console.log('👤 DEBUG - user:', !!user);
+    console.log('👤 DEBUG - user id:', user?.id);
+    console.log('🔧 DEBUG - hasAutoCreated:', hasAutoCreated);
+    
+    // Déclencher la création automatique si:
+    // - intelligentBudgets existe et a des budgets
+    // - user existe
+    // - pas encore créé automatiquement
+    if (intelligentBudgets && 
+        Object.keys(intelligentBudgets).length > 0 && 
+        user && 
+        !hasAutoCreated) {
+      console.log('🚀 DEBUG useBudgetIntelligence - Conditions remplies pour création automatique');
+      console.log('🚀 DEBUG useBudgetIntelligence - Calling autoCreateBudgets()');
+      autoCreateBudgets();
+    } else if (hasAutoCreated) {
+      console.log('ℹ️ DEBUG useBudgetIntelligence - Budgets déjà créés automatiquement');
+    } else if (!intelligentBudgets) {
+      console.log('⚠️ DEBUG useBudgetIntelligence - Pas de budgets intelligents à créer');
+    } else if (!user) {
+      console.log('⚠️ DEBUG useBudgetIntelligence - Pas d\'utilisateur pour création automatique');
+    } else if (intelligentBudgets && Object.keys(intelligentBudgets).length === 0) {
+      console.log('⚠️ DEBUG useBudgetIntelligence - intelligentBudgets est vide');
+    }
+  }, [intelligentBudgets, user, hasAutoCreated, autoCreateBudgets]);
 
   // Effect 2: Vérification mensuelle le premier jour du mois
   useEffect(() => {
