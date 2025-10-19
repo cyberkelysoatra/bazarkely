@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 3.6 (Système de Suivi des Pratiques + Certificats PDF + Classement)  
-**Date de mise à jour:** 2025-10-17  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme
+**Version:** 3.7 (Système de Suivi des Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence)  
+**Date de mise à jour:** 2025-10-19  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence
 
 ---
 
@@ -768,6 +768,16 @@ import Button from '../components/UI/Button';
 
 ---
 
+## 🎉 GAPS RÉSOLUS (SESSION 19 OCTOBRE 2025)
+
+### **Gap de Calcul du Fonds d'Urgence** ✅ RÉSOLU 2025-10-19
+- **Problème identifié:** Carte "Objectifs d'épargne" affichait 0 Ar pour le fonds d'urgence malgré des transactions dans les catégories essentielles
+- **Cause racine:** Comparaison de catégories sensible à la casse - base de données stocke en minuscules (alimentation, logement, transport, sante, education) mais code recherchait en majuscules (Alimentation, Logement, Transport, Santé, Éducation)
+- **Solution implémentée:** Comparaison insensible à la casse utilisant toLowerCase() pour matcher les catégories
+- **Fichier modifié:** `D:/bazarkely-2/frontend/src/pages/DashboardPage.tsx` - fonction `calculateEssentialMonthlyExpenses`
+- **Fonctionnalités:** Calcul dynamique du fonds d'urgence basé sur 6 mois de dépenses essentielles, affichage correct du montant objectif et du pourcentage de progression
+- **Impact:** Carte d'objectifs d'épargne maintenant fonctionnelle avec calculs corrects
+
 ## 🎉 GAPS RÉSOLUS (SESSION 17 OCTOBRE 2025)
 
 ### **Gap de Suivi des Pratiques** ✅ RÉSOLU 2025-10-17
@@ -905,4 +915,4 @@ import Button from '../components/UI/Button';
 
 ---
 
-*Document généré automatiquement le 2025-10-17 - BazarKELY v3.6 (Système de Suivi des Pratiques + Certificats PDF + Classement)*
+*Document généré automatiquement le 2025-10-19 - BazarKELY v3.7 (Système de Suivi des Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence)*

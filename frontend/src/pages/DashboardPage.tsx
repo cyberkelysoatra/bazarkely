@@ -5,6 +5,8 @@ import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import transactionService from '../services/transactionService';
 import notificationService from '../services/notificationService';
+// Essential expense categories for emergency fund calculation
+const ESSENTIAL_CATEGORIES = ['Alimentation', 'Logement', 'Transport', 'Santé', 'Éducation'] as const;
 import type { Transaction } from '../types';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
 import NotificationSettings from '../components/NotificationSettings';
@@ -21,8 +23,48 @@ const DashboardPage = () => {
     monthlyIncome: 0,
     monthlyExpenses: 0,
     budgetUtilization: 0,
-    goalsProgress: 0
+    goalsProgress: 0,
+    essentialMonthlyExpenses: 0,
+    emergencyFundGoal: 0
   });
+
+  // Helper function to calculate essential monthly expenses
+  // Filters transactions by essential categories and sums expense amounts
+  const calculateEssentialMonthlyExpenses = (transactions: Transaction[]): number => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const monthlyTransactions = transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= startOfMonth && transactionDate <= endOfMonth;
+    });
+
+    // Use case-insensitive comparison for category matching
+    const essentialExpenses = monthlyTransactions
+      .filter(t => {
+        const isExpense = t.type === 'expense';
+        const categoryMatch = ESSENTIAL_CATEGORIES.some(essential => 
+          essential.toLowerCase() === t.category?.toLowerCase()
+        );
+        return isExpense && categoryMatch;
+      })
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    return essentialExpenses;
+  };
+
+  // Helper function to calculate emergency fund goal (6 months of essential expenses)
+  const calculateEmergencyFundGoal = (essentialMonthlyExpenses: number): number => {
+    return essentialMonthlyExpenses * 6;
+  };
+
+  // Helper function to calculate emergency fund progress percentage
+  // Compares current savings balance to emergency fund goal
+  const calculateEmergencyFundProgress = (currentSavings: number, goal: number): number => {
+    if (goal === 0) return 0; // Handle division by zero case
+    return Math.min((currentSavings / goal) * 100, 100);
+  };
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [userAccounts, setUserAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,8 +216,16 @@ const DashboardPage = () => {
           .filter(t => t.type === 'expense')
           .reduce((sum, t) => sum + t.amount, 0));
 
+        // Calculate essential monthly expenses for emergency fund calculation
+        const essentialMonthlyExpenses = calculateEssentialMonthlyExpenses(allTransactions);
+        const emergencyFundGoal = calculateEmergencyFundGoal(essentialMonthlyExpenses);
+        const emergencyFundProgress = calculateEmergencyFundProgress(totalBalance, emergencyFundGoal);
+
         console.log('📈 Revenus mensuels:', monthlyIncome);
         console.log('📉 Dépenses mensuelles:', monthlyExpenses);
+        console.log('🏠 Dépenses essentielles mensuelles:', essentialMonthlyExpenses);
+        console.log('🎯 Objectif fond d\'urgence (6 mois):', emergencyFundGoal);
+        console.log('📊 Progression fond d\'urgence:', emergencyFundProgress.toFixed(1) + '%');
 
         // Calculer l'utilisation du budget (simulation)
         const budgetUtilization = monthlyExpenses > 0 ? Math.min((monthlyExpenses / (monthlyIncome || 1)) * 100, 100) : 0;
@@ -185,7 +235,9 @@ const DashboardPage = () => {
           monthlyIncome,
           monthlyExpenses,
           budgetUtilization: Math.round(budgetUtilization),
-          goalsProgress: 45 // Simulation pour l'instant
+          goalsProgress: Math.round(emergencyFundProgress), // Use calculated emergency fund progress
+          essentialMonthlyExpenses, // Add essential expenses to stats
+          emergencyFundGoal // Add emergency fund goal to stats
         };
 
         console.log('📊 Statistiques finales:', finalStats);
@@ -343,17 +395,17 @@ const DashboardPage = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Fond d'urgence</span>
-            <span className="text-sm font-medium text-gray-900">45%</span>
+            <span className="text-sm font-medium text-gray-900">{stats.goalsProgress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-primary-600 h-2 rounded-full" 
-              style={{ width: '45%' }}
+              style={{ width: `${stats.goalsProgress}%` }}
             ></div>
           </div>
           <div className="flex justify-between text-xs text-gray-500">
-            <span>{formatCurrency(stats.monthlyExpenses)}</span>
-            <span>{formatCurrency(stats.monthlyIncome)}</span>
+            <span>{formatCurrency(stats.totalBalance)}</span>
+            <span>{formatCurrency(stats.emergencyFundGoal)}</span>
           </div>
         </div>
       </div>
