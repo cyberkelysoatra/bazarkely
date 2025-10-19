@@ -1,10 +1,13 @@
 /**
  * Leaderboard Service for BazarKELY
- * Fetches ranked user data from backend API with caching and error handling
+ * Fetches ranked user data from Supabase with caching and error handling
+ * Refactored to use Supabase client directly instead of REST API calls
  */
 
+// IMPORTS section
 import { supabase } from '../lib/supabase';
 
+// INTERFACES section - All existing interfaces preserved for backward compatibility
 /**
  * Interface for individual leaderboard entry
  */
@@ -103,18 +106,17 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+// CLASS DEFINITION - LeaderboardService class with Supabase integration
 /**
  * Leaderboard Service Class
- * Handles API communication, caching, and error management
+ * Handles Supabase communication, caching, and error management
  */
 class LeaderboardService {
-  private readonly API_BASE_URL = '/api/leaderboard';
+  // CONSTRUCTOR - Cache initialization and configuration
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-  private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAY = 1000; // 1 second base delay
-
   private cache = new Map<string, CacheEntry<any>>();
 
+  // PUBLIC METHODS - getLeaderboard using Supabase queries
   /**
    * Gets leaderboard data with pagination and filtering
    * @param page - Page number (default: 1)
@@ -141,20 +143,59 @@ class LeaderboardService {
     }
 
     try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: validatedPage.toString(),
-        limit: validatedLimit.toString(),
-      });
+      // Calculate pagination offset
+      const offset = (validatedPage - 1) * validatedLimit;
       
+      // Build Supabase query with sorting by experience_points (totalScore)
+      let query = supabase
+        .from('users')
+        .select('id, username, experience_points, certification_level, profile_picture_url, last_login_at, created_at')
+        .order('experience_points', { ascending: false })
+        .range(offset, offset + validatedLimit - 1);
+
+      // Apply level filter if provided
       if (levelFilter && levelFilter >= 1 && levelFilter <= 5) {
-        params.append('levelFilter', levelFilter.toString());
+        query = query.eq('certification_level', levelFilter);
       }
 
-      // Make API request with retry logic
-      const response = await this.makeRequestWithRetry<LeaderboardResponse>(
-        `${this.API_BASE_URL}?${params.toString()}`
-      );
+      // Execute query
+      const { data: users, error, count } = await query;
+
+      if (error) {
+        throw new Error(`Supabase query error: ${error.message}`);
+      }
+
+      // Transform data to match LeaderboardEntry interface
+      const leaderboardEntries: LeaderboardEntry[] = users?.map((user: any, index) => ({
+        rank: offset + index + 1,
+        pseudonym: this.generatePseudonym(user.id),
+        totalScore: user.experience_points || 0,
+        currentLevel: user.certification_level || 1,
+        badgesCount: 0, // Placeholder - would need separate query for actual badges
+        certificationsCount: user.certification_level || 0,
+        lastActivity: user.last_login_at || user.created_at || new Date().toISOString()
+      })) || [];
+
+      // Calculate total pages
+      const totalUsers = count || 0;
+      const totalPages = Math.ceil(totalUsers / validatedLimit);
+
+      // Create response matching original interface
+      const response: LeaderboardResponse = {
+        success: true,
+        data: {
+          users: leaderboardEntries,
+          pagination: {
+            currentPage: validatedPage,
+            totalPages,
+            totalUsers,
+            hasNextPage: validatedPage < totalPages,
+            hasPreviousPage: validatedPage > 1,
+            limit: validatedLimit
+          }
+        },
+        timestamp: new Date().toISOString()
+      };
 
       // Cache the response
       this.setCache(cacheKey, response);
@@ -166,6 +207,7 @@ class LeaderboardService {
     }
   }
 
+  // PUBLIC METHODS - getUserRank using Supabase count queries
   /**
    * Gets specific user's rank and statistics
    * @param userId - User identifier
@@ -187,10 +229,60 @@ class LeaderboardService {
     }
 
     try {
-      // Make API request with retry logic
-      const response = await this.makeRequestWithRetry<UserRankResponse>(
-        `${this.API_BASE_URL}/user/${encodeURIComponent(userId)}`
-      );
+      // Get user data
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, username, experience_points, certification_level, profile_picture_url, last_login_at, created_at')
+        .eq('id', userId)
+        .single();
+
+      if (userError) {
+        throw new Error(`User not found: ${userError.message}`);
+      }
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Count users with higher experience points to determine rank
+      const { count: rank, error: rankError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .gt('experience_points', (user as any).experience_points || 0);
+
+      if (rankError) {
+        throw new Error(`Rank calculation error: ${rankError.message}`);
+      }
+
+      // Get total user count for percentile calculation
+      const { count: totalUsers, error: totalError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      if (totalError) {
+        throw new Error(`Total users count error: ${totalError.message}`);
+      }
+
+      // Calculate percentile
+      const userRank = (rank || 0) + 1;
+      const percentile = totalUsers ? ((totalUsers - userRank + 1) / totalUsers) * 100 : 0;
+
+      // Create response matching original interface
+      const response: UserRankResponse = {
+        success: true,
+        data: {
+          userId: (user as any).id,
+          rank: userRank,
+          pseudonym: this.generatePseudonym((user as any).id),
+          totalScore: (user as any).experience_points || 0,
+          currentLevel: (user as any).certification_level || 1,
+          badgesCount: 0, // Placeholder - would need separate query for actual badges
+          certificationsCount: (user as any).certification_level || 0,
+          percentile: Math.round(percentile * 100) / 100, // Round to 2 decimal places
+          lastActivity: (user as any).last_login_at || (user as any).created_at || new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
 
       // Cache the response
       this.setCache(cacheKey, response);
@@ -202,6 +294,7 @@ class LeaderboardService {
     }
   }
 
+  // PUBLIC METHODS - getLeaderboardStats using Supabase aggregate queries
   /**
    * Gets global leaderboard statistics
    * @returns Promise with leaderboard statistics
@@ -217,10 +310,58 @@ class LeaderboardService {
     }
 
     try {
-      // Make API request with retry logic
-      const response = await this.makeRequestWithRetry<LeaderboardStatsResponse>(
-        `${this.API_BASE_URL}/stats`
-      );
+      // Get total users count
+      const { count: totalUsers, error: totalError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+      if (totalError) {
+        throw new Error(`Total users count error: ${totalError.message}`);
+      }
+
+      // Get all users for statistics calculation
+      const { data: allUsers, error: usersError } = await supabase
+        .from('users')
+        .select('experience_points, certification_level');
+
+      if (usersError) {
+        throw new Error(`Users data error: ${usersError.message}`);
+      }
+
+      // Calculate statistics
+      const scores = allUsers?.map((user: any) => user.experience_points || 0) || [];
+      const levels = allUsers?.map((user: any) => user.certification_level || 1) || [];
+
+      const averageScore = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+      const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+      // Calculate level distribution
+      const levelDistribution: Record<string, number> = {};
+      levels.forEach(level => {
+        const levelKey = level.toString();
+        levelDistribution[levelKey] = (levelDistribution[levelKey] || 0) + 1;
+      });
+
+      // Create response matching original interface
+      const response: LeaderboardStatsResponse = {
+        success: true,
+        data: {
+          totalUsers: totalUsers || 0,
+          averageScore: Math.round(averageScore * 100) / 100, // Round to 2 decimal places
+          highestScore,
+          levelDistribution,
+          badgesDistribution: {
+            average: 0, // Placeholder - would need separate query for actual badges
+            max: 0
+          },
+          certificationsDistribution: {
+            average: levels.length > 0 ? levels.reduce((sum, level) => sum + level, 0) / levels.length : 0,
+            max: levels.length > 0 ? Math.max(...levels) : 0
+          },
+          lastUpdated: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
 
       // Cache the response
       this.setCache(cacheKey, response);
@@ -232,82 +373,39 @@ class LeaderboardService {
     }
   }
 
+  // HELPER METHODS - Data transformation and utility functions
   /**
-   * Makes HTTP request with exponential backoff retry logic
-   * @param url - Request URL
-   * @param retryCount - Current retry attempt
-   * @returns Promise with response data
+   * Generates a consistent pseudonym for a user based on their ID
+   * @param userId - User ID to generate pseudonym for
+   * @returns Generated pseudonym string
    */
-  private async makeRequestWithRetry<T>(
-    url: string,
-    retryCount: number = 0
-  ): Promise<T> {
-    try {
-      // Get current session for authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        throw new Error('Authentication required');
-      }
-
-      // Make the request
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        // Add timeout
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: T = await response.json();
-      return data;
-    } catch (error) {
-      // Check if we should retry
-      if (retryCount < this.MAX_RETRIES && this.isRetryableError(error)) {
-        const delay = this.RETRY_DELAY * Math.pow(2, retryCount);
-        console.warn(`⚠️ Request failed, retrying in ${delay}ms... (attempt ${retryCount + 1}/${this.MAX_RETRIES})`);
-        
-        await this.delay(delay);
-        return this.makeRequestWithRetry<T>(url, retryCount + 1);
-      }
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Checks if error is retryable
-   * @param error - Error object
-   * @returns True if error is retryable
-   */
-  private isRetryableError(error: any): boolean {
-    // Network errors, timeouts, and 5xx server errors are retryable
-    if (error.name === 'AbortError' || error.name === 'TypeError') {
-      return true; // Network/timeout errors
+  private generatePseudonym(userId: string): string {
+    // Simple hash function for consistent pseudonym generation
+    const adjectives = [
+      'Économe', 'Malin', 'Astucieux', 'Sage', 'Prudent', 'Habile',
+      'Intelligent', 'Rusé', 'Financier', 'Budget', 'Épargnant', 'Investisseur'
+    ];
+    const nouns = [
+      'Astucieux', 'Malin', 'Sage', 'Prudent', 'Habile', 'Intelligent',
+      'Rusé', 'Financier', 'Budget', 'Épargnant', 'Investisseur', 'Expert'
+    ];
+    
+    // Create simple hash from userId
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      const char = userId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
     }
     
-    if (error.message && error.message.includes('HTTP 5')) {
-      return true; // Server errors
-    }
+    // Use hash to select adjective and noun
+    const adjIndex = Math.abs(hash) % adjectives.length;
+    const nounIndex = Math.abs(hash >> 8) % nouns.length;
     
-    return false;
+    return adjectives[adjIndex] + nouns[nounIndex];
   }
 
-  /**
-   * Delays execution for specified milliseconds
-   * @param ms - Milliseconds to delay
-   * @returns Promise that resolves after delay
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
+  // CACHE METHODS - Preserved cache management system
   /**
    * Gets data from cache if valid
    * @param key - Cache key

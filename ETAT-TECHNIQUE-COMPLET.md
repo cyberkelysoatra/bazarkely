@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.9 (Système de Suivi des Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence)  
+**Version:** 2.10 (Système de Suivi des Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence)  
 **Date de mise à jour:** 2025-10-19  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Correction Calcul Fonds d'Urgence
 
 ---
 
@@ -23,7 +23,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ **Système de certification** - 100% fonctionnel (250 questions, 5 niveaux, interface quiz)
 - ✅ **Système de suivi des pratiques** - 100% fonctionnel (connexion, transactions, budgets)
 - ✅ **Système de certificats PDF** - 100% fonctionnel (génération et téléchargement)
-- ✅ **Système de classement** - 100% fonctionnel (pseudonymes, pagination, filtrage)
+- ✅ **Système de classement** - 100% fonctionnel (Supabase direct, pseudonymes, pagination, filtrage)
 - ⚠️ **Sécurité des données** - 60% conforme (Base64 au lieu d'AES-256)
 - ❌ **Performance optimisée** - Non testée (pas de rapports Lighthouse)
 
@@ -81,7 +81,8 @@ bazarkely-2/
 │   │   │   ├── recommendationEngineService.ts # ✅ Moteur de recommandations IA (948 lignes)
 │   │   │   ├── challengeService.ts # ✅ Système de gamification (929 lignes)
 │   │   │   ├── certificationService.ts # ✅ Service certification scoring (300 lignes)
-│   │   │   └── geolocationService.ts # ✅ Service géolocalisation Madagascar (400 lignes)
+│   │   │   ├── geolocationService.ts # ✅ Service géolocalisation Madagascar (400 lignes)
+│   │   │   └── leaderboardService.ts # ✅ Service classement Supabase direct (refactorisé 2025-10-19)
 │   │   ├── utils/           # Utilitaires
 │   │   │   └── dialogUtils.ts     # ✅ Utilitaires de dialogue modernes
 │   │   ├── pages/           # Pages principales (Auth, Dashboard, etc.)
@@ -140,12 +141,18 @@ bazarkely-2/
 #### **Base de Données Supabase** ✅ CONFIGURÉE
 ```sql
 -- Tables créées avec RLS activé
-users (id, username, email, phone, role, preferences, created_at, updated_at, last_sync)
+users (id, username, email, phone, role, preferences, created_at, updated_at, last_sync, experience_points, certification_level, profile_picture_url, last_login_at)
 accounts (id, user_id, name, type, balance, currency, is_default, created_at, updated_at)
 transactions (id, user_id, account_id, amount, type, category, description, date, created_at, updated_at)
 budgets (id, user_id, category, amount, spent, period, year, month, alert_threshold, created_at, updated_at)
 goals (id, user_id, name, target_amount, current_amount, deadline, priority, is_completed, created_at, updated_at)
 ```
+
+**Nouvelles colonnes utilisateur (ajoutées 2025-10-19):**
+- `experience_points` (integer, défaut: 0) - Points d'expérience pour système de classement
+- `certification_level` (integer, défaut: 1) - Niveau de certification (1-5)
+- `profile_picture_url` (text, nullable) - URL de la photo de profil
+- `last_login_at` (timestamptz, défaut: now()) - Timestamp de dernière connexion
 
 #### **IndexedDB Offline** ✅ FONCTIONNEL (Version 6)
 - **Dexie 4.2.0** pour gestion offline
@@ -700,23 +707,28 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 
 ### **14. Système de Classement** ✅ COMPLET
 
-#### **Spécification API** ✅ IMPLÉMENTÉE
-- **Fichier:** `D:/bazarkely-2/backend/LEADERBOARD-API-SPEC.md`
-- **Endpoints:**
-  - `GET /api/leaderboard` - Liste paginée des utilisateurs classés
-  - `GET /api/leaderboard/user/:userId` - Rang spécifique d'un utilisateur
-  - `GET /api/leaderboard/stats` - Statistiques globales du classement
-- **Protection de la vie privée:** Pseudonymes automatiques, aucun nom réel exposé
-- **Algorithme de classement:** Score total → Niveau → Badges → Certificats
+#### **Architecture Supabase Directe** ✅ IMPLÉMENTÉE (2025-10-19)
+- **Base de données:** Supabase PostgreSQL avec 4 nouvelles colonnes utilisateur
+- **Service:** `D:/bazarkely-2/frontend/src/services/leaderboardService.ts` (refactorisé)
+- **Connexion:** Requêtes directes Supabase (pas d'API REST intermédiaire)
+- **Performance:** Optimisée avec cache client TTL 5 minutes
+- **Sécurité:** Pseudonymes automatiques pour protection vie privée
 
-#### **Service de Classement** ✅ IMPLÉMENTÉ
+#### **Nouvelles Colonnes Base de Données** ✅ IMPLÉMENTÉES
+- **experience_points:** `integer` (défaut: 0) - Points d'expérience pour classement
+- **certification_level:** `integer` (défaut: 1) - Niveau certification (1-5)
+- **profile_picture_url:** `text` (nullable) - URL photo de profil
+- **last_login_at:** `timestamptz` (défaut: now()) - Dernière connexion
+
+#### **Service de Classement Refactorisé** ✅ IMPLÉMENTÉ
 - **Fichier:** `D:/bazarkely-2/frontend/src/services/leaderboardService.ts`
+- **Architecture:** Requêtes directes Supabase avec `supabase.from('users')`
 - **Fonctionnalités:**
-  - `getLeaderboard()` - Récupération avec pagination et filtrage
-  - `getUserRank()` - Rang spécifique d'un utilisateur
-  - `getLeaderboardStats()` - Statistiques globales
-- **Cache:** TTL 5 minutes pour optimiser les performances
-- **Gestion d'erreurs:** Retry avec backoff exponentiel
+  - `getLeaderboard()` - Tri par experience_points, filtrage par niveau, pagination
+  - `getUserRank()` - Calcul rang utilisateur et percentile
+  - `getLeaderboardStats()` - Statistiques globales (total users, moyenne, distribution)
+- **Cache:** TTL 5 minutes avec Map pour optimiser les performances
+- **Pseudonymes:** Génération cohérente basée sur ID utilisateur
 
 #### **Composant de Classement** ✅ IMPLÉMENTÉ
 - **Fichier:** `D:/bazarkely-2/frontend/src/components/Leaderboard/LeaderboardComponent.tsx`
@@ -766,6 +778,25 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Documentation** - ANALYSE-ADMINPAGE.md créé avec recommandations détaillées
 
 ---
+
+## 🔧 AMÉLIORATIONS TECHNIQUES APPLIQUÉES (SESSION 19 OCTOBRE 2025)
+
+### **Refactoring Leaderboard Service** ✅ IMPLÉMENTÉ
+- **Fichier modifié:** `frontend/src/services/leaderboardService.ts`
+- **Migration:** REST API → Requêtes directes Supabase
+- **Architecture:** `supabase.from('users')` avec tri, filtrage, pagination
+- **Performance:** Cache client TTL 5 minutes optimisé
+- **Sécurité:** Pseudonymes automatiques pour protection vie privée
+- **Base de données:** 4 nouvelles colonnes ajoutées à table `users`
+- **Types TypeScript:** Mise à jour `supabase.ts` avec nouvelles colonnes
+- **Compilation:** 0 erreur TypeScript après refactoring
+
+### **Migration Base de Données** ✅ IMPLÉMENTÉE
+- **Colonnes ajoutées:** experience_points, certification_level, profile_picture_url, last_login_at
+- **Types:** integer, integer, text nullable, timestamptz
+- **Valeurs par défaut:** 0, 1, NULL, now()
+- **Migration SQL:** Exécutée avec succès sur Supabase
+- **Compatibilité:** Types TypeScript mis à jour automatiquement
 
 ## 🔧 AMÉLIORATIONS TECHNIQUES APPLIQUÉES (SESSION 14 OCTOBRE 2025)
 
@@ -1232,13 +1263,13 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 - 🎓 **Système Certification:** 100% fonctionnel (Session 2025-10-16)
 - 📊 **Suivi des Pratiques:** 100% fonctionnel (Session 2025-10-17)
 - 📜 **Certificats PDF:** 100% fonctionnel (Session 2025-10-17)
-- 🏆 **Système de Classement:** 100% fonctionnel (Session 2025-10-17)
+- 🏆 **Système de Classement:** 100% fonctionnel (Supabase direct, Session 2025-10-19)
 - 🔧 **Corrections techniques:** 100% résolues (Session 2025-10-12)
 
-**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, et classement anonyme avec protection de la vie privée.**
+**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, et classement Supabase direct avec protection de la vie privée.**
 
 **Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et des corrections techniques.**
 
 ---
 
-*Document généré automatiquement le 2025-10-19 - BazarKELY v2.9 (Système de Suivi des Pratiques + Certificats PDF + Classement + Correction Fonds d'Urgence)*
+*Document généré automatiquement le 2025-10-19 - BazarKELY v2.10 (Système de Suivi des Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence)*

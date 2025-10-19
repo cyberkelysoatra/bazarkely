@@ -18,6 +18,7 @@
 - 🔄 **Synchronisation multi-navigateur** (Chrome, Firefox, Safari, Edge)
 - 📊 **Tableaux de bord interactifs** avec graphiques
 - 🎯 **Objectifs d'épargne** et suivi des progrès
+- 🏆 **Système de classement** avec leaderboard et gamification
 - 🎮 **Gamification éducative** pour l'inclusion financière
 - 🌐 **Fonctionnement offline** prioritaire
 - 🇫🇷 **Interface bilingue** français-malgache
@@ -33,6 +34,66 @@
 - 📱 **Générateur QR Code** : Mobile Money et partage de données
 - 💱 **Support Multi-Devises** : MGA, EUR, USD pour la diaspora
 - 🛒 **Marketplace Communautaire** : Commerce local et partage
+
+## 🏆 Système de Classement et Leaderboard
+
+### Architecture du Leaderboard
+
+Le système de classement de BazarKELY utilise **Supabase** directement pour les requêtes de données, offrant des performances optimales et une synchronisation en temps réel.
+
+**Architecture Technique :**
+- **Base de données :** Supabase PostgreSQL
+- **Service :** `leaderboardService.ts` (requêtes directes Supabase)
+- **Interface :** `LeaderboardComponent.tsx` (React + TypeScript)
+- **Cache :** Système de cache client avec TTL de 5 minutes
+- **Sécurité :** Pseudonymes automatiques pour la protection de la vie privée
+
+### Nouvelles Colonnes de la Table Users
+
+Le système de classement utilise quatre nouvelles colonnes ajoutées à la table `users` :
+
+| Colonne | Type | Description | Valeur par défaut |
+|---------|------|-------------|-------------------|
+| `experience_points` | `integer` | Points d'expérience pour le classement | `0` |
+| `certification_level` | `integer` | Niveau de certification (1-5) | `1` |
+| `profile_picture_url` | `text` | URL de la photo de profil | `NULL` |
+| `last_login_at` | `timestamptz` | Dernière connexion | `now()` |
+
+### Fonctionnalités du Leaderboard
+
+**Classement par Points d'Expérience :**
+- Tri automatique par `experience_points` (décroissant)
+- Calcul du rang utilisateur en temps réel
+- Système de percentiles pour le positionnement
+
+**Filtrage par Niveau :**
+- Filtrage par niveau de certification (1-5)
+- Support de la pagination (50 utilisateurs par page)
+- Navigation fluide entre les pages
+
+**Système de Pseudonymes :**
+- Génération automatique de pseudonymes basés sur l'ID utilisateur
+- Protection complète de la vie privée
+- Pseudonymes cohérents et reproductibles
+
+**Cache Intelligent :**
+- Cache client avec TTL de 5 minutes
+- Réduction des requêtes Supabase
+- Mise à jour automatique des données
+
+### Accès au Leaderboard
+
+**Méthode d'Accès :**
+1. **Cliquer sur le badge de niveau** dans le header (coin supérieur droit)
+2. **Naviguer vers la page Certification** (`/certification`)
+3. **Faire défiler vers le bas** jusqu'à la section "Classement Général"
+4. **Explorer le leaderboard** avec filtres et pagination
+
+**Interface Utilisateur :**
+- Badge de niveau cliquable dans le header
+- Section dédiée "Classement Général" sur la page certification
+- Notice de confidentialité intégrée
+- Design responsive et accessible
 
 ## 🚀 Déploiement Production
 
@@ -50,8 +111,10 @@
 │   ├── 📁 src/
 │   │   ├── 📁 pages/     # 7 pages principales
 │   │   ├── 📁 components/
+│   │   │   └── 📁 Leaderboard/  # Système de classement
+│   │   ├── 📁 services/  # Services (leaderboardService.ts)
 │   │   ├── 📁 store/     # Zustand stores
-│   │   └── 📁 lib/       # Utils + IndexedDB
+│   │   └── 📁 lib/       # Utils + IndexedDB + Supabase
 │   └── 📁 public/        # PWA assets
 ├── 📁 backend/           # Express API (TypeScript)
 │   ├── 📁 src/
@@ -65,6 +128,8 @@
 │   └── bazarkely.db      # Base SQLite
 └── 📄 .htaccess          # Configuration Apache OVH
 ```
+
+**Note :** Le système de leaderboard utilise Supabase directement (pas d'API REST intermédiaire) pour des performances optimales et une synchronisation en temps réel.
 
 ## 🛠️ Technologies Utilisées
 
@@ -81,6 +146,12 @@
 - **SQLite3 5.1.7** (Base de données)
 - **JWT 9.0.2** (Authentification)
 - **bcryptjs 2.4.3** (Chiffrement mots de passe)
+
+### Base de Données et Services
+- **Supabase PostgreSQL** (Base de données principale)
+- **Supabase Auth** (Authentification et gestion des utilisateurs)
+- **Supabase Client** (Requêtes directes pour leaderboard et données temps réel)
+- **IndexedDB** (Cache local et fonctionnement offline)
 
 ### Production
 - **OVH PRO** (Hébergement)

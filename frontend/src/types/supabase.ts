@@ -20,6 +20,10 @@ export interface Database {
           created_at: string
           updated_at: string
           last_sync: string | null
+          experience_points: number
+          certification_level: number
+          profile_picture_url: string | null
+          last_login_at: string
         }
         Insert: {
           id?: string
@@ -31,6 +35,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           last_sync?: string | null
+          experience_points?: number
+          certification_level?: number
+          profile_picture_url?: string | null
+          last_login_at?: string
         }
         Update: {
           id?: string
@@ -42,6 +50,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           last_sync?: string | null
+          experience_points?: number
+          certification_level?: number
+          profile_picture_url?: string | null
+          last_login_at?: string
         }
       }
       accounts: {
