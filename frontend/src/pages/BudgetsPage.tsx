@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3 } from 'lucide-react';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { useAppStore } from '../stores/appStore';
@@ -6,7 +7,7 @@ import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import apiService from '../services/apiService';
 import { toast } from 'react-hot-toast';
-import type { Budget } from '../types';
+import type { Budget, TransactionCategory } from '../types';
 
 const BudgetsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -19,11 +20,17 @@ const BudgetsPage = () => {
   const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
   const { user } = useAppStore();
   const { trackBudgetUsage } = usePracticeTracking();
+  const navigate = useNavigate();
 
   // Hook d'intelligence budgétaire pour les budgets suggérés
   const {
     intelligentBudgets
   } = useBudgetIntelligence();
+
+  // Handle budget card click to navigate to transactions with category filter
+  const handleBudgetClick = (category: TransactionCategory) => {
+    navigate(`/transactions?category=${category}`);
+  };
 
   // Fonction pour calculer les montants dépensés par catégorie
   const calculateSpentAmounts = async (budgets: any[]) => {
@@ -308,7 +315,7 @@ const BudgetsPage = () => {
       // Convertir les intelligentBudgets en budgets Supabase
       const budgetPromises = Object.entries(intelligentBudgets).map(async ([category, amount]) => {
         // Vérifier si un budget existe déjà pour cette catégorie
-        if (existingCategories.has(category)) {
+        if (existingCategories.has(category as TransactionCategory)) {
           console.warn('⚠️ DEBUG: Budget already exists for category:', category, 'Skipping creation');
           return { success: true, data: null, message: 'Budget already exists' };
         }
@@ -716,7 +723,11 @@ const BudgetsPage = () => {
           const remaining = budget.amount - (budget.spent || 0);
 
           return (
-            <div key={budget.id} className="card hover:shadow-lg transition-shadow">
+            <div 
+              key={budget.id} 
+              className="card hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handleBudgetClick(budget.category as TransactionCategory)}
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>

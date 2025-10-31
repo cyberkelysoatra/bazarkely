@@ -5,7 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
-import type { Transaction, Account } from '../types';
+import type { Transaction, Account, TransactionCategory } from '../types';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ const TransactionsPage = () => {
   const { user } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
+  const [filterCategory, setFilterCategory] = useState<TransactionCategory | 'all'>('all');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
@@ -21,9 +22,12 @@ const TransactionsPage = () => {
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
   
-  // Lire le paramètre de filtre depuis l'URL et l'appliquer
+  // Lire les paramètres de filtre et catégorie depuis l'URL et les appliquer
   useEffect(() => {
     const filterParam = searchParams.get('filter');
+    const categoryParam = searchParams.get('category');
+    
+    // Traiter le paramètre de filtre de type
     if (filterParam) {
       if (filterParam === 'expense') {
         setFilterType('expense');
@@ -34,10 +38,29 @@ const TransactionsPage = () => {
       } else if (filterParam === 'all') {
         setFilterType('all');
       }
+    }
+    
+    // Traiter le paramètre de catégorie
+    if (categoryParam) {
+      // Validate that the category parameter is a valid TransactionCategory
+      const validCategories: TransactionCategory[] = [
+        'alimentation', 'logement', 'transport', 'sante', 
+        'education', 'communication', 'vetements', 'loisirs', 
+        'famille', 'solidarite', 'autres'
+      ];
       
-      // Nettoyer l'URL en supprimant le paramètre filter
+      if (validCategories.includes(categoryParam as TransactionCategory)) {
+        setFilterCategory(categoryParam as TransactionCategory);
+      } else {
+        setFilterCategory('all');
+      }
+    }
+    
+    // Nettoyer l'URL en supprimant les paramètres après traitement
+    if (filterParam || categoryParam) {
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.delete('filter');
+      newSearchParams.delete('category');
       const newUrl = `${location.pathname}${newSearchParams.toString() ? `?${newSearchParams.toString()}` : ''}`;
       window.history.replaceState({}, '', newUrl);
     }
@@ -97,6 +120,7 @@ const TransactionsPage = () => {
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
+    const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
     const matchesAccount = !accountId || transaction.accountId === accountId;
     
     // Log de débogage pour les transferts
@@ -111,7 +135,7 @@ const TransactionsPage = () => {
       });
     }
     
-    return matchesSearch && matchesFilter && matchesAccount;
+    return matchesSearch && matchesFilter && matchesCategory && matchesAccount;
   });
 
   // Sort filtered transactions by date (newest first)
@@ -281,6 +305,25 @@ const TransactionsPage = () => {
             Transferts
           </button>
         </div>
+
+        {/* Active Category Filter Badge */}
+        {filterCategory !== 'all' && (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Filtre actif:</span>
+            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+              <span className="mr-2">
+                {TRANSACTION_CATEGORIES[filterCategory]?.name || filterCategory}
+              </span>
+              <button
+                onClick={() => setFilterCategory('all')}
+                className="ml-1 text-purple-600 hover:text-purple-800 transition-colors"
+                title="Supprimer le filtre de catégorie"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Liste des transactions */}

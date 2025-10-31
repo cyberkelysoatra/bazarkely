@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: MonitoringConfig = {
 /**
  * Clés de catégories essentielles (priorité élevée)
  */
-const ESSENTIAL_CATEGORIES: readonly (keyof CategoryBudgets)[] = [
+export const ESSENTIAL_CATEGORIES: readonly (keyof CategoryBudgets)[] = [
   'Alimentation',
   'Logement',
   'Transport',

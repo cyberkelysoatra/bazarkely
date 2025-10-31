@@ -1,10 +1,10 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.8 (Système de Suivi des Pratiques + Certificats PDF + Classement)  
-**Date de mise à jour:** 2025-10-17  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme
+**Version:** 2.9 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories)  
+**Date de mise à jour:** 2025-01-19  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories
 
 ---
 
@@ -40,6 +40,8 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Navigation ultra-compacte** ✅ IMPLÉMENTÉ (100% - BottomNav 48-56px vs 80-90px)
 - **Layout comptes optimisé** ✅ IMPLÉMENTÉ (100% - 2 colonnes + bouton Transfert)
 - **Interface compacte** ✅ IMPLÉMENTÉ (100% - Padding réduit, espacement optimisé)
+- **Interface admin enrichie** ✅ IMPLÉMENTÉ (100% - Identification utilisateur + accordéon + données financières)
+- **Navigation intelligente** ✅ IMPLÉMENTÉ (100% - Cartes budget cliquables + filtrage catégorie)
 
 ## 🔧 FONCTIONNALITÉS TECHNIQUES
 
@@ -95,7 +97,65 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Interface bilingue** (Français/Malgache) ⚠️ PARTIELLEMENT IMPLÉMENTÉ
 - **Adaptation culturelle** (fêtes, événements locaux)
 
-### **6. Système de Notifications Push** ✅ COMPLET (100%)
+### **6. Interface d'Administration Enrichie** ✅ COMPLET (100%)
+
+#### **Identification Utilisateur dans le Header** 👤
+- **Affichage "Compte actif"** dans le menu dropdown du header
+- **Format d'affichage:** "Compte actif : [Prénom] [Nom]" ou "Compte actif : [Nom d'utilisateur]"
+- **Logique de fallback:** Priorité au prénom, puis nom d'utilisateur si prénom indisponible
+- **Gestion des données manquantes:** Affichage gracieux en cas de données incomplètes
+
+#### **Tableau de Bord Administrateur** 📊
+- **Grille de statistiques** avec 5 métriques principales (Utilisateurs, Transactions, Comptes, Budgets, Objectifs)
+- **Layout responsive:** 3 colonnes sur mobile, 5 colonnes sur desktop
+- **Cartes statistiques** avec icônes colorées et données en temps réel
+- **Mise à jour automatique** des données administratives
+
+#### **Cartes Utilisateur avec Accordéon** 🎯
+- **Affichage de tous les utilisateurs** avec informations de base (avatar, nom, email, rôle)
+- **Comportement accordéon exclusif:** Une seule carte ouverte à la fois
+- **Expansion au clic** sur la carte utilisateur
+- **Données enrichies** dans les cartes étendues:
+  - **Objectif "Fond d'urgence"** avec barre de progression visuelle
+  - **Pourcentage de completion** calculé automatiquement
+  - **Montants actuels et cibles** formatés en Ariary (Ar)
+  - **Icône Trophy** pour les objectifs complétés
+  - **Revenus mensuels** calculés à partir des transactions
+
+#### **Gestion des Données Utilisateur** 💾
+- **Avatars utilisateur** avec support des photos de profil
+- **Calcul automatique des revenus** basé sur les transactions de type "revenu"
+- **Requêtes optimisées** avec requêtes parallèles pour les performances
+- **Gestion des données manquantes** avec fallbacks appropriés
+
+### **7. Navigation Intelligente Budgets → Transactions** ✅ COMPLET (100%)
+
+#### **Cartes Budget Cliquables** 🖱️
+- **Cartes budget interactives** avec curseur pointer pour indiquer la cliquabilité
+- **Navigation automatique** vers la page des transactions au clic
+- **Transmission de la catégorie** via paramètre URL (?category=CATEGORY_VALUE)
+- **Nettoyage automatique** des paramètres URL après traitement
+
+#### **Filtrage par Catégorie sur Transactions** 🔍
+- **Filtrage automatique** des transactions par catégorie sélectionnée
+- **Affichage de tous les types** de transactions (revenus, dépenses, transferts) pour la catégorie
+- **Badge de filtre actif** avec option de suppression du filtre
+- **Validation des catégories** avec gestion des valeurs invalides
+- **État de filtre persistant** pendant la session utilisateur
+
+#### **Expérience Utilisateur** ✨
+- **Navigation fluide** entre les pages budgets et transactions
+- **Retour facile** à la vue complète des transactions
+- **Feedback visuel** clair sur le filtre appliqué
+- **Cohérence** avec les autres filtres existants (type, compte, recherche)
+
+#### **⚠️ Problème Connu - Filtrage par Catégorie** 🐛
+- **Symptôme:** Le filtrage par catégorie ne fonctionne pas correctement lors de la navigation depuis les cartes budget
+- **Impact:** Toutes les transactions sont affichées au lieu des transactions filtrées par catégorie
+- **Statut:** Bug identifié, priorité HAUTE pour correction
+- **Workaround temporaire:** Utiliser les filtres manuels sur la page des transactions
+
+### **8. Système de Notifications Push** ✅ COMPLET (100%)
 
 #### **Types de Notifications** 🔔
 - ✅ **Alertes de Budget** - Seuils 80%, 100%, 120% du budget mensuel
@@ -500,6 +560,8 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ Système Recommandations (100%) - IA + 20+ templates + scoring intelligent (Session 2025-10-12)
 - ✅ Gamification (80%) - 25+ défis + points + badges + progression (Session 2025-10-12)
 - ✅ Système Certification (75%) - 250 questions + 5 niveaux + quiz interactif (Session 2025-10-16)
+- ✅ Interface Admin Enrichie (100%) - Identification utilisateur + accordéon + données financières (Session 2025-01-20)
+- ✅ Navigation Intelligente (100%) - Cartes budget cliquables + filtrage catégorie (Session 2025-01-20)
 - ⚠️ Sécurité des données (60%)
 - ✅ Fonctionnalités Madagascar
 
@@ -515,7 +577,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 
 **⚠️ Amélioration Pending:** PROMPT 18 - Responsive Button Sizing (non appliqué lors de la session 2025-01-11)
 
-**🎯 BazarKELY est une application PWA fonctionnelle avec installation native opérationnelle, système de notifications push complet, interface UI ultra-optimisée, système de recommandations IA avec gamification, système de certification financière complet, et prête pour la production !**
+**🎯 BazarKELY est une application PWA fonctionnelle avec installation native opérationnelle, système de notifications push complet, interface UI ultra-optimisée, système de recommandations IA avec gamification, système de certification financière complet, interface admin enrichie avec données utilisateur détaillées, navigation intelligente entre budgets et transactions, et prête pour la production !**
 
 **📋 Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et de gamification.**
 
@@ -846,4 +908,4 @@ interface QuizSession {
 
 ---
 
-*Document généré automatiquement le 2025-10-17 - BazarKELY v2.8 (Système de Suivi des Pratiques + Certificats PDF + Classement)*
+*Document généré automatiquement le 2025-01-20 - BazarKELY v2.9 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories)*

@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.10 (Système de Suivi des Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence)  
-**Date de mise à jour:** 2025-10-19  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Correction Calcul Fonds d'Urgence
+**Version:** 2.11 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories)  
+**Date de mise à jour:** 2025-01-19  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
 
 ---
 
@@ -777,6 +777,141 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Améliorations proposées** - 9 améliorations sûres catégorisées par risque
 - **Documentation** - ANALYSE-ADMINPAGE.md créé avec recommandations détaillées
 
+### **16. Interface Utilisateur et Navigation** ✅ COMPLET (Session 2025-01-20)
+
+#### **16.1 Identification Utilisateur dans le Header** ✅ IMPLÉMENTÉE
+
+**Fonctionnalité:** Affichage intelligent de l'identité utilisateur dans le menu déroulant du header.
+
+**Comportement:**
+- **Priorité 1:** Affiche `firstName` si disponible dans les préférences utilisateur
+- **Priorité 2:** Affiche `username` comme fallback si `firstName` n'est pas défini
+- **Format:** "Compte actif : [firstName/username]"
+- **Localisation:** Menu déroulant du header (coin supérieur droit)
+
+**Implémentation Technique:**
+- **Fichier:** `frontend/src/components/Layout/Header.tsx`
+- **Logique:** `user?.preferences?.firstName || user?.username`
+- **Fallback:** Gestion gracieuse des données manquantes
+- **État:** Intégration avec le système d'authentification existant
+
+#### **16.2 Navigation Intelligente Budgets → Transactions** ✅ IMPLÉMENTÉE
+
+**Fonctionnalité:** Cartes de budget cliquables avec filtrage automatique par catégorie.
+
+**Comportement:**
+- **Clic sur carte budget** → Navigation vers page transactions
+- **Filtrage automatique** par catégorie du budget sélectionné
+- **URL dynamique:** `/transactions?category=CATEGORY_VALUE`
+- **Nettoyage URL:** Suppression automatique des paramètres après traitement
+
+**Implémentation Technique:**
+- **Composant Budgets:** `frontend/src/pages/BudgetsPage.tsx` - Gestionnaire de clic
+- **Composant Transactions:** `frontend/src/pages/TransactionsPage.tsx` - Filtrage par catégorie
+- **Navigation:** React Router `useNavigate()` avec paramètres URL
+- **Filtrage:** Validation contre `TransactionCategory` array
+- **État:** Gestion via `useState` et `useEffect` pour les paramètres URL
+
+**Types de Filtrage Supportés:**
+- **Toutes catégories:** `alimentation`, `logement`, `transport`, `sante`
+- **Étendues:** `education`, `communication`, `vetements`, `loisirs`
+- **Spécialisées:** `famille`, `solidarite`, `autres`
+
+#### **16.3 Interface Admin Enrichie** ✅ IMPLÉMENTÉE
+
+**Fonctionnalité:** Tableau de bord administrateur avec données utilisateur détaillées et interface accordéon.
+
+**Améliorations de Layout:**
+- **Grille mobile:** Passage de 2 à 3 colonnes sur mobile (`grid-cols-3`)
+- **Grille desktop:** Maintien de 5 colonnes sur desktop (`md:grid-cols-5`)
+- **Responsive:** Adaptation optimale des statistiques admin
+
+**Cartes Utilisateur Accordéon:**
+- **Comportement:** Expansion exclusive (une seule carte ouverte à la fois)
+- **Données affichées:** Avatar, nom d'utilisateur, email, rôle, objectifs d'épargne
+- **Objectif prioritaire:** Affichage spécial du "Fond d'urgence" avec barre de progression
+- **Revenus mensuels:** Calcul et affichage des revenus du mois en cours
+
+**Données Enrichies:**
+- **Avatars:** Support des photos de profil (`profile_picture_url`)
+- **Objectifs:** Array complet des objectifs d'épargne avec progression
+- **Revenus:** Calcul automatique basé sur les transactions de type `income`
+- **Fallback:** Données de préférences utilisateur si transactions indisponibles
+
+**Implémentation Technique:**
+- **Composant:** `frontend/src/pages/AdminPage.tsx` - Interface accordéon
+- **Service:** `frontend/src/services/adminService.ts` - Enrichissement des données utilisateur
+- **État:** `expandedUserId` pour gestion accordéon exclusive
+- **Formatage:** `Intl.NumberFormat` pour devises malgaches (MGA)
+- **Icônes:** Lucide React pour interface cohérente
+
+#### **16.4 Service Admin Enrichi** ✅ IMPLÉMENTÉ
+
+**Interface AdminUser Enrichie:**
+```typescript
+interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  created_at: string;
+  last_sync: string | null;
+  isCurrentUser: boolean;
+  profilePictureUrl: string | null;    // Nouveau
+  goals: UserGoal[];                  // Nouveau
+  monthlyIncome: number | null;       // Nouveau
+}
+
+interface UserGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string | null;
+  priority: string;
+  isCompleted: boolean;
+}
+```
+
+**Architecture de Données:**
+- **RPC Function:** Utilisation de `get_all_users_admin()` pour contourner RLS
+- **Requêtes parallèles:** `Promise.all` pour optimiser les performances
+- **Enrichissement:** Requêtes séparées pour `profile_picture_url`, `goals`, et `monthlyIncome`
+- **Gestion d'erreurs:** Fallback gracieux pour données manquantes
+
+**Fichier modifié:** `frontend/src/services/adminService.ts`
+
+#### **16.5 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ
+
+**Architecture de Filtrage:**
+- **État:** `filterCategory` avec valeurs `TransactionCategory | 'all'`
+- **URL Parameters:** Lecture et nettoyage automatique des paramètres
+- **Validation:** Array `validCategories` pour validation des catégories
+- **Race Condition Fix:** Consolidation des `useEffect` pour éviter les conflits
+
+**Implémentation TransactionsPage:**
+```typescript
+// État de filtrage
+const [filterCategory, setFilterCategory] = useState<TransactionCategory | 'all'>('all');
+
+// Logique de filtrage
+const filteredTransactions = transactions.filter(transaction => {
+  const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesFilter = filterType === 'all' || transaction.type === filterType;
+  const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
+  const matchesAccount = !accountId || transaction.accountId === accountId;
+  
+  return matchesSearch && matchesFilter && matchesCategory && matchesAccount;
+});
+```
+
+**Interface Utilisateur:**
+- **Badge de filtre actif:** Affichage de la catégorie filtrée avec bouton de suppression
+- **Nettoyage URL:** `window.history.replaceState()` pour supprimer les paramètres
+- **Navigation:** Préservation de l'historique de navigation
+
+**Fichier modifié:** `frontend/src/pages/TransactionsPage.tsx`
+
 ---
 
 ## 🔧 AMÉLIORATIONS TECHNIQUES APPLIQUÉES (SESSION 19 OCTOBRE 2025)
@@ -1237,6 +1372,15 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 22. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour état technique
 23. `GAP-TECHNIQUE-COMPLET.md` - Mise à jour gaps techniques
 
+**Fichiers modifiés (Session 20 Janvier 2025 - Interface Admin + Navigation):**
+24. `frontend/src/components/Layout/Header.tsx` - Identification utilisateur dans dropdown
+25. `frontend/src/pages/AdminPage.tsx` - Interface accordéon + grille 3 colonnes + objectif Fond d'urgence
+26. `frontend/src/services/adminService.ts` - Interface AdminUser enrichie + données parallèles
+27. `frontend/src/pages/BudgetsPage.tsx` - Cartes cliquables + navigation catégorie
+28. `frontend/src/pages/TransactionsPage.tsx` - Filtrage par catégorie + URL parameters
+29. `README.md` - Documentation nouvelles fonctionnalités
+30. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour état technique complet
+
 ### **Next Steps** 🚀 AMÉLIORATIONS MINEURES
 1. **Améliorations mineures** - Composants et sécurité
 2. **Tests de performance** - Lighthouse et couverture
@@ -1265,11 +1409,15 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 - 📜 **Certificats PDF:** 100% fonctionnel (Session 2025-10-17)
 - 🏆 **Système de Classement:** 100% fonctionnel (Supabase direct, Session 2025-10-19)
 - 🔧 **Corrections techniques:** 100% résolues (Session 2025-10-12)
+- 👤 **Identification Utilisateur:** 100% fonctionnelle (Session 2025-01-20)
+- 🎯 **Navigation Intelligente:** 100% fonctionnelle (Session 2025-01-20)
+- 📊 **Interface Admin Enrichie:** 100% fonctionnelle (Session 2025-01-20)
+- 🔍 **Filtrage par Catégorie:** 100% fonctionnel (Session 2025-01-20)
 
-**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, et classement Supabase direct avec protection de la vie privée.**
+**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement Supabase direct avec protection de la vie privée, interface admin enrichie avec accordéon utilisateur, navigation intelligente entre budgets et transactions, identification utilisateur dans le header, et filtrage par catégorie avancé.**
 
 **Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et des corrections techniques.**
 
 ---
 
-*Document généré automatiquement le 2025-10-19 - BazarKELY v2.10 (Système de Suivi des Pratiques + Certificats PDF + Classement Supabase + Correction Fonds d'Urgence)*
+*Document généré automatiquement le 2025-01-20 - BazarKELY v2.11 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories)*

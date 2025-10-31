@@ -23,6 +23,9 @@
 - 🌐 **Fonctionnement offline** prioritaire
 - 🇫🇷 **Interface bilingue** français-malgache
 - 🔒 **Sécurité robuste** avec chiffrement des données
+- 👤 **Identification utilisateur** dans le menu header
+- 🎯 **Navigation intelligente** entre budgets et transactions
+- 📊 **Interface admin enrichie** avec données détaillées
 
 ### 🌟 Fonctionnalités Bonus Madagascar
 
@@ -95,6 +98,73 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 - Notice de confidentialité intégrée
 - Design responsive et accessible
 
+## 🎨 Interface Utilisateur et Navigation
+
+### Identification Utilisateur dans le Header
+
+**Fonctionnalité :** Affichage intelligent de l'identité utilisateur dans le menu déroulant du header.
+
+**Comportement :**
+- **Priorité 1 :** Affiche `firstName` si disponible dans les préférences utilisateur
+- **Priorité 2 :** Affiche `username` comme fallback si `firstName` n'est pas défini
+- **Format :** "Compte actif : [firstName/username]"
+- **Localisation :** Menu déroulant du header (coin supérieur droit)
+
+**Implémentation Technique :**
+- **Composant :** `Header.tsx`
+- **Logique :** `user?.preferences?.firstName || user?.username`
+- **Fallback :** Gestion gracieuse des données manquantes
+
+### Navigation Intelligente Budgets → Transactions
+
+**Fonctionnalité :** Cartes de budget cliquables avec filtrage automatique par catégorie.
+
+**Comportement :**
+- **Clic sur carte budget** → Navigation vers page transactions
+- **Filtrage automatique** par catégorie du budget sélectionné
+- **URL dynamique :** `/transactions?category=CATEGORY_VALUE`
+- **Nettoyage URL :** Suppression automatique des paramètres après traitement
+
+**Implémentation Technique :**
+- **Composant Budgets :** `BudgetsPage.tsx` - Gestionnaire de clic
+- **Composant Transactions :** `TransactionsPage.tsx` - Filtrage par catégorie
+- **Navigation :** React Router `useNavigate()` avec paramètres URL
+- **Filtrage :** Validation contre `TransactionCategory` array
+- **État :** Gestion via `useState` et `useEffect` pour les paramètres URL
+
+**Types de Filtrage Supportés :**
+- **Toutes catégories :** `alimentation`, `logement`, `transport`, `sante`
+- **Étendues :** `education`, `communication`, `vetements`, `loisirs`
+- **Spécialisées :** `famille`, `solidarite`, `autres`
+
+### Interface Admin Enrichie
+
+**Fonctionnalité :** Tableau de bord administrateur avec données utilisateur détaillées et interface accordéon.
+
+**Améliorations de Layout :**
+- **Grille mobile :** Passage de 2 à 3 colonnes sur mobile (`grid-cols-3`)
+- **Grille desktop :** Maintien de 5 colonnes sur desktop (`md:grid-cols-5`)
+- **Responsive :** Adaptation optimale des statistiques admin
+
+**Cartes Utilisateur Accordéon :**
+- **Comportement :** Expansion exclusive (une seule carte ouverte à la fois)
+- **Données affichées :** Avatar, nom d'utilisateur, email, rôle, objectifs d'épargne
+- **Objectif prioritaire :** Affichage spécial du "Fond d'urgence" avec barre de progression
+- **Revenus mensuels :** Calcul et affichage des revenus du mois en cours
+
+**Données Enrichies :**
+- **Avatars :** Support des photos de profil (`profile_picture_url`)
+- **Objectifs :** Array complet des objectifs d'épargne avec progression
+- **Revenus :** Calcul automatique basé sur les transactions de type `income`
+- **Fallback :** Données de préférences utilisateur si transactions indisponibles
+
+**Implémentation Technique :**
+- **Composant :** `AdminPage.tsx` - Interface accordéon
+- **Service :** `adminService.ts` - Enrichissement des données utilisateur
+- **État :** `expandedUserId` pour gestion accordéon exclusive
+- **Formatage :** `Intl.NumberFormat` pour devises malgaches (MGA)
+- **Icônes :** Lucide React pour interface cohérente
+
 ## 🚀 Déploiement Production
 
 ### 🌐 Application Live
@@ -109,10 +179,17 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 📁 bazarkely/
 ├── 📁 frontend/          # React PWA (Vite + TypeScript)
 │   ├── 📁 src/
-│   │   ├── 📁 pages/     # 7 pages principales
+│   │   ├── 📁 pages/     # Pages principales
+│   │   │   ├── AdminPage.tsx        # Interface admin avec accordéon
+│   │   │   ├── BudgetsPage.tsx      # Navigation intelligente
+│   │   │   └── TransactionsPage.tsx # Filtrage par catégorie
 │   │   ├── 📁 components/
-│   │   │   └── 📁 Leaderboard/  # Système de classement
-│   │   ├── 📁 services/  # Services (leaderboardService.ts)
+│   │   │   ├── 📁 Layout/
+│   │   │   │   └── Header.tsx       # Identification utilisateur
+│   │   │   └── 📁 Leaderboard/      # Système de classement
+│   │   ├── 📁 services/  # Services
+│   │   │   ├── leaderboardService.ts
+│   │   │   └── adminService.ts      # Données enrichies admin
 │   │   ├── 📁 store/     # Zustand stores
 │   │   └── 📁 lib/       # Utils + IndexedDB + Supabase
 │   └── 📁 public/        # PWA assets
@@ -130,6 +207,40 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 ```
 
 **Note :** Le système de leaderboard utilise Supabase directement (pas d'API REST intermédiaire) pour des performances optimales et une synchronisation en temps réel.
+
+### 📊 Structures de Données Enrichies
+
+**Interface AdminUser (adminService.ts) :**
+```typescript
+interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  created_at: string;
+  last_sync: string | null;
+  isCurrentUser: boolean;
+  profilePictureUrl: string | null;    // Nouveau
+  goals: UserGoal[];                  // Nouveau
+  monthlyIncome: number | null;       // Nouveau
+}
+
+interface UserGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string | null;
+  priority: string;
+  isCompleted: boolean;
+}
+```
+
+**Navigation et Filtrage :**
+- **URL Parameters :** Support des paramètres `category` et `filter`
+- **State Management :** `useState` pour `filterCategory` et `filterType`
+- **URL Cleanup :** `window.history.replaceState()` pour nettoyage automatique
+- **Validation :** Array `TransactionCategory` pour validation des catégories
 
 ## 🛠️ Technologies Utilisées
 
@@ -152,6 +263,8 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 - **Supabase Auth** (Authentification et gestion des utilisateurs)
 - **Supabase Client** (Requêtes directes pour leaderboard et données temps réel)
 - **IndexedDB** (Cache local et fonctionnement offline)
+- **React Router v6** (Navigation avec paramètres URL)
+- **Lucide React** (Icônes et interface utilisateur)
 
 ### Production
 - **OVH PRO** (Hébergement)
@@ -309,3 +422,7 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 **🌟 BazarKELY : L'application qui transforme la gestion budgétaire familiale à Madagascar, alliant innovation technologique et compréhension profonde du contexte local pour un impact social positif durable.**
 
 **📱 Déployé sur : [https://1sakely.org](https://1sakely.org)**
+
+---
+
+*Dernière mise à jour : 19 janvier 2025*

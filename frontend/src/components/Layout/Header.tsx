@@ -557,6 +557,19 @@ const Header = () => {
             {isMenuOpen && (
               <div className="dropdown-menu absolute top-full right-0 mt-2 bg-purple-500/80 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg z-50 min-w-[200px]">
                 <div className="flex flex-col space-y-2">
+                  {/* NEW USER IDENTIFICATION SECTION - Compte actif */}
+                  <div className="bg-purple-400/20 border border-purple-300/30 rounded-lg p-3 mb-2">
+                    <div className="flex items-center space-x-2">
+                      <User className="w-4 h-4 text-purple-200" />
+                      <div className="flex flex-col">
+                        <span className="text-xs text-purple-200 font-medium">Compte actif:</span>
+                        <span className="text-sm text-purple-50 font-semibold">
+                          {user?.detailedProfile?.firstName || user?.username || 'Utilisateur'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Bouton PWA Install/Uninstall - PREMIER ÉLÉMENT */}
                   {isInstallable && (
                     <button 

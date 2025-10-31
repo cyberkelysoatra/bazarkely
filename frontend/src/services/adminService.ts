@@ -20,6 +20,16 @@ export interface User {
   last_sync: string | null;
 }
 
+export interface UserGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string | null;
+  priority: string;
+  isCompleted: boolean;
+}
+
 export interface AdminUser {
   id: string;
   username: string;
@@ -28,6 +38,9 @@ export interface AdminUser {
   created_at: string;
   last_sync: string | null;
   isCurrentUser: boolean;
+  profilePictureUrl: string | null;
+  goals: UserGoal[];
+  monthlyIncome: number | null;
 }
 
 export interface AdminResponse<T = any> {
@@ -71,7 +84,7 @@ class AdminService {
   }
 
   /**
-   * Obtenir tous les utilisateurs (admin seulement) - Bypass RLS
+   * Obtenir tous les utilisateurs avec données enrichies (admin seulement) - Bypass RLS
    */
   async getAllUsers(): Promise<AdminResponse<AdminUser[]>> {
     try {
@@ -88,42 +101,162 @@ class AdminService {
       const currentUserEmail = currentUser?.email || '';
 
       // Call RPC function to bypass RLS and get all users
-      const { data: users, error } = await supabase.rpc('get_all_users_admin');
+      const { data: users, error: usersError } = await supabase.rpc('get_all_users_admin');
 
-      if (error) {
-        console.error('❌ Erreur RPC get_all_users_admin:', error);
-        if (error.message.includes('Access denied')) {
+      if (usersError) {
+        console.error('❌ Erreur RPC get_all_users_admin:', usersError);
+        if (usersError.message.includes('Access denied')) {
           return { 
             success: false, 
             error: 'Accès refusé. Fonction admin uniquement.' 
           };
         }
-        throw error;
+        throw usersError;
       }
 
-      // Add isCurrentUser property to each user
-      const usersWithCurrentFlag: AdminUser[] = (users as any[] || []).map((user: any) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        created_at: user.created_at,
-        last_sync: user.last_sync,
-        isCurrentUser: user.email === currentUserEmail
-      }));
+      if (!users || (users as any[]).length === 0) {
+        return { 
+          success: true, 
+          data: [],
+          message: 'Aucun utilisateur trouvé' 
+        };
+      }
 
-      console.log(`✅ Admin: Récupéré ${usersWithCurrentFlag.length} utilisateurs via RPC`);
+      // Get all user IDs for additional queries
+      const userIds = (users as any[]).map((user: any) => user.id);
+
+      // Fetch additional user fields (profile_picture_url, preferences) using IN clause
+      const { data: userDetails, error: detailsError } = await supabase
+        .from('users')
+        .select('id, profile_picture_url, preferences')
+        .in('id', userIds);
+
+      if (detailsError) {
+        console.warn('⚠️ Erreur lors de la récupération des détails utilisateurs:', detailsError);
+      }
+
+      // Create a map of user details by ID for easy lookup
+      const userDetailsMap: Record<string, any> = {};
+      if (userDetails) {
+        (userDetails as any[]).forEach((detail: any) => {
+          userDetailsMap[detail.id] = {
+            profile_picture_url: detail.profile_picture_url,
+            preferences: detail.preferences
+          };
+        });
+      }
+
+      // Fetch goals for all users in parallel
+      const { data: goalsData, error: goalsError } = await supabase
+        .from('goals')
+        .select('id, user_id, name, target_amount, current_amount, target_date, priority, is_completed')
+        .in('user_id', userIds);
+
+      if (goalsError) {
+        console.warn('⚠️ Erreur lors de la récupération des objectifs:', goalsError);
+      }
+
+      // Fetch income transactions for current month for all users
+      const currentDate = new Date();
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      const { data: incomeTransactions, error: incomeError } = await supabase
+        .from('transactions')
+        .select('user_id, amount')
+        .in('user_id', userIds)
+        .eq('type', 'income')
+        .gte('date', startOfMonth.toISOString())
+        .lte('date', endOfMonth.toISOString());
+
+      if (incomeError) {
+        console.warn('⚠️ Erreur lors de la récupération des transactions de revenus:', incomeError);
+      }
+
+      // Group goals by user_id
+      const goalsByUser: Record<string, UserGoal[]> = {};
+      if (goalsData) {
+        (goalsData as any[]).forEach((goal: any) => {
+          if (!goalsByUser[goal.user_id]) {
+            goalsByUser[goal.user_id] = [];
+          }
+          goalsByUser[goal.user_id].push({
+            id: goal.id,
+            name: goal.name,
+            targetAmount: goal.target_amount,
+            currentAmount: goal.current_amount,
+            targetDate: goal.target_date,
+            priority: goal.priority,
+            isCompleted: goal.is_completed
+          });
+        });
+      }
+
+      // Calculate monthly income for each user
+      const incomeByUser: Record<string, number> = {};
+      if (incomeTransactions) {
+        (incomeTransactions as any[]).forEach((transaction: any) => {
+          if (!incomeByUser[transaction.user_id]) {
+            incomeByUser[transaction.user_id] = 0;
+          }
+          incomeByUser[transaction.user_id] += transaction.amount;
+        });
+      }
+
+      // Build enriched AdminUser objects
+      const enrichedUsers: AdminUser[] = (users as any[]).map((user: any) => {
+        // Get additional user details from the second query
+        const userDetails = userDetailsMap[user.id] || {};
+        
+        // Calculate monthly income from transactions or fallback to preferences
+        let monthlyIncome: number | null = incomeByUser[user.id] || null;
+        
+        // Fallback to preferences if no transaction data
+        if (monthlyIncome === null && userDetails.preferences) {
+          try {
+            const preferences = typeof userDetails.preferences === 'string' 
+              ? JSON.parse(userDetails.preferences) 
+              : userDetails.preferences;
+            
+            if (preferences.priorityAnswers?.monthly_income) {
+              const incomeRanges: Record<string, number> = {
+                'low': 200000,
+                'medium': 500000,
+                'high': 1000000
+              };
+              monthlyIncome = incomeRanges[preferences.priorityAnswers.monthly_income] || null;
+            }
+          } catch (prefError) {
+            console.warn('⚠️ Erreur lors du parsing des préférences pour l\'utilisateur:', user.id, prefError);
+          }
+        }
+
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          created_at: user.created_at,
+          last_sync: user.last_sync,
+          isCurrentUser: user.email === currentUserEmail,
+          profilePictureUrl: userDetails.profile_picture_url || null,
+          goals: goalsByUser[user.id] || [],
+          monthlyIncome
+        };
+      });
+
+      console.log(`✅ Admin: Récupéré ${enrichedUsers.length} utilisateurs enrichis avec avatars, objectifs et revenus`);
 
       return { 
         success: true, 
-        data: usersWithCurrentFlag,
-        message: `${usersWithCurrentFlag.length} utilisateur(s) trouvé(s)` 
+        data: enrichedUsers,
+        message: `${enrichedUsers.length} utilisateur(s) trouvé(s) avec données enrichies` 
       };
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des utilisateurs:', error);
+      console.error('❌ Erreur lors de la récupération des utilisateurs enrichis:', error);
       return { 
         success: false, 
-        error: 'Erreur lors de la récupération des utilisateurs' 
+        error: 'Erreur lors de la récupération des utilisateurs enrichis' 
       };
     }
   }

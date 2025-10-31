@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Shield, 
@@ -12,7 +12,9 @@ import {
   User,
   Calendar,
   Mail,
-  Crown
+  Crown,
+  Target,
+  Trophy
 } from 'lucide-react';
 import adminService from '../services/adminService';
 import adminCleanupService from '../services/adminCleanupService';
@@ -42,6 +44,7 @@ const AdminPage = () => {
     lastCleanup: string | null;
     systemHealthy: boolean;
   } | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Fonction pour générer des messages d'erreur spécifiques
   const getErrorMessage = (error: any, context: string): string => {
@@ -67,6 +70,30 @@ const AdminPage = () => {
       return 'Erreur serveur interne. Veuillez réessayer dans quelques instants.';
     }
     return `Erreur lors du ${context}. Veuillez réessayer ou contacter le support.`;
+  };
+
+  // Handle accordion card click
+  const handleCardClick = (userId: string) => {
+    setExpandedUserId(expandedUserId === userId ? null : userId);
+  };
+
+  // Format currency for MGA
+  const formatCurrency = (amount: number | null): string => {
+    if (amount === null) return 'Non disponible';
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'MGA',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Format amount in Ariary (Ar) with space separators
+  const formatAriary = (amount: number): string => {
+    return new Intl.NumberFormat('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount) + ' Ar';
   };
 
   // Vérifier l'accès admin
@@ -278,7 +305,7 @@ const AdminPage = () => {
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center space-x-2 mb-2">
               <Users className="w-4 h-4 text-blue-600" />
@@ -343,69 +370,181 @@ const AdminPage = () => {
               <p>Aucun utilisateur trouvé</p>
             </div>
           ) : (
-            users.map((user) => (
-              <div key={user.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-gray-900">
-                            {user.username}
-                          </h3>
-                          {user.isCurrentUser && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              <User className="w-3 h-3 mr-1" />
-                              Vous
-                            </span>
-                          )}
-                          {user.role === 'admin' && !user.isCurrentUser && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              <Crown className="w-3 h-3 mr-1" />
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <Mail className="w-3 h-3" />
-                            <span>{user.email}</span>
+            users.map((user) => {
+              const isExpanded = expandedUserId === user.id;
+              return (
+                <div key={user.id} className="border-b border-gray-200 last:border-b-0">
+                  {/* Card Header - Clickable */}
+                  <div 
+                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => handleCardClick(user.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          {/* User Avatar */}
+                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center overflow-hidden">
+                            {user.profilePictureUrl ? (
+                              <img 
+                                src={user.profilePictureUrl} 
+                                alt={user.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-5 h-5 text-purple-600" />
+                            )}
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>Créé le {formatDate(user.created_at)}</span>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium text-gray-900">
+                                {user.username}
+                              </h3>
+                              {user.isCurrentUser && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  <User className="w-3 h-3 mr-1" />
+                                  Vous
+                                </span>
+                              )}
+                              {user.role === 'admin' && !user.isCurrentUser && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  <Crown className="w-3 h-3 mr-1" />
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <Mail className="w-3 h-3" />
+                                <span>{user.email}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>Créé le {formatDate(user.created_at)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {user.isCurrentUser ? (
+                          <span className="text-sm text-gray-400 px-3 py-1">
+                            Utilisateur actuel
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDeleteConfirm(user.id);
+                            }}
+                            disabled={deleting === user.id}
+                            className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deleting === user.id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                            <span>Supprimer</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expandable Content */}
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="px-4 pb-4 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Emergency Fund Goal Section */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <Target className="w-4 h-4 mr-2 text-purple-600" />
+                            Objectifs d'épargne
+                          </h4>
+                          {(() => {
+                            // Find the "Fond d'urgence" goal
+                            const emergencyFundGoal = user.goals?.find(goal => goal.name === "Fond d'urgence");
+                            
+                            if (!emergencyFundGoal) {
+                              return (
+                                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                  <p className="text-sm text-gray-500 italic text-center">
+                                    Aucun objectif d'urgence défini
+                                  </p>
+                                </div>
+                              );
+                            }
+
+                            // Calculate progress percentage
+                            const progress = emergencyFundGoal.targetAmount > 0 
+                              ? Math.min((emergencyFundGoal.currentAmount / emergencyFundGoal.targetAmount) * 100, 100)
+                              : 0;
+
+                            return (
+                              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center">
+                                    <Target className="w-4 h-4 mr-2 text-purple-600" />
+                                    <h5 className="text-sm font-medium text-gray-900">Fond d'urgence</h5>
+                                  </div>
+                                  <Trophy className="w-5 h-5 text-yellow-500" />
+                                </div>
+                                
+                                <div className="flex items-center justify-between text-sm text-gray-700 mb-3">
+                                  <span className="font-medium">{formatAriary(emergencyFundGoal.currentAmount)}</span>
+                                  <span className="font-medium">{formatAriary(emergencyFundGoal.targetAmount)}</span>
+                                </div>
+                                
+                                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                  <div 
+                                    className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                  ></div>
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">
+                                    {progress.toFixed(1)}% complété
+                                  </span>
+                                  {emergencyFundGoal.isCompleted && (
+                                    <span className="text-xs text-green-600 font-medium">
+                                      ✓ Terminé
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Monthly Income Section */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <BarChart3 className="w-4 h-4 mr-2 text-blue-600" />
+                            Revenus mensuels
+                          </h4>
+                          <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-gray-900 mb-1">
+                                {formatCurrency(user.monthlyIncome)}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {user.monthlyIncome ? 'Revenus du mois en cours' : 'Aucune donnée disponible'}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    {user.isCurrentUser ? (
-                      <span className="text-sm text-gray-400 px-3 py-1">
-                        Utilisateur actuel
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setShowDeleteConfirm(user.id)}
-                        disabled={deleting === user.id}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {deleting === user.id ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                        <span>Supprimer</span>
-                      </button>
-                    )}
-                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
