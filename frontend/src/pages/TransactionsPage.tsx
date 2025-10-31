@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
+import accountService from '../services/accountService';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import type { Transaction, Account, TransactionCategory } from '../types';
@@ -163,46 +164,104 @@ const TransactionsPage = () => {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0));
 
+  // Fonction pour échapper les valeurs CSV
+  const escapeCSV = (value: string): string => {
+    // Si la valeur contient des virgules, des guillemets ou des sauts de ligne, l'entourer de guillemets
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      // Remplacer les guillemets par des doubles guillemets
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  // Fonction pour formater la date en YYYY-MM-DD
+  const formatDateForCSV = (date: Date): string => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Fonction pour exporter les transactions filtrées en CSV
-  const exportToCSV = () => {
-    const csvHeaders = ['Date', 'Description', 'Catégorie', 'Type', 'Montant', 'Compte'];
-    const csvRows = sortedTransactions.map(transaction => {
-      const category = TRANSACTION_CATEGORIES[transaction.category]?.name || transaction.category;
-      const account = accountsMap.get(transaction.accountId);
-      const accountName = account?.name || 'Compte inconnu';
-      const date = new Date(transaction.date).toISOString().split('T')[0];
-      const amount = transaction.amount.toFixed(2);
-      const type = transaction.type === 'income' ? 'Revenu' : transaction.type === 'expense' ? 'Dépense' : 'Transfert';
-      
-      // Échapper les valeurs contenant des virgules ou guillemets
-      const escapeCSV = (value: string) => {
-        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-          return `"${value.replace(/"/g, '""')}"`;
+  const exportToCSV = async () => {
+    if (!user || sortedTransactions.length === 0) {
+      return;
+    }
+
+    try {
+      // Charger tous les comptes de l'utilisateur pour obtenir les noms
+      const accounts = await accountService.getUserAccounts(user.id);
+      const accountMap = new Map<string, string>();
+      accounts.forEach(account => {
+        accountMap.set(account.id, account.name);
+      });
+
+      // En-têtes CSV
+      const headers = ['Date', 'Description', 'Catégorie', 'Type', 'Montant', 'Compte'];
+      const csvRows = [headers.map(h => escapeCSV(h)).join(',')];
+
+      // Données CSV
+      sortedTransactions.forEach(transaction => {
+        const category = TRANSACTION_CATEGORIES[transaction.category] || {
+          name: transaction.category
+        };
+        
+        // Formater le type (traduire en français)
+        let typeLabel = '';
+        switch (transaction.type) {
+          case 'income':
+            typeLabel = 'Revenu';
+            break;
+          case 'expense':
+            typeLabel = 'Dépense';
+            break;
+          case 'transfer':
+            typeLabel = 'Transfert';
+            break;
+          default:
+            typeLabel = transaction.type;
         }
-        return value;
-      };
+
+        // Récupérer le nom du compte
+        const accountName = accountMap.get(transaction.accountId) || 'Compte inconnu';
+
+        // Formater le montant avec 2 décimales
+        const formattedAmount = Math.abs(transaction.amount).toFixed(2);
+
+        const row = [
+          formatDateForCSV(new Date(transaction.date)),
+          escapeCSV(transaction.description || ''),
+          escapeCSV(category.name),
+          escapeCSV(typeLabel),
+          formattedAmount,
+          escapeCSV(accountName)
+        ];
+
+        csvRows.push(row.join(','));
+      });
+
+      // Créer le contenu CSV
+      const csvContent = csvRows.join('\n');
+
+      // Créer le blob et télécharger
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM UTF-8 pour Excel
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
       
-      return [
-        date,
-        escapeCSV(transaction.description || ''),
-        escapeCSV(category),
-        type,
-        amount,
-        escapeCSV(accountName)
-      ].join(',');
-    });
-    
-    const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const today = new Date().toISOString().split('T')[0];
-    link.setAttribute('href', url);
-    link.setAttribute('download', `transactions-${today}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Générer le nom de fichier avec la date actuelle
+      const today = new Date();
+      const filename = `transactions-${formatDateForCSV(today)}.csv`;
+      link.setAttribute('download', filename);
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV:', error);
+    }
   };
 
   if (isLoading) {
@@ -310,8 +369,9 @@ const TransactionsPage = () => {
           </div>
           <button 
             onClick={exportToCSV}
-            className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
+            className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Exporter en CSV"
+            disabled={sortedTransactions.length === 0}
           >
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Exporter</span>
