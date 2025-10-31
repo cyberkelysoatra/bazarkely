@@ -334,7 +334,12 @@ const TransactionDetailPage = () => {
         accountId: transaction?.accountId || ''
       });
     } else {
-      navigate('/transactions');
+      // Utiliser l'historique du navigateur pour préserver les filtres et l'état de la page précédente
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/transactions');
+      }
     }
   };
 
