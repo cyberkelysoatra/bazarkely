@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2 } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import { db } from '../lib/database';
@@ -130,19 +130,6 @@ const TransactionsPage = () => {
   const totalExpenses = Math.abs(transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0));
-
-  if (isLoading) {
-    return (
-      <div className="p-4 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des transactions...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 pb-20 space-y-6">
@@ -283,7 +270,18 @@ const TransactionsPage = () => {
         </div>
       </div>
 
+      {/* Indicateur de chargement */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+            <p className="text-gray-600 text-sm">Chargement des transactions...</p>
+          </div>
+        </div>
+      )}
+
       {/* Liste des transactions */}
+      {!isLoading && (
       <div className="space-y-3">
         {sortedTransactions.map((transaction) => {
           const category = TRANSACTION_CATEGORIES[transaction.category] || {
@@ -377,8 +375,9 @@ const TransactionsPage = () => {
           );
         })}
       </div>
+      )}
 
-      {sortedTransactions.length === 0 && (
+      {!isLoading && sortedTransactions.length === 0 && (
         <div className="text-center py-8">
           <ArrowUpDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune transaction</h3>
