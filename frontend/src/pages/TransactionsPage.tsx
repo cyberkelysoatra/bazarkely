@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import { db } from '../lib/database';
@@ -17,6 +17,7 @@ const TransactionsPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
+  const [accountsMap, setAccountsMap] = useState<Map<string, Account>>(new Map());
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
@@ -34,14 +35,8 @@ const TransactionsPage = () => {
       } else if (filterParam === 'all') {
         setFilterType('all');
       }
-      
-      // Nettoyer l'URL en supprimant le paramètre filter
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.delete('filter');
-      const newUrl = `${location.pathname}${newSearchParams.toString() ? `?${newSearchParams.toString()}` : ''}`;
-      window.history.replaceState({}, '', newUrl);
     }
-  }, [searchParams, location.pathname]);
+  }, [searchParams]);
 
   // Charger les transactions de l'utilisateur
   useEffect(() => {
@@ -62,6 +57,22 @@ const TransactionsPage = () => {
     };
     loadTransactions();
   }, [user, location.pathname]); // Refresh when returning from detail page
+
+  // Charger tous les comptes de l'utilisateur pour l'export CSV
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (user) {
+        try {
+          const accounts = await db.accounts.where('userId').equals(user.id).toArray();
+          const map = new Map(accounts.map(acc => [acc.id, acc]));
+          setAccountsMap(map);
+        } catch (error) {
+          console.error('Erreur lors du chargement des comptes:', error);
+        }
+      }
+    };
+    loadAccounts();
+  }, [user]);
 
   // Charger les informations du compte filtré
   useEffect(() => {
@@ -131,12 +142,54 @@ const TransactionsPage = () => {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0));
 
+  // Fonction pour exporter les transactions filtrées en CSV
+  const exportToCSV = () => {
+    const csvHeaders = ['Date', 'Description', 'Catégorie', 'Type', 'Montant', 'Compte'];
+    const csvRows = sortedTransactions.map(transaction => {
+      const category = TRANSACTION_CATEGORIES[transaction.category]?.name || transaction.category;
+      const account = accountsMap.get(transaction.accountId);
+      const accountName = account?.name || 'Compte inconnu';
+      const date = new Date(transaction.date).toISOString().split('T')[0];
+      const amount = transaction.amount.toFixed(2);
+      const type = transaction.type === 'income' ? 'Revenu' : transaction.type === 'expense' ? 'Dépense' : 'Transfert';
+      
+      // Échapper les valeurs contenant des virgules ou guillemets
+      const escapeCSV = (value: string) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      };
+      
+      return [
+        date,
+        escapeCSV(transaction.description || ''),
+        escapeCSV(category),
+        type,
+        amount,
+        escapeCSV(accountName)
+      ].join(',');
+    });
+    
+    const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transactions-${today}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <Loader2 className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
             <p className="text-gray-600">Chargement des transactions...</p>
           </div>
         </div>
@@ -234,6 +287,14 @@ const TransactionsPage = () => {
               className="input-field pl-10"
             />
           </div>
+          <button 
+            onClick={exportToCSV}
+            className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
+            title="Exporter en CSV"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Exporter</span>
+          </button>
           <button className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
             <Filter className="w-4 h-4" />
           </button>
