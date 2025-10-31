@@ -51,8 +51,11 @@ const TransactionsPage = () => {
         'famille', 'solidarite', 'autres'
       ];
       
-      if (validCategories.includes(categoryParam as TransactionCategory)) {
-        setFilterCategory(categoryParam as TransactionCategory);
+      // Convertir le paramètre en minuscules pour une comparaison insensible à la casse
+      const lowerCategoryParam = categoryParam.toLowerCase();
+      
+      if (validCategories.includes(lowerCategoryParam as TransactionCategory)) {
+        setFilterCategory(lowerCategoryParam as TransactionCategory);
       } else {
         setFilterCategory('all');
       }
@@ -129,7 +132,7 @@ const TransactionsPage = () => {
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
-    const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
+    const matchesCategory = filterCategory === 'all' || transaction.category.toLowerCase() === filterCategory.toLowerCase();
     const matchesAccount = !accountId || transaction.accountId === accountId;
     
     // Log de débogage pour les transferts
