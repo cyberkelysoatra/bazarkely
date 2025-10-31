@@ -39,7 +39,6 @@ const TransactionsPage = () => {
       } else if (filterParam === 'all') {
         setFilterType('all');
       }
-<<<<<<< HEAD
     }
     
     // Traiter le paramètre de catégorie
@@ -56,17 +55,6 @@ const TransactionsPage = () => {
       } else {
         setFilterCategory('all');
       }
-    }
-    
-    // Nettoyer l'URL en supprimant les paramètres après traitement
-    if (filterParam || categoryParam) {
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.delete('filter');
-      newSearchParams.delete('category');
-      const newUrl = `${location.pathname}${newSearchParams.toString() ? `?${newSearchParams.toString()}` : ''}`;
-      window.history.replaceState({}, '', newUrl);
-=======
->>>>>>> fix-category-filter-conservative
     }
   }, [searchParams]);
 
@@ -397,6 +385,7 @@ const TransactionsPage = () => {
       </div>
 
       {/* Liste des transactions */}
+      {!isLoading && (
       <div className="space-y-3">
         {sortedTransactions.map((transaction) => {
           const category = TRANSACTION_CATEGORIES[transaction.category] || {
@@ -490,8 +479,9 @@ const TransactionsPage = () => {
           );
         })}
       </div>
+      )}
 
-      {sortedTransactions.length === 0 && (
+      {!isLoading && sortedTransactions.length === 0 && (
         <div className="text-center py-8">
           <ArrowUpDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune transaction</h3>
