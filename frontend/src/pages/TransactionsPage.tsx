@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Download } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
+import accountService from '../services/accountService';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import type { Transaction, Account } from '../types';
@@ -92,6 +93,106 @@ const TransactionsPage = () => {
   // Helper function to sort transactions by date (newest first)
   const sortTransactionsByDateDesc = (transactions: Transaction[]) => {
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  // Fonction pour échapper les valeurs CSV
+  const escapeCSV = (value: string): string => {
+    // Si la valeur contient des virgules, des guillemets ou des sauts de ligne, l'entourer de guillemets
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      // Remplacer les guillemets par des doubles guillemets
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  // Fonction pour formater la date en YYYY-MM-DD
+  const formatDateForCSV = (date: Date): string => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Fonction pour exporter les transactions filtrées en CSV
+  const exportToCSV = async () => {
+    if (!user || sortedTransactions.length === 0) {
+      return;
+    }
+
+    try {
+      // Charger tous les comptes de l'utilisateur pour obtenir les noms
+      const accounts = await accountService.getUserAccounts(user.id);
+      const accountMap = new Map<string, string>();
+      accounts.forEach(account => {
+        accountMap.set(account.id, account.name);
+      });
+
+      // En-têtes CSV
+      const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Account'];
+      const csvRows = [headers.map(h => escapeCSV(h)).join(',')];
+
+      // Données CSV
+      sortedTransactions.forEach(transaction => {
+        const category = TRANSACTION_CATEGORIES[transaction.category] || {
+          name: transaction.category
+        };
+        
+        // Formater le type (traduire en français)
+        let typeLabel = '';
+        switch (transaction.type) {
+          case 'income':
+            typeLabel = 'Revenu';
+            break;
+          case 'expense':
+            typeLabel = 'Dépense';
+            break;
+          case 'transfer':
+            typeLabel = 'Transfert';
+            break;
+          default:
+            typeLabel = transaction.type;
+        }
+
+        // Récupérer le nom du compte
+        const accountName = accountMap.get(transaction.accountId) || 'Compte inconnu';
+
+        // Formater le montant avec 2 décimales
+        const formattedAmount = Math.abs(transaction.amount).toFixed(2);
+
+        const row = [
+          formatDateForCSV(transaction.date),
+          escapeCSV(transaction.description),
+          escapeCSV(category.name),
+          escapeCSV(typeLabel),
+          formattedAmount,
+          escapeCSV(accountName)
+        ];
+
+        csvRows.push(row.join(','));
+      });
+
+      // Créer le contenu CSV
+      const csvContent = csvRows.join('\n');
+
+      // Créer le blob et télécharger
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM UTF-8 pour Excel
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Générer le nom de fichier avec la date actuelle
+      const today = new Date();
+      const filename = `transactions-${formatDateForCSV(today)}.csv`;
+      link.setAttribute('download', filename);
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV:', error);
+    }
   };
 
   const filteredTransactions = transactions.filter(transaction => {
@@ -236,6 +337,14 @@ const TransactionsPage = () => {
           </div>
           <button className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
             <Filter className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={exportToCSV}
+            className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+            title="Exporter en CSV"
+            disabled={sortedTransactions.length === 0}
+          >
+            <Download className="w-4 h-4" />
           </button>
         </div>
 
