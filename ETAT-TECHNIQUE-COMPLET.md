@@ -940,13 +940,15 @@ interface UserGoal {
 
 **Fichier modifié:** `frontend/src/services/adminService.ts`
 
-#### **16.5 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ
+#### **16.5 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ ET FONCTIONNEL
 
 **Architecture de Filtrage:**
 - **État:** `filterCategory` avec valeurs `TransactionCategory | 'all'`
-- **URL Parameters:** Lecture et nettoyage automatique des paramètres
+- **URL Parameters:** Lecture et préservation des paramètres (nettoyage URL supprimé pour résoudre race condition)
 - **Validation:** Array `validCategories` pour validation des catégories
-- **Race Condition Fix:** Consolidation des `useEffect` pour éviter les conflits
+- **Race Condition Fix:** ✅ RÉSOLU (2025-10-31) - Suppression nettoyage URL automatique
+- **Case-Insensitive:** ✅ IMPLÉMENTÉ - Comparaison insensible à la casse pour robustesse
+- **Status:** ✅ FONCTIONNEL - Validé par utilisateur (2025-11-03)
 
 **Implémentation TransactionsPage:**
 ```typescript
@@ -965,11 +967,13 @@ const filteredTransactions = transactions.filter(transaction => {
 ```
 
 **Interface Utilisateur:**
-- **Badge de filtre actif:** Affichage de la catégorie filtrée avec bouton de suppression
-- **Nettoyage URL:** `window.history.replaceState()` pour supprimer les paramètres
-- **Navigation:** Préservation de l'historique de navigation
+- **Badge de filtre actif:** ✅ FONCTIONNEL - Affichage de la catégorie filtrée avec bouton de suppression
+- **Préservation URL:** Paramètre category conservé pour bookmarkabilité (nettoyage supprimé)
+- **Navigation:** Préservation de l'historique de navigation avec filtres actifs
+- **Validation:** ✅ CONFIRMÉ - Navigation depuis BudgetsPage vers TransactionsPage fonctionne parfaitement (2025-11-03)
 
-**Fichier modifié:** `frontend/src/pages/TransactionsPage.tsx`
+**Fichier modifié:** `frontend/src/pages/TransactionsPage.tsx`  
+**Résolution:** Bug résolu entre sessions 2025-01-19 et 2025-11-03
 
 ---
 

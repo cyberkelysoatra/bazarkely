@@ -1,6 +1,7 @@
 // Types principaux pour BazarKELY
 import type { NotificationSettings } from '../services/notificationService';
 import type { CategoryBudgets } from '../services/budgetIntelligenceService';
+import type { RecurringTransaction, RecurrenceFrequency } from './recurring';
 
 export interface User {
   id: string;
@@ -95,6 +96,9 @@ export interface Transaction {
   transferFee?: number;
   notes?: string;
   createdAt: Date;
+  // Pour transactions récurrentes (Phase 1 - Infrastructure)
+  isRecurring?: boolean; // Indique si cette transaction provient d'une transaction récurrente
+  recurringTransactionId?: string | null; // Référence vers la transaction récurrente source
 }
 
 export interface Budget {
@@ -358,3 +362,7 @@ export interface AppState {
   language: 'fr' | 'mg';
   alerts: any[]; // AlertHistoryItem[] - défini dans budgetMonitoringService.ts
 }
+
+// Réexport des types de transactions récurrentes pour commodité
+export type { RecurringTransaction, RecurrenceFrequency } from './recurring';
+export type { RecurringTransactionCreate, RecurringTransactionUpdate } from './recurring';

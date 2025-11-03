@@ -2,7 +2,7 @@ import { db } from '../lib/database'
 
 export interface NotificationData {
   id: string
-  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day'
+  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day' | 'recurring_reminder' | 'recurring_created'
   title: string
   body: string
   icon?: string
@@ -535,6 +535,8 @@ class NotificationService {
         const user = await this.getCurrentUser()
         if (user) {
           await this.scheduleDailySummary(user.id)
+          // Vérifier les transactions récurrentes à venir
+          await this.checkRecurringTransactions(user.id)
         }
       }
     }, 60 * 60 * 1000)) // 1 heure
@@ -583,6 +585,10 @@ class NotificationService {
         return this.settings.familyEventReminders
       case 'market_day':
         return this.settings.marketDayReminders
+      case 'recurring_reminder':
+        return this.settings.transactionAlerts // Utiliser le même paramètre
+      case 'recurring_created':
+        return this.settings.transactionAlerts // Utiliser le même paramètre
       default:
         return true
     }
@@ -735,6 +741,88 @@ class NotificationService {
       maxDailyNotifications: 5,
       createdAt: new Date(),
       updatedAt: new Date()
+    }
+  }
+
+  /**
+   * Vérifie les transactions récurrentes à venir et envoie des notifications
+   * 
+   * @param userId ID de l'utilisateur
+   * @param daysBefore Nombre de jours avant la date d'échéance (par défaut 1)
+   */
+  async checkRecurringTransactions(userId: string, daysBefore: number = 1): Promise<void> {
+    try {
+      // Import dynamique pour éviter les dépendances circulaires
+      const { default: recurringTransactionService } = await import('./recurringTransactionService');
+      
+      // Récupérer les transactions récurrentes à venir dans les prochains jours
+      const upcomingRecurring = await recurringTransactionService.getUpcomingInDays(userId, daysBefore);
+      
+      for (const recurring of upcomingRecurring) {
+        // Vérifier si on doit notifier (selon notifyBeforeDays)
+        const daysUntil = Math.ceil(
+          (recurring.nextGenerationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        if (daysUntil <= recurring.notifyBeforeDays && daysUntil >= 0) {
+          await this.showNotification({
+            type: 'recurring_reminder',
+            title: '🔄 Transaction Récurrente à Venir',
+            body: `${recurring.description}: ${this.formatCurrency(recurring.amount)} ${recurring.type === 'income' ? 'revenu' : 'dépense'} prévu ${daysUntil === 0 ? 'aujourd\'hui' : `dans ${daysUntil} jour(s)`}`,
+            priority: daysUntil === 0 ? 'high' : 'normal',
+            userId,
+            clickAction: `/recurring/${recurring.id}/confirm`,
+            data: {
+              recurringId: recurring.id,
+              amount: recurring.amount,
+              description: recurring.description,
+              nextDate: recurring.nextGenerationDate.toISOString(),
+              daysUntil
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification des transactions récurrentes:', error)
+    }
+  }
+
+  /**
+   * Envoie une notification après la création automatique d'une transaction récurrente
+   * 
+   * @param userId ID de l'utilisateur
+   * @param transaction Transaction générée
+   * @param recurringId ID de la transaction récurrente source
+   */
+  async sendRecurringCreatedNotification(
+    userId: string,
+    transaction: any,
+    recurringId: string
+  ): Promise<void> {
+    try {
+      const { default: recurringTransactionService } = await import('./recurringTransactionService');
+      const recurring = await recurringTransactionService.getById(recurringId);
+      
+      if (!recurring) {
+        return;
+      }
+
+      await this.showNotification({
+        type: 'recurring_created',
+        title: '✅ Transaction Récurrente Générée',
+        body: `${recurring.description}: ${this.formatCurrency(transaction.amount)} ${transaction.type === 'income' ? 'revenu' : 'dépense'} créé automatiquement`,
+        priority: 'normal',
+        userId,
+        clickAction: `/transactions/${transaction.id}`,
+        data: {
+          transactionId: transaction.id,
+          recurringId: recurring.id,
+          amount: transaction.amount,
+          description: transaction.description
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi de la notification de création:', error)
     }
   }
 

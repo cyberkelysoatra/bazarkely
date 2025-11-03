@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
+import recurringTransactionService from '../services/recurringTransactionService';
 import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
+import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
+import { validateRecurringData } from '../utils/recurringUtils';
 import type { Account, TransactionCategory } from '../types';
+import type { RecurrenceFrequency } from '../types/recurring';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const transactionType = searchParams.get('type') || 'expense';
+  const isRecurringParam = searchParams.get('recurring') === 'true';
   const { user } = useAppStore();
   const { trackTransaction } = usePracticeTracking();
   
@@ -28,6 +33,20 @@ const AddTransactionPage = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  
+  // État pour les transactions récurrentes
+  const [isRecurring, setIsRecurring] = useState(isRecurringParam);
+  const [recurringConfig, setRecurringConfig] = useState({
+    frequency: 'monthly' as RecurrenceFrequency,
+    startDate: new Date(),
+    endDate: null as Date | null,
+    dayOfMonth: new Date().getDate(),
+    dayOfWeek: null as number | null,
+    notifyBeforeDays: 1,
+    autoCreate: false,
+    linkedBudgetId: null as string | null
+  });
+  const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -67,7 +86,7 @@ const AddTransactionPage = () => {
       return;
     }
 
-    // Validation
+    // Validation de base
     if (!formData.amount || !formData.description || !formData.category || !formData.accountId) {
       console.error('❌ Veuillez remplir tous les champs obligatoires');
       return;
@@ -79,28 +98,88 @@ const AddTransactionPage = () => {
       return;
     }
 
+    // Validation spécifique pour les transactions récurrentes
+    if (isRecurring) {
+      const validation = validateRecurringData({
+        userId: user.id,
+        accountId: formData.accountId,
+        type: transactionType as 'income' | 'expense',
+        amount: Math.abs(amount),
+        description: formData.description,
+        category: formData.category,
+        frequency: recurringConfig.frequency,
+        startDate: recurringConfig.startDate,
+        endDate: recurringConfig.endDate,
+        dayOfMonth: recurringConfig.dayOfMonth,
+        dayOfWeek: recurringConfig.dayOfWeek,
+        notifyBeforeDays: recurringConfig.notifyBeforeDays,
+        autoCreate: recurringConfig.autoCreate,
+        linkedBudgetId: recurringConfig.linkedBudgetId,
+        isActive: true
+      });
+
+      if (!validation.valid) {
+        const errors: Record<string, string> = {};
+        validation.errors.forEach(error => {
+          // Extraire le nom du champ de l'erreur
+          const fieldMatch = error.match(/^([^:]+):/);
+          if (fieldMatch) {
+            const field = fieldMatch[1].toLowerCase().replace(/\s+/g, '');
+            errors[field] = error;
+          }
+        });
+        setRecurringErrors(errors);
+        console.error('❌ Erreurs de validation:', validation.errors);
+        return;
+      }
+      setRecurringErrors({});
+    }
+
     setIsLoading(true);
 
     try {
-      // Créer la transaction
-      await transactionService.createTransaction(user.id, {
-        type: transactionType as 'income' | 'expense' | 'transfer',
-        amount: isExpense ? -amount : amount,
-        description: formData.description,
-        category: formData.category as TransactionCategory,
-        accountId: formData.accountId,
-        date: new Date(formData.date),
-        notes: formData.notes
-      });
+      if (isRecurring) {
+        // Créer une transaction récurrente
+        await recurringTransactionService.create({
+          userId: user.id,
+          accountId: formData.accountId,
+          type: transactionType as 'income' | 'expense',
+          amount: Math.abs(amount),
+          description: formData.description,
+          category: formData.category,
+          frequency: recurringConfig.frequency,
+          startDate: recurringConfig.startDate,
+          endDate: recurringConfig.endDate,
+          dayOfMonth: recurringConfig.dayOfMonth,
+          dayOfWeek: recurringConfig.dayOfWeek,
+          notifyBeforeDays: recurringConfig.notifyBeforeDays,
+          autoCreate: recurringConfig.autoCreate,
+          linkedBudgetId: recurringConfig.linkedBudgetId,
+          isActive: true
+        });
 
-      // Succès
-      console.log(`✅ ${isIncome ? 'Revenu' : 'Dépense'} ajouté avec succès !`);
-      trackTransaction();
-      navigate('/transactions'); // Rediriger vers la page des transactions
-      
+        console.log('✅ Transaction récurrente créée avec succès !');
+        trackTransaction();
+        navigate('/recurring'); // Rediriger vers la page des transactions récurrentes
+      } else {
+        // Créer une transaction normale
+        await transactionService.createTransaction(user.id, {
+          type: transactionType as 'income' | 'expense' | 'transfer',
+          amount: isExpense ? -amount : amount,
+          description: formData.description,
+          category: formData.category as TransactionCategory,
+          accountId: formData.accountId,
+          date: new Date(formData.date),
+          notes: formData.notes
+        });
+
+        console.log(`✅ ${isIncome ? 'Revenu' : 'Dépense'} ajouté avec succès !`);
+        trackTransaction();
+        navigate('/transactions'); // Rediriger vers la page des transactions
+      }
     } catch (error) {
-      console.error('❌ Erreur lors de la création de la transaction:', error);
-      console.error('❌ Erreur lors de la sauvegarde. Veuillez réessayer.');
+      console.error('❌ Erreur lors de la création:', error);
+      alert('❌ Erreur lors de la sauvegarde. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
@@ -156,6 +235,33 @@ const AddTransactionPage = () => {
       {/* Formulaire */}
       <div className="p-4">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Toggle Transaction récurrente */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Repeat className="w-5 h-5 text-blue-600" />
+                <div>
+                  <label htmlFor="isRecurring" className="text-sm font-medium text-gray-900 cursor-pointer">
+                    Transaction récurrente
+                  </label>
+                  <p className="text-xs text-gray-600">
+                    Créer une transaction qui se répète automatiquement
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+
           {/* Montant */}
           <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
@@ -281,6 +387,30 @@ const AddTransactionPage = () => {
             />
           </div>
 
+          {/* Configuration récurrente (affichée seulement si isRecurring = true) */}
+          {isRecurring && user && (
+            <RecurringConfigSection
+              frequency={recurringConfig.frequency}
+              setFrequency={(freq) => setRecurringConfig(prev => ({ ...prev, frequency: freq }))}
+              startDate={recurringConfig.startDate}
+              setStartDate={(date) => setRecurringConfig(prev => ({ ...prev, startDate: date }))}
+              endDate={recurringConfig.endDate}
+              setEndDate={(date) => setRecurringConfig(prev => ({ ...prev, endDate: date }))}
+              dayOfMonth={recurringConfig.dayOfMonth}
+              setDayOfMonth={(day) => setRecurringConfig(prev => ({ ...prev, dayOfMonth: day }))}
+              dayOfWeek={recurringConfig.dayOfWeek}
+              setDayOfWeek={(day) => setRecurringConfig(prev => ({ ...prev, dayOfWeek: day }))}
+              notifyBeforeDays={recurringConfig.notifyBeforeDays}
+              setNotifyBeforeDays={(days) => setRecurringConfig(prev => ({ ...prev, notifyBeforeDays: days }))}
+              autoCreate={recurringConfig.autoCreate}
+              setAutoCreate={(auto) => setRecurringConfig(prev => ({ ...prev, autoCreate: auto }))}
+              linkedBudgetId={recurringConfig.linkedBudgetId}
+              setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
+              userId={user.id}
+              errors={recurringErrors}
+            />
+          )}
+
           {/* Boutons d'action */}
           <div className="flex space-x-4 pt-6">
             <button
@@ -300,7 +430,14 @@ const AddTransactionPage = () => {
               }`}
             >
               <Save className="w-5 h-5" />
-              <span>{isLoading ? 'Enregistrement...' : 'Enregistrer'}</span>
+              <span>
+                {isLoading 
+                  ? 'Enregistrement...' 
+                  : isRecurring 
+                    ? 'Créer la récurrence' 
+                    : 'Enregistrer'
+                }
+              </span>
             </button>
           </div>
         </form>

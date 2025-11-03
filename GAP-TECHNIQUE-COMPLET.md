@@ -3,7 +3,7 @@
 
 **Version:** 3.9 (Développement Multi-Agents Validé + Gaps Résolus + Nouvelles Capacités)  
 **Date de mise à jour:** 2025-10-31  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté
 
 ---
@@ -861,100 +861,33 @@ import Button from '../components/UI/Button';
 
 ## 🐛 BUGS CONNUS ET PROBLÈMES IDENTIFIÉS (SESSION 20 JANVIER 2025)
 
-### **Bug de Filtrage par Catégorie - TransactionsPage** ❌ NON RÉSOLU - PRIORITÉ HAUTE
+### **Bug de Filtrage par Catégorie - TransactionsPage** ✅ RÉSOLU - 2025-11-03
 
-#### **Description du Bug**
-Le filtrage par catégorie ne fonctionne pas lors de la navigation depuis les cartes de budget vers la page des transactions. Malgré la navigation correcte avec le paramètre URL `category`, toutes les transactions sont affichées au lieu d'être filtrées par la catégorie sélectionnée.
+#### **Description du Bug (Historique)**
+Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les cartes de budget vers la page des transactions. Malgré la navigation correcte avec le paramètre URL `category`, toutes les transactions étaient affichées au lieu d'être filtrées par la catégorie sélectionnée.
 
-#### **Symptômes Observés**
-- **Navigation fonctionnelle:** Clic sur carte budget navigue correctement vers `/transactions?category=CATEGORY_VALUE`
-- **Filtrage défaillant:** Toutes les transactions sont affichées au lieu de la catégorie filtrée
-- **Badge manquant:** Aucun badge de filtre actif visible sur la page des transactions
-- **État non mis à jour:** `filterCategory` reste à `'all'` malgré la présence du paramètre URL
+#### **Résolution Confirmée**
+- **Date de résolution :** Entre sessions 2025-01-19 et 2025-11-03
+- **Statut :** ✅ RÉSOLU - Filtrage par catégorie maintenant fonctionnel
+- **Vérification utilisateur :** Navigation depuis BudgetsPage vers TransactionsPage fonctionne parfaitement
+- **Badge filtre actif :** Affiché correctement avec bouton de suppression
 
-#### **Étapes de Reproduction**
-1. Naviguer vers la page Budgets (`/budgets`)
-2. Cliquer sur n'importe quelle carte de budget (ex: "Loisirs")
-3. Observer la redirection vers `/transactions?category=loisirs`
-4. Vérifier que toutes les transactions sont affichées (toutes catégories)
-5. Constater l'absence du badge de filtre de catégorie actif
+#### **Corrections Appliquées (Session 2025-10-31)**
+- **Fix race condition :** Suppression nettoyage URL automatique qui s'exécutait avant application du filtre
+- **Case-insensitive matching :** Comparaison insensible à la casse implémentée (`categoryParam.toLowerCase()`)
+- **Badge actif :** Affichage de la catégorie filtrée avec bouton reset
+- **Préservation URL :** Paramètre category conservé pour bookmarkabilité
 
-#### **Investigation Effectuée**
-
-**1. Consolidation des useEffect** ✅ TENTÉE
-- **Problème identifié:** Race condition entre deux `useEffect` avec dépendances identiques
-- **Solution appliquée:** Consolidation en un seul `useEffect` pour traiter les paramètres URL
-- **Résultat:** Aucune amélioration observée
-
-**2. Vérification de la Sensibilité à la Casse** ✅ VÉRIFIÉE
-- **Problème suspecté:** Mismatch entre "Loisirs" (majuscule) et "loisirs" (minuscule)
-- **Investigation:** Vérification que `budget.category` passe bien la valeur en minuscules
-- **Résultat:** Valeur correcte transmise, problème ailleurs
-
-**3. Validation des Catégories** ✅ VÉRIFIÉE
-- **Array validCategories:** Contient bien "loisirs" en minuscules
-- **Validation:** `validCategories.includes(categoryParam as TransactionCategory)` fonctionne
-- **Résultat:** Validation correcte, problème de logique de filtrage
-
-**4. Debugging des États** ✅ EFFECTUÉ
-- **Console logs ajoutés:** Traçage complet du flux de données
-- **Observations:** `categoryParam` lu correctement, `setFilterCategory` appelé
-- **Problème:** `filterCategory` ne se met pas à jour ou ne s'applique pas au filtrage
-
-#### **Tentatives de Correction Appliquées**
-
-**1. Consolidation useEffect** ✅ APPLIQUÉE
-```typescript
-// Avant: Deux useEffect séparés
-useEffect(() => { /* filter parameter */ }, [searchParams, location.pathname]);
-useEffect(() => { /* category parameter */ }, [searchParams, location.pathname]);
-
-// Après: Un seul useEffect consolidé
-useEffect(() => {
-  const filterParam = searchParams.get('filter');
-  const categoryParam = searchParams.get('category');
-  // ... traitement des deux paramètres
-}, [searchParams, location.pathname]);
-```
-
-**2. Suppression des Logs de Debug** ✅ APPLIQUÉE
-- Suppression de tous les `console.log` ajoutés pour le debugging
-- Nettoyage du code pour la production
-
-**3. Vérification de la Logique de Filtrage** ✅ VÉRIFIÉE
-```typescript
-const filteredTransactions = transactions.filter(transaction => {
-  const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
-  const matchesFilter = filterType === 'all' || transaction.type === filterType;
-  const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
-  const matchesAccount = !accountId || transaction.accountId === accountId;
-  
-  return matchesSearch && matchesFilter && matchesCategory && matchesAccount;
-});
-```
-
-#### **Fichiers Concernés**
+#### **Fichiers Corrigés**
 - `frontend/src/pages/BudgetsPage.tsx` - Gestionnaire de clic des cartes budget
-- `frontend/src/pages/TransactionsPage.tsx` - Logique de filtrage par catégorie
+- `frontend/src/pages/TransactionsPage.tsx` - Logique de filtrage par catégorie corrigée
 - `frontend/src/types/index.ts` - Types `TransactionCategory`
 
-#### **Impact Utilisateur**
-- **Fonctionnalité cassée:** Navigation intelligente budget → transactions non fonctionnelle
-- **Expérience dégradée:** Utilisateurs voient toutes les transactions au lieu de la catégorie sélectionnée
-- **Confusion:** Absence de feedback visuel sur le filtre actif
-
-#### **Statut et Priorité**
-- **Statut:** ❌ NON RÉSOLU
-- **Priorité:** 🔴 HAUTE - Fonctionnalité critique non fonctionnelle
-- **Session suivante:** Investigation approfondie requise
-- **Estimation:** 2-4 heures de debugging et correction
-
-#### **Prochaines Étapes Recommandées**
-1. **Debugging approfondi** - Ajouter des logs temporaires pour tracer l'état `filterCategory`
-2. **Vérification des dépendances** - S'assurer que `useEffect` se déclenche correctement
-3. **Test de la logique de filtrage** - Vérifier que `matchesCategory` fonctionne en isolation
-4. **Validation des données** - Confirmer que `transaction.category` contient les bonnes valeurs
-5. **Test avec différentes catégories** - Vérifier si le problème est spécifique à certaines catégories
+#### **Statut Final**
+- **Statut:** ✅ RÉSOLU
+- **Priorité:** ✅ CORRIGÉ - Fonctionnalité maintenant pleinement opérationnelle
+- **Tests:** Validés par utilisateur - Filtrage fonctionne parfaitement
+- **Production:** Déployé et fonctionnel
 
 ---
 

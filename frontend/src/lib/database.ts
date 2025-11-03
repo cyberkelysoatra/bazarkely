@@ -7,7 +7,8 @@ import type {
   Goal, 
   MobileMoneyRate, 
   SyncOperation,
-  FeeConfiguration
+  FeeConfiguration,
+  RecurringTransaction
 } from '../types';
 
 // Types pour les notifications
@@ -109,6 +110,9 @@ export class BazarKELYDB extends Dexie {
   notifications!: Table<NotificationData>;
   notificationSettings!: Table<NotificationSettings>;
   notificationHistory!: Table<NotificationHistory>;
+  
+  // Table pour les transactions récurrentes (Phase 1 - Infrastructure)
+  recurringTransactions!: Table<RecurringTransaction>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -282,6 +286,46 @@ export class BazarKELYDB extends Dexie {
       }
       
       console.log('✅ Migration vers le support des notifications push terminée');
+    });
+
+    // Version 7 - Support des transactions récurrentes (Phase 1 - Infrastructure)
+    this.version(7).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, [userId+deadline]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, [userId+status], [status+timestamp]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 Migration vers le support des transactions récurrentes (Phase 1)...');
+      
+      // Ajouter les champs optionnels isRecurring et recurringTransactionId aux transactions existantes
+      const transactions = await trans.table('transactions').toArray();
+      
+      for (const transaction of transactions) {
+        const updates: any = {};
+        if (transaction.isRecurring === undefined) {
+          updates.isRecurring = false;
+        }
+        if (transaction.recurringTransactionId === undefined) {
+          updates.recurringTransactionId = null;
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          await trans.table('transactions').update(transaction.id, updates);
+        }
+      }
+      
+      console.log('✅ Migration vers le support des transactions récurrentes terminée');
     });
 
     // Initialiser le pool de connexions

@@ -10,6 +10,7 @@ const ESSENTIAL_CATEGORIES = ['Alimentation', 'Logement', 'Transport', 'Santé',
 import type { Transaction } from '../types';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
 import NotificationSettings from '../components/NotificationSettings';
+import RecurringTransactionsWidget from '../components/Dashboard/RecurringTransactionsWidget';
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
@@ -473,6 +474,9 @@ const DashboardPage = () => {
           )}
         </div>
       </div>
+
+      {/* Widget Transactions récurrentes */}
+      {user && <RecurringTransactionsWidget userId={user.id} />}
 
       {/* Actions rapides */}
       <div className="grid grid-cols-2 gap-4">

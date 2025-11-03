@@ -27,6 +27,8 @@ import PWAInstructionsPage from '../../pages/PWAInstructionsPage'
 import CertificationPage from '../../pages/CertificationPage'
 import QuizPage from '../../pages/QuizPage'
 import QuizResultsPage from '../../pages/QuizResultsPage'
+import RecurringTransactionsPage from '../../pages/RecurringTransactionsPage'
+import RecurringTransactionDetailPage from '../../pages/RecurringTransactionDetailPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -61,6 +63,8 @@ const AppLayout = () => {
           <Route path="/transaction/:transactionId" element={<TransactionDetailPage />} />
           <Route path="/add-transaction" element={<AddTransactionPage />} />
           <Route path="/transfer" element={<TransferPage />} />
+          <Route path="/recurring" element={<RecurringTransactionsPage />} />
+          <Route path="/recurring/:id" element={<RecurringTransactionDetailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/account/:accountId" element={<AccountDetailPage />} />
           <Route path="/add-account" element={<AddAccountPage />} />

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
+import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import type { Transaction, Account, TransactionCategory } from '../types';
 
 const TransactionsPage = () => {
@@ -16,6 +17,7 @@ const TransactionsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
   const [filterCategory, setFilterCategory] = useState<TransactionCategory | 'all'>('all');
+  const [filterRecurring, setFilterRecurring] = useState<boolean | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
@@ -134,6 +136,11 @@ const TransactionsPage = () => {
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
     const matchesCategory = filterCategory === 'all' || transaction.category.toLowerCase() === filterCategory.toLowerCase();
     const matchesAccount = !accountId || transaction.accountId === accountId;
+    const matchesRecurring = filterRecurring === null 
+      ? true 
+      : filterRecurring === true 
+        ? transaction.isRecurring === true 
+        : transaction.isRecurring !== true;
     
     // Log de débogage pour les transferts
     if (transaction.type === 'transfer' && accountId) {
@@ -147,7 +154,7 @@ const TransactionsPage = () => {
       });
     }
     
-    return matchesSearch && matchesFilter && matchesCategory && matchesAccount;
+    return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring;
   });
 
   // Sort filtered transactions by date (newest first)
@@ -384,7 +391,7 @@ const TransactionsPage = () => {
           </button>
         </div>
 
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilterType('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -424,6 +431,18 @@ const TransactionsPage = () => {
             }`}
           >
             Transferts
+          </button>
+          <button
+            onClick={() => setFilterRecurring(filterRecurring === true ? null : true)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 ${
+              filterRecurring === true 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Filtrer les transactions récurrentes"
+          >
+            <Repeat className="w-4 h-4" />
+            <span>Récurrentes</span>
           </button>
         </div>
 
@@ -504,9 +523,20 @@ const TransactionsPage = () => {
                     )}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">
-                      {displayDescription}
-                    </h4>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h4 className="font-medium text-gray-900">
+                        {displayDescription}
+                      </h4>
+                      {transaction.isRecurring && transaction.recurringTransactionId && (
+                        <RecurringBadge
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/recurring/${transaction.recurringTransactionId}`);
+                          }}
+                        />
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <span>{category.name}</span>
                       <span>•</span>
