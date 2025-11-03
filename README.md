@@ -123,19 +123,58 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 - **Clic sur carte budget** → Navigation vers page transactions
 - **Filtrage automatique** par catégorie du budget sélectionné
 - **URL dynamique :** `/transactions?category=CATEGORY_VALUE`
-- **Nettoyage URL :** Suppression automatique des paramètres après traitement
+- **Préservation URL :** Paramètre category conservé pour bookmarkabilité
+- **Case-insensitive :** Filtrage insensible à la casse pour robustesse
 
 **Implémentation Technique :**
 - **Composant Budgets :** `BudgetsPage.tsx` - Gestionnaire de clic
-- **Composant Transactions :** `TransactionsPage.tsx` - Filtrage par catégorie
+- **Composant Transactions :** `TransactionsPage.tsx` - Filtrage par catégorie avec badge actif
 - **Navigation :** React Router `useNavigate()` avec paramètres URL
-- **Filtrage :** Validation contre `TransactionCategory` array
+- **Filtrage :** Validation contre `TransactionCategory` array avec comparaison case-insensitive
 - **État :** Gestion via `useState` et `useEffect` pour les paramètres URL
+- **Badge actif :** Affichage de la catégorie filtrée avec bouton de suppression
 
 **Types de Filtrage Supportés :**
 - **Toutes catégories :** `alimentation`, `logement`, `transport`, `sante`
 - **Étendues :** `education`, `communication`, `vetements`, `loisirs`
 - **Spécialisées :** `famille`, `solidarite`, `autres`
+
+### TransactionsPage - Fonctionnalités Avancées [31/10/2025]
+
+**Filtrage par Catégorie Corrigé :**
+- **Fix race condition :** Suppression nettoyage URL automatique
+- **Case-insensitive :** Comparaison insensible à la casse
+- **Badge actif :** Affichage catégorie filtrée avec bouton reset
+
+**Indicateur de Chargement :**
+- **Loader2 :** Composant lucide-react avec animation spin
+- **Message :** "Chargement des transactions..." affiché pendant isLoading
+- **Return anticipé :** Affichage conditionnel avec early return
+
+**Export CSV :**
+- **Bouton Export :** Icône Download avec fonctionnalité complète
+- **Formatage :** Colonnes Date, Description, Catégorie, Type, Montant, Compte
+- **Filtres respectés :** Export basé sur transactions filtrées (sortedTransactions)
+- **Compatibilité Excel :** BOM UTF-8 pour ouverture correcte
+- **Nom fichier :** `transactions-YYYY-MM-DD.csv`
+- **Format date :** Format ISO (YYYY-MM-DD)
+
+**Implémentation Technique :**
+- **Fichier :** `frontend/src/pages/TransactionsPage.tsx`
+- **Helpers :** `escapeCSV()` et `formatDateForCSV()`
+- **Service :** `accountService.getUserAccounts()` pour noms comptes
+
+### TransactionDetailPage - Navigation Intelligente [31/10/2025]
+
+**Navigation de Retour Préservant Contexte :**
+- **navigate(-1) :** Utilisation historique navigateur pour préserver filtres
+- **Fallback :** Navigation vers `/transactions` si pas d'historique
+- **Préservation :** Filtres actifs et état page conservés après retour
+
+**Implémentation Technique :**
+- **Fichier :** `frontend/src/pages/TransactionDetailPage.tsx`
+- **Vérification :** `window.history.length > 1` avant navigate(-1)
+- **UX :** Amélioration navigation contextuelle utilisateur
 
 ### Interface Admin Enrichie
 
@@ -175,6 +214,12 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 
 ### 🔧 Architecture Technique
 
+**Développement Multi-Agents :**
+- **Git Worktrees** : Isolation automatique pour développement parallèle
+- **Cursor 2.0 Multi-Agent** : Workflows validés pour développement parallèle
+- **Scripts d'automation** : `setup-multiagent-test.ps1` et `cleanup-worktrees.ps1`
+- **Documentation** : `MULTI-AGENT-WORKFLOWS.md` et `CURSOR-2.0-CONFIG.md`
+
 ```
 📁 bazarkely/
 ├── 📁 frontend/          # React PWA (Vite + TypeScript)
@@ -182,7 +227,8 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 │   │   ├── 📁 pages/     # Pages principales
 │   │   │   ├── AdminPage.tsx        # Interface admin avec accordéon
 │   │   │   ├── BudgetsPage.tsx      # Navigation intelligente
-│   │   │   └── TransactionsPage.tsx # Filtrage par catégorie
+│   │   │   ├── TransactionsPage.tsx # Filtrage par catégorie + Loading + CSV Export
+│   │   │   └── TransactionDetailPage.tsx # Navigation intelligente préservant filtres
 │   │   ├── 📁 components/
 │   │   │   ├── 📁 Layout/
 │   │   │   │   └── Header.tsx       # Identification utilisateur
@@ -274,10 +320,29 @@ interface UserGoal {
 
 ## 🚀 Installation et Développement
 
+### Développement Multi-Agents
+
+**BazarKELY utilise Cursor 2.0 avec workflows multi-agents validés :**
+- **Git Worktrees :** Isolation automatique pour développement parallèle
+- **3 agents parallèles :** Développement de features indépendantes en parallèle
+- **Gain de temps :** 43% de gain vs développement séquentiel
+- **Documentation :** Voir `MULTI-AGENT-WORKFLOWS.md` pour workflows détaillés
+
+**Scripts d'Automation :**
+- **setup-multiagent-test.ps1 :** Automatisation création worktrees pour multi-agents
+- **cleanup-worktrees.ps1 :** Nettoyage automatique des worktrees après développement
+
+**Session Validée (31/10/2025) :**
+- 3 features développées en parallèle (fix filter + loading + CSV export)
+- 3 conflits résolus avec succès
+- 4/4 tests réussis
+- Déploiement production réussi
+
 ### Prérequis
 - **Node.js** 18+ 
 - **npm** 9+
 - **Git**
+- **Cursor 2.0** (optionnel, pour développement multi-agents)
 
 ### Installation
 ```bash
@@ -365,6 +430,9 @@ start https://1sakely.org/test-multi-browser-sync.html
 - **[Migration OVH](README-MIGRATION-OVH.md)** - Guide de migration
 - **[Checklist Migration](MIGRATION-OVH-CHECKLIST.md)** - Checklist de déploiement
 - **[État Technique](ETAT-TECHNIQUE.md)** - État actuel du projet
+- **[Multi-Agent Workflows](MULTI-AGENT-WORKFLOWS.md)** - Workflows multi-agents validés [31/10/2025]
+- **[Cursor 2.0 Config](CURSOR-2.0-CONFIG.md)** - Configuration Cursor 2.0 [31/10/2025]
+- **[Résumé Session 31/10](RESUME-SESSION-2025-10-31.md)** - Détails session multi-agents [31/10/2025]
 
 ## 🔧 Configuration CORS
 
@@ -425,4 +493,4 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 
 ---
 
-*Dernière mise à jour : 19 janvier 2025*
+*Dernière mise à jour : 31 octobre 2025*
