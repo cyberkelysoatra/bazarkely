@@ -231,6 +231,7 @@ const PurchaseOrderForm: React.FC = () => {
   const [newProductPrice, setNewProductPrice] = useState<number | ''>('');
   const [newProductDescription, setNewProductDescription] = useState('');
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [creatingProductForRowIndex, setCreatingProductForRowIndex] = useState<number | null>(null);
 
   // PHASE 1: États pour données supplémentaires (org_unit, project)
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<OrgUnit | null>(null);
@@ -1067,19 +1068,61 @@ const PurchaseOrderForm: React.FC = () => {
       const result = await pocProductService.create(productData);
 
       if (result.success && result.data) {
-        // Ajouter le produit créé au panier
-        const newItem: FormItem = {
-          tempId: `temp-${Date.now()}`,
-          catalogItemId: result.data.id,
-          itemName: result.data.name,
-          description: result.data.description,
-          quantity: 1,
-          unit: result.data.unit,
-          unitPrice: result.data.currentPrice || 0,
-          totalPrice: result.data.currentPrice || 0
-        };
-        
-    setItems([...items, newItem]);
+        // Check if we should update current row or add new row
+        if (creatingProductForRowIndex !== null && creatingProductForRowIndex >= 0 && creatingProductForRowIndex < items.length) {
+          // Update current row with new product data, preserving existing quantity
+          const newItems = [...items];
+          const existingQuantity = newItems[creatingProductForRowIndex].quantity > 0 
+            ? newItems[creatingProductForRowIndex].quantity 
+            : 1;
+          const unitPrice = result.data.currentPrice || 0;
+          
+          newItems[creatingProductForRowIndex] = {
+            ...newItems[creatingProductForRowIndex],
+            catalogItemId: result.data.id,
+            itemName: result.data.name,
+            description: result.data.description,
+            unit: result.data.unit,
+            unitPrice: unitPrice,
+            totalPrice: unitPrice * existingQuantity,
+            quantity: existingQuantity
+          };
+          
+          // Auto-create new empty row after updated row
+          const newEmptyItem: FormItem = {
+            tempId: `temp-${Date.now()}-${Math.random()}`,
+            itemName: '',
+            quantity: 1,
+            unit: '',
+            unitPrice: 0,
+            totalPrice: 0,
+            description: '',
+            catalogItemId: undefined
+          };
+          
+          setItems([...newItems, newEmptyItem]);
+          
+          // Clear blur timeout and ensure table stays focused
+          if (blurTimeoutRef.current) {
+            clearTimeout(blurTimeoutRef.current);
+            blurTimeoutRef.current = null;
+          }
+          setIsTableFocused(true);
+        } else {
+          // Fallback: Add to end (backward compatibility)
+          const newItem: FormItem = {
+            tempId: `temp-${Date.now()}`,
+            catalogItemId: result.data.id,
+            itemName: result.data.name,
+            description: result.data.description,
+            quantity: 1,
+            unit: result.data.unit,
+            unitPrice: result.data.currentPrice || 0,
+            totalPrice: result.data.currentPrice || 0
+          };
+          
+          setItems([...items, newItem]);
+        }
         
         // Réinitialiser le formulaire
         setNewProductName('');
@@ -1087,6 +1130,7 @@ const PurchaseOrderForm: React.FC = () => {
         setNewProductPrice('');
         setNewProductDescription('');
         setShowCreateProductModal(false);
+        setCreatingProductForRowIndex(null);
         setSearchQuery('');
         
         toast.success('Produit créé et ajouté au panier');
@@ -2505,6 +2549,7 @@ const PurchaseOrderForm: React.FC = () => {
                                       if (searchQuery.trim()) {
                                         setNewProductName(searchQuery.trim());
                                       }
+                                      setCreatingProductForRowIndex(index);
                                       setShowCreateProductModal(true);
                                       setShowDropdown(false);
                                     }}
@@ -2533,6 +2578,7 @@ const PurchaseOrderForm: React.FC = () => {
                                       if (searchQuery.trim()) {
                                         setNewProductName(searchQuery.trim());
                                       }
+                                      setCreatingProductForRowIndex(index);
                                       setShowCreateProductModal(true);
                                       setShowDropdown(false);
                                     }}
@@ -3022,6 +3068,7 @@ const PurchaseOrderForm: React.FC = () => {
                     setNewProductUnit('unité');
                     setNewProductPrice('');
                     setNewProductDescription('');
+                    setCreatingProductForRowIndex(null);
                   }}
                   className="flex-1"
                   disabled={creatingProduct}
