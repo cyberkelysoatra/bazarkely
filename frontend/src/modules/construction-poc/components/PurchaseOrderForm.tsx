@@ -26,7 +26,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -1285,17 +1286,25 @@ const PurchaseOrderForm: React.FC = () => {
   };
 
   // Ajouter un item manuel
-  // Setup sensors for drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 8px movement required to start drag
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Setup sensors for drag and drop (desktop and mobile support)
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10, // 10px movement required before drag starts
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250, // 250ms press before drag starts (prevents accidental drags)
+      tolerance: 5, // 5px movement tolerance during delay
+    },
+  });
+
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
+
+  const sensors = useSensors(mouseSensor, touchSensor, keyboardSensor);
 
   // Handler for drag end event
   const handleDragEnd = (event: DragEndEvent) => {
