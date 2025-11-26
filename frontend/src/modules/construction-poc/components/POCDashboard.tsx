@@ -82,6 +82,7 @@ const POCDashboard: React.FC = () => {
   const [consumptionSummary, setConsumptionSummary] = useState<CardConsumptionSummary[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState<boolean>(false);
   const [loadingConsumption, setLoadingConsumption] = useState<boolean>(false);
+  const [consumptionPeriod, setConsumptionPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
 
   /**
    * Charge les données du dashboard
@@ -355,7 +356,7 @@ const POCDashboard: React.FC = () => {
   }, [activeCompany?.id, contextLoading]);
 
   /**
-   * Charge le résumé de consommation pour la période mensuelle
+   * Charge le résumé de consommation pour la période sélectionnée
    */
   useEffect(() => {
     const loadConsumptionSummary = async () => {
@@ -369,25 +370,44 @@ const POCDashboard: React.FC = () => {
         
         const result = await pocConsumptionPlanService.getConsumptionSummary(
           activeCompany.id,
-          'monthly'
+          consumptionPeriod
         );
 
         if (result.success && result.data) {
           // Adapter les données du service au format attendu par ConsumptionPlanCard
-          const adapted: CardConsumptionSummary[] = result.data.map((summary: ServiceConsumptionSummary) => ({
-            id: summary.planId,
-            productId: summary.productId,
-            productName: summary.productName,
-            plannedQuantity: summary.plannedQuantity,
-            actualQuantity: summary.actualQuantity,
-            period: summary.period === 'monthly' ? 'month' : summary.period === 'quarterly' ? 'quarter' : 'year',
-            periodLabel: summary.period === 'monthly' ? 'Ce mois' : summary.period === 'quarterly' ? 'Ce trimestre' : 'Cette année',
-            alertTriggered: summary.alertTriggered,
-            alertMessage: summary.alertTriggered 
-              ? `Alerte: ${Math.round(summary.percentageUsed)}% de la quantité planifiée consommée`
-              : undefined,
-            unit: 'unité' // Par défaut, peut être amélioré avec les données du produit
-          }));
+          const periodLabels: Record<string, string> = {
+            daily: 'Aujourd\'hui',
+            weekly: 'Cette semaine',
+            monthly: 'Ce mois',
+            quarterly: 'Ce trimestre',
+            yearly: 'Cette année'
+          };
+          
+          const adapted: CardConsumptionSummary[] = result.data.map((summary: ServiceConsumptionSummary) => {
+            // Mapper la période pour ConsumptionPlanCard (qui attend 'month' | 'quarter' | 'year')
+            const periodMap: Record<string, 'month' | 'quarter' | 'year'> = {
+              daily: 'month',
+              weekly: 'month',
+              monthly: 'month',
+              quarterly: 'quarter',
+              yearly: 'year'
+            };
+            
+            return {
+              id: summary.planId,
+              productId: summary.productId,
+              productName: summary.productName,
+              plannedQuantity: summary.plannedQuantity,
+              actualQuantity: summary.actualQuantity,
+              period: periodMap[summary.period] || 'month',
+              periodLabel: periodLabels[summary.period] || summary.period,
+              alertTriggered: summary.alertTriggered,
+              alertMessage: summary.alertTriggered 
+                ? `Alerte: ${Math.round(summary.percentageUsed)}% de la quantité planifiée consommée`
+                : undefined,
+              unit: 'unité' // Par défaut, peut être amélioré avec les données du produit
+            };
+          });
           
           setConsumptionSummary(adapted);
         } else {
@@ -405,7 +425,7 @@ const POCDashboard: React.FC = () => {
     if (!contextLoading && activeCompany?.id) {
       loadConsumptionSummary();
     }
-  }, [activeCompany?.id, contextLoading]);
+  }, [activeCompany?.id, contextLoading, consumptionPeriod]);
 
   /**
    * Formate un montant en MGA
@@ -839,14 +859,75 @@ const POCDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-6 h-6 text-gray-700" />
-            <h2 className="text-xl font-semibold text-gray-900">Plans de consommation - Ce mois</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Plans de consommation - {
+                consumptionPeriod === 'daily' ? 'Aujourd\'hui' :
+                consumptionPeriod === 'weekly' ? 'Cette semaine' :
+                consumptionPeriod === 'monthly' ? 'Ce mois' :
+                consumptionPeriod === 'quarterly' ? 'Ce trimestre' :
+                'Cette année'
+              }
+            </h2>
           </div>
+          
+          {/* Period Selector */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              { value: 'daily', label: 'Jour' },
+              { value: 'weekly', label: 'Semaine' },
+              { value: 'monthly', label: 'Mois' },
+              { value: 'quarterly', label: 'Trimestre' },
+              { value: 'yearly', label: 'Année' }
+            ].map(p => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setConsumptionPeriod(p.value as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly')}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  consumptionPeriod === p.value
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
           {loadingConsumption ? (
             <div className="text-center py-8">
               <p className="text-gray-500">Chargement des plans de consommation...</p>
             </div>
           ) : consumptionSummary.length > 0 ? (
             <>
+              {/* Alerts Section */}
+              {(() => {
+                const alertPlans = consumptionSummary.filter(s => s.alertTriggered);
+                return alertPlans.length > 0 ? (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      <span>{alertPlans.length} alerte(s) de consommation</span>
+                    </div>
+                    <ul className="text-sm text-red-600 space-y-1">
+                      {alertPlans.slice(0, 3).map(plan => {
+                        const percentageUsed = plan.plannedQuantity > 0 
+                          ? Math.round((plan.actualQuantity / plan.plannedQuantity) * 100)
+                          : 0;
+                        return (
+                          <li key={plan.id}>
+                            • {plan.productName}: {percentageUsed}% consommé (seuil: 80%)
+                          </li>
+                        );
+                      })}
+                      {alertPlans.length > 3 && (
+                        <li className="text-red-500">... et {alertPlans.length - 3} autre(s)</li>
+                      )}
+                    </ul>
+                  </div>
+                ) : null;
+              })()}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {consumptionSummary.map((plan) => (
                   <ConsumptionPlanCard
@@ -862,10 +943,7 @@ const POCDashboard: React.FC = () => {
               </div>
               <div className="pt-4 mt-4 border-t border-gray-200">
                 <button
-                  onClick={() => {
-                    // Naviguer vers la page des plans de consommation quand elle sera créée
-                    alert('Page des plans de consommation à venir');
-                  }}
+                  onClick={() => navigate('/construction/consumption-plans')}
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
                   Voir tous les plans →

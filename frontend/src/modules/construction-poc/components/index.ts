@@ -15,6 +15,8 @@ export { default as ConstructionRoute } from './ConstructionRoute'
 export { default as RoleProtectedRoute } from './RoleProtectedRoute'
 export { default as ThresholdAlert } from './ThresholdAlert'
 export { default as ConsumptionPlanCard } from './ConsumptionPlanCard'
+export { default as ConsumptionPlanForm } from './ConsumptionPlanForm'
+export { default as ConsumptionPlansPage } from './ConsumptionPlansPage'
 export { default as PriceMaskingWrapper } from './PriceMaskingWrapper'
 
 // Export types

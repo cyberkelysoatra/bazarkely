@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAppStore } from '../../stores/appStore'
 
@@ -35,9 +36,66 @@ import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
 import FinancialInsights from '../Analytics/FinancialInsights'
 import ReportGenerator from '../Analytics/ReportGenerator'
 
+// Construction POC Context
+import { ConstructionProvider, useConstruction } from '../../modules/construction-poc/context/ConstructionContext'
+import ConstructionRoute from '../../modules/construction-poc/components/ConstructionRoute'
+import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions'
+
+// Construction POC Components - Lazy Loading for Code Splitting
+const POCDashboard = React.lazy(() => import('../../modules/construction-poc/components/POCDashboard'))
+const ProductCatalog = React.lazy(() => import('../../modules/construction-poc/components/ProductCatalog'))
+const PurchaseOrderForm = React.lazy(() => import('../../modules/construction-poc/components/PurchaseOrderForm'))
+const POCOrdersList = React.lazy(() => import('../../modules/construction-poc/components/POCOrdersList'))
+const OrderDetailPage = React.lazy(() => import('../../modules/construction-poc/components/OrderDetailPage'))
+const StockManager = React.lazy(() => import('../../modules/construction-poc/components/StockManager'))
+const StockTransactions = React.lazy(() => import('../../modules/construction-poc/components/StockTransactions'))
+const ConsumptionPlansPage = React.lazy(() => import('../../modules/construction-poc/components/ConsumptionPlansPage'))
+
 // Components
 import BottomNav from '../Navigation/BottomNav'
 import Header from './Header'
+
+// Loading component for Suspense fallback
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+  </div>
+)
+
+// BCIRouteGuard component - Protects BCI routes from unauthorized roles (AGENT 11)
+// Must be inside ConstructionProvider to use useConstruction hook
+const BCIRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { userRole } = useConstruction();
+  
+  if (!canAccessBCI(userRole)) {
+    return <Navigate to="/construction/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Construction Routes component - Separated to use BCIRouteGuard inside ConstructionProvider
+const ConstructionRoutes: React.FC = () => {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/construction/dashboard" replace />} />
+        <Route path="dashboard" element={<POCDashboard />} />
+        <Route path="catalog" element={<ProductCatalog />} />
+        
+        {/* BCI Routes - Protected by AGENT 11 */}
+        <Route path="new-order" element={<BCIRouteGuard><PurchaseOrderForm /></BCIRouteGuard>} />
+        <Route path="orders" element={<BCIRouteGuard><POCOrdersList /></BCIRouteGuard>} />
+        <Route path="orders/:id" element={<BCIRouteGuard><OrderDetailPage /></BCIRouteGuard>} />
+        
+        <Route path="stock" element={<StockManager />} />
+        <Route path="stock/transactions" element={<StockTransactions />} />
+        <Route path="consumption-plans" element={<ConsumptionPlansPage />} />
+        <Route path="*" element={<Navigate to="/construction/dashboard" replace />} />
+      </Routes>
+    </Suspense>
+  );
+};
 
 const AppLayout = () => {
   const { isAuthenticated } = useAppStore()
@@ -97,6 +155,16 @@ const AppLayout = () => {
           <Route path="/analytics" element={<AdvancedAnalytics />} />
           <Route path="/insights" element={<FinancialInsights userId={useAppStore.getState().user?.id || ''} />} />
           <Route path="/reports" element={<ReportGenerator />} />
+          
+          {/* Construction POC Routes - ConstructionProvider now mounted globally in App.tsx */}
+          <Route
+            path="/construction/*"
+            element={
+              <ConstructionRoute>
+                <ConstructionRoutes />
+              </ConstructionRoute>
+            }
+          />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

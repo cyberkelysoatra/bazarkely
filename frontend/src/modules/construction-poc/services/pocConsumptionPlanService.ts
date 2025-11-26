@@ -18,7 +18,7 @@ export interface ConsumptionPlan {
   projectId?: string;                    // Optionnel: plan pour projet (BCE)
   productId: string;                     // ID produit du catalogue
   plannedQuantity: number;                // Quantité planifiée
-  plannedPeriod: 'monthly' | 'quarterly' | 'yearly'; // Période de planification
+  plannedPeriod: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'; // Période de planification
   alertThresholdPercentage: number;      // Seuil d'alerte en pourcentage (ex: 80 = alerte à 80%)
   createdBy: string;                     // UUID utilisateur créateur
   createdAt: Date;
@@ -34,7 +34,7 @@ export interface ConsumptionPlanCreate {
   projectId?: string;                     // Requis si orgUnitId non fourni
   productId: string;
   plannedQuantity: number;
-  plannedPeriod: 'monthly' | 'quarterly' | 'yearly';
+  plannedPeriod: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   alertThresholdPercentage?: number;      // Par défaut 80%
 }
 
@@ -46,7 +46,7 @@ export interface ConsumptionPlanUpdate {
   projectId?: string | null;
   productId?: string;
   plannedQuantity?: number;
-  plannedPeriod?: 'monthly' | 'quarterly' | 'yearly';
+  plannedPeriod?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   alertThresholdPercentage?: number;
 }
 
@@ -65,7 +65,7 @@ export interface ConsumptionSummary {
   actualQuantity: number;
   percentageUsed: number;                 // (actualQuantity / plannedQuantity) * 100
   alertTriggered: boolean;                // True si percentageUsed >= alertThresholdPercentage
-  period: 'monthly' | 'quarterly' | 'yearly';
+  period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 }
 
 /**
@@ -90,7 +90,7 @@ export interface ConsumptionPlanFilters {
   orgUnitId?: string;
   projectId?: string;
   productId?: string;
-  plannedPeriod?: 'monthly' | 'quarterly' | 'yearly';
+  plannedPeriod?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 }
 
 /**
@@ -621,6 +621,19 @@ class POCConsumptionPlanService {
       let startDate: Date;
 
       switch (plan.planned_period) {
+        case 'daily':
+          // Jour en cours
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'weekly':
+          // Semaine en cours (lundi)
+          startDate = new Date();
+          const dayOfWeek = startDate.getDay();
+          const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          startDate.setDate(startDate.getDate() - diffToMonday);
+          startDate.setHours(0, 0, 0, 0);
+          break;
         case 'monthly':
           // Mois en cours
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -787,12 +800,12 @@ class POCConsumptionPlanService {
    * Récupère un résumé de consommation pour le dashboard
    * Retourne tous les plans avec consommation réelle vs planifiée pour une période donnée
    * @param companyId - ID de la compagnie
-   * @param period - Période pour le résumé ('monthly' | 'quarterly' | 'yearly')
+   * @param period - Période pour le résumé ('daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly')
    * @returns ServiceResult avec liste de ConsumptionSummary
    */
   async getConsumptionSummary(
     companyId: string,
-    period: 'monthly' | 'quarterly' | 'yearly'
+    period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   ): Promise<ServiceResult<ConsumptionSummary[]>> {
     try {
       // Récupérer tous les plans pour la période donnée
