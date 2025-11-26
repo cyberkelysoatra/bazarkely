@@ -1537,11 +1537,19 @@ const PurchaseOrderForm: React.FC = () => {
       }
     }
     
-    if (items.length === 0) {
-      newErrors.items = 'Au moins un article est requis';
+    // Count only non-empty items (same logic as calculateTotals)
+    const nonEmptyItems = items.filter(item => item.itemName && item.itemName.trim() !== '');
+    if (nonEmptyItems.length === 0) {
+      newErrors.items = 'Ajoutez au moins un article à la commande';
     }
     
     items.forEach((item, index) => {
+      // Skip empty placeholder rows (rows with no itemName and default values)
+      const isEmptyRow = !item.itemName || item.itemName.trim() === '';
+      if (isEmptyRow && item.quantity === 1 && item.unitPrice === 0) {
+        return; // Skip validation for this empty row
+      }
+      
       if (!item.itemName) {
         newErrors[`item_${index}_name`] = 'Le nom de l\'article est requis';
       }
@@ -1597,7 +1605,7 @@ const PurchaseOrderForm: React.FC = () => {
         orderData.phaseId = selectedPhase || undefined;
       } else if (orderType === 'BCE') {
         orderData.projectId = projectId;
-        orderData.supplierId = supplierId;
+        orderData.supplierCompanyId = supplierId;
       }
       
       // Note: Le service createDraft devra être mis à jour pour accepter ces nouveaux champs
@@ -1668,7 +1676,7 @@ const PurchaseOrderForm: React.FC = () => {
         orderData.phaseId = selectedPhase || undefined;
       } else if (orderType === 'BCE') {
         orderData.projectId = projectId;
-        orderData.supplierId = supplierId;
+        orderData.supplierCompanyId = supplierId;
       }
       
       // Créer le brouillon
