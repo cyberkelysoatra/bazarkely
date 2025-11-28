@@ -181,6 +181,8 @@ const PurchaseOrderForm: React.FC = () => {
   const [constructionSites, setConstructionSites] = useState<any[]>([]);
   const [loadingConstructionSites, setLoadingConstructionSites] = useState(false);
   const destinationDropdownRef = useRef<HTMLDivElement>(null);
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+  const supplierDropdownRef = useRef<HTMLDivElement>(null);
   
   // État pour contrôle de visibilité de la dernière ligne vide
   const [isTableFocused, setIsTableFocused] = useState(true);
@@ -195,6 +197,7 @@ const PurchaseOrderForm: React.FC = () => {
   const [selectedProjectForCascade, setSelectedProjectForCascade] = useState<any | null>(null);
   const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
   const [orgUnitSearchTerm, setOrgUnitSearchTerm] = useState<string>('');
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState<string>('');
   
   // États pour création de projet (modal)
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
@@ -206,6 +209,12 @@ const PurchaseOrderForm: React.FC = () => {
   const [isCreateOrgUnitModalOpen, setIsCreateOrgUnitModalOpen] = useState(false);
   const [newOrgUnitName, setNewOrgUnitName] = useState('');
   const [creatingOrgUnit, setCreatingOrgUnit] = useState(false);
+  
+  // États pour création de fournisseur (modal)
+  const [isCreateSupplierModalOpen, setIsCreateSupplierModalOpen] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierLocation, setNewSupplierLocation] = useState('');
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
   
   // États pour dropdown Phase
   const [phases, setPhases] = useState<Array<{ id: string; name: string; category?: string; order_index?: number }>>([]);
@@ -289,10 +298,10 @@ const PurchaseOrderForm: React.FC = () => {
     loadProjects();
   }, [activeCompany, isEditMode, projectId]);
 
-  // Charger les unités organisationnelles (pour BCI)
+  // Charger les unités organisationnelles (pour BCI et BCE)
   useEffect(() => {
     const loadOrgUnits = async () => {
-      if (!activeCompany?.id || orderType !== 'BCI') {
+      if (!activeCompany?.id) {
         setLoadingOrgUnits(false);
         return;
       }
@@ -745,6 +754,14 @@ const PurchaseOrderForm: React.FC = () => {
     );
   }, [selectedProjectForCascade, orgUnits, orgUnitSearchTerm]);
 
+  // Filter suppliers by search term
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearchTerm.trim()) return suppliers;
+    return suppliers.filter(supplier =>
+      supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+    );
+  }, [suppliers, supplierSearchTerm]);
+
   // Close destination dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -767,6 +784,23 @@ const PurchaseOrderForm: React.FC = () => {
       };
     }
   }, [isDestinationDropdownOpen, cascadeStep, isCreateOrgUnitModalOpen, isCreateProjectModalOpen]);
+
+  // Close supplier dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node)) {
+        setIsSupplierDropdownOpen(false);
+        setSupplierSearchTerm(''); // Reset search when closing
+      }
+    };
+
+    if (isSupplierDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isSupplierDropdownOpen]);
 
   // Close user info dropdown when clicking outside
   useEffect(() => {
@@ -1329,6 +1363,95 @@ const PurchaseOrderForm: React.FC = () => {
     }
   };
 
+  // Handler création fournisseur
+  const handleCreateSupplier = async () => {
+    // Validation
+    if (!newSupplierName.trim()) {
+      toast.error('Le nom du fournisseur est requis');
+      return;
+    }
+
+    if (!activeCompany?.id) {
+      toast.error('Compagnie non sélectionnée');
+      return;
+    }
+
+    try {
+      setCreatingSupplier(true);
+
+      // Obtenir l'ID de l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        toast.error('Utilisateur non authentifié');
+        return;
+      }
+
+      // Insérer le fournisseur dans la base de données
+      const { data, error } = await supabase
+        .from('poc_companies')
+        .insert({
+          name: newSupplierName.trim(),
+          address: newSupplierLocation.trim() || null,
+          type: 'supplier',
+          status: 'approved', // Auto-approve for immediate use
+          approved_by: user.id,
+          country: activeCompany.country || 'Madagascar',
+          created_by: user.id,
+          registration_number: null,
+          contact_email: null,
+          contact_phone: null,
+          city: null,
+          metadata: {}
+        } as any)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating supplier:', error);
+        toast.error(error.message || 'Erreur lors de la création du fournisseur');
+        return;
+      }
+
+      if (data) {
+        // 1. Rafraîchir la liste des fournisseurs (ajouter le nouveau fournisseur)
+        const newSupplier = {
+          id: data.id,
+          name: data.name,
+          location: data.address
+        };
+        const updatedSuppliers = [...suppliers, newSupplier].sort((a, b) => 
+          a.name.localeCompare(b.name)
+        );
+        setSuppliers(updatedSuppliers);
+
+        // 2. Sélectionner automatiquement le nouveau fournisseur
+        setSupplierId(newSupplier.id);
+        setErrors({ ...errors, supplierId: '' });
+
+        // 3. Fermer le dropdown
+        setIsSupplierDropdownOpen(false);
+
+        // 4. Réinitialiser le champ de recherche
+        setSupplierSearchTerm('');
+
+        // 5. Fermer le modal
+        setIsCreateSupplierModalOpen(false);
+
+        // Réinitialiser le formulaire
+        setNewSupplierName('');
+        setNewSupplierLocation('');
+
+        toast.success('Fournisseur créé avec succès');
+        console.log('✅ [Supplier Creation] Supplier created:', data.name);
+      }
+    } catch (error: any) {
+      console.error('Erreur création fournisseur:', error);
+      toast.error(error.message || 'Erreur lors de la création du fournisseur');
+    } finally {
+      setCreatingSupplier(false);
+    }
+  };
+
   // Ajouter un item manuel
   // Setup sensors for drag and drop (desktop and mobile support)
   const mouseSensor = useSensor(MouseSensor, {
@@ -1448,6 +1571,8 @@ const PurchaseOrderForm: React.FC = () => {
   const handleProjectSelect = (project: any) => {
     setSelectedProjectForCascade(project);
     setSelectedConstructionSite(project.id); // Keep existing state
+    setProjectId(project.id); // Synchronize projectId for validation and submission
+    setErrors({ ...errors, projectId: '' }); // Clear projectId error
     setCascadeStep('orgunit');
     setProjectSearchTerm(''); // Reset project search
     setOrgUnitSearchTerm(''); // Reset org unit search for fresh start
@@ -1857,10 +1982,10 @@ const PurchaseOrderForm: React.FC = () => {
             <div className="flex justify-between items-stretch pb-4 border-b" style={{ borderColor: '#A8B8A0' }}>
               {/* Left side */}
               <div>
-                <div className="flex items-center gap-1 sm:gap-2 max-w-full sm:max-w-[75%] md:max-w-[50%] whitespace-nowrap">
-                  <span className="text-[10px] sm:text-xs font-semibold text-[#6B7C5E]">DESTINATION :</span>
-                  <div className="relative flex-1" ref={destinationDropdownRef}>
-                    {orderType === 'BCI' ? (
+                {orderType === 'BCI' ? (
+                  <div className="flex items-center gap-1 sm:gap-2 max-w-full sm:max-w-[75%] md:max-w-[50%] whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs font-semibold text-[#6B7C5E]">DESTINATION :</span>
+                    <div className="relative flex-1" ref={destinationDropdownRef}>
                       <>
                         <button
                           type="button"
@@ -1911,7 +2036,7 @@ const PurchaseOrderForm: React.FC = () => {
                                       </button>
                                     )}
                                     {/* Create Project Button - Only for authorized roles */}
-                                    {(userRole === 'magasinier' || userRole === 'direction' || (userRole as any) === 'super_administrateur') && (
+                                    {(userRole === 'magasinier' || userRole === 'direction' || userRole === 'admin') && (
                                       <button
                                         type="button"
                                         onClick={(e) => {
@@ -1986,7 +2111,7 @@ const PurchaseOrderForm: React.FC = () => {
                                       </button>
                                     )}
                                     {/* Create Org Unit Button - Only for authorized roles and when project is selected */}
-                                    {selectedProjectForCascade && (userRole === 'magasinier' || userRole === 'direction' || (userRole as any) === 'super_administrateur') && (
+                                    {selectedProjectForCascade && (userRole === 'magasinier' || userRole === 'direction' || userRole === 'admin') && (
                                       <button
                                         type="button"
                                         onClick={(e) => {
@@ -2026,51 +2151,282 @@ const PurchaseOrderForm: React.FC = () => {
                           </div>
                         )}
                       </>
-                    ) : (
-                      <>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1 sm:gap-2 max-w-full sm:max-w-[75%] md:max-w-[50%] whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs font-semibold text-[#6B7C5E]">DESTINATION :</span>
+                      <div className="relative flex-1" ref={destinationDropdownRef}>
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleDropdownToggle}
+                            className="text-xs sm:text-sm text-[#2C3E2E] cursor-pointer hover:bg-[#F0F3EF] transition-colors px-1 sm:px-2 py-0 rounded border border-[#A8B8A0] text-left max-w-full"
+                            disabled={loadingConstructionSites}
+                          >
+                            <span className="block whitespace-nowrap overflow-hidden text-ellipsis">
+                              {cascadeStep === 'complete' && selectedProjectForCascade && orgUnitId
+                                ? `[${selectedProjectForCascade.name}, ${orgUnits.find(u => u.id === orgUnitId)?.name || ''}]`
+                                : cascadeStep === 'orgunit' && selectedProjectForCascade
+                                ? `[${selectedProjectForCascade.name}, Sélectionner Unité...]`
+                                : 'Sélectionner Projet + Unité Org'}
+                            </span>
+                          </button>
+
+                          {isDestinationDropdownOpen && (
+                            <div className="absolute left-0 top-full mt-1 bg-white border border-[#A8B8A0] rounded shadow-lg z-50 w-[280px] max-h-[300px] overflow-y-auto overflow-x-hidden">
+                              {cascadeStep === 'project' ? (
+                                <>
+                                  <div className="w-full px-4 py-2 bg-[#6B7C5E] text-white text-xs font-semibold break-words">
+                                    🏗️ SÉLECTIONNER PROJET
+                                  </div>
+                                  {/* Search Input */}
+                                  <div className="sticky top-0 bg-white p-2 border-b border-[#A8B8A0] z-10">
+                                    <div className="flex items-center">
+                                      <svg className="w-4 h-4 text-[#6B7C5E] mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                      </svg>
+                                      <input
+                                        type="text"
+                                        value={projectSearchTerm}
+                                        onChange={(e) => setProjectSearchTerm(e.target.value)}
+                                        placeholder="Rechercher un projet..."
+                                        className="flex-1 text-xs sm:text-sm focus:outline-none"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      {projectSearchTerm && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setProjectSearchTerm('');
+                                          }}
+                                          className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                      {/* Create Project Button - Only for authorized roles */}
+                                      {(userRole === 'magasinier' || userRole === 'direction' || userRole === 'admin') && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsCreateProjectModalOpen(true);
+                                          }}
+                                          className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm font-semibold"
+                                          title="Créer un nouveau projet"
+                                        >
+                                          +
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {filteredProjects.length > 0 ? (
+                                    <div className="flex flex-col">
+                                      {filteredProjects.map((site) => (
+                                        <button
+                                          key={site.id}
+                                          type="button"
+                                          onClick={() => handleProjectSelect(site)}
+                                          className={`block w-full text-left px-4 py-2 hover:bg-[#F0F3EF] transition-colors text-xs sm:text-sm min-h-[44px] sm:min-h-0 break-words ${
+                                            selectedConstructionSite === site.id ? 'bg-[#E8EDE7] font-semibold' : ''
+                                          }`}
+                                        >
+                                          {site.name}
+                                          {site.location && <span className="text-xs text-[#6B7C5E] ml-2">({site.location})</span>}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="px-4 py-2 text-xs sm:text-sm text-[#6B7C5E] break-words">
+                                      {projectSearchTerm ? 'Aucun projet trouvé' : (loadingConstructionSites ? 'Chargement...' : 'Aucun projet disponible')}
+                                    </div>
+                                  )}
+                                </>
+                              ) : cascadeStep === 'orgunit' && selectedProjectForCascade ? (
+                                <>
+                                  <div className="w-full px-4 py-2 bg-[#6B7C5E] text-white text-xs font-semibold break-words">
+                                    🏗️ {selectedProjectForCascade.name}
+                                  </div>
+                                  <div className="w-full text-left px-4 py-2 bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 cursor-pointer break-words" onClick={handleBackToProjects}>
+                                    ← Retour aux projets
+                                  </div>
+                                  <div className="w-full px-4 py-2 bg-[#6B7C5E] text-white text-xs font-semibold break-words">
+                                    👷 SÉLECTIONNER UNITÉ ORG
+                                  </div>
+                                  {/* Search Input */}
+                                  <div className="sticky top-0 bg-white p-2 border-b border-[#A8B8A0] z-10">
+                                    <div className="flex items-center">
+                                      <svg className="w-4 h-4 text-[#6B7C5E] mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                      </svg>
+                                      <input
+                                        type="text"
+                                        value={orgUnitSearchTerm}
+                                        onChange={(e) => setOrgUnitSearchTerm(e.target.value)}
+                                        placeholder="Rechercher une unité..."
+                                        className="flex-1 text-xs sm:text-sm focus:outline-none"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      {orgUnitSearchTerm && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOrgUnitSearchTerm('');
+                                          }}
+                                          className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                      {/* Create Org Unit Button - Only for authorized roles and when project is selected */}
+                                      {selectedProjectForCascade && (userRole === 'magasinier' || userRole === 'direction' || userRole === 'admin') && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsCreateOrgUnitModalOpen(true);
+                                          }}
+                                          className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm font-semibold"
+                                          title="Créer une nouvelle unité organisationnelle"
+                                        >
+                                          +
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {filteredOrgUnits.length > 0 ? (
+                                    <div className="flex flex-col">
+                                      {filteredOrgUnits.map((unit) => (
+                                        <button
+                                          key={unit.id}
+                                          type="button"
+                                          onClick={() => handleOrgUnitSelect(unit)}
+                                          className={`block w-full text-left px-4 py-2 hover:bg-[#F0F3EF] transition-colors text-xs sm:text-sm min-h-[44px] sm:min-h-0 break-words ${
+                                            orgUnitId === unit.id ? 'bg-[#E8EDE7] font-semibold' : ''
+                                          }`}
+                                        >
+                                          {unit.name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="px-4 py-2 text-xs sm:text-sm text-[#6B7C5E] break-words">
+                                      {orgUnitSearchTerm ? 'Aucune unité trouvée' : 'Aucune unité organisationnelle disponible pour ce projet'}
+                                    </div>
+                                  )}
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                        </>
+                      </div>
+                    </div>
+                    {/* FOURNISSEUR row - Functional dropdown */}
+                    <div className="flex items-center gap-1 sm:gap-2 max-w-full sm:max-w-[75%] md:max-w-[50%] mt-0.5 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs font-semibold text-[#6B7C5E]">FOURNISSEUR :</span>
+                      <div className="relative flex-1" ref={supplierDropdownRef}>
                         <button
                           type="button"
-                          onClick={() => setIsDestinationDropdownOpen(!isDestinationDropdownOpen)}
+                          onClick={() => setIsSupplierDropdownOpen(!isSupplierDropdownOpen)}
                           className="text-xs sm:text-sm text-[#2C3E2E] cursor-pointer hover:bg-[#F0F3EF] transition-colors px-1 sm:px-2 py-0 rounded border border-[#A8B8A0] text-left max-w-full"
-                          disabled={loadingConstructionSites}
+                          disabled={loadingSuppliers}
                         >
                           <span className="block whitespace-nowrap overflow-hidden text-ellipsis">
-                            {selectedConstructionSite
-                              ? constructionSites.find(s => s.id === selectedConstructionSite)?.name || 'Chantier'
-                              : 'Chantier'}
+                            {supplierId
+                              ? suppliers.find(s => s.id === supplierId)?.name || 'Sélectionner'
+                              : 'Sélectionner'}
                           </span>
                         </button>
 
-                        {isDestinationDropdownOpen && (
-                          <div className="absolute left-0 top-full mt-1 bg-white border border-[#A8B8A0] rounded shadow-lg z-50 w-[280px] max-h-[300px] overflow-y-auto overflow-x-hidden">
-                            {constructionSites.length > 0 ? (
-                              constructionSites.map((site) => (
-                                <button
-                                  key={site.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedConstructionSite(site.id);
-                                    setIsDestinationDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-4 py-2 hover:bg-[#F0F3EF] transition-colors text-xs sm:text-sm min-h-[44px] sm:min-h-0 break-words ${
-                                    selectedConstructionSite === site.id ? 'bg-[#E8EDE7] font-semibold' : ''
-                                  }`}
-                                >
-                                  {site.name}
-                                  {site.location && <span className="text-xs text-[#6B7C5E] ml-2">({site.location})</span>}
-                                </button>
-                              ))
-                            ) : (
+                        {isSupplierDropdownOpen && (
+                          <div className="absolute left-0 top-full mt-1 bg-white border border-[#A8B8A0] rounded shadow-lg z-[9998] w-[280px] max-h-[300px] overflow-y-auto overflow-x-hidden">
+                            {loadingSuppliers ? (
                               <div className="px-4 py-2 text-xs sm:text-sm text-[#6B7C5E] break-words">
-                                {loadingConstructionSites ? 'Chargement...' : 'Aucun chantier disponible'}
+                                Chargement...
                               </div>
+                            ) : (
+                              <>
+                                {/* Search Input */}
+                                <div className="sticky top-0 bg-white p-2 border-b border-[#A8B8A0] z-10">
+                                  <div className="flex items-center">
+                                    <svg className="w-4 h-4 text-[#6B7C5E] mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <input
+                                      type="text"
+                                      value={supplierSearchTerm}
+                                      onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                                      placeholder="Rechercher..."
+                                      className="flex-1 text-xs sm:text-sm focus:outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    {supplierSearchTerm && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSupplierSearchTerm('');
+                                        }}
+                                        className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                    {/* Create Supplier Button - Only for authorized roles */}
+                                    {(userRole === 'magasinier' || userRole === 'direction' || userRole === 'admin') && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setNewSupplierName(supplierSearchTerm); // Pre-fill with search term
+                                          setIsCreateSupplierModalOpen(true);
+                                        }}
+                                        className="ml-2 text-[#6B7C5E] hover:text-[#4A5A3E] text-sm font-semibold"
+                                        title="Créer un nouveau fournisseur"
+                                      >
+                                        +
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                {filteredSuppliers.length > 0 ? (
+                                  <div className="flex flex-col">
+                                    {filteredSuppliers.map((supplier) => (
+                                      <button
+                                        key={supplier.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setSupplierId(supplier.id);
+                                          setErrors({ ...errors, supplierId: '' });
+                                          setIsSupplierDropdownOpen(false);
+                                          setSupplierSearchTerm(''); // Reset search on selection
+                                        }}
+                                        className={`block w-full text-left px-4 py-2 hover:bg-[#F0F3EF] transition-colors text-xs sm:text-sm min-h-[44px] sm:min-h-0 break-words ${
+                                          supplierId === supplier.id ? 'bg-[#E8EDE7] font-semibold' : ''
+                                        }`}
+                                      >
+                                        {supplier.name}
+                                        {supplier.location && <span className="text-xs text-[#6B7C5E] ml-2">({supplier.location})</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="px-4 py-2 text-xs sm:text-sm text-[#6B7C5E] break-words">
+                                    {supplierSearchTerm ? 'Aucun fournisseur trouvé' : 'Aucun fournisseur disponible'}
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         )}
-                      </>
-                    )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
                 {orderType === 'BCI' && (
                   <div className="flex items-center gap-1 sm:gap-2 max-w-full sm:max-w-[75%] md:max-w-[50%] mt-0.5 whitespace-nowrap">
                     <span className="text-[10px] sm:text-xs font-semibold text-[#6B7C5E]">PHASE :</span>
@@ -2901,78 +3257,7 @@ const PurchaseOrderForm: React.FC = () => {
         <div className="space-y-6">
           {/* Formulaire principal - Single column flow */}
           <div className="space-y-6">
-            {/* Rendu conditionnel: Projet (BCE) */}
-            {orderType === 'BCE' && (
-              /* Sélection Projet - BCE (code existant préservé) */
-            <Card className="p-6">
-                <label className="block text-sm font-medium text-[#2C3E2E] mb-2 flex items-center gap-2">
-                  Projet *
-                  {autoFilledFields.has('projectId') && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)', color: '#D4AF37' }}>
-                      <CheckCircle2 className="w-3 h-3" />
-                      Auto-rempli
-                    </span>
-                  )}
-              </label>
-                <select
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 ${
-                    errors.projectId ? 'border-red-500' : 'border-[#A8B8A0]'
-                }`}
-                  value={projectId}
-                onChange={(e) => {
-                    setProjectId(e.target.value);
-                    setErrors({ ...errors, projectId: '' });
-                  }}
-                  disabled={loadingProjects}
-                >
-                  <option value="">Sélectionner un projet</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name} {project.location ? `- ${project.location}` : ''}
-                    </option>
-                  ))}
-                </select>
-                {errors.projectId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.projectId}</p>
-                )}
-            </Card>
-            )}
 
-            {/* Sélection Fournisseur - Uniquement pour BCE */}
-            {orderType === 'BCE' && (
-              <Card className="p-6">
-                <label className="block text-sm font-medium text-[#2C3E2E] mb-2 flex items-center gap-2">
-                  Fournisseur *
-                  {autoFilledFields.has('supplierId') && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)', color: '#D4AF37' }}>
-                      <CheckCircle2 className="w-3 h-3" />
-                      Auto-rempli
-                    </span>
-                  )}
-                </label>
-                <select
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 ${
-                    errors.supplierId ? 'border-red-500' : 'border-[#A8B8A0]'
-                  }`}
-                  value={supplierId}
-                  onChange={(e) => {
-                    setSupplierId(e.target.value);
-                    setErrors({ ...errors, supplierId: '' });
-                  }}
-                  disabled={loadingSuppliers}
-                >
-                  <option value="">Sélectionner un fournisseur</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name} {supplier.location ? `- ${supplier.location}` : ''}
-                    </option>
-                  ))}
-                </select>
-                {errors.supplierId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.supplierId}</p>
-                )}
-              </Card>
-            )}
 
 
 
@@ -3204,6 +3489,70 @@ const PurchaseOrderForm: React.FC = () => {
                   className="flex-1"
                 >
                   {creatingOrgUnit ? 'Création...' : 'Créer'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de création de fournisseur */}
+      {isCreateSupplierModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setIsCreateSupplierModalOpen(false)}>
+          <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Créer un nouveau fournisseur</h2>
+              
+              <div className="space-y-4">
+                {/* Nom du fournisseur */}
+                <div>
+                  <label className="block text-sm font-medium text-[#2C3E2E] mb-1">
+                    Nom du fournisseur *
+                  </label>
+                  <Input
+                    type="text"
+                    value={newSupplierName}
+                    onChange={(e) => setNewSupplierName(e.target.value)}
+                    placeholder="Ex: Quincaillerie Centrale"
+                    required
+                  />
+                </div>
+
+                {/* Adresse du fournisseur */}
+                <div>
+                  <label className="block text-sm font-medium text-[#2C3E2E] mb-1">
+                    Adresse (optionnel)
+                  </label>
+                  <Input
+                    type="text"
+                    value={newSupplierLocation}
+                    onChange={(e) => setNewSupplierLocation(e.target.value)}
+                    placeholder="Ex: Antananarivo, Madagascar"
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateSupplierModalOpen(false);
+                    setNewSupplierName('');
+                    setNewSupplierLocation('');
+                  }}
+                  className="flex-1"
+                  disabled={creatingSupplier}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleCreateSupplier}
+                  disabled={creatingSupplier || !newSupplierName.trim()}
+                  className="flex-1"
+                >
+                  {creatingSupplier ? 'Création...' : 'Créer'}
                 </Button>
               </div>
             </div>
