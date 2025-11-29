@@ -34,6 +34,8 @@ class POCPurchaseOrderService {
       orderType: 'BCI' | 'BCE';
       orgUnitId?: string;
       supplierCompanyId?: string;
+      customOrderNumber?: string; // NEW: Admin-reserved number (format "AA/NNN")
+      reservationId?: string; // NEW: Reservation ID to confirm after creation
     }
   ): Promise<ServiceResult<PurchaseOrder>> {
     try {
@@ -123,8 +125,8 @@ class POCPurchaseOrderService {
         }
       }
       
-      // Générer un numéro de commande unique
-      const orderNumber = await this.generateOrderNumber(company.companyId);
+      // Use custom order number if provided (admin reserved), otherwise generate
+      const orderNumber = orderData.customOrderNumber || await this.generateOrderNumber(company.companyId);
 
       // Créer le bon de commande avec les colonnes Phase 2
       const purchaseOrderData: any = {
@@ -183,6 +185,17 @@ class POCPurchaseOrderService {
           success: false,
           error: `Erreur création items: ${itemsError.message}`
         };
+      }
+
+      // Confirmer la réservation si fournie
+      if (orderData.reservationId && purchaseOrder.id) {
+        try {
+          const { confirmReservation } = await import('./bcNumberReservationService');
+          await confirmReservation(orderData.reservationId, purchaseOrder.id);
+        } catch (error: unknown) {
+          // Log error but don't fail the order creation
+          console.error('Erreur confirmation réservation:', error);
+        }
       }
 
       // Récupérer le bon de commande complet avec items

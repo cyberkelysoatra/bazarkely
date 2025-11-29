@@ -66,6 +66,29 @@ const STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
 };
 
 /**
+ * Format order number for display based on status
+ * - Draft orders show "NOUVEAU"
+ * - Other orders show "{orderType}_N°{number}" (e.g., "BCI_N°25/023")
+ */
+const formatOrderNumberDisplay = (order: PurchaseOrder): string => {
+  if (order.status === 'draft') {
+    return 'NOUVEAU';
+  }
+  
+  // If order_number exists and is not the old format, use it
+  if (order.orderNumber && !order.orderNumber.startsWith('PO-')) {
+    return `${order.orderType || 'BCE'}_N°${order.orderNumber}`;
+  }
+  
+  // Fallback for old format or missing number
+  if (order.orderNumber && order.orderNumber.startsWith('PO-')) {
+    return 'NOUVEAU'; // Old format treated as not yet assigned
+  }
+  
+  return 'NOUVEAU';
+};
+
+/**
  * Mapping des statuts vers les couleurs de badge
  */
 const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
@@ -297,7 +320,7 @@ const POCOrdersList: React.FC = () => {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(
         (order) =>
-          order.orderNumber.toLowerCase().includes(searchLower) ||
+          formatOrderNumberDisplay(order).toLowerCase().includes(searchLower) ||
           order.title?.toLowerCase().includes(searchLower) ||
           order.description?.toLowerCase().includes(searchLower)
       );
@@ -670,9 +693,9 @@ const POCOrdersList: React.FC = () => {
                             onClick={() => {
                               navigate(`/construction/orders/${order.id}`);
                             }}
-                            className="text-purple-600 hover:text-purple-800 font-medium"
+                            className={`text-purple-600 hover:text-purple-800 font-medium ${order.status === 'draft' ? 'italic text-gray-500' : ''}`}
                           >
-                            {order.orderNumber}
+                            {formatOrderNumberDisplay(order)}
                           </button>
                           {/* Badge d'alerte de seuil */}
                           {hasThresholdAlert(order.id) && (
@@ -750,9 +773,9 @@ const POCOrdersList: React.FC = () => {
                         onClick={() => {
                           navigate(`/construction/orders/${order.id}`);
                         }}
-                        className="text-purple-600 hover:text-purple-800 font-semibold text-lg"
+                        className={`text-purple-600 hover:text-purple-800 font-semibold text-lg ${order.status === 'draft' ? 'italic text-gray-500' : ''}`}
                       >
-                        {order.orderNumber}
+                        {formatOrderNumberDisplay(order)}
                       </button>
                       {/* Badge d'alerte de seuil */}
                       {hasThresholdAlert(order.id) && (

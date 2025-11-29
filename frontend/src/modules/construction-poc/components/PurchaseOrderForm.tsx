@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Search, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Search, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import { Button, Input, Card, Alert } from '../../../components/UI';
 import { supabase } from '../../../lib/supabase';
 import pocPurchaseOrderService from '../services/pocPurchaseOrderService';
@@ -15,6 +15,7 @@ import pocPriceThresholdService from '../services/pocPriceThresholdService';
 import pocConsumptionPlanService from '../services/pocConsumptionPlanService';
 import type { ThresholdCheckResult } from '../services/pocPriceThresholdService';
 import type { ConsumptionSummary } from '../services/pocConsumptionPlanService';
+import { reserveNumber, releaseReservation, validateNumberFormat, getNextAvailableNumber, autoFormatInput, parseFullNumber } from '../services/bcNumberReservationService';
 import ThresholdAlert from './ThresholdAlert';
 import ConsumptionPlanCard from './ConsumptionPlanCard';
 import { useConstruction } from '../context/ConstructionContext';
@@ -249,6 +250,18 @@ const PurchaseOrderForm: React.FC = () => {
 
   // PHASE 1: BCI/BCE Number format (temporaire - TODO: utiliser séquence DB)
   const [orderNumber, setOrderNumber] = useState<string>('NOUVEAU');
+  
+  // Order number editing state (admin only)
+  const [isEditingOrderNumber, setIsEditingOrderNumber] = useState(false);
+  const [orderNumberInput, setOrderNumberInput] = useState('');
+  const [orderNumberError, setOrderNumberError] = useState<string | null>(null);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+
+  // Edition date editing state (admin only)
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [dateInput, setDateInput] = useState('');
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [editionDate, setEditionDate] = useState<Date>(new Date());
 
   // Smart Default: orderType basé sur le rôle utilisateur
   useEffect(() => {
@@ -1694,6 +1707,206 @@ const PurchaseOrderForm: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ============================================================================
+  // Order Number Editing Handlers (Admin Only)
+  // ============================================================================
+
+  // Handle click on order number to start editing
+  const handleOrderNumberClick = async () => {
+    if (userRole !== 'admin') return;
+    
+    setIsEditingOrderNumber(true);
+    setOrderNumberError(null);
+    
+    if (orderNumber === 'NOUVEAU' || !orderNumber) {
+      // Fetch next available number and pre-fill
+      try {
+        if (!activeCompany?.id) {
+          setOrderNumberError('Compagnie non sélectionnée');
+          return;
+        }
+        
+        const result = await getNextAvailableNumber(activeCompany.id, orderType);
+        if (result.success && result.data) {
+          setOrderNumberInput(result.data.fullNumber);
+        } else {
+          setOrderNumberError(result.error || 'Erreur lors de la récupération du numéro');
+          setOrderNumberInput('');
+        }
+      } catch (error: any) {
+        console.error('Error fetching next number:', error);
+        setOrderNumberInput('');
+      }
+    } else {
+      // Use existing order number
+      setOrderNumberInput(orderNumber);
+    }
+  };
+
+  // Handle order number input change with auto-formatting
+  const handleOrderNumberChange = (value: string) => {
+    // Allow only digits and slash
+    const cleaned = value.replace(/[^\d/]/g, '');
+    
+    // Auto-format: if user types "25052", convert to "25/052"
+    const formatted = autoFormatInput(cleaned);
+    setOrderNumberInput(formatted);
+    setOrderNumberError(null);
+  };
+
+  // Handle blur (validation and reservation)
+  const handleOrderNumberBlur = async () => {
+    if (!orderNumberInput.trim()) {
+      setIsEditingOrderNumber(false);
+      setOrderNumberInput('');
+      return;
+    }
+    
+    // Validate format
+    if (!validateNumberFormat(orderNumberInput)) {
+      setOrderNumberError('Format invalide. Utilisez AA/NNN (ex: 25/052)');
+      return;
+    }
+    
+    // Parse the number to get components
+    const parsed = parseFullNumber(orderNumberInput.trim());
+    if (!parsed) {
+      setOrderNumberError('Format invalide. Utilisez AA/NNN (ex: 25/052)');
+      return;
+    }
+    
+    // Reserve the number
+    try {
+      if (!activeCompany?.id) {
+        setOrderNumberError('Compagnie non sélectionnée');
+        return;
+      }
+      
+      const result = await reserveNumber(
+        activeCompany.id,
+        orderType,
+        parsed.yearPrefix,
+        parsed.sequenceNumber
+      );
+      
+      if (result.success && result.reservationId && result.fullNumber) {
+        setOrderNumber(result.fullNumber);
+        setReservationId(result.reservationId);
+        setIsEditingOrderNumber(false);
+        setOrderNumberError(null);
+        toast.success('Numéro réservé avec succès');
+      } else {
+        setOrderNumberError(result.error || 'Erreur lors de la réservation');
+      }
+    } catch (error: any) {
+      console.error('Error reserving number:', error);
+      setOrderNumberError(error.message || 'Erreur lors de la réservation');
+    }
+  };
+
+  // Handle cancel editing
+  const handleOrderNumberCancel = async () => {
+    // Release reservation if exists
+    if (reservationId) {
+      try {
+        await releaseReservation(reservationId);
+      } catch (error: any) {
+        console.error('Error releasing reservation:', error);
+      }
+      setReservationId(null);
+    }
+    
+    // Reset state
+    setOrderNumberInput('');
+    setOrderNumberError(null);
+    setIsEditingOrderNumber(false);
+    
+    // Reset to NOUVEAU if it was being created
+    if (orderNumber !== 'NOUVEAU' && orderNumberInput) {
+      // Keep current orderNumber if it was already set
+    } else {
+      setOrderNumber('NOUVEAU');
+    }
+  };
+
+  // Handle keyboard events
+  const handleOrderNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleOrderNumberBlur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleOrderNumberCancel();
+    }
+  };
+
+  // ============================================================================
+  // Edition Date Editing Handlers (Admin Only)
+  // ============================================================================
+
+  // Handle click on edition date to start editing
+  const handleDateClick = () => {
+    if (userRole !== 'admin') return;
+    
+    setIsEditingDate(true);
+    setDateError(null);
+    setDateInput(formatDateDisplay(editionDate));
+  };
+
+  // Handle date input change with auto-formatting
+  const handleDateChange = (value: string) => {
+    const formatted = autoFormatDateInput(value);
+    setDateInput(formatted);
+    setDateError(null);
+  };
+
+  // Handle blur (validation and save)
+  const handleDateBlur = () => {
+    if (!dateInput.trim()) {
+      setIsEditingDate(false);
+      setDateInput('');
+      return;
+    }
+    
+    // Validate format
+    if (!validateDateFormat(dateInput)) {
+      setDateError('Format invalide. Utilisez JJ/MM/AA (ex: 28/11/25)');
+      return;
+    }
+    
+    // Parse and validate date
+    const parsedDate = parseDateInput(dateInput.trim());
+    if (!parsedDate) {
+      setDateError('Date invalide. Vérifiez le jour et le mois.');
+      return;
+    }
+    
+    // Update edition date
+    setEditionDate(parsedDate);
+    setIsEditingDate(false);
+    setDateError(null);
+  };
+
+  // Handle cancel editing
+  const handleDateCancel = () => {
+    setDateInput('');
+    setDateError(null);
+    setIsEditingDate(false);
+  };
+
+  // Handle keyboard events
+  const handleDateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleDateBlur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleDateCancel();
+    }
+  };
+
+  // ============================================================================
+
   // Annuler et retourner à la liste
   const handleCancel = () => {
     navigate('/construction/orders');
@@ -1733,7 +1946,14 @@ const PurchaseOrderForm: React.FC = () => {
         orderData.supplierCompanyId = supplierId;
       }
       
-      // Note: Le service createDraft devra être mis à jour pour accepter ces nouveaux champs
+      // Pass custom order number and reservation ID if admin reserved a number
+      if (orderNumber !== 'NOUVEAU') {
+        orderData.customOrderNumber = orderNumber;
+      }
+      if (reservationId) {
+        orderData.reservationId = reservationId;
+      }
+      
       const result = await pocPurchaseOrderService.createDraft(
         orderType === 'BCE' ? projectId : undefined,
         orderItems,
@@ -1804,8 +2024,15 @@ const PurchaseOrderForm: React.FC = () => {
         orderData.supplierCompanyId = supplierId;
       }
       
+      // Pass custom order number and reservation ID if admin reserved a number
+      if (orderNumber !== 'NOUVEAU') {
+        orderData.customOrderNumber = orderNumber;
+      }
+      if (reservationId) {
+        orderData.reservationId = reservationId;
+      }
+      
       // Créer le brouillon
-      // Note: Le service createDraft devra être mis à jour pour accepter ces nouveaux champs
       const createResult = await pocPurchaseOrderService.createDraft(
         orderType === 'BCE' ? projectId : undefined,
         orderItems,
@@ -1855,9 +2082,91 @@ const PurchaseOrderForm: React.FC = () => {
     const year = String(date.getFullYear()).slice(-2);
     return `${day}/${month}/${year}`;
   };
+
+  // Format date for display (DD/MM/YY)
+  const formatDateDisplay = (date: Date): string => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
+  // Auto-format date input as user types (e.g., "281125" -> "28/11/25")
+  const autoFormatDateInput = (value: string): string => {
+    // Remove all non-digits
+    const digitsOnly = value.replace(/\D/g, '');
+    
+    if (digitsOnly.length === 0) {
+      return '';
+    }
+    
+    // Insert slashes at appropriate positions
+    if (digitsOnly.length <= 2) {
+      return digitsOnly;
+    } else if (digitsOnly.length <= 4) {
+      return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+    } else {
+      // Max 8 characters with slashes (DD/MM/YY)
+      const limited = digitsOnly.slice(0, 6);
+      return `${limited.slice(0, 2)}/${limited.slice(2, 4)}/${limited.slice(4)}`;
+    }
+  };
+
+  // Validate date format DD/MM/YY
+  const validateDateFormat = (input: string): boolean => {
+    const pattern = /^(\d{2})\/(\d{2})\/(\d{2})$/;
+    const match = input.match(pattern);
+    
+    if (!match) {
+      return false;
+    }
+    
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    
+    // Validate day (01-31)
+    if (day < 1 || day > 31) {
+      return false;
+    }
+    
+    // Validate month (01-12)
+    if (month < 1 || month > 12) {
+      return false;
+    }
+    
+    // Year can be any 2 digits
+    return true;
+  };
+
+  // Parse date input "DD/MM/YY" into Date object
+  const parseDateInput = (input: string): Date | null => {
+    const pattern = /^(\d{2})\/(\d{2})\/(\d{2})$/;
+    const match = input.match(pattern);
+    
+    if (!match) {
+      return null;
+    }
+    
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // Month is 0-indexed in Date
+    const year = 2000 + parseInt(match[3], 10); // "25" becomes 2025
+    
+    // Validate the date is actually valid
+    const date = new Date(year, month, day);
+    if (
+      date.getDate() !== day ||
+      date.getMonth() !== month ||
+      date.getFullYear() !== year
+    ) {
+      return null; // Invalid date (e.g., 31/02/25)
+    }
+    
+    return date;
+  };
   
   const currentDate = formatDate(new Date());
-  const currentDateShort = formatDateShort(new Date());
+  const currentDateShort = formatDateDisplay(editionDate);
   const displayDate = requestedDeliveryDate ? formatDate(new Date(requestedDeliveryDate)) : currentDate;
 
   // PHASE 1: Récupérer DESTINATION (org_unit.address pour BCI, project.address pour BCE)
@@ -2617,12 +2926,87 @@ const PurchaseOrderForm: React.FC = () => {
               
               {/* Right side */}
               <div className="text-right flex flex-col justify-end items-end">
-                <p className="text-xs sm:text-sm mb-1">
-                  <span className="font-semibold">Date Edition :</span> {currentDateShort}
-                </p>
-                <p className="text-xl md:text-2xl font-bold whitespace-nowrap leading-tight overflow-hidden text-ellipsis ml-2 sm:ml-4">
-                  <span className="font-bold">{orderType === 'BCI' ? 'BCI' : 'BCE'} _ N°</span> {orderNumber || 'NOUVEAU'}
-                </p>
+                <div className="text-xs sm:text-sm mb-1">
+                  <span className="font-semibold">Date Edition :</span>{' '}
+                  {userRole === 'admin' && isEditingDate ? (
+                    <div className="inline-flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={dateInput}
+                          onChange={(e) => handleDateChange(e.target.value)}
+                          onBlur={handleDateBlur}
+                          onKeyDown={handleDateKeyDown}
+                          placeholder="JJ/MM/AA"
+                          autoFocus
+                          maxLength={8}
+                          className="w-20 px-1 py-0.5 text-sm font-medium border rounded focus:ring-2 focus:ring-blue-500 text-center bg-white text-gray-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleDateCancel}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          title="Annuler"
+                        >
+                          <X className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                      {dateError && (
+                        <span className="text-xs text-red-600 mt-1">{dateError}</span>
+                      )}
+                    </div>
+                  ) : userRole === 'admin' ? (
+                    <span
+                      onClick={handleDateClick}
+                      className="cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                      title="Cliquer pour modifier la date"
+                    >
+                      {currentDateShort}
+                    </span>
+                  ) : (
+                    <span>{currentDateShort}</span>
+                  )}
+                </div>
+                <div className="text-xl md:text-2xl font-bold whitespace-nowrap leading-tight overflow-hidden text-ellipsis ml-2 sm:ml-4">
+                  <span className="font-bold">{orderType === 'BCI' ? 'BCI' : 'BCE'} _ N°</span>{' '}
+                  {userRole === 'admin' && isEditingOrderNumber ? (
+                    <div className="inline-flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={orderNumberInput}
+                          onChange={(e) => handleOrderNumberChange(e.target.value)}
+                          onBlur={handleOrderNumberBlur}
+                          onKeyDown={handleOrderNumberKeyDown}
+                          placeholder="AA/NNN"
+                          autoFocus
+                          className="w-24 px-2 py-1 text-lg font-bold border rounded focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleOrderNumberCancel}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          title="Annuler"
+                        >
+                          <X className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                      {orderNumberError && (
+                        <span className="text-xs text-red-600 mt-1">{orderNumberError}</span>
+                      )}
+                    </div>
+                  ) : userRole === 'admin' ? (
+                    <span
+                      onClick={handleOrderNumberClick}
+                      className="cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                      title="Cliquer pour modifier le numéro"
+                    >
+                      {orderNumber || 'NOUVEAU'}
+                    </span>
+                  ) : (
+                    <span>{orderNumber || 'NOUVEAU'}</span>
+                  )}
+                </div>
               </div>
             </div>
 
