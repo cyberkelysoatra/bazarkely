@@ -925,6 +925,61 @@ class POCPurchaseOrderService {
   }
 
   /**
+   * Met à jour le numéro de commande (order_number) pour un bon de commande
+   * Utilisé par OrderDetailPage pour permettre aux admins de modifier les numéros BC
+   * @param orderId - ID du bon de commande
+   * @param orderNumber - Nouveau numéro de commande (format AA/NNN: 2 chiffres / 3 chiffres)
+   * @returns { success: boolean; error?: string }
+   */
+  async updateOrderNumber(
+    orderId: string,
+    orderNumber: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Validation: orderId ne doit pas être vide
+      if (!orderId || orderId.trim() === '') {
+        return {
+          success: false,
+          error: 'ID de bon de commande requis'
+        };
+      }
+
+      // Validation: orderNumber format AA/NNN (2 chiffres / 3 chiffres)
+      const orderNumberRegex = /^\d{2}\/\d{3}$/;
+      if (!orderNumberRegex.test(orderNumber)) {
+        return {
+          success: false,
+          error: 'Format de numéro invalide. Format attendu: AA/NNN (ex: 01/123)'
+        };
+      }
+
+      // Mettre à jour le numéro de commande dans la base de données
+      const { error: updateError } = await supabase
+        .from('poc_purchase_orders')
+        .update({ order_number: orderNumber })
+        .eq('id', orderId);
+
+      if (updateError) {
+        console.error('Erreur mise à jour order_number:', updateError);
+        return {
+          success: false,
+          error: `Erreur lors de la mise à jour: ${updateError.message}`
+        };
+      }
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      console.error('Erreur updateOrderNumber:', error);
+      return {
+        success: false,
+        error: error.message || 'Erreur lors de la mise à jour du numéro de commande'
+      };
+    }
+  }
+
+  /**
    * Récupère un bon de commande par ID avec ses items
    */
   async getById(orderId: string): Promise<ServiceResult<PurchaseOrder>> {
@@ -1015,7 +1070,7 @@ class POCPurchaseOrderService {
   async getWorkflowHistory(orderId: string): Promise<ServiceResult<WorkflowHistory[]>> {
     try {
       const { data: history, error } = await supabase
-        .from('poc_workflow_history')
+        .from('poc_purchase_order_workflow_history')
         .select('*')
         .eq('purchase_order_id', orderId)
         .order('changed_at', { ascending: false });
@@ -1048,6 +1103,155 @@ class POCPurchaseOrderService {
         success: false,
         error: error.message || 'Erreur lors de la récupération de l\'historique'
       };
+    }
+  }
+
+  /**
+   * Update order items (articles) for a purchase order
+   * Handles: update existing, insert new, delete removed
+   * @param orderId - Purchase order ID
+   * @param items - Array of items to save
+   * @param userId - User making the change
+   */
+  async updateOrderItems(
+    orderId: string,
+    items: Partial<PurchaseOrderItem>[],
+    userId: string
+  ): Promise<{ success: boolean; error?: string; updatedItems?: PurchaseOrderItem[] }> {
+    try {
+      // 1. Get current items from database
+      const { data: currentItems, error: fetchError } = await supabase
+        .from('poc_purchase_order_items')
+        .select('id')
+        .eq('purchase_order_id', orderId);
+
+      if (fetchError) throw fetchError;
+
+      const currentIds = new Set(currentItems?.map(i => i.id) || []);
+      const newItems: any[] = [];
+      const updateItems: any[] = [];
+      const deleteIds: string[] = [];
+
+      // 2. Categorize items: new, update, or unchanged
+      for (const item of items) {
+        if (item.id?.startsWith('temp-')) {
+          // New item (temporary ID)
+          newItems.push({
+            purchase_order_id: orderId,
+            product_id: item.catalogItemId || null,
+            item_name: item.itemName,
+            item_description: item.description || null,
+            quantity: item.quantity,
+            item_unit: item.unit,
+            unit_price: item.unitPrice,
+            total_price: (item.quantity || 0) * (item.unitPrice || 0),
+            created_by: userId
+          });
+        } else if (item.id && currentIds.has(item.id)) {
+          // Existing item to update
+          updateItems.push({
+            id: item.id,
+            item_name: item.itemName,
+            item_description: item.description || null,
+            quantity: item.quantity,
+            item_unit: item.unit,
+            unit_price: item.unitPrice,
+            total_price: (item.quantity || 0) * (item.unitPrice || 0)
+          });
+          currentIds.delete(item.id);
+        }
+      }
+
+      // 3. Items in currentIds but not in items = deleted
+      deleteIds.push(...Array.from(currentIds));
+
+      // 4. Execute database operations
+      // Delete removed items
+      if (deleteIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('poc_purchase_order_items')
+          .delete()
+          .in('id', deleteIds);
+        if (deleteError) throw deleteError;
+      }
+
+      // Insert new items
+      if (newItems.length > 0) {
+        const { error: insertError } = await supabase
+          .from('poc_purchase_order_items')
+          .insert(newItems);
+        if (insertError) throw insertError;
+      }
+
+      // Update existing items
+      for (const item of updateItems) {
+        const { error: updateError } = await supabase
+          .from('poc_purchase_order_items')
+          .update({
+            item_name: item.item_name,
+            item_description: item.item_description,
+            quantity: item.quantity,
+            item_unit: item.item_unit,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })
+          .eq('id', item.id);
+        if (updateError) throw updateError;
+      }
+
+      // 5. Recalculate order total
+      const { data: allItems, error: totalError } = await supabase
+        .from('poc_purchase_order_items')
+        .select('total_price')
+        .eq('purchase_order_id', orderId);
+
+      if (totalError) throw totalError;
+
+      const newTotal = allItems?.reduce((sum, i) => sum + (i.total_price || 0), 0) || 0;
+
+      // Update order total
+      // Note: total = subtotal + tax + delivery_fee (per schema constraint)
+      // We update subtotal with the sum of items, and total to match (assuming tax and delivery_fee are 0)
+      const { error: orderUpdateError } = await supabase
+        .from('poc_purchase_orders')
+        .update({ 
+          subtotal: newTotal,
+          total: newTotal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (orderUpdateError) throw orderUpdateError;
+
+      // 6. Fetch updated items to return
+      const { data: updatedItems, error: refetchError } = await supabase
+        .from('poc_purchase_order_items')
+        .select('*')
+        .eq('purchase_order_id', orderId)
+        .order('created_at', { ascending: true });
+
+      if (refetchError) throw refetchError;
+
+      // Map to PurchaseOrderItem format
+      const mappedItems: PurchaseOrderItem[] = (updatedItems || []).map(item => ({
+        id: item.id,
+        purchaseOrderId: item.purchase_order_id,
+        catalogItemId: item.product_id || undefined,
+        itemName: item.item_name,
+        description: item.item_description || undefined,
+        quantity: item.quantity,
+        unit: item.item_unit,
+        unitPrice: item.unit_price,
+        totalPrice: item.total_price,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at)
+      }));
+
+      return { success: true, updatedItems: mappedItems };
+
+    } catch (error: any) {
+      console.error('Error updating order items:', error);
+      return { success: false, error: error.message || 'Failed to update items' };
     }
   }
 
