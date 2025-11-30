@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Plus, Search, Filter, X, CheckCircle, XCircle, Truck, Package, AlertCircle, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Plus, Search, Filter, X, CheckCircle, XCircle, Truck, Package, AlertCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import pocPurchaseOrderService from '../services/pocPurchaseOrderService';
 import workflowService from '../services/pocWorkflowService';
@@ -153,6 +153,8 @@ const POCOrdersList: React.FC = () => {
   const [priceMaskingDismissed, setPriceMaskingDismissed] = useState(() => {
     return localStorage.getItem('poc_price_masking_dismissed') === 'true';
   });
+  // État pour le panneau extensible des articles (mobile)
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   /**
    * Récupère toutes les commandes de l'entreprise active
@@ -477,6 +479,13 @@ const POCOrdersList: React.FC = () => {
   };
 
   /**
+   * Toggle l'expansion du panneau des articles (mobile)
+   */
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  };
+
+  /**
    * Calcule le total d'une commande
    */
   const calculateTotal = (order: PurchaseOrder): number => {
@@ -536,51 +545,52 @@ const POCOrdersList: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mes Commandes</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {filteredOrders.length} commande{filteredOrders.length > 1 ? 's' : ''} trouvée{filteredOrders.length > 1 ? 's' : ''}
-            </p>
-          </div>
-          <div className="flex gap-2">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mes Commandes</h1>
+          <div className="flex items-center gap-2">
             <button
               onClick={loadOrders}
               disabled={loading}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Actualiser
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
             </button>
             <button
               onClick={() => navigate('/construction/new-order')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              className="px-2 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center"
+              title="Nouvelle Commande"
             >
-              <Plus className="w-4 h-4" />
-              Nouvelle Commande
+              <Plus className="h-4 w-4" />
             </button>
+          </div>
+        </div>
+        <div className="flex items-start gap-3 mb-4">
+          <p className="text-sm text-gray-600 flex-shrink-0 whitespace-nowrap">
+            {filteredOrders.length} commande{filteredOrders.length > 1 ? 's' : ''} trouvée{filteredOrders.length > 1 ? 's' : ''}
+          </p>
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher par numéro, projet..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
           </div>
         </div>
 
         {/* Filtres */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Rechercher par numéro, projet..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
+          {/* Ligne 1: 3 dropdowns - ALWAYS horizontal */}
+          <div className="flex gap-2 mb-3">
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value as PurchaseOrderStatus | '' })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 min-w-0 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent truncate"
             >
-              <option value="">Tous les statuts</option>
+              <option value="">Statuts</option>
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -590,9 +600,9 @@ const POCOrdersList: React.FC = () => {
             <select
               value={filters.projectId}
               onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 min-w-0 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent truncate"
             >
-              <option value="">Tous les projets</option>
+              <option value="">Projets</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -603,29 +613,37 @@ const POCOrdersList: React.FC = () => {
             <select
               value={filters.orgUnitId}
               onChange={(e) => setFilters({ ...filters, orgUnitId: e.target.value })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 min-w-0 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent truncate"
             >
-              <option value="">Toutes les unités</option>
+              <option value="">Unités</option>
               {orgUnits.map((orgUnit) => (
                 <option key={orgUnit.id} value={orgUnit.id}>
                   {orgUnit.name} {orgUnit.code ? `(${orgUnit.code})` : ''}
                 </option>
               ))}
             </select>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-              placeholder="Date de début"
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-              placeholder="Date de fin"
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
+          </div>
+          
+          {/* Ligne 2: 2 date inputs - ALWAYS horizontal */}
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 min-w-0 flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-purple-500">
+              <span className="text-xs text-gray-500 pl-2 flex-shrink-0">Début</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                className="w-full px-2 py-1.5 text-sm border-0 focus:ring-0 focus:outline-none bg-transparent"
+              />
+            </div>
+            <div className="flex-1 min-w-0 flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-purple-500">
+              <span className="text-xs text-gray-500 pl-2 flex-shrink-0">Fin</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                className="w-full px-2 py-1.5 text-sm border-0 focus:ring-0 focus:outline-none bg-transparent"
+              />
+            </div>
           </div>
           <div className="flex justify-end">
             <button
@@ -765,22 +783,27 @@ const POCOrdersList: React.FC = () => {
           {/* Cards Mobile */}
           <div className="lg:hidden space-y-4">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+              <div 
+                key={order.id} 
+                className="bg-white rounded-lg shadow-md p-4 cursor-pointer"
+                onClick={() => toggleOrderExpansion(order.id)}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-sm">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           navigate(`/construction/orders/${order.id}`);
                         }}
-                        className={`text-purple-600 hover:text-purple-800 font-semibold text-lg ${order.status === 'draft' ? 'italic text-gray-500' : ''}`}
+                        className={`text-purple-600 hover:text-purple-800 font-medium truncate ${order.status === 'draft' ? 'italic text-gray-500' : ''}`}
                       >
                         {formatOrderNumberDisplay(order)}
                       </button>
                       {/* Badge d'alerte de seuil */}
                       {hasThresholdAlert(order.id) && (
                         <span 
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
                             getAlertSeverity(order.id) === 'critical' 
                               ? 'bg-red-100 text-red-800' 
                               : 'bg-orange-100 text-orange-800'
@@ -791,54 +814,98 @@ const POCOrdersList: React.FC = () => {
                           Seuil dépassé
                         </span>
                       )}
+                      <span className="text-gray-400 flex-shrink-0">•</span>
+                      <span className="text-gray-600 truncate">
+                        {order.orderType === 'BCI' && order.orgUnitId
+                          ? getOrgUnitName(order.orgUnitId)
+                          : order.projectId
+                          ? getProjectName(order.projectId)
+                          : 'N/A'}
+                      </span>
                     </div>
-                    {/* Affichage conditionnel: org_unit pour BCI, project pour BCE */}
-                    <p className="text-sm text-gray-600 mt-1">
-                      {order.orderType === 'BCI' && order.orgUnitId
-                        ? getOrgUnitName(order.orgUnitId)
-                        : order.projectId
-                        ? getProjectName(order.projectId)
-                        : 'N/A'}
-                    </p>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[order.status]}`}>
                     {STATUS_LABELS[order.status]}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
-                  <div>
+                <div className="mb-3 text-sm">
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-500">Date:</span>
+                    <span>{formatDate(order.createdAt)}</span>
+                  </div>
+                </div>
+                {/* Panneau extensible des articles */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expandedOrderId === order.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="pt-3 mt-3 border-t bg-gray-50 rounded-b -mx-4 px-4 pb-3">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Articles ({order.items?.length || 0})</p>
+                    {order.items && order.items.length > 0 ? (
+                      <div className="space-y-2">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex justify-between items-center text-xs">
+                            <div className="flex-1 truncate">
+                              <span className="font-medium">{item.itemName}</span>
+                              <span className="text-gray-500 ml-1">x{item.quantity} {item.unit}</span>
+                            </div>
+                            <div className="text-right">
+                              <PriceMaskingWrapper 
+                                price={item.totalPrice} 
+                                userRole={userRole ? String(userRole) : ''} 
+                                formatPrice={true} 
+                                showExplanation={false} 
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic">Aucun article</p>
+                    )}
+                  </div>
+                </div>
+                {/* Indicateur visuel d'expansion */}
+                <div 
+                  className="flex justify-center mt-2 mb-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {expandedOrderId === order.id ? (
+                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  )}
+                </div>
+                <div className="flex flex-wrap justify-between items-center gap-2 pt-3 border-t">
+                  <div className="flex flex-wrap gap-2">
+                    {availableActions[order.id]?.map((action) => (
+                      <button
+                        key={action}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          confirmAction(order.id, action);
+                        }}
+                        disabled={actionLoading[order.id]}
+                        className={`text-xs px-2 py-1 rounded ${
+                          [WorkflowAction.APPROVE_SITE, WorkflowAction.APPROVE_MGMT, WorkflowAction.ACCEPT_SUPPLIER, WorkflowAction.COMPLETE].includes(action)
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : [WorkflowAction.REJECT_SITE, WorkflowAction.REJECT_MGMT, WorkflowAction.REJECT_SUPPLIER, WorkflowAction.CANCEL].includes(action)
+                            ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        } disabled:opacity-50`}
+                      >
+                        {ACTION_LABELS[action]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs whitespace-nowrap">
                     <span className="text-gray-500">Montant:</span>
-                    <p className="font-semibold">
+                    <span className="font-semibold">
                       <PriceMaskingWrapper
                         price={calculateTotal(order)}
                         userRole={userRole ? String(userRole) : ''}
                         formatPrice={true}
                         showExplanation={false}
                       />
-                    </p>
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Date:</span>
-                    <p>{formatDate(order.createdAt)}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-3 border-t">
-                  {availableActions[order.id]?.map((action) => (
-                    <button
-                      key={action}
-                      onClick={() => confirmAction(order.id, action)}
-                      disabled={actionLoading[order.id]}
-                      className={`text-xs px-2 py-1 rounded ${
-                        [WorkflowAction.APPROVE_SITE, WorkflowAction.APPROVE_MGMT, WorkflowAction.ACCEPT_SUPPLIER, WorkflowAction.COMPLETE].includes(action)
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : [WorkflowAction.REJECT_SITE, WorkflowAction.REJECT_MGMT, WorkflowAction.REJECT_SUPPLIER, WorkflowAction.CANCEL].includes(action)
-                          ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                      } disabled:opacity-50`}
-                    >
-                      {ACTION_LABELS[action]}
-                    </button>
-                  ))}
                 </div>
               </div>
             ))}
