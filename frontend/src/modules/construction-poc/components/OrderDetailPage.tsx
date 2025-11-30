@@ -1216,15 +1216,6 @@ const OrderDetailPage: React.FC = () => {
                     {STATUS_LABELS[order.status]}
                   </span>
                 </div>
-                {/* Creator info below BC number */}
-                {creatorInfo && (
-                  <div className="mt-2 ml-2 sm:ml-4">
-                    <p className="text-sm text-gray-500">
-                      Créé par{creatorInfo.role ? ` : ${formatCreatorRole(creatorInfo.role)}, ` : ' : '}{creatorInfo.name || 'Inconnu'}.
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">{order.creatorId}</p>
-                  </div>
-                )}
                 {/* Bouton d'explication pour chef_equipe (Phase 3 Security) */}
                 {userRole && !canViewFullPrice(userRole) && (
                   <Button
