@@ -8,6 +8,10 @@ import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import apiService from '../services/apiService';
 import { toast } from 'react-hot-toast';
 import type { Budget, TransactionCategory } from '../types';
+import { CurrencyDisplay } from '../components/Currency';
+import type { Currency } from '../components/Currency/CurrencyToggle';
+
+const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
 const BudgetsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -21,6 +25,25 @@ const BudgetsPage = () => {
   const { user } = useAppStore();
   const { trackBudgetUsage } = usePracticeTracking();
   const navigate = useNavigate();
+
+  // Currency integration state
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
+  });
+
+  // Listen for currency changes from Settings page
+  useEffect(() => {
+    const handleCurrencyChange = (event: CustomEvent<{ currency: Currency }>) => {
+      setDisplayCurrency(event.detail.currency);
+    };
+
+    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+
+    return () => {
+      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    };
+  }, []);
 
   // Hook d'intelligence budgétaire pour les budgets suggérés
   const {
@@ -564,17 +587,39 @@ const BudgetsPage = () => {
         
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget)}</p>
+            <div className="text-2xl font-bold text-gray-900">
+              <CurrencyDisplay
+                amount={totalBudget}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="lg"
+              />
+            </div>
             <p className="text-sm text-gray-600">Budget total</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-red-600">{formatCurrency(totalSpent)}</p>
+            <div className="text-2xl font-bold text-red-600">
+              <CurrencyDisplay
+                amount={totalSpent}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="lg"
+              />
+            </div>
             <p className="text-sm text-gray-600">Dépensé</p>
           </div>
           <div className="text-center">
-            <p className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(Math.abs(totalRemaining))}
-            </p>
+            <div className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <CurrencyDisplay
+                amount={Math.abs(totalRemaining)}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="lg"
+              />
+            </div>
             <p className="text-sm text-gray-600">
               {totalRemaining >= 0 ? 'Restant' : 'Dépassé'}
             </p>
@@ -637,7 +682,13 @@ const BudgetsPage = () => {
                       <div>
                         <h4 className="font-medium text-gray-900">{categoryInfo?.name || category}</h4>
                         <p className="text-sm text-gray-500">
-                          {formatCurrency(customAmount)} / mois
+                          <CurrencyDisplay
+                            amount={customAmount}
+                            originalCurrency="MGA"
+                            displayCurrency={displayCurrency}
+                            showConversion={true}
+                            size="sm"
+                          /> / mois
                         </p>
                       </div>
                     </div>
@@ -738,14 +789,26 @@ const BudgetsPage = () => {
                   <div>
                     <h4 className="font-medium text-gray-900">{category.name}</h4>
                     <p className="text-sm text-gray-500">
-                      {formatCurrency(budget.amount)} / mois
+                      <CurrencyDisplay
+                        amount={budget.amount}
+                        originalCurrency="MGA"
+                        displayCurrency={displayCurrency}
+                        showConversion={true}
+                        size="sm"
+                      /> / mois
                     </p>
                   </div>
                 </div>
                 
                 <div className="text-right">
                   <p className={`font-semibold ${status.color}`}>
-                    {formatCurrency(budget.spent || 0)}
+                    <CurrencyDisplay
+                      amount={budget.spent || 0}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="md"
+                    />
                   </p>
                   <p className="text-sm text-gray-500">
                     {percentage.toFixed(1)}%
@@ -778,7 +841,13 @@ const BudgetsPage = () => {
                 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">
-                    Restant: {formatCurrency(Math.max(0, remaining))}
+                    Restant: <CurrencyDisplay
+                      amount={Math.max(0, remaining)}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                    />
                   </span>
                   <div className="flex items-center space-x-1">
                     {status.status === 'exceeded' && (

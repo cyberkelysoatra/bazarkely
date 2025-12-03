@@ -5,13 +5,16 @@ import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
 import accountService from '../services/accountService';
-import { TRANSACTION_CATEGORIES } from '../constants';
 import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import { validateRecurringData } from '../utils/recurringUtils';
+import { CurrencyInput } from '../components/Currency';
+import { ACCOUNT_TYPES } from '../constants';
 import type { Account, TransactionCategory } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
+import { getCategoriesByType } from '../services/categoryService';
+import type { TransactionCategory as CategoryFromDB } from '../services/categoryService';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -33,6 +36,10 @@ const AddTransactionPage = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [transactionCurrency, setTransactionCurrency] = useState<'MGA' | 'EUR'>('MGA');
+  const [categories, setCategories] = useState<CategoryFromDB[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // État pour les transactions récurrentes
   const [isRecurring, setIsRecurring] = useState(isRecurringParam);
@@ -51,10 +58,6 @@ const AddTransactionPage = () => {
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
 
-  const categories: TransactionCategory[] = isIncome 
-    ? ['autres'] // Pour les revenus, on utilise principalement 'autres'
-    : ['alimentation', 'transport', 'logement', 'sante', 'education', 'communication', 'vetements', 'loisirs', 'famille', 'solidarite', 'autres'];
-
   // Charger les comptes de l'utilisateur
   useEffect(() => {
     const loadAccounts = async () => {
@@ -70,12 +73,50 @@ const AddTransactionPage = () => {
     loadAccounts();
   }, []);
 
+  // Charger les catégories depuis Supabase
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setCategoriesLoading(true);
+      const type = isIncome ? 'income' : 'expense';
+      
+      // Reset category when transaction type changes
+      setFormData(prev => ({ ...prev, category: '' }));
+      
+      try {
+        const fetchedCategories = await getCategoriesByType(type);
+        setCategories(fetchedCategories);
+        
+        // Set default category after loading
+        if (fetchedCategories.length > 0) {
+          setFormData(prev => {
+            // Only set default if category is empty (was reset above)
+            if (!prev.category) {
+              return { ...prev, category: fetchedCategories[0].name };
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des catégories:', error);
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    
+    fetchCategories();
+  }, [transactionType, isIncome]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    // Clear error when user changes input
+    if (error) {
+      setError(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,8 +136,33 @@ const AddTransactionPage = () => {
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       console.error('❌ Le montant doit être un nombre positif');
+      setError('❌ Le montant doit être un nombre positif');
       return;
     }
+
+    // Validation du solde pour les dépenses (sauf si le compte autorise le découvert)
+    if (!isIncome && formData.accountId) {
+      const selectedAccount = accounts.find(acc => acc.id === formData.accountId);
+      if (selectedAccount) {
+        const accountTypeConfig = ACCOUNT_TYPES[selectedAccount.type as keyof typeof ACCOUNT_TYPES];
+        const allowNegative = accountTypeConfig?.allowNegative ?? false;
+        const newBalance = selectedAccount.balance - amount;
+        
+        if (!allowNegative && newBalance < 0) {
+          const errorMessage = `Solde insuffisant. Le compte "${selectedAccount.name}" ne permet pas le découvert. Solde disponible: ${selectedAccount.balance.toLocaleString('fr-FR')} Ar`;
+          console.error(`❌ ${errorMessage}`);
+          setError(errorMessage);
+          return;
+        }
+      }
+    }
+    
+    // Clear any previous error
+    setError(null);
+
+    // Store original currency and amount for multi-currency support
+    const originalAmount = amount;
+    const originalCurrency = transactionCurrency;
 
     // Validation spécifique pour les transactions récurrentes
     if (isRecurring) {
@@ -170,7 +236,9 @@ const AddTransactionPage = () => {
           category: formData.category as TransactionCategory,
           accountId: formData.accountId,
           date: new Date(formData.date),
-          notes: formData.notes
+          notes: formData.notes,
+          originalCurrency: originalCurrency,
+          originalAmount: originalAmount
         });
 
         console.log(`✅ ${isIncome ? 'Revenu' : 'Dépense'} ajouté avec succès !`);
@@ -235,6 +303,13 @@ const AddTransactionPage = () => {
       {/* Formulaire */}
       <div className="p-4">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Message d'erreur */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+          
           {/* Toggle Transaction récurrente */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -267,29 +342,33 @@ const AddTransactionPage = () => {
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
               Montant *
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="0"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
-                required
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                Ar
-              </div>
-            </div>
+            <CurrencyInput
+              id="amount"
+              value={formData.amount}
+              onChange={(value, currency) => {
+                setFormData(prev => ({
+                  ...prev,
+                  amount: value.toString()
+                }));
+                // Currency is also updated via onCurrencyChange, but we keep it in sync here too
+                if (currency !== transactionCurrency) {
+                  setTransactionCurrency(currency);
+                }
+              }}
+              currency={transactionCurrency}
+              onCurrencyChange={(newCurrency) => {
+                setTransactionCurrency(newCurrency);
+              }}
+              placeholder="0"
+              required
+              className="text-lg font-semibold"
+            />
           </div>
 
           {/* Description */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
+              Libellé *
             </label>
             <input
               type="text"
@@ -297,7 +376,8 @@ const AddTransactionPage = () => {
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder={isIncome ? "Ex: Salaire mensuel" : "Ex: Achat épicerie"}
+              placeholder={isIncome ? "Ex: Salaire mars 2025" : "Ex: Courses Shoprite"}
+              maxLength={100}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             />
@@ -323,13 +403,18 @@ const AddTransactionPage = () => {
               onChange={handleInputChange}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
+              disabled={categoriesLoading}
             >
               <option value="">Sélectionner une catégorie</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {TRANSACTION_CATEGORIES[category]?.name || category}
-                </option>
-              ))}
+              {categoriesLoading ? (
+                <option value="" disabled>Chargement...</option>
+              ) : (
+                categories.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.icon ? `${category.icon} ` : ''}{category.label}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -382,7 +467,7 @@ const AddTransactionPage = () => {
               value={formData.notes}
               onChange={handleInputChange}
               rows={3}
-              placeholder="Ajoutez des détails supplémentaires..."
+              placeholder="Détails supplémentaires, mémo personnel..."
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
           </div>

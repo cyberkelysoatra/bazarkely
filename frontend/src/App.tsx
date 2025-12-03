@@ -41,6 +41,9 @@ const safariServiceWorkerManager = {
 import AppLayout from './components/Layout/AppLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
+import { ModuleSwitcherProvider } from './contexts/ModuleSwitcherContext';
+// Construction POC Context - Mounted globally so Header can access ConstructionContext
+import { ConstructionProvider } from './modules/construction-poc/context/ConstructionContext';
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -126,9 +129,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         
         <Router>
-          <div className="min-h-screen bg-gray-50">
-            <AppLayout />
-            <IOSInstallPrompt />
+          <ModuleSwitcherProvider>
+            {/* ConstructionProvider mounted globally so Header (inside AppLayout) can access ConstructionContext */}
+            <ConstructionProvider>
+              <div className="min-h-screen bg-gray-50">
+                <AppLayout />
+                <IOSInstallPrompt />
             
             {/* Toast Notifications */}
             <Toaster
@@ -194,7 +200,9 @@ function App() {
                 </div>
               </div>
             )}
-          </div>
+              </div>
+            </ConstructionProvider>
+          </ModuleSwitcherProvider>
         </Router>
       </QueryClientProvider>
     </ErrorBoundary>

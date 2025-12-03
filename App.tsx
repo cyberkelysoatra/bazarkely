@@ -40,6 +40,7 @@ import AppLayout from './components/Layout/AppLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
 import InstallPromptDebug from './components/InstallPromptDebug';
+import { ModuleSwitcherProvider } from './frontend/src/contexts/ModuleSwitcherContext';
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -118,10 +119,11 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <Router>
-          <div className="min-h-screen bg-gray-50">
-            <AppLayout />
-            <InstallPrompt />
-            <InstallPromptDebug />
+          <ModuleSwitcherProvider>
+            <div className="min-h-screen bg-gray-50">
+              <AppLayout />
+              <InstallPrompt />
+              <InstallPromptDebug />
             
             {/* Bouton de débogage API - Removed - no longer needed with Supabase */}
             {/* <button
@@ -153,7 +155,8 @@ function App() {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          </ModuleSwitcherProvider>
         </Router>
       </QueryClientProvider>
     </ErrorBoundary>

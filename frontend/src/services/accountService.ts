@@ -6,6 +6,7 @@
 import type { Account } from '../types';
 import type { Account as SupabaseAccount, AccountInsert, AccountUpdate } from '../types/supabase';
 import apiService from './apiService';
+import { convertAmount } from './exchangeRateService';
 
 class AccountService {
   /**
@@ -208,6 +209,7 @@ class AccountService {
 
   /**
    * Calculer le solde total
+   * Note: Pour un total avec conversion, utiliser getTotalBalanceInCurrency()
    */
   async getTotalBalance(): Promise<number> {
     try {
@@ -253,4 +255,39 @@ class AccountService {
   }
 }
 
-export default new AccountService();
+const accountService = new AccountService();
+
+/**
+ * Calcule le solde total de tous les comptes, converti dans la devise cible
+ * @param targetCurrency - Devise cible ('MGA' ou 'EUR')
+ * @returns Solde total dans la devise cible
+ */
+export async function getTotalBalanceInCurrency(targetCurrency: 'MGA' | 'EUR' = 'MGA'): Promise<number> {
+  try {
+    const accounts = await accountService.getAccounts();
+    let total = 0;
+    
+    for (const account of accounts) {
+      if (account.currency === targetCurrency) {
+        // Même devise, pas de conversion
+        total += account.balance;
+      } else {
+        // Conversion nécessaire
+        const converted = await convertAmount(
+          account.balance,
+          account.currency,
+          targetCurrency
+        );
+        total += converted;
+      }
+    }
+    
+    // Arrondir selon la devise
+    return targetCurrency === 'MGA' ? Math.round(total) : Math.round(total * 100) / 100;
+  } catch (error) {
+    console.error('Error calculating total balance:', error);
+    return 0;
+  }
+}
+
+export default accountService;

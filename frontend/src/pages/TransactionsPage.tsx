@@ -7,7 +7,11 @@ import accountService from '../services/accountService';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
+import { CurrencyDisplay } from '../components/Currency';
+import type { Currency } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
+
+const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -22,6 +26,12 @@ const TransactionsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
   const [accountsMap, setAccountsMap] = useState<Map<string, Account>>(new Map());
+  
+  // Currency display preference
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
+  });
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
@@ -99,6 +109,19 @@ const TransactionsPage = () => {
     };
     loadAccounts();
   }, [user]);
+
+  // Listen for currency changes from Settings page
+  useEffect(() => {
+    const handleCurrencyChange = (event: CustomEvent<{ currency: 'MGA' | 'EUR' }>) => {
+      setDisplayCurrency(event.detail.currency);
+    };
+
+    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+
+    return () => {
+      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    };
+  }, []);
 
   // Charger les informations du compte filtré
   useEffect(() => {
@@ -348,9 +371,15 @@ const TransactionsPage = () => {
             <TrendingUp className="w-5 h-5 text-green-600" />
             <h3 className="text-sm font-medium text-gray-600">Revenus</h3>
           </div>
-          <p className="text-xl font-bold text-green-600">
-            {formatCurrency(totalIncome)}
-          </p>
+          <div className="text-xl font-bold text-green-600">
+            <CurrencyDisplay
+              amount={totalIncome}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="lg"
+            />
+          </div>
         </div>
 
         <div className="card">
@@ -358,9 +387,15 @@ const TransactionsPage = () => {
             <TrendingDown className="w-5 h-5 text-red-600" />
             <h3 className="text-sm font-medium text-gray-600">Dépenses</h3>
           </div>
-          <p className="text-xl font-bold text-red-600">
-            {formatCurrency(totalExpenses)}
-          </p>
+          <div className="text-xl font-bold text-red-600">
+            <CurrencyDisplay
+              amount={totalExpenses}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="lg"
+            />
+          </div>
         </div>
       </div>
 
@@ -554,15 +589,22 @@ const TransactionsPage = () => {
                 </div>
 
                 <div className="text-right">
-                  <p className={`font-semibold ${
+                  <div className={`font-semibold ${
                     isIncome ? 'text-green-600' :
                     isDebit ? 'text-red-600' :
                     isCredit ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {isIncome ? '+' : 
+                    <span>{isIncome ? '+' : 
                      isDebit ? '-' : 
-                     isCredit ? '+' : '-'}{formatCurrency(displayAmount)}
-                  </p>
+                     isCredit ? '+' : '-'}</span>
+                    <CurrencyDisplay
+                      amount={displayAmount}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="md"
+                    />
+                  </div>
                   <p className="text-sm text-gray-500">
                     {new Date(transaction.createdAt).toLocaleDateString('fr-FR')}
                   </p>

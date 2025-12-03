@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 3.0 (Développement Multi-Agents Validé + Nouveaux Scripts + Documentation)  
-**Date de mise à jour:** 2025-10-31  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories
+**Version:** 3.7 (Construction POC Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation 2025-11-15 - Session 2025-11-15)  
+**Date de mise à jour:** 2025-11-15  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14
 
 ---
 
@@ -12,16 +12,18 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 239+ fichiers
+- **Total fichiers:** 288+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15)
 - **Composants UI:** 13/14 implémentés (93%)
 - **Composants Auth:** 2/2 implémentés (100%)
 - **Composants Recommandations:** 3/3 implémentés (100%) 🆕
 - **Composants Certification:** 6/6 implémentés (100%) 🆕 NOUVEAU
 - **Composants Leaderboard:** 1/1 implémenté (100%) 🆕 NOUVEAU
-- **Pages principales:** 16/16 implémentées (100%)
+- **Composants Transactions Récurrentes:** 3/3 implémentés (100%) 🆕 NOUVEAU 2025-11-03
+- **Pages principales:** 18/18 implémentées (100%) (+2 pages session 2025-11-03)
 - **Hooks personnalisés:** 6/6 implémentés (100%) ✅
-- **Services:** 22+ services implémentés
-- **Backend Docs:** 4 spécifications API
+- **Services:** 28+ services implémentés (Construction POC services existants)
+- **Composants Construction POC:** 11/11 implémentés (100%) 🆕 NOUVEAU 2025-11-08
+- **Backend Docs:** 5 spécifications API (+1 session 2025-11-03)
 - **PWA Installation:** 100% fonctionnelle ✅
 - **Notifications Push:** 100% fonctionnelles ✅
 - **Interface UI:** 100% optimisée ✅ (Session 2025-01-11)
@@ -39,6 +41,11 @@ Cette structure présente l'organisation complète du projet BazarKELY avec tous
 - **CSV Export:** 100% fonctionnel ✅ (Session 2025-10-31)
 - **Smart Navigation:** 100% fonctionnel ✅ (Session 2025-10-31)
 - **Multi-Agent Development:** 100% validé ✅ (Session 2025-10-31)
+- **Transactions Récurrentes:** 100% fonctionnel ✅ (Session 2025-11-03) 🆕 NOUVEAU
+- **Construction POC UI Components:** 100% fonctionnel ✅ (Session 2025-11-08) 🆕 NOUVEAU
+- **Construction POC Phase 2 Organigramme:** 100% fonctionnel ✅ (Session 2025-11-12) 🆕 NOUVEAU
+- **Construction POC Phase 3 Security:** 92% fonctionnel ✅ (Session 2025-11-12) 🆕 NOUVEAU
+- **Bug Fixes Session 2025-11-14:** 100% résolu ✅ (WorkflowAction import + Database alert_type) 🆕 NOUVEAU
 
 ---
 
@@ -70,10 +77,27 @@ bazarkely-2/
 │   ├── 📄 init.sql                        # Initialisation
 │   ├── 📄 setup-mysql-ovh.sql             # Configuration MySQL
 │   ├── 📄 setup.php                       # Script PHP
-│   └── 📄 cleanup-orphaned-auth-users.sql # Nettoyage
+│   ├── 📄 cleanup-orphaned-auth-users.sql # Nettoyage
+│   ├── 📄 phase2-org-structure-implementation.sql # 🆕 NOUVEAU 2025-11-12 - Script principal Phase 2 (structure organisationnelle)
+│   ├── 📄 phase2-rollback.sql            # 🆕 NOUVEAU 2025-11-12 - Script rollback Phase 2
+│   ├── 📄 PHASE2-IMPLEMENTATION-GUIDE.md # 🆕 NOUVEAU 2025-11-12 - Guide implémentation Phase 2
+│   └── 📄 phase2-correction-*.sql         # 🆕 NOUVEAU 2025-11-12 - Scripts correction Phase 2 (si applicable)
+├── 📁 supabase/                           # Migrations Supabase
+│   └── 📁 migrations/                     # Migrations base de données
+│       ├── 📄 20251112215308_phase3_security_foundations.sql # 🆕 NEW [2025-11-12] - Migration Phase 3 Security (RLS + policies)
+│       ├── 📄 20251114124405_add_alert_type_to_poc_alerts.sql # 🆕 NEW [2025-11-14] - Migration ajout colonne alert_type (exécutée)
+│       └── 📄 20251115120000_make_supplier_company_id_nullable.sql # 🆕 NEW [2025-11-15] - Migration supplier company_id nullable
 ├── 📁 backend/                            # Spécifications API backend
 │   ├── 📄 API-PRACTICE-TRACKING-SPEC.md  # 🆕 NOUVEAU - Spécification API suivi pratiques (2025-10-17)
 │   └── 📄 LEADERBOARD-API-SPEC.md        # 🆕 NOUVEAU - Spécification API classement (2025-10-17)
+├── 📄 AGENT-2-NOTIFICATIONS-ARCHITECTURE.md # 🆕 NOUVEAU 2025-11-03 - Architecture notifications (Phase 0 Diagnostic)
+├── 📄 AGENT-3-UI-ANALYSIS.md              # 🆕 NOUVEAU 2025-11-03 - Analyse UI (Phase 0 Diagnostic)
+├── 📄 AGENT-1-WORKFLOWACTION-BUG-COMPLETE.md # 🆕 NOUVEAU 2025-11-14 - Résolution bug import WorkflowAction
+├── 📄 AGENT-2-DATABASE-SCHEMA-ANALYSIS.md # 🆕 NOUVEAU 2025-11-14 - Analyse schéma DB alert_type
+├── 📄 AGENT-3-UX-SIMPLIFICATION-ANALYSIS.md # 🆕 NOUVEAU 2025-11-14 - Analyse UX PurchaseOrderForm
+├── 📄 AGENT-2-DATA-SOURCES-ANALYSIS.md # 🆕 NOUVEAU 2025-11-15 - Analyse sources données smart defaults
+├── 📄 AGENT-3-EDIT-PRESERVATION-ANALYSIS.md # 🆕 NOUVEAU 2025-11-15 - Analyse préservation mode édition
+├── 📄 AGENT-3-TRADITIONAL-BCI-COMPARISON.md # 🆕 NOUVEAU 2025-11-15 - Analyse comparative modèle traditionnel BCI vs digital
 ├── 📁 frontend/                           # 🎯 APPLICATION PRINCIPALE
 │   ├── 📁 dist/                          # 🎯 BUILD DE PRODUCTION
 │   │   ├── 📄 index.html                 # ✅ Point d'entrée React
@@ -113,13 +137,19 @@ bazarkely-2/
 │   │   │   │       ├── 📄 LoginForm.test.tsx
 │   │   │   │       └── 📄 RegisterForm.test.tsx
 │   │   │   ├── 📁 Layout/                    # Composants de layout
-│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel) (MODIFIÉ 2025-01-20 - Identification utilisateur dropdown "Compte actif")
+│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel) (MODIFIÉ 2025-01-20 - Identification utilisateur dropdown "Compte actif") (MODIFIÉ 2025-11-15 - Bug fix budget banner AGENT09) (MODIFIÉ 2025-11-15 PM - 8 corrections itératives cleanup Budget Construction AGENT09)
 │   │   │   │   ├── 📄 Footer.tsx             # ✅ Footer
 │   │   │   │   └── 📄 AppLayout.tsx          # ✅ Layout principal
 │   │   │   ├── 📁 Navigation/                # Composants de navigation
 │   │   │   │   └── 📄 BottomNav.tsx          # ✅ Navigation mobile (MODIFIÉ 2025-01-11 - Ultra-compacte 48-56px)
 │   │   │   ├── 📁 Dashboard/                 # Composants dashboard
-│   │   │   │   └── 📄 RecommendationWidget.tsx # 🆕 NOUVEAU - Widget recommandations (303 lignes)
+│   │   │   │   ├── 📄 RecommendationWidget.tsx # 🆕 NOUVEAU - Widget recommandations (303 lignes)
+│   │   │   │   └── 📄 RecurringTransactionsWidget.tsx # 🆕 NOUVEAU 2025-11-03 - Widget transactions récurrentes (146 lignes)
+│   │   │   ├── 📁 RecurringConfig/           # 🆕 NOUVEAU 2025-11-03 - Configuration transactions récurrentes
+│   │   │   │   └── 📄 RecurringConfigSection.tsx # 🆕 NOUVEAU 2025-11-03 - Section configuration récurrence (358 lignes)
+│   │   │   ├── 📁 RecurringTransactions/     # 🆕 NOUVEAU 2025-11-03 - Composants transactions récurrentes
+│   │   │   │   ├── 📄 RecurringBadge.tsx    # 🆕 NOUVEAU 2025-11-03 - Badge récurrent (61 lignes)
+│   │   │   │   └── 📄 RecurringTransactionsList.tsx # 🆕 NOUVEAU 2025-11-03 - Liste transactions récurrentes (284 lignes)
 │   │   │   ├── 📁 Recommendations/           # Composants recommandations
 │   │   │   │   ├── 📄 RecommendationCard.tsx # 🆕 NOUVEAU - Carte recommandation (241 lignes)
 │   │   │   │   └── 📄 ChallengeCard.tsx      # 🆕 NOUVEAU - Carte défi (240 lignes)
@@ -160,7 +190,9 @@ bazarkely-2/
 │   │   │   ├── 📄 adminService.ts        # ✅ Service d'administration (MODIFIÉ 2025-01-20 - Interface AdminUser enrichie + RPC function + requêtes parallèles)
 │   │   │   ├── 📄 certificateService.ts  # 🆕 NOUVEAU - Service génération certificats PDF (2025-10-17)
 │   │   │   ├── 📄 leaderboardService.ts  # 🆕 NOUVEAU - Service classement API (2025-10-17)
-│   │   │   ├── 📄 notificationService.ts # ✅ NOUVEAU - Service notifications push complet
+│   │   │   ├── 📄 notificationService.ts # ✅ NOUVEAU - Service notifications push complet (MODIFIÉ 2025-11-03 - Intégration transactions récurrentes)
+│   │   │   ├── 📄 recurringTransactionService.ts # 🆕 NOUVEAU 2025-11-03 - Service CRUD transactions récurrentes (525 lignes)
+│   │   │   └── 📄 recurringTransactionMonitoringService.ts # 🆕 NOUVEAU 2025-11-03 - Service monitoring génération automatique (171 lignes)
 │   │   │   ├── 📄 recommendationEngineService.ts # 🆕 NOUVEAU - Moteur recommandations IA (948 lignes)
 │   │   │   ├── 📄 challengeService.ts    # 🆕 NOUVEAU - Système gamification (929 lignes)
 │   │   │   ├── 📄 certificationService.ts # 🆕 NOUVEAU - Service certification + scoring + déverrouillage
@@ -179,12 +211,14 @@ bazarkely-2/
 │   │   │   ├── 📄 cacheStore.ts          # ✅ Store de cache
 │   │   │   └── 📄 certificationStore.ts  # 🆕 NOUVEAU - Store certification + persist + quiz sessions (MODIFIÉ 2025-10-17 - État practiceTracking + actions)
 │   │   ├── 📁 types/                     # Types TypeScript
-│   │   │   ├── 📄 index.ts               # ✅ Types principaux (MODIFIÉ 2025-01-11 - priorityAnswers, quizResults, QuizResult)
+│   │   │   ├── 📄 index.ts               # ✅ Types principaux (MODIFIÉ 2025-01-11 - priorityAnswers, quizResults, QuizResult) (MODIFIÉ 2025-11-03 - Types transactions récurrentes)
 │   │   │   ├── 📄 supabase.ts            # ✅ Types Supabase
-│   │   │   └── 📄 certification.ts       # 🆕 NOUVEAU - Types certification + interfaces + 5 niveaux
+│   │   │   ├── 📄 certification.ts       # 🆕 NOUVEAU - Types certification + interfaces + 5 niveaux
+│   │   │   ├── 📄 recurring.ts           # 🆕 NOUVEAU 2025-11-03 - Types transactions récurrentes (53 lignes)
+│   │   │   └── 📄 supabase-recurring.ts  # 🆕 NOUVEAU 2025-11-03 - Types Supabase transactions récurrentes (253 lignes)
 │   │   ├── 📁 lib/                       # Utilitaires
 │   │   │   ├── 📄 supabase.ts            # ✅ Configuration Supabase
-│   │   │   ├── 📄 database.ts             # ✅ Base de données (Version 6 - Tables notifications)
+│   │   │   ├── 📄 database.ts             # ✅ Base de données (Version 7 - Tables transactions récurrentes) (MODIFIÉ 2025-11-03)
 │   │   │   └── 📄 concurrentDatabase.ts  # ✅ Base de données concurrente
 │   │   ├── 📁 data/                       # Données et contenu
 │   │   │   └── 📄 certificationQuestions.ts # 🆕 NOUVEAU - 250 questions + 5 niveaux + français + Madagascar
@@ -199,7 +233,55 @@ bazarkely-2/
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
 │   │   │   ├── 📄 passwordUtils.ts       # ✅ Utilitaires mots de passe
 │   │   │   ├── 📄 formatters.ts          # ✅ Formatage des données
-│   │   │   └── 📄 dialogUtils.ts         # ✅ Utilitaires dialogues modernes
+│   │   │   ├── 📄 dialogUtils.ts         # ✅ Utilitaires dialogues modernes
+│   │   │   └── 📄 recurringUtils.ts      # 🆕 NOUVEAU 2025-11-03 - Utilitaires transactions récurrentes (442 lignes)
+│   │   ├── 📁 modules/                   # 🆕 Modules isolés
+│   │   │   └── 📁 construction-poc/      # 🆕 NOUVEAU - Module Construction POC
+│   │   │       ├── 📁 services/          # Services TypeScript [EXISTING]
+│   │   │       │   ├── 📄 pocWorkflowService.ts      [EXISTING] [MODIFIED 2025-11-12] [MODIFIED 2025-11-15] Service workflow (ajout helpers org_unit + bug fixes ServiceResult)
+│   │   │       │   ├── 📄 pocPurchaseOrderService.ts [EXISTING] [MODIFIED 2025-11-12] [MODIFIED 2025-11-15] Service commandes (orderType + orgUnitId support + bug fixes ServiceResult)
+│   │   │       │   ├── 📄 pocStockService.ts         [EXISTING]
+│   │   │       │   ├── 📄 pocProductService.ts       [EXISTING]
+│   │   │       │   ├── 📄 authHelpers.ts            [EXISTING]
+│   │   │       │   ├── 📄 pocPriceThresholdService.ts [NEW 2025-11-12] Service seuils prix (522 lignes)
+│   │   │       │   ├── 📄 pocConsumptionPlanService.ts [NEW 2025-11-12] Service plans consommation (797 lignes)
+│   │   │       │   ├── 📄 pocAlertService.ts [NEW 2025-11-12] Service alertes sécurité (687 lignes)
+│   │   │       │   └── 📁 __tests__/     # Tests Construction POC
+│   │   │       │       ├── 📄 pocWorkflowService.core.test.ts # 🆕 NEW [2025-11-08] - Tests workflow core 23 tests (600 lignes)
+│   │   │       │       ├── 📄 pocWorkflowService.permissions.test.ts # 🆕 NEW [2025-11-08] - Tests permissions 33 tests (800 lignes)
+│   │   │       │       ├── 📄 authHelpers.test.ts # 🆕 NEW [2025-11-08] - Tests auth et stock 25 tests (700 lignes)
+│   │   │       │       ├── 📄 pocStockService.test.ts # Tests service stock
+│   │   │       │       ├── 📄 testUtils.ts # Utilitaires tests
+│   │   │       │       ├── 📄 supabaseMock.ts # Mock Supabase
+│   │   │       │       └── 📄 fixtures.ts # Fixtures tests
+│   │   │       ├── 📁 types/             # TypeScript types [EXISTING]
+│   │   │       │   └── 📄 construction.ts [MODIFIED 2025-11-12] Types (ajout OrgUnit interface + orderType/orgUnitId dans PurchaseOrder)
+│   │   │       ├── 📁 components/        # Composants React POC
+│   │   │       │   ├── 📄 ContextSwitcher.tsx        [NEW 2025-11-08] Sélecteur contexte
+│   │   │       │   ├── 📄 POCDashboard.tsx           [NEW 2025-11-08] [MODIFIED 2025-11-12] Dashboard principal (affichage conditionnel org_unit/project + alerts + consumption widgets)
+│   │   │       │   ├── 📄 ProductCatalog.tsx         [NEW 2025-11-08] Catalogue produits
+│   │   │       │   ├── 📄 PurchaseOrderForm.tsx      [NEW 2025-11-08] [MODIFIED 2025-11-12] [MODIFIED 2025-11-15] Formulaire commande (sélecteur BCI/BCE + org_unit + threshold alerts + consumption + smart defaults + UX transformation VAGUE 1 + VAGUE 2 - AGENT09/AGENT11/AGENT12)
+│   │   │       │   ├── 📄 POCOrdersList.tsx          [NEW 2025-11-08] [MODIFIED 2025-11-12] [MODIFIED 2025-11-14] [MODIFIED 2025-11-15] Liste commandes (filtre org_unit + affichage conditionnel + price masking + alert badges + import fix WorkflowAction AGENT10)
+│   │   │       │   ├── 📄 WorkflowStatusDisplay.tsx  [NEW 2025-11-08] Affichage workflow
+│   │   │       │   ├── 📄 WorkflowHistory.tsx        [NEW 2025-11-08] Historique workflow
+│   │   │       │   ├── 📄 StockManager.tsx           [NEW 2025-11-08] Gestion stock
+│   │   │       │   ├── 📄 StockTransactions.tsx       [NEW 2025-11-08] Historique stock
+│   │   │       │   ├── 📄 ThresholdAlert.tsx         [NEW 2025-11-12] Composant alerte seuil prix (101 lignes)
+│   │   │       │   ├── 📄 ConsumptionPlanCard.tsx   [NEW 2025-11-12] Carte plan consommation (211 lignes)
+│   │   │       │   ├── 📄 PriceMaskingWrapper.tsx    [NEW 2025-11-12] Wrapper masquage prix (139 lignes)
+│   │   │       │   └── 📄 index.ts                   [NEW 2025-11-08] [MODIFIED 2025-11-12] Exports composants (ajout nouveaux composants Phase 3)
+│   │   │       ├── 📁 pages/                        # Pages Construction POC
+│   │   │       │   └── 📄 OrderDetailPage.tsx        [MODIFIED 2025-11-12] [MODIFIED 2025-11-14] Page détail commande (affichage conditionnel org_unit/project + comprehensive masking + alerts + import fix)
+│   │   │       ├── 📁 utils/                        # Utilitaires Construction POC
+│   │   │       │   └── 📄 priceMasking.ts           [NEW 2025-11-12] Utilitaires masquage prix (116 lignes)
+│   │   │       │
+│   │   │       ├── 📁 context/                        # React Context
+│   │   │       │   └── 📄 ConstructionContext.tsx    [NEW 2025-11-08] Context Provider
+│   │   │       ├── 📄 index.ts           # Export centralisé
+│   │   │       ├── 📄 README.md           # Documentation module
+│   │   │       ├── 📄 WORKFLOW-STATE-MACHINE.md # Documentation workflow
+│   │   │       ├── 📄 USAGE-EXAMPLES.md   # Exemples utilisation
+│   │   │       └── 📄 jest.config.js      # Configuration Jest
 │   │   ├── 📁 styles/                    # Fichiers CSS
 │   │   │   └── 📄 index.css              # ✅ Styles principaux (MODIFIÉ 2025-01-11 - Suppression carousel + marquee)
 │   │   ├── 📄 App.tsx                    # ✅ Composant principal (Toaster intégré)
@@ -305,13 +387,31 @@ bazarkely-2/
 
 **Total Certification:** 4 composants implémentés, 0 manquant
 
-### **📁 frontend/src/components/Dashboard/** (1/1 composant - 100%) 🆕 NOUVEAU
+### **📁 frontend/src/components/Dashboard/** (2/2 composants - 100%) 🆕 NOUVEAU
 
 | Composant | Statut | Fichiers | Description |
 |-----------|--------|----------|-------------|
 | **RecommendationWidget.tsx** | 🆕 NOUVEAU | 1 fichier | Widget dashboard recommandations (303 lignes) |
+| **RecurringTransactionsWidget.tsx** | 🆕 NOUVEAU 2025-11-03 | 1 fichier | Widget transactions récurrentes dashboard (146 lignes) |
 
-**Total Dashboard:** 1 composant implémenté, 0 manquant
+**Total Dashboard:** 2 composants implémentés, 0 manquant
+
+### **📁 frontend/src/components/RecurringConfig/** (1/1 composant - 100%) 🆕 NOUVEAU 2025-11-03
+
+| Composant | Statut | Fichiers | Description |
+|-----------|--------|----------|-------------|
+| **RecurringConfigSection.tsx** | 🆕 NOUVEAU 2025-11-03 | 1 fichier | Section configuration récurrence complète (358 lignes) |
+
+**Total RecurringConfig:** 1 composant implémenté, 0 manquant
+
+### **📁 frontend/src/components/RecurringTransactions/** (2/2 composants - 100%) 🆕 NOUVEAU 2025-11-03
+
+| Composant | Statut | Fichiers | Description |
+|-----------|--------|----------|-------------|
+| **RecurringBadge.tsx** | 🆕 NOUVEAU 2025-11-03 | 1 fichier | Badge indicateur transaction récurrente (61 lignes) |
+| **RecurringTransactionsList.tsx** | 🆕 NOUVEAU 2025-11-03 | 1 fichier | Liste transactions récurrentes avec filtres (284 lignes) |
+
+**Total RecurringTransactions:** 2 composants implémentés, 0 manquant
 
 ---
 
@@ -324,8 +424,10 @@ bazarkely-2/
 - **Recommendation Components:** 2/2 (100%) 🆕 NOUVEAU
 - **Certification Components:** 6/6 (100%) 🆕 NOUVEAU
 - **Leaderboard Components:** 1/1 (100%) 🆕 NOUVEAU
-- **Dashboard Components:** 1/1 (100%) 🆕 NOUVEAU
-- **Page Components:** 16/16 (100%) ✅
+- **Dashboard Components:** 2/2 (100%) 🆕 NOUVEAU (+1 session 2025-11-03)
+- **RecurringConfig Components:** 1/1 (100%) 🆕 NOUVEAU 2025-11-03
+- **RecurringTransactions Components:** 2/2 (100%) 🆕 NOUVEAU 2025-11-03
+- **Page Components:** 18/18 (100%) ✅ (+2 pages session 2025-11-03)
 - **Hooks personnalisés:** 6/6 (100%) ✅
 - **Service Components:** 20+ (100%) ✅
 - **PWA Installation:** 100% fonctionnelle ✅
@@ -339,15 +441,24 @@ bazarkely-2/
 - **frontend/src/components/Recommendations/:** 2 fichiers (2 composants) 🆕 NOUVEAU
 - **frontend/src/components/Certification/:** 6 fichiers (6 composants) 🆕 NOUVEAU
 - **frontend/src/components/Leaderboard/:** 1 fichier (1 composant) 🆕 NOUVEAU
-- **frontend/src/components/Dashboard/:** 1 fichier (1 composant) 🆕 NOUVEAU
-- **frontend/src/pages/:** 16 fichiers (15 pages + 1 PWAInstructionsPage + 1 RecommendationsPage + 4 Certification) 🆕 NOUVEAU
-- **frontend/src/services/:** 22+ fichiers (9 nouveaux services ajoutés) ✅
+- **frontend/src/components/Dashboard/:** 2 fichiers (2 composants) 🆕 NOUVEAU (+1 session 2025-11-03)
+- **frontend/src/components/RecurringConfig/:** 1 fichier (1 composant) 🆕 NOUVEAU 2025-11-03
+- **frontend/src/components/RecurringTransactions/:** 2 fichiers (2 composants) 🆕 NOUVEAU 2025-11-03
+- **frontend/src/pages/:** 18 fichiers (16 pages + 2 RecurringTransactions) 🆕 NOUVEAU (+2 session 2025-11-03)
+- **frontend/src/services/:** 25+ fichiers (12 nouveaux services ajoutés) ✅ (+3 session 2025-11-03)
 - **frontend/src/stores/:** 7 fichiers (1 nouveau store certification) 🆕 NOUVEAU
-- **frontend/src/types/:** 3 fichiers (1 nouveau types certification) 🆕 NOUVEAU
+- **frontend/src/types/:** 5 fichiers (1 nouveau types certification + 2 types récurrentes) 🆕 NOUVEAU (+2 session 2025-11-03)
+- **frontend/src/utils/:** 5 fichiers (1 nouveau utilitaire récurrentes) ✅ (+1 session 2025-11-03)
 - **frontend/src/data/:** 1 fichier (250 questions certification) 🆕 NOUVEAU
-- **frontend/src/lib/:** 3 fichiers (database.ts Version 6) ✅
+- **frontend/src/lib/:** 3 fichiers (database.ts Version 7) ✅ (MODIFIÉ 2025-11-03)
 - **frontend/src/hooks/:** 6 fichiers (6 hooks complets) 🆕 NOUVEAU
-- **frontend/src/utils/:** 4 fichiers (1 utilitaire ajouté)
+- **frontend/src/modules/construction-poc/:** 33 fichiers (14 existants + 11 UI components 2025-11-08 + 8 Phase 3 Security 2025-11-12) 🆕 NOUVEAU
+  - **components/:** 13 fichiers (12 composants + 1 index) [NEW 2025-11-08] [3 MODIFIED 2025-11-12: POCDashboard, PurchaseOrderForm, POCOrdersList] [3 NEW 2025-11-12: ThresholdAlert, ConsumptionPlanCard, PriceMaskingWrapper]
+  - **pages/:** 1 fichier [MODIFIED 2025-11-12: OrderDetailPage]
+  - **context/:** 1 fichier (ConstructionContext.tsx) [NEW 2025-11-08]
+  - **services/:** 8 fichiers + 7 tests [1 MODIFIED 2025-11-12: pocPurchaseOrderService] [3 NEW 2025-11-12: pocPriceThresholdService, pocConsumptionPlanService, pocAlertService]
+  - **types/:** 1 fichier [MODIFIED 2025-11-12: construction.ts]
+  - **utils/:** 1 fichier [NEW 2025-11-12: priceMasking.ts]
 - **frontend/public/:** 3 fichiers (sw-notifications.js ajouté) ✅
 - **frontend/:** 2 fichiers documentation (NOTIFICATION-*.md) ✅
 - **backend/:** 2 fichiers (spécifications API) 🆕 NOUVEAU
@@ -998,6 +1109,93 @@ bazarkely-2/
 
 ---
 
+## 🆕 NOUVEAUX COMPOSANTS CRÉÉS (Session 2025-11-03)
+
+### **Système de Transactions Récurrentes** 🆕 NOUVEAU
+
+#### **Types et Infrastructure** 🆕 NOUVEAU
+- **recurring.ts** - Types TypeScript pour transactions récurrentes (53 lignes)
+- **supabase-recurring.ts** - Conversion camelCase ↔ snake_case + fonctions de transformation (253 lignes)
+- **database.ts (Version 7)** - Tables IndexedDB transactions récurrentes (MODIFIÉ)
+
+#### **Services** 🆕 NOUVEAU
+- **recurringTransactionService.ts** - Service CRUD complet (525 lignes)
+  - Dual storage: Supabase + IndexedDB
+  - Calcul automatique dates de génération
+  - Génération transactions automatique
+  - Filtrage par fréquence, catégorie, budget
+- **recurringTransactionMonitoringService.ts** - Service monitoring (171 lignes)
+  - Vérification automatique transactions dues
+  - Génération en arrière-plan
+  - Intégration Service Worker
+
+#### **Utilitaires** 🆕 NOUVEAU
+- **recurringUtils.ts** - Fonctions utilitaires (442 lignes)
+  - Validation données
+  - Formatage descriptions
+  - Calcul dates (gestion mois, années bissextiles)
+  - Calcul occurrences
+
+#### **Composants UI** 🆕 NOUVEAU
+- **RecurringConfigSection.tsx** - Section configuration complète (358 lignes)
+  - Sélection fréquence (daily, weekly, monthly, quarterly, yearly)
+  - Dates début/fin
+  - Jour du mois/semaine
+  - Notifications avant génération
+  - Auto-création
+  - Lien budget optionnel
+- **RecurringBadge.tsx** - Badge indicateur récurrent (61 lignes)
+- **RecurringTransactionsList.tsx** - Liste avec filtres (284 lignes)
+  - Filtres actif/inactif, fréquence
+  - Actions édition/suppression
+  - Toggle actif/inactif
+
+#### **Pages** 🆕 NOUVEAU
+- **RecurringTransactionsPage.tsx** - Page principale gestion (292 lignes)
+  - Liste complète
+  - Onglets filtres
+  - Modal création/édition
+- **RecurringTransactionDetailPage.tsx** - Page détail (526 lignes)
+  - Détails transaction récurrente
+  - Historique transactions générées
+  - Prochaines occurrences
+  - Actions (éditer, supprimer, toggle)
+  - Génération manuelle
+
+#### **Widget Dashboard** 🆕 NOUVEAU
+- **RecurringTransactionsWidget.tsx** - Widget dashboard (146 lignes)
+  - Prochaines transactions récurrentes
+  - Compteur actives
+  - Navigation vers page dédiée
+
+#### **Intégrations** 🔧 MODIFIÉ
+- **AddTransactionPage.tsx** - Configuration récurrence lors création
+- **TransactionsPage.tsx** - Badge récurrent sur transactions générées
+- **DashboardPage.tsx** - Widget transactions récurrentes
+- **AppLayout.tsx** - Route `/recurring-transactions`
+- **notificationService.ts** - Notifications transactions récurrentes
+- **sw-notifications.js** - Vérification transactions dues
+
+#### **Documentation** 🆕 NOUVEAU
+- **RECURRING_TRANSACTIONS_DB_MIGRATION.md** - Migration base de données
+- **AGENT-2-NOTIFICATIONS-ARCHITECTURE.md** - Architecture notifications (Phase 0)
+- **AGENT-3-UI-ANALYSIS.md** - Analyse UI (Phase 0)
+
+### **Statistiques Session 2025-11-03**
+- **Fichiers créés:** 14 nouveaux fichiers
+- **Fichiers modifiés:** 11 fichiers
+- **Lignes de code ajoutées:** ~2,540 lignes
+- **Services:** 2 nouveaux services (recurringTransactionService, recurringTransactionMonitoringService)
+- **Pages:** 2 nouvelles pages (RecurringTransactionsPage, RecurringTransactionDetailPage)
+- **Composants:** 3 nouveaux composants (RecurringConfigSection, RecurringBadge, RecurringTransactionsList)
+- **Widget:** 1 nouveau widget (RecurringTransactionsWidget)
+- **Types:** 2 nouveaux fichiers types (recurring.ts, supabase-recurring.ts)
+- **Utils:** 1 nouveau fichier utilitaire (recurringUtils.ts)
+- **Fonctionnalités:** Système transactions récurrentes complet (CRUD + monitoring + génération automatique)
+- **Statut:** 100% fonctionnel et déployé en production
+
+---
+
 ## 📋 NOTES IMPORTANTES - SESSION 2025-10-12
 
 ### **Fichiers Ajoutés (6 nouveaux fichiers)**
@@ -1022,4 +1220,4 @@ bazarkely-2/
 
 ---
 
-*Structure mise à jour le 2025-10-31 - BazarKELY v3.0 (Développement Multi-Agents Validé + Nouveaux Scripts + Documentation)*
+*Structure mise à jour le 2025-11-14 - BazarKELY v3.5 (Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 - WorkflowAction Import + Database alert_type)*

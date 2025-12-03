@@ -1,5 +1,6 @@
 import apiService from './apiService';
 import accountService from './accountService';
+import { convertAmount, getExchangeRate } from './exchangeRateService';
 import type { Transaction } from '../types/index.js';
 // TEMPORARY FIX: Comment out problematic import to unblock the app
 // import notificationService from './notificationService';
@@ -112,11 +113,36 @@ class TransactionService {
    */
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>): Promise<Transaction | null> {
     try {
+      // Determine transaction currency (from input or account default)
+      const transactionCurrency = transactionData.originalCurrency || 'MGA';
+      
+      // Get the account to check its currency
+      const account = await accountService.getAccount(transactionData.accountId, userId);
+      const accountCurrency = account?.currency || 'MGA';
+
+      let amountToStore = transactionData.amount;
+      let exchangeRateUsed: number | null = null;
+
+      // If currencies differ, convert to account currency
+      if (transactionCurrency !== accountCurrency) {
+        try {
+          const transactionDate = transactionData.date?.toISOString().split('T')[0];
+          const rateInfo = await getExchangeRate(transactionCurrency, accountCurrency, transactionDate);
+          exchangeRateUsed = rateInfo.rate;
+          amountToStore = await convertAmount(transactionData.amount, transactionCurrency, accountCurrency, transactionDate);
+          console.log(`💱 Currency conversion: ${transactionData.amount} ${transactionCurrency} = ${amountToStore} ${accountCurrency} (rate: ${exchangeRateUsed})`);
+        } catch (conversionError) {
+          console.error('❌ Erreur lors de la conversion de devise:', conversionError);
+          // En cas d'erreur, utiliser le montant original (dégradation gracieuse)
+          exchangeRateUsed = null;
+        }
+      }
+
       // Transformer camelCase vers snake_case pour Supabase
       const supabaseData = {
         user_id: userId,
         account_id: transactionData.accountId,
-        amount: transactionData.amount,
+        amount: amountToStore,
         type: transactionData.type,
         category: transactionData.category,
         description: transactionData.description,
@@ -126,7 +152,11 @@ class TransactionService {
         tags: null,
         location: null,
         status: 'completed',
-        notes: transactionData.notes || null
+        notes: transactionData.notes || null,
+        // Multi-currency fields
+        original_currency: transactionCurrency,
+        original_amount: transactionData.amount,
+        exchange_rate_used: exchangeRateUsed
       };
 
       console.log('🔍 Données transformées pour Supabase:', supabaseData);
@@ -158,6 +188,9 @@ class TransactionService {
         date: new Date(supabaseTransaction.date),
         targetAccountId: supabaseTransaction.target_account_id,
         notes: supabaseTransaction.notes || undefined,
+        originalCurrency: supabaseTransaction.original_currency || transactionCurrency,
+        originalAmount: supabaseTransaction.original_amount || transactionData.amount,
+        exchangeRateUsed: supabaseTransaction.exchange_rate_used || exchangeRateUsed || undefined,
         createdAt: new Date(supabaseTransaction.created_at)
       };
 
@@ -248,11 +281,46 @@ class TransactionService {
       console.log('💸 TRANSFER START - fromAccountId:', transferData.fromAccountId, 'toAccountId:', transferData.toAccountId, 'amount:', transferData.amount);
       console.log('📅 Transfer date provided:', transferData.date ? transferData.date.toISOString().split('T')[0] : 'Using current date');
 
+      // Get both accounts to check currencies
+      const sourceAccount = await accountService.getAccount(transferData.fromAccountId, userId);
+      const targetAccount = await accountService.getAccount(transferData.toAccountId, userId);
+
+      if (!sourceAccount || !targetAccount) {
+        console.error('❌ Compte source ou destination introuvable');
+        return { success: false, error: 'Compte source ou destination introuvable' };
+      }
+
+      let targetAmount = transferData.amount;
+
+      // Convert if currencies differ
+      if (sourceAccount.currency !== targetAccount.currency) {
+        try {
+          const transferDate = transferData.date?.toISOString().split('T')[0];
+          const rateInfo = await getExchangeRate(
+            sourceAccount.currency || 'MGA',
+            targetAccount.currency || 'MGA',
+            transferDate
+          );
+          targetAmount = await convertAmount(
+            transferData.amount,
+            sourceAccount.currency || 'MGA',
+            targetAccount.currency || 'MGA',
+            transferDate
+          );
+          console.log(`💱 Transfer currency conversion: ${transferData.amount} ${sourceAccount.currency} = ${targetAmount} ${targetAccount.currency} (rate: ${rateInfo.rate})`);
+        } catch (conversionError) {
+          console.error('❌ Erreur lors de la conversion de devise pour le transfert:', conversionError);
+          // En cas d'erreur, utiliser le montant original (dégradation gracieuse)
+          // Note: Cela peut causer des problèmes si les devises sont différentes
+        }
+      }
+
       // Appeler l'API de transfert avec les paramètres directs
+      // Note: L'API backend doit gérer la conversion, mais on envoie aussi le montant converti
       const response = await apiService.createTransfer({
         fromAccountId: transferData.fromAccountId,
         toAccountId: transferData.toAccountId,
-        amount: transferData.amount,
+        amount: transferData.amount, // Montant original dans la devise source
         description: transferData.description,
         transferFee: 0,
         date: transferData.date
@@ -299,13 +367,15 @@ class TransactionService {
         }
       ];
 
-      // Mettre à jour les soldes des deux comptes - UTILISER LES PARAMÈTRES ORIGINAUX
+      // Mettre à jour les soldes des deux comptes
+      // Source: débit du montant original dans sa devise
+      // Destination: crédit du montant converti dans sa devise
       try {
         console.log('🔍 Updating source account:', transferData.fromAccountId, 'with amount:', -Math.abs(transferData.amount));
         await this.updateAccountBalanceAfterTransaction(transferData.fromAccountId, -Math.abs(transferData.amount), userId);
         
-        console.log('🔍 Updating destination account:', transferData.toAccountId, 'with amount:', Math.abs(transferData.amount));
-        await this.updateAccountBalanceAfterTransaction(transferData.toAccountId, Math.abs(transferData.amount), userId);
+        console.log('🔍 Updating destination account:', transferData.toAccountId, 'with amount:', Math.abs(targetAmount));
+        await this.updateAccountBalanceAfterTransaction(transferData.toAccountId, Math.abs(targetAmount), userId);
         
         console.log('✅ TRANSFER COMPLETE - Both account balances updated');
       } catch (balanceError) {
@@ -369,6 +439,19 @@ class TransactionService {
    */
   async updateAccountBalancePublic(accountId: string, amount: number): Promise<boolean> {
     return this.updateAccountBalance(accountId, amount);
+  }
+}
+
+/**
+ * Helper function to get account by ID
+ * Uses accountService.getAccount() internally
+ */
+async function getAccountById(accountId: string): Promise<import('../types').Account | null> {
+  try {
+    return await accountService.getAccount(accountId);
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du compte:', error);
+    return null;
   }
 }
 

@@ -3,12 +3,36 @@ import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock } from 'lucide-r
 import { useAppStore } from '../stores/appStore';
 import { db } from '../lib/database';
 import type { Goal } from '../types';
+import { CurrencyDisplay } from '../components/Currency';
+import type { Currency } from '../components/Currency';
+
+const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
 const GoalsPage = () => {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAppStore();
+  
+  // Currency integration state
+  // Read display currency preference from localStorage on mount
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
+  });
+
+  // Listen for currency changes from Settings page
+  useEffect(() => {
+    const handleCurrencyChange = (event: CustomEvent<{ currency: Currency }>) => {
+      setDisplayCurrency(event.detail.currency);
+    };
+
+    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+
+    return () => {
+      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    };
+  }, []);
 
   // Charger les objectifs réels
   useEffect(() => {
@@ -29,9 +53,6 @@ const GoalsPage = () => {
     loadGoals();
   }, [user]);
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -116,8 +137,22 @@ const GoalsPage = () => {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Progression totale</span>
-              <span className="font-medium text-gray-900">
-                {formatCurrency(totalCurrent)} / {formatCurrency(totalTarget)}
+              <span className="font-medium text-gray-900 inline-flex items-center gap-2">
+                <CurrencyDisplay
+                  amount={totalCurrent}
+                  originalCurrency="MGA"
+                  displayCurrency={displayCurrency}
+                  showConversion={true}
+                  size="sm"
+                />
+                <span>/</span>
+                <CurrencyDisplay
+                  amount={totalTarget}
+                  originalCurrency="MGA"
+                  displayCurrency={displayCurrency}
+                  showConversion={true}
+                  size="sm"
+                />
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -207,10 +242,23 @@ const GoalsPage = () => {
                 
                 <div className="text-right">
                   <p className="font-semibold text-gray-900">
-                    {formatCurrency(goal.currentAmount)}
+                    <CurrencyDisplay
+                      amount={goal.currentAmount}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                    />
                   </p>
-                  <p className="text-sm text-gray-500">
-                    / {formatCurrency(goal.targetAmount)}
+                  <p className="text-sm text-gray-500 inline-flex items-center gap-1">
+                    <span>/</span>
+                    <CurrencyDisplay
+                      amount={goal.targetAmount}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                    />
                   </p>
                 </div>
               </div>

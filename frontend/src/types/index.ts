@@ -13,7 +13,8 @@ export interface User {
   preferences: {
     theme: 'light' | 'dark' | 'system';
     language: 'fr' | 'mg';
-    currency: 'MGA';
+    currency: 'MGA' | 'EUR';
+    defaultDisplayCurrency?: 'MGA' | 'EUR';
     priorityAnswers?: Record<string, string>;
     quizResults?: QuizResult[];
     intelligentBudgets?: CategoryBudgets;
@@ -72,7 +73,7 @@ export interface Account {
   name: string;
   type: 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money';
   balance: number;
-  currency: 'MGA';
+  currency: 'MGA' | 'EUR';
   isDefault: boolean;
   createdAt: Date;
 }
@@ -94,6 +95,10 @@ export interface Transaction {
   // Pour transferts
   targetAccountId?: string;
   transferFee?: number;
+  // Pour multi-devise
+  originalCurrency?: 'MGA' | 'EUR';
+  originalAmount?: number;
+  exchangeRateUsed?: number;
   notes?: string;
   createdAt: Date;
   // Pour transactions récurrentes (Phase 1 - Infrastructure)

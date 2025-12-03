@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
-import accountService from '../services/accountService';
+import accountService, { getTotalBalanceInCurrency } from '../services/accountService';
 import transactionService from '../services/transactionService';
 import notificationService from '../services/notificationService';
 // Essential expense categories for emergency fund calculation
@@ -14,6 +14,10 @@ import RecurringTransactionsWidget from '../components/Dashboard/RecurringTransa
 import Button from '../components/UI/Button';
 import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
+import { CurrencyDisplay } from '../components/Currency';
+import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
+
+const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -72,6 +76,27 @@ const DashboardPage = () => {
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  
+  // Currency integration states
+  // Read display currency preference from localStorage on mount
+  const [displayCurrency, setDisplayCurrency] = useState<'MGA' | 'EUR'>(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
+  });
+  const [_totalInPreferredCurrency, setTotalInPreferredCurrency] = useState<number>(0);
+
+  // Listen for currency changes from Settings page
+  useEffect(() => {
+    const handleCurrencyChange = (event: CustomEvent<{ currency: 'MGA' | 'EUR' }>) => {
+      setDisplayCurrency(event.detail.currency);
+    };
+
+    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+
+    return () => {
+      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    };
+  }, []);
 
   // Vérifier si l'utilisateur a déjà fermé le banner de notifications
   useEffect(() => {
@@ -254,9 +279,15 @@ const DashboardPage = () => {
     loadDashboardData();
   }, [user]);
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
-  };
+  // Fetch balance in preferred currency
+  useEffect(() => {
+    async function fetchConvertedBalance() {
+      if (!userAccounts || userAccounts.length === 0) return;
+      const total = await getTotalBalanceInCurrency(displayCurrency);
+      setTotalInPreferredCurrency(total);
+    }
+    fetchConvertedBalance();
+  }, [displayCurrency, userAccounts]);
 
   // Gestionnaires d'événements pour les boutons
   const handleAddIncome = () => {
@@ -317,9 +348,16 @@ const DashboardPage = () => {
               <Wallet className="w-6 h-6 text-white" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {formatCurrency(stats.totalBalance)}
-          </p>
+          <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
+            <CurrencyDisplay
+              amount={stats.totalBalance}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="xl"
+              className="text-white"
+            />
+          </div>
         </div>
 
         <div 
@@ -338,9 +376,16 @@ const DashboardPage = () => {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {formatCurrency(stats.monthlyIncome)}
-          </p>
+          <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
+            <CurrencyDisplay
+              amount={stats.monthlyIncome}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="xl"
+              className="text-white"
+            />
+          </div>
         </div>
 
         <div 
@@ -359,9 +404,16 @@ const DashboardPage = () => {
               <TrendingDown className="w-6 h-6 text-white" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {formatCurrency(stats.monthlyExpenses)}
-          </p>
+          <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
+            <CurrencyDisplay
+              amount={stats.monthlyExpenses}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="xl"
+              className="text-white"
+            />
+          </div>
         </div>
 
         <div 
@@ -405,8 +457,26 @@ const DashboardPage = () => {
             ></div>
           </div>
           <div className="flex justify-between text-xs text-gray-500">
-            <span>{formatCurrency(stats.totalBalance)}</span>
-            <span>{formatCurrency(stats.emergencyFundGoal)}</span>
+            <span>
+              <CurrencyDisplay
+                amount={stats.totalBalance}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="sm"
+                className="text-gray-500"
+              />
+            </span>
+            <span>
+              <CurrencyDisplay
+                amount={stats.emergencyFundGoal}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="sm"
+                className="text-gray-500"
+              />
+            </span>
           </div>
         </div>
       </div>
@@ -462,11 +532,19 @@ const DashboardPage = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-medium ${
+                    <div className={`text-sm font-medium inline-flex items-center gap-1 ${
                       isIncome || (isTransfer && !isDebit) ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {isIncome || (isTransfer && !isDebit) ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
-                    </p>
+                      {isIncome || (isTransfer && !isDebit) ? '+' : ''}
+                      <CurrencyDisplay
+                        amount={Math.abs(transaction.amount)}
+                        originalCurrency="MGA"
+                        displayCurrency={displayCurrency}
+                        showConversion={true}
+                        size="sm"
+                        className={isIncome || (isTransfer && !isDebit) ? 'text-green-600' : 'text-red-600'}
+                      />
+                    </div>
                   </div>
                 </div>
               );
@@ -477,6 +555,9 @@ const DashboardPage = () => {
 
       {/* Widget Transactions récurrentes */}
       {user && <RecurringTransactionsWidget userId={user.id} />}
+
+      {/* Résumé mensuel pour familles diaspora */}
+      <MonthlySummaryCard className="mt-6" displayCurrency={displayCurrency} />
 
       {/* Actions rapides */}
       <div className="grid grid-cols-2 gap-4">

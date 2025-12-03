@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import feeService from '../services/feeService';
+import { ACCOUNT_TYPES } from '../constants';
 import type { Account, CalculatedFees } from '../types';
 
 const TransferPage = () => {
@@ -25,6 +26,7 @@ const TransferPage = () => {
   const [calculatedFees, setCalculatedFees] = useState<CalculatedFees | null>(null);
   const [includeWithdrawal, setIncludeWithdrawal] = useState(false);
   const [showFeeSettings, setShowFeeSettings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -88,6 +90,10 @@ const TransferPage = () => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user changes input
+    if (error) {
+      setError(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,16 +118,27 @@ const TransferPage = () => {
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       console.error('❌ Le montant doit être un nombre positif');
+      setError('❌ Le montant doit être un nombre positif');
       return;
     }
 
-    // Vérifier le solde du compte source
+    // Vérifier le solde du compte source avec règles de découvert
     const fromAccount = accounts.find(acc => acc.id === formData.fromAccountId);
     const totalAmount = amount + (calculatedFees?.totalFees || 0);
-    if (fromAccount && fromAccount.balance < totalAmount) {
-      console.error(`❌ Solde insuffisant. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} MGA`);
-      return;
+    if (fromAccount) {
+      const accountTypeConfig = ACCOUNT_TYPES[fromAccount.type as keyof typeof ACCOUNT_TYPES];
+      const allowNegative = accountTypeConfig?.allowNegative ?? false;
+      
+      if (!allowNegative && fromAccount.balance < totalAmount) {
+        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} Ar`;
+        console.error(`❌ ${errorMessage}`);
+        setError(errorMessage);
+        return;
+      }
     }
+    
+    // Clear any previous error
+    setError(null);
 
     setIsLoading(true);
 
@@ -222,6 +239,13 @@ const TransferPage = () => {
       {/* Formulaire */}
       <div className="p-4">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Message d'erreur */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+          
           {/* Montant */}
           <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
@@ -293,7 +317,7 @@ const TransferPage = () => {
           {/* Description */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
+              Libellé *
             </label>
             <input
               type="text"
@@ -301,7 +325,8 @@ const TransferPage = () => {
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Ex: Transfert vers Orange Money"
+              placeholder="Ex: Virement vers épargne"
+              maxLength={100}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             />
@@ -372,7 +397,7 @@ const TransferPage = () => {
               value={formData.notes}
               onChange={handleInputChange}
               rows={3}
-              placeholder="Ajoutez des détails supplémentaires..."
+              placeholder="Détails supplémentaires, mémo personnel..."
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
           </div>

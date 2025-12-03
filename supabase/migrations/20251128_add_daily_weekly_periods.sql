@@ -121,3 +121,4 @@ COMMIT;
 -- Expected: All existing records with 'monthly', 'quarterly', 'yearly' are still present
 -- ============================================================================
 
+

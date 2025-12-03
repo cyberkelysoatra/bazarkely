@@ -1,0 +1,823 @@
+-- ============================================================================
+-- TEST DATA INSERT SCRIPT - POC CONSTRUCTION MARKETPLACE
+-- ============================================================================
+-- Purpose: Create test data for POC Construction Marketplace validation
+-- Date: 2025-01-21
+-- 
+-- IMPORTANT: This script uses your real user ID from auth.users (joelsoatra@gmail.com)
+-- 
+-- HOW TO EXECUTE:
+-- 1. Open Supabase Dashboard > SQL Editor
+-- 2. Copy and paste this entire script
+-- 3. Click "Run" (or Ctrl+Enter)
+-- 4. Check verification queries at the end to confirm data created
+-- 
+-- IDEMPOTENT: Safe to run multiple times (uses ON CONFLICT clauses and NOT EXISTS checks)
+-- ============================================================================
+
+-- ============================================================================
+-- SECTION 1: GET USER ID
+-- ============================================================================
+-- Récupérer l'ID de l'utilisateur Joel depuis auth.users
+DO $$
+DECLARE
+  joel_user_id UUID;
+BEGIN
+  -- Récupérer l'ID de l'utilisateur
+  SELECT id INTO joel_user_id
+  FROM auth.users
+  WHERE email = 'joelsoatra@gmail.com'
+  LIMIT 1;
+
+  -- Vérifier que l'utilisateur existe
+  IF joel_user_id IS NULL THEN
+    RAISE EXCEPTION 'User with email joelsoatra@gmail.com not found in auth.users. Please ensure the user exists.';
+  END IF;
+
+  -- Stocker l'ID dans une variable de session (via une table temporaire)
+  CREATE TEMP TABLE IF NOT EXISTS temp_user_id (user_id UUID);
+  DELETE FROM temp_user_id;
+  INSERT INTO temp_user_id (user_id) VALUES (joel_user_id);
+
+  RAISE NOTICE 'User ID found: %', joel_user_id;
+END $$;
+
+-- ============================================================================
+-- SECTION 2: INSERT COMPANIES
+-- ============================================================================
+
+-- 2.1 Supplier Company: Matériaux Pro Madagascar
+INSERT INTO public.poc_companies (
+  name,
+  type,
+  registration_number,
+  contact_email,
+  contact_phone,
+  address,
+  city,
+  country,
+  status,
+  created_by,
+  approved_by,
+  approved_at,
+  metadata
+)
+SELECT
+  'Matériaux Pro Madagascar',
+  'supplier'::poc_company_type,
+  'NIF-12345678',
+  'contact@materiauxpro.mg',
+  '+261 34 12 345 67',
+  'Zone Industrielle Forello, Antananarivo',
+  'Antananarivo',
+  'Madagascar',
+  'approved'::poc_company_status,
+  (SELECT user_id FROM temp_user_id),
+  (SELECT user_id FROM temp_user_id),
+  NOW(),
+  '{"description": "Fournisseur de matériaux de construction de qualité"}'::jsonb
+ON CONFLICT (registration_number) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  status = EXCLUDED.status,
+  metadata = EXCLUDED.metadata,
+  updated_at = NOW();
+
+-- 2.2 Builder Company: Construction Excellence SARL
+INSERT INTO public.poc_companies (
+  name,
+  type,
+  registration_number,
+  contact_email,
+  contact_phone,
+  address,
+  city,
+  country,
+  status,
+  created_by,
+  approved_by,
+  approved_at,
+  metadata
+)
+SELECT
+  'Construction Excellence SARL',
+  'builder'::poc_company_type,
+  'NIF-87654321',
+  'info@construction-excellence.mg',
+  '+261 33 98 765 43',
+  'Analakely, Antananarivo',
+  'Antananarivo',
+  'Madagascar',
+  'approved'::poc_company_status,
+  (SELECT user_id FROM temp_user_id),
+  (SELECT user_id FROM temp_user_id),
+  NOW(),
+  '{"description": "Entreprise de construction générale"}'::jsonb
+ON CONFLICT (registration_number) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  status = EXCLUDED.status,
+  metadata = EXCLUDED.metadata,
+  updated_at = NOW();
+
+-- ============================================================================
+-- SECTION 3: INSERT COMPANY MEMBERS
+-- ============================================================================
+
+-- 3.1 Joel as admin in Supplier Company
+INSERT INTO public.poc_company_members (
+  company_id,
+  user_id,
+  role,
+  status,
+  joined_at
+)
+SELECT
+  c.id,
+  (SELECT user_id FROM temp_user_id),
+  'admin'::poc_member_role,
+  'active'::poc_member_status,
+  NOW()
+FROM public.poc_companies c
+WHERE c.registration_number = 'NIF-12345678'
+ON CONFLICT (company_id, user_id) DO UPDATE
+SET
+  role = EXCLUDED.role,
+  status = EXCLUDED.status,
+  joined_at = COALESCE(poc_company_members.joined_at, EXCLUDED.joined_at),
+  updated_at = NOW();
+
+-- 3.2 Joel as admin in Builder Company
+INSERT INTO public.poc_company_members (
+  company_id,
+  user_id,
+  role,
+  status,
+  joined_at
+)
+SELECT
+  c.id,
+  (SELECT user_id FROM temp_user_id),
+  'admin'::poc_member_role,
+  'active'::poc_member_status,
+  NOW()
+FROM public.poc_companies c
+WHERE c.registration_number = 'NIF-87654321'
+ON CONFLICT (company_id, user_id) DO UPDATE
+SET
+  role = EXCLUDED.role,
+  status = EXCLUDED.status,
+  joined_at = COALESCE(poc_company_members.joined_at, EXCLUDED.joined_at),
+  updated_at = NOW();
+
+-- ============================================================================
+-- SECTION 4: INSERT PRODUCT CATEGORIES
+-- ============================================================================
+
+-- 4.1 Ciment et Béton
+INSERT INTO public.poc_product_categories (
+  name,
+  description,
+  sort_order,
+  is_active
+)
+VALUES (
+  'Ciment et Béton',
+  'Ciments, bétons prêts à l''emploi, adjuvants',
+  1,
+  true
+)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  updated_at = NOW();
+
+-- 4.2 Fer et Acier
+INSERT INTO public.poc_product_categories (
+  name,
+  description,
+  sort_order,
+  is_active
+)
+VALUES (
+  'Fer et Acier',
+  'Fers à béton, tôles, profilés métalliques',
+  2,
+  true
+)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  updated_at = NOW();
+
+-- 4.3 Matériaux de Couverture
+INSERT INTO public.poc_product_categories (
+  name,
+  description,
+  sort_order,
+  is_active
+)
+VALUES (
+  'Matériaux de Couverture',
+  'Tôles ondulées, tuiles, ardoises',
+  3,
+  true
+)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  updated_at = NOW();
+
+-- 4.4 Peinture et Finitions
+INSERT INTO public.poc_product_categories (
+  name,
+  description,
+  sort_order,
+  is_active
+)
+VALUES (
+  'Peinture et Finitions',
+  'Peintures, enduits, revêtements muraux',
+  4,
+  true
+)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  updated_at = NOW();
+
+-- 4.5 Plomberie
+INSERT INTO public.poc_product_categories (
+  name,
+  description,
+  sort_order,
+  is_active
+)
+VALUES (
+  'Plomberie',
+  'Tuyaux PVC, raccords, robinets, accessoires',
+  5,
+  true
+)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  updated_at = NOW();
+
+-- ============================================================================
+-- SECTION 5: INSERT PRODUCTS
+-- ============================================================================
+
+-- 5.1 Ciment HOLCIM 50kg
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Ciment HOLCIM 50kg',
+  'Ciment Portland de qualité supérieure, sac de 50kg. Idéal pour tous types de travaux de construction.',
+  'CIM-HOL-50',
+  'sac',
+  45000.00,
+  'MGA',
+  500,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"brand": "HOLCIM", "weight_kg": 50, "type": "Portland", "strength": "32.5R"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Ciment et Béton'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'CIM-HOL-50'
+  );
+
+-- 5.2 Fer à béton 10mm (6m)
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Fer à béton 10mm (6m)',
+  'Barre d''acier pour béton armé, diamètre 10mm, longueur 6 mètres. Norme NF A 35-015.',
+  'FER-10-6M',
+  'barre',
+  12000.00,
+  'MGA',
+  200,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"diameter_mm": 10, "length_m": 6, "standard": "NF A 35-015", "material": "acier"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Fer et Acier'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'FER-10-6M'
+  );
+
+-- 5.3 Tôle ondulée (2m x 1m)
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Tôle ondulée (2m x 1m)',
+  'Tôle ondulée galvanisée, dimensions 2m x 1m. Protection contre la corrosion, idéale pour toitures et clôtures.',
+  'TOLE-2X1',
+  'pièce',
+  35000.00,
+  'MGA',
+  150,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"length_m": 2, "width_m": 1, "thickness_mm": 0.5, "material": "acier galvanisé", "coating": "zinc"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Matériaux de Couverture'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'TOLE-2X1'
+  );
+
+-- 5.4 Peinture acrylique 10L
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Peinture acrylique 10L',
+  'Peinture acrylique mate, seau de 10 litres. Couvrance: 8-10 m²/L. Résistante aux intempéries.',
+  'PEINT-ACR-10L',
+  'seau',
+  55000.00,
+  'MGA',
+  80,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"volume_l": 10, "type": "acrylique", "finish": "mat", "coverage_m2_per_l": 9, "drying_time_h": 2}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Peinture et Finitions'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'PEINT-ACR-10L'
+  );
+
+-- 5.5 Tuyau PVC Ø100mm (4m)
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Tuyau PVC Ø100mm (4m)',
+  'Tuyau PVC rigide pour évacuation, diamètre 100mm, longueur 4 mètres. Classe SN4, résistant aux intempéries.',
+  'PVC-100-4M',
+  'barre',
+  8500.00,
+  'MGA',
+  120,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"diameter_mm": 100, "length_m": 4, "material": "PVC", "class": "SN4", "usage": "evacuation"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Plomberie'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'PVC-100-4M'
+  );
+
+-- 5.6 Ciment Lafarge 50kg
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Ciment Lafarge 50kg',
+  'Ciment Portland composé, sac de 50kg. Résistance élevée, adapté aux structures importantes.',
+  'CIM-LAF-50',
+  'sac',
+  47000.00,
+  'MGA',
+  450,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"brand": "Lafarge", "weight_kg": 50, "type": "Portland composé", "strength": "42.5R"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Ciment et Béton'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'CIM-LAF-50'
+  );
+
+-- 5.7 Fer à béton 12mm (6m)
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Fer à béton 12mm (6m)',
+  'Barre d''acier pour béton armé, diamètre 12mm, longueur 6 mètres. Norme NF A 35-015.',
+  'FER-12-6M',
+  'barre',
+  15000.00,
+  'MGA',
+  180,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"diameter_mm": 12, "length_m": 6, "standard": "NF A 35-015", "material": "acier"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Fer et Acier'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'FER-12-6M'
+  );
+
+-- 5.8 Enduit de finition 25kg
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Enduit de finition 25kg',
+  'Enduit prêt à l''emploi pour finition intérieure et extérieure. Sac de 25kg. Rendement: 1.2 kg/m².',
+  'END-FIN-25',
+  'sac',
+  28000.00,
+  'MGA',
+  100,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"weight_kg": 25, "type": "finition", "coverage_kg_per_m2": 1.2, "usage": "interieur_exterieur"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Peinture et Finitions'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'END-FIN-25'
+  );
+
+-- 5.9 Raccord PVC coude 90° Ø100mm
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Raccord PVC coude 90° Ø100mm',
+  'Raccord PVC coude à 90 degrés, diamètre 100mm. Pour système d''évacuation.',
+  'RAC-PVC-100-90',
+  'pièce',
+  3500.00,
+  'MGA',
+  200,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"diameter_mm": 100, "angle_deg": 90, "material": "PVC", "type": "coude"}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Plomberie'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'RAC-PVC-100-90'
+  );
+
+-- 5.10 Tuile terre cuite (40cm x 25cm)
+INSERT INTO public.poc_products (
+  supplier_id,
+  category_id,
+  name,
+  description,
+  sku,
+  unit,
+  current_price,
+  currency,
+  stock_available,
+  min_order_quantity,
+  is_active,
+  created_by,
+  specifications
+)
+SELECT
+  c.id,
+  cat.id,
+  'Tuile terre cuite (40cm x 25cm)',
+  'Tuile en terre cuite traditionnelle, dimensions 40cm x 25cm. Résistante et esthétique.',
+  'TUIL-TER-40X25',
+  'pièce',
+  2500.00,
+  'MGA',
+  300,
+  1,
+  true,
+  (SELECT user_id FROM temp_user_id),
+  '{"length_cm": 40, "width_cm": 25, "material": "terre cuite", "type": "traditionnelle", "weight_kg": 2.5}'::jsonb
+FROM public.poc_companies c
+CROSS JOIN public.poc_product_categories cat
+WHERE c.registration_number = 'NIF-12345678'
+  AND cat.name = 'Matériaux de Couverture'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_products p2
+    WHERE p2.supplier_id = c.id AND p2.sku = 'TUIL-TER-40X25'
+  );
+
+-- ============================================================================
+-- SECTION 6: INSERT PROJECT
+-- ============================================================================
+
+-- 6.1 Construction Villa Ivato
+INSERT INTO public.poc_projects (
+  company_id,
+  name,
+  client_name,
+  location,
+  start_date,
+  estimated_end_date,
+  status,
+  total_budget,
+  currency,
+  notes,
+  created_by
+)
+SELECT
+  c.id,
+  'Construction Villa Ivato',
+  'Monsieur Rakoto',
+  'Ivato, Antananarivo',
+  '2025-01-15'::DATE,
+  '2025-06-30'::DATE,
+  'active'::poc_project_status,
+  150000000.00,
+  'MGA',
+  'Construction villa R+1 avec piscine. Superficie: 250m². 4 chambres, 2 salles de bain, salon, cuisine, terrasse.',
+  (SELECT user_id FROM temp_user_id)
+FROM public.poc_companies c
+WHERE c.registration_number = 'NIF-87654321'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.poc_projects p2
+    WHERE p2.company_id = c.id AND p2.name = 'Construction Villa Ivato'
+  );
+
+-- ============================================================================
+-- SECTION 7: VERIFICATION QUERIES
+-- ============================================================================
+
+-- 7.1 Verify Companies
+SELECT 
+  '=== COMPANIES ===' as section;
+SELECT 
+  id,
+  name,
+  type,
+  status,
+  registration_number,
+  contact_email,
+  contact_phone
+FROM public.poc_companies
+ORDER BY type, name;
+
+-- 7.2 Verify Company Members
+SELECT 
+  '=== COMPANY MEMBERS ===' as section;
+SELECT 
+  cm.role,
+  c.name as company_name,
+  c.type as company_type,
+  u.email as user_email,
+  cm.status as member_status,
+  cm.joined_at
+FROM public.poc_company_members cm
+JOIN public.poc_companies c ON cm.company_id = c.id
+JOIN auth.users u ON cm.user_id = u.id
+ORDER BY c.name, cm.role;
+
+-- 7.3 Verify Product Categories
+SELECT 
+  '=== PRODUCT CATEGORIES ===' as section;
+SELECT 
+  id,
+  name,
+  description,
+  sort_order,
+  is_active
+FROM public.poc_product_categories
+ORDER BY sort_order, name;
+
+-- 7.4 Verify Products
+SELECT 
+  '=== PRODUCTS ===' as section;
+SELECT 
+  p.name,
+  p.sku,
+  p.current_price,
+  p.currency,
+  p.stock_available,
+  p.unit,
+  pc.name as category,
+  c.name as supplier
+FROM public.poc_products p
+JOIN public.poc_product_categories pc ON p.category_id = pc.id
+JOIN public.poc_companies c ON p.supplier_id = c.id
+ORDER BY pc.name, p.name;
+
+-- 7.5 Verify Project
+SELECT 
+  '=== PROJECTS ===' as section;
+SELECT 
+  id,
+  name,
+  client_name,
+  location,
+  start_date,
+  estimated_end_date,
+  status,
+  total_budget,
+  currency,
+  notes
+FROM public.poc_projects
+ORDER BY created_at DESC;
+
+-- 7.6 Summary Statistics
+SELECT 
+  '=== SUMMARY STATISTICS ===' as section;
+SELECT 
+  (SELECT COUNT(*) FROM public.poc_companies WHERE type = 'supplier') as supplier_companies,
+  (SELECT COUNT(*) FROM public.poc_companies WHERE type = 'builder') as builder_companies,
+  (SELECT COUNT(*) FROM public.poc_company_members WHERE status = 'active') as active_members,
+  (SELECT COUNT(*) FROM public.poc_product_categories WHERE is_active = true) as product_categories,
+  (SELECT COUNT(*) FROM public.poc_products WHERE is_active = true) as active_products,
+  (SELECT COUNT(*) FROM public.poc_projects WHERE status = 'active') as active_projects;
+
+-- Cleanup temporary table
+DROP TABLE IF EXISTS temp_user_id;
+
+-- ============================================================================
+-- END OF SCRIPT
+-- ============================================================================
+-- 
+-- Expected Results:
+-- - 1 supplier company (Matériaux Pro Madagascar)
+-- - 1 builder company (Construction Excellence SARL)
+-- - 2 company memberships (Joel as admin in both)
+-- - 5 product categories
+-- - 10 products
+-- - 1 test project (Construction Villa Ivato)
+-- 
+-- If any verification query returns 0 rows, check the error messages above.
+-- ============================================================================
+

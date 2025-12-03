@@ -145,6 +145,15 @@ export const BOTTOM_NAV_ITEMS = [
   { path: '/goals', icon: 'Target', label: 'Objectifs' }
 ] as const;
 
+// Navigation Construction POC
+export const CONSTRUCTION_NAV_ITEMS = [
+  { path: '/construction/dashboard', icon: 'LayoutDashboard', label: 'Tableau de bord' },
+  { path: '/construction/orders', icon: 'ShoppingCart', label: 'Commandes' },
+  { path: '/construction/catalog', icon: 'Package', label: 'Catalogue' },
+  { path: '/construction/stock', icon: 'Warehouse', label: 'Stock' },
+  { path: '/construction/new-order', icon: 'PlusCircle', label: 'Nouvelle commande' }
+] as const;
+
 // Navigation analytics
 export const ANALYTICS_NAV_ITEMS = [
   { path: '/analytics', icon: 'BarChart3', label: 'Analytics' },

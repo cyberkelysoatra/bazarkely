@@ -339,7 +339,7 @@ export const poc_workflowService = {
   ): Promise<ServiceResult<WorkflowHistory[]>> {
     try {
       const { data, error } = await supabase
-        .from('poc_workflow_history')
+        .from('poc_purchase_order_workflow_history')
         .select('*')
         .eq('purchase_order_id', orderId)
         .order('changed_at', { ascending: false })

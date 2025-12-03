@@ -232,7 +232,7 @@ const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ purchaseOrderId }) =>
 
       // Récupérer l'historique du workflow
       const { data: historyData, error: historyError } = await supabase
-        .from('poc_workflow_history')
+        .from('poc_purchase_order_workflow_history')
         .select('*')
         .eq('purchase_order_id', purchaseOrderId)
         .order('changed_at', { ascending: false });

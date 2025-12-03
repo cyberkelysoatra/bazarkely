@@ -4,7 +4,11 @@ import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff, ArrowRigh
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
+import { CurrencyDisplay } from '../components/Currency';
+import type { Currency } from '../components/Currency';
 import type { Account } from '../types';
+
+const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
@@ -13,6 +17,10 @@ const AccountsPage = () => {
   const [showBalances, setShowBalances] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
+  });
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -37,9 +45,17 @@ const AccountsPage = () => {
     loadAccounts();
   }, [user, location.pathname]); // Refresh when returning from other pages
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
-  };
+  // Écouter les changements de devise depuis Settings
+  useEffect(() => {
+    const handleCurrencyChange = (event: CustomEvent<{ currency: Currency }>) => {
+      setDisplayCurrency(event.detail.currency);
+    };
+    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    return () => {
+      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    };
+  }, []);
+
 
   const getAccountIcon = (type: string) => {
     switch (type) {
@@ -103,7 +119,17 @@ const AccountsPage = () => {
           </button>
         </div>
         <p className="text-3xl font-bold text-primary-600 -mt-2">
-          {showBalances ? formatCurrency(totalBalance) : '•••••• Ar'}
+          {showBalances ? (
+            <CurrencyDisplay
+              amount={totalBalance}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              size="xl"
+              showConversion={true}
+            />
+          ) : (
+            <span>•••••• {displayCurrency === 'MGA' ? 'Ar' : '€'}</span>
+          )}
         </p> {/* NEGATIVE 8PX MARGIN FOR ULTRA-CLOSE SPACING */}
       </div>
 
@@ -149,7 +175,17 @@ const AccountsPage = () => {
                   className="flex flex-col items-end text-right hover:bg-gray-50 p-1 rounded-lg transition-colors" /* REDUCED BUTTON PADDING */
                 >
                   <p className="font-semibold text-gray-900">
-                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'}
+                    {showBalances ? (
+                      <CurrencyDisplay
+                        amount={account.balance}
+                        originalCurrency={account.currency || 'MGA'}
+                        displayCurrency={displayCurrency}
+                        size="md"
+                        showConversion={true}
+                      />
+                    ) : (
+                      <span>•••• {displayCurrency === 'MGA' ? 'Ar' : '€'}</span>
+                    )}
                   </p>
                   {account.isDefault && (
                     <span className="text-xs text-primary-600 font-medium">Par défaut</span>
@@ -204,7 +240,20 @@ const AccountsPage = () => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">{account.name}</span>
                   <span className="font-medium text-gray-900">
-                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'} ({percentage.toFixed(1)}%)
+                    {showBalances ? (
+                      <>
+                        <CurrencyDisplay
+                          amount={account.balance}
+                          originalCurrency={account.currency || 'MGA'}
+                          displayCurrency={displayCurrency}
+                          size="sm"
+                          showConversion={true}
+                        />
+                        {' '}({percentage.toFixed(1)}%)
+                      </>
+                    ) : (
+                      <span>•••• {displayCurrency === 'MGA' ? 'Ar' : '€'} ({percentage.toFixed(1)}%)</span>
+                    )}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">

@@ -355,6 +355,47 @@ export interface Database {
           updated_at?: string
         }
       }
+      transaction_categories: {
+        Row: {
+          id: string
+          name: string
+          label: string
+          type: 'income' | 'expense' | 'both'
+          icon: string | null
+          color: string | null
+          bg_color: string | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          label: string
+          type: 'income' | 'expense' | 'both'
+          icon?: string | null
+          color?: string | null
+          bg_color?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          label?: string
+          type?: 'income' | 'expense' | 'both'
+          icon?: string | null
+          color?: string | null
+          bg_color?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -438,6 +479,10 @@ export type SyncQueueUpdate = Database['public']['Tables']['sync_queue']['Update
 export type FeeConfiguration = Database['public']['Tables']['fee_configurations']['Row']
 export type FeeConfigurationInsert = Database['public']['Tables']['fee_configurations']['Insert']
 export type FeeConfigurationUpdate = Database['public']['Tables']['fee_configurations']['Update']
+
+export type TransactionCategory = Database['public']['Tables']['transaction_categories']['Row']
+export type TransactionCategoryInsert = Database['public']['Tables']['transaction_categories']['Insert']
+export type TransactionCategoryUpdate = Database['public']['Tables']['transaction_categories']['Update']
 
 
 
