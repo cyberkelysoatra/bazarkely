@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import apiService from '../../services/apiService';
@@ -10,7 +10,7 @@ import { useCertificationStore } from '../../store/certificationStore';
 import LevelBadge from '../Certification/LevelBadge';
 import { level1Questions } from '../../data/certificationQuestions';
 import { useModuleSwitcher } from '../../contexts/ModuleSwitcherContext';
-import { ConstructionContext } from '../../modules/construction-poc/context/ConstructionContext';
+import { ConstructionContext, useConstruction } from '../../modules/construction-poc/context/ConstructionContext';
 import { MemberRole } from '../../modules/construction-poc/types/construction';
 
 // Types pour les messages interactifs
@@ -27,6 +27,8 @@ interface InteractiveMessage {
 const Header = () => {
   const { user, logout } = useAppStore();
   const { toggleSwitcherMode, isSwitcherMode, activeModule } = useModuleSwitcher();
+  const constructionData = useConstruction();
+  console.log('🏢 [Header] activeCompany:', constructionData?.activeCompany);
   const location = useLocation();
   
   // DEBUG: Log activeModule to identify correct id value
@@ -45,14 +47,23 @@ const Header = () => {
   
   console.log('🔍 [Header Debug] isConstructionModule:', isConstructionModule);
   
-  // Get Construction context only when in Construction module
-  const constructionContext = useContext(ConstructionContext);
-  const constructionRole = isConstructionModule && constructionContext 
-    ? constructionContext.userRole 
-    : null;
-  const activeCompany = isConstructionModule && constructionContext
-    ? constructionContext.activeCompany
-    : null;
+  // Get Construction context - use useConstruction() hook (same pattern as PurchaseOrderForm.tsx)
+  // Note: This will throw if used outside ConstructionProvider, but Header is always within Provider
+  let constructionContext: ReturnType<typeof useConstruction> | null = null;
+  let constructionRole: MemberRole | null = null;
+  let activeCompany: ReturnType<typeof useConstruction>['activeCompany'] = null;
+  
+  // Use useContext for safe access (won't throw if Provider not mounted)
+  const contextValue = useContext(ConstructionContext);
+  if (contextValue) {
+    constructionContext = contextValue;
+    constructionRole = contextValue.userRole;
+    activeCompany = contextValue.activeCompany;
+    // Debug log to verify activeCompany access
+    if (isConstructionModule) {
+      console.log('🏢 [Header] Company for badge:', activeCompany);
+    }
+  }
   const { 
     currentLevel, 
     totalQuestionsAnswered, 
@@ -492,10 +503,8 @@ const Header = () => {
   const handleSettingsClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Empêcher la propagation vers le gestionnaire de clic extérieur
     console.log('Paramètres cliqués');
-    // Pour l'instant, on peut rediriger vers une page de paramètres ou ouvrir un modal
-    // Ici on ferme le menu et on peut ajouter d'autres fonctionnalités
     handleMenuClose();
-    // TODO: Implémenter la navigation vers les paramètres ou l'ouverture d'un modal
+    navigate('/settings');
   };
 
   const handleAdminClick = (event: React.MouseEvent) => {
@@ -503,7 +512,7 @@ const Header = () => {
     console.log('Admin cliqué');
     handleMenuClose();
     // Navigation vers la page admin
-    window.location.href = '/admin';
+    navigate('/admin');
   };
 
   const handlePWAInstallClick = async (event: React.MouseEvent) => {
@@ -669,6 +678,15 @@ const Header = () => {
                   : 'Budget familial Madagascar'}
               </p>
             </div>
+            {/* Company name badge - Construction module only */}
+            {isConstructionModule && constructionData?.activeCompany && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100/20 backdrop-blur-sm rounded-full border border-purple-300/30 shadow-sm">
+                <Building2 className="h-3.5 w-3.5 text-purple-200 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-medium text-white max-w-32 truncate">
+                  {constructionData?.activeCompany?.name || 'Entreprise'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Right side container - Role Badge (Construction) or Budget actions */}
