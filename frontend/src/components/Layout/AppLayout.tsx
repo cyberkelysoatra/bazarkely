@@ -112,9 +112,9 @@ const AppLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overscroll-none">
       <Header />
-      <main className="flex-1 pb-20">
+      <main className="flex-1 pb-20 overscroll-y-auto touch-pan-y">
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />

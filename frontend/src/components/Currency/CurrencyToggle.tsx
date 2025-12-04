@@ -66,3 +66,4 @@ const CurrencyToggle: React.FC<CurrencyToggleProps> = ({
 
 export default CurrencyToggle;
 
+

@@ -20,7 +20,20 @@ class AccountService {
         console.error('❌ Erreur lors de la récupération des comptes:', response.error);
         return [];
       }
-      const accounts = (response.data as Account[]) || [];
+      // Map Supabase data (snake_case) to Account format (camelCase)
+      const supabaseAccounts = (response.data as any[]) || [];
+      const accounts: Account[] = supabaseAccounts.map((supabaseAccount: any) => ({
+        id: supabaseAccount.id,
+        userId: supabaseAccount.user_id,
+        name: supabaseAccount.name,
+        type: supabaseAccount.type,
+        balance: supabaseAccount.balance,
+        currency: supabaseAccount.currency,
+        isDefault: supabaseAccount.is_default,
+        isActive: supabaseAccount.is_active,
+        displayOrder: supabaseAccount.display_order ?? undefined,
+        createdAt: new Date(supabaseAccount.created_at)
+      }));
       console.log('✅ Accounts fetched from Supabase:', accounts.length);
       return accounts;
     } catch (error) {
@@ -30,7 +43,22 @@ class AccountService {
   }
 
   async getUserAccounts(_userId: string): Promise<Account[]> {
-    return this.getAccounts();
+    try {
+      const accounts = await this.getAccounts();
+      // Sort by displayOrder ASC, then by createdAt DESC for accounts without displayOrder
+      return accounts.sort((a, b) => {
+        const aOrder = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        // If same displayOrder or both null, sort by createdAt DESC
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des comptes utilisateur:', error);
+      return [];
+    }
   }
 
   /**
@@ -61,6 +89,10 @@ class AccountService {
         is_default: accountData.isDefault,
         is_active: accountData.isActive ?? true
       };
+      // Add display_order if present (using type assertion since AccountInsert may not have it yet)
+      if (accountData.displayOrder !== undefined) {
+        (supabaseData as any).display_order = accountData.displayOrder;
+      }
 
       const response = await apiService.createAccount(supabaseData);
       if (!response.success || response.error) {
@@ -71,7 +103,7 @@ class AccountService {
       console.log('✅ Compte créé avec succès');
       
       // Convertir la réponse Supabase vers le format local
-      const supabaseAccount = response.data as SupabaseAccount;
+      const supabaseAccount = response.data as any;
       const account: Account = {
         id: supabaseAccount.id,
         userId: supabaseAccount.user_id,
@@ -81,6 +113,7 @@ class AccountService {
         currency: supabaseAccount.currency,
         isDefault: supabaseAccount.is_default,
         isActive: supabaseAccount.is_active,
+        displayOrder: supabaseAccount.display_order ?? undefined,
         createdAt: new Date(supabaseAccount.created_at)
       };
       
@@ -104,6 +137,7 @@ class AccountService {
       if (accountData.currency !== undefined) supabaseData.currency = accountData.currency;
       if (accountData.isDefault !== undefined) supabaseData.is_default = accountData.isDefault;
       if (accountData.isActive !== undefined) supabaseData.is_active = accountData.isActive;
+      if (accountData.displayOrder !== undefined) supabaseData.display_order = accountData.displayOrder;
 
       const response = await apiService.updateAccount(id, supabaseData);
       if (!response.success || response.error) {
@@ -114,7 +148,7 @@ class AccountService {
       console.log('✅ Compte mis à jour avec succès');
       
       // Convertir la réponse Supabase vers le format local
-      const supabaseAccount = response.data as SupabaseAccount;
+      const supabaseAccount = response.data as any;
       const account: Account = {
         id: supabaseAccount.id,
         userId: supabaseAccount.user_id,
@@ -124,6 +158,7 @@ class AccountService {
         currency: supabaseAccount.currency,
         isDefault: supabaseAccount.is_default,
         isActive: supabaseAccount.is_active,
+        displayOrder: supabaseAccount.display_order ?? undefined,
         createdAt: new Date(supabaseAccount.created_at)
       };
       
@@ -131,6 +166,48 @@ class AccountService {
     } catch (error) {
       console.error('❌ Erreur lors de la mise à jour du compte:', error);
       return null;
+    }
+  }
+
+  /**
+   * Mettre à jour l'ordre des comptes pour le drag-and-drop
+   * @param userId - ID de l'utilisateur
+   * @param orderedAccountIds - Tableau d'IDs de comptes dans l'ordre souhaité
+   * @returns true si la mise à jour réussit, false sinon
+   */
+  async updateAccountsOrder(userId: string, orderedAccountIds: string[]): Promise<boolean> {
+    try {
+      console.log('🔄 Updating accounts order for user:', userId);
+      
+      // Mettre à jour chaque compte avec son nouvel ordre (index + 1)
+      const updatePromises = orderedAccountIds.map(async (accountId, index) => {
+        const displayOrder = index + 1;
+        try {
+          const result = await this.updateAccount(accountId, userId, { displayOrder });
+          if (!result) {
+            console.error(`❌ Failed to update order for account ${accountId}`);
+            return false;
+          }
+          return true;
+        } catch (error) {
+          console.error(`❌ Error updating order for account ${accountId}:`, error);
+          return false;
+        }
+      });
+
+      const results = await Promise.all(updatePromises);
+      const allSuccess = results.every(result => result === true);
+
+      if (allSuccess) {
+        console.log('✅ Accounts order updated successfully');
+        return true;
+      } else {
+        console.error('❌ Some accounts failed to update order');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la mise à jour de l\'ordre des comptes:', error);
+      return false;
     }
   }
 

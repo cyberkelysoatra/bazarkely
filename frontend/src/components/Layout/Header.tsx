@@ -627,7 +627,7 @@ const Header = () => {
   }, [isRoleDropdownOpen]);
 
   return (
-    <header className="backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-40">
+    <header className="backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-50 overscroll-none">
       <div className="px-4 py-4">
         {/* FIX: Conditional flex layout - justify-between for both, but ml-auto on Role Badge in Construction for right alignment */}
         <div className="flex items-center justify-between">

@@ -725,3 +725,4 @@ onClick={() => {
 - ✅ Risques de régression: Limités avec fallback et vérifications de sécurité
 
 
+

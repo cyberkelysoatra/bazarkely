@@ -514,3 +514,4 @@ const handleProjectSelect = (project: any) => {
 
 **Confirmation:** Aucun fichier modifié. Analyse READ-ONLY complète effectuée. Diagnostic terminé.
 
+

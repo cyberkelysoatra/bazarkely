@@ -7,12 +7,22 @@
     box-sizing: border-box;
   }
   
-  body {
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
   html {
     scroll-behavior: smooth;
+    /* Fix mobile scroll: Prevent pull-to-refresh and overscroll that hides Header/Footer */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Fix mobile scroll: Prevent pull-to-refresh and overscroll that hides Header/Footer */
+    overscroll-behavior: none;
+    /* Allow vertical scrolling only, prevent horizontal gestures that interfere */
+    touch-action: pan-y;
+    /* Prevent mobile browser address bar from affecting layout */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 }
 
@@ -69,6 +79,21 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Mobile scroll fixes - Prevent Header/Footer from hiding on scroll */
+  .overscroll-none {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .overscroll-y-auto {
+    overscroll-behavior-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .touch-pan-y {
+    touch-action: pan-y;
   }
 }
 

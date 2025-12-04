@@ -541,3 +541,4 @@ const adapted: CardConsumptionSummary[] = result.data.map((summary: ServiceConsu
 - ✅ Service backend complet avec validation
 
 
+

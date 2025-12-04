@@ -108,7 +108,7 @@ const BottomNav = () => {
     return (
       <nav 
         ref={navRef}
-        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset"
+        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset overscroll-none"
       >
         <div className="flex items-center justify-around py-1.5 animate-in fade-in duration-300">
           {navItems.map((item) => {
@@ -150,7 +150,7 @@ const BottomNav = () => {
     return (
       <nav 
         ref={navRef}
-        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset"
+        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset overscroll-none"
       >
         <div className="flex items-center justify-around py-1.5 animate-in fade-in duration-300">
           {nonActiveModules.map((module) => {

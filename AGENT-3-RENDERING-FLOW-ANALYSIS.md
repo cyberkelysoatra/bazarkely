@@ -531,3 +531,4 @@ import React from 'react';  // Si pas déjà importé
 - ✅ **SOLUTION:** Ajouter `<React.Fragment key="CATEGORY">` à chaque section de catégorie
 
 
+

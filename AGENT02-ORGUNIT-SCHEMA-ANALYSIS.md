@@ -707,3 +707,4 @@ if (error) {
 **Conclusion:** La colonne `construction_site_id` **N'EXISTE PAS** dans `poc_org_units`. Le schéma ne contient **AUCUNE** colonne de relation directe avec les projets. Les unités organisationnelles sont liées aux projets uniquement via `company_id` (relation indirecte).
 
 
+

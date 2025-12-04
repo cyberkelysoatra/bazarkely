@@ -11,3 +11,4 @@ export type TransactionCategoryRow = Database['public']['Tables']['transaction_c
  */
 export type TransactionCategoryType = 'income' | 'expense' | 'both'
 
+

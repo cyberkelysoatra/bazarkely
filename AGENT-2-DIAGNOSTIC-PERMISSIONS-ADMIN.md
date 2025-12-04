@@ -364,3 +364,4 @@ import { MemberRole } from '../types/construction';
 
 **Confirmation:** Aucun fichier modifié. Analyse READ-ONLY complète effectuée. Diagnostic terminé.
 
+

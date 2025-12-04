@@ -75,6 +75,7 @@ export interface Account {
   balance: number;
   currency: 'MGA' | 'EUR';
   isDefault: boolean;
+  displayOrder?: number;
   createdAt: Date;
 }
 
