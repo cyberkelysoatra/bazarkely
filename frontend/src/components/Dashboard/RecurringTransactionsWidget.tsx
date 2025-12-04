@@ -8,6 +8,7 @@ import { Repeat, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 import recurringTransactionService from '../../services/recurringTransactionService';
 import type { RecurringTransaction } from '../../types/recurring';
 import { getNextOccurrenceLabel } from '../../utils/recurringUtils';
+import { useCurrency } from '../../hooks/useCurrency';
 
 interface RecurringTransactionsWidgetProps {
   userId: string;
@@ -18,6 +19,10 @@ const RecurringTransactionsWidget: React.FC<RecurringTransactionsWidgetProps> = 
   const [upcomingRecurring, setUpcomingRecurring] = useState<RecurringTransaction[]>([]);
   const [activeCount, setActiveCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Currency display preference
+  const { displayCurrency } = useCurrency();
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
 
   useEffect(() => {
     loadUpcomingRecurring();
@@ -48,7 +53,7 @@ const RecurringTransactionsWidget: React.FC<RecurringTransactionsWidgetProps> = 
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   if (isLoading) {

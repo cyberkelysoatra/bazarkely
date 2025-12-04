@@ -10,6 +10,7 @@ import RecurringConfigSection from '../components/RecurringConfig/RecurringConfi
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import { validateRecurringData } from '../utils/recurringUtils';
 import { CurrencyInput } from '../components/Currency';
+import { useCurrency } from '../hooks/useCurrency';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account, TransactionCategory } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
@@ -36,7 +37,7 @@ const AddTransactionPage = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [transactionCurrency, setTransactionCurrency] = useState<'MGA' | 'EUR'>('MGA');
+  const { displayCurrency: transactionCurrency, setDisplayCurrency: setTransactionCurrency } = useCurrency();
   const [categories, setCategories] = useState<CategoryFromDB[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -492,6 +493,7 @@ const AddTransactionPage = () => {
               linkedBudgetId={recurringConfig.linkedBudgetId}
               setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
               userId={user.id}
+              transactionType={transactionType as 'income' | 'expense' | 'transfer'}
               errors={recurringErrors}
             />
           )}

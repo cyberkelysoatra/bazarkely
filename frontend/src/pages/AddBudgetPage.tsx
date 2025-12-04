@@ -5,12 +5,14 @@ import { useAppStore } from '../stores/appStore';
 import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
+import { useCurrency } from '../hooks/useCurrency';
 import type { Budget, BudgetFormData, TransactionCategory } from '../types';
 
 const AddBudgetPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
   const { trackBudgetUsage } = usePracticeTracking();
+  const { displayCurrency } = useCurrency();
   
   const [formData, setFormData] = useState<BudgetFormData>({
     category: 'alimentation',
@@ -22,9 +24,12 @@ const AddBudgetPage = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fonction utilitaire pour formater les montants en MGA
+  // Helper to get currency symbol
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+
+  // Fonction utilitaire pour formater les montants
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   // Gestionnaire de changement d'input
@@ -205,7 +210,7 @@ const AddBudgetPage = () => {
                 required
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                Ar
+                {currencySymbol}
               </div>
             </div>
           </div>

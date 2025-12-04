@@ -10,8 +10,7 @@ import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Currency } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
-
-const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
+import { useCurrency } from '../hooks/useCurrency';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -28,10 +27,7 @@ const TransactionsPage = () => {
   const [accountsMap, setAccountsMap] = useState<Map<string, Account>>(new Map());
   
   // Currency display preference
-  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
-    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
-    return (saved === 'EUR' || saved === 'MGA') ? saved : 'MGA';
-  });
+  const { displayCurrency } = useCurrency();
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
@@ -110,19 +106,6 @@ const TransactionsPage = () => {
     loadAccounts();
   }, [user]);
 
-  // Listen for currency changes from Settings page
-  useEffect(() => {
-    const handleCurrencyChange = (event: CustomEvent<{ currency: 'MGA' | 'EUR' }>) => {
-      setDisplayCurrency(event.detail.currency);
-    };
-
-    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
-
-    return () => {
-      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
-    };
-  }, []);
-
   // Charger les informations du compte filtré
   useEffect(() => {
     const loadFilteredAccount = async () => {
@@ -144,10 +127,6 @@ const TransactionsPage = () => {
     };
     loadFilteredAccount();
   }, [accountId, user]);
-
-  const formatCurrency = (amount: number) => {
-    return `${Math.abs(amount).toLocaleString('fr-FR')} Ar`;
-  };
 
   // Helper function to sort transactions by date (newest first)
   const sortTransactionsByDateDesc = (transactions: Transaction[]) => {

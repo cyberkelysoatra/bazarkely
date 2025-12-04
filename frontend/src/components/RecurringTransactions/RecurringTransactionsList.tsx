@@ -10,6 +10,7 @@ import recurringTransactionService from '../../services/recurringTransactionServ
 import type { RecurringTransaction } from '../../types/recurring';
 import { formatRecurrenceDescription, getNextOccurrenceLabel, formatFrequency } from '../../utils/recurringUtils';
 import { ConfirmModal } from '../UI';
+import { useCurrency } from '../../hooks/useCurrency';
 
 interface RecurringTransactionsListProps {
   userId: string;
@@ -33,6 +34,10 @@ const RecurringTransactionsList: React.FC<RecurringTransactionsListProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  
+  // Currency display preference
+  const { displayCurrency } = useCurrency();
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
 
   useEffect(() => {
     loadRecurringTransactions();
@@ -99,7 +104,7 @@ const RecurringTransactionsList: React.FC<RecurringTransactionsListProps> = ({
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   const getTypeColor = (type: string) => {

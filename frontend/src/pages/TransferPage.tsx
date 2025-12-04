@@ -5,12 +5,15 @@ import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import feeService from '../services/feeService';
+import { CurrencyInput } from '../components/Currency';
+import { useCurrency } from '../hooks/useCurrency';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account, CalculatedFees } from '../types';
 
 const TransferPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
+  const { displayCurrency } = useCurrency();
   
   const [formData, setFormData] = useState({
     amount: '',
@@ -130,7 +133,8 @@ const TransferPage = () => {
       const allowNegative = accountTypeConfig?.allowNegative ?? false;
       
       if (!allowNegative && fromAccount.balance < totalAmount) {
-        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} Ar`;
+        const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} ${currencySymbol}`;
         console.error(`❌ ${errorMessage}`);
         setError(errorMessage);
         return;
@@ -251,23 +255,23 @@ const TransferPage = () => {
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
               Montant à transférer *
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                placeholder="0"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-semibold"
-                required
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                Ar
-              </div>
-            </div>
+            <CurrencyInput
+              id="amount"
+              value={formData.amount}
+              onChange={(value) => {
+                setFormData(prev => ({
+                  ...prev,
+                  amount: value.toString()
+                }));
+              }}
+              currency={displayCurrency}
+              onCurrencyChange={() => {
+                // Currency change is handled by the hook, no need to update formData
+              }}
+              placeholder="0"
+              required
+              className="text-lg font-semibold"
+            />
           </div>
 
           {/* Compte source */}
@@ -284,11 +288,14 @@ const TransferPage = () => {
               required
             >
               <option value="">Sélectionner le compte source</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} - {account.balance.toLocaleString('fr-FR')} MGA
-                </option>
-              ))}
+              {accounts.map((account) => {
+                const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+                return (
+                  <option key={account.id} value={account.id}>
+                    {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -306,11 +313,14 @@ const TransferPage = () => {
               required
             >
               <option value="">Sélectionner le compte de destination</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} - {account.balance.toLocaleString('fr-FR')} MGA
-                </option>
-              ))}
+              {accounts.map((account) => {
+                const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+                return (
+                  <option key={account.id} value={account.id}>
+                    {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -407,43 +417,50 @@ const TransferPage = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-blue-900 mb-3">Résumé du transfert</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Montant à transférer:</span>
-                  <span className="font-medium">{parseFloat(formData.amount || '0').toLocaleString('fr-FR')} MGA</span>
-                </div>
-                
-                {/* Frais de transfert */}
-                {calculatedFees.transferFee > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Frais de transfert:</span>
-                    <span className="font-medium text-red-600">-{calculatedFees.transferFee.toLocaleString('fr-FR')} MGA</span>
-                  </div>
-                )}
+                {(() => {
+                  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Montant à transférer:</span>
+                        <span className="font-medium">{parseFloat(formData.amount || '0').toLocaleString('fr-FR')} {currencySymbol}</span>
+                      </div>
+                      
+                      {/* Frais de transfert */}
+                      {calculatedFees.transferFee > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Frais de transfert:</span>
+                          <span className="font-medium text-red-600">-{calculatedFees.transferFee.toLocaleString('fr-FR')} {currencySymbol}</span>
+                        </div>
+                      )}
 
-                {/* Frais de retrait */}
-                {calculatedFees.withdrawalFee > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Frais de retrait:</span>
-                    <span className="font-medium text-red-600">-{calculatedFees.withdrawalFee.toLocaleString('fr-FR')} MGA</span>
-                  </div>
-                )}
+                      {/* Frais de retrait */}
+                      {calculatedFees.withdrawalFee > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Frais de retrait:</span>
+                          <span className="font-medium text-red-600">-{calculatedFees.withdrawalFee.toLocaleString('fr-FR')} {currencySymbol}</span>
+                        </div>
+                      )}
 
-                <div className="flex justify-between border-t border-blue-200 pt-2">
-                  <span className="text-gray-600">Total débité du compte source:</span>
-                  <span className="font-semibold text-blue-900">{(parseFloat(formData.amount || '0') + calculatedFees.totalFees).toLocaleString('fr-FR')} MGA</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">De:</span>
-                  <span className="font-medium">{fromAccount?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Vers:</span>
-                  <span className="font-medium">{toAccount?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Montant reçu:</span>
-                  <span className="font-medium text-green-600">{parseFloat(formData.amount || '0').toLocaleString('fr-FR')} MGA</span>
-                </div>
+                      <div className="flex justify-between border-t border-blue-200 pt-2">
+                        <span className="text-gray-600">Total débité du compte source:</span>
+                        <span className="font-semibold text-blue-900">{(parseFloat(formData.amount || '0') + calculatedFees.totalFees).toLocaleString('fr-FR')} {currencySymbol}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">De:</span>
+                        <span className="font-medium">{fromAccount?.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Vers:</span>
+                        <span className="font-medium">{toAccount?.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Montant reçu:</span>
+                        <span className="font-medium text-green-600">{parseFloat(formData.amount || '0').toLocaleString('fr-FR')} {currencySymbol}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               
               {/* Information sur les frais */}
@@ -503,20 +520,25 @@ const TransferPage = () => {
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-900 mb-2">Frais calculés pour ce transfert</h3>
                     {calculatedFees ? (
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Frais de transfert:</span>
-                          <span className="font-medium">{calculatedFees.transferFee.toLocaleString('fr-FR')} MGA</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Frais de retrait:</span>
-                          <span className="font-medium">{calculatedFees.withdrawalFee.toLocaleString('fr-FR')} MGA</span>
-                        </div>
-                        <div className="flex justify-between border-t border-gray-200 pt-2">
-                          <span className="text-gray-600 font-medium">Total des frais:</span>
-                          <span className="font-bold text-red-600">{calculatedFees.totalFees.toLocaleString('fr-FR')} MGA</span>
-                        </div>
-                      </div>
+                      (() => {
+                        const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+                        return (
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Frais de transfert:</span>
+                              <span className="font-medium">{calculatedFees.transferFee.toLocaleString('fr-FR')} {currencySymbol}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Frais de retrait:</span>
+                              <span className="font-medium">{calculatedFees.withdrawalFee.toLocaleString('fr-FR')} {currencySymbol}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-gray-200 pt-2">
+                              <span className="text-gray-600 font-medium">Total des frais:</span>
+                              <span className="font-bold text-red-600">{calculatedFees.totalFees.toLocaleString('fr-FR')} {currencySymbol}</span>
+                            </div>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <p className="text-sm text-gray-600">Aucun frais calculé</p>
                     )}

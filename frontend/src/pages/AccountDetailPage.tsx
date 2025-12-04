@@ -4,12 +4,15 @@ import { ArrowLeft, Edit, Trash2, Star, StarOff, Wallet, CreditCard, PiggyBank, 
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
+import { useCurrency } from '../hooks/useCurrency';
 import type { Account } from '../types';
 
 const AccountDetailPage = () => {
   const navigate = useNavigate();
   const { accountId } = useParams<{ accountId: string }>();
   const { user } = useAppStore();
+  const { displayCurrency } = useCurrency();
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
   
   const [account, setAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +33,7 @@ const AccountDetailPage = () => {
           console.log('🔄 Loading account detail from Supabase for ID:', accountId);
           const accountData = await accountService.getAccount(accountId, user.id);
           if (accountData) {
-            console.log(`💰 Account loaded: ${accountData.name} (${accountData.type}): ${accountData.balance} Ar`);
+            console.log(`💰 Account loaded: ${accountData.name} (${accountData.type}): ${accountData.balance} ${currencySymbol}`);
             setAccount(accountData);
             setEditData({
               name: accountData.name,
@@ -131,7 +134,7 @@ const AccountDetailPage = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   if (isLoading) {

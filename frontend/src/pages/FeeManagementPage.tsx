@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import feeService from '../services/feeService';
+import { useCurrency } from '../hooks/useCurrency';
 import type { FeeConfiguration, FeeRange } from '../types';
 
 const FeeManagementPage = () => {
   const navigate = useNavigate();
+  const { displayCurrency } = useCurrency();
   const [feeConfigurations, setFeeConfigurations] = useState<FeeConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingConfig, setEditingConfig] = useState<FeeConfiguration | null>(null);
@@ -17,6 +19,9 @@ const FeeManagementPage = () => {
     amountRanges: [{ minAmount: 0, maxAmount: 10000, feeAmount: 100, feePercentage: undefined as number | undefined }],
     isActive: true
   });
+
+  // Helper to get currency symbol
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
 
   useEffect(() => {
     loadFeeConfigurations();
@@ -123,7 +128,7 @@ const FeeManagementPage = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   if (isLoading) {
@@ -308,7 +313,7 @@ const FeeManagementPage = () => {
                         <div key={index} className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Montant min (Ar)
+                              Montant min ({currencySymbol})
                             </label>
                             <input
                               type="number"
@@ -320,7 +325,7 @@ const FeeManagementPage = () => {
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Montant max (Ar)
+                              Montant max ({currencySymbol})
                             </label>
                             <input
                               type="number"
@@ -332,7 +337,7 @@ const FeeManagementPage = () => {
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Frais fixes (Ar)
+                              Frais fixes ({currencySymbol})
                             </label>
                             <input
                               type="number"

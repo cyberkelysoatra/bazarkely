@@ -6,12 +6,15 @@ import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { db } from '../lib/database';
+import { useCurrency } from '../hooks/useCurrency';
 import type { Transaction, Account } from '../types';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
   const { transactionId } = useParams<{ transactionId: string }>();
   const { user } = useAppStore();
+  const { displayCurrency } = useCurrency();
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
   
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
@@ -344,7 +347,7 @@ const TransactionDetailPage = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${Math.abs(amount).toLocaleString('fr-FR')} Ar`;
+    return `${Math.abs(amount).toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   const getTransactionIcon = (type: string, amount: number) => {
@@ -526,7 +529,7 @@ const TransactionDetailPage = () => {
                     placeholder="0"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                    Ar
+                    {currencySymbol}
                   </div>
                 </div>
               ) : (

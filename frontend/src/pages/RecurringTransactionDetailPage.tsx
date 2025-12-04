@@ -13,6 +13,7 @@ import { formatRecurrenceDescription, getNextOccurrenceLabel, formatFrequency, g
 import { ConfirmModal, Modal } from '../components/UI';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { validateRecurringData } from '../utils/recurringUtils';
+import { useCurrency } from '../hooks/useCurrency';
 import type { RecurringTransaction } from '../types/recurring';
 import type { Transaction } from '../types';
 import { TRANSACTION_CATEGORIES } from '../constants';
@@ -20,6 +21,8 @@ import { TRANSACTION_CATEGORIES } from '../constants';
 const RecurringTransactionDetailPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { displayCurrency } = useCurrency();
+  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
   const [recurring, setRecurring] = useState<RecurringTransaction | null>(null);
   const [generatedTransactions, setGeneratedTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,7 +176,7 @@ const RecurringTransactionDetailPage = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
+    return `${amount.toLocaleString('fr-FR')} ${currencySymbol}`;
   };
 
   if (isLoading) {
@@ -493,6 +496,7 @@ const RecurringTransactionDetailPage = () => {
               linkedBudgetId={recurring.linkedBudgetId}
               setLinkedBudgetId={(id) => setRecurring(prev => prev ? { ...prev, linkedBudgetId: id } : null)}
               userId={recurring.userId}
+              transactionType={recurring.type}
               errors={errors}
             />
             
