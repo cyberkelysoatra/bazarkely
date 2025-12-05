@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRightLeft, Save, X, Settings } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Save, X, Settings, Repeat } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import feeService from '../services/feeService';
+import recurringTransactionService from '../services/recurringTransactionService';
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
+import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
+import { validateRecurringData } from '../utils/recurringUtils';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account, CalculatedFees } from '../types';
+import type { RecurrenceFrequency } from '../types/recurring';
 
 const TransferPage = () => {
   const navigate = useNavigate();
@@ -30,6 +34,20 @@ const TransferPage = () => {
   const [includeWithdrawal, setIncludeWithdrawal] = useState(false);
   const [showFeeSettings, setShowFeeSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // État pour les transferts récurrents
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringConfig, setRecurringConfig] = useState({
+    frequency: 'monthly' as RecurrenceFrequency,
+    startDate: new Date(),
+    endDate: null as Date | null,
+    dayOfMonth: new Date().getDate(),
+    dayOfWeek: null as number | null,
+    notifyBeforeDays: 1,
+    autoCreate: false,
+    linkedBudgetId: null as string | null
+  });
+  const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -45,6 +63,27 @@ const TransferPage = () => {
     };
     loadAccounts();
   }, []);
+
+  // Filtrer les comptes disponibles pour chaque dropdown
+  const availableSourceAccounts = useMemo(() => {
+    return accounts.filter(account => account.id !== formData.toAccountId);
+  }, [accounts, formData.toAccountId]);
+
+  const availableDestinationAccounts = useMemo(() => {
+    return accounts.filter(account => account.id !== formData.fromAccountId);
+  }, [accounts, formData.fromAccountId]);
+
+  // Vider la sélection si elle devient invalide (même compte sélectionné)
+  useEffect(() => {
+    if (formData.fromAccountId && formData.toAccountId && formData.fromAccountId === formData.toAccountId) {
+      // Si les deux comptes sont identiques, vider la destination
+      setFormData(prev => ({
+        ...prev,
+        toAccountId: ''
+      }));
+      setError(null); // Clear any previous error
+    }
+  }, [formData.fromAccountId, formData.toAccountId]);
 
   // Calculer les frais de transfert
   useEffect(() => {
@@ -114,7 +153,9 @@ const TransferPage = () => {
     }
 
     if (formData.fromAccountId === formData.toAccountId) {
-      console.error('❌ Le compte source et le compte de destination doivent être différents');
+      const errorMessage = 'Le compte source et le compte destination doivent être différents';
+      console.error('❌', errorMessage);
+      setError(errorMessage);
       return;
     }
 
@@ -144,53 +185,116 @@ const TransferPage = () => {
     // Clear any previous error
     setError(null);
 
+    // Validation spécifique pour les transferts récurrents
+    if (isRecurring) {
+      const validation = validateRecurringData({
+        userId: user.id,
+        accountId: formData.fromAccountId,
+        targetAccountId: formData.toAccountId,
+        type: 'transfer',
+        amount: Math.abs(amount),
+        description: formData.description,
+        category: 'transfert',
+        frequency: recurringConfig.frequency,
+        startDate: recurringConfig.startDate,
+        endDate: recurringConfig.endDate,
+        dayOfMonth: recurringConfig.dayOfMonth,
+        dayOfWeek: recurringConfig.dayOfWeek,
+        notifyBeforeDays: recurringConfig.notifyBeforeDays,
+        autoCreate: recurringConfig.autoCreate,
+        linkedBudgetId: recurringConfig.linkedBudgetId,
+        isActive: true
+      });
+
+      if (!validation.valid) {
+        const errors: Record<string, string> = {};
+        validation.errors.forEach(error => {
+          // Extraire le nom du champ de l'erreur
+          const fieldMatch = error.match(/^([^:]+):/);
+          if (fieldMatch) {
+            const field = fieldMatch[1].toLowerCase().replace(/\s+/g, '');
+            errors[field] = error;
+          }
+        });
+        setRecurringErrors(errors);
+        console.error('❌ Erreurs de validation:', validation.errors);
+        return;
+      }
+      setRecurringErrors({});
+    }
+
     setIsLoading(true);
 
     try {
-      console.log('📅 Transfer form date:', formData.date);
-      
-      // Créer le transfert avec la méthode dédiée
-      await transactionService.createTransfer(user.id, {
-        amount: amount,
-        description: formData.description,
-        fromAccountId: formData.fromAccountId,
-        toAccountId: formData.toAccountId,
-        notes: formData.notes,
-        date: new Date(formData.date)
-      });
+      if (isRecurring) {
+        // Créer un transfert récurrent
+        await recurringTransactionService.create({
+          userId: user.id,
+          accountId: formData.fromAccountId,
+          targetAccountId: formData.toAccountId,
+          type: 'transfer',
+          amount: Math.abs(amount),
+          description: formData.description,
+          category: 'transfert',
+          frequency: recurringConfig.frequency,
+          startDate: recurringConfig.startDate,
+          endDate: recurringConfig.endDate,
+          dayOfMonth: recurringConfig.dayOfMonth,
+          dayOfWeek: recurringConfig.dayOfWeek,
+          notifyBeforeDays: recurringConfig.notifyBeforeDays,
+          autoCreate: recurringConfig.autoCreate,
+          linkedBudgetId: recurringConfig.linkedBudgetId,
+          isActive: true
+        });
 
-      // Si il y a des frais, créer des transactions de frais
-      if (calculatedFees && calculatedFees.totalFees > 0) {
-        // Frais de transfert
-        if (calculatedFees.transferFee > 0) {
-          await transactionService.createTransaction(user.id, {
-            type: 'expense',
-            amount: -calculatedFees.transferFee,
-            description: 'Frais de transfert',
-            category: 'autres',
-            accountId: formData.fromAccountId,
-            date: new Date(formData.date),
-            notes: 'Frais de transfert'
-          });
+        console.log('✅ Transfert récurrent créé avec succès !');
+        navigate('/recurring'); // Rediriger vers la page des transactions récurrentes
+      } else {
+        console.log('📅 Transfer form date:', formData.date);
+        
+        // Créer le transfert avec la méthode dédiée
+        await transactionService.createTransfer(user.id, {
+          amount: amount,
+          description: formData.description,
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          notes: formData.notes,
+          date: new Date(formData.date)
+        });
+
+        // Si il y a des frais, créer des transactions de frais
+        if (calculatedFees && calculatedFees.totalFees > 0) {
+          // Frais de transfert
+          if (calculatedFees.transferFee > 0) {
+            await transactionService.createTransaction(user.id, {
+              type: 'expense',
+              amount: -calculatedFees.transferFee,
+              description: 'Frais de transfert',
+              category: 'autres',
+              accountId: formData.fromAccountId,
+              date: new Date(formData.date),
+              notes: 'Frais de transfert'
+            });
+          }
+
+          // Frais de retrait
+          if (calculatedFees.withdrawalFee > 0) {
+            await transactionService.createTransaction(user.id, {
+              type: 'expense',
+              amount: -calculatedFees.withdrawalFee,
+              description: 'Frais de retrait',
+              category: 'autres',
+              accountId: formData.fromAccountId,
+              date: new Date(formData.date),
+              notes: 'Frais de retrait'
+            });
+          }
         }
 
-        // Frais de retrait
-        if (calculatedFees.withdrawalFee > 0) {
-          await transactionService.createTransaction(user.id, {
-            type: 'expense',
-            amount: -calculatedFees.withdrawalFee,
-            description: 'Frais de retrait',
-            category: 'autres',
-            accountId: formData.fromAccountId,
-            date: new Date(formData.date),
-            notes: 'Frais de retrait'
-          });
-        }
+        // Succès
+        console.log('✅ Transfert effectué avec succès !');
+        navigate('/transactions');
       }
-
-      // Succès
-      console.log('✅ Transfert effectué avec succès !');
-      navigate('/transactions');
       
     } catch (error) {
       console.error('❌ Erreur lors du transfert:', error);
@@ -288,7 +392,7 @@ const TransferPage = () => {
               required
             >
               <option value="">Sélectionner le compte source</option>
-              {accounts.map((account) => {
+              {availableSourceAccounts.map((account) => {
                 const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
                 return (
                   <option key={account.id} value={account.id}>
@@ -313,14 +417,16 @@ const TransferPage = () => {
               required
             >
               <option value="">Sélectionner le compte de destination</option>
-              {accounts.map((account) => {
-                const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
-                return (
-                  <option key={account.id} value={account.id}>
-                    {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
-                  </option>
-                );
-              })}
+              {accounts
+                .filter(account => account.id !== formData.fromAccountId)
+                .map((account) => {
+                  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+                  return (
+                    <option key={account.id} value={account.id}>
+                      {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
+                    </option>
+                  );
+                })}
             </select>
           </div>
 
@@ -343,20 +449,74 @@ const TransferPage = () => {
           </div>
 
           {/* Date */}
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-              Date *
-            </label>
-            <input
-              type="date"
-              id="date"
-              name="date"
-              value={formData.date}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
+          {!isRecurring && (
+            <div>
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                Date *
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          )}
+
+          {/* Toggle Transaction récurrente */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Repeat className="w-5 h-5 text-blue-600" />
+                <div>
+                  <label htmlFor="isRecurring" className="text-sm font-medium text-gray-900 cursor-pointer">
+                    Transaction récurrente
+                  </label>
+                  <p className="text-xs text-gray-600">
+                    Créer un transfert qui se répète automatiquement
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
           </div>
+
+          {/* Configuration récurrente (affichée seulement si isRecurring = true) */}
+          {isRecurring && user && (
+            <RecurringConfigSection
+              frequency={recurringConfig.frequency}
+              setFrequency={(freq) => setRecurringConfig(prev => ({ ...prev, frequency: freq }))}
+              startDate={recurringConfig.startDate}
+              setStartDate={(date) => setRecurringConfig(prev => ({ ...prev, startDate: date }))}
+              endDate={recurringConfig.endDate}
+              setEndDate={(date) => setRecurringConfig(prev => ({ ...prev, endDate: date }))}
+              dayOfMonth={recurringConfig.dayOfMonth}
+              setDayOfMonth={(day) => setRecurringConfig(prev => ({ ...prev, dayOfMonth: day }))}
+              dayOfWeek={recurringConfig.dayOfWeek}
+              setDayOfWeek={(day) => setRecurringConfig(prev => ({ ...prev, dayOfWeek: day }))}
+              notifyBeforeDays={recurringConfig.notifyBeforeDays}
+              setNotifyBeforeDays={(days) => setRecurringConfig(prev => ({ ...prev, notifyBeforeDays: days }))}
+              autoCreate={recurringConfig.autoCreate}
+              setAutoCreate={(auto) => setRecurringConfig(prev => ({ ...prev, autoCreate: auto }))}
+              linkedBudgetId={recurringConfig.linkedBudgetId}
+              setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
+              userId={user.id}
+              transactionType="transfer"
+              errors={recurringErrors}
+            />
+          )}
 
           {/* Options de frais */}
           {formData.fromAccountId && formData.toAccountId && (
@@ -488,7 +648,14 @@ const TransferPage = () => {
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-5 h-5" />
-              <span>{isLoading ? 'Transfert en cours...' : 'Effectuer le transfert'}</span>
+              <span>
+                {isLoading 
+                  ? 'Transfert en cours...' 
+                  : isRecurring 
+                    ? 'Créer la récurrence' 
+                    : 'Effectuer le transfert'
+                }
+              </span>
             </button>
           </div>
         </form>
