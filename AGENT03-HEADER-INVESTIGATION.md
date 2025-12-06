@@ -546,3 +546,5 @@ const handleSettingsClick = (event: React.MouseEvent) => {
 **OPÉRATIONS:** Lecture et analyse uniquement
 
 
+
+

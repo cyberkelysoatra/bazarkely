@@ -26,6 +26,7 @@ export interface SupabaseRecurringTransaction {
   notify_before_days: number;
   auto_create: boolean;
   linked_budget_id: string | null;
+  target_account_id?: string; // Compte de destination pour les transferts (optionnel, snake_case)
   is_active: boolean;
   last_generated_date: string | null; // ISO date string ou null
   next_generation_date: string; // ISO date string
@@ -75,6 +76,7 @@ export function toRecurringTransaction(
     notifyBeforeDays: supabaseRecurringTransaction.notify_before_days,
     autoCreate: supabaseRecurringTransaction.auto_create,
     linkedBudgetId: supabaseRecurringTransaction.linked_budget_id,
+    targetAccountId: supabaseRecurringTransaction.target_account_id,
     isActive: supabaseRecurringTransaction.is_active,
     lastGeneratedDate: supabaseRecurringTransaction.last_generated_date 
       ? new Date(supabaseRecurringTransaction.last_generated_date) 
@@ -110,6 +112,7 @@ export function fromRecurringTransaction(
     notify_before_days: recurringTransaction.notifyBeforeDays,
     auto_create: recurringTransaction.autoCreate,
     linked_budget_id: recurringTransaction.linkedBudgetId,
+    target_account_id: recurringTransaction.targetAccountId,
     is_active: recurringTransaction.isActive,
     last_generated_date: recurringTransaction.lastGeneratedDate 
       ? recurringTransaction.lastGeneratedDate.toISOString() 
@@ -148,6 +151,7 @@ export function fromRecurringTransactionCreate(
     notify_before_days: recurringTransactionCreate.notifyBeforeDays,
     auto_create: recurringTransactionCreate.autoCreate,
     linked_budget_id: recurringTransactionCreate.linkedBudgetId,
+    target_account_id: recurringTransactionCreate.targetAccountId,
     is_active: recurringTransactionCreate.isActive,
     next_generation_date: nextGenerationDate.toISOString(),
   };
@@ -207,6 +211,9 @@ export function fromRecurringTransactionUpdate(
   }
   if (recurringTransactionUpdate.linkedBudgetId !== undefined) {
     update.linked_budget_id = recurringTransactionUpdate.linkedBudgetId;
+  }
+  if (recurringTransactionUpdate.targetAccountId !== undefined) {
+    update.target_account_id = recurringTransactionUpdate.targetAccountId;
   }
   if (recurringTransactionUpdate.isActive !== undefined) {
     update.is_active = recurringTransactionUpdate.isActive;

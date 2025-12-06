@@ -800,3 +800,5 @@ useEffect(() => {
 **OPÉRATIONS:** Lecture et extraction uniquement
 
 
+
+

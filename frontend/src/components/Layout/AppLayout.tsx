@@ -30,6 +30,11 @@ import QuizPage from '../../pages/QuizPage'
 import QuizResultsPage from '../../pages/QuizResultsPage'
 import RecurringTransactionsPage from '../../pages/RecurringTransactionsPage'
 import RecurringTransactionDetailPage from '../../pages/RecurringTransactionDetailPage'
+import FamilyDashboardPage from '../../pages/FamilyDashboardPage'
+import FamilySettingsPage from '../../pages/FamilySettingsPage'
+import FamilyBalancePage from '../../pages/FamilyBalancePage'
+import FamilyMembersPage from '../../pages/FamilyMembersPage'
+import FamilyTransactionsPage from '../../pages/FamilyTransactionsPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -40,6 +45,9 @@ import ReportGenerator from '../Analytics/ReportGenerator'
 import { ConstructionProvider, useConstruction } from '../../modules/construction-poc/context/ConstructionContext'
 import ConstructionRoute from '../../modules/construction-poc/components/ConstructionRoute'
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions'
+
+// Family Context
+import { FamilyProvider } from '../../contexts/FamilyContext'
 
 // Construction POC Components - Lazy Loading for Code Splitting
 const POCDashboard = React.lazy(() => import('../../modules/construction-poc/components/POCDashboard'))
@@ -94,6 +102,22 @@ const ConstructionRoutes: React.FC = () => {
         <Route path="*" element={<Navigate to="/construction/dashboard" replace />} />
       </Routes>
     </Suspense>
+  );
+};
+
+// Family Routes component - Wrapped with FamilyProvider
+const FamilyRoutes: React.FC = () => {
+  return (
+    <FamilyProvider>
+      <Routes>
+        <Route path="/" element={<FamilyDashboardPage />} />
+        <Route path="settings" element={<FamilySettingsPage />} />
+        <Route path="balance" element={<FamilyBalancePage />} />
+        <Route path="members" element={<FamilyMembersPage />} />
+        <Route path="transactions" element={<FamilyTransactionsPage />} />
+        <Route path="*" element={<Navigate to="/family" replace />} />
+      </Routes>
+    </FamilyProvider>
   );
 };
 
@@ -165,6 +189,9 @@ const AppLayout = () => {
               </ConstructionRoute>
             }
           />
+          
+          {/* Family Routes - Wrapped with FamilyProvider */}
+          <Route path="/family/*" element={<FamilyRoutes />} />
           
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

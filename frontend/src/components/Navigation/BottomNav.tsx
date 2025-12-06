@@ -1,7 +1,7 @@
 import { useEffect, useRef, useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS } from '../../constants';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle } from 'lucide-react';
 import { useModuleSwitcher } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -22,6 +22,7 @@ const iconMap = {
   ArrowUpDown,
   PieChart,
   Target,
+  Users,
   // Construction POC icons
   LayoutDashboard,
   ShoppingCart,

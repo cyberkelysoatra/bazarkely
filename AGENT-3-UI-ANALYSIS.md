@@ -701,3 +701,5 @@ const formatCurrency = (amount: number) => {
 **OPÉRATIONS:** Lecture et analyse uniquement
 
 
+
+

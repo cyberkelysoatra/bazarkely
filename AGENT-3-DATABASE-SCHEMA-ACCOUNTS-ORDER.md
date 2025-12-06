@@ -611,3 +611,5 @@ transaction_categories: {
 **FICHIERS MODIFIÉS:** 0  
 **OPÉRATIONS:** Lecture et analyse uniquement
 
+
+

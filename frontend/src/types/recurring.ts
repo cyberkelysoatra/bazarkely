@@ -24,6 +24,7 @@ export interface RecurringTransaction {
   notifyBeforeDays: number; // Nombre de jours avant la génération pour notification
   autoCreate: boolean; // Créer automatiquement la transaction ou demander confirmation
   linkedBudgetId: string | null; // Budget lié (optionnel)
+  targetAccountId?: string; // Compte de destination pour les transferts (optionnel)
   isActive: boolean; // Transaction récurrente active ou suspendue
   lastGeneratedDate: Date | null; // Date de dernière génération de transaction
   nextGenerationDate: Date; // Prochaine date de génération calculée

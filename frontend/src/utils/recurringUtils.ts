@@ -94,12 +94,19 @@ export function formatFrequency(frequency: RecurrenceFrequency): string {
 }
 
 /**
+ * Type étendu pour la validation incluant targetAccountId optionnel
+ */
+type RecurringTransactionCreateWithTarget = RecurringTransactionCreate & {
+  targetAccountId?: string;
+};
+
+/**
  * Valide les données d'une transaction récurrente
  * 
- * @param data Données à valider
+ * @param data Données à valider (incluant targetAccountId optionnel pour les transferts)
  * @returns Résultat de validation avec liste d'erreurs
  */
-export function validateRecurringData(data: RecurringTransactionCreate): ValidationResult {
+export function validateRecurringData(data: RecurringTransactionCreateWithTarget): ValidationResult {
   const errors: string[] = [];
 
   // Validation du montant
@@ -157,6 +164,25 @@ export function validateRecurringData(data: RecurringTransactionCreate): Validat
   // Validation de notifyBeforeDays
   if (data.notifyBeforeDays < 0) {
     errors.push('Le nombre de jours de notification avant doit être positif');
+  }
+
+  // Validation spécifique pour les transferts
+  if (data.type === 'transfer') {
+    // targetAccountId est requis pour les transferts
+    if (!data.targetAccountId || data.targetAccountId.trim().length === 0) {
+      errors.push('Compte destination requis pour les transferts');
+    }
+
+    // targetAccountId doit être différent de accountId
+    if (data.targetAccountId && data.accountId && data.targetAccountId === data.accountId) {
+      errors.push('Le compte destination doit être différent du compte source');
+    }
+  } else {
+    // Pour les revenus et dépenses, targetAccountId ne devrait pas être fourni
+    if (data.targetAccountId && data.targetAccountId.trim().length > 0) {
+      // Avertissement mais pas d'erreur bloquante pour compatibilité ascendante
+      console.warn('targetAccountId ne devrait pas être fourni pour les transactions de type', data.type);
+    }
   }
 
   return {

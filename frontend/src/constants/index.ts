@@ -142,6 +142,7 @@ export const BOTTOM_NAV_ITEMS = [
   { path: '/accounts', icon: 'Wallet', label: 'Comptes' },
   { path: '/transactions', icon: 'ArrowUpDown', label: 'Transactions' },
   { path: '/budgets', icon: 'PieChart', label: 'Budgets' },
+  { path: '/family', icon: 'Users', label: 'Famille' },
   { path: '/goals', icon: 'Target', label: 'Objectifs' }
 ] as const;
 

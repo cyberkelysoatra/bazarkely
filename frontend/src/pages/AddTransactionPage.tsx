@@ -16,6 +16,10 @@ import type { Account, TransactionCategory } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
 import { getCategoriesByType } from '../services/categoryService';
 import type { TransactionCategory as CategoryFromDB } from '../services/categoryService';
+import ShareWithFamilySection from '../components/Family/ShareWithFamilySection';
+import * as familyGroupService from '../services/familyGroupService';
+import * as familySharingService from '../services/familySharingService';
+import type { FamilyGroup, FamilySharingRule } from '../types/family';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -55,6 +59,14 @@ const AddTransactionPage = () => {
     linkedBudgetId: null as string | null
   });
   const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
+
+  // État pour le partage familial
+  const [familyGroups, setFamilyGroups] = useState<FamilyGroup[]>([]);
+  const [selectedFamilyGroupId, setSelectedFamilyGroupId] = useState<string | null>(null);
+  const [shareWithFamily, setShareWithFamily] = useState<boolean>(false);
+  const [requestReimbursement, setRequestReimbursement] = useState<boolean>(false);
+  const [sharingRules, setSharingRules] = useState<FamilySharingRule[]>([]);
+  const [familyGroupsLoading, setFamilyGroupsLoading] = useState<boolean>(false);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -108,6 +120,76 @@ const AddTransactionPage = () => {
     fetchCategories();
   }, [transactionType, isIncome]);
 
+  // Charger les groupes familiaux de l'utilisateur
+  useEffect(() => {
+    const loadFamilyGroups = async () => {
+      if (!user) return;
+      
+      setFamilyGroupsLoading(true);
+      try {
+        const groups = await familyGroupService.getUserFamilyGroups(user.id);
+        setFamilyGroups(groups);
+        
+        // Pré-sélectionner le premier groupe si disponible
+        if (groups.length > 0 && !selectedFamilyGroupId) {
+          setSelectedFamilyGroupId(groups[0].id);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des groupes familiaux:', error);
+        setFamilyGroups([]);
+      } finally {
+        setFamilyGroupsLoading(false);
+      }
+    };
+    
+    loadFamilyGroups();
+  }, [user]);
+
+  // Charger les règles de partage quand le groupe sélectionné change
+  useEffect(() => {
+    const loadSharingRules = async () => {
+      if (!selectedFamilyGroupId) {
+        setSharingRules([]);
+        return;
+      }
+
+      try {
+        const rules = await familySharingService.getSharingRules(selectedFamilyGroupId);
+        setSharingRules(rules);
+      } catch (error) {
+        console.error('Erreur lors du chargement des règles de partage:', error);
+        setSharingRules([]);
+      }
+    };
+
+    loadSharingRules();
+  }, [selectedFamilyGroupId]);
+
+  // Vérifier l'auto-partage selon la catégorie
+  useEffect(() => {
+    const checkAutoShare = async () => {
+      if (!selectedFamilyGroupId || !formData.category) {
+        return;
+      }
+
+      try {
+        const shouldAutoShare = await familySharingService.shouldAutoShare(
+          selectedFamilyGroupId,
+          formData.category
+        );
+        
+        // Activer le partage automatiquement si la règle l'exige
+        if (shouldAutoShare && !shareWithFamily) {
+          setShareWithFamily(true);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de l\'auto-partage:', error);
+      }
+    };
+
+    checkAutoShare();
+  }, [formData.category, selectedFamilyGroupId, shareWithFamily]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -118,6 +200,17 @@ const AddTransactionPage = () => {
     if (error) {
       setError(null);
     }
+  };
+
+  // Handler pour le partage familial
+  const handleShareChange = (data: {
+    isShared: boolean;
+    groupId: string | null;
+    requestReimbursement: boolean;
+  }) => {
+    setShareWithFamily(data.isShared);
+    setSelectedFamilyGroupId(data.groupId);
+    setRequestReimbursement(data.requestReimbursement);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -207,7 +300,7 @@ const AddTransactionPage = () => {
     try {
       if (isRecurring) {
         // Créer une transaction récurrente
-        await recurringTransactionService.create({
+        const recurringTransaction = await recurringTransactionService.create({
           userId: user.id,
           accountId: formData.accountId,
           type: transactionType as 'income' | 'expense',
@@ -226,11 +319,29 @@ const AddTransactionPage = () => {
         });
 
         console.log('✅ Transaction récurrente créée avec succès !');
+        
+        // Partager la transaction récurrente si demandé
+        if (shareWithFamily && selectedFamilyGroupId && recurringTransaction?.id) {
+          try {
+            await familySharingService.shareRecurringTransaction(
+              recurringTransaction.id,
+              selectedFamilyGroupId,
+              {
+                requestReimbursement: requestReimbursement
+              }
+            );
+            console.log('✅ Transaction récurrente partagée avec la famille');
+          } catch (shareError) {
+            console.error('⚠️ Erreur lors du partage de la transaction récurrente:', shareError);
+            // Ne pas bloquer la navigation en cas d'erreur de partage
+          }
+        }
+        
         trackTransaction();
         navigate('/recurring'); // Rediriger vers la page des transactions récurrentes
       } else {
         // Créer une transaction normale
-        await transactionService.createTransaction(user.id, {
+        const transaction = await transactionService.createTransaction(user.id, {
           type: transactionType as 'income' | 'expense' | 'transfer',
           amount: isExpense ? -amount : amount,
           description: formData.description,
@@ -243,6 +354,24 @@ const AddTransactionPage = () => {
         });
 
         console.log(`✅ ${isIncome ? 'Revenu' : 'Dépense'} ajouté avec succès !`);
+        
+        // Partager la transaction si demandé
+        if (shareWithFamily && selectedFamilyGroupId && transaction?.id) {
+          try {
+            await familySharingService.shareTransaction(
+              transaction.id,
+              selectedFamilyGroupId,
+              {
+                requestReimbursement: requestReimbursement
+              }
+            );
+            console.log('✅ Transaction partagée avec la famille');
+          } catch (shareError) {
+            console.error('⚠️ Erreur lors du partage de la transaction:', shareError);
+            // Ne pas bloquer la navigation en cas d'erreur de partage
+          }
+        }
+        
         trackTransaction();
         navigate('/transactions'); // Rediriger vers la page des transactions
       }
@@ -418,6 +547,15 @@ const AddTransactionPage = () => {
               )}
             </select>
           </div>
+
+          {/* Partage familial */}
+          <ShareWithFamilySection
+            familyGroups={familyGroups}
+            selectedGroupId={selectedFamilyGroupId}
+            onShareChange={handleShareChange}
+            transactionType={transactionType as 'income' | 'expense' | 'transfer'}
+            disabled={isLoading || familyGroupsLoading}
+          />
 
           {/* Date */}
           {!isRecurring && (

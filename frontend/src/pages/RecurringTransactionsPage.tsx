@@ -257,6 +257,7 @@ const RecurringTransactionsPage = () => {
               linkedBudgetId={editingRecurring.linkedBudgetId}
               setLinkedBudgetId={(id) => setEditingRecurring(prev => prev ? { ...prev, linkedBudgetId: id } : null)}
               userId={user.id}
+              transactionType={editingRecurring.type}
               errors={errors}
             />
             

@@ -1,8 +1,8 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.10 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30)  
-**Date de mise à jour:** 2025-11-30  
+**Version:** 3.11 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30 + UX Recurring Transfers 2025-12-06)  
+**Date de mise à jour:** 2025-12-06  
 **Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components
 
 ---
@@ -658,6 +658,22 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
+## 🔧 UX CORRECTIONS TRANSFERTS RÉCURRENTS (Session 2025-12-06)
+
+### **Corrections Formulaires Transferts**
+
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **Date masquée si récurrent** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Champ date caché automatiquement quand isRecurring=true (TransferPage + AddTransactionPage) (2025-12-06) |
+| **Filtrage dynamique comptes useMemo** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Exclusion compte source des destinations avec mémorisation useMemo (TransferPage) (2025-12-06) |
+| **setError() affichage erreurs** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Erreurs de validation affichées via setError() au lieu de alert() (TransferPage + AddTransactionPage) (2025-12-06) |
+| **Toggle isRecurring repositionné** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Toggle récurrence placé en haut du formulaire pour visibilité immédiate (TransferPage + AddTransactionPage) (2025-12-06) |
+
+**Total UX Corrections Transferts Récurrents:** 4/4 implémentés (100%)  
+**Cohérence UX TransferPage ↔ AddTransactionPage:** ✅ 100%
+
+---
+
 ## 🏗️ MODULE CONSTRUCTION POC (Phase 2 Step 3 UI Components + Phase 2 Organigramme Complète - 2025-11-12)
 
 ### **Services Core**
@@ -956,6 +972,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Filtrage Catégories:** 100% (1/1) ✅ - Session 2025-01-20 (Bug identifié) [Résolu 2025-11-03]
 - **Context Switcher:** 100% (12/12) ✅ - Session 2025-11-09
 - **Transactions Récurrentes:** 100% (43/43) - Session 2025-11-03
+- **UX Transferts Récurrents:** 100% (4/4) - Session 2025-12-06
 - **Module Construction POC:** 100% (66/66) ✅ - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (10 org_units, BCI/BCE orders, org_unit-scoped workflow) + Smart Defaults (7/7 champs) + UX Transformation VAGUE 1 + VAGUE 2 (Header fix, collapsibles, inline search, badges, layout) + Editable BC Number System (Admin only, format AA/NNN, réservations, édition inline) - Session 2025-11-12 + 2025-11-15 + 2025-11-29/30
 
 ### **Prochaines Étapes**
@@ -1003,4 +1020,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2025-11-15 - BazarKELY v3.9 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Header Construction Cleanup PM 2025-11-15)*
+*Document généré automatiquement le 2025-12-06 - BazarKELY v3.11 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30 + UX Recurring Transfers 2025-12-06)*

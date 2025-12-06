@@ -82,7 +82,12 @@ class RecurringTransactionService {
         updatedAt: new Date(),
         lastGeneratedDate: null,
         nextGenerationDate
-      };
+      } as RecurringTransaction;
+
+      // Ajouter targetAccountId si présent (pour les transferts)
+      if ((data as any).targetAccountId) {
+        (recurringData as any).targetAccountId = (data as any).targetAccountId;
+      }
 
       // Sauvegarder dans IndexedDB (immédiat, offline-first)
       await db.recurringTransactions.add(recurringData);
@@ -94,6 +99,12 @@ class RecurringTransactionService {
           nextGenerationDate
         });
 
+        // Ajouter target_account_id si présent (pour les transferts)
+        // Note: Les fonctions de conversion seront mises à jour séparément
+        if ((data as any).targetAccountId) {
+          (supabaseData as any).target_account_id = (data as any).targetAccountId;
+        }
+
         const { data: supabaseResult, error } = await supabase
           .from('recurring_transactions')
           .insert(supabaseData)
@@ -104,9 +115,14 @@ class RecurringTransactionService {
           console.warn('⚠️ Erreur Supabase, données sauvegardées en local seulement:', error);
           // Continuer avec la version IndexedDB
         } else if (supabaseResult) {
-          // Mettre à jour avec l'ID Supabase
+          // Mettre à jour avec l'ID Supabase et targetAccountId si présent
           recurringData.id = supabaseResult.id;
-          await db.recurringTransactions.update(recurringData.id, { id: supabaseResult.id });
+          const updateData: any = { id: supabaseResult.id };
+          if ((supabaseResult as any).target_account_id) {
+            (recurringData as any).targetAccountId = (supabaseResult as any).target_account_id;
+            updateData.targetAccountId = (supabaseResult as any).target_account_id;
+          }
+          await db.recurringTransactions.update(recurringData.id, updateData);
         }
       } catch (supabaseError) {
         console.warn('⚠️ Supabase non disponible, données sauvegardées en local:', supabaseError);
@@ -140,7 +156,14 @@ class RecurringTransactionService {
 
         if (!error && supabaseRecurring) {
           // Convertir et mettre à jour IndexedDB
-          const converted = supabaseRecurring.map(toRecurringTransaction);
+          const converted = supabaseRecurring.map(supabaseRec => {
+            const convertedRec = toRecurringTransaction(supabaseRec);
+            // Ajouter targetAccountId si présent (pour les transferts)
+            if ((supabaseRec as any).target_account_id) {
+              (convertedRec as any).targetAccountId = (supabaseRec as any).target_account_id;
+            }
+            return convertedRec;
+          });
           
           // Synchroniser les deux sources
           for (const remote of converted) {
@@ -173,7 +196,32 @@ class RecurringTransactionService {
    */
   async getById(id: string): Promise<RecurringTransaction | null> {
     try {
-      const recurring = await db.recurringTransactions.get(id);
+      // Essayer d'abord IndexedDB
+      let recurring = await db.recurringTransactions.get(id);
+      
+      // Si pas trouvé localement, essayer Supabase
+      if (!recurring) {
+        try {
+          const { data: supabaseRecurring, error } = await supabase
+            .from('recurring_transactions')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (!error && supabaseRecurring) {
+            recurring = toRecurringTransaction(supabaseRecurring);
+            // Ajouter targetAccountId si présent (pour les transferts)
+            if ((supabaseRecurring as any).target_account_id) {
+              (recurring as any).targetAccountId = (supabaseRecurring as any).target_account_id;
+            }
+            // Sauvegarder dans IndexedDB pour la prochaine fois
+            await db.recurringTransactions.put(recurring);
+          }
+        } catch (supabaseError) {
+          console.warn('⚠️ Supabase non disponible pour getById:', supabaseError);
+        }
+      }
+      
       return recurring || null;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération de la transaction récurrente:', error);
@@ -221,6 +269,10 @@ class RecurringTransactionService {
       // Mettre à jour Supabase
       try {
         const supabaseData = fromRecurringTransactionUpdate(updated);
+        // Ajouter target_account_id si présent (pour les transferts)
+        if ((updated as any).targetAccountId !== undefined) {
+          (supabaseData as any).target_account_id = (updated as any).targetAccountId;
+        }
         const { error } = await supabase
           .from('recurring_transactions')
           .update(supabaseData)
@@ -357,17 +409,41 @@ class RecurringTransactionService {
       const generatedDate = new Date(recurring.nextGenerationDate);
       generatedDate.setHours(0, 0, 0, 0);
       
-      const existingTransactions = await db.transactions
-        .where('userId')
-        .equals(recurring.userId)
-        .and(t => t.isRecurring === true && t.recurringTransactionId === recurringId)
-        .toArray();
+      let alreadyGenerated = false;
+      
+      if (recurring.type === 'transfer' && (recurring as any).targetAccountId) {
+        // Pour les transferts, vérifier si les 2 transactions existent déjà
+        // En cherchant par description et date (car createTransfer ne set pas isRecurring/recurringTransactionId)
+        const allTransactions = await db.transactions
+          .where('userId')
+          .equals(recurring.userId)
+          .toArray();
+        
+        const matchingTransactions = allTransactions.filter(t => {
+          const tDate = new Date(t.date);
+          tDate.setHours(0, 0, 0, 0);
+          return tDate.getTime() === generatedDate.getTime() &&
+                 t.description === recurring.description &&
+                 ((t.accountId === recurring.accountId && t.targetAccountId === (recurring as any).targetAccountId) ||
+                  (t.accountId === (recurring as any).targetAccountId && t.targetAccountId === recurring.accountId));
+        });
+        
+        // Si on trouve au moins 2 transactions correspondantes, c'est déjà généré
+        alreadyGenerated = matchingTransactions.length >= 2;
+      } else {
+        // Pour income/expense, vérifier par isRecurring et recurringTransactionId
+        const existingTransactions = await db.transactions
+          .where('userId')
+          .equals(recurring.userId)
+          .and(t => t.isRecurring === true && t.recurringTransactionId === recurringId)
+          .toArray();
 
-      const alreadyGenerated = existingTransactions.some(t => {
-        const tDate = new Date(t.date);
-        tDate.setHours(0, 0, 0, 0);
-        return tDate.getTime() === generatedDate.getTime();
-      });
+        alreadyGenerated = existingTransactions.some(t => {
+          const tDate = new Date(t.date);
+          tDate.setHours(0, 0, 0, 0);
+          return tDate.getTime() === generatedDate.getTime();
+        });
+      }
 
       if (alreadyGenerated) {
         console.log('ℹ️ Transaction déjà générée pour cette date:', recurringId);
@@ -376,31 +452,64 @@ class RecurringTransactionService {
         return null;
       }
 
-      // Créer la transaction
-      const transaction = await transactionService.createTransaction(
-        recurring.userId,
-        {
-          type: recurring.type,
-          amount: recurring.amount,
-          description: recurring.description,
-          category: recurring.category as TransactionCategory,
-          accountId: recurring.accountId,
-          date: new Date(recurring.nextGenerationDate),
-          notes: `Transaction récurrente: ${recurring.description}`,
-          isRecurring: true,
-          recurringTransactionId: recurring.id
+      // Gérer les transferts différemment (créer 2 transactions)
+      if (recurring.type === 'transfer' && (recurring as any).targetAccountId) {
+        // Utiliser createTransfer pour créer les 2 transactions (débit + crédit)
+        const transferResult = await transactionService.createTransfer(
+          recurring.userId,
+          {
+            fromAccountId: recurring.accountId,
+            toAccountId: (recurring as any).targetAccountId,
+            amount: recurring.amount,
+            description: recurring.description,
+            notes: `Transaction récurrente: ${recurring.description}`,
+            date: new Date(recurring.nextGenerationDate)
+          }
+        );
+
+        if (!transferResult.success || !transferResult.transactions || transferResult.transactions.length !== 2) {
+          throw new Error('Échec de la création du transfert récurrent');
         }
-      );
 
-      if (!transaction) {
-        throw new Error('Échec de la création de la transaction');
+        // Marquer les deux transactions comme récurrentes
+        // Note: Les transactions sont déjà créées, on pourrait les mettre à jour pour ajouter isRecurring et recurringTransactionId
+        // mais createTransfer ne supporte pas ces champs. Pour l'instant, on retourne la première transaction.
+        const debitTransaction = transferResult.transactions[0];
+        const creditTransaction = transferResult.transactions[1];
+
+        // Mettre à jour la transaction récurrente
+        await this.updateNextGenerationDate(recurring);
+
+        console.log('✅ Transfert récurrent généré:', debitTransaction.id, creditTransaction.id);
+        // Retourner la transaction de débit (compte source)
+        return debitTransaction;
+      } else {
+        // Créer la transaction (income ou expense)
+        const transaction = await transactionService.createTransaction(
+          recurring.userId,
+          {
+            type: recurring.type,
+            amount: recurring.amount,
+            description: recurring.description,
+            category: recurring.category as TransactionCategory,
+            accountId: recurring.accountId,
+            date: new Date(recurring.nextGenerationDate),
+            notes: `Transaction récurrente: ${recurring.description}`,
+            isRecurring: true,
+            recurringTransactionId: recurring.id
+          }
+        );
+
+        if (!transaction) {
+          throw new Error('Échec de la création de la transaction');
+        }
+
+        // Mettre à jour la transaction récurrente
+        await this.updateNextGenerationDate(recurring);
+
+        console.log('✅ Transaction générée depuis récurrence:', transaction.id);
+        return transaction;
       }
-
-      // Mettre à jour la transaction récurrente
-      await this.updateNextGenerationDate(recurring);
-
-      console.log('✅ Transaction générée depuis récurrence:', transaction.id);
-      return transaction;
     } catch (error) {
       console.error('❌ Erreur lors de la génération de la transaction:', error);
       return null;
