@@ -353,6 +353,58 @@ const TransferPage = () => {
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
+
+          {/* Toggle Transaction récurrente */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Repeat className="w-5 h-5 text-blue-600" />
+                <div>
+                  <label htmlFor="isRecurring" className="text-sm font-medium text-gray-900 cursor-pointer">
+                    Transaction récurrente
+                  </label>
+                  <p className="text-xs text-gray-600">
+                    Créer un transfert qui se répète automatiquement
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Configuration récurrente (affichée seulement si isRecurring = true) */}
+          {isRecurring && user && (
+            <RecurringConfigSection
+              frequency={recurringConfig.frequency}
+              setFrequency={(freq) => setRecurringConfig(prev => ({ ...prev, frequency: freq }))}
+              startDate={recurringConfig.startDate}
+              setStartDate={(date) => setRecurringConfig(prev => ({ ...prev, startDate: date }))}
+              endDate={recurringConfig.endDate}
+              setEndDate={(date) => setRecurringConfig(prev => ({ ...prev, endDate: date }))}
+              dayOfMonth={recurringConfig.dayOfMonth}
+              setDayOfMonth={(day) => setRecurringConfig(prev => ({ ...prev, dayOfMonth: day }))}
+              dayOfWeek={recurringConfig.dayOfWeek}
+              setDayOfWeek={(day) => setRecurringConfig(prev => ({ ...prev, dayOfWeek: day }))}
+              notifyBeforeDays={recurringConfig.notifyBeforeDays}
+              setNotifyBeforeDays={(days) => setRecurringConfig(prev => ({ ...prev, notifyBeforeDays: days }))}
+              autoCreate={recurringConfig.autoCreate}
+              setAutoCreate={(auto) => setRecurringConfig(prev => ({ ...prev, autoCreate: auto }))}
+              linkedBudgetId={recurringConfig.linkedBudgetId}
+              setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
+              userId={user.id}
+              transactionType="transfer"
+              errors={recurringErrors}
+            />
+          )}
           
           {/* Montant */}
           <div>
@@ -464,58 +516,6 @@ const TransferPage = () => {
                 required
               />
             </div>
-          )}
-
-          {/* Toggle Transaction récurrente */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Repeat className="w-5 h-5 text-blue-600" />
-                <div>
-                  <label htmlFor="isRecurring" className="text-sm font-medium text-gray-900 cursor-pointer">
-                    Transaction récurrente
-                  </label>
-                  <p className="text-xs text-gray-600">
-                    Créer un transfert qui se répète automatiquement
-                  </p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="isRecurring"
-                  checked={isRecurring}
-                  onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-          </div>
-
-          {/* Configuration récurrente (affichée seulement si isRecurring = true) */}
-          {isRecurring && user && (
-            <RecurringConfigSection
-              frequency={recurringConfig.frequency}
-              setFrequency={(freq) => setRecurringConfig(prev => ({ ...prev, frequency: freq }))}
-              startDate={recurringConfig.startDate}
-              setStartDate={(date) => setRecurringConfig(prev => ({ ...prev, startDate: date }))}
-              endDate={recurringConfig.endDate}
-              setEndDate={(date) => setRecurringConfig(prev => ({ ...prev, endDate: date }))}
-              dayOfMonth={recurringConfig.dayOfMonth}
-              setDayOfMonth={(day) => setRecurringConfig(prev => ({ ...prev, dayOfMonth: day }))}
-              dayOfWeek={recurringConfig.dayOfWeek}
-              setDayOfWeek={(day) => setRecurringConfig(prev => ({ ...prev, dayOfWeek: day }))}
-              notifyBeforeDays={recurringConfig.notifyBeforeDays}
-              setNotifyBeforeDays={(days) => setRecurringConfig(prev => ({ ...prev, notifyBeforeDays: days }))}
-              autoCreate={recurringConfig.autoCreate}
-              setAutoCreate={(auto) => setRecurringConfig(prev => ({ ...prev, autoCreate: auto }))}
-              linkedBudgetId={recurringConfig.linkedBudgetId}
-              setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
-              userId={user.id}
-              transactionType="transfer"
-              errors={recurringErrors}
-            />
           )}
 
           {/* Options de frais */}
