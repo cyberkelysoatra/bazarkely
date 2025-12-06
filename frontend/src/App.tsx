@@ -41,6 +41,7 @@ const safariServiceWorkerManager = {
 import AppLayout from './components/Layout/AppLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
+import UpdatePrompt from './components/UpdatePrompt';
 import { ModuleSwitcherProvider } from './contexts/ModuleSwitcherContext';
 // Construction POC Context - Mounted globally so Header can access ConstructionContext
 import { ConstructionProvider } from './modules/construction-poc/context/ConstructionContext';
@@ -135,6 +136,7 @@ function App() {
               <div className="min-h-screen bg-gray-50">
                 <AppLayout />
                 <IOSInstallPrompt />
+                <UpdatePrompt />
             
             {/* Toast Notifications */}
             <Toaster
