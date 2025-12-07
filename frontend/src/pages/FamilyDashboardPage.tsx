@@ -21,7 +21,7 @@ import type {
   ReimbursementRequest
 } from '../types/family';
 import { CurrencyDisplay } from '../components/Currency';
-import { CreateFamilyModal } from '../components/Family';
+import { CreateFamilyModal, JoinFamilyModal } from '../components/Family';
 
 const FamilyDashboardPage = () => {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ const FamilyDashboardPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
   // Fonction pour charger les groupes familiaux
   const loadFamilyGroups = async () => {
@@ -177,6 +178,15 @@ const FamilyDashboardPage = () => {
             setIsCreateModalOpen(false);
           }}
         />
+        {/* Join Family Modal - Always rendered */}
+        <JoinFamilyModal
+          isOpen={isJoinModalOpen}
+          onClose={() => setIsJoinModalOpen(false)}
+          onSuccess={async () => {
+            await loadFamilyGroups();
+            setIsJoinModalOpen(false);
+          }}
+        />
       </>
     );
   }
@@ -199,6 +209,15 @@ const FamilyDashboardPage = () => {
           onSuccess={async () => {
             await loadFamilyGroups();
             setIsCreateModalOpen(false);
+          }}
+        />
+        {/* Join Family Modal - Always rendered */}
+        <JoinFamilyModal
+          isOpen={isJoinModalOpen}
+          onClose={() => setIsJoinModalOpen(false)}
+          onSuccess={async () => {
+            await loadFamilyGroups();
+            setIsJoinModalOpen(false);
           }}
         />
       </>
@@ -254,13 +273,7 @@ const FamilyDashboardPage = () => {
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
                 <button
-                  onClick={() => {
-                    // TODO: Implémenter la logique de rejoindre un groupe
-                    const codeInput = document.querySelector('input[placeholder="Code d\'invitation"]') as HTMLInputElement;
-                    if (codeInput?.value) {
-                      navigate(`/family/join?code=${codeInput.value}`);
-                    }
-                  }}
+                  onClick={() => setIsJoinModalOpen(true)}
                   className="btn-secondary flex items-center space-x-2"
                 >
                   <UserPlus className="w-4 h-4" />
@@ -277,6 +290,15 @@ const FamilyDashboardPage = () => {
           onSuccess={async () => {
             await loadFamilyGroups();
             setIsCreateModalOpen(false);
+          }}
+        />
+        {/* Join Family Modal - Always rendered */}
+        <JoinFamilyModal
+          isOpen={isJoinModalOpen}
+          onClose={() => setIsJoinModalOpen(false)}
+          onSuccess={async () => {
+            await loadFamilyGroups();
+            setIsJoinModalOpen(false);
           }}
         />
       </div>
@@ -550,6 +572,15 @@ const FamilyDashboardPage = () => {
         onSuccess={async () => {
           await loadFamilyGroups();
           setIsCreateModalOpen(false);
+        }}
+      />
+      {/* Join Family Modal */}
+      <JoinFamilyModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+        onSuccess={async () => {
+          await loadFamilyGroups();
+          setIsJoinModalOpen(false);
         }}
       />
     </div>
