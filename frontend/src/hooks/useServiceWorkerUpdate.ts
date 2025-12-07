@@ -261,3 +261,4 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
 
 export default useServiceWorkerUpdate
 
+

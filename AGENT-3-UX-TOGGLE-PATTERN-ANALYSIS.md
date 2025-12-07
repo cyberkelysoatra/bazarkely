@@ -486,3 +486,4 @@ className="text-xs text-gray-500"
 **OPÉRATIONS:** Lecture et analyse uniquement
 
 
+

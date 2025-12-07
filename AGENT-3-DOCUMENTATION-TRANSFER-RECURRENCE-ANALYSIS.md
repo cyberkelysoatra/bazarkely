@@ -602,3 +602,4 @@ export interface RecurringTransaction {
 **OPÉRATIONS:** Lecture et analyse uniquement
 
 
+

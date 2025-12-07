@@ -9,7 +9,7 @@ import {
   Users, Plus, Copy, Share2, Receipt, ArrowRightLeft, UserPlus, Crown,
   TrendingDown, Calendar, Clock, CheckCircle, XCircle
 } from 'lucide-react';
-import { useAppStore } from '../stores/appStore';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
@@ -25,7 +25,7 @@ import { CreateFamilyModal } from '../components/Family';
 
 const FamilyDashboardPage = () => {
   const navigate = useNavigate();
-  const { user } = useAppStore();
+  const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
   const { displayCurrency } = useCurrency();
   const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
 
@@ -47,7 +47,7 @@ const FamilyDashboardPage = () => {
 
   // Fonction pour charger les groupes familiaux
   const loadFamilyGroups = async () => {
-    if (!user) return;
+    if (!isAuthenticated || !user) return;
 
     try {
       setIsLoading(true);
@@ -66,14 +66,18 @@ const FamilyDashboardPage = () => {
     }
   };
 
-  // Charger les groupes familiaux
+  // Charger les groupes familiaux - attendre que l'auth soit vérifiée
   useEffect(() => {
-    loadFamilyGroups();
+    if (!isAuthLoading && isAuthenticated) {
+      loadFamilyGroups();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [isAuthLoading, isAuthenticated, user]);
 
-  // Charger les données du groupe sélectionné
+  // Charger les données du groupe sélectionné - attendre que l'auth soit vérifiée
   useEffect(() => {
+    if (isAuthLoading || !isAuthenticated) return;
+    
     const loadGroupData = async () => {
       if (!selectedGroupId || !user) return;
 
@@ -117,7 +121,7 @@ const FamilyDashboardPage = () => {
     };
 
     loadGroupData();
-  }, [selectedGroupId, user]);
+  }, [isAuthLoading, isAuthenticated, selectedGroupId, user]);
 
   const handleCopyInviteCode = async () => {
     const selectedGroup = familyGroups.find(g => g.id === selectedGroupId);
@@ -134,7 +138,23 @@ const FamilyDashboardPage = () => {
 
   const selectedGroup = familyGroups.find(g => g.id === selectedGroupId);
 
-  // État de chargement
+  // État de chargement de l'authentification
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-20">
+        <div className="p-4">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Vérification de l'authentification...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // État de chargement des données
   if (isLoading) {
     return (
       <>

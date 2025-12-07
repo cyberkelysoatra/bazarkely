@@ -129,3 +129,4 @@ WHERE ccu.table_schema = 'public'
   AND ccu.column_name = 'type';
 
 
+

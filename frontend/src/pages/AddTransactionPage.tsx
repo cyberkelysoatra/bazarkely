@@ -154,7 +154,7 @@ const AddTransactionPage = () => {
       }
 
       try {
-        const rules = await familySharingService.getSharingRules(selectedFamilyGroupId);
+        const rules = await familySharingService.getUserSharingRules(selectedFamilyGroupId);
         setSharingRules(rules);
       } catch (error) {
         console.error('Erreur lors du chargement des règles de partage:', error);
@@ -324,11 +324,9 @@ const AddTransactionPage = () => {
         if (shareWithFamily && selectedFamilyGroupId && recurringTransaction?.id) {
           try {
             await familySharingService.shareRecurringTransaction(
-              recurringTransaction.id,
               selectedFamilyGroupId,
-              {
-                requestReimbursement: requestReimbursement
-              }
+              recurringTransaction.id,
+              false
             );
             console.log('✅ Transaction récurrente partagée avec la famille');
           } catch (shareError) {
@@ -358,13 +356,18 @@ const AddTransactionPage = () => {
         // Partager la transaction si demandé
         if (shareWithFamily && selectedFamilyGroupId && transaction?.id) {
           try {
-            await familySharingService.shareTransaction(
-              transaction.id,
-              selectedFamilyGroupId,
-              {
-                requestReimbursement: requestReimbursement
-              }
-            );
+            await familySharingService.shareTransaction({
+              familyGroupId: selectedFamilyGroupId,
+              transactionId: transaction.id,
+              description: formData.description,
+              amount: Math.abs(amount),
+              category: formData.category,
+              date: new Date(formData.date),
+              splitType: 'split_equal',
+              paidBy: user.id,
+              splitDetails: [],
+              notes: formData.notes || undefined
+            });
             console.log('✅ Transaction partagée avec la famille');
           } catch (shareError) {
             console.error('⚠️ Erreur lors du partage de la transaction:', shareError);
