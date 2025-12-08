@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -11,6 +11,11 @@ import { CurrencyDisplay } from '../components/Currency';
 import type { Currency } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
+import { shareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
+import * as familyGroupService from '../services/familyGroupService';
+import { toast } from 'react-hot-toast';
+import type { ShareTransactionInput, SplitType } from '../types/family';
+import type { FamilyGroup } from '../types/family';
 
 const TransactionsPage = () => {
   const navigate = useNavigate();
@@ -28,6 +33,15 @@ const TransactionsPage = () => {
   
   // Currency display preference
   const { displayCurrency } = useCurrency();
+  
+  // Family group for sharing (loaded directly, no context required)
+  const [activeFamilyGroup, setActiveFamilyGroup] = useState<FamilyGroup | null>(null);
+  
+  // State for sharing transactions
+  const [sharingTransactionId, setSharingTransactionId] = useState<string | null>(null);
+  
+  // Track which transactions are already shared
+  const [sharedTransactionIds, setSharedTransactionIds] = useState<Set<string>>(new Set());
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
@@ -76,9 +90,7 @@ const TransactionsPage = () => {
       if (user) {
         try {
           setIsLoading(true);
-          console.log('🔄 Loading transactions from Supabase...');
           const userTransactions = await transactionService.getUserTransactions(user.id);
-          console.log('📊 Transactions loaded:', userTransactions.length);
           setTransactions(userTransactions);
         } catch (error) {
           console.error('Erreur lors du chargement des transactions:', error);
@@ -105,6 +117,51 @@ const TransactionsPage = () => {
     };
     loadAccounts();
   }, [user]);
+
+  // Charger le groupe familial actif (optionnel - ne bloque pas si pas de groupe)
+  useEffect(() => {
+    const loadFamilyGroup = async () => {
+      if (!user) {
+        setActiveFamilyGroup(null);
+        return;
+      }
+
+      try {
+        const groups = await familyGroupService.getUserFamilyGroups();
+        if (groups.length > 0) {
+          // Utiliser le premier groupe comme groupe actif
+          setActiveFamilyGroup(groups[0]);
+        } else {
+          setActiveFamilyGroup(null);
+        }
+      } catch (error) {
+        // Silently fail - family sharing is optional
+        setActiveFamilyGroup(null);
+      }
+    };
+
+    loadFamilyGroup();
+  }, [user]);
+
+  // Charger les transactions partagées pour déterminer quelles transactions sont déjà partagées
+  useEffect(() => {
+    const loadSharedTransactions = async () => {
+      if (!activeFamilyGroup) {
+        setSharedTransactionIds(new Set());
+        return;
+      }
+
+      try {
+        const shared = await getFamilySharedTransactions(activeFamilyGroup.id, { limit: 1000 });
+        const ids = new Set(shared.map(t => t.transactionId).filter(Boolean) as string[]);
+        setSharedTransactionIds(ids);
+      } catch (e) {
+        setSharedTransactionIds(new Set());
+      }
+    };
+
+    loadSharedTransactions();
+  }, [activeFamilyGroup]);
 
   // Charger les informations du compte filtré
   useEffect(() => {
@@ -133,6 +190,50 @@ const TransactionsPage = () => {
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
+  // Handle sharing transaction with family
+  const handleShareTransaction = async (e: React.MouseEvent, transaction: Transaction) => {
+    e.stopPropagation(); // Prevent navigation to transaction detail
+    
+    if (!activeFamilyGroup || !user) {
+      toast.error('Vous devez être membre d\'un groupe familial pour partager');
+      return;
+    }
+
+    setSharingTransactionId(transaction.id);
+
+    try {
+      const shareInput: ShareTransactionInput = {
+        familyGroupId: activeFamilyGroup.id,
+        transactionId: transaction.id,
+        description: transaction.description,
+        amount: Math.abs(transaction.amount),
+        category: transaction.category,
+        date: new Date(transaction.date),
+        splitType: 'paid_by_one' as SplitType,
+        paidBy: user.id,
+        splitDetails: [], // Empty for paid_by_one
+        notes: undefined,
+      };
+
+      await shareTransaction(shareInput);
+      toast.success('Transaction partagée avec votre famille !');
+      // Add transaction ID to shared set
+      setSharedTransactionIds(prev => new Set([...prev, transaction.id]));
+    } catch (error: any) {
+      console.error('Erreur lors du partage de la transaction:', error);
+      const errorMessage = error?.message || 'Erreur lors du partage de la transaction';
+      
+      // Check if transaction is already shared
+      if (errorMessage.includes('déjà partagée')) {
+        toast.error('Cette transaction est déjà partagée');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setSharingTransactionId(null);
+    }
+  };
+
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
@@ -144,29 +245,12 @@ const TransactionsPage = () => {
         ? transaction.isRecurring === true 
         : transaction.isRecurring !== true;
     
-    // Log de débogage pour les transferts
-    if (transaction.type === 'transfer' && accountId) {
-      console.log('🔍 Filtrage transfert:', {
-        transactionId: transaction.id,
-        accountId: transaction.accountId,
-        filteredAccountId: accountId,
-        amount: transaction.amount,
-        description: transaction.description,
-        matchesAccount
-      });
-    }
     
     return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring;
   });
 
   // Sort filtered transactions by date (newest first)
   const sortedTransactions = sortTransactionsByDateDesc(filteredTransactions);
-  console.log('📅 Transactions sorted (newest first):', sortedTransactions.slice(0, 3).map(t => ({
-    id: t.id,
-    description: t.description,
-    date: t.date,
-    amount: t.amount
-  })));
 
   const totalIncome = transactions
     .filter(t => t.type === 'income')
@@ -514,7 +598,6 @@ const TransactionsPage = () => {
             <div 
               key={transaction.id} 
               onClick={() => {
-                console.log('🔍 Navigating to transaction:', transaction.id, 'Transaction type:', transaction.type);
                 navigate(`/transaction/${transaction.id}`);
               }}
               className="card hover:shadow-lg transition-shadow cursor-pointer"
@@ -550,6 +633,30 @@ const TransactionsPage = () => {
                           }}
                         />
                       )}
+                      {activeFamilyGroup && (() => {
+                        const isShared = sharedTransactionIds.has(transaction.id);
+                        return (
+                          <button
+                            onClick={(e) => handleShareTransaction(e, transaction)}
+                            disabled={sharingTransactionId === transaction.id || isShared}
+                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isShared 
+                                ? 'text-purple-600 hover:bg-purple-50' 
+                                : 'text-gray-400 hover:bg-gray-50'
+                            }`}
+                            title={isShared ? 'Déjà partagée avec la famille' : 'Partager avec la famille'}
+                            aria-label={isShared ? 'Déjà partagée avec la famille' : 'Partager avec la famille'}
+                          >
+                            {sharingTransactionId === transaction.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isShared ? (
+                              <UserCheck className="w-4 h-4" />
+                            ) : (
+                              <Users className="w-4 h-4" />
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <span>{category.name}</span>

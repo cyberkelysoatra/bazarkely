@@ -1,9 +1,9 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.22 (Construction POC - Système Numérotation BC Éditable + Fix Navigation Settings)  
-**Date de mise à jour:** 2025-12-03  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings  
+**Version:** 2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)  
+**Date de mise à jour:** 2025-12-08  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
 
 ---
@@ -146,6 +146,9 @@ accounts (id, user_id, name, type, balance, currency, is_default, created_at, up
 transactions (id, user_id, account_id, amount, type, category, description, date, created_at, updated_at)
 budgets (id, user_id, category, amount, spent, period, year, month, alert_threshold, created_at, updated_at)
 goals (id, user_id, name, target_amount, current_amount, deadline, priority, is_completed, created_at, updated_at)
+family_groups (id, name, created_by, invite_code, settings, created_at, updated_at)
+family_members (id, family_group_id, user_id, display_name, email, phone, role, joined_at, created_at, updated_at)
+family_shared_transactions (id, family_group_id, transaction_id, shared_by, paid_by, split_type, split_details, is_settled, notes, created_at, updated_at)
 ```
 
 **Nouvelles colonnes utilisateur (ajoutées 2025-10-19):**
@@ -1002,6 +1005,76 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - ✅ **Documentation:** SQL migration, types, architecture complète
 
 **Prêt pour Production:** ✅ OUI - Fonctionnalité complète et testée
+
+### **16.7 Espace Famille** ✅ COMPLET (Session 2025-12-08)
+
+**Date de complétion:** 8 décembre 2025  
+**Statut:** ✅ PRODUCTION READY - Espace Famille opérationnel avec paid_by column, résolution nom payeur, et nettoyage debug logging
+
+#### **16.7.1 Base de Données** ✅ COMPLÉTÉE
+
+**Table `family_shared_transactions` - Colonne `paid_by` ajoutée:**
+- **Colonne:** `paid_by UUID REFERENCES auth.users(id)` (nullable pour compatibilité ascendante)
+- **Index:** `idx_family_shared_transactions_paid_by` créé pour optimiser requêtes
+- **Migration SQL:** Exécutée avec succès (Session 2025-12-08)
+- **Fallback:** `paid_by || shared_by` pour compatibilité avec transactions existantes
+- **Documentation:** `DATABASE-SCHEMA-FAMILY-SHARED-TRANSACTIONS.md` créé
+
+**Schéma complet `family_shared_transactions`:**
+```sql
+family_shared_transactions (
+  id UUID PRIMARY KEY,
+  family_group_id UUID REFERENCES family_groups(id),
+  transaction_id UUID REFERENCES transactions(id),
+  shared_by UUID REFERENCES auth.users(id),
+  paid_by UUID REFERENCES auth.users(id),  -- NOUVELLE COLONNE (Session 2025-12-08)
+  split_type TEXT,
+  split_details JSONB,
+  is_settled BOOLEAN,
+  notes TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+```
+
+#### **16.7.2 Services Backend** ✅ MIS À JOUR
+
+**familySharingService.ts - Support `paid_by`:**
+- **Insertion:** `paid_by: input.paidBy || user.id` avec fallback sur `shared_by`
+- **Mapping:** `paidBy: row.paid_by || row.shared_by` pour compatibilité ascendante
+- **Fichier modifié:** `frontend/src/services/familySharingService.ts` (lignes 58, 166)
+
+#### **16.7.3 Interface Utilisateur** ✅ CORRIGÉE
+
+**FamilyDashboardPage.tsx - Résolution nom payeur:**
+- **Problème résolu:** Affichage "Inconnu" au lieu du nom réel du payeur
+- **Solution:** Utilisation `paidByMember?.displayName` avec fallback sur `sharedByMember?.displayName`
+- **accountMap ajouté:** Résolution noms comptes dans DashboardPage.tsx
+- **Fichier modifié:** `frontend/src/pages/FamilyDashboardPage.tsx` (ligne 588)
+- **Fichier modifié:** `frontend/src/pages/DashboardPage.tsx` (accountMap ajouté)
+
+#### **16.7.4 Nettoyage Debug Logging** ✅ COMPLÉTÉ
+
+**36 console.log supprimés:**
+- **JoinFamilyModal.tsx:** Debug logs nettoyés
+- **familySharingService.ts:** Debug logs nettoyés
+- **TransactionsPage.tsx:** Debug logs nettoyés
+- **Total:** 36 statements console.log supprimés
+
+**Fichiers modifiés:**
+- `frontend/src/components/Family/JoinFamilyModal.tsx`
+- `frontend/src/services/familySharingService.ts`
+- `frontend/src/pages/TransactionsPage.tsx`
+
+#### **16.7.5 Statut Final** ✅ PRODUCTION READY
+
+- ✅ **Base de données:** Colonne `paid_by` ajoutée avec migration SQL
+- ✅ **Services:** Support `paid_by` avec fallback `shared_by`
+- ✅ **Interface:** Résolution nom payeur corrigée (plus de "Inconnu")
+- ✅ **Code quality:** 36 console.log supprimés
+- ✅ **Documentation:** Schéma base de données documenté
+
+**Prêt pour Production:** ✅ OUI - Espace Famille 100% opérationnel
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3027,4 +3100,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2025-11-23 - BazarKELY v2.20 (Construction POC UX Optimisée - VAGUE 1 + VAGUE 2 + Header Cleanup PM + Phases Dropdown Enhanced)*
+*Document généré automatiquement le 2025-12-08 - BazarKELY v2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)*

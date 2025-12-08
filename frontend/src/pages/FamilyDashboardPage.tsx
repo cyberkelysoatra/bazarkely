@@ -11,14 +11,14 @@ import {
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
+import { supabase } from '../lib/supabase';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
 import type { 
   FamilyGroup, 
   FamilyMember, 
   FamilySharedTransaction,
-  FamilyDashboardStats,
-  ReimbursementRequest
+  FamilyDashboardStats
 } from '../types/family';
 import { CurrencyDisplay } from '../components/Currency';
 import { CreateFamilyModal, JoinFamilyModal } from '../components/Family';
@@ -33,11 +33,11 @@ const FamilyDashboardPage = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<FamilySharedTransaction[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<ReimbursementRequest[]>([]);
   const [stats, setStats] = useState({
     totalExpensesThisMonth: 0,
     memberCount: 0,
     pendingRequestsCount: 0,
+    pendingAmount: 0,
     netBalance: 0
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -87,32 +87,80 @@ const FamilyDashboardPage = () => {
         const groupMembers = await familyGroupService.getFamilyGroupMembers(selectedGroupId);
         setMembers(groupMembers);
 
-        // Charger les transactions récentes (10 dernières)
+        // Charger les transactions récentes (10 dernières pour l'affichage)
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const sharedTransactions = await familySharingService.getFamilySharedTransactions(
           selectedGroupId,
-          { limit: 10, startDate: startOfMonth }
+          { limit: 10 }
         );
         setRecentTransactions(sharedTransactions);
 
-        // Calculer les statistiques
-        const totalExpenses = sharedTransactions
-          .filter(t => t.amount > 0)
-          .reduce((sum, t) => sum + t.amount, 0);
+        // Charger toutes les transactions pour le calcul des dépenses (sans limite)
+        // Note: Le service filtre par shared_at, mais nous filtrons ensuite par date de transaction
+        const allTransactions = await familySharingService.getFamilySharedTransactions(
+          selectedGroupId
+        );
 
-        // TODO: Charger les demandes de remboursement en attente
-        // Pour l'instant, on simule avec 0
-        const pendingCount = 0;
+        // Calculer les statistiques - filtrer par mois/année et utiliser Math.abs
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        // Calculer le total des dépenses pour le mois en cours
+        const totalExpenses = allTransactions
+          .filter(t => {
+            const txDate = new Date(t.date);
+            const isExpense = t.transaction?.type === 'expense' || (!t.transaction?.type && (t.amount || 0) < 0);
+            return txDate.getMonth() === currentMonth && 
+                   txDate.getFullYear() === currentYear && 
+                   isExpense;
+          })
+          .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
 
-        // Calculer le solde net (simplifié - à améliorer avec les vrais soldes)
-        const currentUserMember = groupMembers.find(m => m.userId === user.id);
-        const netBalance = 0; // TODO: Calculer avec les vrais soldes
+        // Calculer le total des revenus pour le mois en cours
+        const totalIncome = allTransactions
+          .filter(t => {
+            const txDate = new Date(t.date);
+            const isIncome = t.transaction?.type === 'income' || (!t.transaction?.type && (t.amount || 0) > 0);
+            return txDate.getMonth() === currentMonth && 
+                   txDate.getFullYear() === currentYear && 
+                   isIncome;
+          })
+          .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+        // Calculer les demandes de remboursement en attente depuis les transactions partagées
+        // Le montant est dans la table transactions liée
+        const { data: rawTransactions, error: rawError } = await supabase
+          .from('family_shared_transactions')
+          .select(`
+            id,
+            has_reimbursement_request,
+            transactions (
+              amount
+            )
+          `)
+          .eq('family_group_id', selectedGroupId)
+          .eq('has_reimbursement_request', true);
+
+        if (rawError) {
+          console.error('Erreur lors de la récupération des transactions avec demande:', rawError);
+        }
+
+        // Calculer le nombre et le montant total des demandes en attente
+        const pendingCount = rawTransactions?.length || 0;
+        const pendingAmount = rawTransactions?.reduce((sum: number, t: any) => {
+          const amount = t.transactions?.amount || 0;
+          return sum + Math.abs(amount);
+        }, 0) || 0;
+
+        // Calculer le solde net = revenus - dépenses
+        const netBalance = totalIncome - totalExpenses;
 
         setStats({
           totalExpensesThisMonth: totalExpenses,
           memberCount: groupMembers.length,
           pendingRequestsCount: pendingCount,
+          pendingAmount: pendingAmount,
           netBalance
         });
       } catch (err) {
@@ -407,7 +455,14 @@ const FamilyDashboardPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-600 mb-1">En attente</p>
-                <p className="text-lg font-bold text-gray-900">{stats.pendingRequestsCount}</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {stats.pendingAmount.toLocaleString('fr-FR')} {currencySymbol}
+                </p>
+                {stats.pendingRequestsCount > 0 && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {stats.pendingRequestsCount} demande{stats.pendingRequestsCount > 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
@@ -447,7 +502,7 @@ const FamilyDashboardPage = () => {
               Voir tout
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             {members.slice(0, 4).map((member) => {
               const initials = (member.displayName || '')
                 .split(' ')
@@ -459,21 +514,24 @@ const FamilyDashboardPage = () => {
               return (
                 <div
                   key={member.id}
-                  className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full"
                 >
                   <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                     <span className="text-sm font-semibold text-purple-700">{initials}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {member.displayName}
-                      </p>
+                    <div className="flex items-center space-x-1.5">
                       {member.role === 'admin' && (
-                        <Crown className="w-4 h-4 text-yellow-500" />
+                        <Crown className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                       )}
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {member.displayName || 'Membre sans nom'}
+                        {user && user.id && (member.userId === user.id || (member as any).user_id === user.id) && (
+                          <span className="text-purple-600 font-semibold ml-1">(Vous)</span>
+                        )}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {member.role === 'admin' ? 'Administrateur' : 'Membre'}
                     </p>
                   </div>
@@ -501,7 +559,20 @@ const FamilyDashboardPage = () => {
           ) : (
             <div className="space-y-3">
               {recentTransactions.slice(0, 10).map((transaction) => {
-                const paidByMember = members.find(m => m.userId === transaction.paidBy);
+                const payerId = transaction.paidBy || transaction.sharedBy;
+                const paidByMember = payerId ? members.find(m => m.userId === payerId) : null;
+                const safeAmount = transaction.amount ?? 0;
+                const safeDescription = transaction.description ?? 'Transaction sans description';
+                const safeCategory = transaction.category ?? 'autre';
+                const safeDate = transaction.date ? new Date(transaction.date) : new Date();
+                
+                // Déterminer si c'est un revenu ou une dépense
+                const isIncome = transaction.transaction?.type === 'income' || 
+                                (!transaction.transaction?.type && safeAmount > 0);
+                const displayAmount = Math.abs(safeAmount);
+                const colorClass = isIncome ? 'text-green-600' : 'text-red-600';
+                const sign = isIncome ? '+' : '-';
+                
                 return (
                   <div
                     key={transaction.id}
@@ -510,23 +581,23 @@ const FamilyDashboardPage = () => {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {transaction.description}
+                        {safeDescription}
                       </p>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-xs text-gray-500">
                           {paidByMember?.displayName || 'Inconnu'}
                         </span>
                         <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">{transaction.category}</span>
+                        <span className="text-xs text-gray-500">{safeCategory}</span>
                         <span className="text-xs text-gray-400">•</span>
                         <span className="text-xs text-gray-500">
-                          {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                          {safeDate.toLocaleDateString('fr-FR')}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-red-600">
-                        -{transaction.amount.toLocaleString('fr-FR')} {currencySymbol}
+                      <p className={`text-sm font-semibold ${colorClass}`}>
+                        {sign}{displayAmount.toLocaleString('fr-FR')} {currencySymbol}
                       </p>
                       {transaction.isSettled && (
                         <CheckCircle className="w-4 h-4 text-green-500 mt-1" />

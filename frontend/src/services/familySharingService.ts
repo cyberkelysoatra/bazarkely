@@ -55,7 +55,7 @@ export function mapRowToFamilySharedTransaction(
     category: row.category,
     date: new Date((row as any).shared_at || row.date || (row as any).created_at),
     splitType: row.split_type,
-    paidBy: row.paid_by,
+    paidBy: row.paid_by || row.shared_by, // Fallback sur shared_by pour compatibilité avec anciennes données
     splitDetails: row.split_details || [],
     isSettled: row.is_settled,
     notes: row.notes || undefined,
@@ -67,11 +67,13 @@ export function mapRowToFamilySharedTransaction(
 /**
  * Convertit une ligne Supabase (snake_case) vers FamilySharingRule (camelCase)
  */
-export function mapRowToFamilySharingRule(row: FamilySharingRuleRow): FamilySharingRule {
+export function mapRowToFamilySharingRule(row: FamilySharingRuleRow | any): FamilySharingRule {
+  // La colonne dans la DB est user_id, pas created_by
+  const userId = (row as any).user_id || row.created_by;
   return {
     id: row.id,
     familyGroupId: row.family_group_id,
-    createdBy: row.created_by,
+    createdBy: userId,
     name: row.name,
     description: row.description || undefined,
     category: row.category || undefined,
@@ -153,21 +155,21 @@ export async function shareTransaction(
     }
 
     // Créer la transaction partagée
+    // Note: family_shared_transactions ne contient que les colonnes de référence
+    // Les données de transaction (description, amount, category, date) viennent de la table transactions via JOIN
     const { data: sharedTransaction, error: insertError } = await supabase
       .from('family_shared_transactions')
       .insert({
         family_group_id: input.familyGroupId,
         transaction_id: input.transactionId || null,
         shared_by: user.id,
-        description: input.description,
-        amount: input.amount,
-        category: input.category,
-        shared_at: input.date.toISOString(),
+        paid_by: input.paidBy || user.id, // Utiliser paidBy ou fallback sur shared_by (user.id)
+        is_private: false, // Par défaut, la transaction n'est pas privée
         split_type: input.splitType,
-        paid_by: input.paidBy,
-        split_details: input.splitDetails as any, // JSONB
-        is_settled: false,
-        notes: input.notes || null,
+        split_details: input.splitDetails && input.splitDetails.length > 0 
+          ? (input.splitDetails as any) // JSONB
+          : null,
+        has_reimbursement_request: false, // Par défaut, pas de demande de remboursement
       } as any)
       .select()
       .single();
@@ -178,7 +180,55 @@ export async function shareTransaction(
       );
     }
 
-    return mapRowToFamilySharedTransaction(sharedTransaction as FamilySharedTransactionRow);
+    // Récupérer la transaction partagée avec les données de transaction jointes
+    // car family_shared_transactions ne contient que les références
+    const sharedTransactionId = (sharedTransaction as any).id;
+    const { data: sharedTransactionWithDetails, error: fetchError } = await supabase
+      .from('family_shared_transactions')
+      .select(`
+        *,
+        transactions (
+          id,
+          description,
+          amount,
+          category,
+          date,
+          type
+        )
+      `)
+      .eq('id', sharedTransactionId)
+      .single();
+
+    if (fetchError || !sharedTransactionWithDetails) {
+      // Si le JOIN échoue, retourner quand même la transaction partagée de base
+      // Le mapping gérera les valeurs manquantes
+      return mapRowToFamilySharedTransaction(sharedTransaction as FamilySharedTransactionRow);
+    }
+
+    // Utiliser les données jointes pour le mapping
+    const row = sharedTransactionWithDetails as any;
+    const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+
+    // Si une transaction est jointe, utiliser ses données
+    if (row.transactions) {
+      const transaction = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+      if (transaction) {
+        baseTransaction.description = transaction.description || '';
+        baseTransaction.amount = transaction.amount || 0;
+        baseTransaction.category = transaction.category || '';
+        baseTransaction.date = new Date(transaction.date);
+        baseTransaction.transaction = {
+          id: transaction.id,
+          description: transaction.description,
+          amount: transaction.amount,
+          category: transaction.category,
+          date: new Date(transaction.date),
+          type: transaction.type,
+        } as any;
+      }
+    }
+
+    return baseTransaction;
   } catch (error) {
     console.error('Erreur dans shareTransaction:', error);
     throw error;
@@ -257,9 +307,13 @@ export async function updateSharedTransaction(
       .from('family_shared_transactions')
       .select('shared_by')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !sharedTransaction) {
+    if (fetchError) {
+      throw new Error(`Erreur lors de la vérification: ${fetchError.message}`);
+    }
+
+    if (!sharedTransaction) {
       throw new Error('Transaction partagée non trouvée');
     }
 
@@ -268,35 +322,258 @@ export async function updateSharedTransaction(
     }
 
     // Préparer les données de mise à jour
+    // Seules les colonnes existantes dans family_shared_transactions peuvent être mises à jour:
+    // id, family_group_id, transaction_id, shared_by, is_private, split_type, split_details, has_reimbursement_request, shared_at
     const updateData: any = {};
+    const updatesAny = updates as any; // Permet d'accéder aux propriétés qui peuvent être passées
+    
+    // Colonnes valides à mettre à jour
+    if (updatesAny.isPrivate !== undefined) {
+      updateData.is_private = updatesAny.isPrivate;
+    }
     if (updates.splitType !== undefined) {
       updateData.split_type = updates.splitType;
     }
     if (updates.splitDetails !== undefined) {
       updateData.split_details = updates.splitDetails as any; // JSONB
     }
-    if (updates.isSettled !== undefined) {
-      updateData.is_settled = updates.isSettled;
+    if (updatesAny.hasReimbursementRequest !== undefined) {
+      updateData.has_reimbursement_request = updatesAny.hasReimbursementRequest;
     }
-    if (updates.notes !== undefined) {
-      updateData.notes = updates.notes || null;
+    
+    // DO NOT include: notes, amount, description, category, paid_by, is_settled
+    // Ces colonnes n'existent pas dans family_shared_transactions
+
+    // If updating hasReimbursementRequest, use the RPC function (bypasses RLS)
+    // Use RPC whenever hasReimbursementRequest is being updated, not just when it's the only field
+    if (updatesAny.hasReimbursementRequest !== undefined) {
+      
+      const { error: rpcError } = await (supabase.rpc as any)('update_reimbursement_request', {
+        p_shared_transaction_id: id,
+        p_has_reimbursement_request: updatesAny.hasReimbursementRequest
+      });
+
+      if (rpcError) {
+        throw new Error(`Erreur lors de la mise à jour: ${rpcError.message}`);
+      }
+
+      // If other fields are also being updated, update them separately
+      const otherUpdateData: any = {};
+      if (updatesAny.isPrivate !== undefined) {
+        otherUpdateData.is_private = updatesAny.isPrivate;
+      }
+      if (updates.splitType !== undefined) {
+        otherUpdateData.split_type = updates.splitType;
+      }
+      if (updates.splitDetails !== undefined) {
+        otherUpdateData.split_details = updates.splitDetails as any;
+      }
+
+      // Update other fields if any
+      if (Object.keys(otherUpdateData).length > 0) {
+        const { error: otherUpdateError } = await (supabase
+          .from('family_shared_transactions') as any)
+          .update(otherUpdateData)
+          .eq('id', id);
+
+        if (otherUpdateError) {
+          console.warn('Error updating other fields:', otherUpdateError);
+          // Don't throw - the RPC update succeeded, other fields can be updated later
+        }
+      }
+
+      // Fetch the updated transaction with JOIN to get transaction details
+      const { data: updated, error: fetchError } = await supabase
+        .from('family_shared_transactions')
+        .select(`
+          *,
+          transactions (
+            id,
+            description,
+            amount,
+            category,
+            date,
+            type
+          )
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw new Error(`Erreur lors de la récupération: ${fetchError.message}`);
+      }
+
+      if (!updated) {
+        throw new Error('Impossible de récupérer la transaction mise à jour');
+      }
+
+      // Map the result with joined transaction data
+      const row = updated as any;
+      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+
+      // Extract joined transaction data if available
+      if (row.transactions) {
+        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+        if (transactionData) {
+          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
+          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
+            ? transactionData.amount 
+            : (baseTransaction.amount ?? 0);
+          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
+          if (transactionData.date) {
+            baseTransaction.date = new Date(transactionData.date);
+          }
+        }
+      }
+
+      return baseTransaction;
     }
 
-    // Mettre à jour
+    // Mettre à jour (pour les autres colonnes, sans hasReimbursementRequest)
+    // Remove has_reimbursement_request from updateData if it was there (shouldn't be, but just in case)
+    const updateDataWithoutReimbursement = { ...updateData };
+    delete updateDataWithoutReimbursement.has_reimbursement_request;
+
+    // Only proceed with UPDATE if there are other fields to update
+    if (Object.keys(updateDataWithoutReimbursement).length === 0) {
+      // No other fields to update, just fetch the current transaction
+      const { data: currentTransaction, error: fetchError } = await supabase
+        .from('family_shared_transactions')
+        .select(`
+          *,
+          transactions (
+            id,
+            description,
+            amount,
+            category,
+            date,
+            type
+          )
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw new Error(`Erreur lors de la récupération: ${fetchError.message}`);
+      }
+
+      if (!currentTransaction) {
+        throw new Error('Transaction partagée non trouvée');
+      }
+
+      const row = currentTransaction as any;
+      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+
+      if (row.transactions) {
+        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+        if (transactionData) {
+          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
+          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
+            ? transactionData.amount 
+            : (baseTransaction.amount ?? 0);
+          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
+          if (transactionData.date) {
+            baseTransaction.date = new Date(transactionData.date);
+          }
+        }
+      }
+
+      return baseTransaction;
+    }
+
     const { data: updatedTransaction, error: updateError } = await (supabase
       .from('family_shared_transactions') as any)
-      .update(updateData)
+      .update(updateDataWithoutReimbursement)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (updateError || !updatedTransaction) {
-      throw new Error(
-        `Erreur lors de la mise à jour: ${updateError?.message || 'Erreur inconnue'}`
-      );
+    if (updateError) {
+      throw new Error(`Erreur lors de la mise à jour: ${updateError.message}`);
     }
 
-    return mapRowToFamilySharedTransaction(updatedTransaction as FamilySharedTransactionRow);
+    if (!updatedTransaction) {
+      // No row updated - might be RLS issue or wrong ID
+      console.warn('No row updated - checking if transaction exists...');
+      // Vérifier si la transaction existe toujours
+      const { data: checkTransaction, error: checkError } = await supabase
+        .from('family_shared_transactions')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (checkError) {
+        throw new Error(`Erreur lors de la vérification: ${checkError.message}`);
+      }
+      
+      if (!checkTransaction) {
+        throw new Error('Transaction partagée non trouvée après mise à jour');
+      }
+      
+      // La transaction existe mais RLS bloque peut-être le SELECT après UPDATE
+      // Récupérer la transaction avec JOIN pour avoir les données complètes
+      const { data: fetchedTransaction, error: fetchError } = await supabase
+        .from('family_shared_transactions')
+        .select(`
+          *,
+          transactions (
+            id,
+            description,
+            amount,
+            category,
+            date,
+            type
+          )
+        `)
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (fetchError || !fetchedTransaction) {
+        throw new Error('Impossible de récupérer la transaction mise à jour (problème RLS possible)');
+      }
+      
+      // Utiliser les données récupérées avec JOIN
+      const row = fetchedTransaction as any;
+      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+      
+      // Extraire les données de transaction jointes si disponibles
+      if (row.transactions) {
+        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+        if (transactionData) {
+          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
+          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
+            ? transactionData.amount 
+            : (baseTransaction.amount ?? 0);
+          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
+          if (transactionData.date) {
+            baseTransaction.date = new Date(transactionData.date);
+          }
+        }
+      }
+      
+      return baseTransaction;
+    }
+
+    // Transaction mise à jour avec succès, mapper les données
+    const row = updatedTransaction as any;
+    const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+    
+    // Si une transaction est jointe, extraire ses données
+    if (row.transactions) {
+      const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+      if (transactionData) {
+        baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
+        baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
+          ? transactionData.amount 
+          : (baseTransaction.amount ?? 0);
+        baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
+        if (transactionData.date) {
+          baseTransaction.date = new Date(transactionData.date);
+        }
+      }
+    }
+    
+    return baseTransaction;
   } catch (error) {
     console.error('Erreur dans updateSharedTransaction:', error);
     throw error;
@@ -337,10 +614,20 @@ export async function getFamilySharedTransactions(
       throw new Error('Vous n\'êtes pas membre de ce groupe');
     }
 
-    // Construire la requête
+    // Construire la requête avec JOIN sur transactions
     let query = supabase
       .from('family_shared_transactions')
-      .select('*')
+      .select(`
+        *,
+        transactions (
+          id,
+          description,
+          amount,
+          category,
+          date,
+          type
+        )
+      `)
       .eq('family_group_id', groupId);
 
     // Filtrer les transactions privées (sauf si partagées par l'utilisateur actuel)
@@ -376,13 +663,53 @@ export async function getFamilySharedTransactions(
       return [];
     }
 
-    // Convertir les données
+    // Convertir les données avec les détails de transaction jointes
     const result: FamilySharedTransaction[] = (sharedTransactions as any[]).map((row: any) => {
       const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
 
-      // transaction field is optional and not available without join
-      // If transaction_id is present, we can use it but won't have full transaction details
-      baseTransaction.transaction = undefined;
+      // Extraire les données de transaction jointes
+      let transactionData: any = null;
+      
+      if (row.transactions) {
+        // Gérer les deux formats possibles : tableau ou objet
+        if (Array.isArray(row.transactions) && row.transactions.length > 0) {
+          transactionData = row.transactions[0];
+        } else if (!Array.isArray(row.transactions) && typeof row.transactions === 'object') {
+          transactionData = row.transactions;
+        }
+      }
+
+      // Si une transaction est jointe, utiliser ses données
+      if (transactionData) {
+        // Toujours utiliser les données de transaction si disponibles, même si vides
+        baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
+        baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
+          ? transactionData.amount 
+          : (baseTransaction.amount ?? 0);
+        baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
+        
+        // Utiliser la date de la transaction si disponible, sinon celle du partage
+        if (transactionData.date) {
+          baseTransaction.date = new Date(transactionData.date);
+        }
+
+        // Stocker la transaction complète
+        baseTransaction.transaction = {
+          id: transactionData.id,
+          description: transactionData.description || 'Sans description',
+          amount: transactionData.amount ?? 0,
+          category: transactionData.category || 'autre',
+          date: transactionData.date ? new Date(transactionData.date) : baseTransaction.date,
+          type: transactionData.type || 'expense',
+        } as any;
+      } else {
+        // Pas de transaction jointe (transaction virtuelle ou transaction_id null)
+        // Utiliser les valeurs par défaut si manquantes
+        baseTransaction.description = baseTransaction.description || 'Sans description';
+        baseTransaction.amount = baseTransaction.amount ?? 0;
+        baseTransaction.category = baseTransaction.category || 'autre';
+        baseTransaction.transaction = undefined;
+      }
 
       return baseTransaction;
     }) as FamilySharedTransaction[];
@@ -429,7 +756,7 @@ export async function getUserSharingRules(groupId: string): Promise<FamilySharin
       .from('family_sharing_rules')
       .select('*')
       .eq('family_group_id', groupId)
-      .eq('created_by', user.id)
+      .eq('user_id', user.id)
       .eq('is_active', true)
       .order('category', { ascending: true, nullsFirst: false });
 
@@ -489,19 +816,19 @@ export async function upsertSharingRule(
     // Préparer les données
     const ruleData: any = {
       family_group_id: groupId,
-      created_by: user.id,
+      user_id: user.id,
       name: `Partage automatique: ${category}`,
       category: category,
       split_type: defaultSplitType || 'split_equal',
       is_active: autoShare,
     };
 
-    // Utiliser upsert avec ON CONFLICT sur (family_group_id, created_by, category)
+    // Utiliser upsert avec ON CONFLICT sur (family_group_id, user_id, category)
     // Note: Cela nécessite une contrainte unique dans la base de données
     const { data: rule, error: upsertError } = await supabase
       .from('family_sharing_rules')
       .upsert(ruleData, {
-        onConflict: 'family_group_id,created_by,category',
+        onConflict: 'family_group_id,user_id,category',
       } as any)
       .select()
       .single();
@@ -512,7 +839,7 @@ export async function upsertSharingRule(
         .from('family_sharing_rules')
         .select('id')
         .eq('family_group_id', groupId)
-        .eq('created_by', user.id)
+        .eq('user_id', user.id)
         .eq('category', category)
         .single();
 
@@ -584,7 +911,7 @@ export async function deleteSharingRule(ruleId: string): Promise<void> {
     // Vérifier que l'utilisateur est le propriétaire
     const { data: rule, error: fetchError } = await supabase
       .from('family_sharing_rules')
-      .select('created_by')
+      .select('user_id')
       .eq('id', ruleId)
       .single();
 
@@ -592,7 +919,7 @@ export async function deleteSharingRule(ruleId: string): Promise<void> {
       throw new Error('Règle non trouvée');
     }
 
-    if ((rule as any).created_by !== user.id) {
+    if ((rule as any).user_id !== user.id) {
       throw new Error('Vous n\'êtes pas autorisé à supprimer cette règle');
     }
 
@@ -647,7 +974,7 @@ export async function shouldAutoShare(groupId: string, category: string): Promis
       .from('family_sharing_rules')
       .select('is_active')
       .eq('family_group_id', groupId)
-      .eq('created_by', user.id)
+      .eq('user_id', user.id)
       .eq('category', category)
       .eq('is_active', true)
       .single();
@@ -808,6 +1135,89 @@ export async function unshareRecurringTransaction(sharedRecurringId: string): Pr
     }
   } catch (error) {
     console.error('Erreur dans unshareRecurringTransaction:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère une transaction partagée par son transactionId
+ * @param transactionId - ID de la transaction
+ * @param familyGroupId - ID du groupe familial (optionnel, pour vérification)
+ * @returns La transaction partagée ou null si non trouvée
+ * @throws Error si l'utilisateur n'est pas authentifié
+ */
+export async function getSharedTransactionByTransactionId(
+  transactionId: string,
+  familyGroupId?: string
+): Promise<FamilySharedTransaction | null> {
+  try {
+    // Vérifier l'authentification
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    // Construire la requête avec JOIN sur transactions
+    // car family_shared_transactions ne contient que les colonnes de référence
+    let query = supabase
+      .from('family_shared_transactions')
+      .select(`
+        *,
+        transactions (
+          id,
+          description,
+          amount,
+          category,
+          date,
+          type
+        )
+      `)
+      .eq('transaction_id', transactionId);
+
+    // Filtrer par groupe si fourni
+    if (familyGroupId) {
+      query = query.eq('family_group_id', familyGroupId);
+    }
+
+    const { data: sharedTransaction, error: fetchError } = await query.maybeSingle();
+
+    if (fetchError) {
+      throw new Error(`Erreur lors de la récupération: ${fetchError.message}`);
+    }
+
+    if (!sharedTransaction) {
+      return null;
+    }
+
+    // Utiliser les données jointes pour le mapping
+    const row = sharedTransaction as any;
+    const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
+
+    // Si une transaction est jointe, utiliser ses données
+    if (row.transactions) {
+      const transaction = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
+      if (transaction) {
+        baseTransaction.description = transaction.description || '';
+        baseTransaction.amount = transaction.amount || 0;
+        baseTransaction.category = transaction.category || '';
+        baseTransaction.date = new Date(transaction.date);
+        baseTransaction.transaction = {
+          id: transaction.id,
+          description: transaction.description,
+          amount: transaction.amount,
+          category: transaction.category,
+          date: new Date(transaction.date),
+          type: transaction.type,
+        } as any;
+      }
+    }
+
+    return baseTransaction;
+  } catch (error) {
+    console.error('Erreur dans getSharedTransactionByTransactionId:', error);
     throw error;
   }
 }

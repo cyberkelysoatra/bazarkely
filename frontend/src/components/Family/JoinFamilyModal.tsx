@@ -35,12 +35,9 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
     id: string;
   } | null>(null);
 
-  // Log quand le modal s'ouvre/ferme
+  // Reset state when modal closes
   useEffect(() => {
-    if (isOpen) {
-      console.log('🔵 [JoinFamily] Modal opened');
-    } else {
-      console.log('🔵 [JoinFamily] Modal closed, resetting state');
+    if (!isOpen) {
       setInviteCode('');
       setDisplayName('');
       setGroupPreview(null);
@@ -68,25 +65,18 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
     setInviteCode(normalized);
 
     if (normalized.length === 6 && validateCodeFormat(normalized)) {
-      console.log('🔵 [JoinFamily] Validating code:', normalized);
       setIsValidatingCode(true);
       setError(null);
 
       try {
         const group = await getFamilyGroupByCode(normalized);
         if (group) {
-          console.log('✅ [JoinFamily] Group found:', {
-            id: group.id,
-            name: group.name,
-            memberCount: group.memberCount,
-          });
           setGroupPreview({
             name: group.name,
             memberCount: group.memberCount,
             id: group.id,
           });
         } else {
-          console.log('❌ [JoinFamily] Group not found for code:', normalized);
           setGroupPreview(null);
           setError('Code d\'invitation invalide ou expiré');
         }
@@ -111,29 +101,20 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log('🔵 [JoinFamily] handleSubmit called');
     e.preventDefault();
     setError(null);
 
-    // Log des valeurs actuelles
-    console.log('🔵 [JoinFamily] inviteCode:', inviteCode);
-    console.log('🔵 [JoinFamily] groupPreview:', groupPreview);
-    console.log('🔵 [JoinFamily] validateCodeFormat(inviteCode):', validateCodeFormat(inviteCode));
-
     // Validation
     if (!inviteCode || !validateCodeFormat(inviteCode)) {
-      console.log('❌ [JoinFamily] Validation failed: invalid inviteCode');
       setError('Veuillez saisir un code d\'invitation valide');
       return;
     }
 
     if (!groupPreview) {
-      console.log('❌ [JoinFamily] Validation failed: groupPreview is null');
       setError('Code d\'invitation invalide');
       return;
     }
 
-    console.log('🔵 [JoinFamily] Validation passed, setting loading state');
     setIsLoading(true);
     setError(null);
 
@@ -143,16 +124,7 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
         invitationCode: inviteCode,
       };
 
-      console.log('🔵 [JoinFamily] Calling joinFamilyGroup with input:', {
-        familyGroupId: input.familyGroupId,
-        invitationCode: input.invitationCode,
-        groupPreviewName: groupPreview.name,
-        groupPreviewMemberCount: groupPreview.memberCount,
-      });
-
-      const result = await joinFamilyGroup(input);
-
-      console.log('✅ [JoinFamily] Join successful, result:', result);
+      await joinFamilyGroup(input);
 
       // Toast de succès
       toast.success(
@@ -162,19 +134,13 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
         }
       );
 
-      console.log('🔵 [JoinFamily] Toast shown, closing modal');
-
       // Fermer le modal et appeler onSuccess pour rafraîchir les groupes
       onClose();
       if (onSuccess) {
-        console.log('🔵 [JoinFamily] onSuccess callback exists, will call after 300ms');
         // Petit délai pour laisser voir le toast
         setTimeout(() => {
-          console.log('🔵 [JoinFamily] Calling onSuccess callback');
           onSuccess();
         }, 300);
-      } else {
-        console.log('🔵 [JoinFamily] No onSuccess callback provided');
       }
     } catch (err: any) {
       console.error('❌ [JoinFamily] Error:', err);
@@ -201,13 +167,11 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
         }
       }
       
-      console.log('🔵 [JoinFamily] Setting error message:', errorMessage);
       setError(errorMessage);
       toast.error(errorMessage, {
         duration: 4000,
       });
     } finally {
-      console.log('🔵 [JoinFamily] handleSubmit complete, setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -349,19 +313,6 @@ const JoinFamilyModal: React.FC<JoinFamilyModalProps> = ({
                 !groupPreview ||
                 !validateCodeFormat(inviteCode)
               }
-              onClick={() => {
-                console.log('🔵 [JoinFamily] Submit button clicked');
-                console.log('🔵 [JoinFamily] Button disabled state:', {
-                  isLoading,
-                  isValidatingCode,
-                  hasGroupPreview: !!groupPreview,
-                  isValidCode: validateCodeFormat(inviteCode),
-                  disabled: isLoading ||
-                    isValidatingCode ||
-                    !groupPreview ||
-                    !validateCodeFormat(inviteCode),
-                });
-              }}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isLoading ? (

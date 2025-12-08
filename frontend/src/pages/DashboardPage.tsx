@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
@@ -8,6 +8,7 @@ import notificationService from '../services/notificationService';
 // Essential expense categories for emergency fund calculation
 const ESSENTIAL_CATEGORIES = ['Alimentation', 'Logement', 'Transport', 'Santé', 'Éducation'] as const;
 import type { Transaction } from '../types';
+import { TRANSACTION_CATEGORIES } from '../constants';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
 import NotificationSettings from '../components/NotificationSettings';
 import RecurringTransactionsWidget from '../components/Dashboard/RecurringTransactionsWidget';
@@ -76,6 +77,15 @@ const DashboardPage = () => {
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+
+  // Create account map for efficient account name lookup
+  const accountMap = useMemo(() => {
+    const map = new Map<string, string>();
+    userAccounts.forEach(account => {
+      map.set(account.id, account.name);
+    });
+    return map;
+  }, [userAccounts]);
   
   // Currency integration states
   // Read display currency preference from localStorage on mount
@@ -515,6 +525,8 @@ const DashboardPage = () => {
               const isIncome = transaction.type === 'income';
               const isTransfer = transaction.type === 'transfer';
               const isDebit = transaction.amount < 0;
+              const accountName = accountMap.get(transaction.accountId) || 'Compte inconnu';
+              const category = TRANSACTION_CATEGORIES[transaction.category] || { name: transaction.category };
               
               return (
                 <div key={transaction.id} className="flex items-center justify-between py-2">
@@ -523,7 +535,7 @@ const DashboardPage = () => {
                       {isTransfer ? (isDebit ? `Sortie: ${transaction.description}` : `Entrée: ${transaction.description}`) : transaction.description}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                      {accountName} • {category.name} • {new Date(transaction.date).toLocaleDateString('fr-FR')}
                       {isTransfer && (
                         <span className={`ml-2 ${isDebit ? 'text-red-600' : 'text-green-600'}`}>
                           • {isDebit ? 'Débit' : 'Crédit'}

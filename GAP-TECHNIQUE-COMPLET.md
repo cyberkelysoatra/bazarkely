@@ -1,8 +1,8 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 4.8 (Construction POC Phases Dropdown Gap Documenté)  
-**Date de mise à jour:** 2025-11-23  
+**Version:** 4.9 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)  
+**Date de mise à jour:** 2025-12-08  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté
 
@@ -781,6 +781,42 @@ import Button from '../components/UI/Button';
 - **Fonctionnalités:** Calcul dynamique du fonds d'urgence basé sur 6 mois de dépenses essentielles, affichage correct du montant objectif et du pourcentage de progression
 - **Impact:** Carte d'objectifs d'épargne maintenant fonctionnelle avec calculs corrects
 
+## 🎉 GAPS RÉSOLUS (SESSION 8 DÉCEMBRE 2025)
+
+### **Gap Affichage "Inconnu" pour Payeur** ✅ RÉSOLU 2025-12-08
+- **Problème identifié:** FamilyDashboardPage affichait "Inconnu" au lieu du nom réel du payeur pour les transactions partagées
+- **Cause racine:** Résolution du payeur utilisait uniquement `sharedBy` au lieu de `paidBy` avec fallback
+- **Solution implémentée:** Utilisation `paidByMember?.displayName` avec fallback sur `sharedByMember?.displayName`
+- **Fichier modifié:** `frontend/src/pages/FamilyDashboardPage.tsx` (ligne 588)
+- **Impact:** Affichage correct du nom du payeur réel au lieu de "Inconnu"
+
+### **Gap Colonne paid_by Manquante** ✅ RÉSOLU 2025-12-08
+- **Problème identifié:** Colonne `paid_by` manquante dans table `family_shared_transactions`, empêchant distinction entre utilisateur qui partage et utilisateur qui paie
+- **Solution implémentée:** Migration SQL ajoutant colonne `paid_by UUID REFERENCES auth.users(id)` avec index
+- **Fichier migration:** Migration SQL exécutée (Session 2025-12-08)
+- **Service modifié:** `frontend/src/services/familySharingService.ts` - Support `paid_by` avec fallback `shared_by`
+- **Impact:** Distinction claire entre `shared_by` (qui partage) et `paid_by` (qui paie), résolution nom payeur fonctionnelle
+
+### **Gap Debug Logging Excessif** ✅ RÉSOLU 2025-12-08
+- **Problème identifié:** 36 console.log statements de debug présents dans code production
+- **Fichiers affectés:** JoinFamilyModal.tsx, familySharingService.ts, TransactionsPage.tsx
+- **Solution implémentée:** Suppression de tous les console.log de debug
+- **Total nettoyé:** 36 statements console.log supprimés
+- **Impact:** Code production plus propre, pas de pollution console navigateur
+
+### **Gap accountMap Manquant DashboardPage** ✅ RÉSOLU 2025-12-08
+- **Problème identifié:** DashboardPage affichait "Compte inconnu" au lieu du nom réel du compte
+- **Solution implémentée:** Ajout de `accountMap` pour résolution noms comptes
+- **Fichier modifié:** `frontend/src/pages/DashboardPage.tsx`
+- **Impact:** Affichage correct des noms de comptes dans DashboardPage
+
+**Résumé Session 2025-12-08:**
+- **4 gaps résolus:** Affichage "Inconnu", colonne paid_by manquante, debug logging excessif, accountMap manquant
+- **1 migration SQL:** Ajout colonne paid_by avec index
+- **4 fichiers modifiés:** FamilyDashboardPage.tsx, familySharingService.ts, TransactionsPage.tsx, DashboardPage.tsx
+- **36 console.log supprimés:** Code production nettoyé
+- **Impact:** Espace Famille 100% opérationnel et prêt pour production
+
 ## 🎉 GAPS RÉSOLUS (SESSION 3 NOVEMBRE 2025)
 
 ### **Gap de Transactions Récurrentes** ✅ RÉSOLU 2025-11-03
@@ -1481,4 +1517,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2025-11-15 - BazarKELY v4.6 (Construction POC Smart Defaults + Bugs Corrigés)*
+*Document généré automatiquement le 2025-12-08 - BazarKELY v4.9 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)*
