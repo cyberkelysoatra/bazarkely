@@ -422,13 +422,23 @@ export async function updateSharedTransaction(
                 } else {
                   const debtorMember = debtorMembers[0];
 
-                  // Calculer le montant à rembourser (utilise le taux configuré ou 100% par défaut, ou selon split_details)
+                  // Calculer le montant à rembourser (utilise le taux personnalisé, le taux configuré, ou 100% par défaut, ou selon split_details)
                   const transactionAmount = Math.abs(((sharedTx as any).transactions as any)?.amount || 0);
                   
-                  // Get configured reimbursement rate from localStorage (default to 100%)
-                  const groupId = (sharedTx as any).family_group_id;
-                  const defaultRate = groupId ? localStorage.getItem(`bazarkely_family_${groupId}_reimbursement_rate`) : null;
-                  const rate = defaultRate ? parseInt(defaultRate, 10) / 100 : 1.0; // Default 100%
+                  // Priority: customReimbursementRate > localStorage setting > default 100%
+                  let rate = 1.0; // Default 100%
+                  
+                  if (updatesAny.customReimbursementRate !== undefined && updatesAny.customReimbursementRate !== null) {
+                    // Use custom rate passed from TransactionDetailPage
+                    rate = Math.min(100, Math.max(1, updatesAny.customReimbursementRate)) / 100;
+                    console.log('[TOGGLE REMBOURSEMENT] Using custom reimbursement rate:', updatesAny.customReimbursementRate + '%');
+                  } else {
+                    // Get configured reimbursement rate from localStorage (default to 100%)
+                    const groupId = (sharedTx as any).family_group_id;
+                    const defaultRate = groupId ? localStorage.getItem(`bazarkely_family_${groupId}_reimbursement_rate`) : null;
+                    rate = defaultRate ? parseInt(defaultRate, 10) / 100 : 1.0; // Default 100%
+                    console.log('[TOGGLE REMBOURSEMENT] Using family default rate:', (rate * 100) + '%');
+                  }
                   
                   let reimbursementAmount = transactionAmount * rate; // Use configured rate
 
@@ -442,28 +452,53 @@ export async function updateSharedTransaction(
                     }
                   }
 
-                  // Créer la demande de remboursement
-                  const { error: insertError } = await supabase
+                  // Créer ou mettre à jour la demande de remboursement
+                  const { data: existingRequest, error: checkRequestError } = await supabase
                     .from('reimbursement_requests')
-                    .insert({
-                      shared_transaction_id: id,
-                      from_member_id: debtorMember.id,
-                      to_member_id: creditorMember.id,
-                      amount: reimbursementAmount,
-                      status: 'pending'
-                    } as any);
+                    .select('id')
+                    .eq('shared_transaction_id', id)
+                    .eq('status', 'pending')
+                    .maybeSingle();
 
-                  if (insertError) {
-                    console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la création de la demande:', insertError.message);
+                  if (checkRequestError && checkRequestError.code !== 'PGRST116') {
+                    console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la vérification:', checkRequestError.message);
+                  } else if (existingRequest) {
+                    // Update existing reimbursement request with new amount
+                    const { error: updateError } = await supabase
+                      .from('reimbursement_requests')
+                      .update({ amount: reimbursementAmount })
+                      .eq('id', existingRequest.id);
+
+                    if (updateError) {
+                      console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la mise à jour de la demande:', updateError.message);
+                    } else {
+                      console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement mise à jour avec montant:', reimbursementAmount);
+                    }
                   } else {
-                    console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement créée avec succès');
+                    // Create new reimbursement request
+                    const { error: insertError } = await supabase
+                      .from('reimbursement_requests')
+                      .insert({
+                        shared_transaction_id: id,
+                        from_member_id: debtorMember.id,
+                        to_member_id: creditorMember.id,
+                        amount: reimbursementAmount,
+                        status: 'pending'
+                      } as any);
+
+                    if (insertError) {
+                      console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la création de la demande:', insertError.message);
+                    } else {
+                      console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement créée avec succès, montant:', reimbursementAmount);
+                    }
                   }
                 }
               }
             }
           }
         } else {
-          console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement déjà existante');
+          // If hasReimbursementRequest is false, we don't need to update amount
+          console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement désactivée');
         }
       }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -12,6 +12,10 @@ import * as familyGroupService from '../services/familyGroupService';
 import { shareTransaction, unshareTransaction, getSharedTransactionByTransactionId, updateSharedTransaction } from '../services/familySharingService';
 import { toast } from 'react-hot-toast';
 import type { ShareTransactionInput, SplitType, FamilyGroup, FamilySharedTransaction } from '../types/family';
+import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
+import { validateRecurringData } from '../utils/recurringUtils';
+import recurringTransactionService from '../services/recurringTransactionService';
+import type { RecurrenceFrequency } from '../types/recurring';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -39,6 +43,24 @@ const TransactionDetailPage = () => {
   const [hasReimbursementRequest, setHasReimbursementRequest] = useState(false);
   const [initialHasReimbursementRequest, setInitialHasReimbursementRequest] = useState(false);
   const [isLoadingSharingStatus, setIsLoadingSharingStatus] = useState(false);
+  
+  // Custom reimbursement rate
+  const [customReimbursementRate, setCustomReimbursementRate] = useState<number>(100);
+  
+  // Recurring transaction state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [existingRecurringId, setExistingRecurringId] = useState<string | null>(null);
+  const [recurringConfig, setRecurringConfig] = useState({
+    frequency: 'monthly' as RecurrenceFrequency,
+    startDate: new Date(),
+    endDate: null as Date | null,
+    dayOfMonth: new Date().getDate(),
+    dayOfWeek: null as number | null,
+    notifyBeforeDays: 1,
+    autoCreate: false,
+    linkedBudgetId: null as string | null
+  });
+  const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
   
   const [editData, setEditData] = useState({
     description: '',
@@ -181,6 +203,43 @@ const TransactionDetailPage = () => {
             setHasReimbursementRequest(false);
             setInitialHasReimbursementRequest(false);
           }
+          
+          // Initialize custom reimbursement rate
+          // Try to get existing reimbursement request to calculate rate
+          try {
+            const { supabase } = await import('../lib/supabase');
+            const { data: reimbursementData } = await supabase
+              .from('reimbursement_requests')
+              .select('amount')
+              .eq('shared_transaction_id', shared.id)
+              .eq('status', 'pending')
+              .maybeSingle();
+            
+            if (reimbursementData && transaction) {
+              // Calculate rate from existing reimbursement amount
+              const transactionAmount = Math.abs(transaction.amount);
+              const reimbursementAmount = reimbursementData.amount || 0;
+              if (transactionAmount > 0) {
+                const calculatedRate = Math.round((reimbursementAmount / transactionAmount) * 100);
+                setCustomReimbursementRate(Math.min(100, Math.max(1, calculatedRate)));
+              }
+            } else if (activeFamilyGroup) {
+              // Load from localStorage family setting
+              const storedRate = localStorage.getItem(`bazarkely_family_${activeFamilyGroup.id}_reimbursement_rate`);
+              if (storedRate) {
+                setCustomReimbursementRate(parseInt(storedRate, 10));
+              }
+            }
+          } catch (error) {
+            console.error('Error loading reimbursement rate:', error);
+            // Default to 100 or from localStorage
+            if (activeFamilyGroup) {
+              const storedRate = localStorage.getItem(`bazarkely_family_${activeFamilyGroup.id}_reimbursement_rate`);
+              if (storedRate) {
+                setCustomReimbursementRate(parseInt(storedRate, 10));
+              }
+            }
+          }
         } else {
           setIsShared(false);
           setSharedTransaction(null);
@@ -197,6 +256,62 @@ const TransactionDetailPage = () => {
 
     loadSharingStatus();
   }, [transaction, activeFamilyGroup, user]);
+
+  // Check if this transaction has an associated recurring transaction
+  useEffect(() => {
+    const checkExistingRecurring = async () => {
+      if (!transaction || !user) {
+        setIsRecurring(false);
+        setExistingRecurringId(null);
+        return;
+      }
+
+      try {
+        console.log('🔍 Checking for existing recurring transaction for transaction:', transaction.id);
+        
+        // Get all recurring transactions for this user
+        const allRecurring = await recurringTransactionService.getAll(user.id);
+        
+        // Find if any recurring transaction matches this transaction
+        // Match by: same description, same amount, same category, same account
+        const matchingRecurring = allRecurring.find(rt => 
+          rt.description === transaction.description &&
+          Math.abs(rt.amount) === Math.abs(transaction.amount) &&
+          rt.category === transaction.category &&
+          rt.accountId === transaction.accountId &&
+          rt.isActive
+        );
+
+        if (matchingRecurring) {
+          console.log('🔄 Found existing recurring transaction:', matchingRecurring.id);
+          setIsRecurring(true);
+          setExistingRecurringId(matchingRecurring.id);
+          
+          // Load the recurring configuration
+          setRecurringConfig({
+            frequency: matchingRecurring.frequency || 'monthly',
+            startDate: matchingRecurring.startDate ? new Date(matchingRecurring.startDate) : new Date(),
+            endDate: matchingRecurring.endDate ? new Date(matchingRecurring.endDate) : null,
+            dayOfMonth: matchingRecurring.dayOfMonth || new Date().getDate(),
+            dayOfWeek: matchingRecurring.dayOfWeek || null,
+            notifyBeforeDays: matchingRecurring.notifyBeforeDays || 1,
+            autoCreate: matchingRecurring.autoCreate ?? false,
+            linkedBudgetId: matchingRecurring.linkedBudgetId || null
+          });
+        } else {
+          console.log('ℹ️ No matching recurring transaction found');
+          setIsRecurring(false);
+          setExistingRecurringId(null);
+        }
+      } catch (error) {
+        console.error('❌ Error checking existing recurring transaction:', error);
+        setIsRecurring(false);
+        setExistingRecurringId(null);
+      }
+    };
+
+    checkExistingRecurring();
+  }, [transaction, user]);
 
   const handleEdit = () => {
     // Prevent editing transfers
@@ -330,8 +445,40 @@ const TransactionDetailPage = () => {
               splitDetails: [],
               notes: undefined,
             };
-            await shareTransaction(shareInput);
+            const newSharedTransaction = await shareTransaction(shareInput);
             toast.success('Transaction partagée avec votre famille !');
+            
+            // Update local state with new shared transaction
+            setSharedTransaction(newSharedTransaction);
+            
+            // If reimbursement is requested, update the amount with custom rate
+            if (hasReimbursementRequest && newSharedTransaction) {
+              try {
+                const { supabase } = await import('../lib/supabase');
+                const transactionAmount = Math.abs(updatedTransaction.amount);
+                const customAmount = transactionAmount * (customReimbursementRate / 100);
+                
+                // Wait a bit for the reimbursement request to be created by the trigger
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Find and update the reimbursement request
+                const { data: reimbursementRequest } = await supabase
+                  .from('reimbursement_requests')
+                  .select('id')
+                  .eq('shared_transaction_id', newSharedTransaction.id)
+                  .eq('status', 'pending')
+                  .maybeSingle();
+                
+                if (reimbursementRequest) {
+                  await supabase
+                    .from('reimbursement_requests')
+                    .update({ amount: customAmount })
+                    .eq('id', reimbursementRequest.id);
+                }
+              } catch (error) {
+                console.error('Error updating reimbursement amount:', error);
+              }
+            }
           }
           // If share toggle is OFF and already shared
           else if (!isShared && sharedTransaction) {
@@ -340,14 +487,59 @@ const TransactionDetailPage = () => {
           }
           // If shared and reimbursement request changed
           else if (isShared && sharedTransaction) {
-            // Update reimbursement request status if changed from initial value
-            if (hasReimbursementRequest !== initialHasReimbursementRequest) {
+            // Update reimbursement request status if changed from initial value OR rate changed
+            const shouldUpdate = hasReimbursementRequest !== initialHasReimbursementRequest;
+            
+            if (shouldUpdate || hasReimbursementRequest) {
+              // Pass custom reimbursement rate to updateSharedTransaction
               await updateSharedTransaction(sharedTransaction.id, {
-                hasReimbursementRequest: hasReimbursementRequest
+                hasReimbursementRequest: hasReimbursementRequest,
+                customReimbursementRate: customReimbursementRate
               } as any);
-              toast.success('Demande de remboursement mise à jour');
-              // Update initial value to current value
-              setInitialHasReimbursementRequest(hasReimbursementRequest);
+              
+              // Also update amount directly if reimbursement is enabled (in case updateSharedTransaction doesn't handle it)
+              if (hasReimbursementRequest && updatedTransaction) {
+                try {
+                  const { supabase } = await import('../lib/supabase');
+                  const transactionAmount = Math.abs(updatedTransaction.amount);
+                  const customAmount = transactionAmount * (customReimbursementRate / 100);
+                  
+                  // Wait a bit for the reimbursement request to be created/updated by updateSharedTransaction
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  
+                  // Find existing reimbursement request
+                  const { data: existingReimbursement } = await supabase
+                    .from('reimbursement_requests')
+                    .select('id')
+                    .eq('shared_transaction_id', sharedTransaction.id)
+                    .eq('status', 'pending')
+                    .maybeSingle();
+                  
+                  if (existingReimbursement) {
+                    // Update existing reimbursement amount with custom rate
+                    const { error: updateError } = await supabase
+                      .from('reimbursement_requests')
+                      .update({ amount: customAmount })
+                      .eq('id', existingReimbursement.id);
+                    
+                    if (updateError) {
+                      console.error('Error updating reimbursement amount:', updateError);
+                    } else {
+                      console.log('✅ Reimbursement amount updated to:', customAmount, 'with rate:', customReimbursementRate + '%');
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error updating reimbursement amount:', error);
+                }
+              }
+              
+              if (shouldUpdate) {
+                toast.success('Demande de remboursement mise à jour');
+                // Update initial value to current value
+                setInitialHasReimbursementRequest(hasReimbursementRequest);
+              } else {
+                toast.success('Taux de remboursement mis à jour');
+              }
             }
           }
         } catch (error: any) {
@@ -358,6 +550,125 @@ const TransactionDetailPage = () => {
           } else {
             toast.error(errorMessage);
           }
+        }
+      }
+      
+      // Handle recurring transaction creation/update/deactivation
+      if (isRecurring && user && updatedTransaction) {
+        try {
+          console.log('🔄 Processing recurring transaction, existing ID:', existingRecurringId);
+          
+          // Validate recurring data
+          const validation = validateRecurringData({
+            userId: user.id,
+            accountId: updatedTransaction.accountId,
+            type: updatedTransaction.type as 'income' | 'expense',
+            amount: Math.abs(updatedTransaction.amount),
+            description: updatedTransaction.description,
+            category: updatedTransaction.category,
+            frequency: recurringConfig.frequency,
+            startDate: recurringConfig.startDate,
+            endDate: recurringConfig.endDate,
+            dayOfMonth: recurringConfig.dayOfMonth,
+            dayOfWeek: recurringConfig.dayOfWeek,
+            notifyBeforeDays: recurringConfig.notifyBeforeDays,
+            autoCreate: recurringConfig.autoCreate,
+            linkedBudgetId: recurringConfig.linkedBudgetId,
+            isActive: true
+          });
+
+          if (!validation.valid) {
+            console.error('❌ Recurring validation failed:', validation.errors);
+            const errors: Record<string, string> = {};
+            validation.errors.forEach(error => {
+              const fieldMatch = error.match(/^([^:]+):/);
+              if (fieldMatch) {
+                const field = fieldMatch[1].toLowerCase().replace(/\s+/g, '');
+                errors[field] = error;
+              }
+            });
+            setRecurringErrors(errors);
+            toast.error('Erreurs de validation pour la transaction récurrente');
+            return;
+          }
+          
+          setRecurringErrors({});
+          
+          if (existingRecurringId) {
+            // Update existing recurring transaction
+            console.log('🔄 Updating existing recurring transaction:', existingRecurringId);
+            
+            await recurringTransactionService.update(existingRecurringId, {
+              accountId: updatedTransaction.accountId,
+              type: updatedTransaction.type as 'income' | 'expense',
+              amount: Math.abs(updatedTransaction.amount),
+              description: updatedTransaction.description,
+              category: updatedTransaction.category,
+              frequency: recurringConfig.frequency,
+              startDate: recurringConfig.startDate,
+              endDate: recurringConfig.endDate,
+              dayOfMonth: recurringConfig.dayOfMonth,
+              dayOfWeek: recurringConfig.dayOfWeek,
+              notifyBeforeDays: recurringConfig.notifyBeforeDays,
+              autoCreate: recurringConfig.autoCreate,
+              linkedBudgetId: recurringConfig.linkedBudgetId,
+              isActive: true
+            });
+            
+            console.log('✅ Recurring transaction updated successfully');
+            toast.success('Transaction récurrente mise à jour !');
+          } else {
+            // Create new recurring transaction
+            const recurringData = {
+              userId: user.id,
+              accountId: updatedTransaction.accountId,
+              type: updatedTransaction.type as 'income' | 'expense',
+              amount: Math.abs(updatedTransaction.amount),
+              description: updatedTransaction.description,
+              category: updatedTransaction.category,
+              frequency: recurringConfig.frequency,
+              startDate: recurringConfig.startDate,
+              endDate: recurringConfig.endDate,
+              dayOfMonth: recurringConfig.dayOfMonth,
+              dayOfWeek: recurringConfig.dayOfWeek,
+              notifyBeforeDays: recurringConfig.notifyBeforeDays,
+              autoCreate: recurringConfig.autoCreate,
+              linkedBudgetId: recurringConfig.linkedBudgetId,
+              isActive: true
+            };
+            
+            console.log('📝 Creating new recurring transaction with data:', recurringData);
+            
+            const createdRecurring = await recurringTransactionService.create(recurringData);
+            
+            if (createdRecurring) {
+              console.log('✅ Recurring transaction created successfully:', createdRecurring.id);
+              setExistingRecurringId(createdRecurring.id);
+              toast.success('Transaction récurrente créée avec succès !');
+            } else {
+              throw new Error('Aucune transaction récurrente retournée après création');
+            }
+          }
+        } catch (error: any) {
+          console.error('❌ Error processing recurring transaction:', error);
+          const errorMessage = error?.message || 'Erreur lors de la gestion de la transaction récurrente';
+          toast.error(errorMessage);
+          // Don't block navigation, just show error
+        }
+      } else if (!isRecurring && existingRecurringId) {
+        // User disabled recurring - deactivate it
+        try {
+          console.log('🔄 Deactivating recurring transaction:', existingRecurringId);
+          
+          await recurringTransactionService.update(existingRecurringId, { isActive: false });
+          
+          console.log('✅ Recurring transaction deactivated successfully');
+          setExistingRecurringId(null);
+          toast.success('Récurrence désactivée');
+        } catch (error: any) {
+          console.error('❌ Error deactivating recurring transaction:', error);
+          const errorMessage = error?.message || 'Erreur lors de la désactivation de la récurrence';
+          toast.error(errorMessage);
         }
       }
       
@@ -857,6 +1168,29 @@ const TransactionDetailPage = () => {
                   </div>
                 )}
 
+                {/* Custom Reimbursement Rate Input */}
+                {isShared && hasReimbursementRequest && (
+                  <div className="mt-3 flex items-center justify-between pt-3 border-t border-gray-200">
+                    <label className="text-sm font-medium text-gray-700">
+                      Taux de remboursement
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={customReimbursementRate}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 100;
+                          setCustomReimbursementRate(Math.min(100, Math.max(1, value)));
+                        }}
+                        className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      <span className="text-sm text-gray-600">%</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Info message if already shared */}
                 {isShared && sharedTransaction && (
                   <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -865,6 +1199,65 @@ const TransactionDetailPage = () => {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recurring Transaction Toggle Section */}
+        {isEditing && (
+          <div className="mt-6">
+            {/* Toggle Transaction récurrente */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Repeat className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <label htmlFor="isRecurring" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      Transaction récurrente
+                    </label>
+                    <p className="text-xs text-gray-600">
+                      Créer une récurrence basée sur cette transaction
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="isRecurring"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            </div>
+
+            {/* Configuration récurrence */}
+            {isRecurring && user && transaction && (
+              <div className="mt-4">
+                <RecurringConfigSection
+                  frequency={recurringConfig.frequency}
+                  setFrequency={(f) => setRecurringConfig(prev => ({ ...prev, frequency: f }))}
+                  startDate={recurringConfig.startDate}
+                  setStartDate={(d) => setRecurringConfig(prev => ({ ...prev, startDate: d }))}
+                  endDate={recurringConfig.endDate}
+                  setEndDate={(d) => setRecurringConfig(prev => ({ ...prev, endDate: d }))}
+                  dayOfMonth={recurringConfig.dayOfMonth}
+                  setDayOfMonth={(d) => setRecurringConfig(prev => ({ ...prev, dayOfMonth: d }))}
+                  dayOfWeek={recurringConfig.dayOfWeek}
+                  setDayOfWeek={(d) => setRecurringConfig(prev => ({ ...prev, dayOfWeek: d }))}
+                  notifyBeforeDays={recurringConfig.notifyBeforeDays}
+                  setNotifyBeforeDays={(n) => setRecurringConfig(prev => ({ ...prev, notifyBeforeDays: n }))}
+                  autoCreate={recurringConfig.autoCreate}
+                  setAutoCreate={(a) => setRecurringConfig(prev => ({ ...prev, autoCreate: a }))}
+                  linkedBudgetId={recurringConfig.linkedBudgetId}
+                  setLinkedBudgetId={(id) => setRecurringConfig(prev => ({ ...prev, linkedBudgetId: id }))}
+                  userId={user.id}
+                  transactionType={transaction.type || 'expense'}
+                  errors={recurringErrors}
+                />
               </div>
             )}
           </div>
