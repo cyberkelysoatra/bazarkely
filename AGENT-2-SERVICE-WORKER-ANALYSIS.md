@@ -567,3 +567,4 @@ Le Service Worker utilise correctement `skipWaiting()` et `clientsClaim()`, mais
 **AGENT-2-SERVICE-WORKER-COMPLETE**
 
 
+

@@ -427,6 +427,42 @@ export interface FamilyBalanceRow {
   updated_at: string; // ISO date string
 }
 
+/**
+ * Ligne de la table reimbursement_requests (format Supabase)
+ * Nouvelle structure de table créée dans Supabase (2025-01-19)
+ * Note: Structure différente de l'ancien ReimbursementRequestRow (ligne 396)
+ */
+export interface ReimbursementRequest {
+  id: string;
+  shared_transaction_id: string;
+  from_member_id: string;
+  to_member_id: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'settled' | 'cancelled';
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+  settled_at: string | null; // ISO date string
+  settled_by: string | null;
+  note: string | null;
+}
+
+/**
+ * Ligne de la vue family_member_balances (format Supabase)
+ * Vue calculant les soldes des membres d'un groupe familial
+ */
+export interface FamilyMemberBalance {
+  family_group_id: string;
+  member_id: string;
+  user_id: string | null;
+  display_name: string;
+  total_paid: number;
+  total_owed: number;
+  pending_to_receive: number;
+  pending_to_pay: number;
+  net_balance: number;
+}
+
 // ============================================================================
 // TYPES UTILITAIRES
 // ============================================================================

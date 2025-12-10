@@ -112,6 +112,12 @@ export interface Database {
           notes: string | null
           created_at: string
           updated_at: string
+          /** ID du propriétaire actuel de la transaction (UUID, requis) */
+          current_owner_id: string
+          /** ID du propriétaire original avant le transfert (UUID, nullable) */
+          original_owner_id: string | null
+          /** Date et heure du transfert au format ISO (nullable) */
+          transferred_at: string | null
         }
         Insert: {
           id?: string
@@ -130,6 +136,12 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          /** ID du propriétaire actuel de la transaction (UUID, requis) */
+          current_owner_id?: string
+          /** ID du propriétaire original avant le transfert (UUID, nullable) */
+          original_owner_id?: string | null
+          /** Date et heure du transfert au format ISO (nullable) */
+          transferred_at?: string | null
         }
         Update: {
           id?: string
@@ -148,6 +160,12 @@ export interface Database {
           notes?: string | null
           created_at?: string
           updated_at?: string
+          /** ID du propriétaire actuel de la transaction (UUID, requis) */
+          current_owner_id?: string
+          /** ID du propriétaire original avant le transfert (UUID, nullable) */
+          original_owner_id?: string | null
+          /** Date et heure du transfert au format ISO (nullable) */
+          transferred_at?: string | null
         }
       }
       budgets: {

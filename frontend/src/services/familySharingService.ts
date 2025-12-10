@@ -357,6 +357,110 @@ export async function updateSharedTransaction(
         throw new Error(`Erreur lors de la mise à jour: ${rpcError.message}`);
       }
 
+      // Si on active la demande de remboursement, créer la ligne dans reimbursement_requests
+      if (updatesAny.hasReimbursementRequest === true) {
+        // Vérifier si une demande existe déjà
+        const { data: existingRequest, error: checkError } = await supabase
+          .from('reimbursement_requests')
+          .select('id')
+          .eq('shared_transaction_id', id)
+          .maybeSingle();
+
+        if (checkError) {
+          console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la vérification de l\'existence:', checkError.message);
+        } else if (!existingRequest) {
+          // Récupérer les détails de la transaction partagée
+          const { data: sharedTx, error: sharedTxError } = await supabase
+            .from('family_shared_transactions')
+            .select(`
+              id,
+              transaction_id,
+              paid_by,
+              family_group_id,
+              split_type,
+              split_details,
+              transactions(amount, user_id)
+            `)
+            .eq('id', id)
+            .maybeSingle();
+
+          if (sharedTxError || !sharedTx) {
+            console.warn('[TOGGLE REMBOURSEMENT] Impossible de récupérer la transaction partagée:', sharedTxError?.message);
+          } else {
+            // Récupérer le member_id du payeur (créancier = to_member)
+            const paidByUserId = (sharedTx as any).paid_by || (sharedTx as any).shared_by;
+            if (!paidByUserId) {
+              console.warn('[TOGGLE REMBOURSEMENT] paid_by manquant dans la transaction partagée');
+            } else {
+              const { data: creditorMember, error: creditorError } = await supabase
+                .from('family_members')
+                .select('id')
+                .eq('family_group_id', (sharedTx as any).family_group_id)
+                .eq('user_id', paidByUserId)
+                .eq('is_active', true)
+                .maybeSingle();
+
+              if (creditorError) {
+                console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la récupération du créancier:', creditorError.message);
+              } else if (!creditorMember) {
+                console.warn('[TOGGLE REMBOURSEMENT] Créancier (payeur) non trouvé dans les membres actifs');
+              } else {
+                // Récupérer le member_id du débiteur (celui qui doit rembourser = from_member)
+                // C'est l'autre membre actif du groupe qui n'est pas le payeur
+                const { data: debtorMembers, error: debtorError } = await supabase
+                  .from('family_members')
+                  .select('id')
+                  .eq('family_group_id', (sharedTx as any).family_group_id)
+                  .neq('user_id', paidByUserId)
+                  .eq('is_active', true)
+                  .limit(1);
+
+                if (debtorError) {
+                  console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la récupération du débiteur:', debtorError.message);
+                } else if (!debtorMembers || debtorMembers.length === 0) {
+                  console.warn('[TOGGLE REMBOURSEMENT] Débiteur non trouvé (pas d\'autre membre actif dans le groupe)');
+                } else {
+                  const debtorMember = debtorMembers[0];
+
+                  // Calculer le montant à rembourser (50% par défaut ou selon split_details)
+                  const transactionAmount = Math.abs(((sharedTx as any).transactions as any)?.amount || 0);
+                  let reimbursementAmount = transactionAmount / 2; // 50% par défaut
+
+                  // Si split_details existe, utiliser le montant spécifique
+                  if ((sharedTx as any).split_details && Array.isArray((sharedTx as any).split_details)) {
+                    const debtorSplit = ((sharedTx as any).split_details as any[]).find(
+                      (s: any) => s.memberId === debtorMember.id || s.member_id === debtorMember.id
+                    );
+                    if (debtorSplit && (debtorSplit.amount !== undefined && debtorSplit.amount !== null)) {
+                      reimbursementAmount = Math.abs(debtorSplit.amount);
+                    }
+                  }
+
+                  // Créer la demande de remboursement
+                  const { error: insertError } = await supabase
+                    .from('reimbursement_requests')
+                    .insert({
+                      shared_transaction_id: id,
+                      from_member_id: debtorMember.id,
+                      to_member_id: creditorMember.id,
+                      amount: reimbursementAmount,
+                      status: 'pending'
+                    } as any);
+
+                  if (insertError) {
+                    console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la création de la demande:', insertError.message);
+                  } else {
+                    console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement créée avec succès');
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement déjà existante');
+        }
+      }
+
       // If other fields are also being updated, update them separately
       const otherUpdateData: any = {};
       if (updatesAny.isPrivate !== undefined) {

@@ -131,3 +131,4 @@ COMMENT ON COLUMN family_shared_transactions.paid_by IS
 **Documentation créée le:** 2025-12-08  
 **Agent:** Agent 3 - Database Schema Documentation
 
+

@@ -7,10 +7,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, Plus, Copy, Share2, Receipt, ArrowRightLeft, UserPlus, Crown,
-  TrendingDown, Calendar, Clock, CheckCircle, XCircle
+  TrendingDown, Calendar, Clock, CheckCircle, XCircle, RefreshCw, Wallet
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
+import { useSyncStore } from '../stores/appStore';
 import { supabase } from '../lib/supabase';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
@@ -22,11 +23,13 @@ import type {
 } from '../types/family';
 import { CurrencyDisplay } from '../components/Currency';
 import { CreateFamilyModal, JoinFamilyModal } from '../components/Family';
+import { OfflineAlert } from '../components/UI/Alert';
 
 const FamilyDashboardPage = () => {
   const navigate = useNavigate();
   const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
   const { displayCurrency } = useCurrency();
+  const { isOnline } = useSyncStore();
   const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
 
   const [familyGroups, setFamilyGroups] = useState<Array<FamilyGroup & { memberCount: number; inviteCode: string }>>([]);
@@ -245,9 +248,20 @@ const FamilyDashboardPage = () => {
       <>
         <div className="min-h-screen bg-slate-50 pb-20">
           <div className="p-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
+            {!isOnline ? (
+              <OfflineAlert onRetry={() => loadFamilyGroups()} />
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 mb-4">Impossible de charger vos groupes familiaux</p>
+                <button
+                  onClick={() => loadFamilyGroups()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Réessayer</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         {/* Create Family Modal - Always rendered */}
@@ -451,7 +465,10 @@ const FamilyDashboardPage = () => {
           </div>
 
           {/* Demandes en attente */}
-          <div className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+          <button
+            onClick={() => navigate('/family/reimbursements')}
+            className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 hover:shadow-lg transition-shadow cursor-pointer"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-600 mb-1">En attente</p>
@@ -466,7 +483,7 @@ const FamilyDashboardPage = () => {
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
-          </div>
+          </button>
 
           {/* Solde net */}
           <div className={`card bg-gradient-to-br ${
@@ -625,6 +642,13 @@ const FamilyDashboardPage = () => {
           >
             <Receipt className="w-5 h-5" />
             <span>Demander remboursement</span>
+          </button>
+          <button
+            onClick={() => navigate('/family/reimbursements')}
+            className="card hover:shadow-lg transition-shadow flex items-center justify-center space-x-2 py-4 bg-yellow-50 border-yellow-200 text-yellow-700"
+          >
+            <Wallet className="w-5 h-5" />
+            <span>Remboursements</span>
           </button>
           <button
             onClick={() => navigate(`/family/${selectedGroupId}/balances`)}

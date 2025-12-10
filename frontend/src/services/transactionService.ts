@@ -38,7 +38,11 @@ class TransactionService {
         date: new Date(t.date),
         targetAccountId: t.target_account_id,
         notes: t.notes || undefined,
-        createdAt: new Date(t.created_at)
+        createdAt: new Date(t.created_at),
+        // Champs de transfert de propriété
+        currentOwnerId: t.current_owner_id,
+        originalOwnerId: t.original_owner_id || undefined,
+        transferredAt: t.transferred_at || undefined,
       }));
       
       return transactions;
@@ -50,6 +54,48 @@ class TransactionService {
 
   async getUserTransactions(_userId: string): Promise<Transaction[]> {
     return this.getTransactions();
+  }
+
+  /**
+   * Récupérer les transactions transférées de l'utilisateur
+   * Retourne les transactions où l'utilisateur était le propriétaire original
+   * mais qui ont été transférées à un autre utilisateur
+   * @param userId - ID de l'utilisateur (propriétaire original)
+   * @returns Transactions transférées, triées par date de transfert décroissante
+   */
+  async getUserTransferredTransactions(userId: string): Promise<Transaction[]> {
+    try {
+      const response = await apiService.getTransferredTransactions(userId);
+      if (!response.success || response.error) {
+        console.error('❌ Erreur lors de la récupération des transactions transférées:', response.error);
+        return [];
+      }
+      
+      // Transformer les données Supabase vers le format local
+      const supabaseTransactions = response.data as any[];
+      const transactions: Transaction[] = supabaseTransactions.map((t: any) => ({
+        id: t.id,
+        userId: t.user_id,
+        accountId: t.account_id,
+        type: t.type,
+        amount: t.amount,
+        description: t.description,
+        category: t.category,
+        date: new Date(t.date),
+        targetAccountId: t.target_account_id,
+        notes: t.notes || undefined,
+        createdAt: new Date(t.created_at),
+        // Champs de transfert de propriété
+        currentOwnerId: t.current_owner_id,
+        originalOwnerId: t.original_owner_id || undefined,
+        transferredAt: t.transferred_at || undefined,
+      }));
+      
+      return transactions;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des transactions transférées:', error);
+      return [];
+    }
   }
 
   /**

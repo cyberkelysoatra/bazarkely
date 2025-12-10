@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -8,13 +8,13 @@ import { db } from '../lib/database';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import { CurrencyDisplay } from '../components/Currency';
-import type { Currency } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
 import { shareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
+import { getReimbursementStatusByTransactionIds, createReimbursementRequest, getMemberBalances } from '../services/reimbursementService';
 import { toast } from 'react-hot-toast';
-import type { ShareTransactionInput, SplitType } from '../types/family';
+import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
 import type { FamilyGroup } from '../types/family';
 
 const TransactionsPage = () => {
@@ -26,10 +26,11 @@ const TransactionsPage = () => {
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
   const [filterCategory, setFilterCategory] = useState<TransactionCategory | 'all'>('all');
   const [filterRecurring, setFilterRecurring] = useState<boolean | null>(null);
+  const [showTransferred, setShowTransferred] = useState(false);
+  const [transferredTransactions, setTransferredTransactions] = useState<Transaction[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
-  const [accountsMap, setAccountsMap] = useState<Map<string, Account>>(new Map());
   
   // Currency display preference
   const { displayCurrency } = useCurrency();
@@ -42,6 +43,61 @@ const TransactionsPage = () => {
   
   // Track which transactions are already shared
   const [sharedTransactionIds, setSharedTransactionIds] = useState<Set<string>>(new Set());
+  
+  // Map of shared transactions (transactionId -> FamilySharedTransaction)
+  const [sharedTransactionsMap, setSharedTransactionsMap] = useState<Map<string, FamilySharedTransaction>>(new Map());
+  
+  // Reimbursement statuses (transactionId -> ReimbursementStatus | 'none')
+  const [reimbursementStatuses, setReimbursementStatuses] = useState<Map<string, ReimbursementStatus | 'none'>>(new Map());
+  
+  // Track loading state for reimbursement statuses to prevent race condition
+  const [isLoadingReimbursementStatuses, setIsLoadingReimbursementStatuses] = useState<boolean>(true);
+  
+  // Track which transaction is currently requesting reimbursement
+  const [requestingReimbursement, setRequestingReimbursement] = useState<string | null>(null);
+  
+  // Function to reload reimbursement statuses
+  const loadReimbursementStatuses = useCallback(async () => {
+    console.log('[LOAD REIMBURSEMENT] Function called', {
+      hasActiveFamilyGroup: !!activeFamilyGroup,
+      activeFamilyGroupId: activeFamilyGroup?.id,
+      sharedTransactionsMapSize: sharedTransactionsMap.size
+    });
+
+    // Set loading state to true at the start
+    setIsLoadingReimbursementStatuses(true);
+
+    if (!activeFamilyGroup || sharedTransactionsMap.size === 0) {
+      console.log('[LOAD REIMBURSEMENT] Early return - no activeFamilyGroup or empty sharedTransactionsMap');
+      setReimbursementStatuses(new Map());
+      setIsLoadingReimbursementStatuses(false);
+      return;
+    }
+    
+    try {
+      const transactionIds = Array.from(sharedTransactionsMap.keys());
+      console.log('[LOAD REIMBURSEMENT] Querying service with:', {
+        transactionIdsCount: transactionIds.length,
+        transactionIds: transactionIds,
+        groupId: activeFamilyGroup.id
+      });
+
+      const statuses = await getReimbursementStatusByTransactionIds(transactionIds, activeFamilyGroup.id);
+      
+      console.log('[LOAD REIMBURSEMENT] Service returned:', {
+        statusesMapSize: statuses.size,
+        statusesEntries: Array.from(statuses.entries())
+      });
+
+      setReimbursementStatuses(statuses);
+      // Set loading state to false after state is updated
+      setIsLoadingReimbursementStatuses(false);
+    } catch (err) {
+      console.error('[LOAD REIMBURSEMENT] Error loading reimbursement statuses:', err);
+      // Set loading state to false even on error
+      setIsLoadingReimbursementStatuses(false);
+    }
+  }, [activeFamilyGroup, sharedTransactionsMap]);
   
   // Récupérer le filtre par compte depuis l'URL
   const accountId = searchParams.get('account');
@@ -102,21 +158,20 @@ const TransactionsPage = () => {
     loadTransactions();
   }, [user, location.pathname]); // Refresh when returning from detail page
 
-  // Charger tous les comptes de l'utilisateur pour l'export CSV
+  // Charger les transactions transférées
   useEffect(() => {
-    const loadAccounts = async () => {
-      if (user) {
+    const loadTransferredTransactions = async () => {
+      if (user && showTransferred) {
         try {
-          const accounts = await db.accounts.where('userId').equals(user.id).toArray();
-          const map = new Map(accounts.map(acc => [acc.id, acc]));
-          setAccountsMap(map);
+          const transferred = await transactionService.getUserTransferredTransactions(user.id);
+          setTransferredTransactions(transferred);
         } catch (error) {
-          console.error('Erreur lors du chargement des comptes:', error);
+          console.error('Erreur lors du chargement des transactions transférées:', error);
         }
       }
     };
-    loadAccounts();
-  }, [user]);
+    loadTransferredTransactions();
+  }, [user, showTransferred]);
 
   // Charger le groupe familial actif (optionnel - ne bloque pas si pas de groupe)
   useEffect(() => {
@@ -148,6 +203,7 @@ const TransactionsPage = () => {
     const loadSharedTransactions = async () => {
       if (!activeFamilyGroup) {
         setSharedTransactionIds(new Set());
+        setSharedTransactionsMap(new Map());
         return;
       }
 
@@ -155,13 +211,42 @@ const TransactionsPage = () => {
         const shared = await getFamilySharedTransactions(activeFamilyGroup.id, { limit: 1000 });
         const ids = new Set(shared.map(t => t.transactionId).filter(Boolean) as string[]);
         setSharedTransactionIds(ids);
+        
+        // Create map: transactionId -> FamilySharedTransaction
+        const map = new Map<string, FamilySharedTransaction>();
+        shared.forEach(t => {
+          if (t.transactionId) {
+            map.set(t.transactionId, t);
+          }
+        });
+        setSharedTransactionsMap(map);
       } catch (e) {
         setSharedTransactionIds(new Set());
+        setSharedTransactionsMap(new Map());
       }
     };
 
     loadSharedTransactions();
   }, [activeFamilyGroup]);
+  
+  // Charger les statuts de remboursement pour les transactions partagées
+  useEffect(() => {
+    loadReimbursementStatuses();
+  }, [loadReimbursementStatuses]);
+  
+  // Reload reimbursement statuses when window regains focus (user returns from detail page)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Reload reimbursement statuses when window regains focus
+      loadReimbursementStatuses();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadReimbursementStatuses]);
 
   // Charger les informations du compte filtré
   useEffect(() => {
@@ -215,10 +300,18 @@ const TransactionsPage = () => {
         notes: undefined,
       };
 
-      await shareTransaction(shareInput);
+      const sharedTx = await shareTransaction(shareInput);
       toast.success('Transaction partagée avec votre famille !');
       // Add transaction ID to shared set
       setSharedTransactionIds(prev => new Set([...prev, transaction.id]));
+      // Add to shared transactions map
+      setSharedTransactionsMap(prev => {
+        const newMap = new Map(prev);
+        if (sharedTx.transactionId) {
+          newMap.set(sharedTx.transactionId, sharedTx);
+        }
+        return newMap;
+      });
     } catch (error: any) {
       console.error('Erreur lors du partage de la transaction:', error);
       const errorMessage = error?.message || 'Erreur lors du partage de la transaction';
@@ -231,6 +324,65 @@ const TransactionsPage = () => {
       }
     } finally {
       setSharingTransactionId(null);
+    }
+  };
+  
+  // Handle requesting reimbursement for a shared transaction
+  const handleRequestReimbursement = async (transactionId: string) => {
+    const sharedTransaction = sharedTransactionsMap.get(transactionId);
+    if (!sharedTransaction || !user || !activeFamilyGroup) {
+      toast.error('Transaction partagée introuvable');
+      return;
+    }
+    
+    setRequestingReimbursement(transactionId);
+    
+    try {
+      // Get member balances to convert userId to memberId
+      const memberBalances = await getMemberBalances(activeFamilyGroup.id);
+      const creditorMember = memberBalances.find(b => b.userId === sharedTransaction.paidBy);
+      
+      if (!creditorMember) {
+        toast.error('Membre créancier non trouvé');
+        return;
+      }
+      
+      // Create reimbursement request for each debtor in splitDetails
+      const promises = (sharedTransaction.splitDetails || [])
+        .filter(split => {
+          // Exclude the creditor (payer) from debtors
+          const splitMember = memberBalances.find(b => b.memberId === split.memberId);
+          return splitMember && splitMember.userId !== sharedTransaction.paidBy;
+        })
+        .map(split => createReimbursementRequest({
+          sharedTransactionId: sharedTransaction.id,
+          fromMemberId: split.memberId,
+          toMemberId: creditorMember.memberId,
+          amount: Math.abs(split.amount),
+          currency: 'MGA',
+          note: `Remboursement pour: ${sharedTransaction.description || 'Transaction partagée'}`,
+        }));
+      
+      if (promises.length === 0) {
+        toast.error('Aucun membre à rembourser pour cette transaction');
+        return;
+      }
+      
+      await Promise.all(promises);
+      
+      // Update local status
+      setReimbursementStatuses(prev => {
+        const newMap = new Map(prev);
+        newMap.set(transactionId, 'pending');
+        return newMap;
+      });
+      
+      toast.success('Demande de remboursement envoyée');
+    } catch (err: any) {
+      console.error('Error requesting reimbursement:', err);
+      toast.error(err.message || 'Erreur lors de la demande de remboursement');
+    } finally {
+      setRequestingReimbursement(null);
     }
   };
 
@@ -250,7 +402,11 @@ const TransactionsPage = () => {
   });
 
   // Sort filtered transactions by date (newest first)
-  const sortedTransactions = sortTransactionsByDateDesc(filteredTransactions);
+  // When showing transferred transactions, use transferredTransactions instead
+  const displayTransactions = showTransferred 
+    ? transferredTransactions 
+    : filteredTransactions;
+  const sortedTransactions = sortTransactionsByDateDesc(displayTransactions);
 
   const totalIncome = transactions
     .filter(t => t.type === 'income')
@@ -491,9 +647,12 @@ const TransactionsPage = () => {
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setFilterType('all')}
+            onClick={() => {
+              setFilterType('all');
+              setShowTransferred(false);
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterType === 'all' 
+              filterType === 'all' && !showTransferred
                 ? 'bg-primary-600 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -501,9 +660,12 @@ const TransactionsPage = () => {
             Toutes
           </button>
           <button
-            onClick={() => setFilterType('income')}
+            onClick={() => {
+              setFilterType('income');
+              setShowTransferred(false);
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterType === 'income' 
+              filterType === 'income' && !showTransferred
                 ? 'bg-green-600 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -511,9 +673,12 @@ const TransactionsPage = () => {
             Revenus
           </button>
           <button
-            onClick={() => setFilterType('expense')}
+            onClick={() => {
+              setFilterType('expense');
+              setShowTransferred(false);
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterType === 'expense' 
+              filterType === 'expense' && !showTransferred
                 ? 'bg-red-600 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -521,9 +686,12 @@ const TransactionsPage = () => {
             Dépenses
           </button>
           <button
-            onClick={() => setFilterType('transfer')}
+            onClick={() => {
+              setFilterType('transfer');
+              setShowTransferred(false);
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterType === 'transfer' 
+              filterType === 'transfer' && !showTransferred
                 ? 'bg-blue-600 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -531,7 +699,10 @@ const TransactionsPage = () => {
             Transferts
           </button>
           <button
-            onClick={() => setFilterRecurring(filterRecurring === true ? null : true)}
+            onClick={() => {
+              setFilterRecurring(filterRecurring === true ? null : true);
+              setShowTransferred(false);
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 ${
               filterRecurring === true 
                 ? 'bg-blue-600 text-white' 
@@ -541,6 +712,23 @@ const TransactionsPage = () => {
           >
             <Repeat className="w-4 h-4" />
             <span>Récurrentes</span>
+          </button>
+          <button
+            onClick={() => {
+              setShowTransferred(!showTransferred);
+              if (!showTransferred) {
+                setFilterType('all');
+                setFilterRecurring(null);
+              }
+            }}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              showTransferred
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            Transférées
           </button>
         </div>
 
@@ -625,13 +813,14 @@ const TransactionsPage = () => {
                         {displayDescription}
                       </h4>
                       {transaction.isRecurring && transaction.recurringTransactionId && (
-                        <RecurringBadge
-                          size="sm"
+                        <span
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/recurring/${transaction.recurringTransactionId}`);
                           }}
-                        />
+                        >
+                          <RecurringBadge size="sm" />
+                        </span>
                       )}
                       {activeFamilyGroup && (() => {
                         const isShared = sharedTransactionIds.has(transaction.id);
@@ -657,6 +846,73 @@ const TransactionsPage = () => {
                           </button>
                         );
                       })()}
+                      {/* Reimbursement Request Icon - Only for creditor on shared transactions */}
+                      {activeFamilyGroup && sharedTransactionsMap.has(transaction.id) && (() => {
+                        const sharedTx = sharedTransactionsMap.get(transaction.id);
+                        const isCreditor = sharedTx?.paidBy === user?.id;
+                        // Only get status if not loading, otherwise default to 'none' for loading state
+                        const status = isLoadingReimbursementStatuses 
+                          ? 'loading' 
+                          : (reimbursementStatuses.get(transaction.id) || 'none');
+                        const isRequesting = requestingReimbursement === transaction.id;
+                        
+                        console.log('[ICON DEBUG]', {
+                          transactionId: transaction.id,
+                          hasInSharedMap: sharedTransactionsMap.has(transaction.id),
+                          sharedTxPaidBy: sharedTx?.paidBy,
+                          currentUserId: user?.id,
+                          isCreditor: isCreditor,
+                          isLoadingReimbursementStatuses: isLoadingReimbursementStatuses,
+                          statusFromMap: reimbursementStatuses.get(transaction.id),
+                          finalStatus: status,
+                          reimbursementStatusesMapSize: reimbursementStatuses.size,
+                          allStatuses: Array.from(reimbursementStatuses.entries())
+                        });
+                        
+                        if (!isCreditor) return null;
+                        
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (status === 'none') {
+                                handleRequestReimbursement(transaction.id);
+                              }
+                            }}
+                            disabled={status === 'loading' || isRequesting}
+                            className={`p-1 rounded transition-colors ${
+                              status === 'loading'
+                                ? 'text-gray-300 cursor-wait'
+                                : status === 'none' 
+                                ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50 cursor-pointer' 
+                                : status === 'pending'
+                                ? 'text-orange-500 cursor-default'
+                                : 'text-green-500 cursor-default'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            title={
+                              status === 'loading'
+                                ? 'Chargement du statut...'
+                                : status === 'none' 
+                                ? 'Demander remboursement' 
+                                : status === 'pending'
+                                ? 'Remboursement en attente'
+                                : 'Remboursement effectué'
+                            }
+                          >
+                            {isRequesting ? (
+                              <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                            ) : status === 'loading' ? (
+                              <Receipt className="w-4 h-4 opacity-50 animate-pulse" />
+                            ) : status === 'none' ? (
+                              <Receipt className="w-4 h-4" />
+                            ) : status === 'pending' ? (
+                              <Clock className="w-4 h-4" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <span>{category.name}</span>
@@ -667,6 +923,14 @@ const TransactionsPage = () => {
                           <span>•</span>
                           <span className={isDebit ? 'text-red-600' : 'text-green-600'}>
                             {transferLabel}
+                          </span>
+                        </>
+                      )}
+                      {showTransferred && transaction.transferredAt && (
+                        <>
+                          <span>•</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                            Transférée le {new Date(transaction.transferredAt).toLocaleDateString('fr-FR')}
                           </span>
                         </>
                       )}

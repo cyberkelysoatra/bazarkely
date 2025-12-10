@@ -545,3 +545,4 @@ const adapted: CardConsumptionSummary[] = result.data.map((summary: ServiceConsu
 
 
 
+

@@ -105,6 +105,13 @@ export interface Transaction {
   // Pour transactions récurrentes (Phase 1 - Infrastructure)
   isRecurring?: boolean; // Indique si cette transaction provient d'une transaction récurrente
   recurringTransactionId?: string | null; // Référence vers la transaction récurrente source
+  // Pour transfert de propriété (Family Sharing)
+  /** ID du propriétaire actuel de la transaction (UUID, requis) */
+  currentOwnerId: string;
+  /** ID du propriétaire original avant le transfert (UUID, nullable) */
+  originalOwnerId?: string | null;
+  /** Date et heure du transfert au format ISO (nullable) */
+  transferredAt?: string | null;
 }
 
 export interface Budget {

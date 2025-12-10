@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { db } from '../lib/database';
 import { useCurrency } from '../hooks/useCurrency';
-import type { Transaction, Account } from '../types';
+import type { Transaction, Account, TransactionCategory } from '../types';
+import * as familyGroupService from '../services/familyGroupService';
+import { shareTransaction, unshareTransaction, getSharedTransactionByTransactionId, updateSharedTransaction } from '../services/familySharingService';
+import { toast } from 'react-hot-toast';
+import type { ShareTransactionInput, SplitType, FamilyGroup, FamilySharedTransaction } from '../types/family';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -27,6 +31,14 @@ const TransactionDetailPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAccountChangeWarning, setShowAccountChangeWarning] = useState(false);
   const [isTransfer, setIsTransfer] = useState(false);
+  
+  // Family sharing state
+  const [activeFamilyGroup, setActiveFamilyGroup] = useState<FamilyGroup | null>(null);
+  const [isShared, setIsShared] = useState(false);
+  const [sharedTransaction, setSharedTransaction] = useState<FamilySharedTransaction | null>(null);
+  const [hasReimbursementRequest, setHasReimbursementRequest] = useState(false);
+  const [initialHasReimbursementRequest, setInitialHasReimbursementRequest] = useState(false);
+  const [isLoadingSharingStatus, setIsLoadingSharingStatus] = useState(false);
   
   const [editData, setEditData] = useState({
     description: '',
@@ -104,6 +116,83 @@ const TransactionDetailPage = () => {
     loadTransaction();
   }, [transactionId, user, navigate]);
 
+  // Charger le groupe familial actif
+  useEffect(() => {
+    const loadFamilyGroup = async () => {
+      if (!user) {
+        setActiveFamilyGroup(null);
+        return;
+      }
+
+      try {
+        const groups = await familyGroupService.getUserFamilyGroups();
+        if (groups.length > 0) {
+          setActiveFamilyGroup(groups[0]);
+        } else {
+          setActiveFamilyGroup(null);
+        }
+      } catch (error) {
+        console.log('No family group available:', error);
+        setActiveFamilyGroup(null);
+      }
+    };
+
+    loadFamilyGroup();
+  }, [user]);
+
+  // Charger l'état de partage de la transaction
+  useEffect(() => {
+    const loadSharingStatus = async () => {
+      if (!transaction || !activeFamilyGroup || !user) {
+        setIsShared(false);
+        setSharedTransaction(null);
+        return;
+      }
+
+      try {
+        setIsLoadingSharingStatus(true);
+        const shared = await getSharedTransactionByTransactionId(
+          transaction.id,
+          activeFamilyGroup.id
+        );
+        
+        if (shared) {
+          setIsShared(true);
+          setSharedTransaction(shared);
+          // Get has_reimbursement_request from the raw row data
+          // The mapping function doesn't include it, so we need to fetch it separately
+          try {
+            const { supabase } = await import('../lib/supabase');
+            const { data: rawData } = await supabase
+              .from('family_shared_transactions')
+              .select('has_reimbursement_request')
+              .eq('id', shared.id)
+              .single();
+            const reimbursementStatus = (rawData as any)?.has_reimbursement_request || false;
+            setHasReimbursementRequest(reimbursementStatus);
+            setInitialHasReimbursementRequest(reimbursementStatus);
+          } catch (error) {
+            console.error('Error loading reimbursement request status:', error);
+            setHasReimbursementRequest(false);
+            setInitialHasReimbursementRequest(false);
+          }
+        } else {
+          setIsShared(false);
+          setSharedTransaction(null);
+          setHasReimbursementRequest(false);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du statut de partage:', error);
+        setIsShared(false);
+        setSharedTransaction(null);
+      } finally {
+        setIsLoadingSharingStatus(false);
+      }
+    };
+
+    loadSharingStatus();
+  }, [transaction, activeFamilyGroup, user]);
+
   const handleEdit = () => {
     // Prevent editing transfers
     if (isTransfer) {
@@ -120,7 +209,7 @@ const TransactionDetailPage = () => {
       const updatedTransactionData = {
         description: editData.description,
         amount: transaction.type === 'income' ? parseFloat(editData.amount) : -parseFloat(editData.amount),
-        category: editData.category,
+        category: editData.category as TransactionCategory,
         date: new Date(editData.date),
         notes: editData.notes,
         accountId: editData.accountId
@@ -218,6 +307,54 @@ const TransactionDetailPage = () => {
       // Update account display
       const newAccount = await accountService.getAccount(editData.accountId, user.id);
       setAccount(newAccount);
+      
+      // Handle family sharing changes
+      if (activeFamilyGroup && user) {
+        try {
+          // If share toggle is ON and not already shared
+          if (isShared && !sharedTransaction) {
+            const shareInput: ShareTransactionInput = {
+              familyGroupId: activeFamilyGroup.id,
+              transactionId: updatedTransaction.id,
+              description: updatedTransaction.description,
+              amount: Math.abs(updatedTransaction.amount),
+              category: updatedTransaction.category,
+              date: new Date(updatedTransaction.date),
+              splitType: 'paid_by_one' as SplitType,
+              paidBy: user.id,
+              splitDetails: [],
+              notes: undefined,
+            };
+            await shareTransaction(shareInput);
+            toast.success('Transaction partagée avec votre famille !');
+          }
+          // If share toggle is OFF and already shared
+          else if (!isShared && sharedTransaction) {
+            await unshareTransaction(sharedTransaction.id);
+            toast.success('Partage retiré');
+          }
+          // If shared and reimbursement request changed
+          else if (isShared && sharedTransaction) {
+            // Update reimbursement request status if changed from initial value
+            if (hasReimbursementRequest !== initialHasReimbursementRequest) {
+              await updateSharedTransaction(sharedTransaction.id, {
+                hasReimbursementRequest: hasReimbursementRequest
+              } as any);
+              toast.success('Demande de remboursement mise à jour');
+              // Update initial value to current value
+              setInitialHasReimbursementRequest(hasReimbursementRequest);
+            }
+          }
+        } catch (error: any) {
+          console.error('Erreur lors de la gestion du partage:', error);
+          const errorMessage = error?.message || 'Erreur lors de la gestion du partage';
+          if (errorMessage.includes('déjà partagée')) {
+            toast.error('Cette transaction est déjà partagée');
+          } else {
+            toast.error(errorMessage);
+          }
+        }
+      }
       
       console.log('✅ Transaction mise à jour avec succès !');
       
@@ -651,6 +788,77 @@ const TransactionDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Partage famille section (only in edit mode) */}
+        {isEditing && !isTransfer && activeFamilyGroup && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Users className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Partage famille</h3>
+            </div>
+
+            {isLoadingSharingStatus ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Toggle: Partager avec la famille */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Partager avec la famille
+                    </label>
+                    <p className="text-xs text-gray-500">
+                      Partagez cette transaction avec votre groupe familial "{activeFamilyGroup.name}"
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isShared}
+                      onChange={(e) => setIsShared(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {/* Toggle: Demander remboursement (only if shared) */}
+                {isShared && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Demander remboursement
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Créez une demande de remboursement pour cette transaction partagée
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={hasReimbursementRequest}
+                        onChange={(e) => setHasReimbursementRequest(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Info message if already shared */}
+                {isShared && sharedTransaction && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      ✓ Cette transaction est déjà partagée avec votre famille
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Boutons d'action */}
         {isEditing && (

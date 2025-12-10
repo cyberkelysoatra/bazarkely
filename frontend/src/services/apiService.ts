@@ -202,6 +202,33 @@ class ApiService {
     }
   }
 
+  /**
+   * Récupérer les transactions transférées (où l'utilisateur était le propriétaire original)
+   * Retourne les transactions où original_owner_id = userId ET current_owner_id != userId ET transferred_at IS NOT NULL
+   * @param userId - ID de l'utilisateur (propriétaire original)
+   * @returns Transactions transférées, triées par transferred_at décroissant
+   */
+  async getTransferredTransactions(userId: string): Promise<ApiResponse<SupabaseTransaction[]>> {
+    try {
+      const { data, error } = await db.transactions()
+        .select(`
+          *,
+          accounts!transactions_account_id_fkey(name, type),
+          target_account:accounts!transactions_target_account_id_fkey(name, type)
+        `)
+        .eq('original_owner_id', userId)
+        .neq('current_owner_id', userId)
+        .not('transferred_at', 'is', null)
+        .order('transferred_at', { ascending: false });
+      
+      if (error) throw error;
+
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return this.handleError(error, 'getTransferredTransactions');
+    }
+  }
+
   async createTransaction(transactionData: SupabaseTransactionInsert): Promise<ApiResponse<SupabaseTransaction>> {
     try {
       const userId = await this.getCurrentUserId();

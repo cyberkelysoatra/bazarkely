@@ -35,6 +35,7 @@ import FamilySettingsPage from '../../pages/FamilySettingsPage'
 import FamilyBalancePage from '../../pages/FamilyBalancePage'
 import FamilyMembersPage from '../../pages/FamilyMembersPage'
 import FamilyTransactionsPage from '../../pages/FamilyTransactionsPage'
+import FamilyReimbursementsPage from '../../pages/FamilyReimbursementsPage'
 
 // Analytics Pages
 import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
@@ -115,6 +116,7 @@ const FamilyRoutes: React.FC = () => {
         <Route path="balance" element={<FamilyBalancePage />} />
         <Route path="members" element={<FamilyMembersPage />} />
         <Route path="transactions" element={<FamilyTransactionsPage />} />
+        <Route path="reimbursements" element={<FamilyReimbursementsPage />} />
         <Route path="*" element={<Navigate to="/family" replace />} />
       </Routes>
     </FamilyProvider>
