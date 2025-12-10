@@ -158,6 +158,30 @@ const TransactionsPage = () => {
     loadTransactions();
   }, [user, location.pathname]); // Refresh when returning from detail page
 
+  // Scroll to transaction after navigation from edit page
+  useEffect(() => {
+    const scrollToTransactionId = (location.state as any)?.scrollToTransactionId;
+    
+    if (scrollToTransactionId && !isLoading && transactions.length > 0) {
+      // Wait for DOM to render transactions
+      setTimeout(() => {
+        const element = document.getElementById(`transaction-${scrollToTransactionId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight effect
+          element.classList.add('bg-purple-100');
+          setTimeout(() => {
+            element.classList.remove('bg-purple-100');
+          }, 2000);
+          
+          // Clear state to prevent re-scrolling on subsequent renders
+          window.history.replaceState({ ...location.state, scrollToTransactionId: undefined }, '');
+        }
+      }, 100);
+    }
+  }, [isLoading, transactions, location.state]);
+
   // Charger les transactions transférées
   useEffect(() => {
     const loadTransferredTransactions = async () => {
@@ -784,7 +808,8 @@ const TransactionsPage = () => {
           
           return (
             <div 
-              key={transaction.id} 
+              key={transaction.id}
+              id={`transaction-${transaction.id}`}
               onClick={() => {
                 navigate(`/transaction/${transaction.id}`);
               }}

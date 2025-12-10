@@ -49,6 +49,11 @@ const TransactionDetailPage = () => {
     accountId: ''
   });
 
+  // Scroll to top on mount to ensure content is visible below fixed header
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Charger la transaction
   useEffect(() => {
     const loadTransaction = async () => {
@@ -358,6 +363,11 @@ const TransactionDetailPage = () => {
       
       console.log('✅ Transaction mise à jour avec succès !');
       
+      // Navigate to transactions list with transaction ID for scrolling
+      if (transaction?.id) {
+        navigate('/transactions', { state: { scrollToTransactionId: transaction.id } });
+      }
+      
     } catch (error) {
       console.error('❌ Erreur lors de la mise à jour:', error);
       console.error('❌ Erreur lors de la mise à jour de la transaction');
@@ -473,13 +483,13 @@ const TransactionDetailPage = () => {
         notes: transaction?.notes || '',
         accountId: transaction?.accountId || ''
       });
+    }
+    
+    // Navigate to transactions list with transaction ID for scrolling
+    if (transaction?.id) {
+      navigate('/transactions', { state: { scrollToTransactionId: transaction.id } });
     } else {
-      // Utiliser l'historique du navigateur pour préserver les filtres et l'état de la page précédente
-      if (window.history.length > 1) {
-        navigate(-1);
-      } else {
-        navigate('/transactions');
-      }
+      navigate('/transactions');
     }
   };
 
@@ -548,7 +558,7 @@ const TransactionDetailPage = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 pt-20">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-md mx-auto px-4 py-4">

@@ -422,9 +422,15 @@ export async function updateSharedTransaction(
                 } else {
                   const debtorMember = debtorMembers[0];
 
-                  // Calculer le montant à rembourser (50% par défaut ou selon split_details)
+                  // Calculer le montant à rembourser (utilise le taux configuré ou 100% par défaut, ou selon split_details)
                   const transactionAmount = Math.abs(((sharedTx as any).transactions as any)?.amount || 0);
-                  let reimbursementAmount = transactionAmount / 2; // 50% par défaut
+                  
+                  // Get configured reimbursement rate from localStorage (default to 100%)
+                  const groupId = (sharedTx as any).family_group_id;
+                  const defaultRate = groupId ? localStorage.getItem(`bazarkely_family_${groupId}_reimbursement_rate`) : null;
+                  const rate = defaultRate ? parseInt(defaultRate, 10) / 100 : 1.0; // Default 100%
+                  
+                  let reimbursementAmount = transactionAmount * rate; // Use configured rate
 
                   // Si split_details existe, utiliser le montant spécifique
                   if ((sharedTx as any).split_details && Array.isArray((sharedTx as any).split_details)) {

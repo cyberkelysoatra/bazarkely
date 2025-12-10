@@ -210,7 +210,91 @@ export async function getMemberBalances(
       return [];
     }
 
-    return data.map(mapRowToFamilyMemberBalance);
+    // CRITICAL FIX: Recalculate pending_to_receive and pending_to_pay
+    // by filtering reimbursement_requests where has_reimbursement_request = true
+    // This matches the fix applied to getPendingReimbursements
+    const { data: reimbursementRequests, error: reimbError } = await supabase
+      .from('reimbursement_requests')
+      .select(`
+        *,
+        shared_transaction:family_shared_transactions(
+          has_reimbursement_request,
+          family_group_id
+        )
+      `)
+      .eq('status', 'pending');
+
+    if (reimbError) {
+      console.error('Erreur lors de la récupération des remboursements pour recalcul:', reimbError);
+      // Fallback to view data if reimbursement query fails
+      return data.map(mapRowToFamilyMemberBalance);
+    }
+
+    // Filter reimbursement requests where has_reimbursement_request = true
+    const validReimbursements = (reimbursementRequests || []).filter((rr: any) => {
+      if (!rr.shared_transaction) {
+        return false;
+      }
+      
+      // Check that has_reimbursement_request is true
+      const hasReimbursementRequest = rr.shared_transaction?.has_reimbursement_request;
+      if (hasReimbursementRequest === false) {
+        return false;
+      }
+      
+      // Check that the shared transaction belongs to this group
+      const transactionGroupId = rr.shared_transaction?.family_group_id;
+      if (transactionGroupId !== groupId) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Recalculate pending amounts for each member
+    const balancesMap = new Map<string, { pendingToReceive: number; pendingToPay: number }>();
+    
+    validReimbursements.forEach((rr: any) => {
+      const toMemberId = rr.to_member_id; // Creditor (should receive)
+      const fromMemberId = rr.from_member_id; // Debtor (should pay)
+      const amount = rr.amount || 0;
+      
+      // Add to pendingToReceive for creditor
+      if (toMemberId) {
+        const creditorBalance = balancesMap.get(toMemberId) || { pendingToReceive: 0, pendingToPay: 0 };
+        creditorBalance.pendingToReceive += amount;
+        balancesMap.set(toMemberId, creditorBalance);
+      }
+      
+      // Add to pendingToPay for debtor
+      if (fromMemberId) {
+        const debtorBalance = balancesMap.get(fromMemberId) || { pendingToReceive: 0, pendingToPay: 0 };
+        debtorBalance.pendingToPay += amount;
+        balancesMap.set(fromMemberId, debtorBalance);
+      }
+    });
+
+    // Map the view data and override pending amounts with recalculated values
+    return data.map((row: any) => {
+      const balance = mapRowToFamilyMemberBalance(row);
+      const recalculated = balancesMap.get(row.member_id);
+      
+      if (recalculated) {
+        // Override with recalculated values
+        return {
+          ...balance,
+          pendingToReceive: recalculated.pendingToReceive,
+          pendingToPay: recalculated.pendingToPay,
+        };
+      } else {
+        // If no valid reimbursements for this member, set pending amounts to 0
+        return {
+          ...balance,
+          pendingToReceive: 0,
+          pendingToPay: 0,
+        };
+      }
+    });
   } catch (error) {
     console.error('Erreur dans getMemberBalances:', error);
     throw error;
@@ -269,6 +353,7 @@ export async function getPendingReimbursements(
         shared_transaction:family_shared_transactions(
           transaction_id,
           family_group_id,
+          has_reimbursement_request,
           transactions(
             description,
             amount,
@@ -295,9 +380,18 @@ export async function getPendingReimbursements(
 
     // Filtrer par groupe - utiliser shared_transaction.family_group_id comme source de vérité
     // car c'est la transaction partagée qui détermine le groupe, pas les membres individuels
+    // IMPORTANT: Ne retourner que les remboursements où has_reimbursement_request = true
     const filteredData = data.filter((item: any) => {
       // Exclure les remboursements sans transaction partagée valide
       if (!item.shared_transaction) {
+        return false;
+      }
+      
+      // CRITICAL FIX: Exclure les remboursements où has_reimbursement_request = false
+      // Si le flag est false, cela signifie que l'utilisateur a désactivé le toggle
+      // et ces remboursements ne doivent plus apparaître dans la liste
+      const hasReimbursementRequest = item.shared_transaction?.has_reimbursement_request;
+      if (hasReimbursementRequest === false) {
         return false;
       }
       
