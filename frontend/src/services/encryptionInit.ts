@@ -18,8 +18,6 @@ class EncryptionInitializer {
     }
 
     try {
-      console.log('🔐 Initialisation du système de chiffrement AES-256...')
-
       // Vérifier le support du navigateur
       if (!encryptionService.isSupported()) {
         console.warn('⚠️ Chiffrement AES-256 non supporté, utilisation de Base64')
@@ -29,18 +27,14 @@ class EncryptionInitializer {
 
       // Vérifier si la migration a déjà été effectuée
       if (migrationService.isMigrationCompleted()) {
-        console.log('✅ Migration AES-256 déjà effectuée')
         this.initialized = true
         return
       }
 
       // Lancer la migration
-      console.log('🚀 Lancement de la migration des données...')
       const result = await migrationService.runFullMigration()
 
-      if (result.success) {
-        console.log(`✅ Migration réussie: ${result.migrated} éléments migrés`)
-      } else {
+      if (!result.success) {
         console.warn(`⚠️ Migration partielle: ${result.migrated} éléments migrés, ${result.failed} échecs`)
         if (result.errors.length > 0) {
           console.error('❌ Erreurs de migration:', result.errors)

@@ -116,8 +116,7 @@ class FeeService {
   // Initialiser les configurations de frais par défaut
   async initializeDefaultFees(): Promise<void> {
     try {
-      console.log('🔧 Initialisation des configurations de frais par défaut...');
-      console.log('✅ Initialisation des frais terminée (mode simplifié)');
+      // Initialization completed silently
     } catch (error) {
       console.error('❌ Erreur lors de l\'initialisation des frais:', error);
     }

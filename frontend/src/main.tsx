@@ -14,31 +14,25 @@ import './services/encryptionInit'
 // TEMPORARY: Mock services to prevent blocking
 const optimizationManager = {
   initialize: () => {
-    console.log('🔧 Optimization manager temporarily disabled')
     return Promise.resolve()
   },
   enablePerformanceMonitoring: () => {
-    console.log('📊 Performance monitoring temporarily disabled')
   },
   optimizeImages: () => {
-    console.log('🖼️ Image optimization temporarily disabled')
   }
 }
 
 const safariCompatibility = {
   applyOptimizations: () => {
-    console.log('🍎 Safari optimizations temporarily disabled')
   },
   isSafariOrIOS: () => false,
   isIOSStandalone: () => false,
   detectSafariVersion: () => 'unknown',
   applySafariSpecificFixes: () => {
-    console.log('🔧 Safari-specific fixes temporarily disabled')
   }
 }
 
 // Initialize services (mocked temporarily)
-console.log('🚀 Initializing BazarKELY with temporary service mocks...')
 optimizationManager.initialize().catch(console.error)
 safariCompatibility.applyOptimizations()
 
@@ -46,11 +40,8 @@ safariCompatibility.applyOptimizations()
 // This prevents Service Worker or React Router from clearing the hash
 const captureOAuthTokens = () => {
   const hash = window.location.hash;
-  console.log('🔍 OAuth Pre-Capture - Hash:', hash);
   
   if (hash && hash.includes('access_token')) {
-    console.log('✅ OAuth tokens detected, saving to sessionStorage...');
-    
     try {
       const hashParams = new URLSearchParams(hash.substring(1));
       const accessToken = hashParams.get('access_token');
@@ -68,11 +59,8 @@ const captureOAuthTokens = () => {
           captured_at: Date.now()
         }));
         
-        console.log('✅ OAuth tokens saved to sessionStorage');
-        
         // Clear hash immediately to prevent re-processing
         window.history.replaceState({}, document.title, window.location.pathname);
-        console.log('🧹 Hash cleared after token capture');
       }
     } catch (error) {
       console.error('❌ Error capturing OAuth tokens:', error);
@@ -86,15 +74,10 @@ captureOAuthTokens();
 // CRITICAL: Capture PWA install prompt IMMEDIATELY before React renders
 // This prevents the beforeinstallprompt event from being lost during React mount
 const capturePWAPrompt = () => {
-  console.log('🔍 PWA Pre-Capture - Checking for beforeinstallprompt event...');
-  
   // Clear any existing saved prompt to avoid stale data
   sessionStorage.removeItem('bazarkely-pwa-prompt');
-  console.log('🧹 Cleared any existing PWA prompt data');
   
   const handleBeforeInstallPrompt = (e: Event) => {
-    console.log('🎉 PWA Pre-Capture - beforeinstallprompt event fired!');
-    
     // Prevent default behavior to control when prompt shows
     e.preventDefault();
     
@@ -111,11 +94,8 @@ const capturePWAPrompt = () => {
       // Save to sessionStorage for usePWAInstall hook
       sessionStorage.setItem('bazarkely-pwa-prompt', JSON.stringify(promptData));
       
-      console.log('✅ PWA prompt data saved to sessionStorage:', promptData);
-      
       // Remove event listener after capture
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      console.log('🧹 PWA event listener removed after capture');
       
     } catch (error) {
       console.error('❌ Error capturing PWA prompt:', error);
@@ -124,7 +104,6 @@ const capturePWAPrompt = () => {
   
   // Listen for beforeinstallprompt event
   window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  console.log('👂 PWA event listener attached, waiting for beforeinstallprompt...');
 };
 
 // Capture PWA prompt BEFORE React renders

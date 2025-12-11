@@ -47,7 +47,6 @@ class DialogService {
     }
 
     this.isInitialized = true
-    console.log('✅ Dialog service initialized - native dialogs replaced with modern alternatives')
   }
 
   /**

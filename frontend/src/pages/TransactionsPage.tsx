@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle, Calendar } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
@@ -45,6 +45,11 @@ const TransactionsPage = () => {
     endDate: ''
   });
   
+  // localStorage keys for period filter persistence
+  const PERIOD_FILTER_STORAGE_KEY = 'bazarkely_transactions_period_filter';
+  const CUSTOM_DATE_RANGE_STORAGE_KEY = 'bazarkely_transactions_custom_date_range';
+  const isInitialMount = useRef(true);
+  
   // Currency display preference
   const { displayCurrency } = useCurrency();
   
@@ -71,17 +76,10 @@ const TransactionsPage = () => {
   
   // Function to reload reimbursement statuses
   const loadReimbursementStatuses = useCallback(async () => {
-    console.log('[LOAD REIMBURSEMENT] Function called', {
-      hasActiveFamilyGroup: !!activeFamilyGroup,
-      activeFamilyGroupId: activeFamilyGroup?.id,
-      sharedTransactionsMapSize: sharedTransactionsMap.size
-    });
-
     // Set loading state to true at the start
     setIsLoadingReimbursementStatuses(true);
 
     if (!activeFamilyGroup || sharedTransactionsMap.size === 0) {
-      console.log('[LOAD REIMBURSEMENT] Early return - no activeFamilyGroup or empty sharedTransactionsMap');
       setReimbursementStatuses(new Map());
       setIsLoadingReimbursementStatuses(false);
       return;
@@ -89,18 +87,8 @@ const TransactionsPage = () => {
     
     try {
       const transactionIds = Array.from(sharedTransactionsMap.keys());
-      console.log('[LOAD REIMBURSEMENT] Querying service with:', {
-        transactionIdsCount: transactionIds.length,
-        transactionIds: transactionIds,
-        groupId: activeFamilyGroup.id
-      });
 
       const statuses = await getReimbursementStatusByTransactionIds(transactionIds, activeFamilyGroup.id);
-      
-      console.log('[LOAD REIMBURSEMENT] Service returned:', {
-        statusesMapSize: statuses.size,
-        statusesEntries: Array.from(statuses.entries())
-      });
 
       setReimbursementStatuses(statuses);
       // Set loading state to false after state is updated
@@ -306,6 +294,51 @@ const TransactionsPage = () => {
     };
     loadFilteredAccount();
   }, [accountId, user]);
+
+  // Load period filter from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedPeriod = localStorage.getItem(PERIOD_FILTER_STORAGE_KEY);
+      if (savedPeriod && ['7d', '30d', '1y', 'custom'].includes(savedPeriod)) {
+        setPeriodFilter(savedPeriod as '7d' | '30d' | '1y' | 'custom');
+        if (savedPeriod === 'custom') {
+          const savedRange = localStorage.getItem(CUSTOM_DATE_RANGE_STORAGE_KEY);
+          if (savedRange) {
+            const parsed = JSON.parse(savedRange);
+            if (parsed.startDate && parsed.endDate) {
+              setCustomDateRange({
+                startDate: new Date(parsed.startDate),
+                endDate: new Date(parsed.endDate)
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error loading period filter from localStorage:', e);
+    }
+  }, []);
+
+  // Save period filter to localStorage when it changes (skip initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(PERIOD_FILTER_STORAGE_KEY, periodFilter);
+      if (periodFilter === 'custom' && customDateRange.startDate && customDateRange.endDate) {
+        localStorage.setItem(CUSTOM_DATE_RANGE_STORAGE_KEY, JSON.stringify({
+          startDate: customDateRange.startDate.toISOString(),
+          endDate: customDateRange.endDate.toISOString()
+        }));
+      } else if (periodFilter !== 'custom') {
+        localStorage.removeItem(CUSTOM_DATE_RANGE_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.error('Error saving period filter to localStorage:', e);
+    }
+  }, [periodFilter, customDateRange]);
 
   // Helper function to sort transactions by date (newest first)
   const sortTransactionsByDateDesc = (transactions: Transaction[]) => {
@@ -997,19 +1030,6 @@ const TransactionsPage = () => {
                           ? 'loading' 
                           : (reimbursementStatuses.get(transaction.id) || 'none');
                         const isRequesting = requestingReimbursement === transaction.id;
-                        
-                        console.log('[ICON DEBUG]', {
-                          transactionId: transaction.id,
-                          hasInSharedMap: sharedTransactionsMap.has(transaction.id),
-                          sharedTxPaidBy: sharedTx?.paidBy,
-                          currentUserId: user?.id,
-                          isCreditor: isCreditor,
-                          isLoadingReimbursementStatuses: isLoadingReimbursementStatuses,
-                          statusFromMap: reimbursementStatuses.get(transaction.id),
-                          finalStatus: status,
-                          reimbursementStatusesMapSize: reimbursementStatuses.size,
-                          allStatuses: Array.from(reimbursementStatuses.entries())
-                        });
                         
                         if (!isCreditor) return null;
                         

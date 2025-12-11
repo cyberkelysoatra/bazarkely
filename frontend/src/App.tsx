@@ -28,11 +28,9 @@ import './index.css';
 
 const safariServiceWorkerManager = {
   initialize: () => {
-    console.log('🔧 Safari Service Worker manager temporarily disabled')
     return Promise.resolve()
   },
   registerServiceWorker: () => {
-    console.log('📱 Service Worker registration temporarily disabled')
     return Promise.resolve()
   }
 }
@@ -82,8 +80,6 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log('🚀 Initialisation de BazarKELY (API-first)...');
-        
         // Initialiser le service de dialogues modernes
         dialogService.initialize();
         
@@ -97,7 +93,6 @@ function App() {
         const storedUser = localStorage.getItem('bazarkely-user');
         if (storedUser) {
           const userData = JSON.parse(storedUser);
-          console.log('👤 Utilisateur connecté:', userData.username);
           
           setUser(userData);
           setAuthenticated(true);
@@ -106,14 +101,10 @@ function App() {
           
           // Tester la connexion API
           const isConnected = await apiService.testConnection();
-          if (isConnected) {
-            console.log('✅ Connexion API établie');
-          } else {
+          if (!isConnected) {
             console.warn('⚠️ Connexion API non disponible, mode hors ligne');
           }
           
-        } else {
-          console.log('ℹ️ Aucun utilisateur connecté');
         }
         
         

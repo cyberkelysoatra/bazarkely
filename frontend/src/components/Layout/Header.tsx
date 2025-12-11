@@ -1,4 +1,4 @@
-import { useAppStore } from '../../stores/appStore';
+﻿import { useAppStore } from '../../stores/appStore';
 import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -28,15 +28,9 @@ const Header = () => {
   const { user, logout } = useAppStore();
   const { toggleSwitcherMode, isSwitcherMode, activeModule } = useModuleSwitcher();
   const constructionData = useConstruction();
-  console.log('🏢 [Header] activeCompany:', constructionData?.activeCompany);
   const location = useLocation();
   
   // DEBUG: Log activeModule to identify correct id value
-  console.log('🔍 [Header Debug] activeModule:', activeModule);
-  console.log('🔍 [Header Debug] activeModule?.id:', activeModule?.id);
-  console.log('🔍 [Header Debug] activeModule?.name:', activeModule?.name);
-  console.log('🔍 [Header Debug] location.pathname:', location.pathname);
-  console.log('🔍 [Header Debug] isSwitcherMode:', isSwitcherMode);
   
   // FIX: Use pathname as primary source of truth to avoid race condition
   // When activeModule is null on first render, pathname ensures correct detection
@@ -45,7 +39,6 @@ const Header = () => {
     || activeModule?.id === 'construction'
     || activeModule?.id === 'construction-poc';
   
-  console.log('🔍 [Header Debug] isConstructionModule:', isConstructionModule);
   
   // Get Construction context - use useConstruction() hook (same pattern as PurchaseOrderForm.tsx)
   // Note: This will throw if used outside ConstructionProvider, but Header is always within Provider
@@ -362,7 +355,6 @@ const Header = () => {
   ].filter((message): message is InteractiveMessage => message !== undefined);
 
   // Debug: Log current messages for quiz questions
-  console.log('📋 Current banner messages:', messages.filter(m => m.type === 'quiz_question').map(m => ({ text: m.text, questionId: m.questionId })));
 
   // Helper function to check daily session with 6 AM threshold
   const checkDailySession = () => {

@@ -6,22 +6,17 @@ import { X, Share, Plus, Smartphone, Download, CheckCircle } from 'lucide-react'
 // TEMPORARY: Mock safariCompatibility service
 const safariCompatibility = {
   isSafariOrIOS: () => {
-    console.log('🍎 Safari detection temporarily disabled')
     return false
   },
   isIOSStandalone: () => {
-    console.log('📱 iOS standalone detection temporarily disabled')
     return false
   },
   detectSafariVersion: () => {
-    console.log('🔍 Safari version detection temporarily disabled')
     return 'unknown'
   },
   applySafariSpecificFixes: () => {
-    console.log('🔧 Safari-specific fixes temporarily disabled')
   },
   getCapabilities: () => {
-    console.log('🔧 Safari capabilities temporarily disabled')
     return {
       isStandalone: false,
       isSafari: false,
@@ -32,7 +27,6 @@ const safariCompatibility = {
     }
   },
   getInstallationMetadata: () => {
-    console.log('🔧 Safari installation metadata temporarily disabled')
     return {
       canInstall: false,
       installPrompt: null,

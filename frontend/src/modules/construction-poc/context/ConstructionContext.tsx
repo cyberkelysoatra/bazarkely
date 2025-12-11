@@ -204,18 +204,17 @@ export const ConstructionProvider: React.FC<ConstructionProviderProps> = ({ chil
   // Load simulated role from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('bk_simulated_role');
-      if (stored) {
-        const role = stored as MemberRole;
-        // Validate role is a valid MemberRole enum value
-        if (Object.values(MemberRole).includes(role)) {
-          setSimulatedRoleState(role);
-          console.log('🔄 [Role Simulation] Loaded from localStorage:', role);
-        } else {
-          console.warn('⚠️ [Role Simulation] Invalid role in localStorage, clearing:', stored);
-          localStorage.removeItem('bk_simulated_role');
+        const stored = localStorage.getItem('bk_simulated_role');
+        if (stored) {
+          const role = stored as MemberRole;
+          // Validate role is a valid MemberRole enum value
+          if (Object.values(MemberRole).includes(role)) {
+            setSimulatedRoleState(role);
+          } else {
+            console.warn('⚠️ [Role Simulation] Invalid role in localStorage, clearing:', stored);
+            localStorage.removeItem('bk_simulated_role');
+          }
         }
-      }
     } catch (error) {
       console.error('❌ [Role Simulation] Error loading from localStorage:', error);
     }
@@ -226,14 +225,12 @@ export const ConstructionProvider: React.FC<ConstructionProviderProps> = ({ chil
     if (simulatedRole) {
       try {
         localStorage.setItem('bk_simulated_role', simulatedRole);
-        console.log('💾 [Role Simulation] Saved to localStorage:', simulatedRole);
       } catch (error) {
         console.error('❌ [Role Simulation] Error saving to localStorage:', error);
       }
     } else {
       try {
         localStorage.removeItem('bk_simulated_role');
-        console.log('🗑️ [Role Simulation] Cleared from localStorage');
       } catch (error) {
         console.error('❌ [Role Simulation] Error clearing localStorage:', error);
       }
@@ -253,7 +250,6 @@ export const ConstructionProvider: React.FC<ConstructionProviderProps> = ({ chil
     }
     
     setSimulatedRoleState(role);
-    console.log('🎭 [Role Simulation] Set simulated role:', role);
   };
 
   /**
@@ -261,7 +257,6 @@ export const ConstructionProvider: React.FC<ConstructionProviderProps> = ({ chil
    */
   const clearSimulation = () => {
     setSimulatedRoleState(null);
-    console.log('🔄 [Role Simulation] Cleared, returning to ADMIN');
   };
 
   // Calculer hasConstructionAccess

@@ -454,16 +454,9 @@ export async function getReimbursementStatusByTransactionIds(
   transactionIds: string[],
   groupId: string
 ): Promise<Map<string, ReimbursementStatus>> {
-  console.log('[REIMBURSEMENT STATUSES DEBUG] Service called with:', {
-    transactionIdsCount: transactionIds.length,
-    transactionIds: transactionIds,
-    groupId: groupId
-  });
-
   const result = new Map<string, ReimbursementStatus>();
 
   if (transactionIds.length === 0) {
-    console.log('[REIMBURSEMENT STATUSES DEBUG] No transaction IDs provided, returning empty Map');
     return result;
   }
 
@@ -479,12 +472,6 @@ export async function getReimbursementStatusByTransactionIds(
       console.error('Error fetching shared transactions:', sharedError);
       return result;
     }
-
-    console.log('[REIMBURSEMENT STATUS DETAIL] Shared transactions from DB:', sharedTransactions?.map(st => ({ 
-      transactionId: st.transaction_id, 
-      paidBy: st.paid_by, 
-      requestReimbursement: st.has_reimbursement_request 
-    })));
 
     if (!sharedTransactions || sharedTransactions.length === 0) {
       // No shared transactions found, all are 'none'
@@ -514,12 +501,6 @@ export async function getReimbursementStatusByTransactionIds(
       transactionIds.forEach(id => result.set(id, 'none'));
       return result;
     }
-
-    console.log('[REIMBURSEMENT STATUS DETAIL] Reimbursement requests from DB:', reimbursementRequests?.map(rr => ({ 
-      transactionId: sharedToTransactionMap.get(rr.shared_transaction_id) || 'unknown', 
-      status: rr.status, 
-      debtorId: rr.from_member_id 
-    })));
 
     // Group reimbursement requests by shared_transaction_id
     const requestsBySharedTransaction = new Map<string, string[]>();
@@ -562,24 +543,7 @@ export async function getReimbursementStatusByTransactionIds(
         }
       }
 
-      console.log('[REIMBURSEMENT STATUS DETAIL] Processing transaction:', { 
-        transactionId, 
-        hasSharedTx: !!sharedTx, 
-        requestReimbursement: sharedTx?.has_reimbursement_request, 
-        hasReimbursementRequest: !!reimbursementRequest, 
-        reimbursementStatus: reimbursementRequest?.status, 
-        statusesArray: statuses,
-        finalStatus: finalStatus 
-      });
-
       result.set(transactionId, finalStatus);
-    });
-
-    console.log('[REIMBURSEMENT STATUSES DEBUG] Service returning Map:', {
-      resultSize: result.size,
-      resultEntries: Array.from(result.entries()),
-      sharedTransactionsFound: sharedTransactions?.length || 0,
-      reimbursementRequestsFound: reimbursementRequests?.length || 0
     });
 
     return result;
