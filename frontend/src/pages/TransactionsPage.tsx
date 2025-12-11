@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle, Calendar } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -10,6 +10,7 @@ import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
+import Modal from '../components/UI/Modal';
 import { shareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, createReimbursementRequest, getMemberBalances } from '../services/reimbursementService';
@@ -31,6 +32,18 @@ const TransactionsPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredAccount, setFilteredAccount] = useState<Account | null>(null);
+  
+  // Period filter state
+  const [periodFilter, setPeriodFilter] = useState<'7d' | '30d' | '1y' | 'custom'>('7d');
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({
+    startDate: null,
+    endDate: null
+  });
+  const [isCustomDateModalOpen, setIsCustomDateModalOpen] = useState(false);
+  const [tempCustomDateRange, setTempCustomDateRange] = useState<{ startDate: string; endDate: string }>({
+    startDate: '',
+    endDate: ''
+  });
   
   // Currency display preference
   const { displayCurrency } = useCurrency();
@@ -410,6 +423,50 @@ const TransactionsPage = () => {
     }
   };
 
+  // Helper function to get date range based on period filter
+  const getDateRange = (): { startDate: Date; endDate: Date } => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    switch (periodFilter) {
+      case '7d': {
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 6); // Today minus 6 days = 7 days total
+        startDate.setHours(0, 0, 0, 0);
+        return { startDate, endDate: today };
+      }
+      case '30d': {
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 29); // Today minus 29 days = 30 days total
+        startDate.setHours(0, 0, 0, 0);
+        return { startDate, endDate: today };
+      }
+      case '1y': {
+        const startDate = new Date(today);
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        return { startDate, endDate: today };
+      }
+      case 'custom': {
+        const startDate = customDateRange.startDate 
+          ? new Date(customDateRange.startDate)
+          : new Date(0); // Very old date if not set
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = customDateRange.endDate 
+          ? new Date(customDateRange.endDate)
+          : today;
+        endDate.setHours(23, 59, 59, 999);
+        return { startDate, endDate };
+      }
+      default:
+        // Default to 7 days
+        const defaultStart = new Date(today);
+        defaultStart.setDate(defaultStart.getDate() - 6);
+        defaultStart.setHours(0, 0, 0, 0);
+        return { startDate: defaultStart, endDate: today };
+    }
+  };
+
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
@@ -421,8 +478,12 @@ const TransactionsPage = () => {
         ? transaction.isRecurring === true 
         : transaction.isRecurring !== true;
     
+    // Period filter: filter by transaction date
+    const transactionDate = new Date(transaction.date);
+    const { startDate, endDate } = getDateRange();
+    const matchesPeriod = transactionDate >= startDate && transactionDate <= endDate;
     
-    return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring;
+    return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring && matchesPeriod;
   });
 
   // Sort filtered transactions by date (newest first)
@@ -644,7 +705,8 @@ const TransactionsPage = () => {
 
       {/* Filtres et recherche */}
       <div className="space-y-4">
-        <div className="flex space-x-2">
+        {/* Row 1: Search input + Period chips */}
+        <div className="flex items-center gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -655,21 +717,60 @@ const TransactionsPage = () => {
               className="input-field pl-10"
             />
           </div>
-          <button 
-            onClick={exportToCSV}
-            className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Exporter en CSV"
-            disabled={sortedTransactions.length === 0}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exporter</span>
-          </button>
-          <button className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
-            <Filter className="w-4 h-4" />
-          </button>
+          {/* Period filter chips - horizontally scrollable on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <button
+              onClick={() => setPeriodFilter('7d')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                periodFilter === '7d'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              7j
+            </button>
+            <button
+              onClick={() => setPeriodFilter('30d')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                periodFilter === '30d'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              30j
+            </button>
+            <button
+              onClick={() => setPeriodFilter('1y')}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                periodFilter === '1y'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              1an
+            </button>
+            <button
+              onClick={() => {
+                // Initialize temp values with current custom date range or empty
+                setTempCustomDateRange({
+                  startDate: customDateRange.startDate ? new Date(customDateRange.startDate).toISOString().split('T')[0] : '',
+                  endDate: customDateRange.endDate ? new Date(customDateRange.endDate).toISOString().split('T')[0] : ''
+                });
+                setIsCustomDateModalOpen(true);
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                periodFilter === 'custom'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Row 2: Type tabs + Sub-filters + Action buttons */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setFilterType('all');
@@ -754,6 +855,22 @@ const TransactionsPage = () => {
             <ArrowRightLeft className="w-4 h-4" />
             Transférées
           </button>
+          
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 ml-auto">
+            <button 
+              onClick={exportToCSV}
+              className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Exporter en CSV"
+              disabled={sortedTransactions.length === 0}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exporter</span>
+            </button>
+            <button className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
+              <Filter className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Active Category Filter Badge */}
@@ -1045,6 +1162,89 @@ const TransactionsPage = () => {
           <p className="text-sm font-medium text-gray-900">Transfert</p>
         </button>
       </div>
+
+      {/* Custom Date Range Modal */}
+      <Modal
+        isOpen={isCustomDateModalOpen}
+        onClose={() => {
+          setIsCustomDateModalOpen(false);
+          // Reset temp values when closing without applying
+          setTempCustomDateRange({
+            startDate: customDateRange.startDate ? new Date(customDateRange.startDate).toISOString().split('T')[0] : '',
+            endDate: customDateRange.endDate ? new Date(customDateRange.endDate).toISOString().split('T')[0] : ''
+          });
+        }}
+        title="Sélectionner une période personnalisée"
+        size="md"
+        footer={
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                setIsCustomDateModalOpen(false);
+                setTempCustomDateRange({
+                  startDate: customDateRange.startDate ? new Date(customDateRange.startDate).toISOString().split('T')[0] : '',
+                  endDate: customDateRange.endDate ? new Date(customDateRange.endDate).toISOString().split('T')[0] : ''
+                });
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => {
+                if (tempCustomDateRange.startDate && tempCustomDateRange.endDate) {
+                  const startDate = new Date(tempCustomDateRange.startDate);
+                  const endDate = new Date(tempCustomDateRange.endDate);
+                  
+                  if (startDate <= endDate) {
+                    setCustomDateRange({
+                      startDate,
+                      endDate
+                    });
+                    setPeriodFilter('custom');
+                    setIsCustomDateModalOpen(false);
+                  } else {
+                    toast.error('La date de début doit être antérieure à la date de fin');
+                  }
+                } else {
+                  toast.error('Veuillez sélectionner les deux dates');
+                }
+              }}
+              className="px-4 py-2 text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors"
+            >
+              Appliquer
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Du:
+            </label>
+            <input
+              type="date"
+              value={tempCustomDateRange.startDate}
+              onChange={(e) => setTempCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+              className="input-field w-full"
+              max={tempCustomDateRange.endDate || undefined}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Au:
+            </label>
+            <input
+              type="date"
+              value={tempCustomDateRange.endDate}
+              onChange={(e) => setTempCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+              className="input-field w-full"
+              min={tempCustomDateRange.startDate || undefined}
+              max={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
