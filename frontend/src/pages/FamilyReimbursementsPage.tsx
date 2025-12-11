@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, RefreshCw, CheckCircle, Clock, User, ArrowRight, 
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, Settings
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFamily } from '../contexts/FamilyContext';
@@ -421,6 +421,17 @@ const FamilyReimbursementsPage = () => {
             </div>
           </div>
         )}
+
+        {/* Settings Link */}
+        <div className="mt-8 mb-4 flex justify-center">
+          <button
+            onClick={() => navigate('/family/settings')}
+            className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors px-4 py-2 rounded-lg hover:bg-purple-50"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-sm font-medium">Paramètres de remboursement</span>
+          </button>
+        </div>
       </div>
 
       {/* Confirm Dialog */}
