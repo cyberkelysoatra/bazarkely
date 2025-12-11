@@ -184,3 +184,4 @@ WHERE table_schema = 'public'
   AND table_name = 'transactions'
 ORDER BY ordinal_position;
 
+

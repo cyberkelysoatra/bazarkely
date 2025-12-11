@@ -423,3 +423,4 @@ WHERE table_schema = 'public'
 4. Update TypeScript interfaces
 5. Update RLS policies
 
+

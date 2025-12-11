@@ -11,7 +11,7 @@ import { CurrencyDisplay } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
 import Modal from '../components/UI/Modal';
-import { shareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
+import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, createReimbursementRequest, getMemberBalances } from '../services/reimbursementService';
 import { toast } from 'react-hot-toast';
@@ -345,55 +345,108 @@ const TransactionsPage = () => {
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  // Handle sharing transaction with family
+  // Handle sharing/unsharing transaction with family (toggle)
   const handleShareTransaction = async (e: React.MouseEvent, transaction: Transaction) => {
     e.stopPropagation(); // Prevent navigation to transaction detail
     
-    if (!activeFamilyGroup || !user) {
-      toast.error('Vous devez être membre d\'un groupe familial pour partager');
+    if (!user) {
+      toast.error('Vous devez être connecté pour partager une transaction');
       return;
     }
 
-    setSharingTransactionId(transaction.id);
+    // Check if transaction is already shared
+    const isShared = sharedTransactionIds.has(transaction.id);
 
-    try {
-      const shareInput: ShareTransactionInput = {
-        familyGroupId: activeFamilyGroup.id,
-        transactionId: transaction.id,
-        description: transaction.description,
-        amount: Math.abs(transaction.amount),
-        category: transaction.category,
-        date: new Date(transaction.date),
-        splitType: 'paid_by_one' as SplitType,
-        paidBy: user.id,
-        splitDetails: [], // Empty for paid_by_one
-        notes: undefined,
-      };
-
-      const sharedTx = await shareTransaction(shareInput);
-      toast.success('Transaction partagée avec votre famille !');
-      // Add transaction ID to shared set
-      setSharedTransactionIds(prev => new Set([...prev, transaction.id]));
-      // Add to shared transactions map
-      setSharedTransactionsMap(prev => {
-        const newMap = new Map(prev);
-        if (sharedTx.transactionId) {
-          newMap.set(sharedTx.transactionId, sharedTx);
-        }
-        return newMap;
+    // If not shared and no active family group, redirect to create family page
+    if (!isShared && !activeFamilyGroup) {
+      toast.error('Vous devez créer un groupe familial pour partager des transactions');
+      navigate('/family', { 
+        state: { pendingShareTransactionId: transaction.id } 
       });
-    } catch (error: any) {
-      console.error('Erreur lors du partage de la transaction:', error);
-      const errorMessage = error?.message || 'Erreur lors du partage de la transaction';
-      
-      // Check if transaction is already shared
-      if (errorMessage.includes('déjà partagée')) {
-        toast.error('Cette transaction est déjà partagée');
-      } else {
-        toast.error(errorMessage);
+      return;
+    }
+
+    // If not shared but has active family group, share the transaction
+    if (!isShared && activeFamilyGroup) {
+      setSharingTransactionId(transaction.id);
+
+      try {
+        const shareInput: ShareTransactionInput = {
+          familyGroupId: activeFamilyGroup.id,
+          transactionId: transaction.id,
+          description: transaction.description,
+          amount: Math.abs(transaction.amount),
+          category: transaction.category,
+          date: new Date(transaction.date),
+          splitType: 'paid_by_one' as SplitType,
+          paidBy: user.id,
+          splitDetails: [], // Empty for paid_by_one
+          notes: undefined,
+        };
+
+        const sharedTx = await shareTransaction(shareInput);
+        toast.success('Transaction partagée avec votre famille !');
+        // Add transaction ID to shared set
+        setSharedTransactionIds(prev => new Set([...prev, transaction.id]));
+        // Add to shared transactions map
+        setSharedTransactionsMap(prev => {
+          const newMap = new Map(prev);
+          if (sharedTx.transactionId) {
+            newMap.set(sharedTx.transactionId, sharedTx);
+          }
+          return newMap;
+        });
+      } catch (error: any) {
+        console.error('Erreur lors du partage de la transaction:', error);
+        const errorMessage = error?.message || 'Erreur lors du partage de la transaction';
+        
+        // Check if transaction is already shared
+        if (errorMessage.includes('déjà partagée')) {
+          toast.error('Cette transaction est déjà partagée');
+        } else {
+          toast.error(errorMessage);
+        }
+      } finally {
+        setSharingTransactionId(null);
       }
-    } finally {
-      setSharingTransactionId(null);
+      return;
+    }
+
+    // If shared, unshare the transaction
+    if (isShared && activeFamilyGroup) {
+      setSharingTransactionId(transaction.id);
+
+      try {
+        // Get the shared transaction ID from the map
+        const sharedTx = sharedTransactionsMap.get(transaction.id);
+        if (!sharedTx || !sharedTx.id) {
+          toast.error('Transaction partagée introuvable');
+          return;
+        }
+
+        await unshareTransaction(sharedTx.id);
+        toast.success('Partage retiré avec succès');
+        
+        // Remove transaction ID from shared set
+        setSharedTransactionIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(transaction.id);
+          return newSet;
+        });
+        
+        // Remove from shared transactions map
+        setSharedTransactionsMap(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(transaction.id);
+          return newMap;
+        });
+      } catch (error: any) {
+        console.error('Erreur lors du retrait du partage:', error);
+        const errorMessage = error?.message || 'Erreur lors du retrait du partage';
+        toast.error(errorMessage);
+      } finally {
+        setSharingTransactionId(null);
+      }
     }
   };
   
@@ -1002,14 +1055,14 @@ const TransactionsPage = () => {
                         return (
                           <button
                             onClick={(e) => handleShareTransaction(e, transaction)}
-                            disabled={sharingTransactionId === transaction.id || isShared}
+                            disabled={sharingTransactionId === transaction.id}
                             className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               isShared 
                                 ? 'text-purple-600 hover:bg-purple-50' 
                                 : 'text-gray-400 hover:bg-gray-50'
                             }`}
-                            title={isShared ? 'Déjà partagée avec la famille' : 'Partager avec la famille'}
-                            aria-label={isShared ? 'Déjà partagée avec la famille' : 'Partager avec la famille'}
+                            title={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
+                            aria-label={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
                           >
                             {sharingTransactionId === transaction.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />

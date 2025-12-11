@@ -142,10 +142,9 @@ export async function shareTransaction(
         .select('id')
         .eq('transaction_id', input.transactionId)
         .eq('family_group_id', input.familyGroupId)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        // PGRST116 = not found, ce qui est OK
+      if (checkError) {
         throw new Error(`Erreur lors de la vérification: ${checkError.message}`);
       }
 
@@ -256,9 +255,13 @@ export async function unshareTransaction(sharedTransactionId: string): Promise<v
       .from('family_shared_transactions')
       .select('shared_by')
       .eq('id', sharedTransactionId)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !sharedTransaction) {
+    if (fetchError) {
+      throw new Error(`Erreur lors de la vérification: ${fetchError.message}`);
+    }
+
+    if (!sharedTransaction) {
       throw new Error('Transaction partagée non trouvée');
     }
 
@@ -270,7 +273,8 @@ export async function unshareTransaction(sharedTransactionId: string): Promise<v
     const { error: deleteReimbursementsError } = await supabase
       .from('reimbursement_requests')
       .delete()
-      .eq('shared_transaction_id', sharedTransactionId);
+      .eq('shared_transaction_id', sharedTransactionId)
+      .select();
 
     if (deleteReimbursementsError) {
       console.error(
@@ -290,7 +294,8 @@ export async function unshareTransaction(sharedTransactionId: string): Promise<v
     const { error: deleteError } = await supabase
       .from('family_shared_transactions')
       .delete()
-      .eq('id', sharedTransactionId);
+      .eq('id', sharedTransactionId)
+      .select();
 
     if (deleteError) {
       throw new Error(`Erreur lors du retrait du partage: ${deleteError.message}`);
@@ -462,13 +467,18 @@ export async function updateSharedTransaction(
                   
                   let reimbursementAmount = transactionAmount * rate; // Use configured rate
 
-                  // Si split_details existe, utiliser le montant spécifique
-                  if ((sharedTx as any).split_details && Array.isArray((sharedTx as any).split_details)) {
-                    const debtorSplit = ((sharedTx as any).split_details as any[]).find(
-                      (s: any) => s.memberId === debtorMember.id || s.member_id === debtorMember.id
-                    );
-                    if (debtorSplit && (debtorSplit.amount !== undefined && debtorSplit.amount !== null)) {
-                      reimbursementAmount = Math.abs(debtorSplit.amount);
+                  // Pour 'paid_by_one', toujours utiliser le montant complet de la transaction avec le taux
+                  // Pour les autres types de split, utiliser split_details si disponible
+                  const splitType = (sharedTx as any).split_type;
+                  if (splitType !== 'paid_by_one') {
+                    if ((sharedTx as any).split_details && Array.isArray((sharedTx as any).split_details)) {
+                      const debtorSplit = ((sharedTx as any).split_details as any[]).find(
+                        (s: any) => s.memberId === debtorMember.id || s.member_id === debtorMember.id
+                      );
+                      if (debtorSplit && (debtorSplit.amount !== undefined && debtorSplit.amount !== null)) {
+                        // Pour split_custom, appliquer le taux au montant du split
+                        reimbursementAmount = Math.abs(debtorSplit.amount) * rate;
+                      }
                     }
                   }
 
