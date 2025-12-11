@@ -4,13 +4,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Bell, Zap, Wallet } from 'lucide-react';
+import { Calendar, Clock, Bell, Zap } from 'lucide-react';
 import type { RecurrenceFrequency } from '../../types/recurring';
-import type { Budget } from '../../types';
-import { db } from '../../lib/database';
-import apiService from '../../services/apiService';
-import { formatFrequency } from '../../utils/recurringUtils';
-import { useCurrency } from '../../hooks/useCurrency';
 
 interface RecurringConfigSectionProps {
   frequency: RecurrenceFrequency;
@@ -55,34 +50,7 @@ const RecurringConfigSection: React.FC<RecurringConfigSectionProps> = ({
   transactionType = 'expense',
   errors = {}
 }) => {
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
   const [hasNoEndDate, setHasNoEndDate] = useState(endDate === null);
-  
-  // Currency display preference
-  const { displayCurrency } = useCurrency();
-  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
-
-  // Charger les budgets de l'utilisateur
-  useEffect(() => {
-    const loadBudgets = async () => {
-      try {
-        setIsLoadingBudgets(true);
-        const response = await apiService.getBudgets();
-        if (response.success && response.data) {
-          setBudgets(response.data);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des budgets:', error);
-      } finally {
-        setIsLoadingBudgets(false);
-      }
-    };
-
-    if (userId) {
-      loadBudgets();
-    }
-  }, [userId]);
 
   // Gérer le toggle "Sans fin"
   useEffect(() => {
@@ -333,38 +301,6 @@ const RecurringConfigSection: React.FC<RecurringConfigSectionProps> = ({
           Si activé, la transaction sera créée automatiquement à la date prévue. Sinon, vous recevrez une notification pour confirmer.
         </p>
       </div>
-
-      {/* Lien vers un budget (optionnel) - Uniquement pour les dépenses */}
-      {transactionType === 'expense' && (
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Wallet className="w-5 h-5 text-blue-600" />
-            <h4 className="text-md font-semibold text-gray-900">Budget lié (optionnel)</h4>
-          </div>
-          <select
-            id="linkedBudgetId"
-            value={linkedBudgetId || ''}
-            onChange={(e) => setLinkedBudgetId(e.target.value || null)}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Aucun budget</option>
-            {isLoadingBudgets ? (
-              <option disabled>Chargement...</option>
-            ) : budgets.length === 0 ? (
-              <option disabled>Aucun budget disponible</option>
-            ) : (
-              budgets.map((budget) => (
-                <option key={budget.id} value={budget.id}>
-                  {budget.category} - {budget.amount.toLocaleString('fr-FR')} {currencySymbol}/mois
-                </option>
-              ))
-            )}
-          </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Lier cette transaction récurrente à un budget pour un suivi automatique
-          </p>
-        </div>
-      )}
     </div>
   );
 };

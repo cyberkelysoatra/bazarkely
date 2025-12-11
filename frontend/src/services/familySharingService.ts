@@ -266,6 +266,26 @@ export async function unshareTransaction(sharedTransactionId: string): Promise<v
       throw new Error('Vous n\'êtes pas autorisé à retirer ce partage');
     }
 
+    // Supprimer les demandes de remboursement associées AVANT de supprimer la transaction partagée
+    const { error: deleteReimbursementsError } = await supabase
+      .from('reimbursement_requests')
+      .delete()
+      .eq('shared_transaction_id', sharedTransactionId);
+
+    if (deleteReimbursementsError) {
+      console.error(
+        '❌ Erreur lors de la suppression des demandes de remboursement:',
+        deleteReimbursementsError
+      );
+      throw new Error(
+        `Impossible de supprimer les demandes de remboursement associées: ${deleteReimbursementsError.message}`
+      );
+    }
+
+    console.log(
+      `✅ Demandes de remboursement supprimées pour la transaction partagée: ${sharedTransactionId}`
+    );
+
     // Supprimer la transaction partagée
     const { error: deleteError } = await supabase
       .from('family_shared_transactions')

@@ -12,7 +12,7 @@ import type {
   RecurringTransactionUpdate,
   RecurrenceFrequency
 } from '../types/recurring';
-import type { Transaction, TransactionCategory } from '../types';
+import type { Transaction, TransactionCategory, Budget } from '../types';
 import {
   toRecurringTransaction,
   fromRecurringTransaction,
@@ -23,8 +23,144 @@ import {
   calculateNextDateFromDate,
   validateRecurringData
 } from '../utils/recurringUtils';
+import { TRANSACTION_CATEGORIES } from '../constants';
 
 class RecurringTransactionService {
+  /**
+   * Trouve un budget par nom de catégorie (matching case-insensitive)
+   * Cherche dans IndexedDB et Supabase
+   */
+  private async findBudgetByCategoryName(userId: string, categoryName: string): Promise<Budget | null> {
+    try {
+      // Obtenir le label de la catégorie depuis TRANSACTION_CATEGORIES
+      const categoryLabel = TRANSACTION_CATEGORIES[categoryName as TransactionCategory]?.name || 
+                            categoryName.charAt(0).toUpperCase() + categoryName.slice(1).toLowerCase();
+      
+      // Chercher dans IndexedDB par category (clé de catégorie)
+      // Les budgets IndexedDB utilisent category (clé) pas name
+      const localBudgets = await db.budgets
+        .where('userId')
+        .equals(userId)
+        .toArray();
+      
+      // Filtrer par category key (case-insensitive)
+      const matchingBudgets = localBudgets.filter(budget => 
+        budget.category?.toLowerCase() === categoryName.toLowerCase()
+      );
+      
+      if (matchingBudgets.length > 0) {
+        // Si plusieurs budgets, retourner celui avec le plus grand solde restant (amount - spent)
+        const bestBudget = matchingBudgets.reduce((best, current) => {
+          const bestRemaining = best.amount - best.spent;
+          const currentRemaining = current.amount - current.spent;
+          return currentRemaining > bestRemaining ? current : best;
+        });
+        return bestBudget;
+      }
+      
+      // Si pas trouvé dans IndexedDB, chercher dans Supabase par category (plus fiable que name)
+      try {
+        const { data: supabaseBudgets, error } = await supabase
+          .from('budgets')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .eq('category', categoryName);
+        
+        if (!error && supabaseBudgets && supabaseBudgets.length > 0) {
+          // Si plusieurs budgets, choisir celui avec le plus grand solde restant
+          const bestSupabaseBudget = supabaseBudgets.reduce((best, current) => {
+            const bestRemaining = best.amount - best.spent;
+            const currentRemaining = current.amount - current.spent;
+            return currentRemaining > bestRemaining ? current : best;
+          });
+          
+          // Convertir le résultat Supabase en format Budget
+          const budget: Budget = {
+            id: bestSupabaseBudget.id,
+            userId: bestSupabaseBudget.user_id,
+            category: bestSupabaseBudget.category as TransactionCategory,
+            amount: bestSupabaseBudget.amount,
+            spent: bestSupabaseBudget.spent,
+            period: 'monthly',
+            year: bestSupabaseBudget.year,
+            month: bestSupabaseBudget.month,
+            alertThreshold: bestSupabaseBudget.alert_threshold
+          };
+          
+          // Sauvegarder dans IndexedDB pour la prochaine fois
+          await db.budgets.put(budget);
+          return budget;
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ Erreur Supabase lors de la recherche de budget:', supabaseError);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Erreur lors de la recherche de budget par catégorie:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Crée un budget vide pour une catégorie
+   */
+  private async createBudgetForCategory(userId: string, categoryName: string): Promise<Budget> {
+    try {
+      // Obtenir le label de la catégorie depuis TRANSACTION_CATEGORIES
+      const categoryLabel = TRANSACTION_CATEGORIES[categoryName as TransactionCategory]?.name || 
+                            categoryName.charAt(0).toUpperCase() + categoryName.slice(1).toLowerCase();
+      
+      const now = new Date();
+      const budget: Budget = {
+        id: crypto.randomUUID(),
+        userId: userId,
+        category: categoryName as TransactionCategory,
+        amount: 0,
+        spent: 0,
+        period: 'monthly',
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        alertThreshold: 80
+      };
+      
+      // Sauvegarder dans IndexedDB
+      await db.budgets.add(budget);
+      
+      // Sauvegarder dans Supabase si en ligne
+      try {
+        const { error: supabaseError } = await supabase
+          .from('budgets')
+          .insert({
+            id: budget.id,
+            user_id: userId,
+            name: categoryLabel, // Nom pour Supabase
+            category: categoryName,
+            amount: 0,
+            spent: 0,
+            period: 'monthly',
+            year: budget.year,
+            month: budget.month,
+            alert_threshold: 80,
+            is_active: true
+          });
+        
+        if (supabaseError) {
+          console.warn('⚠️ Erreur Supabase lors de la création du budget:', supabaseError);
+          // Continuer avec la version IndexedDB
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ Supabase non disponible, budget créé en local seulement:', supabaseError);
+      }
+      
+      return budget;
+    } catch (error) {
+      console.error('❌ Erreur lors de la création du budget pour catégorie:', error);
+      throw error;
+    }
+  }
+
   /**
    * Obtient l'utilisateur actuel depuis localStorage ou Supabase
    */
@@ -65,6 +201,26 @@ class RecurringTransactionService {
       const userId = await this.getCurrentUserId();
       if (!userId) {
         throw new Error('Utilisateur non authentifié');
+      }
+
+      // Auto-link budget by category name for expense transactions
+      if (data.type === 'expense' && data.category) {
+        try {
+          let matchingBudget = await this.findBudgetByCategoryName(userId, data.category);
+          
+          if (!matchingBudget) {
+            // Create empty budget with same name as category
+            matchingBudget = await this.createBudgetForCategory(userId, data.category);
+            console.log('📦 Created budget for category:', data.category, '→', TRANSACTION_CATEGORIES[data.category as TransactionCategory]?.name || data.category);
+          }
+          
+          // Override linkedBudgetId with auto-matched budget
+          data.linkedBudgetId = matchingBudget.id;
+          console.log('🔗 Auto-linked to budget:', TRANSACTION_CATEGORIES[data.category as TransactionCategory]?.name || data.category, 'for category:', data.category);
+        } catch (error) {
+          console.error('⚠️ Auto-link budget failed:', error);
+          // Continue without linking - don't block transaction creation
+        }
       }
 
       // Calculer nextGenerationDate
