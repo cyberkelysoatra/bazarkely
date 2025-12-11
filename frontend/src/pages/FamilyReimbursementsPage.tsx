@@ -343,7 +343,7 @@ const FamilyReimbursementsPage = () => {
                       </div>
                     </div>
                     <div className="text-right ml-4">
-                      <div className="text-lg font-bold text-green-600 mb-2">
+                      <div className="text-lg font-bold text-green-600 mb-1">
                         <CurrencyDisplay
                           amount={reimbursement.amount}
                           originalCurrency={reimbursement.currency || 'MGA'}
@@ -352,6 +352,9 @@ const FamilyReimbursementsPage = () => {
                           size="md"
                         />
                       </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Taux: {(reimbursement.reimbursementRate ?? 100)}%
+                      </p>
                       <button
                         onClick={() => setConfirmDialog({ isOpen: true, reimbursementId: reimbursement.id })}
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
@@ -401,7 +404,7 @@ const FamilyReimbursementsPage = () => {
                       </div>
                     </div>
                     <div className="text-right ml-4">
-                      <div className="text-lg font-bold text-red-600 mb-2">
+                      <div className="text-lg font-bold text-red-600 mb-1">
                         <CurrencyDisplay
                           amount={reimbursement.amount}
                           originalCurrency={reimbursement.currency || 'MGA'}
@@ -410,6 +413,9 @@ const FamilyReimbursementsPage = () => {
                           size="md"
                         />
                       </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Taux: {(reimbursement.reimbursementRate ?? 100)}%
+                      </p>
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
                         <Clock className="w-4 h-4" />
                         <span>En attente de confirmation</span>

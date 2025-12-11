@@ -67,6 +67,7 @@ export interface ReimbursementWithDetails extends ReimbursementRequest {
   transactionDescription: string | null;
   transactionAmount: number | null;
   transactionDate: Date | null;
+  reimbursementRate: number | null; // Taux de remboursement (25, 50, 75, 100 ou null)
 }
 
 /**
@@ -434,6 +435,7 @@ export async function getPendingReimbursements(
         transactionDate: transactionData?.date
           ? new Date(transactionData.date)
           : null,
+        reimbursementRate: item.percentage ?? 100,
       };
     });
   } catch (error) {
