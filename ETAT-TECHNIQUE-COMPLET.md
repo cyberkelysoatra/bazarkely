@@ -1,9 +1,9 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)  
-**Date de mise à jour:** 2025-12-08  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready  
+**Version:** 2.24 (Espace Famille - Realtime Sync)  
+**Date de mise à jour:** 2025-12-12  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Realtime Sync Famille  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
 
 ---
@@ -1075,6 +1075,45 @@ family_shared_transactions (
 - ✅ **Documentation:** Schéma base de données documenté
 
 **Prêt pour Production:** ✅ OUI - Espace Famille 100% opérationnel
+
+#### **16.7.6 Synchronisation Temps Réel Famille** ✅ IMPLÉMENTÉ 2025-12-12
+
+**Problème résolu:**
+- Les modifications faites par un membre de la famille n'étaient pas visibles par les autres membres sans rafraîchissement manuel
+- Pas de notification temps réel des nouvelles transactions partagées ou demandes de remboursement
+
+**Solution implémentée:**
+- Hook réutilisable `useFamilyRealtime.ts` pour les subscriptions Supabase Realtime
+- Intégration dans FamilyContext, FamilyDashboardPage, FamilyReimbursementsPage
+
+**Fichiers créés:**
+- `frontend/src/hooks/useFamilyRealtime.ts` - Hook avec 4 fonctions d'abonnement
+
+**Fichiers modifiés:**
+- `frontend/src/contexts/FamilyContext.tsx` - Subscriptions family_groups et family_members
+- `frontend/src/pages/FamilyDashboardPage.tsx` - Subscription family_shared_transactions avec recalcul stats
+- `frontend/src/pages/FamilyReimbursementsPage.tsx` - Subscription reimbursement_requests
+
+**Tables synchronisées en temps réel:**
+
+| Table | Événements | Composant | Action |
+|-------|------------|-----------|--------|
+| family_groups | UPDATE | FamilyContext | refreshFamilyGroups() |
+| family_members | INSERT, UPDATE, DELETE | FamilyContext | refreshFamilyGroups() |
+| family_shared_transactions | INSERT, UPDATE, DELETE | FamilyDashboardPage | refetch + recalcul stats |
+| reimbursement_requests | INSERT, UPDATE, DELETE | FamilyReimbursementsPage | loadData() |
+
+**Architecture technique:**
+- Pattern: Supabase `channel().on('postgres_changes')` avec filtres par family_group_id
+- Cleanup: Fonctions unsubscribe retournées pour éviter memory leaks
+- Noms canaux uniques: format `family-[tablename]-[groupId]`
+- Gestion null groupId: retourne no-op function
+
+**Impact:**
+- ✅ Synchronisation automatique entre membres de la famille
+- ✅ Mise à jour instantanée des statistiques du dashboard
+- ✅ Notification visuelle des nouvelles demandes de remboursement
+- ✅ Aucune action utilisateur requise pour voir les changements
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, Plus, Copy, Share2, Receipt, ArrowRightLeft, UserPlus, Crown,
   TrendingDown, Calendar, Clock, CheckCircle, XCircle, RefreshCw, Wallet
@@ -12,6 +12,7 @@ import {
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
 import { useSyncStore } from '../stores/appStore';
+import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 import { supabase } from '../lib/supabase';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
@@ -27,10 +28,27 @@ import { OfflineAlert } from '../components/UI/Alert';
 
 const FamilyDashboardPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
   const { displayCurrency } = useCurrency();
   const { isOnline } = useSyncStore();
+  const { subscribeToSharedTransactions } = useFamilyRealtime();
   const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
+
+  // Extract pendingShareTransactionId from location.state
+  const pendingShareTransactionId = location.state?.pendingShareTransactionId as string | undefined;
+  
+  // State to track pending transaction
+  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(
+    pendingShareTransactionId || null
+  );
+
+  // Clear location.state after reading to prevent re-sharing on page refresh
+  useEffect(() => {
+    if (pendingShareTransactionId && location.state?.pendingShareTransactionId) {
+      window.history.replaceState({ ...location.state, pendingShareTransactionId: undefined }, '');
+    }
+  }, [pendingShareTransactionId, location.state]);
 
   const [familyGroups, setFamilyGroups] = useState<Array<FamilyGroup & { memberCount: number; inviteCode: string }>>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -175,6 +193,101 @@ const FamilyDashboardPage = () => {
     loadGroupData();
   }, [isAuthLoading, isAuthenticated, selectedGroupId, user]);
 
+  // Realtime subscription for shared transactions
+  useEffect(() => {
+    if (!selectedGroupId) return;
+
+    const unsubscribe = subscribeToSharedTransactions(
+      selectedGroupId,
+      (payload) => {
+        const eventType = payload.eventType;
+        console.log('[FamilyDashboard] Transaction realtime:', eventType);
+        
+        // Refetch transactions on any change (INSERT, UPDATE, DELETE)
+        const refetchTransactions = async () => {
+          if (!selectedGroupId || !user) return;
+
+          try {
+            // Reload recent transactions (10 latest)
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const sharedTransactions = await familySharingService.getFamilySharedTransactions(
+              selectedGroupId,
+              { limit: 10 }
+            );
+            setRecentTransactions(sharedTransactions);
+
+            // Reload all transactions for stats calculation
+            const allTransactions = await familySharingService.getFamilySharedTransactions(
+              selectedGroupId
+            );
+
+            // Recalculate statistics
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            const totalExpenses = allTransactions
+              .filter(t => {
+                const txDate = new Date(t.date);
+                const isExpense = t.transaction?.type === 'expense' || (!t.transaction?.type && (t.amount || 0) < 0);
+                return txDate.getMonth() === currentMonth && 
+                       txDate.getFullYear() === currentYear && 
+                       isExpense;
+              })
+              .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+            const totalIncome = allTransactions
+              .filter(t => {
+                const txDate = new Date(t.date);
+                const isIncome = t.transaction?.type === 'income' || (!t.transaction?.type && (t.amount || 0) > 0);
+                return txDate.getMonth() === currentMonth && 
+                       txDate.getFullYear() === currentYear && 
+                       isIncome;
+              })
+              .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+            // Recalculate pending reimbursement requests
+            const { data: rawTransactions } = await supabase
+              .from('family_shared_transactions')
+              .select(`
+                id,
+                has_reimbursement_request,
+                transactions (
+                  amount
+                )
+              `)
+              .eq('family_group_id', selectedGroupId)
+              .eq('has_reimbursement_request', true);
+
+            const pendingCount = rawTransactions?.length || 0;
+            const pendingAmount = rawTransactions?.reduce((sum: number, t: any) => {
+              const amount = t.transactions?.amount || 0;
+              return sum + Math.abs(amount);
+            }, 0) || 0;
+
+            const netBalance = totalIncome - totalExpenses;
+
+            setStats(prev => ({
+              ...prev,
+              totalExpensesThisMonth: totalExpenses,
+              pendingRequestsCount: pendingCount,
+              pendingAmount: pendingAmount,
+              netBalance
+            }));
+          } catch (err) {
+            console.error('[FamilyDashboard] Error refetching transactions after realtime event:', err);
+          }
+        };
+
+        refetchTransactions();
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [selectedGroupId, subscribeToSharedTransactions, user]);
+
   const handleCopyInviteCode = async () => {
     const selectedGroup = familyGroups.find(g => g.id === selectedGroupId);
     if (!selectedGroup?.inviteCode) return;
@@ -224,6 +337,11 @@ const FamilyDashboardPage = () => {
         <CreateFamilyModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
+          pendingShareTransactionId={pendingTransactionId}
+          onShareSuccess={() => {
+            // Clear pending transaction after successful share
+            setPendingTransactionId(null);
+          }}
           onSuccess={async () => {
             await loadFamilyGroups();
             setIsCreateModalOpen(false);
@@ -268,6 +386,11 @@ const FamilyDashboardPage = () => {
         <CreateFamilyModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
+          pendingShareTransactionId={pendingTransactionId}
+          onShareSuccess={() => {
+            // Clear pending transaction after successful share
+            setPendingTransactionId(null);
+          }}
           onSuccess={async () => {
             await loadFamilyGroups();
             setIsCreateModalOpen(false);
@@ -349,6 +472,11 @@ const FamilyDashboardPage = () => {
         <CreateFamilyModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
+          pendingShareTransactionId={pendingTransactionId}
+          onShareSuccess={() => {
+            // Clear pending transaction after successful share
+            setPendingTransactionId(null);
+          }}
           onSuccess={async () => {
             await loadFamilyGroups();
             setIsCreateModalOpen(false);

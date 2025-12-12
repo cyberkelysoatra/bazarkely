@@ -22,12 +22,14 @@ import { CurrencyDisplay } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { toast } from 'react-hot-toast';
+import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 
 const FamilyReimbursementsPage = () => {
   const navigate = useNavigate();
   const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
   const { activeFamilyGroup, loading: familyLoading } = useFamily();
   const { displayCurrency } = useCurrency();
+  const { subscribeToReimbursements } = useFamilyRealtime();
 
   const [balances, setBalances] = useState<FamilyMemberBalance[]>([]);
   const [pendingReimbursements, setPendingReimbursements] = useState<ReimbursementWithDetails[]>([]);
@@ -82,6 +84,29 @@ const FamilyReimbursementsPage = () => {
   useEffect(() => {
     loadData();
   }, [isAuthenticated, user, activeFamilyGroup, familyLoading]);
+
+  // Abonnement realtime pour les demandes de remboursement
+  useEffect(() => {
+    if (!activeFamilyGroup?.id) {
+      return;
+    }
+
+    const unsubscribe = subscribeToReimbursements(
+      activeFamilyGroup.id,
+      (payload) => {
+        const eventType = payload.eventType;
+        console.log('[Reimbursements] Realtime event:', eventType);
+        
+        // Refetch les données pour refléter les changements
+        loadData();
+      }
+    );
+
+    // Cleanup: se désabonner quand le groupe change ou le composant se démonte
+    return () => {
+      unsubscribe();
+    };
+  }, [activeFamilyGroup?.id, subscribeToReimbursements]);
 
   // Calculer les totaux
   const currentMemberBalance = balances.find(b => b.memberId === currentMemberId);

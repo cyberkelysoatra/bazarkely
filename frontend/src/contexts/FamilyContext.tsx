@@ -14,6 +14,7 @@ import {
   getFamilyGroupByCode,
 } from '../services/familyGroupService';
 import type { CreateFamilyGroupInput, JoinFamilyGroupInput } from '../types/family';
+import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 
 /**
  * Type étendu pour FamilyGroup avec les données additionnelles du service
@@ -66,6 +67,9 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
   const [activeFamilyGroup, setActiveFamilyGroupState] = useState<FamilyGroupWithMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hook pour les abonnements en temps réel
+  const { subscribeToFamilyGroup, subscribeToFamilyMembers } = useFamilyRealtime();
 
   /**
    * Récupère les groupes familiaux de l'utilisateur depuis Supabase
@@ -279,6 +283,54 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Abonnements en temps réel pour synchroniser les données familiales
+  useEffect(() => {
+    // Ne pas s'abonner si aucun groupe actif
+    if (!activeFamilyGroup?.id) {
+      return;
+    }
+
+    const groupId = activeFamilyGroup.id;
+
+    // S'abonner aux changements du groupe familial
+    const unsubscribeGroup = subscribeToFamilyGroup(
+      groupId,
+      (payload) => {
+        console.log('[FamilyContext] Realtime event:', payload.eventType, 'family_groups');
+        
+        // Pour UPDATE sur family_groups, rafraîchir les groupes
+        if (payload.eventType === 'UPDATE' && refreshFamilyGroups) {
+          refreshFamilyGroups();
+        }
+      }
+    );
+
+    // S'abonner aux changements des membres du groupe
+    const unsubscribeMembers = subscribeToFamilyMembers(
+      groupId,
+      (payload) => {
+        console.log('[FamilyContext] Realtime event:', payload.eventType, 'family_members');
+        
+        // Pour INSERT, UPDATE, DELETE sur family_members, rafraîchir les groupes
+        // (les groupes incluent le memberCount qui doit être mis à jour)
+        if (
+          (payload.eventType === 'INSERT' || 
+           payload.eventType === 'UPDATE' || 
+           payload.eventType === 'DELETE') &&
+          refreshFamilyGroups
+        ) {
+          refreshFamilyGroups();
+        }
+      }
+    );
+
+    // Fonction de nettoyage : désabonner quand le composant se démonte ou le groupe change
+    return () => {
+      unsubscribeGroup();
+      unsubscribeMembers();
+    };
+  }, [activeFamilyGroup?.id, subscribeToFamilyGroup, subscribeToFamilyMembers, refreshFamilyGroups]);
 
   const contextValue: FamilyContextType = {
     familyGroups,
