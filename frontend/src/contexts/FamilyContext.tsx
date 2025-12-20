@@ -1,6 +1,6 @@
-/**
- * React Context pour la gestion d'état des groupes familiaux
- * Gère les groupes familiaux de l'utilisateur, le groupe actif, et les opérations CRUD
+﻿/**
+ * React Context pour la gestion d'├®tat des groupes familiaux
+ * G├¿re les groupes familiaux de l'utilisateur, le groupe actif, et les op├®rations CRUD
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
@@ -17,7 +17,7 @@ import type { CreateFamilyGroupInput, JoinFamilyGroupInput } from '../types/fami
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 
 /**
- * Type étendu pour FamilyGroup avec les données additionnelles du service
+ * Type ├®tendu pour FamilyGroup avec les donn├®es additionnelles du service
  */
 type FamilyGroupWithMetadata = FamilyGroup & {
   memberCount?: number;
@@ -28,7 +28,7 @@ type FamilyGroupWithMetadata = FamilyGroup & {
  * Interface du contexte Family
  */
 interface FamilyContextType {
-  // État
+  // ├ëtat
   familyGroups: FamilyGroupWithMetadata[];
   activeFamilyGroup: FamilyGroupWithMetadata | null;
   loading: boolean;
@@ -43,12 +43,12 @@ interface FamilyContextType {
 }
 
 /**
- * Création du contexte
+ * Cr├®ation du contexte
  */
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
 
 /**
- * Clé localStorage pour persister le groupe actif
+ * Cl├® localStorage pour persister le groupe actif
  */
 const ACTIVE_FAMILY_GROUP_KEY = 'bazarkely_active_family_group';
 
@@ -68,31 +68,31 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Hook pour les abonnements en temps réel
+  // Hook pour les abonnements en temps r├®el
   const { subscribeToFamilyGroup, subscribeToFamilyMembers } = useFamilyRealtime();
 
   /**
-   * Récupère les groupes familiaux de l'utilisateur depuis Supabase
+   * R├®cup├¿re les groupes familiaux de l'utilisateur depuis Supabase
    */
   const fetchFamilyGroups = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Vérifier l'authentification
+      // V├®rifier l'authentification
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setError('Utilisateur non authentifié');
+        setError('Utilisateur non authentifi├®');
         setFamilyGroups([]);
         setActiveFamilyGroupState(null);
         setLoading(false);
-        // Nettoyer localStorage si non authentifié
+        // Nettoyer localStorage si non authentifi├®
         localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
         return;
       }
 
-      // Récupérer les groupes familiaux
+      // R├®cup├®rer les groupes familiaux
       const groups = await getUserFamilyGroups();
 
       // Convertir en format FamilyGroupWithMetadata
@@ -110,7 +110,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
 
       setFamilyGroups(groupsWithMetadata);
 
-      // Restaurer le groupe actif depuis localStorage ou sélectionner le premier
+      // Restaurer le groupe actif depuis localStorage ou s├®lectionner le premier
       const savedActiveGroupId = localStorage.getItem(ACTIVE_FAMILY_GROUP_KEY);
       
       if (savedActiveGroupId && groupsWithMetadata.length > 0) {
@@ -118,7 +118,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
         if (savedGroup) {
           setActiveFamilyGroupState(savedGroup);
         } else {
-          // Le groupe sauvegardé n'existe plus, sélectionner le premier
+          // Le groupe sauvegard├® n'existe plus, s├®lectionner le premier
           if (groupsWithMetadata.length > 0) {
             const firstGroup = groupsWithMetadata[0];
             setActiveFamilyGroupState(firstGroup);
@@ -129,7 +129,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
           }
         }
       } else if (groupsWithMetadata.length > 0) {
-        // Pas de groupe sauvegardé, sélectionner le premier
+        // Pas de groupe sauvegard├®, s├®lectionner le premier
         const firstGroup = groupsWithMetadata[0];
         setActiveFamilyGroupState(firstGroup);
         localStorage.setItem(ACTIVE_FAMILY_GROUP_KEY, firstGroup.id);
@@ -141,8 +141,8 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
 
       setLoading(false);
     } catch (err: any) {
-      console.error('Erreur récupération groupes familiaux:', err);
-      setError(err.message || 'Une erreur s\'est produite lors de la récupération des groupes familiaux');
+      console.error('Erreur r├®cup├®ration groupes familiaux:', err);
+      setError(err.message || 'Une erreur s\'est produite lors de la r├®cup├®ration des groupes familiaux');
       setFamilyGroups([]);
       setActiveFamilyGroupState(null);
       localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
@@ -151,7 +151,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Définit le groupe familial actif
+   * D├®finit le groupe familial actif
    */
   const setActiveFamilyGroup = useCallback((group: FamilyGroupWithMetadata | null) => {
     setActiveFamilyGroupState(group);
@@ -163,14 +163,14 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Rafraîchit la liste des groupes familiaux
+   * Rafra├«chit la liste des groupes familiaux
    */
   const refreshFamilyGroups = useCallback(async () => {
     await fetchFamilyGroups();
   }, [fetchFamilyGroups]);
 
   /**
-   * Crée un nouveau groupe familial
+   * Cr├®e un nouveau groupe familial
    */
   const createFamilyGroup = useCallback(async (
     name: string,
@@ -189,20 +189,20 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
       // Convertir en format avec metadata
       const groupWithMetadata: FamilyGroupWithMetadata = {
         ...newGroup,
-        memberCount: 1, // Le créateur est automatiquement ajouté
+        memberCount: 1, // Le cr├®ateur est automatiquement ajout├®
         inviteCode: newGroup.inviteCode || '',
       };
 
-      // Rafraîchir la liste des groupes
+      // Rafra├«chir la liste des groupes
       await refreshFamilyGroups();
 
-      // Sélectionner automatiquement le nouveau groupe
+      // S├®lectionner automatiquement le nouveau groupe
       setActiveFamilyGroup(groupWithMetadata);
 
       return groupWithMetadata;
     } catch (err: any) {
-      console.error('Erreur création groupe familial:', err);
-      setError(err.message || 'Erreur lors de la création du groupe familial');
+      console.error('Erreur cr├®ation groupe familial:', err);
+      setError(err.message || 'Erreur lors de la cr├®ation du groupe familial');
       throw err;
     }
   }, [refreshFamilyGroups, setActiveFamilyGroup]);
@@ -217,11 +217,11 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
     try {
       setError(null);
 
-      // Récupérer le groupe par code
+      // R├®cup├®rer le groupe par code
       const group = await getFamilyGroupByCode(code);
 
       if (!group) {
-        throw new Error('Code d\'invitation invalide ou expiré');
+        throw new Error('Code d\'invitation invalide ou expir├®');
       }
 
       // Rejoindre le groupe
@@ -232,7 +232,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
 
       await joinFamilyGroupService(input);
 
-      // Rafraîchir la liste des groupes
+      // Rafra├«chir la liste des groupes
       await refreshFamilyGroups();
     } catch (err: any) {
       console.error('Erreur rejoindre groupe familial:', err);
@@ -250,12 +250,12 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
 
       await leaveFamilyGroupService(groupId);
 
-      // Si le groupe quitté était le groupe actif, le désélectionner
+      // Si le groupe quitt├® ├®tait le groupe actif, le d├®s├®lectionner
       if (activeFamilyGroup?.id === groupId) {
         setActiveFamilyGroup(null);
       }
 
-      // Rafraîchir la liste des groupes
+      // Rafra├«chir la liste des groupes
       await refreshFamilyGroups();
     } catch (err: any) {
       console.error('Erreur quitter groupe familial:', err);
@@ -269,7 +269,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
     fetchFamilyGroups();
   }, [fetchFamilyGroups]);
 
-  // Nettoyer localStorage si l'utilisateur se déconnecte
+  // Nettoyer localStorage si l'utilisateur se d├®connecte
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
@@ -284,7 +284,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Abonnements en temps réel pour synchroniser les données familiales
+  // Abonnements en temps r├®el pour synchroniser les donn├®es familiales
   useEffect(() => {
     // Ne pas s'abonner si aucun groupe actif
     if (!activeFamilyGroup?.id) {
@@ -299,7 +299,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
       (payload) => {
         console.log('[FamilyContext] Realtime event:', payload.eventType, 'family_groups');
         
-        // Pour UPDATE sur family_groups, rafraîchir les groupes
+        // Pour UPDATE sur family_groups, rafra├«chir les groupes
         if (payload.eventType === 'UPDATE' && refreshFamilyGroups) {
           refreshFamilyGroups();
         }
@@ -312,8 +312,8 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
       (payload) => {
         console.log('[FamilyContext] Realtime event:', payload.eventType, 'family_members');
         
-        // Pour INSERT, UPDATE, DELETE sur family_members, rafraîchir les groupes
-        // (les groupes incluent le memberCount qui doit être mis à jour)
+        // Pour INSERT, UPDATE, DELETE sur family_members, rafra├«chir les groupes
+        // (les groupes incluent le memberCount qui doit ├¬tre mis ├á jour)
         if (
           (payload.eventType === 'INSERT' || 
            payload.eventType === 'UPDATE' || 
@@ -325,7 +325,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
       }
     );
 
-    // Fonction de nettoyage : désabonner quand le composant se démonte ou le groupe change
+    // Fonction de nettoyage : d├®sabonner quand le composant se d├®monte ou le groupe change
     return () => {
       unsubscribeGroup();
       unsubscribeMembers();
@@ -352,14 +352,14 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
 };
 
 /**
- * Hook personnalisé pour utiliser le contexte Family
- * @throws Error si utilisé en dehors du Provider
+ * Hook personnalis├® pour utiliser le contexte Family
+ * @throws Error si utilis├® en dehors du Provider
  */
 export const useFamily = (): FamilyContextType => {
   const context = useContext(FamilyContext);
   
   if (context === undefined) {
-    throw new Error('useFamily doit être utilisé à l\'intérieur d\'un FamilyProvider');
+    throw new Error('useFamily doit ├¬tre utilis├® ├á l\'int├®rieur d\'un FamilyProvider');
   }
   
   return context;

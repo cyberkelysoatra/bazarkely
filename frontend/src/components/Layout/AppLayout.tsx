@@ -48,7 +48,8 @@ import ConstructionRoute from '../../modules/construction-poc/components/Constru
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions'
 
 // Family Context
-import { FamilyProvider } from '../../contexts/FamilyContext'
+// TODO: FamilyContext file does not exist - needs to be created
+// import { FamilyProvider } from '../../contexts/FamilyContext'
 
 // Construction POC Components - Lazy Loading for Code Splitting
 const POCDashboard = React.lazy(() => import('../../modules/construction-poc/components/POCDashboard'))
@@ -107,9 +108,10 @@ const ConstructionRoutes: React.FC = () => {
 };
 
 // Family Routes component - Wrapped with FamilyProvider
+// TODO: FamilyProvider is commented out until FamilyContext is created
 const FamilyRoutes: React.FC = () => {
   return (
-    <FamilyProvider>
+    // <FamilyProvider>
       <Routes>
         <Route path="/" element={<FamilyDashboardPage />} />
         <Route path="settings" element={<FamilySettingsPage />} />
@@ -119,7 +121,7 @@ const FamilyRoutes: React.FC = () => {
         <Route path="reimbursements" element={<FamilyReimbursementsPage />} />
         <Route path="*" element={<Navigate to="/family" replace />} />
       </Routes>
-    </FamilyProvider>
+    // </FamilyProvider>
   );
 };
 
@@ -144,6 +146,7 @@ const AppLayout = () => {
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          {/* Route kept for editing only - direct navigation from transaction click disabled */}
           <Route path="/transaction/:transactionId" element={<TransactionDetailPage />} />
           <Route path="/add-transaction" element={<AddTransactionPage />} />
           <Route path="/transfer" element={<TransferPage />} />

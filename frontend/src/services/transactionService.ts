@@ -1,7 +1,15 @@
+/**
+ * Service de transactions pour BazarKELY avec pattern offline-first
+ * Utilise IndexedDB comme source primaire et Supabase pour la synchronisation
+ */
+
 import apiService from './apiService';
 import accountService from './accountService';
 import { convertAmount, getExchangeRate } from './exchangeRateService';
 import type { Transaction } from '../types/index.js';
+import type { SyncOperation } from '../types';
+import { db } from '../lib/database';
+import { supabase } from '../lib/supabase';
 // TEMPORARY FIX: Comment out problematic import to unblock the app
 // import notificationService from './notificationService';
 
@@ -15,39 +23,165 @@ import type { Transaction } from '../types/index.js';
 
 class TransactionService {
   /**
-   * Récupérer toutes les transactions
+   * Récupérer l'ID de l'utilisateur actuel
+   */
+  private async getCurrentUserId(): Promise<string | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        return session.user.id;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      return user?.id || null;
+    } catch (error) {
+      console.error('📱 [TransactionService] ❌ Erreur lors de la récupération de l\'utilisateur:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Ajouter une opération à la queue de synchronisation
+   */
+  private async queueSyncOperation(
+    userId: string,
+    operation: 'CREATE' | 'UPDATE' | 'DELETE',
+    transactionId: string,
+    data: any
+  ): Promise<void> {
+    try {
+      const syncOp: SyncOperation = {
+        id: crypto.randomUUID(),
+        userId,
+        operation,
+        table_name: 'transactions',
+        data: { id: transactionId, ...data },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending'
+      };
+      await db.syncQueue.add(syncOp);
+      console.log(`📱 [TransactionService] 📦 Opération ${operation} ajoutée à la queue de synchronisation pour la transaction ${transactionId}`);
+    } catch (error) {
+      console.error('📱 [TransactionService] ❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
+      // Ne pas faire échouer l'opération principale si la queue échoue
+    }
+  }
+
+  /**
+   * Convertir une transaction Supabase (snake_case) vers Transaction (camelCase)
+   */
+  private mapSupabaseToTransaction(supabaseTransaction: any): Transaction {
+    return {
+      id: supabaseTransaction.id,
+      userId: supabaseTransaction.user_id,
+      accountId: supabaseTransaction.account_id,
+      type: supabaseTransaction.type,
+      amount: supabaseTransaction.amount,
+      description: supabaseTransaction.description,
+      category: supabaseTransaction.category,
+      date: new Date(supabaseTransaction.date),
+      targetAccountId: supabaseTransaction.target_account_id || undefined,
+      transferFee: supabaseTransaction.transfer_fee || undefined,
+      originalCurrency: supabaseTransaction.original_currency || undefined,
+      originalAmount: supabaseTransaction.original_amount || undefined,
+      exchangeRateUsed: supabaseTransaction.exchange_rate_used || undefined,
+      notes: supabaseTransaction.notes || undefined,
+      createdAt: new Date(supabaseTransaction.created_at),
+      // Champs de transfert de propriété
+      currentOwnerId: supabaseTransaction.current_owner_id || supabaseTransaction.user_id,
+      originalOwnerId: supabaseTransaction.original_owner_id || undefined,
+      transferredAt: supabaseTransaction.transferred_at || undefined,
+      // Champs de transaction récurrente
+      isRecurring: supabaseTransaction.is_recurring || false,
+      recurringTransactionId: supabaseTransaction.recurring_transaction_id || undefined,
+    };
+  }
+
+  /**
+   * Récupérer toutes les transactions (OFFLINE-FIRST PATTERN avec refresh automatique)
+   * 1. Si online : fetch depuis Supabase (toujours vérifier pour les nouvelles transactions)
+   * 2. Mettre à jour IndexedDB avec les données Supabase
+   * 3. Si offline ou erreur Supabase : utiliser IndexedDB comme fallback
    */
   async getTransactions(): Promise<Transaction[]> {
     try {
-      const response = await apiService.getTransactions();
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la récupération des transactions:', response.error);
-        return [];
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        console.warn('📱 [TransactionService] ⚠️ Utilisateur non authentifié, retour des transactions IndexedDB uniquement');
+        // Retourner les transactions IndexedDB même sans userId (pour compatibilité)
+        const localTransactions = await db.transactions.toArray();
+        return localTransactions;
       }
+
+      // Check if online
+      const isOnline = navigator.onLine;
       
-      // Transformer les données Supabase vers le format local
-      const supabaseTransactions = response.data as any[];
-      const transactions: Transaction[] = supabaseTransactions.map((t: any) => ({
-        id: t.id,
-        userId: t.user_id,
-        accountId: t.account_id,
-        type: t.type,
-        amount: t.amount,
-        description: t.description,
-        category: t.category,
-        date: new Date(t.date),
-        targetAccountId: t.target_account_id,
-        notes: t.notes || undefined,
-        createdAt: new Date(t.created_at),
-        // Champs de transfert de propriété
-        currentOwnerId: t.current_owner_id,
-        originalOwnerId: t.original_owner_id || undefined,
-        transferredAt: t.transferred_at || undefined,
-      }));
-      
-      return transactions;
+      if (isOnline) {
+        // ONLINE: Fetch from Supabase and update cache
+        console.log('📱 [TransactionService] 🌐 En ligne - récupération depuis Supabase...');
+        try {
+          const response = await apiService.getTransactions();
+          if (response.success && response.data) {
+            // Transform Supabase data to Transaction format
+            const supabaseTransactions = (response.data as any[]) || [];
+            const transactions: Transaction[] = supabaseTransactions.map((t: any) =>
+              this.mapSupabaseToTransaction(t)
+            );
+            
+            // Update IndexedDB cache with new data (bulkPut handles upsert)
+            if (transactions.length > 0) {
+              try {
+                await db.transactions.bulkPut(transactions);
+                console.log(`📱 [TransactionService] 💾 Mise à jour du cache IndexedDB avec ${transactions.length} transaction(s)`);
+              } catch (idbError) {
+                console.error('📱 [TransactionService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
+                // Continuer même si la sauvegarde échoue
+              }
+            }
+            
+            console.log(`📱 [TransactionService] ✅ ${transactions.length} transaction(s) récupérée(s) depuis Supabase`);
+            return transactions;
+          } else {
+            console.warn('📱 [TransactionService] ⚠️ Réponse Supabase invalide, fallback sur IndexedDB:', response.error);
+            // Fall through to IndexedDB
+          }
+        } catch (error) {
+          console.warn('📱 [TransactionService] ⚠️ Erreur Supabase, fallback sur IndexedDB:', error);
+          // Fall through to IndexedDB
+        }
+      }
+
+      // OFFLINE or Supabase error: Use IndexedDB
+      console.log('📱 [TransactionService] 💾 Récupération des transactions depuis IndexedDB...');
+      const localTransactions = await db.transactions
+        .where('userId')
+        .equals(userId)
+        .toArray();
+
+      if (localTransactions.length > 0) {
+        console.log(`📱 [TransactionService] ✅ ${localTransactions.length} transaction(s) récupérée(s) depuis IndexedDB`);
+      } else {
+        console.log('📱 [TransactionService] ⚠️ Aucune transaction dans IndexedDB');
+      }
+      return localTransactions;
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des transactions:', error);
+      console.error('📱 [TransactionService] ❌ Erreur lors de la récupération des transactions:', error);
+      // En cas d'erreur, essayer de retourner IndexedDB
+      try {
+        const userId = await this.getCurrentUserId();
+        if (userId) {
+          const localTransactions = await db.transactions
+            .where('userId')
+            .equals(userId)
+            .toArray();
+          if (localTransactions.length > 0) {
+            console.log(`📱 [TransactionService] ⚠️ Retour de ${localTransactions.length} transaction(s) depuis IndexedDB après erreur`);
+            return localTransactions;
+          }
+        }
+      } catch (fallbackError) {
+        console.error('📱 [TransactionService] ❌ Erreur lors du fallback IndexedDB:', fallbackError);
+      }
       return [];
     }
   }
@@ -155,7 +289,11 @@ class TransactionService {
   }
 
   /**
-   * Créer une nouvelle transaction
+   * Créer une nouvelle transaction (OFFLINE-FIRST PATTERN)
+   * 1. Génère un UUID si non fourni
+   * 2. Sauvegarde dans IndexedDB immédiatement
+   * 3. Si online, sync vers Supabase
+   * 4. Si offline ou échec, queue pour sync ultérieure
    */
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>): Promise<Transaction | null> {
     try {
@@ -176,135 +314,323 @@ class TransactionService {
           const rateInfo = await getExchangeRate(transactionCurrency, accountCurrency, transactionDate);
           exchangeRateUsed = rateInfo.rate;
           amountToStore = await convertAmount(transactionData.amount, transactionCurrency, accountCurrency, transactionDate);
-          console.log(`💱 Currency conversion: ${transactionData.amount} ${transactionCurrency} = ${amountToStore} ${accountCurrency} (rate: ${exchangeRateUsed})`);
+          console.log(`📱 [TransactionService] 💱 Currency conversion: ${transactionData.amount} ${transactionCurrency} = ${amountToStore} ${accountCurrency} (rate: ${exchangeRateUsed})`);
         } catch (conversionError) {
-          console.error('❌ Erreur lors de la conversion de devise:', conversionError);
+          console.error('📱 [TransactionService] ❌ Erreur lors de la conversion de devise:', conversionError);
           // En cas d'erreur, utiliser le montant original (dégradation gracieuse)
           exchangeRateUsed = null;
         }
       }
 
-      // Transformer camelCase vers snake_case pour Supabase
-      const supabaseData = {
-        user_id: userId,
-        account_id: transactionData.accountId,
-        amount: amountToStore,
-        type: transactionData.type,
-        category: transactionData.category,
-        description: transactionData.description,
-        date: transactionData.date.toISOString(),
-        target_account_id: transactionData.targetAccountId || null,
-        transfer_fee: 0,
-        tags: null,
-        location: null,
-        status: 'completed',
-        notes: transactionData.notes || null,
-        // Multi-currency fields
-        original_currency: transactionCurrency,
-        original_amount: transactionData.amount,
-        exchange_rate_used: exchangeRateUsed
-      };
+      // Générer un UUID pour la transaction
+      const transactionId = crypto.randomUUID();
+      const now = new Date();
 
-      console.log('🔍 Données transformées pour Supabase:', supabaseData);
-
-      const response = await apiService.createTransaction(supabaseData);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la création de la transaction:', response.error);
-        return null;
-      }
-
-      // Vérifier les alertes de budget après création
-      // TODO: Implement budget alerts when notificationService is fully implemented
-      // setTimeout(() => {
-      //   notificationService.checkBudgetAlerts(userId);
-      // }, 1000);
-
-      console.log('✅ Transaction créée avec succès');
-      
-      // Transformer la réponse Supabase vers le format local
-      const supabaseTransaction = response.data as any;
+      // Créer l'objet Transaction complet
       const transaction: Transaction = {
-        id: supabaseTransaction.id,
-        userId: supabaseTransaction.user_id,
-        accountId: supabaseTransaction.account_id,
-        type: supabaseTransaction.type,
-        amount: supabaseTransaction.amount,
-        description: supabaseTransaction.description,
-        category: supabaseTransaction.category,
-        date: new Date(supabaseTransaction.date),
-        targetAccountId: supabaseTransaction.target_account_id,
-        notes: supabaseTransaction.notes || undefined,
-        originalCurrency: supabaseTransaction.original_currency || transactionCurrency,
-        originalAmount: supabaseTransaction.original_amount || transactionData.amount,
-        exchangeRateUsed: supabaseTransaction.exchange_rate_used || exchangeRateUsed || undefined,
-        createdAt: new Date(supabaseTransaction.created_at)
+        id: transactionId,
+        userId,
+        accountId: transactionData.accountId,
+        type: transactionData.type,
+        amount: amountToStore,
+        description: transactionData.description,
+        category: transactionData.category,
+        date: transactionData.date,
+        targetAccountId: transactionData.targetAccountId,
+        transferFee: transactionData.transferFee,
+        originalCurrency: transactionCurrency,
+        originalAmount: transactionData.amount,
+        exchangeRateUsed: exchangeRateUsed || undefined,
+        notes: transactionData.notes,
+        createdAt: now,
+        // Champs de transfert de propriété
+        currentOwnerId: transactionData.currentOwnerId || userId,
+        originalOwnerId: transactionData.originalOwnerId,
+        transferredAt: transactionData.transferredAt,
+        // Champs de transaction récurrente
+        isRecurring: transactionData.isRecurring || false,
+        recurringTransactionId: transactionData.recurringTransactionId,
       };
 
-      // Mettre à jour le solde du compte
+      // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
+      console.log('📱 [TransactionService] 💾 Sauvegarde de la transaction dans IndexedDB...');
+      await db.transactions.add(transaction);
+      console.log(`📱 [TransactionService] ✅ Transaction "${transaction.description}" sauvegardée dans IndexedDB avec ID: ${transactionId}`);
+
+      // Mettre à jour le solde du compte (même en offline)
       try {
         await this.updateAccountBalanceAfterTransaction(transaction.accountId, transaction.amount, userId);
-        console.log('✅ Solde du compte mis à jour');
+        console.log('📱 [TransactionService] ✅ Solde du compte mis à jour');
       } catch (balanceError) {
-        console.error('❌ Erreur lors de la mise à jour du solde:', balanceError);
+        console.error('📱 [TransactionService] ❌ Erreur lors de la mise à jour du solde:', balanceError);
         // Ne pas faire échouer la transaction pour une erreur de solde
       }
-      
-      return transaction;
+
+      // STEP 2: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('📱 [TransactionService] 🌐 Synchronisation de la transaction vers Supabase...');
+          // Transformer camelCase vers snake_case pour Supabase
+          const supabaseData = {
+            user_id: userId,
+            account_id: transactionData.accountId,
+            amount: amountToStore,
+            type: transactionData.type,
+            category: transactionData.category,
+            description: transactionData.description,
+            date: transactionData.date.toISOString(),
+            target_account_id: transactionData.targetAccountId || null,
+            transfer_fee: transactionData.transferFee || 0,
+            tags: null,
+            location: null,
+            status: 'completed',
+            notes: transactionData.notes || null,
+            // Multi-currency fields
+            original_currency: transactionCurrency,
+            original_amount: transactionData.amount,
+            exchange_rate_used: exchangeRateUsed,
+            // Champs de transaction récurrente
+            is_recurring: transactionData.isRecurring || false,
+            recurring_transaction_id: transactionData.recurringTransactionId || null,
+            // Champs de transfert de propriété
+            current_owner_id: transactionData.currentOwnerId || userId,
+            original_owner_id: transactionData.originalOwnerId || null,
+            transferred_at: transactionData.transferredAt || null,
+          };
+
+          const response = await apiService.createTransaction(supabaseData);
+          if (response.success && response.data) {
+            // Mettre à jour IndexedDB avec l'ID du serveur si différent
+            const supabaseTransaction = response.data as any;
+            if (supabaseTransaction.id !== transactionId) {
+              // Si Supabase génère un ID différent, mettre à jour IndexedDB
+              await db.transactions.delete(transactionId);
+              const syncedTransaction = this.mapSupabaseToTransaction(supabaseTransaction);
+              await db.transactions.add(syncedTransaction);
+              console.log(`📱 [TransactionService] 🔄 ID de la transaction mis à jour: ${transactionId} → ${syncedTransaction.id}`);
+              return syncedTransaction;
+            }
+            // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
+            const syncedTransaction = this.mapSupabaseToTransaction(supabaseTransaction);
+            await db.transactions.put(syncedTransaction);
+            console.log('📱 [TransactionService] ✅ Transaction synchronisée avec Supabase');
+            return syncedTransaction;
+          } else {
+            console.warn('📱 [TransactionService] ⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            // Queue pour sync ultérieure
+            await this.queueSyncOperation(userId, 'CREATE', transactionId, supabaseData);
+            return transaction;
+          }
+        } catch (syncError) {
+          console.error('📱 [TransactionService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          // Queue pour sync ultérieure
+          const supabaseData = {
+            user_id: userId,
+            account_id: transactionData.accountId,
+            amount: amountToStore,
+            type: transactionData.type,
+            category: transactionData.category,
+            description: transactionData.description,
+            date: transactionData.date.toISOString(),
+            target_account_id: transactionData.targetAccountId || null,
+            transfer_fee: transactionData.transferFee || 0,
+            notes: transactionData.notes || null,
+            original_currency: transactionCurrency,
+            original_amount: transactionData.amount,
+            exchange_rate_used: exchangeRateUsed,
+            is_recurring: transactionData.isRecurring || false,
+            recurring_transaction_id: transactionData.recurringTransactionId || null,
+            current_owner_id: transactionData.currentOwnerId || userId,
+            original_owner_id: transactionData.originalOwnerId || null,
+            transferred_at: transactionData.transferredAt || null,
+          };
+          await this.queueSyncOperation(userId, 'CREATE', transactionId, supabaseData);
+          return transaction;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📱 [TransactionService] 📦 Mode offline, ajout à la queue de synchronisation');
+        const supabaseData = {
+          user_id: userId,
+          account_id: transactionData.accountId,
+          amount: amountToStore,
+          type: transactionData.type,
+          category: transactionData.category,
+          description: transactionData.description,
+          date: transactionData.date.toISOString(),
+          target_account_id: transactionData.targetAccountId || null,
+          transfer_fee: transactionData.transferFee || 0,
+          notes: transactionData.notes || null,
+          original_currency: transactionCurrency,
+          original_amount: transactionData.amount,
+          exchange_rate_used: exchangeRateUsed,
+          is_recurring: transactionData.isRecurring || false,
+          recurring_transaction_id: transactionData.recurringTransactionId || null,
+          current_owner_id: transactionData.currentOwnerId || userId,
+          original_owner_id: transactionData.originalOwnerId || null,
+          transferred_at: transactionData.transferredAt || null,
+        };
+        await this.queueSyncOperation(userId, 'CREATE', transactionId, supabaseData);
+        return transaction;
+      }
     } catch (error) {
-      console.error('❌ Erreur lors de la création de la transaction:', error);
+      console.error('📱 [TransactionService] ❌ Erreur lors de la création de la transaction:', error);
       return null;
     }
   }
 
   /**
-   * Mettre à jour une transaction
+   * Mettre à jour une transaction (OFFLINE-FIRST PATTERN)
+   * 1. Met à jour IndexedDB immédiatement
+   * 2. Si online, sync vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
    */
   async updateTransaction(id: string, transactionData: Partial<Omit<Transaction, 'id' | 'createdAt' | 'userId'>>): Promise<Transaction | null> {
     try {
-      // Transformer camelCase vers snake_case pour Supabase
-      const supabaseData: any = {};
-      
-      if (transactionData.accountId !== undefined) supabaseData.account_id = transactionData.accountId;
-      if (transactionData.amount !== undefined) supabaseData.amount = transactionData.amount;
-      if (transactionData.type !== undefined) supabaseData.type = transactionData.type;
-      if (transactionData.category !== undefined) supabaseData.category = transactionData.category;
-      if (transactionData.description !== undefined) supabaseData.description = transactionData.description;
-      if (transactionData.date !== undefined) supabaseData.date = transactionData.date.toISOString();
-      if (transactionData.targetAccountId !== undefined) supabaseData.target_account_id = transactionData.targetAccountId;
-      if (transactionData.notes !== undefined) supabaseData.notes = transactionData.notes || null;
-
-      console.log('🔍 Données de mise à jour transformées pour Supabase:', supabaseData);
-
-      const response = await apiService.updateTransaction(id, supabaseData);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la mise à jour de la transaction:', response.error);
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        console.error('📱 [TransactionService] ❌ Utilisateur non authentifié');
         return null;
       }
 
-      console.log('✅ Transaction mise à jour avec succès');
-      // Récupérer la transaction mise à jour
-      return await this.getTransaction(id);
+      // STEP 1: Récupérer la transaction depuis IndexedDB
+      const existingTransaction = await db.transactions.get(id);
+      if (!existingTransaction) {
+        console.error(`📱 [TransactionService] ❌ Transaction ${id} non trouvée dans IndexedDB`);
+        // Essayer de récupérer depuis Supabase si online
+        if (navigator.onLine) {
+          const transactions = await this.getTransactions();
+          const transaction = transactions.find(t => t.id === id);
+          if (transaction) {
+            // Mettre à jour avec les nouvelles données
+            const updatedTransaction = { ...transaction, ...transactionData };
+            await db.transactions.put(updatedTransaction);
+            return updatedTransaction;
+          }
+        }
+        return null;
+      }
+
+      // STEP 2: Mettre à jour IndexedDB immédiatement
+      const updatedTransaction: Transaction = {
+        ...existingTransaction,
+        ...transactionData
+      };
+      console.log('📱 [TransactionService] 💾 Mise à jour de la transaction dans IndexedDB...');
+      await db.transactions.put(updatedTransaction);
+      console.log(`📱 [TransactionService] ✅ Transaction "${updatedTransaction.description}" mise à jour dans IndexedDB`);
+
+      // STEP 3: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('📱 [TransactionService] 🌐 Synchronisation de la mise à jour vers Supabase...');
+          // Transformer camelCase vers snake_case pour Supabase
+          const supabaseData: any = {};
+          
+          if (transactionData.accountId !== undefined) supabaseData.account_id = transactionData.accountId;
+          if (transactionData.amount !== undefined) supabaseData.amount = transactionData.amount;
+          if (transactionData.type !== undefined) supabaseData.type = transactionData.type;
+          if (transactionData.category !== undefined) supabaseData.category = transactionData.category;
+          if (transactionData.description !== undefined) supabaseData.description = transactionData.description;
+          if (transactionData.date !== undefined) supabaseData.date = transactionData.date.toISOString();
+          if (transactionData.targetAccountId !== undefined) supabaseData.target_account_id = transactionData.targetAccountId;
+          if (transactionData.notes !== undefined) supabaseData.notes = transactionData.notes || null;
+          if (transactionData.originalCurrency !== undefined) supabaseData.original_currency = transactionData.originalCurrency;
+          if (transactionData.originalAmount !== undefined) supabaseData.original_amount = transactionData.originalAmount;
+          if (transactionData.exchangeRateUsed !== undefined) supabaseData.exchange_rate_used = transactionData.exchangeRateUsed;
+          if (transactionData.isRecurring !== undefined) supabaseData.is_recurring = transactionData.isRecurring;
+          if (transactionData.recurringTransactionId !== undefined) supabaseData.recurring_transaction_id = transactionData.recurringTransactionId;
+          if (transactionData.currentOwnerId !== undefined) supabaseData.current_owner_id = transactionData.currentOwnerId;
+          if (transactionData.originalOwnerId !== undefined) supabaseData.original_owner_id = transactionData.originalOwnerId;
+          if (transactionData.transferredAt !== undefined) supabaseData.transferred_at = transactionData.transferredAt;
+
+          const response = await apiService.updateTransaction(id, supabaseData);
+          if (response.success && response.data) {
+            // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
+            const supabaseTransaction = this.mapSupabaseToTransaction(response.data as any);
+            await db.transactions.put(supabaseTransaction);
+            console.log('📱 [TransactionService] ✅ Transaction synchronisée avec Supabase');
+            return supabaseTransaction;
+          } else {
+            console.warn('📱 [TransactionService] ⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            await this.queueSyncOperation(userId, 'UPDATE', id, supabaseData);
+            return updatedTransaction;
+          }
+        } catch (syncError) {
+          console.error('📱 [TransactionService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'UPDATE', id, transactionData);
+          return updatedTransaction;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📱 [TransactionService] 📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'UPDATE', id, transactionData);
+        return updatedTransaction;
+      }
     } catch (error) {
-      console.error('❌ Erreur lors de la mise à jour de la transaction:', error);
+      console.error('📱 [TransactionService] ❌ Erreur lors de la mise à jour de la transaction:', error);
       return null;
     }
   }
 
   /**
-   * Supprimer une transaction
+   * Supprimer une transaction (OFFLINE-FIRST PATTERN)
+   * 1. Supprime de IndexedDB immédiatement
+   * 2. Si online, sync suppression vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
    */
   async deleteTransaction(id: string): Promise<boolean> {
     try {
-      const response = await apiService.deleteTransaction(id);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la suppression de la transaction:', response.error);
+      // STEP 1: Récupérer le userId
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        console.error('📱 [TransactionService] ❌ Utilisateur non authentifié');
         return false;
       }
 
-      console.log('✅ Transaction supprimée avec succès');
-      return true;
+      // STEP 2: Récupérer la transaction depuis IndexedDB pour la queue
+      const transaction = await db.transactions.get(id);
+      if (!transaction) {
+        console.warn(`📱 [TransactionService] ⚠️ Transaction ${id} non trouvée dans IndexedDB`);
+        // Essayer quand même de supprimer depuis Supabase si online
+        if (navigator.onLine) {
+          const response = await apiService.deleteTransaction(id);
+          return response.success;
+        }
+        return false;
+      }
+
+      // STEP 3: Supprimer de IndexedDB immédiatement
+      console.log('📱 [TransactionService] 💾 Suppression de la transaction depuis IndexedDB...');
+      await db.transactions.delete(id);
+      console.log(`📱 [TransactionService] ✅ Transaction "${transaction.description}" supprimée de IndexedDB`);
+
+      // STEP 4: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('📱 [TransactionService] 🌐 Synchronisation de la suppression vers Supabase...');
+          const response = await apiService.deleteTransaction(id);
+          if (response.success) {
+            console.log('📱 [TransactionService] ✅ Suppression synchronisée avec Supabase');
+            return true;
+          } else {
+            console.warn('📱 [TransactionService] ⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            await this.queueSyncOperation(userId, 'DELETE', id, {});
+            return true; // Retourner true car supprimé de IndexedDB
+          }
+        } catch (syncError) {
+          console.error('📱 [TransactionService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'DELETE', id, {});
+          return true; // Retourner true car supprimé de IndexedDB
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📱 [TransactionService] 📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'DELETE', id, {});
+        return true; // Retourner true car supprimé de IndexedDB
+      }
     } catch (error) {
-      console.error('❌ Erreur lors de la suppression de la transaction:', error);
+      console.error('📱 [TransactionService] ❌ Erreur lors de la suppression de la transaction:', error);
       return false;
     }
   }

@@ -13,7 +13,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import Modal from '../components/UI/Modal';
 import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
-import { getReimbursementStatusByTransactionIds, createReimbursementRequest, getMemberBalances } from '../services/reimbursementService';
+import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
 import { toast } from 'react-hot-toast';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
 import type { FamilyGroup } from '../types/family';
@@ -467,6 +467,7 @@ const TransactionsPage = () => {
       
       if (!creditorMember) {
         toast.error('Membre créancier non trouvé');
+        setRequestingReimbursement(null);
         return;
       }
       
@@ -488,6 +489,7 @@ const TransactionsPage = () => {
       
       if (promises.length === 0) {
         toast.error('Aucun membre à rembourser pour cette transaction');
+        setRequestingReimbursement(null);
         return;
       }
       
@@ -565,9 +567,26 @@ const TransactionsPage = () => {
         : transaction.isRecurring !== true;
     
     // Period filter: filter by transaction date
-    const transactionDate = new Date(transaction.date);
+    // Extract just the date part (YYYY-MM-DD) for comparison to avoid timezone issues
+    // Use local date components to avoid UTC conversion issues
+    const transactionDateObj = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
+    const transactionYear = transactionDateObj.getFullYear();
+    const transactionMonth = String(transactionDateObj.getMonth() + 1).padStart(2, '0');
+    const transactionDay = String(transactionDateObj.getDate()).padStart(2, '0');
+    const transactionDateStr = `${transactionYear}-${transactionMonth}-${transactionDay}`; // "2025-12-15"
+    
     const { startDate, endDate } = getDateRange();
-    const matchesPeriod = transactionDate >= startDate && transactionDate <= endDate;
+    const startYear = startDate.getFullYear();
+    const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+    const startDay = String(startDate.getDate()).padStart(2, '0');
+    const startDateStr = `${startYear}-${startMonth}-${startDay}`;
+    
+    const endYear = endDate.getFullYear();
+    const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+    const endDay = String(endDate.getDate()).padStart(2, '0');
+    const endDateStr = `${endYear}-${endMonth}-${endDay}`;
+    
+    const matchesPeriod = transactionDateStr >= startDateStr && transactionDateStr <= endDateStr;
     
     return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring && matchesPeriod;
   });
