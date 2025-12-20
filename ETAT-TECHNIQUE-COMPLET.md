@@ -1,9 +1,9 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.24 (Espace Famille - Realtime Sync)  
-**Date de mise à jour:** 2025-12-12  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Realtime Sync Famille  
+**Version:** 2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)  
+**Date de mise à jour:** 2025-12-08  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
 
 ---
@@ -1075,45 +1075,6 @@ family_shared_transactions (
 - ✅ **Documentation:** Schéma base de données documenté
 
 **Prêt pour Production:** ✅ OUI - Espace Famille 100% opérationnel
-
-#### **16.7.6 Synchronisation Temps Réel Famille** ✅ IMPLÉMENTÉ 2025-12-12
-
-**Problème résolu:**
-- Les modifications faites par un membre de la famille n'étaient pas visibles par les autres membres sans rafraîchissement manuel
-- Pas de notification temps réel des nouvelles transactions partagées ou demandes de remboursement
-
-**Solution implémentée:**
-- Hook réutilisable `useFamilyRealtime.ts` pour les subscriptions Supabase Realtime
-- Intégration dans FamilyContext, FamilyDashboardPage, FamilyReimbursementsPage
-
-**Fichiers créés:**
-- `frontend/src/hooks/useFamilyRealtime.ts` - Hook avec 4 fonctions d'abonnement
-
-**Fichiers modifiés:**
-- `frontend/src/contexts/FamilyContext.tsx` - Subscriptions family_groups et family_members
-- `frontend/src/pages/FamilyDashboardPage.tsx` - Subscription family_shared_transactions avec recalcul stats
-- `frontend/src/pages/FamilyReimbursementsPage.tsx` - Subscription reimbursement_requests
-
-**Tables synchronisées en temps réel:**
-
-| Table | Événements | Composant | Action |
-|-------|------------|-----------|--------|
-| family_groups | UPDATE | FamilyContext | refreshFamilyGroups() |
-| family_members | INSERT, UPDATE, DELETE | FamilyContext | refreshFamilyGroups() |
-| family_shared_transactions | INSERT, UPDATE, DELETE | FamilyDashboardPage | refetch + recalcul stats |
-| reimbursement_requests | INSERT, UPDATE, DELETE | FamilyReimbursementsPage | loadData() |
-
-**Architecture technique:**
-- Pattern: Supabase `channel().on('postgres_changes')` avec filtres par family_group_id
-- Cleanup: Fonctions unsubscribe retournées pour éviter memory leaks
-- Noms canaux uniques: format `family-[tablename]-[groupId]`
-- Gestion null groupId: retourne no-op function
-
-**Impact:**
-- ✅ Synchronisation automatique entre membres de la famille
-- ✅ Mise à jour instantanée des statistiques du dashboard
-- ✅ Notification visuelle des nouvelles demandes de remboursement
-- ✅ Aucune action utilisateur requise pour voir les changements
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3090,6 +3051,84 @@ import type { PurchaseOrder, PurchaseOrderStatus, OrgUnit } from '../types/const
 - Vérification CSS computed styles pour identifier surcharges
 - Analyse z-index et stacking context
 - Vérification overflow/visibility des éléments
+
+---
+
+### **20. Header Refactoring** ✅ COMPLET (Session 2025-12-20-S16)
+
+#### **20.1 Architecture Refactoring**
+**Date de complétion:** 20 décembre 2025
+**Statut:** ✅ 100% OPÉRATIONNEL
+
+**Problème initial:**
+- Header.tsx monolithique de 988 lignes
+- Impossible à modifier avec Cursor (timeout sur fichiers >500 lignes)
+- Maintenabilité faible, testabilité difficile
+
+**Solution implémentée:**
+- Décomposition en 12 fichiers modulaires
+- 4 hooks personnalisés pour la logique métier
+- 8 composants de présentation
+- Orchestrateur léger de 52 lignes
+
+#### **20.2 Fichiers créés**
+
+**Hooks (frontend/src/hooks/):**
+1. `useIsConstructionModule.ts` (25 lignes) - Détection module Construction
+2. `useUsernameDisplay.ts` (76 lignes) - Timer affichage username 60s
+3. `useOnlineStatus.ts` (38 lignes) - Polling statut connexion 30s
+4. `useHeaderMessages.ts` (268 lignes) - Messages interactifs cycliques
+
+**Composants (frontend/src/components/layout/header/):**
+1. `HeaderLogo.tsx` (92 lignes) - Logo avec module switcher
+2. `HeaderTitle.tsx` (52 lignes) - Titre adaptatif Budget/Construction
+3. `CompanyBadge.tsx` (74 lignes) - Badge entreprise Construction
+4. `RoleBadge.tsx` (210 lignes) - Badge rôle avec dropdown admin
+5. `HeaderConstructionActions.tsx` (32 lignes) - Assemblage Construction
+6. `UserMenuDropdown.tsx` (203 lignes) - Menu utilisateur complet
+7. `InteractiveMessages.tsx` (110 lignes) - Messages avec fade
+8. `HeaderUserBanner.tsx` (131 lignes) - Bannière utilisateur
+9. `HeaderBudgetActions.tsx` (64 lignes) - Assemblage Budget
+
+**Orchestrateur:**
+- `Header.tsx` (52 lignes) - Composition des sous-composants
+
+#### **20.3 Métriques**
+
+| Métrique | Avant | Après | Amélioration |
+|----------|-------|-------|--------------|
+| Lignes Header.tsx | 988 | 52 | -95% |
+| Fichier max | 988 | 268 | -73% |
+| Nombre fichiers | 1 | 13 | Modulaire |
+| Testabilité | Difficile | Par composant | ✅ |
+
+#### **20.4 Fonctionnalités préservées**
+
+**Module Budget:**
+- ✅ LevelBadge avec navigation /certification
+- ✅ Score total (quiz + practice + profile)
+- ✅ Menu utilisateur (PWA, sauvegarde, paramètres, admin, déconnexion)
+- ✅ Messages interactifs cycliques (6s)
+- ✅ Salutation username (60s timer)
+- ✅ Indicateur online/offline
+
+**Module Construction:**
+- ✅ Titre "1saKELY" et sous-titre "BTP Construction"
+- ✅ Badge entreprise avec Building2 icon
+- ✅ Badge rôle avec dropdown simulation admin
+- ✅ 6 rôles simulables (Direction, Chef Chantier, Chef Équipe, Magasinier, Logistique, Finance)
+
+**Partagé:**
+- ✅ Logo avec module switcher trigger
+- ✅ Effet ripple moderne
+- ✅ Design glassmorphism
+
+#### **20.5 Tests validés**
+- ✅ Module Budget fonctionnel
+- ✅ Module Construction fonctionnel
+- ✅ Simulation rôle admin fonctionnelle
+- ✅ Aucune régression détectée
+- ✅ Aucune erreur TypeScript
 
 ---
 
