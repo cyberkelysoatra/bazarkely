@@ -569,7 +569,7 @@ const DashboardPage = () => {
       {user && <RecurringTransactionsWidget userId={user.id} />}
 
       {/* Résumé mensuel pour familles diaspora */}
-      <MonthlySummaryCard className="mt-6" displayCurrency={displayCurrency} />
+      <MonthlySummaryCard className="mt-6" displayCurrency={displayCurrency} monthlyIncome={stats.monthlyIncome} monthlyExpenses={stats.monthlyExpenses} />
 
       {/* Actions rapides */}
       <div className="grid grid-cols-2 gap-4">

@@ -11,15 +11,12 @@ import type { Currency } from '../Currency/CurrencyToggle';
 interface MonthlySummaryCardProps {
   className?: string;
   displayCurrency?: Currency;
+  monthlyIncome: number;
+  monthlyExpenses: number;
 }
 
-const MonthlySummaryCard: React.FC<MonthlySummaryCardProps> = ({ className = '', displayCurrency = 'MGA' }) => {
-  // Debug: Log displayCurrency prop
-  console.log('💱 MonthlySummaryCard displayCurrency:', displayCurrency);
-  
-  // Placeholder data - will be replaced with actual data fetching
-  const monthlyIncome = 0;
-  const monthlyExpenses = 0;
+const MonthlySummaryCard: React.FC<MonthlySummaryCardProps> = ({ className = '', displayCurrency = 'MGA', monthlyIncome, monthlyExpenses }) => {
+  // Calculate net amount from props
   const netAmount = monthlyIncome - monthlyExpenses;
 
   return (
