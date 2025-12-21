@@ -6,13 +6,15 @@
  * Ce fichier est utilisé comme SW principal avec Vite PWA en mode injectManifest
  */
 
-import { clientsClaim } from 'workbox-core';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 
-// Prendre le contrôle immédiatement
-clientsClaim();
+// Prendre le contrôle immédiatement (native API instead of workbox-core)
+self.skipWaiting();
+self.addEventListener('activate', () => {
+  self.clients.claim();
+});
 
 // Tag pour Background Sync
 const SYNC_TAG = 'bazarkely-sync';
