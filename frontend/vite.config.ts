@@ -14,6 +14,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         rollupFormat: 'iife',
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
