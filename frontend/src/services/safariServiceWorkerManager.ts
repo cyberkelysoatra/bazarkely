@@ -14,19 +14,17 @@ class SafariServiceWorkerManager {
    */
   async initialize(): Promise<boolean> {
     try {
-      // Skip Service Worker registration in development mode
-      // SW files are only generated at build time, not in dev server
-      const isDevelopment =
-        import.meta.env.DEV === true ||
-        (typeof window !== 'undefined' && (
-          window.location.hostname === 'localhost' ||
-          window.location.hostname === '127.0.0.1' ||
-          window.location.hostname === '[::1]'
-        ));
-
-      if (isDevelopment) {
-        console.log('⚠️ Service Worker registration skipped in development mode');
-        console.log('   Service Workers are only available in production builds');
+      // Skip Service Worker registration on localhost only
+      // Production domains (1sakely.org, etc.) should register normally
+      const isLocalhost = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '[::1]'
+      );
+      
+      if (isLocalhost) {
+        console.log('⚠️ Service Worker registration skipped on localhost');
+        console.log('   Use production build (1sakely.org) for full PWA features');
         return false;
       }
 
