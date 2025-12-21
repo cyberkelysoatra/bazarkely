@@ -71,6 +71,17 @@ export interface ReimbursementWithDetails extends ReimbursementRequest {
 }
 
 /**
+ * Détails de remboursement pour l'affichage dans l'UI
+ */
+export interface ReimbursementDetailForDisplay {
+  status: ReimbursementStatus;
+  amount: number;
+  rate: number; // Calculé comme (amount / transactionAmount) * 100
+  fromMemberName: string;
+  toMemberName: string;
+}
+
+/**
  * Données pour créer une demande de remboursement
  */
 export interface CreateReimbursementData {
@@ -445,12 +456,12 @@ export async function getPendingReimbursements(
 }
 
 /**
- * Get reimbursement status for multiple transactions
+ * Get reimbursement status for multiple transactions (OLD VERSION - kept for backward compatibility)
  * @param transactionIds - Array of transaction IDs to check
  * @param groupId - Family group ID
  * @returns Map of transactionId to status ('none' | 'pending' | 'settled')
  */
-export async function getReimbursementStatusByTransactionIds(
+export async function getReimbursementStatusByTransactionIds_OLD(
   transactionIds: string[],
   groupId: string
 ): Promise<Map<string, ReimbursementStatus>> {
@@ -548,7 +559,138 @@ export async function getReimbursementStatusByTransactionIds(
 
     return result;
   } catch (err) {
-    console.error('Error in getReimbursementStatusByTransactionIds:', err);
+    console.error('Error in getReimbursementStatusByTransactionIds_OLD:', err);
+    return result;
+  }
+}
+
+/**
+ * Get reimbursement status for multiple transactions (backward compatibility wrapper)
+ * @param transactionIds - Array of transaction IDs to check
+ * @param groupId - Family group ID
+ * @returns Map of transactionId to status ('none' | 'pending' | 'settled')
+ */
+export async function getReimbursementStatusByTransactionIds(
+  transactionIds: string[],
+  groupId: string
+): Promise<Map<string, ReimbursementStatus>> {
+  return getReimbursementStatusByTransactionIds_OLD(transactionIds, groupId);
+}
+
+/**
+ * Get reimbursement details (status, amount, rate, member names) for multiple transactions
+ * @param transactionIds - Array of transaction IDs to check
+ * @param groupId - Family group ID
+ * @returns Map of transactionId to ReimbursementDetailForDisplay
+ */
+export async function getReimbursementDetailsByTransactionIds(
+  transactionIds: string[],
+  groupId: string
+): Promise<Map<string, ReimbursementDetailForDisplay>> {
+  const result = new Map<string, ReimbursementDetailForDisplay>();
+
+  if (!transactionIds.length || !groupId) {
+    return result;
+  }
+
+  try {
+    // Step 1: Get family_shared_transactions for these transaction IDs with transaction amount
+    const { data: sharedTxs, error: sharedError } = await supabase
+      .from('family_shared_transactions')
+      .select(`
+        id,
+        transaction_id,
+        transactions (
+          amount
+        )
+      `)
+      .eq('family_group_id', groupId)
+      .in('transaction_id', transactionIds);
+
+    if (sharedError) {
+      console.error('Error fetching shared transactions:', sharedError);
+      return result;
+    }
+
+    if (!sharedTxs || sharedTxs.length === 0) {
+      // No shared transactions found
+      return result;
+    }
+
+    const sharedTxIds = sharedTxs.map(st => st.id);
+
+    // Step 2: Get reimbursement requests with member names
+    const { data: reimbursements, error: reimbError } = await supabase
+      .from('reimbursement_requests')
+      .select(`
+        shared_transaction_id,
+        amount,
+        status,
+        from_member:family_members!reimbursement_requests_from_member_id_fkey(
+          display_name
+        ),
+        to_member:family_members!reimbursement_requests_to_member_id_fkey(
+          display_name
+        )
+      `)
+      .in('shared_transaction_id', sharedTxIds);
+
+    if (reimbError) {
+      console.error('Error fetching reimbursement requests:', reimbError);
+      return result;
+    }
+
+    if (!reimbursements || reimbursements.length === 0) {
+      return result;
+    }
+
+    // Step 3: Map shared_transaction_id to transaction_id and transaction amount
+    const sharedTxMap = new Map<string, { transactionId: string; transactionAmount: number }>();
+    sharedTxs.forEach(st => {
+      if (st.transaction_id) {
+        const transaction = (st as any).transactions;
+        const transactionAmount = transaction 
+          ? Math.abs(Array.isArray(transaction) ? transaction[0]?.amount || 0 : transaction?.amount || 0)
+          : 0;
+        sharedTxMap.set(st.id, {
+          transactionId: st.transaction_id,
+          transactionAmount: transactionAmount,
+        });
+      }
+    });
+
+    // Step 4: Build result map
+    for (const reimb of reimbursements) {
+      const sharedInfo = sharedTxMap.get((reimb as any).shared_transaction_id);
+      if (!sharedInfo?.transactionId) {
+        continue;
+      }
+
+      const transactionAmount = sharedInfo.transactionAmount;
+      const reimbAmount = (reimb as any).amount || 0;
+      const rate = transactionAmount > 0
+        ? Math.round((reimbAmount / transactionAmount) * 100)
+        : 100;
+
+      const fromMember = (reimb as any).from_member;
+      const toMember = (reimb as any).to_member;
+
+      result.set(sharedInfo.transactionId, {
+        status: (reimb as any).status as ReimbursementStatus,
+        amount: reimbAmount,
+        rate: rate,
+        fromMemberName: Array.isArray(fromMember)
+          ? (fromMember[0]?.display_name || 'Membre')
+          : (fromMember?.display_name || 'Membre'),
+        toMemberName: Array.isArray(toMember)
+          ? (toMember[0]?.display_name || 'Membre')
+          : (toMember?.display_name || 'Membre'),
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in getReimbursementDetailsByTransactionIds:', error);
     return result;
   }
 }

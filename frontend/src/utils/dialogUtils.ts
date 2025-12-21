@@ -31,23 +31,67 @@ export const showConfirm = (
     const container = document.createElement('div')
     document.body.appendChild(container)
     
+    let isCleanedUp = false
+    let root: any = null
+    
+    // Safe cleanup function that prevents double cleanup
+    const cleanup = () => {
+      if (isCleanedUp) return
+      isCleanedUp = true
+      
+      // Unmount React root first
+      if (root) {
+        try {
+          root.unmount()
+        } catch (error) {
+          console.warn('Error unmounting React root:', error)
+        }
+      }
+      
+      // Remove container from DOM safely
+      if (container && container.parentNode) {
+        try {
+          // Use remove() which is safer than removeChild
+          container.remove()
+        } catch (error) {
+          // Fallback to removeChild if remove() is not supported
+          try {
+            container.parentNode.removeChild(container)
+          } catch (fallbackError) {
+            console.warn('Error removing container:', fallbackError)
+          }
+        }
+      }
+    }
+    
     // Import React and createRoot dynamically to avoid SSR issues
     import('react').then((React) => {
       import('react-dom/client').then(({ createRoot }) => {
-        const root = createRoot(container)
+        root = createRoot(container)
         
         const ConfirmDialogWrapper = () => {
           const [isOpen, setIsOpen] = React.useState(true)
           
+          // Cleanup on unmount
+          React.useEffect(() => {
+            return () => {
+              if (!isCleanedUp) {
+                cleanup()
+              }
+            }
+          }, [])
+          
           const handleConfirm = () => {
+            if (isCleanedUp) return
             setIsOpen(false)
-            document.body.removeChild(container)
+            cleanup()
             resolve(true)
           }
           
           const handleCancel = () => {
+            if (isCleanedUp) return
             setIsOpen(false)
-            document.body.removeChild(container)
+            cleanup()
             resolve(false)
           }
           
@@ -88,22 +132,66 @@ export const showPrompt = (
     const container = document.createElement('div')
     document.body.appendChild(container)
     
+    let isCleanedUp = false
+    let root: any = null
+    
+    // Safe cleanup function that prevents double cleanup
+    const cleanup = () => {
+      if (isCleanedUp) return
+      isCleanedUp = true
+      
+      // Unmount React root first
+      if (root) {
+        try {
+          root.unmount()
+        } catch (error) {
+          console.warn('Error unmounting React root:', error)
+        }
+      }
+      
+      // Remove container from DOM safely
+      if (container && container.parentNode) {
+        try {
+          // Use remove() which is safer than removeChild
+          container.remove()
+        } catch (error) {
+          // Fallback to removeChild if remove() is not supported
+          try {
+            container.parentNode.removeChild(container)
+          } catch (fallbackError) {
+            console.warn('Error removing container:', fallbackError)
+          }
+        }
+      }
+    }
+    
     import('react').then((React) => {
       import('react-dom/client').then(({ createRoot }) => {
-        const root = createRoot(container)
+        root = createRoot(container)
         
         const PromptDialogWrapper = () => {
           const [isOpen, setIsOpen] = React.useState(true)
           
+          // Cleanup on unmount
+          React.useEffect(() => {
+            return () => {
+              if (!isCleanedUp) {
+                cleanup()
+              }
+            }
+          }, [])
+          
           const handleConfirm = (value: string) => {
+            if (isCleanedUp) return
             setIsOpen(false)
-            document.body.removeChild(container)
+            cleanup()
             resolve(value || null)
           }
           
           const handleCancel = () => {
+            if (isCleanedUp) return
             setIsOpen(false)
-            document.body.removeChild(container)
+            cleanup()
             resolve(null)
           }
           

@@ -347,3 +347,8 @@ Alternative à l'ajout de colonnes dans `transactions`:
 **AGENT-1-SCHEMA-COMPLETE**
 
 
+
+
+
+
+

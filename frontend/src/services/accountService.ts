@@ -1,43 +1,157 @@
 /**
- * Service de comptes pour BazarKELY avec Supabase
- * Utilise Supabase pour la gestion des comptes
+ * Service de comptes pour BazarKELY avec pattern offline-first
+ * Utilise IndexedDB comme source primaire et Supabase pour la synchronisation
  */
 
 import type { Account } from '../types';
 import type { Account as SupabaseAccount, AccountInsert, AccountUpdate } from '../types/supabase';
+import type { SyncOperation } from '../types';
+import { db } from '../lib/database';
+import { supabase } from '../lib/supabase';
 import apiService from './apiService';
 import { convertAmount } from './exchangeRateService';
 
 class AccountService {
   /**
-   * Récupérer tous les comptes
+   * Récupérer l'ID de l'utilisateur actuel
+   */
+  private async getCurrentUserId(): Promise<string | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        return session.user.id;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      return user?.id || null;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Ajouter une opération à la queue de synchronisation
+   */
+  private async queueSyncOperation(
+    userId: string,
+    operation: 'CREATE' | 'UPDATE' | 'DELETE',
+    accountId: string,
+    data: any
+  ): Promise<void> {
+    try {
+      const syncOp: SyncOperation = {
+        id: crypto.randomUUID(),
+        userId,
+        operation,
+        table_name: 'accounts',
+        data: { id: accountId, ...data },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending'
+      };
+      await db.syncQueue.add(syncOp);
+      console.log(`📦 Opération ${operation} ajoutée à la queue de synchronisation pour le compte ${accountId}`);
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
+      // Ne pas faire échouer l'opération principale si la queue échoue
+    }
+  }
+
+  /**
+   * Convertir un compte Supabase (snake_case) vers Account (camelCase)
+   */
+  private mapSupabaseToAccount(supabaseAccount: any): Account {
+    return {
+      id: supabaseAccount.id,
+      userId: supabaseAccount.user_id,
+      name: supabaseAccount.name,
+      type: supabaseAccount.type,
+      balance: supabaseAccount.balance,
+      currency: supabaseAccount.currency,
+      isDefault: supabaseAccount.is_default,
+      displayOrder: supabaseAccount.display_order ?? undefined,
+      createdAt: new Date(supabaseAccount.created_at)
+    };
+  }
+
+  /**
+   * Récupérer tous les comptes (OFFLINE-FIRST PATTERN)
+   * 1. Essaie IndexedDB d'abord (toujours disponible)
+   * 2. Si IndexedDB vide et online, fetch depuis Supabase
+   * 3. Cache les résultats Supabase dans IndexedDB
    */
   async getAccounts(): Promise<Account[]> {
     try {
-      console.log('🔍 Fetching accounts from Supabase...');
-      const response = await apiService.getAccounts();
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la récupération des comptes:', response.error);
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        console.warn('⚠️ Utilisateur non authentifié, retour des comptes IndexedDB uniquement');
+        // Retourner les comptes IndexedDB même sans userId (pour compatibilité)
+        const localAccounts = await db.accounts.toArray();
+        return localAccounts;
+      }
+
+      // STEP 1: Essayer IndexedDB d'abord (offline-first)
+      console.log('💾 Récupération des comptes depuis IndexedDB...');
+      const localAccounts = await db.accounts
+        .where('userId')
+        .equals(userId)
+        .toArray();
+
+      if (localAccounts.length > 0) {
+        console.log(`✅ ${localAccounts.length} compte(s) récupéré(s) depuis IndexedDB`);
+        return localAccounts;
+      }
+
+      // STEP 2: IndexedDB vide, essayer Supabase si online
+      if (!navigator.onLine) {
+        console.warn('⚠️ Mode offline et IndexedDB vide, retour d\'un tableau vide');
         return [];
       }
-      // Map Supabase data (snake_case) to Account format (camelCase)
+
+      console.log('🌐 IndexedDB vide, récupération depuis Supabase...');
+      const response = await apiService.getAccounts();
+      if (!response.success || response.error) {
+        console.error('❌ Erreur lors de la récupération des comptes depuis Supabase:', response.error);
+        return [];
+      }
+
+      // STEP 3: Mapper et sauvegarder dans IndexedDB
       const supabaseAccounts = (response.data as any[]) || [];
-      const accounts: Account[] = supabaseAccounts.map((supabaseAccount: any) => ({
-        id: supabaseAccount.id,
-        userId: supabaseAccount.user_id,
-        name: supabaseAccount.name,
-        type: supabaseAccount.type,
-        balance: supabaseAccount.balance,
-        currency: supabaseAccount.currency,
-        isDefault: supabaseAccount.is_default,
-        isActive: supabaseAccount.is_active,
-        displayOrder: supabaseAccount.display_order ?? undefined,
-        createdAt: new Date(supabaseAccount.created_at)
-      }));
-      console.log('✅ Accounts fetched from Supabase:', accounts.length);
+      const accounts: Account[] = supabaseAccounts.map((supabaseAccount: any) =>
+        this.mapSupabaseToAccount(supabaseAccount)
+      );
+
+      if (accounts.length > 0) {
+        // Sauvegarder dans IndexedDB pour la prochaine fois
+        try {
+          await db.accounts.bulkPut(accounts);
+          console.log(`💾 ${accounts.length} compte(s) sauvegardé(s) dans IndexedDB`);
+        } catch (idbError) {
+          console.error('❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
+          // Continuer même si la sauvegarde échoue
+        }
+      }
+
+      console.log(`✅ ${accounts.length} compte(s) récupéré(s) depuis Supabase`);
       return accounts;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des comptes:', error);
+      // En cas d'erreur, essayer de retourner IndexedDB
+      try {
+        const userId = await this.getCurrentUserId();
+        if (userId) {
+          const localAccounts = await db.accounts
+            .where('userId')
+            .equals(userId)
+            .toArray();
+          if (localAccounts.length > 0) {
+            console.log(`⚠️ Retour de ${localAccounts.length} compte(s) depuis IndexedDB après erreur`);
+            return localAccounts;
+          }
+        }
+      } catch (fallbackError) {
+        console.error('❌ Erreur lors du fallback IndexedDB:', fallbackError);
+      }
       return [];
     }
   }
@@ -76,48 +190,84 @@ class AccountService {
   }
 
   /**
-   * Créer un nouveau compte
+   * Créer un nouveau compte (OFFLINE-FIRST PATTERN)
+   * 1. Génère un UUID si non fourni
+   * 2. Sauvegarde dans IndexedDB immédiatement
+   * 3. Si online, sync vers Supabase
+   * 4. Si offline ou échec, queue pour sync ultérieure
    */
   async createAccount(userId: string, accountData: Omit<Account, 'id' | 'createdAt' | 'userId'>): Promise<Account | null> {
     try {
-      // Convertir les données vers le format Supabase
-      const supabaseData: AccountInsert = {
+      // Générer un UUID pour le compte
+      const accountId = crypto.randomUUID();
+      const now = new Date();
+
+      // Créer l'objet Account complet
+      const account: Account = {
+        id: accountId,
+        userId,
         name: accountData.name,
         type: accountData.type,
         balance: accountData.balance,
         currency: accountData.currency,
-        is_default: accountData.isDefault,
-        is_active: accountData.isActive ?? true
+        isDefault: accountData.isDefault ?? false,
+        displayOrder: accountData.displayOrder,
+        createdAt: now
       };
-      // Add display_order if present (using type assertion since AccountInsert may not have it yet)
-      if (accountData.displayOrder !== undefined) {
-        (supabaseData as any).display_order = accountData.displayOrder;
-      }
 
-      const response = await apiService.createAccount(supabaseData);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la création du compte:', response.error);
-        return null;
-      }
+      // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
+      console.log('💾 Sauvegarde du compte dans IndexedDB...');
+      await db.accounts.add(account);
+      console.log(`✅ Compte "${account.name}" sauvegardé dans IndexedDB avec ID: ${accountId}`);
 
-      console.log('✅ Compte créé avec succès');
-      
-      // Convertir la réponse Supabase vers le format local
-      const supabaseAccount = response.data as any;
-      const account: Account = {
-        id: supabaseAccount.id,
-        userId: supabaseAccount.user_id,
-        name: supabaseAccount.name,
-        type: supabaseAccount.type,
-        balance: supabaseAccount.balance,
-        currency: supabaseAccount.currency,
-        isDefault: supabaseAccount.is_default,
-        isActive: supabaseAccount.is_active,
-        displayOrder: supabaseAccount.display_order ?? undefined,
-        createdAt: new Date(supabaseAccount.created_at)
-      };
-      
-      return account;
+      // STEP 2: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🌐 Synchronisation du compte vers Supabase...');
+          const supabaseData: AccountInsert = {
+            name: accountData.name,
+            type: accountData.type,
+            balance: accountData.balance,
+            currency: accountData.currency,
+            is_default: accountData.isDefault ?? false,
+            is_active: (accountData as any).isActive ?? true // isActive existe dans Supabase mais pas dans le type Account local
+          };
+          if (accountData.displayOrder !== undefined) {
+            (supabaseData as any).display_order = accountData.displayOrder;
+          }
+
+          const response = await apiService.createAccount(supabaseData);
+          if (response.success && response.data) {
+            // Mettre à jour IndexedDB avec l'ID du serveur si différent
+            const supabaseAccount = response.data as any;
+            if (supabaseAccount.id !== accountId) {
+              // Si Supabase génère un ID différent, mettre à jour IndexedDB
+              await db.accounts.delete(accountId);
+              const syncedAccount = this.mapSupabaseToAccount(supabaseAccount);
+              await db.accounts.add(syncedAccount);
+              console.log(`🔄 ID du compte mis à jour: ${accountId} → ${syncedAccount.id}`);
+              return syncedAccount;
+            }
+            console.log('✅ Compte synchronisé avec Supabase');
+            return account;
+          } else {
+            console.warn('⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            // Queue pour sync ultérieure
+            await this.queueSyncOperation(userId, 'CREATE', accountId, accountData);
+            return account;
+          }
+        } catch (syncError) {
+          console.error('❌ Erreur lors de la synchronisation Supabase:', syncError);
+          // Queue pour sync ultérieure
+          await this.queueSyncOperation(userId, 'CREATE', accountId, accountData);
+          return account;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'CREATE', accountId, accountData);
+        return account;
+      }
     } catch (error) {
       console.error('❌ Erreur lors de la création du compte:', error);
       return null;
@@ -125,44 +275,77 @@ class AccountService {
   }
 
   /**
-   * Mettre à jour un compte
+   * Mettre à jour un compte (OFFLINE-FIRST PATTERN)
+   * 1. Met à jour IndexedDB immédiatement
+   * 2. Si online, sync vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
    */
-  async updateAccount(id: string, _userId: string, accountData: Partial<Omit<Account, 'id' | 'createdAt' | 'userId'>>): Promise<Account | null> {
+  async updateAccount(id: string, userId: string, accountData: Partial<Omit<Account, 'id' | 'createdAt' | 'userId'>>): Promise<Account | null> {
     try {
-      // Convertir les données vers le format Supabase
-      const supabaseData: AccountUpdate = {};
-      if (accountData.name !== undefined) supabaseData.name = accountData.name;
-      if (accountData.type !== undefined) supabaseData.type = accountData.type;
-      if (accountData.balance !== undefined) supabaseData.balance = accountData.balance;
-      if (accountData.currency !== undefined) supabaseData.currency = accountData.currency;
-      if (accountData.isDefault !== undefined) supabaseData.is_default = accountData.isDefault;
-      if (accountData.isActive !== undefined) supabaseData.is_active = accountData.isActive;
-      if (accountData.displayOrder !== undefined) supabaseData.display_order = accountData.displayOrder;
-
-      const response = await apiService.updateAccount(id, supabaseData);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la mise à jour du compte:', response.error);
+      // STEP 1: Récupérer le compte depuis IndexedDB
+      const existingAccount = await db.accounts.get(id);
+      if (!existingAccount) {
+        console.error(`❌ Compte ${id} non trouvé dans IndexedDB`);
+        // Essayer de récupérer depuis Supabase si online
+        if (navigator.onLine) {
+          const accounts = await this.getAccounts();
+          const account = accounts.find(a => a.id === id);
+          if (account) {
+            // Mettre à jour avec les nouvelles données
+            const updatedAccount = { ...account, ...accountData };
+            await db.accounts.put(updatedAccount);
+            return updatedAccount;
+          }
+        }
         return null;
       }
 
-      console.log('✅ Compte mis à jour avec succès');
-      
-      // Convertir la réponse Supabase vers le format local
-      const supabaseAccount = response.data as any;
-      const account: Account = {
-        id: supabaseAccount.id,
-        userId: supabaseAccount.user_id,
-        name: supabaseAccount.name,
-        type: supabaseAccount.type,
-        balance: supabaseAccount.balance,
-        currency: supabaseAccount.currency,
-        isDefault: supabaseAccount.is_default,
-        isActive: supabaseAccount.is_active,
-        displayOrder: supabaseAccount.display_order ?? undefined,
-        createdAt: new Date(supabaseAccount.created_at)
+      // STEP 2: Mettre à jour IndexedDB immédiatement
+      const updatedAccount: Account = {
+        ...existingAccount,
+        ...accountData
       };
-      
-      return account;
+      console.log('💾 Mise à jour du compte dans IndexedDB...');
+      await db.accounts.put(updatedAccount);
+      console.log(`✅ Compte "${updatedAccount.name}" mis à jour dans IndexedDB`);
+
+      // STEP 3: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🌐 Synchronisation de la mise à jour vers Supabase...');
+          const supabaseData: AccountUpdate = {};
+          if (accountData.name !== undefined) supabaseData.name = accountData.name;
+          if (accountData.type !== undefined) supabaseData.type = accountData.type;
+          if (accountData.balance !== undefined) supabaseData.balance = accountData.balance;
+          if (accountData.currency !== undefined) supabaseData.currency = accountData.currency;
+          if (accountData.isDefault !== undefined) supabaseData.is_default = accountData.isDefault;
+          // isActive existe dans Supabase mais pas dans le type Account local
+          if ((accountData as any).isActive !== undefined) supabaseData.is_active = (accountData as any).isActive;
+          if (accountData.displayOrder !== undefined) supabaseData.display_order = accountData.displayOrder;
+
+          const response = await apiService.updateAccount(id, supabaseData);
+          if (response.success && response.data) {
+            // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
+            const supabaseAccount = this.mapSupabaseToAccount(response.data as any);
+            await db.accounts.put(supabaseAccount);
+            console.log('✅ Compte synchronisé avec Supabase');
+            return supabaseAccount;
+          } else {
+            console.warn('⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+            return updatedAccount;
+          }
+        } catch (syncError) {
+          console.error('❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+          return updatedAccount;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+        return updatedAccount;
+      }
     } catch (error) {
       console.error('❌ Erreur lors de la mise à jour du compte:', error);
       return null;
@@ -212,18 +395,61 @@ class AccountService {
   }
 
   /**
-   * Supprimer un compte
+   * Supprimer un compte (OFFLINE-FIRST PATTERN)
+   * 1. Supprime de IndexedDB immédiatement
+   * 2. Si online, sync suppression vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
    */
-  async deleteAccount(id: string, _userId?: string): Promise<boolean> {
+  async deleteAccount(id: string, userId?: string): Promise<boolean> {
     try {
-      const response = await apiService.deleteAccount(id);
-      if (!response.success || response.error) {
-        console.error('❌ Erreur lors de la suppression du compte:', response.error);
+      // STEP 1: Récupérer le userId si non fourni
+      const currentUserId = userId || await this.getCurrentUserId();
+      if (!currentUserId) {
+        console.error('❌ Utilisateur non authentifié');
         return false;
       }
 
-      console.log('✅ Compte supprimé avec succès');
-      return true;
+      // STEP 2: Récupérer le compte depuis IndexedDB pour la queue
+      const account = await db.accounts.get(id);
+      if (!account) {
+        console.warn(`⚠️ Compte ${id} non trouvé dans IndexedDB`);
+        // Essayer quand même de supprimer depuis Supabase si online
+        if (navigator.onLine) {
+          const response = await apiService.deleteAccount(id);
+          return response.success;
+        }
+        return false;
+      }
+
+      // STEP 3: Supprimer de IndexedDB immédiatement
+      console.log('💾 Suppression du compte depuis IndexedDB...');
+      await db.accounts.delete(id);
+      console.log(`✅ Compte "${account.name}" supprimé de IndexedDB`);
+
+      // STEP 4: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🌐 Synchronisation de la suppression vers Supabase...');
+          const response = await apiService.deleteAccount(id);
+          if (response.success) {
+            console.log('✅ Suppression synchronisée avec Supabase');
+            return true;
+          } else {
+            console.warn('⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            await this.queueSyncOperation(currentUserId, 'DELETE', id, {});
+            return true; // Retourner true car supprimé de IndexedDB
+          }
+        } catch (syncError) {
+          console.error('❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(currentUserId, 'DELETE', id, {});
+          return true; // Retourner true car supprimé de IndexedDB
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(currentUserId, 'DELETE', id, {});
+        return true; // Retourner true car supprimé de IndexedDB
+      }
     } catch (error) {
       console.error('❌ Erreur lors de la suppression du compte:', error);
       return false;

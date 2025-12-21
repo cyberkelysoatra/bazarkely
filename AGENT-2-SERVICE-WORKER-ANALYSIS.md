@@ -569,3 +569,8 @@ Le Service Worker utilise correctement `skipWaiting()` et `clientsClaim()`, mais
 
 
 
+
+
+
+
+
