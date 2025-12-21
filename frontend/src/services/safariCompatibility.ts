@@ -35,7 +35,14 @@ class SafariCompatibilityService {
   private isInitialized = false;
 
   constructor() {
-    this.userAgent = navigator.userAgent;
+    // Guard défensif : vérifier que navigator existe (peut être absent en SSR/Service Worker)
+    if (typeof navigator !== 'undefined' && navigator.userAgent) {
+      this.userAgent = navigator.userAgent;
+    } else {
+      // Fallback pour environnements sans navigator (SSR, Service Worker, build)
+      this.userAgent = 'Unknown';
+      console.warn('⚠️ navigator.userAgent non disponible, utilisation de valeurs par défaut');
+    }
     this.detectCapabilities();
   }
 
@@ -43,6 +50,38 @@ class SafariCompatibilityService {
    * Détecte les capacités et limitations de Safari/iOS
    */
   private detectCapabilities(): void {
+    // Guard défensif : vérifier que userAgent est valide
+    if (!this.userAgent || this.userAgent === 'Unknown') {
+      // Valeurs par défaut si userAgent non disponible
+      this.capabilities = {
+        isSafari: false,
+        isIOS: false,
+        isIPhone: false,
+        isIPad: false,
+        supportsPWA: false,
+        supportsServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+        supportsIndexedDB: typeof window !== 'undefined' && 'indexedDB' in window,
+        supportsWebNotifications: typeof window !== 'undefined' && 'Notification' in window,
+        supportsHapticFeedback: false,
+        supportsSafeArea: false,
+        supportsAddToHomeScreen: false,
+        version: '0.0',
+        isStandalone: false
+      };
+      
+      this.limitations = {
+        limitedServiceWorker: false,
+        noBackgroundSync: false,
+        noPushNotifications: false,
+        limitedIndexedDB: false,
+        noHapticFeedback: true,
+        noFullscreenAPI: false
+      };
+      
+      this.isInitialized = true;
+      return;
+    }
+
     const isSafari = /^((?!chrome|android).)*safari/i.test(this.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(this.userAgent);
     const isIPhone = /iPhone|iPod/.test(this.userAgent);
@@ -51,9 +90,11 @@ class SafariCompatibilityService {
     // Détection de la version Safari
     const safariVersion = this.getSafariVersion();
     
-    // Détection du mode standalone (PWA installée)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                        (window.navigator as any).standalone === true;
+    // Détection du mode standalone (PWA installée) - avec guard défensif
+    const isStandalone = typeof window !== 'undefined' && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true
+    );
 
     this.capabilities = {
       isSafari,
@@ -145,7 +186,34 @@ class SafariCompatibilityService {
     if (!this.isInitialized) {
       this.detectCapabilities();
     }
-    return this.capabilities!;
+    
+    // Guard défensif : retourner un objet par défaut si capabilities est null
+    if (!this.capabilities) {
+      console.warn('⚠️ Capabilities non initialisées, retour de valeurs par défaut');
+      // Réessayer l'initialisation
+      this.detectCapabilities();
+      
+      // Si toujours null après réessai, retourner un objet par défaut sûr
+      if (!this.capabilities) {
+        return {
+          isSafari: false,
+          isIOS: false,
+          isIPhone: false,
+          isIPad: false,
+          supportsPWA: false,
+          supportsServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+          supportsIndexedDB: typeof window !== 'undefined' && 'indexedDB' in window,
+          supportsWebNotifications: typeof window !== 'undefined' && 'Notification' in window,
+          supportsHapticFeedback: false,
+          supportsSafeArea: false,
+          supportsAddToHomeScreen: false,
+          version: '0.0',
+          isStandalone: false
+        };
+      }
+    }
+    
+    return this.capabilities;
   }
 
   /**

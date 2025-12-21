@@ -14,8 +14,37 @@ class SafariServiceWorkerManager {
    */
   async initialize(): Promise<boolean> {
     try {
-      const capabilities = safariCompatibility.detectCapabilities();
-      
+      // Skip Service Worker registration in development mode
+      // SW files are only generated at build time, not in dev server
+      const isDevelopment =
+        import.meta.env.DEV === true ||
+        (typeof window !== 'undefined' && (
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname === '[::1]'
+        ));
+
+      if (isDevelopment) {
+        console.log('⚠️ Service Worker registration skipped in development mode');
+        console.log('   Service Workers are only available in production builds');
+        return false;
+      }
+
+      // Guard défensif : vérifier que safariCompatibility est disponible
+      if (!safariCompatibility) {
+        console.warn('⚠️ safariCompatibility non disponible, utilisation du Service Worker standard');
+        return this.registerStandardServiceWorker();
+      }
+
+      // Obtenir les capacités via la méthode publique
+      const capabilities = safariCompatibility.getCapabilities();
+
+      // Guard défensif : vérifier que les capacités sont valides
+      if (!capabilities || typeof capabilities.supportsServiceWorker !== 'boolean') {
+        console.warn('⚠️ Capacités non disponibles, utilisation du Service Worker standard');
+        return this.registerStandardServiceWorker();
+      }
+
       if (!capabilities.supportsServiceWorker) {
         console.log('⚠️ Service Worker non supporté, utilisation du mode web app');
         return false;
@@ -23,25 +52,25 @@ class SafariServiceWorkerManager {
 
       // Choisir le Service Worker approprié
       const swPath = this.getServiceWorkerPath(capabilities);
-      
+
       console.log('🔧 Enregistrement Service Worker:', swPath);
-      
+
       this.registration = await navigator.serviceWorker.register(swPath, {
         scope: '/',
         updateViaCache: 'none'
       });
 
       this.isRegistered = true;
-      
+
       // Gérer les mises à jour
       this.setupUpdateHandling();
-      
+
       // Gérer les messages
       this.setupMessageHandling();
-      
+
       console.log('✅ Service Worker enregistré:', this.registration.scope);
       return true;
-      
+
     } catch (error) {
       console.error('❌ Erreur enregistrement Service Worker:', error);
       return false;
@@ -72,11 +101,9 @@ class SafariServiceWorkerManager {
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed') {
           if (navigator.serviceWorker.controller) {
-            // Nouvelle version disponible
             console.log('🔄 Nouvelle version disponible');
             this.notifyUpdateAvailable();
           } else {
-            // Première installation
             console.log('✅ Service Worker installé');
           }
         }
@@ -90,20 +117,20 @@ class SafariServiceWorkerManager {
   private setupMessageHandling(): void {
     navigator.serviceWorker.addEventListener('message', (event) => {
       const { type, data } = event.data;
-      
+
       switch (type) {
         case 'CACHE_UPDATED':
           console.log('📦 Cache mis à jour:', data);
           break;
-          
+
         case 'SYNC_COMPLETED':
           console.log('🔄 Synchronisation terminée:', data);
           break;
-          
+
         case 'NOTIFICATION_CLICKED':
           console.log('🔔 Notification cliquée:', data);
           break;
-          
+
         case 'ERROR_OCCURRED':
           console.error('❌ Erreur Service Worker:', data);
           break;
@@ -115,13 +142,12 @@ class SafariServiceWorkerManager {
    * Notifie qu'une mise à jour est disponible
    */
   private notifyUpdateAvailable(): void {
-    // Créer une notification visuelle
     const notification = document.createElement('div');
     notification.className = 'fixed top-4 right-4 bg-blue-500 text-white p-4 rounded-lg shadow-lg z-50';
     notification.innerHTML = `
       <div class="flex items-center space-x-3">
         <span>🔄 Mise à jour disponible</span>
-        <button 
+        <button
           onclick="this.parentElement.parentElement.remove(); window.location.reload();"
           class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
         >
@@ -129,10 +155,9 @@ class SafariServiceWorkerManager {
         </button>
       </div>
     `;
-    
+
     document.body.appendChild(notification);
-    
-    // Supprimer automatiquement après 10 secondes
+
     setTimeout(() => {
       if (notification.parentElement) {
         notification.remove();
@@ -164,10 +189,10 @@ class SafariServiceWorkerManager {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
       await Promise.all(registrations.map(reg => reg.unregister()));
-      
+
       this.isRegistered = false;
       this.registration = null;
-      
+
       console.log('✅ Service Worker désactivé');
       return true;
     } catch (error) {
@@ -212,19 +237,65 @@ class SafariServiceWorkerManager {
   }
 
   /**
+   * Enregistre le Service Worker standard (fallback)
+   */
+  private async registerStandardServiceWorker(): Promise<boolean> {
+    try {
+      if (!('serviceWorker' in navigator)) {
+        console.log('⚠️ Service Worker non supporté par le navigateur');
+        return false;
+      }
+
+      this.registration = await navigator.serviceWorker.register('/sw-custom.js', {
+        scope: '/',
+        updateViaCache: 'none'
+      });
+
+      this.isRegistered = true;
+      this.setupUpdateHandling();
+      this.setupMessageHandling();
+
+      console.log('✅ Service Worker standard enregistré:', this.registration.scope);
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur enregistrement Service Worker standard:', error);
+      return false;
+    }
+  }
+
+  /**
    * Obtient les informations de debug
    */
   getDebugInfo(): object {
-    const capabilities = safariCompatibility.detectCapabilities();
     const status = this.getStatus();
-    
+
+    let capabilitiesInfo: any = {
+      supportsServiceWorker: false,
+      isSafari: false,
+      isIOS: false,
+      version: 'unknown',
+      error: 'safariCompatibility not available'
+    };
+
+    if (safariCompatibility) {
+      try {
+        const capabilities = safariCompatibility.getCapabilities();
+        if (capabilities) {
+          capabilitiesInfo = {
+            supportsServiceWorker: capabilities.supportsServiceWorker ?? false,
+            isSafari: capabilities.isSafari ?? false,
+            isIOS: capabilities.isIOS ?? false,
+            version: capabilities.version ?? 'unknown'
+          };
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors de la récupération des capacités:', error);
+        capabilitiesInfo.error = error instanceof Error ? error.message : 'Unknown error';
+      }
+    }
+
     return {
-      capabilities: {
-        supportsServiceWorker: capabilities.supportsServiceWorker,
-        isSafari: capabilities.isSafari,
-        isIOS: capabilities.isIOS,
-        version: capabilities.version
-      },
+      capabilities: capabilitiesInfo,
       serviceWorker: status,
       registration: this.registration ? {
         scope: this.registration.scope,
@@ -239,35 +310,3 @@ class SafariServiceWorkerManager {
 }
 
 export default new SafariServiceWorkerManager();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
