@@ -92,9 +92,10 @@ export function HeaderUserBanner({ className = '' }: HeaderUserBannerProps) {
               {messages.length > 0 && (
                 <InteractiveMessages
                   messages={messages}
-                  isOnline={isOnline}
-                  userName={user?.username}
-                  onPriorityQuestionnaireDismiss={handlePriorityQuestionnaireBannerDismiss}
+                  currentMessage={currentMessage}
+                  isVisible={isVisible}
+                  showTooltip={showTooltip}
+                  onDismissBanner={handlePriorityQuestionnaireBannerDismiss}
                 />
               )}
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Wifi, WifiOff, ChevronRight } from 'lucide-react';
 
 // Types pour les messages interactifs
@@ -15,47 +15,22 @@ export interface InteractiveMessage {
 
 interface InteractiveMessagesProps {
   messages: InteractiveMessage[];
+  currentMessage: number;
+  isVisible: boolean;
   isOnline: boolean;
   userName?: string;
   onPriorityQuestionnaireDismiss?: () => void;
 }
 
 const InteractiveMessages: React.FC<InteractiveMessagesProps> = React.memo(({ 
-  messages, 
+  messages,
+  currentMessage,
+  isVisible,
   isOnline, 
   userName,
   onPriorityQuestionnaireDismiss 
 }) => {
-  const [currentMessage, setCurrentMessage] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
-
-  // S'assurer que currentMessage est dans les limites du tableau
-  useEffect(() => {
-    if (messages.length > 0 && currentMessage >= messages.length) {
-      setCurrentMessage(0);
-    }
-  }, [messages.length, currentMessage]);
-
-  // Rotation des messages avec animation fade
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Vérifier que le tableau messages n'est pas vide
-      if (messages.length === 0) return;
-      
-      // Fade out
-      setIsVisible(false);
-      
-      // Change le message après la fade out
-      setTimeout(() => {
-        setCurrentMessage((prev) => (prev + 1) % messages.length);
-        // Fade in
-        setIsVisible(true);
-      }, 1000); // Délai de 1000ms (1 seconde) pour le changement
-    }, 6000); // Change toutes les 6 secondes
-
-    return () => clearInterval(interval);
-  }, [messages.length]);
 
   // Gérer le clic sur les messages motivationnels pour afficher le tooltip
   const handleMessageClick = () => {
