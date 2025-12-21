@@ -7,7 +7,8 @@ import apiService from './apiService';
 import accountService from './accountService';
 import { convertAmount, getExchangeRate } from './exchangeRateService';
 import type { Transaction } from '../types/index.js';
-import type { SyncOperation } from '../types';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 // TEMPORARY FIX: Comment out problematic import to unblock the app
@@ -40,13 +41,19 @@ class TransactionService {
   }
 
   /**
-   * Ajouter une opération à la queue de synchronisation
+   * Queue a sync operation for offline-first processing
+   * PWA Phase 3 - Now supports priority, syncTag, expiresAt
    */
   private async queueSyncOperation(
     userId: string,
     operation: 'CREATE' | 'UPDATE' | 'DELETE',
     transactionId: string,
-    data: any
+    data: any,
+    options?: {
+      priority?: SyncPriority;
+      syncTag?: string;
+      expiresAt?: Date | null;
+    }
   ): Promise<void> {
     try {
       const syncOp: SyncOperation = {
@@ -57,10 +64,14 @@ class TransactionService {
         data: { id: transactionId, ...data },
         timestamp: new Date(),
         retryCount: 0,
-        status: 'pending'
+        status: 'pending',
+        // PWA Phase 3 - New optional fields
+        priority: options?.priority ?? SYNC_PRIORITY.NORMAL,
+        syncTag: options?.syncTag ?? 'bazarkely-sync',
+        expiresAt: options?.expiresAt ?? null,
       };
       await db.syncQueue.add(syncOp);
-      console.log(`📱 [TransactionService] 📦 Opération ${operation} ajoutée à la queue de synchronisation pour la transaction ${transactionId}`);
+      console.log(`📱 [TransactionService] 📦 Opération ${operation} ajoutée à la queue de synchronisation pour la transaction ${transactionId} avec priorité ${syncOp.priority}`);
     } catch (error) {
       console.error('📱 [TransactionService] ❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
       // Ne pas faire échouer l'opération principale si la queue échoue

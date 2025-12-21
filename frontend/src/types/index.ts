@@ -156,6 +156,30 @@ export interface MobileMoneyRate {
   updatedBy: string;
 }
 
+/**
+ * Priority levels for sync operations (lower number = higher priority)
+ * @typedef {0 | 1 | 2 | 3} SyncPriority
+ */
+export type SyncPriority = 0 | 1 | 2 | 3;
+
+/**
+ * Constants for sync priority levels
+ * - CRITICAL (0): Immediate sync required (e.g., critical transactions)
+ * - HIGH (1): High priority sync (e.g., account updates)
+ * - NORMAL (2): Normal priority (default for most operations)
+ * - LOW (3): Low priority sync (e.g., background data updates)
+ */
+export const SYNC_PRIORITY = {
+  CRITICAL: 0 as const,
+  HIGH: 1 as const,
+  NORMAL: 2 as const,
+  LOW: 3 as const,
+} as const;
+
+/**
+ * Interface for synchronization operations in the offline queue
+ * Used for Background Sync API and offline-first pattern
+ */
 export interface SyncOperation {
   id: string;
   userId: string;
@@ -165,6 +189,24 @@ export interface SyncOperation {
   timestamp: Date;
   retryCount: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  /**
+   * PWA Phase 3 - Priority level for sync operation
+   * @default 2 (NORMAL)
+   * @see SyncPriority
+   */
+  priority?: SyncPriority;
+  /**
+   * PWA Phase 3 - Background Sync API tag
+   * Used to group and prioritize sync operations in the Service Worker
+   * @default 'bazarkely-sync'
+   */
+  syncTag?: string;
+  /**
+   * PWA Phase 3 - Expiration date for the sync operation
+   * Operations that expire will be automatically cleaned up
+   * @default null (never expires)
+   */
+  expiresAt?: Date | null;
 }
 
 // Types pour la gestion des frais

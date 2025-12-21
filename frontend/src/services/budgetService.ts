@@ -5,7 +5,8 @@
 
 import type { Budget } from '../types';
 import type { BudgetInsert, BudgetUpdate } from '../types/supabase';
-import type { SyncOperation } from '../types';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import apiService from './apiService';
@@ -29,13 +30,19 @@ class BudgetService {
   }
 
   /**
-   * Ajouter une opération à la queue de synchronisation
+   * Queue a sync operation for offline-first processing
+   * PWA Phase 3 - Now supports priority, syncTag, expiresAt
    */
   private async queueSyncOperation(
     userId: string,
     operation: 'CREATE' | 'UPDATE' | 'DELETE',
     budgetId: string,
-    data: any
+    data: any,
+    options?: {
+      priority?: SyncPriority;
+      syncTag?: string;
+      expiresAt?: Date | null;
+    }
   ): Promise<void> {
     try {
       const syncOp: SyncOperation = {
@@ -46,10 +53,14 @@ class BudgetService {
         data: { id: budgetId, ...data },
         timestamp: new Date(),
         retryCount: 0,
-        status: 'pending'
+        status: 'pending',
+        // PWA Phase 3 - New optional fields
+        priority: options?.priority ?? SYNC_PRIORITY.NORMAL,
+        syncTag: options?.syncTag ?? 'bazarkely-sync',
+        expiresAt: options?.expiresAt ?? null,
       };
       await db.syncQueue.add(syncOp);
-      console.log(`💰 [BudgetService] 📦 Opération ${operation} ajoutée à la queue de synchronisation pour le budget ${budgetId}`);
+      console.log(`💰 [BudgetService] Queued ${operation} operation for budget ${budgetId} with priority ${syncOp.priority}`);
     } catch (error) {
       console.error('💰 [BudgetService] ❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
       // Ne pas faire échouer l'opération principale si la queue échoue

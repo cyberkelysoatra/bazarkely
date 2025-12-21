@@ -328,6 +328,45 @@ export class BazarKELYDB extends Dexie {
       console.log('✅ Migration vers le support des transactions récurrentes terminée');
     });
 
+    // Version 8 - PWA Phase 3: Ajout de priority, syncTag, expiresAt à syncQueue
+    this.version(8).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, [userId+deadline]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]'
+    }).upgrade(async (trans) => {
+      console.log('📦 [Database] Migrating syncQueue to v8 - Adding priority, syncTag, expiresAt');
+      
+      // Migrate existing syncQueue operations with default values
+      await trans.table('syncQueue').toCollection().modify(operation => {
+        // Set default priority (2 = normal)
+        if (operation.priority === undefined) {
+          operation.priority = 2;
+        }
+        // Set default syncTag
+        if (operation.syncTag === undefined) {
+          operation.syncTag = 'bazarkely-sync';
+        }
+        // Set default expiresAt (null = never expires)
+        if (operation.expiresAt === undefined) {
+          operation.expiresAt = null;
+        }
+      });
+      
+      console.log('✅ [Database] syncQueue migration to v8 complete');
+    });
+
     // Initialiser le pool de connexions
     this.initializeConnectionPool();
     

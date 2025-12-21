@@ -17,9 +17,17 @@ clientsClaim();
 // Tag pour Background Sync
 const SYNC_TAG = 'bazarkely-sync';
 
+// PWA Phase 3 - Priority constants (matching types/index.ts)
+const SYNC_PRIORITY = {
+  CRITICAL: 0,
+  HIGH: 1,
+  NORMAL: 2,
+  LOW: 3,
+} as const;
+
 // Nom de la base de données IndexedDB
 const DB_NAME = 'BazarKELY';
-const DB_VERSION = 1;
+const DB_VERSION = 7; // Updated to match database.ts Version 7
 const SYNC_QUEUE_STORE = 'syncQueue';
 
 /**
@@ -46,27 +54,68 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 /**
- * Récupère les opérations en attente depuis IndexedDB
+ * PWA Phase 3 - Get pending operations filtered by expiration and sorted by priority
  */
 async function getPendingOperations(): Promise<any[]> {
-  const db = await openDatabase();
-  
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([SYNC_QUEUE_STORE], 'readonly');
-    const store = transaction.objectStore(SYNC_QUEUE_STORE);
-    const index = store.index('status');
-    const request = index.getAll(['pending', 'failed']);
-    
-    request.onsuccess = () => {
-      const operations = request.result || [];
-      // Filtrer les opérations avec retryCount < 3
-      const filtered = operations.filter((op: any) => (op.retryCount || 0) < 3);
-      resolve(filtered);
-    };
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
     
     request.onerror = () => reject(request.error);
     
-    transaction.oncomplete = () => db.close();
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction([SYNC_QUEUE_STORE], 'readonly');
+      const store = transaction.objectStore(SYNC_QUEUE_STORE);
+      const getRequest = store.getAll();
+      
+      getRequest.onsuccess = () => {
+        const allOperations = getRequest.result || [];
+        const now = new Date();
+        
+        // PWA Phase 3: Filter operations
+        const validOperations = allOperations.filter((op: any) => {
+          // Filter by status and retryCount
+          if (!['pending', 'failed'].includes(op.status)) return false;
+          if (op.retryCount >= 3) return false;
+          
+          // PWA Phase 3: Filter expired operations (except CRITICAL)
+          if (op.expiresAt) {
+            const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+            if (expiresAt < now && op.priority !== SYNC_PRIORITY.CRITICAL) {
+              console.log(`[SW] ⏰ Operation ${op.id} expired, skipping`);
+              return false;
+            }
+          }
+          
+          return true;
+        });
+        
+        // PWA Phase 3: Sort by priority (ascending) then timestamp (ascending)
+        validOperations.sort((a: any, b: any) => {
+          const priorityA = a.priority ?? SYNC_PRIORITY.NORMAL;
+          const priorityB = b.priority ?? SYNC_PRIORITY.NORMAL;
+          
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB; // Lower priority number first
+          }
+          
+          const timestampA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+          const timestampB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+          return timestampA - timestampB;
+        });
+        
+        console.log(`[SW] 📋 Found ${validOperations.length} valid operations (sorted by priority)`);
+        resolve(validOperations);
+      };
+      
+      getRequest.onerror = () => reject(getRequest.error);
+    };
+    
+    request.onupgradeneeded = () => {
+      // Database upgrade is handled by main app, just close
+      request.result.close();
+      reject(new Error('Database upgrade needed'));
+    };
   });
 }
 
@@ -105,6 +154,60 @@ async function updateOperationStatus(
     getRequest.onerror = () => reject(getRequest.error);
     
     transaction.oncomplete = () => db.close();
+  });
+}
+
+/**
+ * PWA Phase 3 - Clean up expired operations from IndexedDB
+ * CRITICAL priority operations never expire
+ */
+async function cleanupExpiredOperations(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction([SYNC_QUEUE_STORE], 'readwrite');
+      const store = transaction.objectStore(SYNC_QUEUE_STORE);
+      const getRequest = store.getAll();
+      
+      getRequest.onsuccess = () => {
+        const allOperations = getRequest.result || [];
+        const now = new Date();
+        let cleanedCount = 0;
+        
+        allOperations.forEach((op: any) => {
+          if (op.expiresAt) {
+            const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+            // Never delete CRITICAL operations
+            if (expiresAt < now && op.priority !== SYNC_PRIORITY.CRITICAL) {
+              store.delete(op.id);
+              cleanedCount++;
+              console.log(`[SW] 🧹 Cleaned expired operation ${op.id}`);
+            }
+          }
+        });
+        
+        transaction.oncomplete = () => {
+          if (cleanedCount > 0) {
+            console.log(`[SW] 🧹 Cleaned ${cleanedCount} expired operations`);
+          }
+          resolve(cleanedCount);
+        };
+        
+        transaction.onerror = () => reject(transaction.error);
+      };
+      
+      getRequest.onerror = () => reject(getRequest.error);
+    };
+    
+    request.onupgradeneeded = () => {
+      // Database upgrade is handled by main app, just close
+      request.result.close();
+      reject(new Error('Database upgrade needed'));
+    };
   });
 }
 
@@ -200,29 +303,37 @@ async function processOperation(operation: any): Promise<boolean> {
 /**
  * Handler pour l'événement 'sync' de Background Sync API
  * Traite toutes les opérations en attente depuis IndexedDB
+ * PWA Phase 3: Supports priority-based processing and multiple sync tags
  */
 self.addEventListener('sync', (event: any) => {
-  console.log('[SW] 🔄 Événement sync déclenché:', event.tag);
+  console.log(`[SW] 🔄 Sync event received with tag: ${event.tag}`);
   
-  if (event.tag === SYNC_TAG) {
+  // PWA Phase 3: Handle both default tag and custom tags starting with 'bazarkely-'
+  if (event.tag === SYNC_TAG || event.tag.startsWith('bazarkely-')) {
     event.waitUntil(
       (async () => {
         try {
-          console.log('[SW] 📋 Récupération des opérations en attente...');
+          // PWA Phase 3: Clean up expired operations first
+          await cleanupExpiredOperations();
+          
+          // Get pending operations (already filtered and sorted by priority)
           const operations = await getPendingOperations();
           
           if (operations.length === 0) {
-            console.log('[SW] ✅ Aucune opération en attente');
+            console.log('[SW] ✅ No pending operations to sync');
             return;
           }
           
-          console.log(`[SW] 📦 ${operations.length} opération(s) à traiter`);
+          console.log(`[SW] 📤 Processing ${operations.length} operations (sorted by priority)`);
           
           let successCount = 0;
           let errorCount = 0;
           
-          // Traiter chaque opération séquentiellement
+          // Process operations sequentially (already sorted by priority)
           for (const operation of operations) {
+            const priorityLabel = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'][operation.priority ?? 2];
+            console.log(`[SW] 🔄 Processing ${operation.operation} on ${operation.table_name} (priority: ${priorityLabel})`);
+            
             try {
               // Marquer comme "processing"
               await updateOperationStatus(operation.id, 'processing');
@@ -258,9 +369,8 @@ self.addEventListener('sync', (event: any) => {
           
           console.log(`[SW] ✅ Traitement terminé: ${successCount} succès, ${errorCount} erreurs`);
         } catch (error) {
-          console.error('[SW] ❌ Erreur lors du traitement de la queue:', error);
-          // Re-throw pour déclencher un nouveau sync event
-          throw error;
+          console.error('[SW] ❌ Sync failed:', error);
+          throw error; // Re-throw to trigger retry
         }
       })()
     );

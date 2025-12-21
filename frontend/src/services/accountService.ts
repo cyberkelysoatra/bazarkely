@@ -5,7 +5,8 @@
 
 import type { Account } from '../types';
 import type { Account as SupabaseAccount, AccountInsert, AccountUpdate } from '../types/supabase';
-import type { SyncOperation } from '../types';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import apiService from './apiService';
@@ -30,13 +31,19 @@ class AccountService {
   }
 
   /**
-   * Ajouter une opération à la queue de synchronisation
+   * Queue a sync operation for offline-first processing
+   * PWA Phase 3 - Now supports priority, syncTag, expiresAt
    */
   private async queueSyncOperation(
     userId: string,
     operation: 'CREATE' | 'UPDATE' | 'DELETE',
     accountId: string,
-    data: any
+    data: any,
+    options?: {
+      priority?: SyncPriority;
+      syncTag?: string;
+      expiresAt?: Date | null;
+    }
   ): Promise<void> {
     try {
       const syncOp: SyncOperation = {
@@ -47,10 +54,14 @@ class AccountService {
         data: { id: accountId, ...data },
         timestamp: new Date(),
         retryCount: 0,
-        status: 'pending'
+        status: 'pending',
+        // PWA Phase 3 - New optional fields
+        priority: options?.priority ?? SYNC_PRIORITY.NORMAL,
+        syncTag: options?.syncTag ?? 'bazarkely-sync',
+        expiresAt: options?.expiresAt ?? null,
       };
       await db.syncQueue.add(syncOp);
-      console.log(`📦 Opération ${operation} ajoutée à la queue de synchronisation pour le compte ${accountId}`);
+      console.log(`📦 [AccountService] Queued ${operation} operation for account ${accountId} with priority ${syncOp.priority}`);
     } catch (error) {
       console.error('❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
       // Ne pas faire échouer l'opération principale si la queue échoue

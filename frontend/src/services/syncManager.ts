@@ -6,6 +6,7 @@
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import type { SyncOperation } from '../types';
+import { SYNC_PRIORITY } from '../types';
 
 /**
  * Nombre maximum de tentatives par opération
@@ -130,11 +131,21 @@ function startIntelligentPolling(): void {
         return; // Pas de session, skip
       }
 
-      const pendingCount = await db.syncQueue
+      // PWA Phase 3: Compter uniquement les opérations non expirées
+      const allPending = await db.syncQueue
         .where('status')
         .anyOf(['pending', 'failed'])
         .filter(op => op.retryCount < MAX_RETRIES)
-        .count();
+        .toArray();
+      
+      const now = new Date();
+      const pendingCount = allPending.filter(op => {
+        if (op.expiresAt) {
+          const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+          return expiresAt >= now;
+        }
+        return true;
+      }).length;
 
       if (pendingCount > 0) {
         console.log(`🔄 [SyncManager] 🦁 Polling: ${pendingCount} opération(s) en attente`);
@@ -159,11 +170,21 @@ function startIntelligentPolling(): void {
   // Calculer l'intervalle adaptatif
   const calculateInterval = async (): Promise<number> => {
     try {
-      const pendingCount = await db.syncQueue
+      // PWA Phase 3: Compter uniquement les opérations non expirées
+      const allPending = await db.syncQueue
         .where('status')
         .anyOf(['pending', 'failed'])
         .filter(op => op.retryCount < MAX_RETRIES)
-        .count();
+        .toArray();
+      
+      const now = new Date();
+      const pendingCount = allPending.filter(op => {
+        if (op.expiresAt) {
+          const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+          return expiresAt >= now;
+        }
+        return true;
+      }).length;
 
       if (pendingCount === 0) {
         // Queue vide : intervalle idle
@@ -263,6 +284,11 @@ export function initSyncManager(): void {
   // Initialiser le fallback pour Safari/Firefox (si Background Sync non supporté)
   initializeSyncFallback();
 
+  // PWA Phase 3: Nettoyer les opérations expirées au démarrage
+  cleanupExpiredOperations().catch(error => {
+    console.warn('🔄 [SyncManager] ⚠️ Erreur lors du nettoyage initial des opérations expirées:', error);
+  });
+
   isInitialized = true;
   console.log('🔄 [SyncManager] ✅ Initialisé');
 }
@@ -304,18 +330,48 @@ export async function processSyncQueue(skipSessionCheck: boolean = false): Promi
     console.log('🔄 [SyncManager] 📋 Récupération des opérations en attente...');
     
     // Récupérer toutes les opérations en attente ou en échec
-    const pendingOperations = await db.syncQueue
+    const allPendingOperations = await db.syncQueue
       .where('status')
       .anyOf(['pending', 'failed'])
       .filter(op => op.retryCount < MAX_RETRIES)
       .toArray();
 
-    if (pendingOperations.length === 0) {
-      console.log('🔄 [SyncManager] ✅ Aucune opération en attente');
+    // PWA Phase 3: Filtrer les opérations expirées
+    const now = new Date();
+    const validOperations = allPendingOperations.filter(op => {
+      if (op.expiresAt) {
+        const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+        if (expiresAt < now) {
+          console.log(`🔄 [SyncManager] ⏰ Opération ${op.id} expirée, ignorée`);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (validOperations.length === 0) {
+      console.log('🔄 [SyncManager] ✅ Aucune opération en attente (après filtrage des expirées)');
       return 0;
     }
 
-    console.log(`🔄 [SyncManager] 📦 ${pendingOperations.length} opération(s) à traiter`);
+    // PWA Phase 3: Trier par priorité (lower number = higher priority) puis par timestamp
+    const pendingOperations = validOperations.sort((a, b) => {
+      // Priorité par défaut: NORMAL (2) si non spécifiée
+      const priorityA = a.priority ?? SYNC_PRIORITY.NORMAL;
+      const priorityB = b.priority ?? SYNC_PRIORITY.NORMAL;
+      
+      // Trier par priorité d'abord (ascendant: 0, 1, 2, 3)
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Si même priorité, trier par timestamp (plus ancien en premier)
+      const timestampA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+      const timestampB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+      return timestampA - timestampB;
+    });
+
+    console.log(`🔄 [SyncManager] 📦 ${pendingOperations.length} opération(s) à traiter (triées par priorité)`);
 
     let successCount = 0;
     let errorCount = 0;
@@ -641,17 +697,28 @@ export async function manualSync(): Promise<number> {
 }
 
 /**
- * Obtient le nombre d'opérations en attente dans la queue
+ * Obtient le nombre d'opérations en attente dans la queue (PWA Phase 3: exclut les expirées)
  * @returns Nombre d'opérations en attente
  */
 export async function getPendingOperationsCount(): Promise<number> {
   try {
-    const count = await db.syncQueue
+    const allOperations = await db.syncQueue
       .where('status')
       .anyOf(['pending', 'failed'])
       .filter(op => op.retryCount < MAX_RETRIES)
-      .count();
-    return count;
+      .toArray();
+    
+    // PWA Phase 3: Filtrer les opérations expirées
+    const now = new Date();
+    const validOperations = allOperations.filter(op => {
+      if (op.expiresAt) {
+        const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+        return expiresAt >= now;
+      }
+      return true; // Pas d'expiration, inclure
+    });
+    
+    return validOperations.length;
   } catch (error) {
     console.error('🔄 [SyncManager] ❌ Erreur lors du comptage des opérations:', error);
     return 0;
@@ -659,18 +726,41 @@ export async function getPendingOperationsCount(): Promise<number> {
 }
 
 /**
- * Obtient toutes les opérations en attente
+ * Obtient toutes les opérations en attente (PWA Phase 3: exclut les expirées, triées par priorité)
  * Utile pour le debugging ou l'affichage dans l'UI
- * @returns Liste des opérations en attente
+ * @returns Liste des opérations en attente, triées par priorité puis timestamp
  */
 export async function getPendingOperations(): Promise<SyncOperation[]> {
   try {
-    const operations = await db.syncQueue
+    const allOperations = await db.syncQueue
       .where('status')
       .anyOf(['pending', 'failed'])
       .filter(op => op.retryCount < MAX_RETRIES)
       .toArray();
-    return operations;
+    
+    // PWA Phase 3: Filtrer les opérations expirées
+    const now = new Date();
+    const validOperations = allOperations.filter(op => {
+      if (op.expiresAt) {
+        const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+        return expiresAt >= now;
+      }
+      return true; // Pas d'expiration, inclure
+    });
+    
+    // PWA Phase 3: Trier par priorité puis timestamp
+    return validOperations.sort((a, b) => {
+      const priorityA = a.priority ?? SYNC_PRIORITY.NORMAL;
+      const priorityB = b.priority ?? SYNC_PRIORITY.NORMAL;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      const timestampA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+      const timestampB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+      return timestampA - timestampB;
+    });
   } catch (error) {
     console.error('🔄 [SyncManager] ❌ Erreur lors de la récupération des opérations:', error);
     return [];
@@ -703,14 +793,48 @@ export async function cleanupFailedOperations(): Promise<number> {
 }
 
 /**
- * Enregistre un tag Background Sync pour déclencher la synchronisation automatique
+ * PWA Phase 3: Nettoie les opérations expirées (expiresAt < now)
+ * @returns Nombre d'opérations nettoyées
+ */
+export async function cleanupExpiredOperations(): Promise<number> {
+  try {
+    const now = new Date();
+    const allOperations = await db.syncQueue.toArray();
+    
+    const expiredOperations = allOperations.filter(op => {
+      if (!op.expiresAt) {
+        return false; // Pas d'expiration, garder
+      }
+      const expiresAt = op.expiresAt instanceof Date ? op.expiresAt : new Date(op.expiresAt);
+      return expiresAt < now;
+    });
+
+    const ids = expiredOperations.map(op => op.id);
+    if (ids.length > 0) {
+      await db.syncQueue.bulkDelete(ids);
+      console.log(`🔄 [SyncManager] ⏰ ${ids.length} opération(s) expirée(s) nettoyée(s)`);
+    }
+
+    return ids.length;
+  } catch (error) {
+    console.error('🔄 [SyncManager] ❌ Erreur lors du nettoyage des opérations expirées:', error);
+    return 0;
+  }
+}
+
+/**
+ * PWA Phase 3: Enregistre un tag Background Sync pour déclencher la synchronisation automatique
  * Fonctionne uniquement sur les navigateurs supportant Background Sync API (Chrome/Edge)
  * Fallback silencieux si non supporté (l'événement 'online' prendra le relais)
  * 
  * Cette fonction doit être appelée après avoir ajouté une opération à la queue
+ * @param syncTag - Tag personnalisé pour Background Sync (optionnel, défaut: 'bazarkely-sync')
  * @returns true si l'enregistrement a réussi, false sinon
  */
-export async function registerBackgroundSync(): Promise<boolean> {
+export async function registerBackgroundSync(syncTag?: string): Promise<boolean> {
+  // Utiliser le tag fourni ou le tag par défaut
+  const tag = syncTag || BACKGROUND_SYNC_TAG;
+  
   // Vérifier le support de Service Worker
   if (!('serviceWorker' in navigator)) {
     console.log('🔄 [SyncManager] ⚠️ Service Worker non supporté, Background Sync ignoré');
@@ -729,13 +853,13 @@ export async function registerBackgroundSync(): Promise<boolean> {
 
     // Enregistrer le tag de synchronisation
     try {
-      await (registration as any).sync.register(BACKGROUND_SYNC_TAG);
-      console.log('🔄 [SyncManager] ✅ Tag Background Sync enregistré:', BACKGROUND_SYNC_TAG);
+      await (registration as any).sync.register(tag);
+      console.log('🔄 [SyncManager] ✅ Tag Background Sync enregistré:', tag);
       return true;
     } catch (syncError: any) {
       // Erreur possible: tag déjà enregistré (pas grave)
       if (syncError.name === 'InvalidStateError' || syncError.message?.includes('already registered')) {
-        console.log('🔄 [SyncManager] ℹ️ Tag Background Sync déjà enregistré');
+        console.log('🔄 [SyncManager] ℹ️ Tag Background Sync déjà enregistré:', tag);
         return true;
       }
       console.warn('🔄 [SyncManager] ⚠️ Erreur lors de l\'enregistrement du tag Background Sync:', syncError);
