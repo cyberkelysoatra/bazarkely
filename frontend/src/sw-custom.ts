@@ -29,7 +29,7 @@ const SYNC_PRIORITY = {
 
 // Nom de la base de données IndexedDB
 const DB_NAME = 'BazarKELY';
-const DB_VERSION = 7; // Updated to match database.ts Version 7
+const DB_VERSION = 8; // Updated to match database.ts Version 8
 const SYNC_QUEUE_STORE = 'syncQueue';
 
 /**

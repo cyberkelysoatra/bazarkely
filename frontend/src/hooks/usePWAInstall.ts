@@ -64,15 +64,31 @@ export const usePWAInstall = (): PWAInstallState => {
         console.warn('⚠️ Erreur lors de la vérification du manifest:', error)
       }
 
-      // Vérifier le service worker
+      // Vérifier le service worker avec attente de l'activation
       if ('serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.getRegistration()
-          if (!registration || !registration.active) {
-            console.warn('⚠️ Service Worker non enregistré ou inactif')
+          // Wait for SW to be ready with 5 second timeout
+          const timeoutPromise = new Promise<ServiceWorkerRegistration>((_, reject) =>
+            setTimeout(() => reject(new Error('SW ready timeout')), 5000)
+          );
+          const readyPromise = navigator.serviceWorker.ready;
+
+          try {
+            const registration = await Promise.race([readyPromise, timeoutPromise]);
+            if (registration && registration.active) {
+              console.log('✅ Service Worker actif:', registration.active.state);
+            }
+          } catch (timeoutError) {
+            // Check if SW is at least registered
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+              console.log('⏳ Service Worker enregistré, activation en cours...');
+            } else {
+              console.warn('⚠️ Service Worker non enregistré après 5 secondes');
+            }
           }
         } catch (error) {
-          console.warn('⚠️ Erreur lors de la vérification du Service Worker:', error)
+          console.warn('⚠️ Erreur lors de la vérification du Service Worker:', error);
         }
       } else {
         console.warn('⚠️ Service Worker non supporté par ce navigateur')

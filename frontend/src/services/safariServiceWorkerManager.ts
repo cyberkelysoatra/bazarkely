@@ -80,7 +80,7 @@ class SafariServiceWorkerManager {
    */
   private getServiceWorkerPath(capabilities: any): string {
     if (capabilities.isSafari) {
-      return '/sw-safari.js';
+      return '/sw.js';
     } else {
       return '/sw.js';
     }
@@ -244,7 +244,7 @@ class SafariServiceWorkerManager {
         return false;
       }
 
-      this.registration = await navigator.serviceWorker.register('/sw-custom.js', {
+      this.registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
         updateViaCache: 'none'
       });
