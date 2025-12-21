@@ -9,6 +9,7 @@ import apiService from './services/apiService';
 import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
 import safariServiceWorkerManager from './services/safariServiceWorkerManager';
+import { initSyncManager } from './services/syncManager';
 import './index.css';
 
 // Composants de base (à créer)
@@ -64,6 +65,9 @@ function App() {
         
         // Initialiser le Service Worker adaptatif
         await safariServiceWorkerManager.initialize();
+        
+        // Initialiser le SyncManager (détecte Background Sync et active fallback si nécessaire)
+        initSyncManager();
         
         // Vérifier si l'utilisateur est connecté
         const storedUser = localStorage.getItem('bazarkely-user');

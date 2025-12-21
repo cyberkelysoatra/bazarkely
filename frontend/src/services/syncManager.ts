@@ -24,6 +24,26 @@ const processingOperations = new Set<string>();
 let isInitialized = false;
 
 /**
+ * Flag pour éviter les syncs simultanées (Background Sync + polling)
+ */
+let isSyncInProgress = false;
+
+/**
+ * Tag pour Background Sync API
+ */
+const BACKGROUND_SYNC_TAG = 'bazarkely-sync';
+
+/**
+ * Configuration du polling intelligent (fallback Safari/Firefox)
+ */
+let pollingIntervalId: NodeJS.Timeout | null = null;
+let consecutiveFailures = 0;
+const BASE_POLLING_INTERVAL = 30000; // 30 secondes quand queue a des items
+const IDLE_POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutes quand queue vide
+const MAX_BACKOFF_INTERVAL = 5 * 60 * 1000; // 5 minutes max backoff
+const BACKOFF_MULTIPLIER = 2;
+
+/**
  * Attend qu'une session Supabase valide soit disponible
  * @param maxWaitMs - Temps maximum d'attente en millisecondes (défaut: 10000ms)
  * @returns true si une session valide est détectée, false en cas de timeout
@@ -47,9 +67,152 @@ const waitForSession = async (maxWaitMs: number = 10000): Promise<boolean> => {
 };
 
 /**
+ * Vérifie si Background Sync API est supporté
+ * @returns true si Background Sync est supporté, false sinon
+ */
+export async function isBackgroundSyncSupported(): Promise<boolean> {
+  // Vérifier le support de Service Worker
+  if (!('serviceWorker' in navigator)) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Vérifier si l'API sync est disponible
+    if (!('sync' in registration)) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Initialise le fallback de synchronisation (polling intelligent)
+ * Utilisé uniquement si Background Sync n'est pas supporté (Safari/Firefox)
+ */
+function initializeSyncFallback(): void {
+  // Ne pas initialiser si Background Sync est supporté
+  isBackgroundSyncSupported().then(supported => {
+    if (supported) {
+      console.log('🔄 [SyncManager] ✅ Background Sync supporté, polling désactivé');
+      return;
+    }
+
+    console.log('🔄 [SyncManager] 🦁 Background Sync non supporté, activation du polling intelligent...');
+    startIntelligentPolling();
+  });
+}
+
+/**
+ * Démarre le polling intelligent avec intervalles adaptatifs
+ */
+function startIntelligentPolling(): void {
+  // Arrêter le polling existant si présent
+  if (pollingIntervalId) {
+    clearInterval(pollingIntervalId);
+    pollingIntervalId = null;
+  }
+
+  // Fonction de polling adaptatif
+  const poll = async () => {
+    // Ne pas poller si déjà en sync ou hors ligne
+    if (isSyncInProgress || !navigator.onLine) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        return; // Pas de session, skip
+      }
+
+      const pendingCount = await db.syncQueue
+        .where('status')
+        .anyOf(['pending', 'failed'])
+        .filter(op => op.retryCount < MAX_RETRIES)
+        .count();
+
+      if (pendingCount > 0) {
+        console.log(`🔄 [SyncManager] 🦁 Polling: ${pendingCount} opération(s) en attente`);
+        const successCount = await processSyncQueue(true);
+        
+        // Réinitialiser les échecs consécutifs en cas de succès
+        if (successCount > 0) {
+          consecutiveFailures = 0;
+        } else {
+          consecutiveFailures++;
+        }
+      } else {
+        // Queue vide, réinitialiser les échecs
+        consecutiveFailures = 0;
+      }
+    } catch (error) {
+      console.error('🔄 [SyncManager] ❌ Erreur lors du polling:', error);
+      consecutiveFailures++;
+    }
+  };
+
+  // Calculer l'intervalle adaptatif
+  const calculateInterval = async (): Promise<number> => {
+    try {
+      const pendingCount = await db.syncQueue
+        .where('status')
+        .anyOf(['pending', 'failed'])
+        .filter(op => op.retryCount < MAX_RETRIES)
+        .count();
+
+      if (pendingCount === 0) {
+        // Queue vide : intervalle idle
+        return IDLE_POLLING_INTERVAL;
+      }
+
+      // Queue avec items : intervalle de base avec backoff exponentiel
+      const backoffInterval = Math.min(
+        BASE_POLLING_INTERVAL * Math.pow(BACKOFF_MULTIPLIER, consecutiveFailures),
+        MAX_BACKOFF_INTERVAL
+      );
+      return backoffInterval;
+    } catch (error) {
+      // En cas d'erreur, utiliser l'intervalle de base
+      return BASE_POLLING_INTERVAL;
+    }
+  };
+
+  // Fonction récursive avec intervalle adaptatif
+  const scheduleNextPoll = async () => {
+    const interval = await calculateInterval();
+    
+    pollingIntervalId = setTimeout(async () => {
+      await poll();
+      scheduleNextPoll(); // Planifier le prochain poll
+    }, interval);
+  };
+
+  // Démarrer le premier poll
+  scheduleNextPoll();
+  console.log('🔄 [SyncManager] 🦁 Polling intelligent démarré');
+}
+
+/**
+ * Arrête le polling intelligent
+ */
+function stopIntelligentPolling(): void {
+  if (pollingIntervalId) {
+    clearTimeout(pollingIntervalId);
+    pollingIntervalId = null;
+    console.log('🔄 [SyncManager] 🦁 Polling intelligent arrêté');
+  }
+}
+
+/**
  * Initialise le SyncManager
  * Ajoute un listener pour l'événement 'online'
  * Appelle processSyncQueue() automatiquement quand la connexion est rétablie
+ * Détecte le support Background Sync et active le fallback si nécessaire
  */
 export function initSyncManager(): void {
   if (isInitialized) {
@@ -59,12 +222,20 @@ export function initSyncManager(): void {
 
   console.log('🔄 [SyncManager] Initialisation...');
 
-  // Écouter l'événement 'online'
+  // Écouter l'événement 'online' (fonctionne pour tous les navigateurs)
   window.addEventListener('online', () => {
-    console.log('🔄 [SyncManager] 🌐 Connexion rétablie, traitement de la queue...');
+    console.log('🔄 [SyncManager] 🌐 Connexion rétablie, traitement immédiat de la queue...');
+    // Sync immédiate sur reconnexion
+    consecutiveFailures = 0; // Réinitialiser les échecs
     processSyncQueue().catch(error => {
       console.error('🔄 [SyncManager] ❌ Erreur lors du traitement automatique de la queue:', error);
     });
+  });
+
+  // Écouter l'événement 'offline' pour arrêter le polling
+  window.addEventListener('offline', () => {
+    console.log('🔄 [SyncManager] 📴 Connexion perdue, pause du polling');
+    // Le polling se mettra en pause automatiquement (vérifie navigator.onLine)
   });
 
   // Traiter la queue au démarrage si online
@@ -82,23 +253,15 @@ export function initSyncManager(): void {
     // Traiter la queue sur connexion OU restauration de session
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
       console.log('🔄 [SyncManager] 🔐 Session détectée, traitement de la queue...');
+      consecutiveFailures = 0; // Réinitialiser les échecs
       processSyncQueue(true).catch(error => {
         console.error('🔄 [SyncManager] ❌ Erreur lors du traitement de la queue:', error);
       });
     }
   });
 
-  // Retry périodique toutes les 30 secondes si des opérations sont en attente
-  setInterval(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user && navigator.onLine) {
-      const pending = await db.syncQueue.count();
-      if (pending > 0) {
-        console.log('🔄 [SyncManager] ⏰ Retry périodique:', pending, 'opération(s) en attente');
-        processSyncQueue(true).catch(console.error);
-      }
-    }
-  }, 30000); // 30 secondes
+  // Initialiser le fallback pour Safari/Firefox (si Background Sync non supporté)
+  initializeSyncFallback();
 
   isInitialized = true;
   console.log('🔄 [SyncManager] ✅ Initialisé');
@@ -110,24 +273,34 @@ export function initSyncManager(): void {
  * @returns Nombre d'opérations traitées avec succès
  */
 export async function processSyncQueue(skipSessionCheck: boolean = false): Promise<number> {
+  // Vérifier si une sync est déjà en cours (évite les doublons)
+  if (isSyncInProgress) {
+    console.log('🔄 [SyncManager] ⏸️ Sync déjà en cours, ignorée');
+    return 0;
+  }
+
   // Vérifier la connexion
   if (!navigator.onLine) {
     console.warn('🔄 [SyncManager] ⚠️ Hors ligne, impossible de traiter la queue');
     return 0;
   }
 
-  // Attendre une session valide avant de traiter (sauf si skipSessionCheck est true)
-  if (!skipSessionCheck) {
-    const hasSession = await waitForSession();
-    if (!hasSession) {
-      console.log('🔄 [SyncManager] ⏸️ Sync reportée: pas de session utilisateur');
-      return 0;
-    }
-  } else {
-    console.log('🔄 [SyncManager] ✅ Vérification de session ignorée (utilisateur déjà authentifié)');
-  }
+  // Marquer comme en cours
+  isSyncInProgress = true;
 
   try {
+    // Attendre une session valide avant de traiter (sauf si skipSessionCheck est true)
+    if (!skipSessionCheck) {
+      const hasSession = await waitForSession();
+      if (!hasSession) {
+        console.log('🔄 [SyncManager] ⏸️ Sync reportée: pas de session utilisateur');
+        return 0;
+      }
+    } else {
+      console.log('🔄 [SyncManager] ✅ Vérification de session ignorée (utilisateur déjà authentifié)');
+    }
+
+    // Récupération et traitement des opérations
     console.log('🔄 [SyncManager] 📋 Récupération des opérations en attente...');
     
     // Récupérer toutes les opérations en attente ou en échec
@@ -173,6 +346,9 @@ export async function processSyncQueue(skipSessionCheck: boolean = false): Promi
   } catch (error) {
     console.error('🔄 [SyncManager] ❌ Erreur lors de la récupération de la queue:', error);
     return 0;
+  } finally {
+    // Libérer le flag de sync en cours
+    isSyncInProgress = false;
   }
 }
 
@@ -523,6 +699,51 @@ export async function cleanupFailedOperations(): Promise<number> {
   } catch (error) {
     console.error('🔄 [SyncManager] ❌ Erreur lors du nettoyage:', error);
     return 0;
+  }
+}
+
+/**
+ * Enregistre un tag Background Sync pour déclencher la synchronisation automatique
+ * Fonctionne uniquement sur les navigateurs supportant Background Sync API (Chrome/Edge)
+ * Fallback silencieux si non supporté (l'événement 'online' prendra le relais)
+ * 
+ * Cette fonction doit être appelée après avoir ajouté une opération à la queue
+ * @returns true si l'enregistrement a réussi, false sinon
+ */
+export async function registerBackgroundSync(): Promise<boolean> {
+  // Vérifier le support de Service Worker
+  if (!('serviceWorker' in navigator)) {
+    console.log('🔄 [SyncManager] ⚠️ Service Worker non supporté, Background Sync ignoré');
+    return false;
+  }
+
+  // Vérifier le support de Background Sync API
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Vérifier si l'API sync est disponible
+    if (!('sync' in registration)) {
+      console.log('🔄 [SyncManager] ⚠️ Background Sync API non supporté, utilisation du fallback (événement online)');
+      return false;
+    }
+
+    // Enregistrer le tag de synchronisation
+    try {
+      await (registration as any).sync.register(BACKGROUND_SYNC_TAG);
+      console.log('🔄 [SyncManager] ✅ Tag Background Sync enregistré:', BACKGROUND_SYNC_TAG);
+      return true;
+    } catch (syncError: any) {
+      // Erreur possible: tag déjà enregistré (pas grave)
+      if (syncError.name === 'InvalidStateError' || syncError.message?.includes('already registered')) {
+        console.log('🔄 [SyncManager] ℹ️ Tag Background Sync déjà enregistré');
+        return true;
+      }
+      console.warn('🔄 [SyncManager] ⚠️ Erreur lors de l\'enregistrement du tag Background Sync:', syncError);
+      return false;
+    }
+  } catch (error) {
+    console.warn('🔄 [SyncManager] ⚠️ Erreur lors de l\'accès au Service Worker:', error);
+    return false;
   }
 }
 
