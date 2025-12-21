@@ -8,32 +8,8 @@ import feeService from './services/feeService';
 import apiService from './services/apiService';
 import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
-// TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
-// import safariCompatibility from './services/safariCompatibility';
-// import safariServiceWorkerManager from './services/safariServiceWorkerManager';
+import safariServiceWorkerManager from './services/safariServiceWorkerManager';
 import './index.css';
-
-// TEMPORARY: Mock services to prevent blocking
-// const safariCompatibility = {
-//   applyOptimizations: () => {
-//     console.log('🍎 Safari optimizations temporarily disabled in App.tsx')
-//   },
-//   isSafariOrIOS: () => false,
-//   isIOSStandalone: () => false,
-//   detectSafariVersion: () => 'unknown',
-//   applySafariSpecificFixes: () => {
-//     console.log('🔧 Safari-specific fixes temporarily disabled in App.tsx')
-//   }
-// }
-
-const safariServiceWorkerManager = {
-  initialize: () => {
-    return Promise.resolve()
-  },
-  registerServiceWorker: () => {
-    return Promise.resolve()
-  }
-}
 
 // Composants de base (à créer)
 import AppLayout from './components/Layout/AppLayout';

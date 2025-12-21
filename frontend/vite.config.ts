@@ -11,6 +11,23 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB - Permet cache bundle 2.11 MB + marge sécurité
+        // Offline SPA navigation fallback - serve index.html for all navigation requests
+        navigateFallback: '/index.html',
+        // Exclude API routes and static assets from navigation fallback
+        navigateFallbackDenylist: [
+          // API routes
+          /^\/api\/.*/i,
+          /^\/supabase\/.*/i,
+          // Static assets with file extensions
+          /\.(?:js|css|png|svg|ico|woff2?|ttf|eot|jpg|jpeg|gif|webp|json|xml|txt|pdf|zip)$/i,
+          // Service worker files
+          /^\/sw\.js$/i,
+          /^\/sw-notifications\.js$/i,
+          /^\/workbox-.*\.js$/i,
+          // Manifest and other PWA files
+          /^\/manifest\.json$/i,
+          /^\/manifest\.webmanifest$/i
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.bazarkely\.agirpourlequite\.org/,

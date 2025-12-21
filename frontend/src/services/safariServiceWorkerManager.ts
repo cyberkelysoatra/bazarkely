@@ -3,7 +3,7 @@
  * Détecte les capacités et charge le bon Service Worker
  */
 
-import safariCompatibility from './safariCompatibility';
+import { safariCompatibility } from './safariCompatibility';
 
 class SafariServiceWorkerManager {
   private isRegistered = false;
