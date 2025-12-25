@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.0.2';
+export const APP_VERSION = '2.0.3';
 export const APP_BUILD_DATE = '2025-12-25';
 
 export type VersionEntry = {
@@ -9,6 +9,15 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.0.3',
+    date: '2025-12-25',
+    changes: [
+      'Couleur barre de statut harmonisée avec le header',
+      'Configuration PWA pour correspondance visuelle parfaite'
+    ],
+    type: 'patch'
+  },
   {
     version: '2.0.2',
     date: '2025-12-25',
