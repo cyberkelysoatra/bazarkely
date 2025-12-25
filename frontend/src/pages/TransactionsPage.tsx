@@ -78,6 +78,7 @@ const TransactionsPage = () => {
   const loadReimbursementStatuses = useCallback(async () => {
     // Set loading state to true at the start
     setIsLoadingReimbursementStatuses(true);
+    console.log('[DEBUG] loadReimbursementStatuses called, activeFamilyGroup:', !!activeFamilyGroup, 'sharedTransactionsMap.size:', sharedTransactionsMap.size);
 
     if (!activeFamilyGroup || sharedTransactionsMap.size === 0) {
       setReimbursementStatuses(new Map());
@@ -92,6 +93,7 @@ const TransactionsPage = () => {
 
       setReimbursementStatuses(statuses);
       // Set loading state to false after state is updated
+      console.log('[DEBUG] loadReimbursementStatuses success, statuses:', statuses);
       setIsLoadingReimbursementStatuses(false);
     } catch (err) {
       console.error('[LOAD REIMBURSEMENT] Error loading reimbursement statuses:', err);
@@ -567,26 +569,9 @@ const TransactionsPage = () => {
         : transaction.isRecurring !== true;
     
     // Period filter: filter by transaction date
-    // Extract just the date part (YYYY-MM-DD) for comparison to avoid timezone issues
-    // Use local date components to avoid UTC conversion issues
-    const transactionDateObj = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
-    const transactionYear = transactionDateObj.getFullYear();
-    const transactionMonth = String(transactionDateObj.getMonth() + 1).padStart(2, '0');
-    const transactionDay = String(transactionDateObj.getDate()).padStart(2, '0');
-    const transactionDateStr = `${transactionYear}-${transactionMonth}-${transactionDay}`; // "2025-12-15"
-    
+    const transactionDate = new Date(transaction.date);
     const { startDate, endDate } = getDateRange();
-    const startYear = startDate.getFullYear();
-    const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
-    const startDay = String(startDate.getDate()).padStart(2, '0');
-    const startDateStr = `${startYear}-${startMonth}-${startDay}`;
-    
-    const endYear = endDate.getFullYear();
-    const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-    const endDay = String(endDate.getDate()).padStart(2, '0');
-    const endDateStr = `${endYear}-${endMonth}-${endDay}`;
-    
-    const matchesPeriod = transactionDateStr >= startDateStr && transactionDateStr <= endDateStr;
+    const matchesPeriod = transactionDate >= startDate && transactionDate <= endDate;
     
     return matchesSearch && matchesFilter && matchesCategory && matchesAccount && matchesRecurring && matchesPeriod;
   });
@@ -1102,6 +1087,7 @@ const TransactionsPage = () => {
                           ? 'loading' 
                           : (reimbursementStatuses.get(transaction.id) || 'none');
                         const isRequesting = requestingReimbursement === transaction.id;
+                        console.log('[DEBUG] Button state:', { transactionId: transaction.id, status, isRequesting, isLoadingReimbursementStatuses });
                         
                         if (!isCreditor) return null;
                         
