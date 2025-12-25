@@ -529,7 +529,14 @@ const DashboardPage = () => {
               const category = TRANSACTION_CATEGORIES[transaction.category] || { name: transaction.category };
               
               return (
-                <div key={transaction.id} className="flex items-center justify-between py-2">
+                <div 
+                  key={transaction.id} 
+                  onClick={() => navigate(`/transaction/${transaction.id}`)}
+                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/transaction/${transaction.id}`)}
+                  className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg px-2 -mx-2"
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
                       {isTransfer ? (isDebit ? `Sortie: ${transaction.description}` : `Entrée: ${transaction.description}`) : transaction.description}

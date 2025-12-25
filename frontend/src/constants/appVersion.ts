@@ -1,5 +1,5 @@
-export const APP_VERSION = '2.0.5';
-export const APP_BUILD_DATE = '2025-12-25';
+export const APP_VERSION = '2.0.6';
+export const APP_BUILD_DATE = '2025-12-26';
 
 export type VersionEntry = {
   version: string;
@@ -9,6 +9,14 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.0.6',
+    date: '2025-12-26',
+    changes: [
+      'Fix: Navigation au clic sur transactions récentes du dashboard'
+    ],
+    type: 'patch'
+  },
   {
     version: '2.0.5',
     date: '2025-12-25',
