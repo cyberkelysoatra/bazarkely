@@ -10,10 +10,32 @@ import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 
-// Prendre le contrôle immédiatement (native API instead of workbox-core)
-self.skipWaiting();
-self.addEventListener('activate', () => {
-  self.clients.claim();
+// Écouter les messages pour activer la mise à jour (contrôlée par l'utilisateur)
+self.addEventListener('message', (event) => {
+  console.log('[SW] 📨 Message reçu:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW] ✅ Activation de la mise à jour (skipWaiting)...');
+    self.skipWaiting();
+  }
+});
+
+// Événement install - ne pas appeler skipWaiting() immédiatement
+// Attendre la confirmation de l'utilisateur via le message SKIP_WAITING
+self.addEventListener('install', (event) => {
+  console.log('[SW] 📦 Installation d\'une nouvelle version...');
+  // Ne pas appeler skipWaiting() ici - attendre la confirmation utilisateur
+  // Le message SKIP_WAITING déclenchera skipWaiting() quand l'utilisateur clique sur "Mettre à jour"
+});
+
+// Événement activate - prendre le contrôle des clients après activation
+self.addEventListener('activate', (event) => {
+  console.log('[SW] ✅ Service Worker activé');
+  event.waitUntil(
+    self.clients.claim().then(() => {
+      console.log('[SW] ✅ Contrôle des clients pris');
+    })
+  );
 });
 
 // Tag pour Background Sync
