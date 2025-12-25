@@ -534,9 +534,9 @@ const TransactionDetailPage = () => {
               }
               
               if (shouldUpdate) {
-                toast.success('Demande de remboursement mise à jour');
-                // Update initial value to current value
-                setInitialHasReimbursementRequest(hasReimbursementRequest);
+              toast.success('Demande de remboursement mise à jour');
+              // Update initial value to current value
+              setInitialHasReimbursementRequest(hasReimbursementRequest);
               } else {
                 toast.success('Taux de remboursement mis à jour');
               }
@@ -799,8 +799,8 @@ const TransactionDetailPage = () => {
     // Navigate to transactions list with transaction ID for scrolling
     if (transaction?.id) {
       navigate('/transactions', { state: { scrollToTransactionId: transaction.id } });
-    } else {
-      navigate('/transactions');
+      } else {
+        navigate('/transactions');
     }
   };
 

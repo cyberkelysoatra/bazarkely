@@ -23,6 +23,7 @@ import GoalsPage from '../../pages/GoalsPage'
 import EducationPage from '../../pages/EducationPage'
 import SettingsPage from '../../pages/SettingsPage'
 import NotificationPreferencesPage from '../../pages/NotificationPreferencesPage'
+import AppVersionPage from '../../pages/AppVersionPage'
 import AdminPage from '../../pages/AdminPage'
 import PWAInstructionsPage from '../../pages/PWAInstructionsPage'
 import CertificationPage from '../../pages/CertificationPage'
@@ -166,6 +167,7 @@ const AppLayout = () => {
           <Route path="/education" element={<EducationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
+          <Route path="/app-version" element={<AppVersionPage />} />
           
           {/* Admin Route - Protected */}
           <Route path="/admin" element={<AdminPage />} />

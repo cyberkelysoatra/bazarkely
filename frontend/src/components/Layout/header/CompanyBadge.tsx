@@ -71,3 +71,6 @@ export function CompanyBadge({ className = '' }: CompanyBadgeProps) {
 
 export default CompanyBadge;
 
+
+
+
