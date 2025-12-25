@@ -1,47 +1,48 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAppStore } from '../../stores/appStore'
 
-// Pages
+// Critical pages - keep static imports (critical path)
 import AuthPage from '../../pages/AuthPage'
 import DashboardPage from '../../pages/DashboardPage'
-import TransactionsPage from '../../pages/TransactionsPage'
-import TransactionDetailPage from '../../pages/TransactionDetailPage'
-import AddTransactionPage from '../../pages/AddTransactionPage'
-import TransferPage from '../../pages/TransferPage'
-import AccountsPage from '../../pages/AccountsPage'
-import AccountDetailPage from '../../pages/AccountDetailPage'
-import AddAccountPage from '../../pages/AddAccountPage'
-import BudgetsPage from '../../pages/BudgetsPage'
-import AddBudgetPage from '../../pages/AddBudgetPage'
-import BudgetReviewPage from '../../pages/BudgetReviewPage'
-import PriorityQuestionsPage from '../../pages/PriorityQuestionsPage'
-import ProfileCompletionPage from '../../pages/ProfileCompletionPage'
-// import QuizPage from '../../pages/QuizPage' // Disabled - converted to popup system
-import RecommendationsPage from '../../pages/RecommendationsPage'
-import GoalsPage from '../../pages/GoalsPage'
-import EducationPage from '../../pages/EducationPage'
-import SettingsPage from '../../pages/SettingsPage'
-import NotificationPreferencesPage from '../../pages/NotificationPreferencesPage'
-import AppVersionPage from '../../pages/AppVersionPage'
-import AdminPage from '../../pages/AdminPage'
-import PWAInstructionsPage from '../../pages/PWAInstructionsPage'
-import CertificationPage from '../../pages/CertificationPage'
-import QuizPage from '../../pages/QuizPage'
-import QuizResultsPage from '../../pages/QuizResultsPage'
-import RecurringTransactionsPage from '../../pages/RecurringTransactionsPage'
-import RecurringTransactionDetailPage from '../../pages/RecurringTransactionDetailPage'
-import FamilyDashboardPage from '../../pages/FamilyDashboardPage'
-import FamilySettingsPage from '../../pages/FamilySettingsPage'
-import FamilyBalancePage from '../../pages/FamilyBalancePage'
-import FamilyMembersPage from '../../pages/FamilyMembersPage'
-import FamilyTransactionsPage from '../../pages/FamilyTransactionsPage'
-import FamilyReimbursementsPage from '../../pages/FamilyReimbursementsPage'
 
-// Analytics Pages
-import AdvancedAnalytics from '../Analytics/AdvancedAnalytics'
-import FinancialInsights from '../Analytics/FinancialInsights'
-import ReportGenerator from '../Analytics/ReportGenerator'
+// Lazy-loaded pages - Code splitting for bundle optimization
+const TransactionsPage = lazy(() => import('../../pages/TransactionsPage'))
+const TransactionDetailPage = lazy(() => import('../../pages/TransactionDetailPage'))
+const AddTransactionPage = lazy(() => import('../../pages/AddTransactionPage'))
+const TransferPage = lazy(() => import('../../pages/TransferPage'))
+const AccountsPage = lazy(() => import('../../pages/AccountsPage'))
+const AccountDetailPage = lazy(() => import('../../pages/AccountDetailPage'))
+const AddAccountPage = lazy(() => import('../../pages/AddAccountPage'))
+const BudgetsPage = lazy(() => import('../../pages/BudgetsPage'))
+const AddBudgetPage = lazy(() => import('../../pages/AddBudgetPage'))
+const BudgetReviewPage = lazy(() => import('../../pages/BudgetReviewPage'))
+const PriorityQuestionsPage = lazy(() => import('../../pages/PriorityQuestionsPage'))
+const ProfileCompletionPage = lazy(() => import('../../pages/ProfileCompletionPage'))
+const RecommendationsPage = lazy(() => import('../../pages/RecommendationsPage'))
+const GoalsPage = lazy(() => import('../../pages/GoalsPage'))
+const EducationPage = lazy(() => import('../../pages/EducationPage'))
+const SettingsPage = lazy(() => import('../../pages/SettingsPage'))
+const NotificationPreferencesPage = lazy(() => import('../../pages/NotificationPreferencesPage'))
+const AppVersionPage = lazy(() => import('../../pages/AppVersionPage'))
+const AdminPage = lazy(() => import('../../pages/AdminPage'))
+const PWAInstructionsPage = lazy(() => import('../../pages/PWAInstructionsPage'))
+const CertificationPage = lazy(() => import('../../pages/CertificationPage'))
+const QuizPage = lazy(() => import('../../pages/QuizPage'))
+const QuizResultsPage = lazy(() => import('../../pages/QuizResultsPage'))
+const RecurringTransactionsPage = lazy(() => import('../../pages/RecurringTransactionsPage'))
+const RecurringTransactionDetailPage = lazy(() => import('../../pages/RecurringTransactionDetailPage'))
+const FamilyDashboardPage = lazy(() => import('../../pages/FamilyDashboardPage'))
+const FamilySettingsPage = lazy(() => import('../../pages/FamilySettingsPage'))
+const FamilyBalancePage = lazy(() => import('../../pages/FamilyBalancePage'))
+const FamilyMembersPage = lazy(() => import('../../pages/FamilyMembersPage'))
+const FamilyTransactionsPage = lazy(() => import('../../pages/FamilyTransactionsPage'))
+const FamilyReimbursementsPage = lazy(() => import('../../pages/FamilyReimbursementsPage'))
+
+// Analytics Pages - Lazy loaded
+const AdvancedAnalytics = lazy(() => import('../Analytics/AdvancedAnalytics'))
+const FinancialInsights = lazy(() => import('../Analytics/FinancialInsights'))
+const ReportGenerator = lazy(() => import('../Analytics/ReportGenerator'))
 
 // Construction POC Context
 import { ConstructionProvider, useConstruction } from '../../modules/construction-poc/context/ConstructionContext'
@@ -67,6 +68,13 @@ import BottomNav from '../Navigation/BottomNav'
 import Header from './Header'
 
 // Loading component for Suspense fallback
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+  </div>
+)
+
+// Keep existing LoadingFallback for Construction routes compatibility
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-[400px]">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
@@ -113,15 +121,17 @@ const ConstructionRoutes: React.FC = () => {
 const FamilyRoutes: React.FC = () => {
   return (
     // <FamilyProvider>
-      <Routes>
-        <Route path="/" element={<FamilyDashboardPage />} />
-        <Route path="settings" element={<FamilySettingsPage />} />
-        <Route path="balance" element={<FamilyBalancePage />} />
-        <Route path="members" element={<FamilyMembersPage />} />
-        <Route path="transactions" element={<FamilyTransactionsPage />} />
-        <Route path="reimbursements" element={<FamilyReimbursementsPage />} />
-        <Route path="*" element={<Navigate to="/family" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<FamilyDashboardPage />} />
+          <Route path="settings" element={<FamilySettingsPage />} />
+          <Route path="balance" element={<FamilyBalancePage />} />
+          <Route path="members" element={<FamilyMembersPage />} />
+          <Route path="transactions" element={<FamilyTransactionsPage />} />
+          <Route path="reimbursements" element={<FamilyReimbursementsPage />} />
+          <Route path="*" element={<Navigate to="/family" replace />} />
+        </Routes>
+      </Suspense>
     // </FamilyProvider>
   );
 };
@@ -144,65 +154,69 @@ const AppLayout = () => {
     <div className="min-h-screen flex flex-col overscroll-none">
       <Header />
       <main className="flex-1 pb-20 overscroll-y-auto touch-pan-y">
-        <Routes>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/transactions" element={<TransactionsPage />} />
-          {/* Route kept for editing only - direct navigation from transaction click disabled */}
-          <Route path="/transaction/:transactionId" element={<TransactionDetailPage />} />
-          <Route path="/add-transaction" element={<AddTransactionPage />} />
-          <Route path="/transfer" element={<TransferPage />} />
-          <Route path="/recurring" element={<RecurringTransactionsPage />} />
-          <Route path="/recurring/:id" element={<RecurringTransactionDetailPage />} />
-          <Route path="/accounts" element={<AccountsPage />} />
-          <Route path="/account/:accountId" element={<AccountDetailPage />} />
-          <Route path="/add-account" element={<AddAccountPage />} />
-          <Route path="/budgets" element={<BudgetsPage />} />
-          <Route path="/add-budget" element={<AddBudgetPage />} />
-          <Route path="/budget-review" element={<BudgetReviewPage />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Critical route - no Suspense needed (static import) */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+            
+            {/* Lazy-loaded routes - wrapped in Suspense */}
+            <Route path="/transactions" element={<TransactionsPage />} />
+            {/* Route kept for editing only - direct navigation from transaction click disabled */}
+            <Route path="/transaction/:transactionId" element={<TransactionDetailPage />} />
+            <Route path="/add-transaction" element={<AddTransactionPage />} />
+            <Route path="/transfer" element={<TransferPage />} />
+            <Route path="/recurring" element={<RecurringTransactionsPage />} />
+            <Route path="/recurring/:id" element={<RecurringTransactionDetailPage />} />
+            <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/account/:accountId" element={<AccountDetailPage />} />
+            <Route path="/add-account" element={<AddAccountPage />} />
+            <Route path="/budgets" element={<BudgetsPage />} />
+            <Route path="/add-budget" element={<AddBudgetPage />} />
+            <Route path="/budget-review" element={<BudgetReviewPage />} />
             <Route path="/priority-questions" element={<PriorityQuestionsPage />} />
             <Route path="/profile-completion" element={<ProfileCompletionPage />} />
-            {/* <Route path="/quiz" element={<QuizPage />} /> */} {/* Disabled - converted to popup system */}
             <Route path="/recommendations" element={<RecommendationsPage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/education" element={<EducationPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
-          <Route path="/app-version" element={<AppVersionPage />} />
-          
-          {/* Admin Route - Protected */}
-          <Route path="/admin" element={<AdminPage />} />
-          
-          {/* PWA Instructions Route */}
-          <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
-          
-          {/* Certification Route */}
-          <Route path="/certification" element={<CertificationPage />} />
-          
-          {/* Quiz Routes */}
-          <Route path="/quiz" element={<QuizPage />} />
-          <Route path="/quiz-results" element={<QuizResultsPage />} />
-          
-          {/* Analytics Routes */}
-          <Route path="/analytics" element={<AdvancedAnalytics />} />
-          <Route path="/insights" element={<FinancialInsights userId={useAppStore.getState().user?.id || ''} />} />
-          <Route path="/reports" element={<ReportGenerator />} />
-          
-          {/* Construction POC Routes - ConstructionProvider now mounted globally in App.tsx */}
-          <Route
-            path="/construction/*"
-            element={
-              <ConstructionRoute>
-                <ConstructionRoutes />
-              </ConstructionRoute>
-            }
-          />
-          
-          {/* Family Routes - Wrapped with FamilyProvider */}
-          <Route path="/family/*" element={<FamilyRoutes />} />
-          
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+            <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/education" element={<EducationPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
+            <Route path="/app-version" element={<AppVersionPage />} />
+            
+            {/* Admin Route - Protected */}
+            <Route path="/admin" element={<AdminPage />} />
+            
+            {/* PWA Instructions Route */}
+            <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
+            
+            {/* Certification Route */}
+            <Route path="/certification" element={<CertificationPage />} />
+            
+            {/* Quiz Routes */}
+            <Route path="/quiz" element={<QuizPage />} />
+            <Route path="/quiz-results" element={<QuizResultsPage />} />
+            
+            {/* Analytics Routes */}
+            <Route path="/analytics" element={<AdvancedAnalytics />} />
+            <Route path="/insights" element={<FinancialInsights userId={useAppStore.getState().user?.id || ''} />} />
+            <Route path="/reports" element={<ReportGenerator />} />
+            
+            {/* Construction POC Routes - ConstructionProvider now mounted globally in App.tsx */}
+            <Route
+              path="/construction/*"
+              element={
+                <ConstructionRoute>
+                  <ConstructionRoutes />
+                </ConstructionRoute>
+              }
+            />
+            
+            {/* Family Routes - Wrapped with FamilyProvider */}
+            <Route path="/family/*" element={<FamilyRoutes />} />
+            
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </main>
       <BottomNav />
     </div>

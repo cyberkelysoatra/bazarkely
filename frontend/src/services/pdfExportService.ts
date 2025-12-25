@@ -1,7 +1,7 @@
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import { loadJsPDF, loadHtml2Canvas } from './pdfLoader'
 import { db } from '../lib/database'
 import type { Transaction, Budget, Goal, Account, User } from '../types'
+import type jsPDF from 'jspdf'
 
 export interface PDFReportData {
   user: User
@@ -52,6 +52,7 @@ class PDFExportService {
 
   private async generateChartImage(chartElement: HTMLElement): Promise<string> {
     try {
+      const html2canvas = await loadHtml2Canvas()
       const canvas = await html2canvas(chartElement, {
         backgroundColor: '#ffffff',
         scale: 2,
@@ -490,6 +491,7 @@ class PDFExportService {
   }
 
   private async generatePDF(data: PDFReportData, options: PDFExportOptions): Promise<Blob> {
+    const jsPDF = await loadJsPDF()
     const doc = new jsPDF(options.format === 'A5' ? 'p' : 'l', 'mm', options.format)
     let pageNumber = 1
     

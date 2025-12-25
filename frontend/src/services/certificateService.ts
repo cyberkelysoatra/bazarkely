@@ -3,9 +3,10 @@
  * Generates traditional diploma-style PDF certificates for completed certification levels
  */
 
-import jsPDF from 'jspdf';
+import { loadJsPDF } from './pdfLoader';
 import type { Certification } from '../types/certification';
 import type { UserDetailedProfile } from '../types/certification';
+import type jsPDF from 'jspdf';
 
 /**
  * Interface for certificate generation parameters
@@ -47,31 +48,32 @@ class CertificateService {
     certification: Certification,
     userProfile: UserDetailedProfile
   ): Promise<jsPDF> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Create new PDF document in landscape A4 format
-        const doc = new jsPDF({
-          orientation: 'landscape',
-          unit: 'mm',
-          format: 'a4'
-        });
+    try {
+      // Load jsPDF dynamically
+      const jsPDF = await loadJsPDF();
+      
+      // Create new PDF document in landscape A4 format
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-        // Set up the certificate
-        this.setupCertificate(doc);
-        this.drawDecorativeBorder(doc);
-        this.addLogoAndTitle(doc);
-        this.addRecipientText(doc, userProfile);
-        this.addAchievementText(doc, certification);
-        this.addCompletionDate(doc, certification.earnedAt);
-        this.addCertificateId(doc, certification);
-        this.addQRCode(doc, certification);
-        this.addIssuerText(doc);
+      // Set up the certificate
+      this.setupCertificate(doc);
+      this.drawDecorativeBorder(doc);
+      this.addLogoAndTitle(doc);
+      this.addRecipientText(doc, userProfile);
+      this.addAchievementText(doc, certification);
+      this.addCompletionDate(doc, certification.earnedAt);
+      this.addCertificateId(doc, certification);
+      this.addQRCode(doc, certification);
+      this.addIssuerText(doc);
 
-        resolve(doc);
-      } catch (error) {
-        reject(new Error(`Failed to generate certificate: ${error}`));
-      }
-    });
+      return doc;
+    } catch (error) {
+      throw new Error(`Failed to generate certificate: ${error}`);
+    }
   }
 
   /**

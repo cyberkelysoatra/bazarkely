@@ -77,16 +77,38 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'terser',
+    chunkSizeWarningLimit: 500, // Reduced from 1000 to catch large chunks earlier
     rollupOptions: {
       output: {
         manualChunks: {
+          // Core React framework
           vendor: ['react', 'react-dom'],
-          ui: ['lucide-react', 'recharts'],
-          utils: ['dexie', 'zustand']
+          // Supabase client (~250KB) - largest dependency
+          // Includes all Supabase packages for optimal chunking
+          'vendor-supabase': [
+            '@supabase/supabase-js',
+            '@supabase/functions-js',
+            '@supabase/realtime-js'
+          ],
+          // React Router (~50KB)
+          'vendor-router': ['react-router-dom'],
+          // UI components and icons
+          ui: ['lucide-react'],
+          // Charts library
+          'vendor-charts': ['recharts'],
+          // State management
+          state: ['zustand', '@tanstack/react-query'],
+          // Form handling
+          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          // Database (IndexedDB wrapper)
+          db: ['dexie'],
+          // PDF generation (lazy-loaded)
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+          // Drag and drop
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities']
         }
       }
-    },
-    chunkSizeWarningLimit: 1000
+    }
   },
   server: {
     port: 5173,
