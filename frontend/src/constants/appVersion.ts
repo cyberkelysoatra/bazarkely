@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.0.4';
+export const APP_VERSION = '2.0.5';
 export const APP_BUILD_DATE = '2025-12-25';
 
 export type VersionEntry = {
@@ -9,6 +9,14 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.0.5',
+    date: '2025-12-25',
+    changes: [
+      'Correction affichage Résumé mensuel (Revenus, Dépenses, Solde net)'
+    ],
+    type: 'patch'
+  },
   {
     version: '2.0.4',
     date: '2025-12-25',
