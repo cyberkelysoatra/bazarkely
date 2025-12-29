@@ -1,5 +1,5 @@
-export const APP_VERSION = '2.0.6';
-export const APP_BUILD_DATE = '2025-12-26';
+export const APP_VERSION = '2.1.0';
+export const APP_BUILD_DATE = '2025-12-29';
 
 export type VersionEntry = {
   version: string;
@@ -9,6 +9,18 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.1.0',
+    date: '2025-12-29',
+    type: 'minor',
+    changes: [
+      'Ajout vue budget annuelle avec toggle Mensuel/Annuel',
+      'Graphique barres comparatif Budget vs Dépensé sur 12 mois',
+      'Cartes catégories avec données agrégées annuelles',
+      'Indicateurs de conformité budgétaire (Bon/Attention/Dépassé)',
+      'Navigation vers transactions filtrées par année'
+    ]
+  },
   {
     version: '2.0.6',
     date: '2025-12-26',

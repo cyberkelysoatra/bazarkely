@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3 } from 'lucide-react';
+import { Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3, Trash2, X } from 'lucide-react';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { useAppStore } from '../stores/appStore';
 import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
@@ -10,21 +10,50 @@ import { toast } from 'react-hot-toast';
 import type { Budget, TransactionCategory } from '../types';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Currency } from '../components/Currency/CurrencyToggle';
+import { supabase } from '../lib/supabase';
+import Modal from '../components/UI/Modal';
+import useYearlyBudgetData from '../hooks/useYearlyBudgetData';
+import { YearlyBudgetChart } from '../components/Budget/YearlyBudgetChart';
 
 const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
+
+// Mapping des catégories de budgets vers les catégories de transactions
+// Permet de faire correspondre les catégories équivalentes (ex: habillement → vetements)
+const CATEGORY_MAPPING: Record<string, string> = {
+  'habillement': 'vetements',
+  'solidarité': 'solidarite',
+  'épargne': 'epargne', // Si jamais utilisé
+  // Ajouter d'autres mappings si nécessaire
+};
 
 const BudgetsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingBudgets, setIsCreatingBudgets] = useState(false);
   const [customizingBudget, setCustomizingBudget] = useState<string | null>(null);
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [isLoadingBudgets, setIsLoadingBudgets] = useState(false);
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingAmount, setEditingAmount] = useState<number>(0);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newBudget, setNewBudget] = useState<{
+    category: string;
+    amount: number;
+    name: string;
+  }>({
+    category: '',
+    amount: 0,
+    name: ''
+  });
   const { user } = useAppStore();
   const { trackBudgetUsage } = usePracticeTracking();
   const navigate = useNavigate();
+  
+  // Hook pour les données annuelles (appelé uniquement en mode annuel)
+  const yearlyBudgetData = useYearlyBudgetData(viewMode === 'yearly' ? selectedYear : undefined);
 
   // Currency integration state
   const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => {
@@ -53,6 +82,21 @@ const BudgetsPage = () => {
   // Handle budget card click to navigate to transactions with category filter
   const handleBudgetClick = (category: TransactionCategory) => {
     navigate(`/transactions?category=${category}`);
+  };
+
+  // Handle yearly budget card click to navigate with year date range
+  const handleYearlyBudgetClick = (category: TransactionCategory) => {
+    const startDate = `${selectedYear}-01-01`;
+    const endDate = `${selectedYear}-12-31`;
+    navigate(`/transactions?category=${category}&startDate=${startDate}&endDate=${endDate}`);
+  };
+
+  // Format number with French locale (spaces as thousand separators)
+  const formatNumber = (value: number): string => {
+    return new Intl.NumberFormat('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
   };
 
   // Fonction pour calculer les montants dépensés par catégorie
@@ -91,10 +135,11 @@ const BudgetsPage = () => {
       console.log('🔍 DEBUG: Current month expense transactions:', currentMonthTransactions.length);
 
       // Calculer les montants dépensés par catégorie
+      // Normaliser les catégories de transactions en lowercase pour le matching
       const spentByCategory: Record<string, number> = {};
       currentMonthTransactions.forEach(transaction => {
-        const category = transaction.category;
-        spentByCategory[category] = (spentByCategory[category] || 0) + Math.abs(transaction.amount);
+        const normalizedCategory = transaction.category.toLowerCase();
+        spentByCategory[normalizedCategory] = (spentByCategory[normalizedCategory] || 0) + Math.abs(transaction.amount);
       });
 
       console.log('🔍 DEBUG: Spent amounts by category:', spentByCategory);
@@ -106,11 +151,15 @@ const BudgetsPage = () => {
 
       // Mettre à jour les budgets avec les montants dépensés calculés
       const updatedBudgets = budgets.map(budget => {
-        const normalizedCategory = budget.category.toLowerCase();
-        const spentAmount = spentByCategory[normalizedCategory] || 0;
+        const normalizedBudgetCategory = budget.category.toLowerCase();
         
-        // DEBUG: Log category normalization
-        console.log(`🔍 DEBUG - Category normalization: "${budget.category}" -> "${normalizedCategory}" -> spent: ${spentAmount} Ar`);
+        // Utiliser CATEGORY_MAPPING pour convertir la catégorie du budget en catégorie de transaction
+        // Si pas de mapping, utiliser la catégorie normalisée directement
+        const transactionCategory = CATEGORY_MAPPING[normalizedBudgetCategory] || normalizedBudgetCategory;
+        const spentAmount = spentByCategory[transactionCategory] || 0;
+        
+        // DEBUG: Log category normalization and mapping
+        console.log(`🔍 DEBUG - Category normalization: "${budget.category}" -> "${normalizedBudgetCategory}" -> mapped to "${transactionCategory}" -> spent: ${spentAmount} Ar`);
         
         return {
           ...budget,
@@ -454,15 +503,187 @@ const BudgetsPage = () => {
 
   // Créer un budget manuel
   const handleCreateManualBudget = () => {
-    // TODO: Implémenter la navigation vers la page de création de budget
-    toast('Fonctionnalité de création manuelle en cours de développement', {
-      duration: 3000,
-      icon: 'ℹ️'
+    setNewBudget({
+      category: '',
+      amount: 0,
+      name: ''
+    });
+    setShowCreateForm(true);
+  };
+
+  // Annuler la création
+  const handleCancelCreate = () => {
+    setShowCreateForm(false);
+    setNewBudget({
+      category: '',
+      amount: 0,
+      name: ''
     });
   };
 
+  // Sauvegarder le nouveau budget
+  const handleSaveNewBudget = async () => {
+    if (!user) {
+      toast.error('Utilisateur non connecté');
+      return;
+    }
+
+    // Validation
+    if (!newBudget.category) {
+      toast.error('Veuillez sélectionner une catégorie');
+      return;
+    }
+
+    if (newBudget.amount <= 0) {
+      toast.error('Le montant doit être supérieur à 0');
+      return;
+    }
+
+    // Vérifier si un budget existe déjà pour cette catégorie ce mois-ci
+    // Normaliser la catégorie pour la comparaison
+    const normalizedNewCategory = newBudget.category.toLowerCase();
+    const existingBudget = budgets.find(
+      budget => {
+        const normalizedBudgetCategory = budget.category.toLowerCase();
+        // Vérifier aussi avec le mapping de catégories
+        const mappedCategory = CATEGORY_MAPPING[normalizedBudgetCategory] || normalizedBudgetCategory;
+        return (normalizedBudgetCategory === normalizedNewCategory || mappedCategory === normalizedNewCategory) &&
+               budget.month === selectedMonth &&
+               budget.year === selectedYear;
+      }
+    );
+
+    if (existingBudget) {
+      toast.error('Un budget pour cette catégorie existe déjà ce mois-ci');
+      return;
+    }
+
+    try {
+      setIsLoadingBudgets(true);
+
+      // Générer le nom si vide
+      const categoryDisplayName = TRANSACTION_CATEGORIES[newBudget.category as TransactionCategory]?.name || newBudget.category;
+      const budgetName = newBudget.name.trim() || `Budget ${categoryDisplayName}`;
+
+      // Créer le budget via apiService
+      const budgetData = {
+        name: budgetName,
+        category: newBudget.category.toLowerCase(),
+        amount: newBudget.amount,
+        spent: 0,
+        period: 'monthly' as const,
+        year: selectedYear,
+        month: selectedMonth,
+        alert_threshold: 80,
+        is_active: true
+      };
+
+      const response = await apiService.createBudget(budgetData);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Erreur lors de la création du budget');
+      }
+
+      toast.success('Budget créé avec succès');
+      setShowCreateForm(false);
+      setNewBudget({
+        category: '',
+        amount: 0,
+        name: ''
+      });
+
+      // Recharger les budgets
+      await loadBudgets();
+    } catch (error) {
+      console.error('Erreur lors de la création du budget:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la création du budget');
+    } finally {
+      setIsLoadingBudgets(false);
+    }
+  };
+
+  // Éditer un budget existant
+  const handleEditBudget = (budgetId: string, currentAmount: number) => {
+    setEditingBudgetId(budgetId);
+    setEditingAmount(currentAmount);
+  };
+
+  // Sauvegarder les modifications d'un budget
+  const handleSaveEdit = async (budgetId: string) => {
+    if (!user || editingAmount <= 0) {
+      toast.error('Montant invalide');
+      return;
+    }
+
+    try {
+      setIsLoadingBudgets(true);
+      
+      // Utiliser directement Supabase pour la mise à jour
+      const { error } = await supabase
+        .from('budgets')
+        .update({ amount: editingAmount, updated_at: new Date().toISOString() })
+        .eq('id', budgetId);
+
+      if (error) throw error;
+
+      toast.success('Budget modifié avec succès');
+      setEditingBudgetId(null);
+      setEditingAmount(0);
+      
+      // Recharger les budgets
+      await loadBudgets();
+    } catch (error) {
+      console.error('Erreur lors de la modification du budget:', error);
+      toast.error('Erreur lors de la modification du budget');
+    } finally {
+      setIsLoadingBudgets(false);
+    }
+  };
+
+  // Annuler l'édition
+  const handleCancelEdit = () => {
+    setEditingBudgetId(null);
+    setEditingAmount(0);
+  };
+
+  // Supprimer un budget
+  const handleDeleteBudget = async (budgetId: string, categoryName: string) => {
+    if (!user) return;
+
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le budget "${categoryName}" ?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsLoadingBudgets(true);
+      
+      // Utiliser directement Supabase pour la suppression
+      const { error } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('id', budgetId);
+
+      if (error) throw error;
+
+      toast.success('Budget supprimé avec succès');
+      
+      // Recharger les budgets
+      await loadBudgets();
+    } catch (error) {
+      console.error('Erreur lors de la suppression du budget:', error);
+      toast.error('Erreur lors de la suppression du budget');
+    } finally {
+      setIsLoadingBudgets(false);
+    }
+  };
+
   const getBudgetStatus = (budget: Budget) => {
-    const percentage = ((budget.spent || 0) / budget.amount) * 100;
+    // Protection contre division par zéro
+    const percentage = budget.amount > 0 
+      ? ((budget.spent || 0) / budget.amount) * 100 
+      : 0;
     
     if (percentage >= 100) {
       return { status: 'exceeded', color: 'text-red-600', bgColor: 'bg-red-100' };
@@ -522,7 +743,10 @@ const BudgetsPage = () => {
       </div>
     );
   }
-  const overallPercentage = (totalSpent / totalBudget) * 100;
+  // Protection contre division par zéro pour le pourcentage global
+  const overallPercentage = totalBudget > 0 
+    ? (totalSpent / totalBudget) * 100 
+    : 0;
 
   return (
     <div className="p-4 pb-20 space-y-6">
@@ -541,10 +765,10 @@ const BudgetsPage = () => {
         </button>
       </div>
 
-      {/* Sélecteur de mois */}
+      {/* Sélecteur de mois et année avec toggle */}
       <div className="card">
         <div className="flex items-center space-x-4">
-          <div>
+          <div className={`transition-all duration-300 ${viewMode === 'yearly' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-auto'}`}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mois</label>
             <select
               value={selectedMonth}
@@ -575,70 +799,185 @@ const BudgetsPage = () => {
               })}
             </select>
           </div>
+          {/* Toggle Mensuel/Annuel */}
+          <div className="flex items-end">
+            <div className="p-1 bg-gray-100 rounded-full inline-flex">
+              <button
+                onClick={() => setViewMode('monthly')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  viewMode === 'monthly'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-200'
+                }`}
+                aria-pressed={viewMode === 'monthly'}
+                aria-label="Vue mensuelle"
+              >
+                Mensuel
+              </button>
+              <button
+                onClick={() => setViewMode('yearly')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  viewMode === 'yearly'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-200'
+                }`}
+                aria-pressed={viewMode === 'yearly'}
+                aria-label="Vue annuelle"
+              >
+                Annuel
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Vue d'ensemble */}
       <div className="card-glass">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Vue d'ensemble</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {viewMode === 'yearly' ? `Vue d'ensemble ${selectedYear}` : "Vue d'ensemble"}
+          </h3>
           <PieChart className="w-5 h-5 text-primary-600" />
         </div>
         
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              <CurrencyDisplay
-                amount={totalBudget}
-                originalCurrency="MGA"
-                displayCurrency={displayCurrency}
-                showConversion={true}
-                size="lg"
-              />
+        {viewMode === 'yearly' ? (
+          <>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  <CurrencyDisplay
+                    amount={yearlyBudgetData.yearlyTotalBudget}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">Budget annuel</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  <CurrencyDisplay
+                    amount={yearlyBudgetData.yearlyTotalSpent}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">Dépensé annuel</p>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${yearlyBudgetData.yearlyOverrun > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  <CurrencyDisplay
+                    amount={Math.abs(yearlyBudgetData.yearlyOverrun)}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  {yearlyBudgetData.yearlyOverrun > 0 ? 'Dépassement' : 'Sous-budget'}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-gray-600">Budget total</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">
-              <CurrencyDisplay
-                amount={totalSpent}
-                originalCurrency="MGA"
-                displayCurrency={displayCurrency}
-                showConversion={true}
-                size="lg"
-              />
+            {yearlyBudgetData.yearlyTotalBudget > 0 && (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full ${
+                      yearlyBudgetData.overrunPercentage > 0 ? 'bg-red-500' : 
+                      (yearlyBudgetData.yearlyTotalSpent / yearlyBudgetData.yearlyTotalBudget) >= 0.8 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ 
+                      width: `${Math.min((yearlyBudgetData.yearlyTotalSpent / yearlyBudgetData.yearlyTotalBudget) * 100, 100)}%` 
+                    }}
+                  ></div>
+                </div>
+                <p className="text-center text-sm text-gray-600 mt-2">
+                  {yearlyBudgetData.overrunPercentage > 0 
+                    ? `${yearlyBudgetData.overrunPercentage.toFixed(1)}% de dépassement`
+                    : `${((yearlyBudgetData.yearlyTotalSpent / yearlyBudgetData.yearlyTotalBudget) * 100).toFixed(1)}% du budget utilisé`
+                  }
+                </p>
+              </>
+            )}
+            {yearlyBudgetData.isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                <p className="ml-3 text-sm text-gray-600">Chargement des données annuelles...</p>
+              </div>
+            )}
+            {yearlyBudgetData.error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+                <p className="text-sm text-red-600">{yearlyBudgetData.error}</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  <CurrencyDisplay
+                    amount={totalBudget}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">Budget total</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  <CurrencyDisplay
+                    amount={totalSpent}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">Dépensé</p>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <CurrencyDisplay
+                    amount={Math.abs(totalRemaining)}
+                    originalCurrency="MGA"
+                    displayCurrency={displayCurrency}
+                    showConversion={true}
+                    size="lg"
+                  />
+                </div>
+                <p className="text-sm text-gray-600">
+                  {totalRemaining >= 0 ? 'Restant' : 'Dépassé'}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-gray-600">Dépensé</p>
-          </div>
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              <CurrencyDisplay
-                amount={Math.abs(totalRemaining)}
-                originalCurrency="MGA"
-                displayCurrency={displayCurrency}
-                showConversion={true}
-                size="lg"
-              />
-            </div>
-            <p className="text-sm text-gray-600">
-              {totalRemaining >= 0 ? 'Restant' : 'Dépassé'}
-            </p>
-          </div>
-        </div>
 
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div
-            className={`h-3 rounded-full ${
-              overallPercentage >= 100 ? 'bg-red-500' : 
-              overallPercentage >= 80 ? 'bg-yellow-500' : 'bg-green-500'
-            }`}
-            style={{ width: `${Math.min(overallPercentage, 100)}%` }}
-          ></div>
-        </div>
-        <p className="text-center text-sm text-gray-600 mt-2">
-          {overallPercentage.toFixed(1)}% du budget utilisé
-        </p>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full ${
+                  overallPercentage >= 100 ? 'bg-red-500' : 
+                  overallPercentage >= 80 ? 'bg-yellow-500' : 'bg-green-500'
+                }`}
+                style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-center text-sm text-gray-600 mt-2">
+              {overallPercentage.toFixed(1)}% du budget utilisé
+            </p>
+          </>
+        )}
       </div>
+
+      {/* Graphique annuel - affiché uniquement en mode annuel */}
+      {viewMode === 'yearly' && !yearlyBudgetData.isLoading && !yearlyBudgetData.error && (
+        <YearlyBudgetChart monthlyData={yearlyBudgetData.monthlyData} />
+      )}
 
       {/* Section des budgets suggérés */}
       {shouldShowSuggestions() && (
@@ -762,7 +1101,9 @@ const BudgetsPage = () => {
 
       {/* Liste des budgets */}
       <div className="space-y-3">
-        {budgets.map((budget) => {
+        {viewMode === 'monthly' ? (
+          // Mode mensuel - cartes existantes
+          budgets.map((budget) => {
           const category = TRANSACTION_CATEGORIES[budget.category] || {
             name: budget.category,
             icon: 'MoreHorizontal',
@@ -770,37 +1111,136 @@ const BudgetsPage = () => {
             bgColor: 'bg-gray-100'
           };
           const status = getBudgetStatus(budget);
-          const percentage = ((budget.spent || 0) / budget.amount) * 100;
+          // Protection contre division par zéro
+          const percentage = budget.amount > 0 
+            ? ((budget.spent || 0) / budget.amount) * 100 
+            : 0;
           const remaining = budget.amount - (budget.spent || 0);
+
+          const isEditing = editingBudgetId === budget.id;
 
           return (
             <div 
               key={budget.id} 
-              className="card hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleBudgetClick(budget.category as TransactionCategory)}
+              className={`card hover:shadow-lg transition-shadow ${!isEditing ? 'cursor-pointer' : ''}`}
+              onClick={!isEditing ? () => handleBudgetClick(budget.category as TransactionCategory) : undefined}
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-3">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3 flex-1">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
                     <span className={`text-sm font-medium ${category.color}`}>
                       {category.name.charAt(0)}
                     </span>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">{category.name}</h4>
-                    <p className="text-sm text-gray-500">
-                      <CurrencyDisplay
-                        amount={budget.amount}
-                        originalCurrency="MGA"
-                        displayCurrency={displayCurrency}
-                        showConversion={true}
-                        size="sm"
-                      /> / mois
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-gray-900">{category.name}</h4>
+                      {!isEditing && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditBudget(budget.id, budget.amount);
+                            }}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            aria-label="Modifier le budget"
+                            title="Modifier"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEditBudget(budget.id, budget.amount);
+                              }
+                            }}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBudget(budget.id, category.name);
+                            }}
+                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            aria-label="Supprimer le budget"
+                            title="Supprimer"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteBudget(budget.id, category.name);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {isEditing ? (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <input
+                          type="number"
+                          value={editingAmount}
+                          onChange={(e) => setEditingAmount(Number(e.target.value))}
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          min="0"
+                          step="1000"
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSaveEdit(budget.id);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleCancelEdit();
+                            }
+                          }}
+                          aria-label="Montant du budget"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveEdit(budget.id);
+                          }}
+                          className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
+                          aria-label="Sauvegarder"
+                          disabled={isLoadingBudgets}
+                          tabIndex={0}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelEdit();
+                          }}
+                          className="p-1.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                          aria-label="Annuler"
+                          tabIndex={0}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        <CurrencyDisplay
+                          amount={budget.amount}
+                          originalCurrency="MGA"
+                          displayCurrency={displayCurrency}
+                          showConversion={true}
+                          size="sm"
+                        /> / mois
+                      </p>
+                    )}
                   </div>
                 </div>
                 
-                <div className="text-right">
+                <div className="text-right ml-4">
                   <p className={`font-semibold ${status.color}`}>
                     <CurrencyDisplay
                       amount={budget.spent || 0}
@@ -811,7 +1251,7 @@ const BudgetsPage = () => {
                     />
                   </p>
                   <p className="text-sm text-gray-500">
-                    {percentage.toFixed(1)}%
+                    {isFinite(percentage) && !isNaN(percentage) ? percentage.toFixed(1) + '%' : 'N/A'}
                   </p>
                   {/* DEBUG: Log budget.spent for each rendered budget */}
                   {(() => {
@@ -828,44 +1268,185 @@ const BudgetsPage = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${
-                      status.status === 'exceeded' ? 'bg-red-500' :
-                      status.status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(percentage, 100)}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
-                    Restant: <CurrencyDisplay
-                      amount={Math.max(0, remaining)}
-                      originalCurrency="MGA"
-                      displayCurrency={displayCurrency}
-                      showConversion={true}
-                      size="sm"
-                    />
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    {status.status === 'exceeded' && (
-                      <AlertTriangle className="w-4 h-4 text-red-500" />
-                    )}
-                    {status.status === 'good' && (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    )}
-                    <span className={status.color}>
-                      {status.status === 'exceeded' ? 'Dépassé' :
-                       status.status === 'warning' ? 'Attention' : 'Bon'}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        status.status === 'exceeded' ? 'bg-red-500' :
+                        status.status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    ></div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      Restant: <CurrencyDisplay
+                        amount={Math.max(0, remaining)}
+                        originalCurrency="MGA"
+                        displayCurrency={displayCurrency}
+                        showConversion={true}
+                        size="sm"
+                      />
                     </span>
+                    <div className="flex items-center space-x-1">
+                      {status.status === 'exceeded' && (
+                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                      )}
+                      {status.status === 'good' && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
+                      <span className={status.color}>
+                        {status.status === 'exceeded' ? 'Dépassé' :
+                         status.status === 'warning' ? 'Attention' : 'Bon'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           );
-        })}
+        })
+        ) : (
+          // Mode annuel - cartes avec données agrégées
+          yearlyBudgetData.categoryBreakdown.length > 0 ? (
+            yearlyBudgetData.categoryBreakdown.map((categoryData) => {
+              const category = TRANSACTION_CATEGORIES[categoryData.category] || {
+                name: categoryData.categoryName,
+                icon: 'MoreHorizontal',
+                color: 'text-gray-500',
+                bgColor: 'bg-gray-100'
+              };
+
+              // Calculer les valeurs pour l'affichage
+              const yearlyBudget = categoryData.yearlyBudget;
+              const yearlySpent = categoryData.yearlySpent;
+              const monthlyAverage = yearlyBudget / 12;
+              const overrun = yearlySpent - yearlyBudget;
+              const remaining = yearlyBudget - yearlySpent;
+
+              // Calculer le pourcentage de dépense (spent/budget * 100)
+              const spentPercentage = yearlyBudget > 0 
+                ? (yearlySpent / yearlyBudget) * 100
+                : 0;
+
+              // Déterminer le statut basé sur le pourcentage de dépense
+              let statusColor = 'text-green-600';
+              let statusBgColor = 'bg-green-100';
+              let statusText = 'Bon';
+              let statusIcon = <CheckCircle className="w-4 h-4 text-green-500" />;
+              let progressBarColor = 'bg-green-500';
+
+              if (spentPercentage > 115) {
+                // Dépassé (> 115%)
+                statusColor = 'text-red-600';
+                statusBgColor = 'bg-red-100';
+                statusText = 'Dépassé';
+                statusIcon = <AlertTriangle className="w-4 h-4 text-red-500" />;
+                progressBarColor = 'bg-red-500';
+              } else if (spentPercentage >= 100) {
+                // Attention (100-115%)
+                statusColor = 'text-yellow-600';
+                statusBgColor = 'bg-yellow-100';
+                statusText = 'Attention';
+                statusIcon = <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+                progressBarColor = 'bg-yellow-500';
+              }
+
+              // Pourcentage pour la barre de progression (capped à 100% visuellement)
+              const progressPercentage = Math.min(spentPercentage, 100);
+
+              return (
+                <div 
+                  key={categoryData.category} 
+                  className="card hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleYearlyBudgetClick(categoryData.category)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-3 flex-1">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
+                        <span className={`text-sm font-medium ${category.color}`}>
+                          {category.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900">{category.name}</h4>
+                          {/* Info text au lieu des boutons edit/delete */}
+                          <div className="flex items-center space-x-1 ml-2">
+                            <span className="text-xs text-gray-400" title="Modifiez les budgets mois par mois">
+                              <AlertTriangle className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatNumber(yearlyBudget)} Ar/an
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            ≈ {formatNumber(Math.round(monthlyAverage))} Ar/mois
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right ml-4">
+                      <p className="font-semibold text-red-600">
+                        {formatNumber(yearlySpent)} Ar
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {spentPercentage.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${progressBarColor} transition-all duration-300`}
+                        style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        {overrun > 0 ? (
+                          <>
+                            Dépassé de: <span className="text-red-600 font-medium">
+                              {formatNumber(overrun)} Ar
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            Restant: <span className="text-green-600 font-medium">
+                              {formatNumber(remaining)} Ar
+                            </span>
+                          </>
+                        )}
+                      </span>
+                      <div className="flex items-center space-x-1">
+                        {statusIcon}
+                        <span className={statusColor}>
+                          {statusText}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            // État vide pour le mode annuel
+            <div className="card text-center py-8">
+              <PieChart className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">Aucun budget pour cette année</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Créez des budgets mensuels pour voir les données annuelles agrégées
+              </p>
+            </div>
+          )
+        )}
       </div>
 
       {budgets.length === 0 && (
@@ -913,6 +1494,132 @@ const BudgetsPage = () => {
           <p className="text-sm font-medium text-gray-900">Analyses</p>
         </button>
       </div>
+
+      {/* Modal de création de budget */}
+      <Modal
+        isOpen={showCreateForm}
+        onClose={handleCancelCreate}
+        title="Créer un nouveau budget"
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Catégorie */}
+          <div>
+            <label htmlFor="budget-category" className="block text-sm font-medium text-gray-700 mb-2">
+              Catégorie <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="budget-category"
+              value={newBudget.category}
+              onChange={(e) => {
+                const selectedCategory = e.target.value;
+                setNewBudget(prev => ({
+                  ...prev,
+                  category: selectedCategory,
+                  name: prev.name || (selectedCategory ? TRANSACTION_CATEGORIES[selectedCategory as TransactionCategory]?.name || selectedCategory : '')
+                }));
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            >
+              <option value="">Sélectionner une catégorie</option>
+              {Object.entries(TRANSACTION_CATEGORIES)
+                .filter(([key]) => {
+                  // Filtrer les catégories qui ont déjà un budget ce mois-ci
+                  const hasBudget = budgets.some(
+                    budget => budget.category.toLowerCase() === key.toLowerCase() &&
+                              budget.month === selectedMonth &&
+                              budget.year === selectedYear
+                  );
+                  return !hasBudget;
+                })
+                .map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.name}
+                  </option>
+                ))}
+            </select>
+            {budgets.some(
+              budget => budget.category.toLowerCase() === newBudget.category.toLowerCase() &&
+                        budget.month === selectedMonth &&
+                        budget.year === selectedYear
+            ) && (
+              <p className="mt-1 text-sm text-red-600">
+                Un budget existe déjà pour cette catégorie ce mois-ci
+              </p>
+            )}
+          </div>
+
+          {/* Montant */}
+          <div>
+            <label htmlFor="budget-amount" className="block text-sm font-medium text-gray-700 mb-2">
+              Montant (Ar) <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="budget-amount"
+              type="number"
+              value={newBudget.amount || ''}
+              onChange={(e) => setNewBudget(prev => ({ ...prev, amount: Number(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              min="0"
+              step="1000"
+              placeholder="0"
+              required
+            />
+            {newBudget.amount <= 0 && newBudget.amount !== 0 && (
+              <p className="mt-1 text-sm text-red-600">
+                Le montant doit être supérieur à 0
+              </p>
+            )}
+          </div>
+
+          {/* Nom (optionnel) */}
+          <div>
+            <label htmlFor="budget-name" className="block text-sm font-medium text-gray-700 mb-2">
+              Nom du budget <span className="text-gray-400 text-xs">(optionnel)</span>
+            </label>
+            <input
+              id="budget-name"
+              type="text"
+              value={newBudget.name}
+              onChange={(e) => setNewBudget(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder={newBudget.category ? `Budget ${TRANSACTION_CATEGORIES[newBudget.category as TransactionCategory]?.name || newBudget.category}` : 'Nom du budget'}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Si vide, le nom sera généré automatiquement à partir de la catégorie
+            </p>
+          </div>
+
+          {/* Informations */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>Période :</strong> {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Le budget sera créé pour le mois sélectionné
+            </p>
+          </div>
+        </div>
+
+        {/* Footer avec boutons */}
+        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+          <button
+            onClick={handleCancelCreate}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            disabled={isLoadingBudgets}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSaveNewBudget}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoadingBudgets || !newBudget.category || newBudget.amount <= 0}
+          >
+            {isLoadingBudgets ? 'Création...' : 'Créer le budget'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
