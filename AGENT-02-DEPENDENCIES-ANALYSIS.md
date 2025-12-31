@@ -1,32 +1,366 @@
-# AGENT 02 - ANALYSE DES DÉPENDANCES POUR PAGE STATISTIQUES BUDGÉTAIRES
+# AGENT 02 - ANALYSE DES DÉPENDANCES SYSTÈME ÉPARGNE UNIFIÉ
 
 **Date**: 2025-01-19  
 **Agent**: Agent 02  
-**Objectif**: Analyser le flux de données budgétaires et identifier les dépendances pour une nouvelle page `/budgets/statistics` nécessitant des données historiques multi-années
+**Objectif**: Mapper les dépendances entre goals, accounts (type='epargne'), challenges et recommendations pour identifier les opportunités d'intégration
 
 ---
 
-## 1. DATABASE TABLES
+## 1. ACCOUNTS SERVICE
 
-### Tables impliquées dans les données budgétaires
+### Structure du Service
 
-**Table principale: `budgets`**
+**Fichier**: `frontend/src/services/accountService.ts`
 
-**Schéma Supabase** (selon `frontend/src/types/supabase.ts`):
-```171:217:frontend/src/types/supabase.ts
-      budgets: {
+**Types de comptes supportés**:
+```typescript
+type AccountType = 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money'
+```
+
+**Structure Account**:
+```70:80:frontend/src/types/index.ts
+export interface Account {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money';
+  balance: number;
+  currency: 'MGA' | 'EUR';
+  isDefault: boolean;
+  displayOrder?: number;
+  createdAt: Date;
+}
+```
+
+### Opérations CRUD
+
+**Méthodes principales**:
+- `getAccounts()`: Récupération offline-first (IndexedDB → Supabase)
+- `getAccountsByType(type: string)`: Filtrage par type
+- `createAccount()`: Création avec sync queue
+- `updateAccount()`: Mise à jour avec sync queue
+- `deleteAccount()`: Suppression avec sync queue
+- `setDefaultAccount()`: Définir compte par défaut
+- `getTotalBalance()`: Calcul solde total
+
+**Pattern Offline-First**:
+- Sauvegarde immédiate dans IndexedDB
+- Sync vers Supabase si online
+- Queue de synchronisation pour mode offline
+
+### Comptes Type 'epargne'
+
+**Caractéristiques**:
+- Type identifié: `'epargne'`
+- Pas de distinction spéciale dans le service
+- Traité comme un type de compte standard
+- Pas de lien automatique avec les goals
+
+**Utilisation actuelle**:
+- Création manuelle par utilisateur
+- Affichage dans AccountsPage avec icône PiggyBank
+- Pas de logique métier spécifique pour l'épargne
+
+---
+
+## 2. CHALLENGE SERVICE
+
+### Structure du Service
+
+**Fichier**: `frontend/src/services/challengeService.ts`
+
+**Types de défis**:
+```16:16:frontend/src/services/challengeService.ts
+export type ChallengeType = 'daily' | 'weekly' | 'monthly' | 'special';
+```
+
+**Types d'exigences**:
+```21:26:frontend/src/services/challengeService.ts
+export type ChallengeRequirementType = 
+  | 'no_expense_category' 
+  | 'save_amount' 
+  | 'complete_quiz' 
+  | 'track_daily' 
+  | 'follow_budget';
+```
+
+**Structure Challenge**:
+```46:58:frontend/src/services/challengeService.ts
+export interface Challenge {
+  readonly id: string;
+  readonly type: ChallengeType;
+  readonly title: string;
+  readonly description: string;
+  readonly requirements: readonly ChallengeRequirement[];
+  readonly duration_days: number;
+  readonly points_reward: number;
+  readonly badge_reward?: string;
+  readonly category?: string;
+  readonly difficulty: 'beginner' | 'intermediate' | 'advanced';
+  readonly tags: readonly string[];
+}
+```
+
+### Défis liés à l'épargne
+
+**Défis avec category='epargne'**:
+1. `daily_save_1000`: Épargne quotidienne (1,000 Ar)
+2. `weekly_save_10000`: Épargne hebdomadaire (10,000 Ar)
+3. `monthly_save_50000`: Épargne mensuelle (50,000 Ar)
+4. `special_rentree_scolaire`: Rentrée scolaire (100,000 Ar)
+5. `special_emergency_fund`: Fonds d'urgence (300,000 Ar)
+6. `special_financial_freedom`: Liberté financière (500,000 Ar)
+7. `special_independence_day`: Jour indépendance (19,600 Ar)
+
+**Calcul de progression**:
+```838:851:frontend/src/services/challengeService.ts
+const calculateSaveAmountProgress = (
+  requirement: ChallengeRequirement,
+  transactions: readonly Transaction[]
+): number => {
+  const totalSaved = transactions
+    .filter(tx => tx.type === 'income' && tx.description.toLowerCase().includes('épargne'))
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  
+  const target = typeof requirement.target_value === 'number' 
+    ? requirement.target_value 
+    : parseInt(requirement.target_value);
+  
+  return Math.min(100, Math.round((totalSaved / target) * 100));
+};
+```
+
+**Problème identifié**: 
+- Le calcul se base sur les transactions avec description contenant "épargne"
+- Pas de vérification du solde des comptes type='epargne'
+- Pas de lien avec les goals
+
+### Système de récompenses
+
+**Points**:
+- Daily: 5-20 points
+- Weekly: 30-80 points
+- Monthly: 100-300 points
+- Special: 200-500 points
+
+**Badges**:
+- 'Champion de l\'Épargne': 100,000 Ar épargnés (calculé approximativement)
+
+---
+
+## 3. RECOMMENDATION SERVICE
+
+### Structure du Service
+
+**Fichier**: `frontend/src/services/recommendationEngineService.ts`
+
+**Thèmes de recommandations**:
+```21:26:frontend/src/services/recommendationEngineService.ts
+export type RecommendationTheme = 
+  | 'savings' 
+  | 'expense_reduction' 
+  | 'budget_optimization' 
+  | 'education' 
+  | 'mobile_money';
+```
+
+**Déclencheurs contextuels**:
+```76:81:frontend/src/services/recommendationEngineService.ts
+const TRIGGER_THRESHOLDS = {
+  BUDGET_OVERSHOT: 20,        // 20% de dépassement budgétaire
+  SAVINGS_LOW: 80,            // 80% de l'objectif d'épargne
+  QUIZ_INACTIVE_DAYS: 7,      // 7 jours sans quiz
+  LARGE_EXPENSE_PERCENT: 30,  // 30% du revenu mensuel
+} as const;
+```
+
+### Calcul de l'épargne actuelle
+
+**Méthode actuelle**:
+```897:912:frontend/src/services/recommendationEngineService.ts
+const calculateCurrentSavings = (transactions: readonly Transaction[]): number => {
+  const last30Days = transactions.filter(tx => 
+    new Date(tx.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  );
+  
+  // Calculer l'épargne comme la différence entre revenus et dépenses
+  const totalIncome = last30Days
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  
+  const totalExpenses = last30Days
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  
+  return Math.max(0, totalIncome - totalExpenses);
+};
+```
+
+**Problème identifié**:
+- Calcul basé sur transactions (revenus - dépenses)
+- Pas de vérification du solde réel des comptes type='epargne'
+- Pas de lien avec les goals
+
+### Recommandations d'épargne
+
+**Templates disponibles**:
+- Épargne automatique Orange Money
+- Fonds d'urgence 3 mois
+- Épargne quotidienne petites sommes
+- Règle 50-30-20
+
+**Déclencheur épargne faible**:
+```412:431:frontend/src/services/recommendationEngineService.ts
+    const savingsPriority = user.preferences?.priorityAnswers?.savings_priority;
+    if (savingsPriority === 'high' || savingsPriority === 'medium') {
+      const currentSavings = calculateCurrentSavings(recentTransactions);
+      const targetSavings = calculateTargetSavings(user);
+      
+      if (currentSavings < (targetSavings * TRIGGER_THRESHOLDS.SAVINGS_LOW / 100)) {
+        triggeredRecommendations.push(createContextualRecommendation(
+          'savings',
+          'medium',
+          'Augmentez votre épargne mensuelle',
+          `Votre épargne actuelle (${formatAriary(currentSavings)}) est en dessous de votre objectif.`,
+          [
+            "Augmentez votre virement automatique d'épargne",
+            "Réduisez une catégorie de dépenses non essentielle",
+            "Vendez des objets non utilisés",
+            "Cherchez des revenus complémentaires"
+          ],
+          `Atteignez ${formatAriary(targetSavings)} d'épargne mensuelle`
+        ));
+      }
+    }
+```
+
+---
+
+## 4. CURRENT INTEGRATIONS
+
+### Connexions existantes
+
+**Aucune connexion directe identifiée**:
+- ❌ Challenges ne référencent pas les goals
+- ❌ Accounts (type='epargne') ne sont pas liés aux goals
+- ❌ Challenges ne vérifient pas les comptes type='epargne'
+- ❌ Recommendations ne consultent pas les comptes type='epargne'
+- ❌ Recommendations ne référencent pas les goals
+
+### Connexions indirectes
+
+**Via transactions**:
+- Challenges calculent l'épargne via transactions avec description "épargne"
+- Recommendations calculent l'épargne via différence revenus/dépenses
+
+**Via User.preferences**:
+- Challenges utilisent `user.preferences.priorityAnswers.savings_priority`
+- Recommendations utilisent `user.preferences.priorityAnswers.savings_priority`
+- Challenges stockent `activeChallenges` et `challengeHistory` dans preferences
+
+---
+
+## 5. DATA FLOW GAPS
+
+### Gaps identifiés
+
+**1. Goals ↔ Accounts (type='epargne')**
+- ❌ Pas de champ `linkedAccountId` dans Goal
+- ❌ Pas de champ `linkedGoalId` dans Account
+- ❌ Pas de service pour lier un goal à un compte épargne
+- ❌ Pas de synchronisation automatique `goal.currentAmount` ↔ `account.balance`
+
+**2. Goals ↔ Challenges**
+- ❌ Pas de champ `linkedGoalId` dans Challenge
+- ❌ Pas de champ `linkedChallengeId` dans Goal
+- ❌ Challenges ne vérifient pas la progression des goals
+- ❌ Pas de défi automatique créé lors de création d'un goal
+
+**3. Accounts (type='epargne') ↔ Challenges**
+- ❌ Challenges ne vérifient pas le solde réel des comptes épargne
+- ❌ Pas de défi suggéré basé sur les comptes épargne existants
+- ❌ Pas de création automatique de compte épargne lors d'un défi
+
+**4. Goals ↔ Recommendations**
+- ❌ Recommendations ne référencent pas les goals actifs
+- ❌ Pas de recommandation générée pour atteindre un goal spécifique
+- ❌ Pas de calcul de progression goal dans les recommendations
+
+**5. Accounts (type='epargne') ↔ Recommendations**
+- ❌ Recommendations ne consultent pas les comptes type='epargne'
+- ❌ Pas de recommandation basée sur le solde réel des comptes
+- ❌ Pas de suggestion de création de compte épargne
+
+---
+
+## 6. INDEXEDDB SCHEMA
+
+### Tables existantes
+
+**Table `accounts`**:
+```294:294:frontend/src/lib/database.ts
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt',
+```
+
+**Champs**:
+- `id`: string (PK)
+- `userId`: string (index)
+- `name`: string
+- `type`: string (pas d'index spécifique pour 'epargne')
+- `balance`: number
+- `currency`: string
+- `createdAt`: Date
+- `updatedAt`: Date
+
+**Table `goals`**:
+```297:297:frontend/src/lib/database.ts
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, [userId+deadline]',
+```
+
+**Champs**:
+- `id`: string (PK)
+- `userId`: string (index)
+- `name`: string
+- `targetAmount`: number
+- `currentAmount`: number
+- `deadline`: Date (index composite avec userId)
+- `createdAt`: Date
+- `updatedAt`: Date
+
+**Table `recurringTransactions`**:
+```307:307:frontend/src/lib/database.ts
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]'
+```
+
+**Note**: `linkedBudgetId` existe mais pas de `linkedGoalId` ou `linkedAccountId` pour épargne
+
+### Tables manquantes pour intégration
+
+**Pas de table de liaison**:
+- ❌ Pas de table `goal_accounts` pour lier goals ↔ accounts
+- ❌ Pas de table `challenge_goals` pour lier challenges ↔ goals
+- ❌ Pas de table `challenge_accounts` pour lier challenges ↔ accounts
+
+---
+
+## 7. SUPABASE SCHEMA
+
+### Table `goals` (Supabase)
+
+**Structure**:
+```218:261:frontend/src/types/supabase.ts
+      goals: {
         Row: {
           id: string
           user_id: string
           name: string
-          category: string
-          amount: number
-          spent: number
-          period: string
-          year: number
-          month: number
-          alert_threshold: number
-          is_active: boolean
+          target_amount: number
+          current_amount: number
+          target_date: string | null
+          category: string | null
+          description: string | null
+          priority: string
+          is_completed: boolean
           created_at: string
           updated_at: string
         }
@@ -34,14 +368,13 @@
           id?: string
           user_id: string
           name: string
-          category: string
-          amount: number
-          spent?: number
-          period?: string
-          year: number
-          month: number
-          alert_threshold?: number
-          is_active?: boolean
+          target_amount: number
+          current_amount?: number
+          target_date?: string | null
+          category?: string | null
+          description?: string | null
+          priority?: string
+          is_completed?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -49,764 +382,281 @@
           id?: string
           user_id?: string
           name?: string
-          category?: string
-          amount?: number
-          spent?: number
-          period?: string
-          year?: number
-          month?: number
-          alert_threshold?: number
-          is_active?: boolean
+          target_amount?: number
+          current_amount?: number
+          target_date?: string | null
+          category?: string | null
+          description?: string | null
+          priority?: string
+          is_completed?: boolean
           created_at?: string
           updated_at?: string
         }
       }
 ```
 
-**Colonnes clés pour les statistiques**:
-- `user_id`: UUID - Filtre par utilisateur
-- `category`: VARCHAR - Catégorie de transaction (normalisée en lowercase)
-- `amount`: NUMERIC - Montant budgétaire
-- `spent`: NUMERIC - Montant dépensé (calculé dynamiquement)
-- `year`: INTEGER - Année du budget
-- `month`: INTEGER (1-12) - Mois du budget
-- `period`: VARCHAR - Période ('monthly', 'weekly', 'yearly')
-- `is_active`: BOOLEAN - Budget actif ou non
-- `created_at`, `updated_at`: TIMESTAMPTZ - Métadonnées temporelles
+**Champs manquants pour intégration**:
+- ❌ Pas de `linked_account_id` (référence vers accounts)
+- ❌ Pas de `linked_challenge_id` (référence vers challenges)
 
-**Table secondaire: `transactions`**
+### Table `accounts` (Supabase)
 
-**Colonnes pertinentes**:
-- `user_id`: UUID - Filtre par utilisateur
-- `type`: VARCHAR - Type ('income', 'expense', 'transfer')
-- `category`: VARCHAR - Catégorie (doit correspondre aux budgets)
-- `amount`: NUMERIC - Montant de la transaction
-- `date`: DATE - Date de la transaction
-- `created_at`: TIMESTAMPTZ - Date de création
+**Structure référencée dans code**:
+- `id`, `user_id`, `name`, `type`, `balance`, `currency`, `is_default`, `display_order`
 
-**Relation**:
-- Les budgets et transactions sont liés par `user_id` et `category`
-- Pas de FOREIGN KEY explicite entre `budgets.category` et `transactions.category`
-- Le champ `spent` dans `budgets` est calculé dynamiquement à partir des transactions
-
-**Index existants** (selon `frontend/src/lib/database.ts`):
-```197:197:frontend/src/lib/database.ts
-      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
-```
-
-**Index composite**: `[userId+year+month]` pour requêtes efficaces par utilisateur, année et mois.
+**Champs manquants pour intégration**:
+- ❌ Pas de `linked_goal_id` (référence vers goals)
+- ❌ Pas de `is_savings_account` (flag explicite)
+- ❌ Pas de `savings_goal_id` (goal associé)
 
 ---
 
-## 2. EXISTING QUERIES
+## 8. INTEGRATION OPPORTUNITIES
 
-### Requêtes Supabase actuelles pour les budgets
+### Opportunité 1: Goals ↔ Accounts (type='epargne')
 
-### 2.1 Récupération de tous les budgets (apiService.getBudgets)
+**Problème actuel**:
+- Les goals ont un `currentAmount` qui n'est pas synchronisé avec le solde réel des comptes épargne
+- L'utilisateur doit mettre à jour manuellement le goal quand il épargne
 
-**Fichier**: `frontend/src/services/apiService.ts`
+**Solution proposée**:
+1. Ajouter `linkedAccountId` dans Goal (référence vers Account type='epargne')
+2. Ajouter `linkedGoalId` dans Account (optionnel, pour comptes épargne)
+3. Créer un service `goalAccountSyncService.ts`:
+   - Synchroniser automatiquement `goal.currentAmount` = `account.balance`
+   - Déclencher lors de modifications de compte épargne
+   - Déclencher lors de modifications de goal
 
-```359:377:frontend/src/services/apiService.ts
-  async getBudgets(): Promise<ApiResponse<Budget[]>> {
-    try {
-      const userId = await this.getCurrentUserId();
-      if (!userId) {
-        return { success: false, error: 'Utilisateur non authentifié' };
-      }
+**Avantages**:
+- Synchronisation automatique
+- Vue unifiée de l'épargne
+- Pas de double saisie
 
-      const { data, error } = await db.budgets()
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+### Opportunité 2: Goals ↔ Challenges
 
-      return { success: true, data: data || [] };
-    } catch (error) {
-      return this.handleError(error, 'getBudgets');
-    }
-  }
-```
+**Problème actuel**:
+- Les challenges d'épargne calculent la progression via transactions
+- Pas de lien avec les goals réels de l'utilisateur
 
-**Caractéristiques**:
-- Récupère TOUS les budgets de l'utilisateur
-- Pas de filtre par année ou mois
-- Tri par `created_at` décroissant
-- Pas d'agrégation
+**Solution proposée**:
+1. Ajouter `linkedGoalId` dans Challenge (optionnel)
+2. Modifier `calculateSaveAmountProgress()` pour vérifier `goal.currentAmount` si `linkedGoalId` existe
+3. Créer des défis automatiques lors de création d'un goal:
+   - "Atteignez votre goal [nom]" avec target = `goal.targetAmount`
+   - Points basés sur la difficulté du goal
 
-### 2.2 Récupération des budgets par année (useYearlyBudgetData)
+**Avantages**:
+- Défis personnalisés basés sur les goals réels
+- Progression visible dans les deux systèmes
+- Motivation accrue
 
-**Fichier**: `frontend/src/hooks/useYearlyBudgetData.ts`
+### Opportunité 3: Accounts (type='epargne') ↔ Challenges
 
-```131:135:frontend/src/hooks/useYearlyBudgetData.ts
-      const { data, error: supabaseError } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', targetYear);
-```
+**Problème actuel**:
+- Challenges vérifient les transactions, pas le solde réel des comptes
 
-**Caractéristiques**:
-- Filtre par `user_id` ET `year`
-- Récupère tous les budgets d'une année spécifique
-- Pas de filtre par mois
-- Pas d'agrégation
+**Solution proposée**:
+1. Modifier `calculateSaveAmountProgress()` pour:
+   - D'abord vérifier si un compte type='epargne' existe
+   - Utiliser le solde réel du compte si disponible
+   - Fallback sur transactions si pas de compte
+2. Créer un défi automatique lors de création d'un compte épargne:
+   - "Épargnez dans votre nouveau compte"
+   - Target basé sur le solde initial
 
-### 2.3 Récupération des transactions par année (useYearlyBudgetData)
+**Avantages**:
+- Calcul précis basé sur solde réel
+- Défis contextuels lors de création compte
+- Meilleure traçabilité
 
-**Fichier**: `frontend/src/hooks/useYearlyBudgetData.ts`
+### Opportunité 4: Goals ↔ Recommendations
 
-```223:229:frontend/src/hooks/useYearlyBudgetData.ts
-      const { data, error: supabaseError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('type', 'expense')
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0]);
-```
+**Problème actuel**:
+- Recommendations calculent l'épargne via transactions
+- Pas de référence aux goals actifs
 
-**Caractéristiques**:
-- Filtre par `user_id`, `type='expense'`, et plage de dates
-- Récupère toutes les transactions de dépenses d'une année
-- Pas d'agrégation côté base de données
+**Solution proposée**:
+1. Modifier `calculateCurrentSavings()` pour:
+   - Vérifier les goals actifs avec `linkedAccountId`
+   - Utiliser `goal.currentAmount` si disponible
+   - Fallback sur transactions
+2. Générer des recommendations spécifiques aux goals:
+   - "Vous êtes à X% de votre goal [nom]"
+   - "Il vous reste Y jours pour atteindre votre goal"
+   - "Épargnez Z Ar/jour pour atteindre votre goal à temps"
 
-### 2.4 Calcul des montants dépensés (BudgetsPage)
+**Avantages**:
+- Recommendations personnalisées
+- Motivation basée sur goals réels
+- Calculs précis
 
-**Fichier**: `frontend/src/pages/BudgetsPage.tsx`
+### Opportunité 5: Accounts (type='epargne') ↔ Recommendations
 
-```103:143:frontend/src/pages/BudgetsPage.tsx
-  const calculateSpentAmounts = async (budgets: any[]) => {
-    if (!user) return budgets;
+**Problème actuel**:
+- Recommendations ne consultent pas les comptes type='epargne'
 
-    try {
-      console.log('🔍 DEBUG: Calculating spent amounts from transactions...');
-      console.log('📊 DEBUG STEP 1 - Input budgets parameter:', budgets.map(b => ({
-        id: b.id,
-        category: b.category,
-        amount: b.amount,
-        spent: b.spent,
-        month: b.month,
-        year: b.year
-      })));
-      
-      // Charger les transactions du mois sélectionné
-      const transactionsResponse = await apiService.getTransactions();
-      if (!transactionsResponse.success || !transactionsResponse.data) {
-        console.warn('⚠️ DEBUG: Could not load transactions for spent calculation');
-        return budgets;
-      }
+**Solution proposée**:
+1. Modifier `calculateCurrentSavings()` pour:
+   - Récupérer tous les comptes type='epargne'
+   - Sommer les soldes réels
+   - Utiliser comme source de vérité principale
+2. Générer des recommendations basées sur les comptes:
+   - "Vous avez X comptes épargne avec un total de Y Ar"
+   - "Créez un compte épargne dédié pour votre goal [nom]"
+   - "Répartissez votre épargne entre plusieurs comptes"
 
-      const transactions = transactionsResponse.data;
-      console.log('🔍 DEBUG: Loaded transactions for spent calculation:', transactions.length);
+**Avantages**:
+- Vue précise de l'épargne réelle
+- Recommendations basées sur données réelles
+- Suggestions de création de comptes
 
-      // Filtrer les transactions du mois sélectionné et de type expense
-      const currentMonthTransactions = transactions.filter(transaction => {
-        const transactionDate = new Date(transaction.date);
-        return transactionDate.getMonth() + 1 === selectedMonth && 
-               transactionDate.getFullYear() === selectedYear &&
-               transaction.type === 'expense';
-      });
+### Opportunité 6: Système unifié d'épargne
 
-      console.log('🔍 DEBUG: Current month expense transactions:', currentMonthTransactions.length);
+**Vision globale**:
+Créer un service `unifiedSavingsService.ts` qui:
+1. **Gère les liens**:
+   - Goals ↔ Accounts (type='epargne')
+   - Goals ↔ Challenges
+   - Accounts ↔ Challenges
 
-      // Calculer les montants dépensés par catégorie
-      // Normaliser les catégories de transactions en lowercase pour le matching
-      const spentByCategory: Record<string, number> = {};
-      currentMonthTransactions.forEach(transaction => {
-        const normalizedCategory = transaction.category.toLowerCase();
-        spentByCategory[normalizedCategory] = (spentByCategory[normalizedCategory] || 0) + Math.abs(transaction.amount);
-      });
-```
+2. **Synchronisation automatique**:
+   - `goal.currentAmount` ↔ `account.balance`
+   - Progression challenges basée sur goals/comptes réels
+   - Recommendations basées sur données unifiées
 
-**Caractéristiques**:
-- Charge TOUTES les transactions puis filtre côté client
-- Agrégation par catégorie côté client
-- Calcul pour un mois spécifique uniquement
-- Pas de requête optimisée pour multi-années
+3. **Création automatique**:
+   - Compte épargne lors de création d'un goal (optionnel)
+   - Challenge lors de création d'un goal (optionnel)
+   - Goal suggéré lors de création d'un compte épargne
+
+4. **Vue unifiée**:
+   - Dashboard montrant: Goals → Comptes → Challenges → Recommendations
+   - Progression visible dans tous les systèmes
+   - Actions suggérées basées sur l'état global
 
 ---
 
-## 3. DATA FLOW
+## 9. RECOMMANDATIONS PRIORITAIRES
 
-### Flux de données actuel: Database → UI
+### Priorité P0 (Critique)
 
-**Pattern: OFFLINE-FIRST**
+1. **Ajouter `linkedAccountId` dans Goal**
+   - Permet de lier un goal à un compte épargne spécifique
+   - Synchronisation automatique `currentAmount` ↔ `balance`
 
-**Étape 1: IndexedDB (Source primaire)**
-```109:122:frontend/src/services/budgetService.ts
-  const fetchBudgets = useCallback(async (userId: string): Promise<Budget[]> => {
-    try {
-      // STEP 1: Essayer IndexedDB d'abord
-      console.log(`📊 [useYearlyBudgetData] Récupération des budgets ${targetYear} depuis IndexedDB...`);
-      const localBudgets = await db.budgets
-        .where('userId')
-        .equals(userId)
-        .filter(budget => budget.year === targetYear)
-        .toArray();
+2. **Modifier `calculateSaveAmountProgress()` pour utiliser comptes réels**
+   - Vérifier comptes type='epargne' en premier
+   - Fallback sur transactions si pas de compte
 
-      if (localBudgets.length > 0) {
-        console.log(`✅ [useYearlyBudgetData] ${localBudgets.length} budget(s) récupéré(s) depuis IndexedDB`);
-        return localBudgets;
-      }
-```
+3. **Modifier `calculateCurrentSavings()` dans recommendations**
+   - Utiliser soldes réels des comptes type='epargne'
+   - Fallback sur transactions
 
-**Étape 2: Supabase (Si IndexedDB vide et online)**
-```130:139:frontend/src/hooks/useYearlyBudgetData.ts
-      console.log(`🌐 [useYearlyBudgetData] Récupération des budgets ${targetYear} depuis Supabase...`);
-      const { data, error: supabaseError } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', targetYear);
+### Priorité P1 (Important)
 
-      if (supabaseError) {
-        throw supabaseError;
-      }
-```
+4. **Créer `goalAccountSyncService.ts`**
+   - Service de synchronisation automatique
+   - Écoute modifications comptes et goals
 
-**Étape 3: Mapping Supabase → Budget**
-```142:152:frontend/src/hooks/useYearlyBudgetData.ts
-      // Mapper les données Supabase vers le format Budget
-      const supabaseBudgets: Budget[] = (data || []).map((item: any) => ({
-        id: item.id,
-        userId: item.user_id,
-        category: item.category,
-        amount: item.amount,
-        spent: item.spent || 0,
-        period: item.period || 'monthly',
-        year: item.year,
-        month: item.month,
-        alertThreshold: item.alert_threshold || 80
-      }));
-```
+5. **Ajouter `linkedGoalId` dans Challenge**
+   - Permet de créer des défis liés à des goals spécifiques
+   - Calcul de progression basé sur goal
 
-**Étape 4: Cache dans IndexedDB**
-```154:162:frontend/src/hooks/useYearlyBudgetData.ts
-      // Sauvegarder dans IndexedDB pour la prochaine fois
-      if (supabaseBudgets.length > 0) {
-        try {
-          await db.budgets.bulkPut(supabaseBudgets);
-          console.log(`💾 [useYearlyBudgetData] ${supabaseBudgets.length} budget(s) sauvegardé(s) dans IndexedDB`);
-        } catch (idbError) {
-          console.error('❌ [useYearlyBudgetData] Erreur lors de la sauvegarde dans IndexedDB:', idbError);
-        }
-      }
-```
+6. **Générer recommendations basées sur goals actifs**
+   - Recommendations personnalisées par goal
+   - Calculs de progression et temps restant
 
-**Étape 5: Agrégation côté client**
-```370:413:frontend/src/hooks/useYearlyBudgetData.ts
-  const categoryBreakdown = useMemo(() => {
-    const breakdownMap = new Map<TransactionCategory, { budget: number; spent: number }>();
+### Priorité P2 (Amélioration)
 
-    // Initialiser toutes les catégories avec 0
-    Object.keys(TRANSACTION_CATEGORIES).forEach(category => {
-      breakdownMap.set(category as TransactionCategory, { budget: 0, spent: 0 });
-    });
+7. **Créer défis automatiques lors de création goal**
+   - Défi "Atteignez votre goal [nom]"
+   - Points et badges associés
 
-    // Agréger les budgets par catégorie
-    budgets.forEach(budget => {
-      const current = breakdownMap.get(budget.category) || { budget: 0, spent: 0 };
-      breakdownMap.set(budget.category, {
-        budget: current.budget + budget.amount,
-        spent: current.spent + budget.spent
-      });
-    });
+8. **Créer compte épargne suggéré lors de création goal**
+   - Option "Créer un compte épargne dédié"
+   - Lien automatique goal ↔ compte
 
-    // Agréger les dépenses par catégorie
-    transactions.forEach(transaction => {
-      const current = breakdownMap.get(transaction.category) || { budget: 0, spent: 0 };
-      breakdownMap.set(transaction.category, {
-        budget: current.budget,
-        spent: current.spent + Math.abs(transaction.amount)
-      });
-    });
-
-    // Convertir en tableau avec calcul du taux de conformité
-    return Array.from(breakdownMap.entries())
-      .map(([category, data]) => {
-        const complianceRate = data.budget === 0
-          ? (data.spent === 0 ? 100 : 0)
-          : Math.max(0, Math.min(100, ((data.budget - data.spent) / data.budget) * 100));
-
-        return {
-          category,
-          categoryName: TRANSACTION_CATEGORIES[category]?.name || category,
-          yearlyBudget: data.budget,
-          yearlySpent: data.spent,
-          complianceRate: Math.round(complianceRate * 100) / 100 // Arrondir à 2 décimales
-        };
-      })
-      .filter(item => item.yearlyBudget > 0 || item.yearlySpent > 0) // Filtrer les catégories vides
-      .sort((a, b) => b.yearlyBudget - a.yearlyBudget); // Trier par budget décroissant
-  }, [budgets, transactions]);
-```
-
-**Résumé du flux**:
-1. **IndexedDB** → Vérification locale (offline-first)
-2. **Supabase** → Fetch si IndexedDB vide et online
-3. **Mapping** → Conversion snake_case → camelCase
-4. **Cache** → Sauvegarde dans IndexedDB
-5. **Agrégation** → Calculs côté client (useMemo)
+9. **Dashboard unifié épargne**
+   - Vue consolidée: Goals + Comptes + Challenges + Recommendations
+   - Progression visible dans tous les systèmes
 
 ---
 
-## 4. YEARLY DATA ACCESS
+## 10. SCHÉMA DE DONNÉES PROPOSÉ
 
-### Comment les données annuelles sont actuellement récupérées
+### Modifications Goal
 
-**Hook: `useYearlyBudgetData`**
-
-**Limitations actuelles**:
-- ✅ Récupère les budgets d'une année spécifique
-- ✅ Récupère les transactions d'une année spécifique
-- ❌ Ne supporte qu'UNE année à la fois
-- ❌ Pas de comparaison multi-années
-- ❌ Agrégation côté client uniquement
-
-**Requête budgets**:
-```131:135:frontend/src/hooks/useYearlyBudgetData.ts
-      const { data, error: supabaseError } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', targetYear);
-```
-
-**Requête transactions**:
-```223:229:frontend/src/hooks/useYearlyBudgetData.ts
-      const { data, error: supabaseError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('type', 'expense')
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0]);
-```
-
-**Agrégation mensuelle côté client**:
-```418:455:frontend/src/hooks/useYearlyBudgetData.ts
-  const monthlyData = useMemo(() => {
-    const monthlyMap = new Map<number, { budget: number; spent: number }>();
-
-    // Initialiser tous les mois avec 0
-    for (let month = 1; month <= 12; month++) {
-      monthlyMap.set(month, { budget: 0, spent: 0 });
-    }
-
-    // Agréger les budgets par mois
-    budgets.forEach(budget => {
-      const current = monthlyMap.get(budget.month) || { budget: 0, spent: 0 };
-      monthlyMap.set(budget.month, {
-        budget: current.budget + budget.amount,
-        spent: current.spent + budget.spent
-      });
-    });
-
-    // Agréger les dépenses par mois
-    transactions.forEach(transaction => {
-      const transactionDate = new Date(transaction.date);
-      const month = transactionDate.getMonth() + 1; // 1-12
-      const current = monthlyMap.get(month) || { budget: 0, spent: 0 };
-      monthlyMap.set(month, {
-        budget: current.budget,
-        spent: current.spent + Math.abs(transaction.amount)
-      });
-    });
-
-    // Convertir en tableau avec noms de mois
-    return Array.from(monthlyMap.entries())
-      .map(([month, data]) => ({
-        month,
-        monthName: MONTH_NAMES[month - 1],
-        budget: data.budget,
-        spent: data.spent
-      }))
-      .sort((a, b) => a.month - b.month); // Trier par mois croissant
-  }, [budgets, transactions]);
-```
-
-**Problème pour multi-années**:
-- Nécessite plusieurs appels séparés (un par année)
-- Toutes les données sont chargées en mémoire avant agrégation
-- Pas d'optimisation pour comparaisons inter-années
-
----
-
-## 5. MISSING CAPABILITIES
-
-### Fonctionnalités manquantes pour l'analyse multi-années
-
-### 5.1 Requêtes agrégées multi-années
-
-**Manque actuel**:
-- ❌ Pas de requête pour récupérer budgets de plusieurs années en une fois
-- ❌ Pas d'agrégation côté base de données (SUM, AVG, GROUP BY)
-- ❌ Pas de vue matérialisée pour statistiques budgétaires
-
-**Nécessaire pour `/budgets/statistics`**:
-```sql
--- Exemple de requête nécessaire (non existante actuellement)
-SELECT 
-  year,
-  category,
-  SUM(amount) as total_budget,
-  SUM(spent) as total_spent,
-  COUNT(*) as budget_count
-FROM budgets
-WHERE user_id = $1
-  AND year BETWEEN $2 AND $3
-GROUP BY year, category
-ORDER BY year DESC, category;
-```
-
-### 5.2 Comparaisons inter-années
-
-**Manque actuel**:
-- ❌ Pas de calcul de variation année sur année (YoY)
-- ❌ Pas de tendances multi-années
-- ❌ Pas de détection de patterns de dépassement récurrents
-
-**Nécessaire**:
-- Calcul de `(year_n - year_n-1) / year_n-1 * 100` pour chaque catégorie
-- Identification des catégories avec dépassement récurrent
-- Tendances de croissance/décroissance budgétaire
-
-### 5.3 Agrégations par catégorie multi-années
-
-**Manque actuel**:
-- ❌ Pas de vue agrégée par catégorie sur plusieurs années
-- ❌ Pas de calcul de moyenne annuelle par catégorie
-- ❌ Pas de détection de catégories problématiques (dépassement > X% sur Y années)
-
-**Nécessaire**:
-```sql
--- Exemple de requête nécessaire
-SELECT 
-  category,
-  AVG(total_budget) as avg_yearly_budget,
-  AVG(total_spent) as avg_yearly_spent,
-  COUNT(CASE WHEN total_spent > total_budget THEN 1 END) as overspending_years,
-  MAX(total_spent - total_budget) as max_overrun
-FROM (
-  SELECT 
-    year,
-    category,
-    SUM(amount) as total_budget,
-    SUM(spent) as total_spent
-  FROM budgets
-  WHERE user_id = $1
-    AND year BETWEEN $2 AND $3
-  GROUP BY year, category
-) yearly_totals
-GROUP BY category
-ORDER BY overspending_years DESC;
-```
-
-### 5.4 Détection de patterns de dépassement
-
-**Manque actuel**:
-- ❌ Pas de fonction pour identifier les mois/années avec dépassement
-- ❌ Pas d'analyse de fréquence de dépassement
-- ❌ Pas de calcul de sévérité moyenne des dépassements
-
-**Nécessaire**:
-- Identification des mois récurrents avec dépassement (ex: toujours en décembre)
-- Calcul du pourcentage moyen de dépassement par catégorie
-- Détection de tendances saisonnières
-
-### 5.5 Optimisation des requêtes
-
-**Problèmes actuels**:
-- ❌ Chargement de TOUTES les transactions puis filtrage côté client
-- ❌ Pas de pagination pour grandes quantités de données
-- ❌ Pas de cache des agrégations côté serveur
-
-**Nécessaire**:
-- Requêtes avec agrégation côté base de données
-- Pagination pour données historiques étendues
-- Cache des résultats d'agrégation (vues matérialisées ou fonctions RPC)
-
----
-
-## 6. SUPABASE FUNCTIONS
-
-### Fonctions RPC existantes
-
-### 6.1 Fonctions admin (non pertinentes pour budgets)
-
-**Fichier**: `frontend/supabase-admin-functions.sql`
-
-**Fonctions existantes**:
-- `get_all_users_admin()` - Récupère tous les utilisateurs (admin)
-- `get_admin_stats()` - Statistiques application-wide (admin)
-- `delete_user_admin()` - Suppression utilisateur (admin)
-
-**Pertinence**: ❌ Non pertinentes pour les statistiques budgétaires utilisateur
-
-### 6.2 Fonctions exchange rate
-
-**Fichier**: `frontend/src/services/exchangeRateService.ts`
-
-**Fonctions utilisées**:
-- `needs_rate_update()` - Vérifie si taux de change à jour
-- `insert_daily_rate()` - Insère taux de change quotidien
-- `get_exchange_rate()` - Récupère taux de change
-
-**Pertinence**: ❌ Non pertinentes pour les budgets
-
-### 6.3 Fonctions family group
-
-**Fichier**: `frontend/src/services/familyGroupService.ts`
-
-**Fonctions utilisées**:
-- `generate_family_invite_code()` - Génère code d'invitation famille
-
-**Pertinence**: ❌ Non pertinentes pour les budgets
-
-### 6.4 Fonctions construction POC
-
-**Fichier**: `frontend/src/modules/construction-poc/services/bcNumberReservationService.ts`
-
-**Fonctions utilisées**:
-- `get_next_bc_number()` - Récupère prochain numéro BC
-- `reserve_bc_number()` - Réserve numéro BC
-- `release_bc_number()` - Libère numéro BC
-- `confirm_bc_number()` - Confirme numéro BC
-
-**Pertinence**: ❌ Non pertinentes pour les budgets
-
-### 6.5 Résumé: Aucune fonction RPC pour budgets
-
-**Conclusion**: 
-- ❌ **Aucune fonction RPC existante** pour les budgets ou statistiques budgétaires
-- ❌ **Aucune vue** pour agrégations budgétaires
-- ❌ **Aucune fonction** pour comparaisons multi-années
-
-**Recommandation**: Créer de nouvelles fonctions RPC pour optimiser les requêtes multi-années.
-
----
-
-## 7. RECOMMANDATIONS POUR NOUVELLE PAGE STATISTIQUES
-
-### 7.1 Nouvelles fonctions RPC nécessaires
-
-**Fonction 1: `get_budget_statistics_multi_year`**
-```sql
-CREATE OR REPLACE FUNCTION get_budget_statistics_multi_year(
-  p_user_id UUID,
-  p_start_year INTEGER,
-  p_end_year INTEGER
-)
-RETURNS TABLE (
-  year INTEGER,
-  category VARCHAR,
-  total_budget NUMERIC,
-  total_spent NUMERIC,
-  budget_count INTEGER,
-  avg_monthly_budget NUMERIC,
-  avg_monthly_spent NUMERIC,
-  overspending_count INTEGER,
-  max_overrun NUMERIC
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    b.year,
-    b.category,
-    SUM(b.amount) as total_budget,
-    SUM(b.spent) as total_spent,
-    COUNT(*) as budget_count,
-    AVG(b.amount) as avg_monthly_budget,
-    AVG(b.spent) as avg_monthly_spent,
-    COUNT(CASE WHEN b.spent > b.amount THEN 1 END) as overspending_count,
-    MAX(b.spent - b.amount) as max_overrun
-  FROM budgets b
-  WHERE b.user_id = p_user_id
-    AND b.year BETWEEN p_start_year AND p_end_year
-    AND b.is_active = true
-  GROUP BY b.year, b.category
-  ORDER BY b.year DESC, b.category;
-END;
-$$;
-```
-
-**Fonction 2: `get_budget_category_trends`**
-```sql
-CREATE OR REPLACE FUNCTION get_budget_category_trends(
-  p_user_id UUID,
-  p_start_year INTEGER,
-  p_end_year INTEGER
-)
-RETURNS TABLE (
-  category VARCHAR,
-  avg_yearly_budget NUMERIC,
-  avg_yearly_spent NUMERIC,
-  total_years INTEGER,
-  overspending_years INTEGER,
-  overspending_rate NUMERIC,
-  max_overrun NUMERIC,
-  trend_direction VARCHAR -- 'increasing', 'decreasing', 'stable'
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  WITH yearly_totals AS (
-    SELECT 
-      year,
-      category,
-      SUM(amount) as total_budget,
-      SUM(spent) as total_spent
-    FROM budgets
-    WHERE user_id = p_user_id
-      AND year BETWEEN p_start_year AND p_end_year
-      AND is_active = true
-    GROUP BY year, category
-  )
-  SELECT 
-    yt.category,
-    AVG(yt.total_budget) as avg_yearly_budget,
-    AVG(yt.total_spent) as avg_yearly_spent,
-    COUNT(DISTINCT yt.year) as total_years,
-    COUNT(CASE WHEN yt.total_spent > yt.total_budget THEN 1 END) as overspending_years,
-    ROUND(
-      COUNT(CASE WHEN yt.total_spent > yt.total_budget THEN 1 END)::NUMERIC / 
-      COUNT(DISTINCT yt.year)::NUMERIC * 100, 
-      2
-    ) as overspending_rate,
-    MAX(yt.total_spent - yt.total_budget) as max_overrun,
-    CASE 
-      WHEN AVG(yt.total_spent) > AVG(yt.total_budget) * 1.1 THEN 'increasing'
-      WHEN AVG(yt.total_spent) < AVG(yt.total_budget) * 0.9 THEN 'decreasing'
-      ELSE 'stable'
-    END as trend_direction
-  FROM yearly_totals yt
-  GROUP BY yt.category
-  ORDER BY overspending_years DESC, avg_yearly_spent DESC;
-END;
-$$;
-```
-
-**Fonction 3: `get_budget_monthly_patterns`**
-```sql
-CREATE OR REPLACE FUNCTION get_budget_monthly_patterns(
-  p_user_id UUID,
-  p_start_year INTEGER,
-  p_end_year INTEGER
-)
-RETURNS TABLE (
-  month INTEGER,
-  category VARCHAR,
-  avg_budget NUMERIC,
-  avg_spent NUMERIC,
-  overspending_frequency NUMERIC,
-  avg_overrun_percentage NUMERIC
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    b.month,
-    b.category,
-    AVG(b.amount) as avg_budget,
-    AVG(b.spent) as avg_spent,
-    ROUND(
-      COUNT(CASE WHEN b.spent > b.amount THEN 1 END)::NUMERIC / 
-      COUNT(*)::NUMERIC * 100, 
-      2
-    ) as overspending_frequency,
-    AVG(
-      CASE 
-        WHEN b.amount > 0 THEN ((b.spent - b.amount) / b.amount * 100)
-        ELSE 0
-      END
-    ) as avg_overrun_percentage
-  FROM budgets b
-  WHERE b.user_id = p_user_id
-    AND b.year BETWEEN p_start_year AND p_end_year
-    AND b.is_active = true
-  GROUP BY b.month, b.category
-  HAVING COUNT(*) >= 2 -- Au moins 2 années de données
-  ORDER BY b.month, overspending_frequency DESC;
-END;
-$$;
-```
-
-### 7.2 Nouveau hook recommandé
-
-**Hook: `useBudgetStatistics`**
 ```typescript
-interface BudgetStatisticsParams {
-  startYear: number;
-  endYear: number;
-}
-
-interface BudgetStatisticsReturn {
-  multiYearData: MultiYearBudgetData[];
-  categoryTrends: CategoryTrend[];
-  monthlyPatterns: MonthlyPattern[];
-  isLoading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-function useBudgetStatistics(params: BudgetStatisticsParams): BudgetStatisticsReturn {
-  // Appel RPC pour données multi-années
-  // Appel RPC pour tendances catégories
-  // Appel RPC pour patterns mensuels
-  // Cache dans IndexedDB pour offline-first
+interface Goal {
+  // ... champs existants
+  linkedAccountId?: string; // ID du compte épargne lié
+  linkedChallengeId?: string; // ID du challenge lié (optionnel)
 }
 ```
 
-### 7.3 Optimisations recommandées
+### Modifications Account
 
-**1. Cache côté serveur**:
-- Créer une vue matérialisée pour statistiques budgétaires
-- Rafraîchir quotidiennement ou à la demande
+```typescript
+interface Account {
+  // ... champs existants
+  linkedGoalId?: string; // ID du goal lié (pour comptes type='epargne')
+  isSavingsAccount?: boolean; // Flag explicite (dérivé de type='epargne')
+}
+```
 
-**2. Pagination**:
-- Limiter les résultats par année (ex: max 5 années à la fois)
-- Charger progressivement les données historiques
+### Modifications Challenge
 
-**3. Index supplémentaires**:
-```sql
-CREATE INDEX IF NOT EXISTS idx_budgets_user_year_category 
-ON budgets(user_id, year, category);
+```typescript
+interface Challenge {
+  // ... champs existants
+  linkedGoalId?: string; // ID du goal lié (optionnel)
+}
 
-CREATE INDEX IF NOT EXISTS idx_transactions_user_date_category 
-ON transactions(user_id, date, category) 
-WHERE type = 'expense';
+interface ActiveChallenge {
+  // ... champs existants
+  linkedGoalId?: string; // ID du goal lié
+  linkedAccountId?: string; // ID du compte épargne lié
+}
+```
+
+### Nouveau Service
+
+```typescript
+// unifiedSavingsService.ts
+class UnifiedSavingsService {
+  // Lier un goal à un compte épargne
+  linkGoalToAccount(goalId: string, accountId: string): Promise<void>
+  
+  // Synchroniser goal.currentAmount avec account.balance
+  syncGoalWithAccount(goalId: string): Promise<void>
+  
+  // Créer un challenge automatique pour un goal
+  createChallengeForGoal(goalId: string): Promise<ActiveChallenge>
+  
+  // Créer un compte épargne pour un goal
+  createAccountForGoal(goalId: string): Promise<Account>
+  
+  // Calculer la progression d'un goal
+  calculateGoalProgress(goalId: string): Promise<number>
+  
+  // Obtenir vue unifiée épargne
+  getUnifiedSavingsView(userId: string): Promise<UnifiedSavingsView>
+}
 ```
 
 ---
 
 ## CONCLUSION
 
-**État actuel**:
-- ✅ Structure de données solide avec `budgets` et `transactions`
-- ✅ Pattern offline-first bien établi
-- ✅ Agrégation côté client fonctionnelle pour une année
-- ❌ Pas de support multi-années
-- ❌ Pas d'agrégation côté base de données
-- ❌ Pas de fonctions RPC pour statistiques
+**État actuel**: Les systèmes goals, accounts (type='epargne'), challenges et recommendations fonctionnent de manière isolée sans connexions directes.
 
-**Recommandations pour `/budgets/statistics`**:
-1. Créer 3 nouvelles fonctions RPC pour optimiser les requêtes
-2. Créer un nouveau hook `useBudgetStatistics` pour gérer les données multi-années
-3. Ajouter des index pour améliorer les performances
-4. Implémenter le cache offline-first pour les statistiques
-5. Créer des vues matérialisées optionnelles pour cache serveur
+**Opportunité principale**: Créer un système unifié d'épargne qui synchronise automatiquement les données entre ces systèmes et génère des défis et recommendations personnalisées basées sur les goals et comptes réels.
 
-**AGENT-02-DEPENDENCIES-COMPLETE**
+**Impact attendu**:
+- ✅ Synchronisation automatique (pas de double saisie)
+- ✅ Vue unifiée de l'épargne
+- ✅ Défis et recommendations personnalisées
+- ✅ Motivation accrue via gamification liée aux goals réels
+- ✅ Calculs précis basés sur données réelles
 
-
+**AGENT-2-DEPENDENCIES-COMPLETE**

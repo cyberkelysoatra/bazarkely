@@ -367,6 +367,76 @@ export class BazarKELYDB extends Dexie {
       console.log('✅ [Database] syncQueue migration to v8 complete');
     });
 
+    // Version 9 - Unified Savings System: Ajout de linkedAccountId dans goals et linkedGoalId/isSavingsAccount dans accounts
+    this.version(9).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, [userId+deadline], [userId+linkedAccountId]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 [Database] Migrating to v9 - Adding unified savings system indexes');
+      
+      // Vérifier que les tables existent avant migration
+      const tableNames = ['accounts', 'goals'];
+      for (const tableName of tableNames) {
+        try {
+          const table = trans.table(tableName);
+          const records = await table.toArray();
+          
+          if (tableName === 'accounts') {
+            // Initialiser les nouveaux champs pour accounts
+            for (const account of records) {
+              const updates: any = {};
+              // Initialiser linkedGoalId si non défini
+              if ((account as any).linkedGoalId === undefined) {
+                updates.linkedGoalId = null;
+              }
+              // Initialiser isSavingsAccount basé sur type='epargne'
+              if ((account as any).isSavingsAccount === undefined) {
+                updates.isSavingsAccount = (account as any).type === 'epargne';
+              }
+              
+              if (Object.keys(updates).length > 0) {
+                await table.update(account.id, updates);
+              }
+            }
+            console.log(`✅ Migrated ${records.length} accounts with new fields`);
+          }
+          
+          if (tableName === 'goals') {
+            // Initialiser le nouveau champ pour goals
+            for (const goal of records) {
+              const updates: any = {};
+              // Initialiser linkedAccountId si non défini
+              if ((goal as any).linkedAccountId === undefined) {
+                updates.linkedAccountId = null;
+              }
+              
+              if (Object.keys(updates).length > 0) {
+                await table.update(goal.id, updates);
+              }
+            }
+            console.log(`✅ Migrated ${records.length} goals with new fields`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Could not migrate table ${tableName}:`, error);
+        }
+      }
+      
+      console.log('✅ [Database] Migration to v9 complete - Unified savings system indexes added');
+    });
+
     // Initialiser le pool de connexions
     this.initializeConnectionPool();
     

@@ -1,0 +1,556 @@
+/**
+ * Service de goals (objectifs) pour BazarKELY avec pattern offline-first
+ * Utilise IndexedDB comme source primaire et Supabase pour la synchronisation
+ */
+
+import type { Goal, GoalFormData } from '../types';
+import type { GoalInsert, GoalUpdate } from '../types/supabase';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
+import { db } from '../lib/database';
+import { supabase } from '../lib/supabase';
+import apiService from './apiService';
+
+class GoalService {
+  /**
+   * Récupérer l'ID de l'utilisateur actuel
+   */
+  private async getCurrentUserId(): Promise<string | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        return session.user.id;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      return user?.id || null;
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la récupération de l\'utilisateur:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Queue a sync operation for offline-first processing
+   * PWA Phase 3 - Now supports priority, syncTag, expiresAt
+   */
+  private async queueSyncOperation(
+    userId: string,
+    operation: 'CREATE' | 'UPDATE' | 'DELETE',
+    goalId: string,
+    data: any,
+    options?: {
+      priority?: SyncPriority;
+      syncTag?: string;
+      expiresAt?: Date | null;
+    }
+  ): Promise<void> {
+    try {
+      const syncOp: SyncOperation = {
+        id: crypto.randomUUID(),
+        userId,
+        operation,
+        table_name: 'goals',
+        data: { id: goalId, ...data },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending',
+        // PWA Phase 3 - New optional fields
+        priority: options?.priority ?? SYNC_PRIORITY.NORMAL,
+        syncTag: options?.syncTag ?? 'bazarkely-sync',
+        expiresAt: options?.expiresAt ?? null,
+      };
+      await db.syncQueue.add(syncOp);
+      console.log(`🎯 [GoalService] Queued ${operation} operation for goal ${goalId} with priority ${syncOp.priority}`);
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
+      // Ne pas faire échouer l'opération principale si la queue échoue
+    }
+  }
+
+  /**
+   * Convertir un goal Supabase (snake_case) vers Goal (camelCase)
+   */
+  private mapSupabaseToGoal(supabaseGoal: any): Goal {
+    return {
+      id: supabaseGoal.id,
+      userId: supabaseGoal.user_id,
+      name: supabaseGoal.name,
+      targetAmount: supabaseGoal.target_amount,
+      currentAmount: supabaseGoal.current_amount || 0,
+      deadline: supabaseGoal.target_date ? new Date(supabaseGoal.target_date) : new Date(),
+      category: supabaseGoal.category || undefined,
+      priority: (supabaseGoal.priority || 'medium') as 'low' | 'medium' | 'high',
+      isCompleted: supabaseGoal.is_completed || false
+    };
+  }
+
+  /**
+   * Convertir un goal (camelCase) vers format Supabase (snake_case)
+   */
+  private mapGoalToSupabase(goal: Partial<Goal> | GoalFormData): any {
+    const result: any = {};
+    
+    if ('userId' in goal && goal.userId) result.user_id = goal.userId;
+    if ('name' in goal && goal.name !== undefined) result.name = goal.name;
+    if ('targetAmount' in goal && goal.targetAmount !== undefined) result.target_amount = goal.targetAmount;
+    if ('currentAmount' in goal && goal.currentAmount !== undefined) result.current_amount = goal.currentAmount;
+    if ('deadline' in goal && goal.deadline) {
+      result.target_date = goal.deadline instanceof Date 
+        ? goal.deadline.toISOString().split('T')[0] 
+        : goal.deadline;
+    }
+    if ('category' in goal && goal.category !== undefined) result.category = goal.category;
+    if ('priority' in goal && goal.priority !== undefined) result.priority = goal.priority;
+    if ('isCompleted' in goal && goal.isCompleted !== undefined) result.is_completed = goal.isCompleted;
+    
+    return result;
+  }
+
+  /**
+   * Récupérer tous les goals (OFFLINE-FIRST PATTERN)
+   * 1. Essaie IndexedDB d'abord (toujours disponible)
+   * 2. Si IndexedDB vide et online, fetch depuis Supabase
+   * 3. Cache les résultats Supabase dans IndexedDB
+   */
+  async getGoals(userId: string): Promise<Goal[]> {
+    try {
+      // STEP 1: Essayer IndexedDB d'abord (offline-first)
+      console.log('🎯 [GoalService] 💾 Récupération des goals depuis IndexedDB...');
+      const localGoals = await db.goals
+        .where('userId')
+        .equals(userId)
+        .toArray();
+
+      if (localGoals.length > 0) {
+        console.log(`🎯 [GoalService] ✅ ${localGoals.length} goal(s) récupéré(s) depuis IndexedDB`);
+        return localGoals;
+      }
+
+      // STEP 2: IndexedDB vide, essayer Supabase si online
+      if (!navigator.onLine) {
+        console.warn('🎯 [GoalService] ⚠️ Mode offline et IndexedDB vide, retour d\'un tableau vide');
+        return [];
+      }
+
+      console.log('🎯 [GoalService] 🌐 IndexedDB vide, récupération depuis Supabase...');
+      const response = await apiService.getGoals();
+      if (!response.success || response.error) {
+        console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals depuis Supabase:', response.error);
+        return [];
+      }
+
+      // STEP 3: Mapper et sauvegarder dans IndexedDB
+      const supabaseGoals = (response.data as any[]) || [];
+      const goals: Goal[] = supabaseGoals
+        .filter((g: any) => g.user_id === userId)
+        .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
+
+      if (goals.length > 0) {
+        // Sauvegarder dans IndexedDB pour la prochaine fois
+        try {
+          await db.goals.bulkPut(goals);
+          console.log(`🎯 [GoalService] 💾 ${goals.length} goal(s) sauvegardé(s) dans IndexedDB`);
+        } catch (idbError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
+          // Continuer même si la sauvegarde échoue
+        }
+      }
+
+      console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) récupéré(s) depuis Supabase`);
+      return goals;
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals:', error);
+      // En cas d'erreur, essayer de retourner IndexedDB
+      try {
+        const localGoals = await db.goals
+          .where('userId')
+          .equals(userId)
+          .toArray();
+        if (localGoals.length > 0) {
+          console.log(`🎯 [GoalService] ⚠️ Retour de ${localGoals.length} goal(s) depuis IndexedDB après erreur`);
+          return localGoals;
+        }
+      } catch (fallbackError) {
+        console.error('🎯 [GoalService] ❌ Erreur lors du fallback IndexedDB:', fallbackError);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Récupérer un goal par ID
+   */
+  async getGoal(id: string): Promise<Goal | null> {
+    try {
+      // Essayer IndexedDB d'abord
+      const goal = await db.goals.get(id);
+      if (goal) {
+        console.log(`🎯 [GoalService] ✅ Goal ${id} récupéré depuis IndexedDB`);
+        return goal;
+      }
+
+      // Si pas trouvé dans IndexedDB et online, essayer Supabase
+      if (navigator.onLine) {
+        const userId = await this.getCurrentUserId();
+        if (userId) {
+          const goals = await this.getGoals(userId);
+          const foundGoal = goals.find(g => g.id === id);
+          if (foundGoal) {
+            return foundGoal;
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la récupération du goal:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Créer un nouveau goal (OFFLINE-FIRST PATTERN)
+   * 1. Génère un UUID si non fourni
+   * 2. Sauvegarde dans IndexedDB immédiatement
+   * 3. Si online, sync vers Supabase
+   * 4. Si offline ou échec, queue pour sync ultérieure
+   */
+  async createGoal(userId: string, goalData: GoalFormData): Promise<Goal> {
+    try {
+      // Générer un UUID pour le goal
+      const goalId = crypto.randomUUID();
+      const now = new Date();
+
+      // Créer l'objet Goal complet
+      const goal: Goal = {
+        id: goalId,
+        userId,
+        name: goalData.name,
+        targetAmount: goalData.targetAmount,
+        currentAmount: 0,
+        deadline: goalData.deadline instanceof Date ? goalData.deadline : new Date(goalData.deadline),
+        category: goalData.category,
+        priority: goalData.priority,
+        isCompleted: false
+      };
+
+      // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
+      console.log('🎯 [GoalService] 💾 Sauvegarde du goal dans IndexedDB...');
+      await db.goals.add(goal);
+      console.log(`🎯 [GoalService] ✅ Goal "${goal.name}" sauvegardé dans IndexedDB avec ID: ${goalId}`);
+
+      // STEP 2: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🎯 [GoalService] 🌐 Synchronisation du goal vers Supabase...');
+          const supabaseData = this.mapGoalToSupabase({ ...goal, userId });
+          const response = await apiService.createGoal(supabaseData as GoalInsert);
+          
+          if (response.success && response.data) {
+            // Mettre à jour IndexedDB avec l'ID du serveur si différent
+            const supabaseGoal = this.mapSupabaseToGoal(response.data as any);
+            if (supabaseGoal.id !== goalId) {
+              // Si Supabase génère un ID différent, mettre à jour IndexedDB
+              await db.goals.delete(goalId);
+              await db.goals.add(supabaseGoal);
+              console.log(`🎯 [GoalService] 🔄 ID du goal mis à jour: ${goalId} → ${supabaseGoal.id}`);
+              return supabaseGoal;
+            }
+            console.log('🎯 [GoalService] ✅ Goal synchronisé avec Supabase');
+            return goal;
+          } else {
+            console.warn('🎯 [GoalService] ⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            // Queue pour sync ultérieure
+            await this.queueSyncOperation(userId, 'CREATE', goalId, goalData);
+            return goal;
+          }
+        } catch (syncError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          // Queue pour sync ultérieure
+          await this.queueSyncOperation(userId, 'CREATE', goalId, goalData);
+          return goal;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('🎯 [GoalService] 📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'CREATE', goalId, goalData);
+        return goal;
+      }
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la création du goal:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour un goal (OFFLINE-FIRST PATTERN)
+   * 1. Met à jour IndexedDB immédiatement
+   * 2. Si online, sync vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
+   */
+  async updateGoal(id: string, userId: string, goalData: Partial<GoalFormData>): Promise<Goal> {
+    try {
+      // STEP 1: Récupérer le goal depuis IndexedDB
+      const existingGoal = await db.goals.get(id);
+      if (!existingGoal) {
+        console.error(`🎯 [GoalService] ❌ Goal ${id} non trouvé dans IndexedDB`);
+        // Essayer de récupérer depuis Supabase si online
+        if (navigator.onLine) {
+          const goals = await this.getGoals(userId);
+          const goal = goals.find(g => g.id === id);
+          if (goal) {
+            // Mettre à jour avec les nouvelles données
+            const updatedGoal = { ...goal, ...goalData };
+            await db.goals.put(updatedGoal);
+            return updatedGoal;
+          }
+        }
+        throw new Error(`Goal ${id} non trouvé`);
+      }
+
+      // STEP 2: Mettre à jour IndexedDB immédiatement
+      const updatedGoal: Goal = {
+        ...existingGoal,
+        ...goalData,
+        // Préserver les champs qui ne sont pas dans GoalFormData
+        id: existingGoal.id,
+        userId: existingGoal.userId,
+        currentAmount: existingGoal.currentAmount,
+        isCompleted: existingGoal.isCompleted
+      };
+      
+      // Gérer la conversion de deadline si nécessaire
+      if (goalData.deadline !== undefined) {
+        updatedGoal.deadline = goalData.deadline instanceof Date 
+          ? goalData.deadline 
+          : new Date(goalData.deadline);
+      }
+
+      console.log('🎯 [GoalService] 💾 Mise à jour du goal dans IndexedDB...');
+      await db.goals.put(updatedGoal);
+      console.log(`🎯 [GoalService] ✅ Goal "${updatedGoal.name}" mis à jour dans IndexedDB`);
+
+      // STEP 3: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🎯 [GoalService] 🌐 Synchronisation de la mise à jour vers Supabase...');
+          const supabaseData = this.mapGoalToSupabase(updatedGoal);
+          const { data, error } = await supabase
+            .from('goals')
+            .update(supabaseData as GoalUpdate)
+            .eq('id', id)
+            .select()
+            .single();
+          
+          if (error) throw error;
+          
+          if (data) {
+            const syncedGoal = this.mapSupabaseToGoal(data);
+            // Mettre à jour IndexedDB avec les données Supabase
+            await db.goals.put(syncedGoal);
+            console.log('🎯 [GoalService] ✅ Goal synchronisé avec Supabase');
+            return syncedGoal;
+          } else {
+            throw new Error('Aucune donnée retournée par Supabase');
+          }
+        } catch (syncError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'UPDATE', id, goalData);
+          return updatedGoal;
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('🎯 [GoalService] 📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'UPDATE', id, goalData);
+        return updatedGoal;
+      }
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la mise à jour du goal:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Supprimer un goal (OFFLINE-FIRST PATTERN)
+   * 1. Supprime de IndexedDB immédiatement
+   * 2. Si online, sync suppression vers Supabase
+   * 3. Si offline, queue pour sync ultérieure
+   */
+  async deleteGoal(id: string, userId: string): Promise<void> {
+    try {
+      // STEP 1: Récupérer le goal depuis IndexedDB pour la queue
+      const goal = await db.goals.get(id);
+      if (!goal) {
+        console.warn(`🎯 [GoalService] ⚠️ Goal ${id} non trouvé dans IndexedDB`);
+        // Essayer quand même de supprimer depuis Supabase si online
+        if (navigator.onLine) {
+          const { error } = await supabase
+            .from('goals')
+            .delete()
+            .eq('id', id);
+          if (error) {
+            console.error('🎯 [GoalService] ❌ Erreur lors de la suppression Supabase:', error);
+          }
+        }
+        return;
+      }
+
+      // STEP 2: Supprimer de IndexedDB immédiatement
+      console.log('🎯 [GoalService] 💾 Suppression du goal depuis IndexedDB...');
+      await db.goals.delete(id);
+      console.log(`🎯 [GoalService] ✅ Goal "${goal.name}" supprimé de IndexedDB`);
+
+      // STEP 3: Si online, essayer de sync vers Supabase
+      if (navigator.onLine) {
+        try {
+          console.log('🎯 [GoalService] 🌐 Synchronisation de la suppression vers Supabase...');
+          const { error } = await supabase
+            .from('goals')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          console.log('🎯 [GoalService] ✅ Suppression synchronisée avec Supabase');
+        } catch (syncError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'DELETE', id, {});
+        }
+      } else {
+        // Mode offline, queue pour sync ultérieure
+        console.log('🎯 [GoalService] 📦 Mode offline, ajout à la queue de synchronisation');
+        await this.queueSyncOperation(userId, 'DELETE', id, {});
+      }
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la suppression du goal:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Marquer un goal comme complété
+   */
+  async completeGoal(id: string): Promise<Goal> {
+    try {
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      const goal = await this.getGoal(id);
+      if (!goal) {
+        throw new Error(`Goal ${id} non trouvé`);
+      }
+
+      // Mettre à jour directement dans IndexedDB puis synchroniser
+      const completedGoal: Goal = {
+        ...goal,
+        isCompleted: true,
+        currentAmount: goal.targetAmount
+      };
+
+      // Mettre à jour dans IndexedDB
+      await db.goals.put(completedGoal);
+
+      // Synchroniser avec Supabase si online
+      if (navigator.onLine) {
+        try {
+          const supabaseData = this.mapGoalToSupabase(completedGoal);
+          const { data, error } = await supabase
+            .from('goals')
+            .update(supabaseData as GoalUpdate)
+            .eq('id', id)
+            .select()
+            .single();
+          
+          if (!error && data) {
+            const syncedGoal = this.mapSupabaseToGoal(data);
+            await db.goals.put(syncedGoal);
+            console.log('🎯 [GoalService] ✅ Goal complété et synchronisé avec Supabase');
+            return syncedGoal;
+          }
+        } catch (syncError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          await this.queueSyncOperation(userId, 'UPDATE', id, completedGoal);
+        }
+      } else {
+        await this.queueSyncOperation(userId, 'UPDATE', id, completedGoal);
+      }
+
+      return completedGoal;
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la complétion du goal:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les goals par statut (active/completed/all)
+   */
+  async getGoalsByStatus(userId: string, status: 'active' | 'completed' | 'all'): Promise<Goal[]> {
+    try {
+      const goals = await this.getGoals(userId);
+      
+      switch (status) {
+        case 'active':
+          return goals.filter(goal => !goal.isCompleted || goal.isCompleted === false);
+        case 'completed':
+          return goals.filter(goal => goal.isCompleted === true);
+        case 'all':
+        default:
+          return goals;
+      }
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals par statut:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Calculer le pourcentage de progression d'un goal
+   */
+  calculateProgress(goal: Goal): number {
+    if (goal.targetAmount === 0) return 0;
+    const percentage = (goal.currentAmount / goal.targetAmount) * 100;
+    return Math.min(Math.max(percentage, 0), 100); // Clamp entre 0 et 100
+  }
+
+  /**
+   * Forcer la synchronisation depuis Supabase vers IndexedDB
+   */
+  async syncGoalsFromSupabase(userId: string): Promise<void> {
+    try {
+      if (!navigator.onLine) {
+        console.warn('🎯 [GoalService] ⚠️ Mode offline, synchronisation impossible');
+        return;
+      }
+
+      console.log('🎯 [GoalService] 🔄 Synchronisation forcée depuis Supabase...');
+      const response = await apiService.getGoals();
+      
+      if (!response.success || response.error) {
+        throw new Error(response.error || 'Erreur lors de la récupération depuis Supabase');
+      }
+
+      const supabaseGoals = (response.data as any[]) || [];
+      const goals: Goal[] = supabaseGoals
+        .filter((g: any) => g.user_id === userId)
+        .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
+
+      if (goals.length > 0) {
+        // Remplacer tous les goals dans IndexedDB
+        await db.goals.bulkPut(goals);
+        console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) synchronisé(s) depuis Supabase`);
+      } else {
+        console.log('🎯 [GoalService] ℹ️ Aucun goal à synchroniser');
+      }
+    } catch (error) {
+      console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation depuis Supabase:', error);
+      throw error;
+    }
+  }
+}
+
+export const goalService = new GoalService();
+export default goalService;
+

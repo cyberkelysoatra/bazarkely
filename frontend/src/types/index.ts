@@ -77,6 +77,10 @@ export interface Account {
   isDefault: boolean;
   displayOrder?: number;
   createdAt: Date;
+  // Goals ↔ Accounts linking
+  linkedGoalId?: string; // UUID of linked goal
+  interestRate?: number; // Simulated annual interest rate (e.g., 2.5 for 2.5%)
+  isSavingsAccount?: boolean; // Explicit flag for savings accounts
 }
 
 export type TransactionCategory = 
@@ -136,6 +140,9 @@ export interface Goal {
   category?: string;
   priority: 'low' | 'medium' | 'high';
   isCompleted?: boolean;
+  // Goals ↔ Accounts linking
+  linkedAccountId?: string; // UUID of linked savings account
+  autoSync?: boolean; // Auto-sync balance to currentAmount
 }
 
 export interface QuizResult {
@@ -301,6 +308,7 @@ export interface GoalFormData {
   deadline: Date;
   category?: string;
   priority: 'low' | 'medium' | 'high';
+  linkedAccountId?: string; // UUID of linked savings account
 }
 
 // Types pour l'état de l'application

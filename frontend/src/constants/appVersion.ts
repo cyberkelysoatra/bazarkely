@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.2.0';
+export const APP_VERSION = '2.3.0';
 export const APP_BUILD_DATE = '2025-12-31';
 
 export type VersionEntry = {
@@ -9,6 +9,20 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.3.0',
+    date: '2025-12-31',
+    type: 'minor',
+    changes: [
+      'Correction GoalsPage - chargement via goalService au lieu d\'IndexedDB direct',
+      'Nouveau composant GoalModal pour création/édition d\'objectifs',
+      'Nouveau service savingsService pour liaison Goals ↔ Comptes épargne',
+      'Extension schéma: linked_account_id, auto_sync dans goals',
+      'Extension schéma: linked_goal_id, interest_rate, is_savings_account dans accounts',
+      'IndexedDB version 9 avec nouveaux index pour liaison goals-accounts',
+      'CRUD complet sur la page Objectifs d\'épargne'
+    ]
+  },
   {
     version: '2.2.0',
     date: '2025-12-31',
