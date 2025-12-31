@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock, Edit3, Trash2, X, Check } from 'lucide-react';
+import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock, Edit3, Trash2, X, Check, Landmark, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../stores/appStore';
 import { goalService } from '../services/goalService';
-import type { Goal, GoalFormData } from '../types';
+import { savingsService } from '../services/savingsService';
+import accountService from '../services/accountService';
+import { db } from '../lib/database';
+import type { Goal, GoalFormData, Account } from '../types';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Currency } from '../components/Currency';
 import Modal from '../components/UI/Modal';
@@ -23,6 +26,14 @@ const GoalsPage = () => {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Savings accounts state
+  const [savingsAccounts, setSavingsAccounts] = useState<Account[]>([]);
+  const [syncingGoalId, setSyncingGoalId] = useState<string | null>(null);
+  
+  // New account creation state
+  const [createNewAccount, setCreateNewAccount] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  
   // Form state for create/edit
   const [formData, setFormData] = useState({
     name: '',
@@ -30,7 +41,9 @@ const GoalsPage = () => {
     deadline: '',
     category: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
-    description: ''
+    description: '',
+    linkedAccountId: '',
+    autoSync: false
   });
   
   // Currency integration state
@@ -68,27 +81,46 @@ const GoalsPage = () => {
     }
   };
 
-  // Charger les objectifs réels
+  // Charger les objectifs réels et les comptes d'épargne
   useEffect(() => {
     refreshGoals();
+    
+    // Charger les comptes d'épargne
+    const loadSavingsAccounts = async () => {
+      if (!user) return;
+      try {
+        const accounts = await savingsService.getSavingsAccounts(user.id);
+        setSavingsAccounts(accounts);
+      } catch (error) {
+        console.error('Erreur lors du chargement des comptes d\'épargne:', error);
+      }
+    };
+    
+    loadSavingsAccounts();
   }, [user]);
 
   // Handlers
   const handleCreateGoal = () => {
     setEditingGoal(null);
+    setCreateNewAccount(false);
+    setNewAccountName('');
     setFormData({
       name: '',
       targetAmount: '',
       deadline: '',
       category: '',
       priority: 'medium',
-      description: ''
+      description: '',
+      linkedAccountId: '',
+      autoSync: false
     });
     setIsModalOpen(true);
   };
 
   const handleEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
+    setCreateNewAccount(false);
+    setNewAccountName('');
     setFormData({
       name: goal.name,
       targetAmount: goal.targetAmount.toString(),
@@ -97,7 +129,9 @@ const GoalsPage = () => {
         : new Date(goal.deadline).toISOString().split('T')[0],
       category: goal.category || '',
       priority: goal.priority,
-      description: ''
+      description: '',
+      linkedAccountId: goal.linkedAccountId || '',
+      autoSync: goal.autoSync || false
     });
     setIsModalOpen(true);
   };
@@ -131,6 +165,22 @@ const GoalsPage = () => {
     navigate(`/add-transaction?type=expense&category=epargne&goalId=${goalId}`);
   };
 
+  const handleSyncGoal = async (goalId: string) => {
+    if (!user) return;
+    
+    try {
+      setSyncingGoalId(goalId);
+      await savingsService.syncGoalWithAccount(goalId);
+      toast.success('Objectif synchronisé');
+      await refreshGoals();
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation de l\'objectif:', error);
+      toast.error('Erreur lors de la synchronisation de l\'objectif');
+    } finally {
+      setSyncingGoalId(null);
+    }
+  };
+
   const handleSaveGoal = async () => {
     if (!user) {
       toast.error('Utilisateur non connecté');
@@ -153,6 +203,12 @@ const GoalsPage = () => {
       return;
     }
 
+    // Validation pour création de nouveau compte
+    if (createNewAccount && !newAccountName.trim()) {
+      toast.error('Veuillez entrer un nom pour le compte épargne');
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -161,20 +217,85 @@ const GoalsPage = () => {
         targetAmount: parseFloat(formData.targetAmount),
         deadline: new Date(formData.deadline),
         category: formData.category || undefined,
-        priority: formData.priority
+        priority: formData.priority,
+        linkedAccountId: formData.linkedAccountId || undefined
       };
 
       if (editingGoal) {
         // Update existing goal
+        const previousLinkedAccountId = editingGoal.linkedAccountId;
+        const newLinkedAccountId = formData.linkedAccountId || undefined;
+        
+        // Gérer la liaison/déliaison du compte
+        if (previousLinkedAccountId !== newLinkedAccountId) {
+          if (previousLinkedAccountId && !newLinkedAccountId) {
+            // Délier le compte
+            await savingsService.unlinkGoalFromAccount(editingGoal.id);
+          } else if (!previousLinkedAccountId && newLinkedAccountId) {
+            // Lier un nouveau compte
+            await savingsService.linkGoalToAccount(editingGoal.id, newLinkedAccountId);
+          } else if (previousLinkedAccountId && newLinkedAccountId && previousLinkedAccountId !== newLinkedAccountId) {
+            // Changer de compte lié
+            await savingsService.unlinkGoalFromAccount(editingGoal.id);
+            await savingsService.linkGoalToAccount(editingGoal.id, newLinkedAccountId);
+          }
+        }
+        
+        // Mettre à jour l'objectif
         await goalService.updateGoal(editingGoal.id, user.id, goalData);
+        
+        // Mettre à jour autoSync dans IndexedDB directement
+        const updatedGoal = await goalService.getGoal(editingGoal.id);
+        if (updatedGoal) {
+          const goalWithAutoSync: Goal = {
+            ...updatedGoal,
+            autoSync: newLinkedAccountId ? formData.autoSync : false
+          };
+          await db.goals.put(goalWithAutoSync);
+        }
+        
         toast.success('Objectif modifié avec succès');
       } else {
         // Create new goal
-        await goalService.createGoal(user.id, goalData);
-        toast.success('Objectif créé avec succès');
+        if (createNewAccount && newAccountName.trim()) {
+          // Créer un nouveau compte d'épargne avec l'objectif atomiquement
+          const { goal, account } = await savingsService.createGoalWithAccount(
+            user.id,
+            goalData,
+            newAccountName.trim()
+          );
+          
+          // Recharger la liste des comptes d'épargne
+          const accounts = await savingsService.getSavingsAccounts(user.id);
+          setSavingsAccounts(accounts);
+          
+          toast.success('Objectif et compte épargne créés avec succès');
+        } else {
+          // Création normale sans compte ou avec compte existant
+          const newGoal = await goalService.createGoal(user.id, goalData);
+          
+          // Si un compte est lié, utiliser savingsService pour la liaison complète
+          if (formData.linkedAccountId) {
+            await savingsService.linkGoalToAccount(newGoal.id, formData.linkedAccountId);
+            
+            // Activer autoSync si demandé
+            if (formData.autoSync) {
+              const goalWithAutoSync: Goal = {
+                ...newGoal,
+                linkedAccountId: formData.linkedAccountId,
+                autoSync: true
+              };
+              await db.goals.put(goalWithAutoSync);
+            }
+          }
+          
+          toast.success('Objectif créé avec succès');
+        }
       }
 
       setIsModalOpen(false);
+      setCreateNewAccount(false);
+      setNewAccountName('');
       await refreshGoals();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de l\'objectif:', error);
@@ -187,13 +308,17 @@ const GoalsPage = () => {
   const handleCancelModal = () => {
     setIsModalOpen(false);
     setEditingGoal(null);
+    setCreateNewAccount(false);
+    setNewAccountName('');
     setFormData({
       name: '',
       targetAmount: '',
       deadline: '',
       category: '',
       priority: 'medium',
-      description: ''
+      description: '',
+      linkedAccountId: '',
+      autoSync: false
     });
   };
 
@@ -403,7 +528,7 @@ const GoalsPage = () => {
                       )}
                     </div>
                     <p className="text-sm text-gray-500">{goal.category}</p>
-                    <div className="flex items-center space-x-2 mt-1">
+                    <div className="flex items-center space-x-2 mt-1 flex-wrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(goal.priority)}`}>
                         {getPriorityLabel(goal.priority)}
                       </span>
@@ -412,12 +537,28 @@ const GoalsPage = () => {
                           Atteint
                         </span>
                       )}
+                      {goal.linkedAccountId && (() => {
+                        const linkedAccount = savingsAccounts.find(acc => acc.id === goal.linkedAccountId);
+                        return (
+                          <>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 flex items-center space-x-1">
+                              <Landmark className="w-3 h-3" />
+                              <span>{linkedAccount?.name || 'Compte lié'}</span>
+                            </span>
+                            {goal.autoSync && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                Auto-sync
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-right">
-                  <p className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900">
                     <CurrencyDisplay
                       amount={goal.currentAmount}
                       originalCurrency="MGA"
@@ -425,8 +566,8 @@ const GoalsPage = () => {
                       showConversion={true}
                       size="sm"
                     />
-                  </p>
-                  <p className="text-sm text-gray-500 inline-flex items-center gap-1">
+                  </div>
+                  <div className="text-sm text-gray-500 inline-flex items-center gap-1">
                     <span>/</span>
                     <CurrencyDisplay
                       amount={goal.targetAmount}
@@ -435,7 +576,7 @@ const GoalsPage = () => {
                       showConversion={true}
                       size="sm"
                     />
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -473,7 +614,20 @@ const GoalsPage = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-end pt-2">
+                  <div className="flex items-center justify-end pt-2 space-x-2">
+                    {goal.linkedAccountId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSyncGoal(goal.id);
+                        }}
+                        disabled={syncingGoalId === goal.id}
+                        className="text-sm px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${syncingGoalId === goal.id ? 'animate-spin' : ''}`} />
+                        <span>Synchroniser</span>
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -633,6 +787,84 @@ const GoalsPage = () => {
               <option value="high">Élevée</option>
             </select>
           </div>
+
+          {/* Compte épargne lié */}
+          <div>
+            <label htmlFor="goal-linkedAccountId" className="block text-sm font-medium text-gray-700 mb-2">
+              Compte épargne lié <span className="text-gray-400 text-xs">(optionnel)</span>
+            </label>
+            <select
+              id="goal-linkedAccountId"
+              value={createNewAccount ? '__create_new__' : formData.linkedAccountId}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '__create_new__') {
+                  setCreateNewAccount(true);
+                  setNewAccountName('');
+                  setFormData(prev => ({ ...prev, linkedAccountId: '', autoSync: true }));
+                } else if (value === '') {
+                  setCreateNewAccount(false);
+                  setNewAccountName('');
+                  setFormData(prev => ({ ...prev, linkedAccountId: '', autoSync: false }));
+                } else {
+                  setCreateNewAccount(false);
+                  setNewAccountName('');
+                  setFormData(prev => ({ ...prev, linkedAccountId: value, autoSync: prev.autoSync }));
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Aucun compte lié</option>
+              {!editingGoal && (
+                <option value="__create_new__">➕ Créer un nouveau compte épargne</option>
+              )}
+              {savingsAccounts.map((account) => {
+                const formattedBalance = new Intl.NumberFormat('fr-FR', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }).format(account.balance);
+                return (
+                  <option key={account.id} value={account.id}>
+                    {account.name} - {formattedBalance} Ar
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Nom du nouveau compte épargne */}
+          {createNewAccount && (
+            <div>
+              <label htmlFor="new-account-name" className="block text-sm font-medium text-gray-700 mb-2">
+                Nom du compte épargne <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="new-account-name"
+                type="text"
+                value={newAccountName}
+                onChange={(e) => setNewAccountName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Ex: Épargne vacances, Fonds urgence..."
+                required
+              />
+            </div>
+          )}
+
+          {/* Synchronisation automatique */}
+          {(formData.linkedAccountId || createNewAccount) && (
+            <div className="flex items-center space-x-2">
+              <input
+                id="goal-autoSync"
+                type="checkbox"
+                checked={formData.autoSync}
+                onChange={(e) => setFormData(prev => ({ ...prev, autoSync: e.target.checked }))}
+                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              />
+              <label htmlFor="goal-autoSync" className="text-sm font-medium text-gray-700">
+                Synchroniser automatiquement
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Footer avec boutons */}
@@ -647,7 +879,13 @@ const GoalsPage = () => {
           <button
             onClick={handleSaveGoal}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading || !formData.name.trim() || !formData.targetAmount || !formData.deadline}
+            disabled={
+              isLoading || 
+              !formData.name.trim() || 
+              !formData.targetAmount || 
+              !formData.deadline ||
+              (createNewAccount && !newAccountName.trim())
+            }
           >
             {isLoading ? 'Sauvegarde...' : editingGoal ? 'Modifier' : 'Créer'}
           </button>

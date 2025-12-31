@@ -29,7 +29,7 @@ class SavingsService {
     accountName?: string
   ): Promise<{ goal: Goal; account: Account }> {
     try {
-      console.log('💰 [SavingsService] Création d\'un objectif avec compte d\'épargne...');
+      console.log(`💰 [SavingsService] Création d'un objectif avec compte d'épargne...`);
       
       // STEP 1: Créer le compte d'épargne
       const accountData: Omit<Account, 'id' | 'createdAt' | 'userId'> = {
@@ -44,7 +44,7 @@ class SavingsService {
       
       const account = await accountService.createAccount(userId, accountData);
       if (!account) {
-        throw new Error('Échec de la création du compte d\'épargne');
+        throw new Error(`Échec de la création du compte d'épargne`);
       }
       
       console.log(`💰 [SavingsService] ✅ Compte d'épargne créé: ${account.id}`);
@@ -89,7 +89,7 @@ class SavingsService {
         account: updatedAccount
       };
     } catch (error) {
-      console.error('💰 [SavingsService] ❌ Erreur lors de la création de l\'objectif avec compte:', error);
+      console.error(`💰 [SavingsService] ❌ Erreur lors de la création de l'objectif avec compte:`, error);
       throw error;
     }
   }
@@ -348,7 +348,7 @@ class SavingsService {
       
       return sortedAccounts;
     } catch (error) {
-      console.error('💰 [SavingsService] ❌ Erreur lors de la récupération des comptes d'épargne:', error);
+      console.error(`💰 [SavingsService] ❌ Erreur lors de la récupération des comptes d'épargne:`, error);
       return [];
     }
   }
@@ -371,7 +371,7 @@ class SavingsService {
       
       return total;
     } catch (error) {
-      console.error('💰 [SavingsService] ❌ Erreur lors du calcul du total d'épargne:', error);
+      console.error(`💰 [SavingsService] ❌ Erreur lors du calcul du total d'épargne:`, error);
       return 0;
     }
   }
@@ -396,7 +396,7 @@ class SavingsService {
       const interestRate = account.interestRate || 0; // Taux d'intérêt annuel en %
       
       if (interestRate === 0) {
-        console.log('💰 [SavingsService] ℹ️ Aucun taux d'intérêt, retour du solde actuel');
+        console.log(`💰 [SavingsService] ℹ️ Aucun taux d'intérêt, retour du solde actuel`);
         return balance;
       }
       
@@ -409,7 +409,7 @@ class SavingsService {
       
       return Math.round(projectedAmount * 100) / 100; // Arrondir à 2 décimales
     } catch (error) {
-      console.error('💰 [SavingsService] ❌ Erreur lors du calcul de l'épargne projetée:', error);
+      console.error(`💰 [SavingsService] ❌ Erreur lors du calcul de l'épargne projetée:`, error);
       throw error;
     }
   }
@@ -444,7 +444,7 @@ class SavingsService {
       
       return goalData;
     } catch (error) {
-      console.error('💰 [SavingsService] ❌ Erreur lors de la suggestion du fonds d'urgence:', error);
+      console.error(`💰 [SavingsService] ❌ Erreur lors de la suggestion du fonds d'urgence:`, error);
       throw error;
     }
   }
