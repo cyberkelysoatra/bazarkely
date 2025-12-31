@@ -1,5 +1,5 @@
-export const APP_VERSION = '2.1.0';
-export const APP_BUILD_DATE = '2025-12-29';
+export const APP_VERSION = '2.2.0';
+export const APP_BUILD_DATE = '2025-12-31';
 
 export type VersionEntry = {
   version: string;
@@ -9,6 +9,20 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.2.0',
+    date: '2025-12-31',
+    type: 'minor',
+    changes: [
+      'Page Statistiques Budget (/budgets/statistics) avec comparaison multi-années',
+      'Hook useMultiYearBudgetData pour agrégation données multi-années',
+      'Détection catégories problématiques avec sévérité (low/medium/high/critical)',
+      'Barres de progression bicolores (vert budget respecté, orange dépassement)',
+      'Affichage "Dépassé: -XXX Ar" pour budgets en dépassement',
+      'Correction icône épargne (PiggyBank)',
+      'Correction champ montant édition transaction récurrente'
+    ]
+  },
   {
     version: '2.1.0',
     date: '2025-12-29',

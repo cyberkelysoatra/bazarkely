@@ -711,12 +711,27 @@ const BudgetsPage = () => {
       ? ((budget.spent || 0) / budget.amount) * 100 
       : 0;
     
+    // Logique spéciale pour la catégorie Épargne (inversée)
+    const isEpargne = budget.category.toLowerCase() === 'epargne';
+    
+    if (isEpargne) {
+      // Pour l'épargne : dépenser plus (épargner plus) est bon
+      if (percentage === 0) {
+        return { status: 'exceeded', color: 'text-red-600', bgColor: 'bg-red-100', label: 'À faire' };
+      } else if (percentage < 100) {
+        return { status: 'warning', color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Attention' };
+      } else {
+        return { status: 'good', color: 'text-green-600', bgColor: 'bg-green-100', label: 'Bon' };
+      }
+    }
+    
+    // Logique normale pour les autres catégories
     if (percentage >= 100) {
-      return { status: 'exceeded', color: 'text-red-600', bgColor: 'bg-red-100' };
+      return { status: 'exceeded', color: 'text-red-600', bgColor: 'bg-red-100', label: 'Dépassé' };
     } else if (percentage >= 80) {
-      return { status: 'warning', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+      return { status: 'warning', color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Attention' };
     } else {
-      return { status: 'good', color: 'text-green-600', bgColor: 'bg-green-100' };
+      return { status: 'good', color: 'text-green-600', bgColor: 'bg-green-100', label: 'Bon' };
     }
   };
 
@@ -796,7 +811,7 @@ const BudgetsPage = () => {
             className="btn-primary flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Nouveau budget</span>
+            <span>Nouveau</span>
           </button>
         </div>
       </div>
@@ -992,20 +1007,34 @@ const BudgetsPage = () => {
                     size="lg"
                   />
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className={`text-sm ${totalRemaining >= 0 ? 'text-gray-600' : 'text-red-600'}`}>
                   {totalRemaining >= 0 ? 'Restant' : 'Dépassé'}
                 </p>
               </div>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full ${
-                  overallPercentage >= 100 ? 'bg-red-500' : 
-                  overallPercentage >= 80 ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${Math.min(overallPercentage, 100)}%` }}
-              ></div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              {totalSpent > totalBudget ? (
+                // Bicolor bar for overspent budgets
+                <div className="flex h-full">
+                  <div 
+                    className="bg-green-500 h-full"
+                    style={{ width: `${(totalBudget / totalSpent) * 100}%` }}
+                  />
+                  <div 
+                    className="bg-red-500 h-full"
+                    style={{ width: `${((totalSpent - totalBudget) / totalSpent) * 100}%` }}
+                  />
+                </div>
+              ) : (
+                // Single color bar for normal budgets
+                <div
+                  className={`h-3 rounded-full ${
+                    overallPercentage >= 80 ? 'bg-yellow-500' : 'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+                ></div>
+              )}
             </div>
             <p className="text-center text-sm text-gray-600 mt-2">
               {overallPercentage.toFixed(1)}% du budget utilisé
@@ -1321,7 +1350,7 @@ const BudgetsPage = () => {
                           style={{ width: `${(budget.amount / budget.spent) * 100}%` }}
                         />
                         <div 
-                          className="bg-orange-500 h-full"
+                          className="bg-red-500 h-full"
                           style={{ width: `${((budget.spent - budget.amount) / budget.spent) * 100}%` }}
                         />
                       </div>
@@ -1361,18 +1390,21 @@ const BudgetsPage = () => {
                     )}
                     <div className="flex items-center space-x-1">
                       {status.status === 'exceeded' && (
-                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          <span className={status.color}>{status.label || 'Dépassé'}</span>
+                        </>
                       )}
                       {status.status === 'warning' && (
                         <>
                           <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                          <span className={status.color}>Attention</span>
+                          <span className={status.color}>{status.label || 'Attention'}</span>
                         </>
                       )}
                       {status.status === 'good' && (
                         <>
                           <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span className={status.color}>Bon</span>
+                          <span className={status.color}>{status.label || 'Bon'}</span>
                         </>
                       )}
                     </div>
@@ -1405,6 +1437,9 @@ const BudgetsPage = () => {
                 ? (yearlySpent / yearlyBudget) * 100
                 : 0;
 
+              // Vérifier si c'est la catégorie Épargne
+              const isEpargne = categoryData.category.toLowerCase() === 'epargne';
+
               // Déterminer le statut basé sur le pourcentage de dépense
               let statusColor = 'text-green-600';
               let statusBgColor = 'bg-green-100';
@@ -1412,20 +1447,47 @@ const BudgetsPage = () => {
               let statusIcon = <CheckCircle className="w-4 h-4 text-green-500" />;
               let progressBarColor = 'bg-green-500';
 
-              if (spentPercentage > 115) {
-                // Dépassé (> 115%)
-                statusColor = 'text-red-600';
-                statusBgColor = 'bg-red-100';
-                statusText = 'Dépassé';
-                statusIcon = <AlertTriangle className="w-4 h-4 text-red-500" />;
-                progressBarColor = 'bg-red-500';
-              } else if (spentPercentage >= 100) {
-                // Attention (100-115%)
-                statusColor = 'text-yellow-600';
-                statusBgColor = 'bg-yellow-100';
-                statusText = 'Attention';
-                statusIcon = <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-                progressBarColor = 'bg-yellow-500';
+              if (isEpargne) {
+                // Logique inversée pour l'épargne : dépenser plus (épargner plus) est bon
+                if (spentPercentage === 0) {
+                  // À faire (0%)
+                  statusColor = 'text-red-600';
+                  statusBgColor = 'bg-red-100';
+                  statusText = 'À faire';
+                  statusIcon = <AlertTriangle className="w-4 h-4 text-red-500" />;
+                  progressBarColor = 'bg-red-500';
+                } else if (spentPercentage < 100) {
+                  // Attention (1-99%)
+                  statusColor = 'text-yellow-600';
+                  statusBgColor = 'bg-yellow-100';
+                  statusText = 'Attention';
+                  statusIcon = <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+                  progressBarColor = 'bg-yellow-500';
+                } else {
+                  // Bon (100%+)
+                  statusColor = 'text-green-600';
+                  statusBgColor = 'bg-green-100';
+                  statusText = 'Bon';
+                  statusIcon = <CheckCircle className="w-4 h-4 text-green-500" />;
+                  progressBarColor = 'bg-green-500';
+                }
+              } else {
+                // Logique normale pour les autres catégories
+                if (spentPercentage > 115) {
+                  // Dépassé (> 115%)
+                  statusColor = 'text-red-600';
+                  statusBgColor = 'bg-red-100';
+                  statusText = 'Dépassé';
+                  statusIcon = <AlertTriangle className="w-4 h-4 text-red-500" />;
+                  progressBarColor = 'bg-red-500';
+                } else if (spentPercentage >= 100) {
+                  // Attention (100-115%)
+                  statusColor = 'text-yellow-600';
+                  statusBgColor = 'bg-yellow-100';
+                  statusText = 'Attention';
+                  statusIcon = <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+                  progressBarColor = 'bg-yellow-500';
+                }
               }
 
               // Pourcentage pour la barre de progression (capped à 100% visuellement)
@@ -1486,7 +1548,7 @@ const BudgetsPage = () => {
                             style={{ width: `${(yearlyBudget / yearlySpent) * 100}%` }}
                           />
                           <div 
-                            className="bg-orange-500 h-full transition-all duration-300"
+                            className="bg-red-500 h-full transition-all duration-300"
                             style={{ width: `${((yearlySpent - yearlyBudget) / yearlySpent) * 100}%` }}
                           />
                         </div>
@@ -1515,7 +1577,7 @@ const BudgetsPage = () => {
                       )}
                       <div className="flex items-center space-x-1">
                         {statusIcon}
-                        {statusText !== 'Dépassé' && (
+                        {(statusText !== 'Dépassé' || isEpargne) && (
                           <span className={statusColor}>
                             {statusText}
                           </span>
