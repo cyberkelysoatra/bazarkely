@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3, Trash2, X } from 'lucide-react';
+import { 
+  Plus, AlertTriangle, CheckCircle, PieChart, Lightbulb, Check, Edit3, Trash2, X, BarChart3,
+  Utensils, Home, Car, Heart, GraduationCap, Phone, Shirt, Gamepad2, Users, HandHeart, MoreHorizontal,
+  PiggyBank
+} from 'lucide-react';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import { useAppStore } from '../stores/appStore';
 import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
@@ -24,6 +28,28 @@ const CATEGORY_MAPPING: Record<string, string> = {
   'solidarité': 'solidarite',
   'épargne': 'epargne', // Si jamais utilisé
   // Ajouter d'autres mappings si nécessaire
+};
+
+// Helper pour mapper les noms d'icônes aux composants Lucide React
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Utensils,
+  Home,
+  Car,
+  Heart,
+  GraduationCap,
+  Phone,
+  Shirt,
+  Gamepad2,
+  Users,
+  HandHeart,
+  MoreHorizontal,
+  PiggyBank
+};
+
+// Fonction helper pour obtenir le composant d'icône
+const getCategoryIcon = (iconName: string | undefined) => {
+  if (!iconName) return MoreHorizontal;
+  return iconMap[iconName] || MoreHorizontal;
 };
 
 const BudgetsPage = () => {
@@ -756,50 +782,64 @@ const BudgetsPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Budgets</h1>
           <p className="text-gray-600">Gérez vos budgets mensuels</p>
         </div>
-        <button 
-          onClick={handleCreateManualBudget}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nouveau budget</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/budgets/statistics')}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            aria-label="Voir les statistiques des budgets"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden md:inline">Statistiques</span>
+          </button>
+          <button 
+            onClick={handleCreateManualBudget}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nouveau budget</span>
+          </button>
+        </div>
       </div>
 
       {/* Sélecteur de mois et année avec toggle */}
       <div className="card">
-        <div className="flex items-center space-x-4">
-          <div className={`transition-all duration-300 ${viewMode === 'yearly' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-auto'}`}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mois</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="input-field"
-            >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(0, i).toLocaleString('fr-FR', { month: 'long' })}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Année</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="input-field"
-            >
-              {Array.from({ length: 3 }, (_, i) => {
-                const year = new Date().getFullYear() - 1 + i;
-                return (
-                  <option key={year} value={year}>
-                    {year}
+        <div className="flex items-center justify-between w-full">
+          {/* Left side - selectors */}
+          <div className="flex items-center space-x-4">
+            <div className={`transition-all duration-300 ${viewMode === 'yearly' ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-auto'}`}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mois</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="select-no-arrow input-field"
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {new Date(0, i).toLocaleString('fr-FR', { month: 'long' })}
                   </option>
-                );
-              })}
-            </select>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Année</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="select-no-arrow input-field"
+              >
+                {Array.from({ length: 3 }, (_, i) => {
+                  const year = new Date().getFullYear() - 1 + i;
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
-          {/* Toggle Mensuel/Annuel */}
+          
+          {/* Right side - toggle */}
           <div className="flex items-end">
             <div className="p-1 bg-gray-100 rounded-full inline-flex">
               <button
@@ -1014,9 +1054,10 @@ const BudgetsPage = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${categoryInfo?.bgColor || 'bg-gray-100'}`}>
-                        <span className={`text-sm font-medium ${categoryInfo?.color || 'text-gray-600'}`}>
-                          {categoryInfo?.name?.charAt(0) || category.charAt(0)}
-                        </span>
+                        {(() => {
+                          const IconComponent = getCategoryIcon(categoryInfo?.icon);
+                          return <IconComponent className={`w-5 h-5 ${categoryInfo?.color || 'text-gray-600'}`} />;
+                        })()}
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900">{categoryInfo?.name || category}</h4>
@@ -1128,9 +1169,10 @@ const BudgetsPage = () => {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3 flex-1">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
-                    <span className={`text-sm font-medium ${category.color}`}>
-                      {category.name.charAt(0)}
-                    </span>
+                    {(() => {
+                      const IconComponent = getCategoryIcon(category.icon);
+                      return <IconComponent className={`w-5 h-5 ${category.color}`} />;
+                    })()}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
@@ -1270,37 +1312,69 @@ const BudgetsPage = () => {
 
               {!isEditing && (
                 <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        status.status === 'exceeded' ? 'bg-red-500' :
-                        status.status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(percentage, 100)}%` }}
-                    ></div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    {(budget.spent || 0) > budget.amount ? (
+                      // Bicolor bar for overspent budgets
+                      <div className="flex h-full">
+                        <div 
+                          className="bg-green-500 h-full"
+                          style={{ width: `${(budget.amount / budget.spent) * 100}%` }}
+                        />
+                        <div 
+                          className="bg-orange-500 h-full"
+                          style={{ width: `${((budget.spent - budget.amount) / budget.spent) * 100}%` }}
+                        />
+                      </div>
+                    ) : (
+                      // Single color bar for normal budgets
+                      <div
+                        className={`h-2 rounded-full ${
+                          status.status === 'exceeded' ? 'bg-red-500' :
+                          status.status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                      ></div>
+                    )}
                   </div>
                   
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">
-                      Restant: <CurrencyDisplay
-                        amount={Math.max(0, remaining)}
-                        originalCurrency="MGA"
-                        displayCurrency={displayCurrency}
-                        showConversion={true}
-                        size="sm"
-                      />
-                    </span>
+                    {(budget.spent || 0) > budget.amount ? (
+                      <span className="text-red-600">
+                        Dépassé: -<CurrencyDisplay
+                          amount={(budget.spent || 0) - budget.amount}
+                          originalCurrency="MGA"
+                          displayCurrency={displayCurrency}
+                          showConversion={true}
+                          size="sm"
+                        />
+                      </span>
+                    ) : (
+                      <span className="text-gray-600">
+                        Restant: <CurrencyDisplay
+                          amount={Math.max(0, remaining)}
+                          originalCurrency="MGA"
+                          displayCurrency={displayCurrency}
+                          showConversion={true}
+                          size="sm"
+                        />
+                      </span>
+                    )}
                     <div className="flex items-center space-x-1">
                       {status.status === 'exceeded' && (
                         <AlertTriangle className="w-4 h-4 text-red-500" />
                       )}
-                      {status.status === 'good' && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      {status.status === 'warning' && (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                          <span className={status.color}>Attention</span>
+                        </>
                       )}
-                      <span className={status.color}>
-                        {status.status === 'exceeded' ? 'Dépassé' :
-                         status.status === 'warning' ? 'Attention' : 'Bon'}
-                      </span>
+                      {status.status === 'good' && (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                          <span className={status.color}>Bon</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1366,9 +1440,10 @@ const BudgetsPage = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3 flex-1">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
-                        <span className={`text-sm font-medium ${category.color}`}>
-                          {category.name.charAt(0)}
-                        </span>
+                        {(() => {
+                          const IconComponent = getCategoryIcon(category.icon);
+                          return <IconComponent className={`w-5 h-5 ${category.color}`} />;
+                        })()}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
@@ -1402,34 +1477,49 @@ const BudgetsPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${progressBarColor} transition-all duration-300`}
-                        style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-                      ></div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      {yearlySpent > yearlyBudget ? (
+                        // Bicolor bar for overspent budgets
+                        <div className="flex h-full">
+                          <div 
+                            className="bg-green-500 h-full transition-all duration-300"
+                            style={{ width: `${(yearlyBudget / yearlySpent) * 100}%` }}
+                          />
+                          <div 
+                            className="bg-orange-500 h-full transition-all duration-300"
+                            style={{ width: `${((yearlySpent - yearlyBudget) / yearlySpent) * 100}%` }}
+                          />
+                        </div>
+                      ) : (
+                        // Single color bar for normal budgets
+                        <div
+                          className={`h-2 rounded-full ${progressBarColor} transition-all duration-300`}
+                          style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                        ></div>
+                      )}
                     </div>
                     
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">
-                        {overrun > 0 ? (
-                          <>
-                            Dépassé de: <span className="text-red-600 font-medium">
-                              {formatNumber(overrun)} Ar
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            Restant: <span className="text-green-600 font-medium">
-                              {formatNumber(remaining)} Ar
-                            </span>
-                          </>
-                        )}
-                      </span>
+                      {overrun > 0 ? (
+                        <span className="text-red-600">
+                          Dépassé: -<span className="font-medium">
+                            {formatNumber(overrun)} Ar
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-600">
+                          Restant: <span className="text-green-600 font-medium">
+                            {formatNumber(remaining)} Ar
+                          </span>
+                        </span>
+                      )}
                       <div className="flex items-center space-x-1">
                         {statusIcon}
-                        <span className={statusColor}>
-                          {statusText}
-                        </span>
+                        {statusText !== 'Dépassé' && (
+                          <span className={statusColor}>
+                            {statusText}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1519,7 +1609,7 @@ const BudgetsPage = () => {
                   name: prev.name || (selectedCategory ? TRANSACTION_CATEGORIES[selectedCategory as TransactionCategory]?.name || selectedCategory : '')
                 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="select-no-arrow w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             >
               <option value="">Sélectionner une catégorie</option>

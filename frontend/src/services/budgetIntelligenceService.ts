@@ -12,19 +12,20 @@ import type { Transaction } from '../types/index.js';
 /**
  * Interface pour les budgets par catégorie
  * Mapping des catégories vers les montants recommandés en Ariary
+ * Clés en minuscules sans accents pour correspondre au type TransactionCategory
  */
 export interface CategoryBudgets {
-  readonly Alimentation: number;
-  readonly Logement: number;
-  readonly Transport: number;
-  readonly Communication: number;
-  readonly Habillement: number;
-  readonly Santé: number;
-  readonly Éducation: number;
-  readonly Loisirs: number;
-  readonly Solidarité: number;
-  readonly Épargne: number;
-  readonly Autres: number;
+  readonly alimentation: number;
+  readonly logement: number;
+  readonly transport: number;
+  readonly communication: number;
+  readonly vetements: number;
+  readonly sante: number;
+  readonly education: number;
+  readonly loisirs: number;
+  readonly solidarite: number;
+  readonly epargne: number;
+  readonly autres: number;
 }
 
 /**
@@ -91,18 +92,19 @@ const DEFAULT_VALUES = {
 /**
  * Allocation budgétaire standard pour Madagascar
  * Inclut la Solidarité (fihavanana) - essentielle dans la culture malgache
+ * Clés en minuscules sans accents pour correspondre au type TransactionCategory
  */
 const STANDARD_BUDGET_ALLOCATION = {
-  Alimentation: 0.36,    // 36% (ajusté pour atteindre 100%)
-  Logement: 0.24,        // 24% (ajusté pour atteindre 100%)
-  Transport: 0.10,       // 10% (maintenu)
-  Communication: 0.05,   // 5% (maintenu)
-  Santé: 0.05,           // 5% (maintenu)
-  Éducation: 0.10,       // 10% (maintenu)
-  Loisirs: 0.03,         // 3% (maintenu)
-  Habillement: 0.02,     // 2% (maintenu)
-  Solidarité: 0.05,      // 5% - Fihavanana : obligations familiales et communautaires
-  // Épargne sera calculée dynamiquement
+  alimentation: 0.36,    // 36% (ajusté pour atteindre 100%)
+  logement: 0.24,        // 24% (ajusté pour atteindre 100%)
+  transport: 0.10,       // 10% (maintenu)
+  communication: 0.05,   // 5% (maintenu)
+  sante: 0.05,           // 5% (maintenu)
+  education: 0.10,       // 10% (maintenu)
+  loisirs: 0.03,         // 3% (maintenu)
+  vetements: 0.02,       // 2% (maintenu)
+  solidarite: 0.05,      // 5% - Fihavanana : obligations familiales et communautaires
+  // epargne sera calculée dynamiquement
 } as const;
 
 /**
@@ -283,83 +285,83 @@ function calculateRealMonthlyIncome(transactions: Transaction[]): number | null 
  * @param monthlyIncome - Revenu mensuel en Ariary
  * @returns Objet d'allocation avec pourcentages adaptés au niveau de revenu
  */
-function getAdaptiveAllocation(monthlyIncome: number): typeof STANDARD_BUDGET_ALLOCATION {
+function getAdaptiveAllocation(monthlyIncome: number): Record<keyof typeof STANDARD_BUDGET_ALLOCATION, number> {
   // Revenus très faibles (sous 500,000 Ar) - Priorité aux essentiels
   if (monthlyIncome < 500000) {
     return {
-      Alimentation: 0.50,    // 50% - Survie alimentaire prioritaire
-      Logement: 0.30,         // 30% - Logement essentiel
-      Transport: 0.08,        // 8% - Transport minimal
-      Communication: 0.03,    // 3% - Communication de base
-      Santé: 0.05,            // 5% - Santé essentielle
-      Éducation: 0.02,        // 2% - Éducation minimale
-      Loisirs: 0.01,          // 1% - Loisirs très limités
-      Habillement: 0.01,      // 1% - Habillement minimal
-      Solidarité: 0.00,       // 0% - Solidarité impossible à ce niveau
-      // Épargne sera calculée dynamiquement
+      alimentation: 0.50,    // 50% - Survie alimentaire prioritaire
+      logement: 0.30,         // 30% - Logement essentiel
+      transport: 0.08,        // 8% - Transport minimal
+      communication: 0.03,    // 3% - Communication de base
+      sante: 0.05,            // 5% - Santé essentielle
+      education: 0.02,        // 2% - Éducation minimale
+      loisirs: 0.01,          // 1% - Loisirs très limités
+      vetements: 0.01,      // 1% - Habillement minimal
+      solidarite: 0.00,       // 0% - Solidarité impossible à ce niveau
+      // epargne sera calculée dynamiquement
     };
   }
   
   // Revenus faibles (500,000 - 1,000,000 Ar) - Équilibre essentiels/épargne
   if (monthlyIncome < 1000000) {
     return {
-      Alimentation: 0.45,    // 45% - Alimentation prioritaire
-      Logement: 0.25,         // 25% - Logement stable
-      Transport: 0.10,        // 10% - Transport nécessaire
-      Communication: 0.05,    // 5% - Communication importante
-      Santé: 0.05,            // 5% - Santé préventive
-      Éducation: 0.05,        // 5% - Éducation de base
-      Loisirs: 0.02,          // 2% - Loisirs limités
-      Habillement: 0.03,      // 3% - Habillement de base
-      Solidarité: 0.00,       // 0% - Solidarité très limitée
-      // Épargne sera calculée dynamiquement
+      alimentation: 0.45,    // 45% - Alimentation prioritaire
+      logement: 0.25,         // 25% - Logement stable
+      transport: 0.10,        // 10% - Transport nécessaire
+      communication: 0.05,    // 5% - Communication importante
+      sante: 0.05,            // 5% - Santé préventive
+      education: 0.05,        // 5% - Éducation de base
+      loisirs: 0.02,          // 2% - Loisirs limités
+      vetements: 0.03,      // 3% - Habillement de base
+      solidarite: 0.00,       // 0% - Solidarité très limitée
+      // epargne sera calculée dynamiquement
     };
   }
   
   // Revenus moyens (1,000,000 - 2,000,000 Ar) - Allocation standard
   if (monthlyIncome < 2000000) {
     return {
-      Alimentation: 0.36,    // 36% - Allocation standard
-      Logement: 0.24,         // 24% - Logement confortable
-      Transport: 0.10,        // 10% - Transport régulier
-      Communication: 0.05,    // 5% - Communication complète
-      Santé: 0.05,            // 5% - Santé préventive
-      Éducation: 0.10,        // 10% - Éducation continue
-      Loisirs: 0.03,          // 3% - Loisirs modérés
-      Habillement: 0.02,      // 2% - Habillement correct
-      Solidarité: 0.05,       // 5% - Solidarité de base
-      // Épargne sera calculée dynamiquement
+      alimentation: 0.36,    // 36% - Allocation standard
+      logement: 0.24,         // 24% - Logement confortable
+      transport: 0.10,        // 10% - Transport régulier
+      communication: 0.05,    // 5% - Communication complète
+      sante: 0.05,            // 5% - Santé préventive
+      education: 0.10,        // 10% - Éducation continue
+      loisirs: 0.03,          // 3% - Loisirs modérés
+      vetements: 0.02,      // 2% - Habillement correct
+      solidarite: 0.05,       // 5% - Solidarité de base
+      // epargne sera calculée dynamiquement
     };
   }
   
   // Revenus élevés (2,000,000 - 5,000,000 Ar) - Plus d'épargne et solidarité
   if (monthlyIncome < 5000000) {
     return {
-      Alimentation: 0.35,    // 35% - Alimentation de qualité
-      Logement: 0.24,         // 24% - Logement de qualité
-      Transport: 0.08,        // 8% - Transport confortable
-      Communication: 0.04,    // 4% - Communication avancée
-      Santé: 0.05,            // 5% - Santé préventive
-      Éducation: 0.08,        // 8% - Éducation continue
-      Loisirs: 0.05,          // 5% - Loisirs variés
-      Habillement: 0.03,      // 3% - Habillement de qualité
-      Solidarité: 0.08,       // 8% - Solidarité renforcée
-      // Épargne sera calculée dynamiquement
+      alimentation: 0.35,    // 35% - Alimentation de qualité
+      logement: 0.24,         // 24% - Logement de qualité
+      transport: 0.08,        // 8% - Transport confortable
+      communication: 0.04,    // 4% - Communication avancée
+      sante: 0.05,            // 5% - Santé préventive
+      education: 0.08,        // 8% - Éducation continue
+      loisirs: 0.05,          // 5% - Loisirs variés
+      vetements: 0.03,      // 3% - Habillement de qualité
+      solidarite: 0.08,       // 8% - Solidarité renforcée
+      // epargne sera calculée dynamiquement
     };
   }
   
   // Revenus très élevés (5,000,000+ Ar) - Épargne, solidarité et qualité de vie
   return {
-    Alimentation: 0.33,      // 33% - Alimentation premium
-    Logement: 0.24,           // 24% - Logement de standing
-    Transport: 0.06,          // 6% - Transport premium
-    Communication: 0.04,      // 4% - Communication premium
-    Santé: 0.05,              // 5% - Santé préventive
-    Éducation: 0.06,          // 6% - Éducation continue
-    Loisirs: 0.08,            // 8% - Loisirs variés
-    Habillement: 0.04,        // 4% - Habillement de qualité
-    Solidarité: 0.10,         // 10% - Solidarité importante (fihavanana)
-    // Épargne sera calculée dynamiquement
+    alimentation: 0.33,      // 33% - Alimentation premium
+    logement: 0.24,           // 24% - Logement de standing
+    transport: 0.06,          // 6% - Transport premium
+    communication: 0.04,      // 4% - Communication premium
+    sante: 0.05,              // 5% - Santé préventive
+    education: 0.06,          // 6% - Éducation continue
+    loisirs: 0.08,            // 8% - Loisirs variés
+    vetements: 0.04,        // 4% - Habillement de qualité
+    solidarite: 0.10,         // 10% - Solidarité importante (fihavanana)
+    // epargne sera calculée dynamiquement
   };
 }
 
@@ -430,36 +432,36 @@ export function analyzePriorityAnswers(priorityAnswers: Record<string, string>, 
     const adjustmentFactor = (1 - savingsRate) / totalAllocationWithoutSavings;
     
     const baseAllocation = { 
-      Alimentation: adaptiveAllocation.Alimentation * adjustmentFactor,
-      Logement: adaptiveAllocation.Logement * adjustmentFactor,
-      Transport: adaptiveAllocation.Transport * adjustmentFactor,
-      Communication: adaptiveAllocation.Communication * adjustmentFactor,
-      Santé: adaptiveAllocation.Santé * adjustmentFactor,
-      Éducation: adaptiveAllocation.Éducation * adjustmentFactor,
-      Loisirs: adaptiveAllocation.Loisirs * adjustmentFactor,
-      Habillement: adaptiveAllocation.Habillement * adjustmentFactor,
-      Solidarité: adaptiveAllocation.Solidarité * adjustmentFactor,
-      Épargne: savingsRate,
-      Autres: 0.00
+      alimentation: adaptiveAllocation.alimentation * adjustmentFactor,
+      logement: adaptiveAllocation.logement * adjustmentFactor,
+      transport: adaptiveAllocation.transport * adjustmentFactor,
+      communication: adaptiveAllocation.communication * adjustmentFactor,
+      sante: adaptiveAllocation.sante * adjustmentFactor,
+      education: adaptiveAllocation.education * adjustmentFactor,
+      loisirs: adaptiveAllocation.loisirs * adjustmentFactor,
+      vetements: adaptiveAllocation.vetements * adjustmentFactor,
+      solidarite: adaptiveAllocation.solidarite * adjustmentFactor,
+      epargne: savingsRate,
+      autres: 0.00
     };
 
     // Ajustements basés sur les habitudes de dépenses
     if (spendingHabitsAnswer === 'impulsive') {
-      baseAllocation.Épargne -= 0.02; // -2%
-      baseAllocation.Loisirs += 0.02; // +2%
+      baseAllocation.epargne -= 0.02; // -2%
+      baseAllocation.loisirs += 0.02; // +2%
     } else if (spendingHabitsAnswer === 'planned') {
-      baseAllocation.Épargne += 0.02; // +2%
-      baseAllocation.Loisirs -= 0.02; // -2%
+      baseAllocation.epargne += 0.02; // +2%
+      baseAllocation.loisirs -= 0.02; // -2%
     }
 
     // Ajustements basés sur la taille de famille
     if (familySize >= 4) {
       // Plus de personnes = plus d'alimentation et éducation, moins de loisirs et habillement
       const adjustmentFactor = (familySize - 2) * 0.02; // 2% par personne supplémentaire
-      baseAllocation.Alimentation += adjustmentFactor;
-      baseAllocation.Éducation += adjustmentFactor * 0.5;
-      baseAllocation.Loisirs -= adjustmentFactor * 0.5;
-      baseAllocation.Habillement -= adjustmentFactor * 0.3;
+      baseAllocation.alimentation += adjustmentFactor;
+      baseAllocation.education += adjustmentFactor * 0.5;
+      baseAllocation.loisirs -= adjustmentFactor * 0.5;
+      baseAllocation.vetements -= adjustmentFactor * 0.3;
     }
 
     // Ajustement saisonnier pour la Solidarité (fihavanana)
@@ -467,13 +469,13 @@ export function analyzePriorityAnswers(priorityAnswers: Record<string, string>, 
     const seasonMultiplier = detectCulturalSeason(currentMonth);
     
     // Appliquer le multiplicateur saisonnier à la Solidarité
-    baseAllocation.Solidarité *= seasonMultiplier;
+    baseAllocation.solidarite *= seasonMultiplier;
     
     // Ajuster les autres catégories pour maintenir l'équilibre
     if (seasonMultiplier > 1.0) {
-      const solidarityIncrease = baseAllocation.Solidarité * (seasonMultiplier - 1);
+      const solidarityIncrease = baseAllocation.solidarite * (seasonMultiplier - 1);
       // Réduire proportionnellement les catégories flexibles
-      const flexibleCategories = ['Loisirs', 'Habillement', 'Communication'];
+      const flexibleCategories = ['loisirs', 'vetements', 'communication'];
       const reductionPerCategory = solidarityIncrease / flexibleCategories.length;
       
       flexibleCategories.forEach(category => {
@@ -489,17 +491,17 @@ export function analyzePriorityAnswers(priorityAnswers: Record<string, string>, 
 
     // Calcul des montants finaux en Ariary
     const budgets: CategoryBudgets = {
-      Alimentation: Math.round(availableBudget * baseAllocation.Alimentation * normalizationFactor),
-      Logement: Math.round(availableBudget * baseAllocation.Logement * normalizationFactor),
-      Transport: Math.round(availableBudget * baseAllocation.Transport * normalizationFactor),
-      Communication: Math.round(availableBudget * baseAllocation.Communication * normalizationFactor),
-      Habillement: Math.round(availableBudget * baseAllocation.Habillement * normalizationFactor),
-      Santé: Math.round(availableBudget * baseAllocation.Santé * normalizationFactor),
-      Éducation: Math.round(availableBudget * baseAllocation.Éducation * normalizationFactor),
-      Loisirs: Math.round(availableBudget * baseAllocation.Loisirs * normalizationFactor),
-      Solidarité: Math.round(availableBudget * baseAllocation.Solidarité * normalizationFactor),
-      Épargne: Math.round(availableBudget * baseAllocation.Épargne * normalizationFactor),
-      Autres: Math.round(availableBudget * baseAllocation.Autres * normalizationFactor)
+      alimentation: Math.round(availableBudget * baseAllocation.alimentation * normalizationFactor),
+      logement: Math.round(availableBudget * baseAllocation.logement * normalizationFactor),
+      transport: Math.round(availableBudget * baseAllocation.transport * normalizationFactor),
+      communication: Math.round(availableBudget * baseAllocation.communication * normalizationFactor),
+      vetements: Math.round(availableBudget * baseAllocation.vetements * normalizationFactor),
+      sante: Math.round(availableBudget * baseAllocation.sante * normalizationFactor),
+      education: Math.round(availableBudget * baseAllocation.education * normalizationFactor),
+      loisirs: Math.round(availableBudget * baseAllocation.loisirs * normalizationFactor),
+      solidarite: Math.round(availableBudget * baseAllocation.solidarite * normalizationFactor),
+      epargne: Math.round(availableBudget * baseAllocation.epargne * normalizationFactor),
+      autres: Math.round(availableBudget * baseAllocation.autres * normalizationFactor)
     };
 
     console.log('💵 DEBUG - Budgets calculés:');
@@ -522,17 +524,17 @@ export function analyzePriorityAnswers(priorityAnswers: Record<string, string>, 
     const fallbackAllocation = getAdaptiveAllocation(defaultIncome);
     
     return {
-      Alimentation: Math.round(defaultAvailableBudget * fallbackAllocation.Alimentation),
-      Logement: Math.round(defaultAvailableBudget * fallbackAllocation.Logement),
-      Transport: Math.round(defaultAvailableBudget * fallbackAllocation.Transport),
-      Communication: Math.round(defaultAvailableBudget * fallbackAllocation.Communication),
-      Habillement: Math.round(defaultAvailableBudget * fallbackAllocation.Habillement),
-      Santé: Math.round(defaultAvailableBudget * fallbackAllocation.Santé),
-      Éducation: Math.round(defaultAvailableBudget * fallbackAllocation.Éducation),
-      Loisirs: Math.round(defaultAvailableBudget * fallbackAllocation.Loisirs),
-      Solidarité: Math.round(defaultAvailableBudget * fallbackAllocation.Solidarité),
-      Épargne: Math.round(defaultAvailableBudget * DEFAULT_VALUES.savingsRate),
-      Autres: Math.round(defaultAvailableBudget * 0.00)
+      alimentation: Math.round(defaultAvailableBudget * fallbackAllocation.alimentation),
+      logement: Math.round(defaultAvailableBudget * fallbackAllocation.logement),
+      transport: Math.round(defaultAvailableBudget * fallbackAllocation.transport),
+      communication: Math.round(defaultAvailableBudget * fallbackAllocation.communication),
+      vetements: Math.round(defaultAvailableBudget * fallbackAllocation.vetements),
+      sante: Math.round(defaultAvailableBudget * fallbackAllocation.sante),
+      education: Math.round(defaultAvailableBudget * fallbackAllocation.education),
+      loisirs: Math.round(defaultAvailableBudget * fallbackAllocation.loisirs),
+      solidarite: Math.round(defaultAvailableBudget * fallbackAllocation.solidarite),
+      epargne: Math.round(defaultAvailableBudget * DEFAULT_VALUES.savingsRate),
+      autres: Math.round(defaultAvailableBudget * 0.00)
     };
   }
 }
@@ -825,15 +827,15 @@ export function calculateAdjustedBudgets(
       // Redistribution de l'excédent vers l'épargne ou compensation via Loisirs/Autres
       if (totalAdjustment > 0) {
         // Excédent : ajouter à l'épargne
-        adjustedBudgets.Épargne = Math.round(adjustedBudgets.Épargne + totalAdjustment);
+        adjustedBudgets.epargne = Math.round(adjustedBudgets.epargne + totalAdjustment);
       } else {
         // Déficit : réduire Loisirs et Autres proportionnellement
         const deficit = Math.abs(totalAdjustment);
         const loisirsReduction = Math.round(deficit * 0.6); // 60% sur Loisirs
         const autresReduction = Math.round(deficit * 0.4); // 40% sur Autres
         
-        adjustedBudgets.Loisirs = Math.max(0, Math.round(adjustedBudgets.Loisirs - loisirsReduction));
-        adjustedBudgets.Autres = Math.max(0, Math.round(adjustedBudgets.Autres - autresReduction));
+        adjustedBudgets.loisirs = Math.max(0, Math.round(adjustedBudgets.loisirs - loisirsReduction));
+        adjustedBudgets.autres = Math.max(0, Math.round(adjustedBudgets.autres - autresReduction));
       }
     }
 

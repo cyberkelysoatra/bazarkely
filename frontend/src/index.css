@@ -67,6 +67,22 @@
     @apply border-red-500 focus:border-red-500 focus:ring-red-200;
   }
   
+  /* Remove native select dropdown arrows completely */
+  .select-no-arrow {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none;
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 0.75rem;
+  }
+  
+  /* Hide select arrow in IE/Edge */
+  .select-no-arrow::-ms-expand {
+    display: none;
+  }
+  
   .mobile-nav-item {
     @apply flex flex-col items-center justify-center p-1.5 text-sm font-semibold transition-all duration-200 rounded-lg;
   }

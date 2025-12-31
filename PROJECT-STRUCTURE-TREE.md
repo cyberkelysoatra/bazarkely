@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 3.7 (Construction POC Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation 2025-11-15 - Session 2025-11-15)  
-**Date de mise à jour:** 2025-11-15  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14
+**Version:** 3.8 (Session S28 2025-12-31 - Budget Statistics Page + Multi-Year Analysis)  
+**Date de mise à jour:** 2025-12-31  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28
 
 ---
 
@@ -12,15 +12,15 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 288+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15)
+- **Total fichiers:** 290+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31)
 - **Composants UI:** 13/14 implémentés (93%)
 - **Composants Auth:** 2/2 implémentés (100%)
 - **Composants Recommandations:** 3/3 implémentés (100%) 🆕
 - **Composants Certification:** 6/6 implémentés (100%) 🆕 NOUVEAU
 - **Composants Leaderboard:** 1/1 implémenté (100%) 🆕 NOUVEAU
 - **Composants Transactions Récurrentes:** 3/3 implémentés (100%) 🆕 NOUVEAU 2025-11-03
-- **Pages principales:** 18/18 implémentées (100%) (+2 pages session 2025-11-03)
-- **Hooks personnalisés:** 6/6 implémentés (100%) ✅
+- **Pages principales:** 19/19 implémentées (100%) (+2 pages session 2025-11-03, +1 page S28 2025-12-31)
+- **Hooks personnalisés:** 7/7 implémentés (100%) ✅ (+1 hook S28 2025-12-31)
 - **Services:** 28+ services implémentés (Construction POC services existants)
 - **Composants Construction POC:** 11/11 implémentés (100%) 🆕 NOUVEAU 2025-11-08
 - **Backend Docs:** 5 spécifications API (+1 session 2025-11-03)
@@ -172,7 +172,8 @@ bazarkely-2/
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction)
 │   │   │   ├── 📄 AddBudgetPage.tsx      # ✅ Ajout budget (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 AccountsPage.tsx       # ✅ Gestion des comptes (MODIFIÉ 2025-01-11 - Layout 2 colonnes + Transfert)
-│   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage) (MODIFIÉ 2025-01-20 - Cartes budget cliquables + navigation catégorie)
+│   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage) (MODIFIÉ 2025-01-20 - Cartes budget cliquables + navigation catégorie) (MODIFIÉ [S28] 2025-12-31 - Barre progression bicolore + icône épargne + style select)
+│   │   │   ├── 📄 BudgetStatisticsPage.tsx # 🆕 NOUVEAU [S28] 2025-12-31 - Page statistiques budgétaires multi-années (~600 lignes)
 │   │   │   ├── 📄 GoalsPage.tsx         # ✅ Gestion des objectifs
 │   │   │   ├── 📄 EducationPage.tsx     # ✅ Contenu éducatif
 │   │   │   ├── 📄 PWAInstructionsPage.tsx # ✅ Instructions installation PWA multi-navigateurs
@@ -183,6 +184,8 @@ bazarkely-2/
 │   │   │   ├── 📄 CertificationPage.tsx   # 🆕 NOUVEAU - Page certification + statistiques (MODIFIÉ 2025-10-17 - Score réel + sections certificats/classement)
 │   │   │   ├── 📄 QuizPage.tsx            # 🆕 NOUVEAU - Interface quiz interactive + timer
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
+│   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
+│   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration (MODIFIÉ 2025-01-20 - Grille 3 colonnes mobile + accordéon utilisateur + objectif Fond d'urgence)
 │   │   ├── 📁 services/                  # Services métier
 │   │   │   ├── 📄 authService.ts         # ✅ Service d'authentification
@@ -216,6 +219,8 @@ bazarkely-2/
 │   │   │   ├── 📄 certification.ts       # 🆕 NOUVEAU - Types certification + interfaces + 5 niveaux
 │   │   │   ├── 📄 recurring.ts           # 🆕 NOUVEAU 2025-11-03 - Types transactions récurrentes (53 lignes)
 │   │   │   └── 📄 supabase-recurring.ts  # 🆕 NOUVEAU 2025-11-03 - Types Supabase transactions récurrentes (253 lignes)
+│   │   ├── 📁 constants/                 # Constantes de l'application
+│   │   │   └── 📄 index.ts               # ✅ Constantes principales (MODIFIÉ [S28] 2025-12-31 - Ajout catégorie épargne TRANSACTION_CATEGORIES)
 │   │   ├── 📁 lib/                       # Utilitaires
 │   │   │   ├── 📄 supabase.ts            # ✅ Configuration Supabase
 │   │   │   ├── 📄 database.ts             # ✅ Base de données (Version 7 - Tables transactions récurrentes) (MODIFIÉ 2025-11-03)
@@ -228,7 +233,9 @@ bazarkely-2/
 │   │   │   ├── 📄 usePWAFeatures.ts     # ✅ Hook fonctionnalités PWA
 │   │   │   ├── 📄 usePWAInstall.ts      # ✅ Hook installation PWA (user gesture fix appliqué) 🔧
 │   │   │   ├── 📄 usePracticeTracking.ts # 🆕 NOUVEAU - Hook suivi pratiques (2025-10-17)
-│   │   │   └── 📄 useRecommendations.ts # 🆕 NOUVEAU - Hook intégration recommandations (579 lignes)
+│   │   │   ├── 📄 useRecommendations.ts # 🆕 NOUVEAU - Hook intégration recommandations (579 lignes)
+│   │   │   ├── 📄 useYearlyBudgetData.ts # ✅ Hook données budgétaires annuelles
+│   │   │   └── 📄 useMultiYearBudgetData.ts # 🆕 NOUVEAU [S28] 2025-12-31 - Hook statistiques multi-années (~450 lignes)
 │   │   ├── 📁 utils/                     # Fonctions utilitaires
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
 │   │   │   ├── 📄 passwordUtils.ts       # ✅ Utilitaires mots de passe
@@ -283,7 +290,7 @@ bazarkely-2/
 │   │   │       ├── 📄 USAGE-EXAMPLES.md   # Exemples utilisation
 │   │   │       └── 📄 jest.config.js      # Configuration Jest
 │   │   ├── 📁 styles/                    # Fichiers CSS
-│   │   │   └── 📄 index.css              # ✅ Styles principaux (MODIFIÉ 2025-01-11 - Suppression carousel + marquee)
+│   │   │   └── 📄 index.css              # ✅ Styles principaux (MODIFIÉ 2025-01-11 - Suppression carousel + marquee) (MODIFIÉ [S28] 2025-12-31 - Classe .select-no-arrow)
 │   │   ├── 📄 App.tsx                    # ✅ Composant principal (Toaster intégré)
 │   │   ├── 📄 main.tsx                   # ✅ Point d'entrée
 │   │   └── 📄 index.html                 # ✅ Template React
@@ -444,14 +451,15 @@ bazarkely-2/
 - **frontend/src/components/Dashboard/:** 2 fichiers (2 composants) 🆕 NOUVEAU (+1 session 2025-11-03)
 - **frontend/src/components/RecurringConfig/:** 1 fichier (1 composant) 🆕 NOUVEAU 2025-11-03
 - **frontend/src/components/RecurringTransactions/:** 2 fichiers (2 composants) 🆕 NOUVEAU 2025-11-03
-- **frontend/src/pages/:** 18 fichiers (16 pages + 2 RecurringTransactions) 🆕 NOUVEAU (+2 session 2025-11-03)
+- **frontend/src/pages/:** 20 fichiers (18 pages + 2 RecurringTransactions + 1 BudgetStatistics S28) 🆕 NOUVEAU (+2 session 2025-11-03, +1 session S28)
 - **frontend/src/services/:** 25+ fichiers (12 nouveaux services ajoutés) ✅ (+3 session 2025-11-03)
 - **frontend/src/stores/:** 7 fichiers (1 nouveau store certification) 🆕 NOUVEAU
 - **frontend/src/types/:** 5 fichiers (1 nouveau types certification + 2 types récurrentes) 🆕 NOUVEAU (+2 session 2025-11-03)
+- **frontend/src/constants/:** 1 fichier (index.ts) ✅ (MODIFIÉ [S28] 2025-12-31 - Catégorie épargne)
 - **frontend/src/utils/:** 5 fichiers (1 nouveau utilitaire récurrentes) ✅ (+1 session 2025-11-03)
 - **frontend/src/data/:** 1 fichier (250 questions certification) 🆕 NOUVEAU
 - **frontend/src/lib/:** 3 fichiers (database.ts Version 7) ✅ (MODIFIÉ 2025-11-03)
-- **frontend/src/hooks/:** 6 fichiers (6 hooks complets) 🆕 NOUVEAU
+- **frontend/src/hooks/:** 8 fichiers (7 hooks complets + 1 useMultiYearBudgetData S28) 🆕 NOUVEAU (+1 session S28)
 - **frontend/src/modules/construction-poc/:** 33 fichiers (14 existants + 11 UI components 2025-11-08 + 8 Phase 3 Security 2025-11-12) 🆕 NOUVEAU
   - **components/:** 13 fichiers (12 composants + 1 index) [NEW 2025-11-08] [3 MODIFIED 2025-11-12: POCDashboard, PurchaseOrderForm, POCOrdersList] [3 NEW 2025-11-12: ThresholdAlert, ConsumptionPlanCard, PriceMaskingWrapper]
   - **pages/:** 1 fichier [MODIFIED 2025-11-12: OrderDetailPage]
@@ -1155,7 +1163,7 @@ bazarkely-2/
   - Liste complète
   - Onglets filtres
   - Modal création/édition
-- **RecurringTransactionDetailPage.tsx** - Page détail (526 lignes)
+- **RecurringTransactionDetailPage.tsx** - Page détail (526 lignes) (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
   - Détails transaction récurrente
   - Historique transactions générées
   - Prochaines occurrences
@@ -1220,4 +1228,55 @@ bazarkely-2/
 
 ---
 
-*Structure mise à jour le 2025-11-14 - BazarKELY v3.5 (Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 - WorkflowAction Import + Database alert_type)*
+## 🆕 NOUVEAUX COMPOSANTS CRÉÉS (Session S28 2025-12-31)
+
+### **Page Statistiques Budgétaires** 🆕 NOUVEAU [S28]
+
+#### **BudgetStatisticsPage.tsx** 🆕 NOUVEAU [S28]
+- **Localisation:** `frontend/src/pages/BudgetStatisticsPage.tsx`
+- **Fonctionnalités:** Page statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques
+- **Statut:** Page complète avec analyse multi-années (~600 lignes)
+- **Tests:** Comparaisons inter-annuelles et détection problèmes
+- **Export:** Composant de page standalone avec route `/budgets/statistics`
+
+#### **useMultiYearBudgetData.ts** 🆕 NOUVEAU [S28]
+- **Localisation:** `frontend/src/hooks/useMultiYearBudgetData.ts`
+- **Fonctionnalités:** Hook personnalisé pour données budgétaires multi-années avec comparaisons
+- **Statut:** Hook complet avec calculs statistiques inter-annuelles (~450 lignes)
+- **Tests:** Agrégation multi-années et calculs de tendances
+- **Export:** Hook personnalisé avec interface TypeScript
+
+### **Modifications Session S28** 🔧 MODIFIÉ [S28]
+
+#### **BudgetsPage.tsx** 🔧 MODIFIÉ [S28]
+- **Modifications:** Barre progression bicolore, icône épargne, style select amélioré
+- **Fonctionnalités:** UI améliorée pour affichage budgets avec distinction visuelle
+- **Statut:** Améliorations visuelles appliquées
+
+#### **RecurringTransactionDetailPage.tsx** 🔧 MODIFIÉ [S28]
+- **Modifications:** Correction champ montant (fix bug)
+- **Fonctionnalités:** Champ montant fonctionnel correctement
+- **Statut:** Bug résolu
+
+#### **constants/index.ts** 🔧 MODIFIÉ [S28]
+- **Modifications:** Ajout catégorie épargne dans TRANSACTION_CATEGORIES
+- **Fonctionnalités:** Nouvelle catégorie épargne disponible
+- **Statut:** Constante mise à jour
+
+#### **index.css** 🔧 MODIFIÉ [S28]
+- **Modifications:** Ajout classe .select-no-arrow pour masquer flèches select
+- **Fonctionnalités:** Style select personnalisé sans flèches natives
+- **Statut:** Classe CSS ajoutée
+
+### **Statistiques Session S28**
+- **Fichiers créés:** 2 nouveaux fichiers (BudgetStatisticsPage.tsx, useMultiYearBudgetData.ts)
+- **Fichiers modifiés:** 4 fichiers (BudgetsPage.tsx, RecurringTransactionDetailPage.tsx, constants/index.ts, index.css)
+- **Lignes de code ajoutées:** ~1,050 lignes (+600 page, +450 hook)
+- **Pages:** 1 nouvelle page (BudgetStatisticsPage)
+- **Hooks:** 1 nouveau hook (useMultiYearBudgetData)
+- **Fonctionnalités:** Statistiques budgétaires multi-années + comparaisons + détection problèmes
+- **Statut:** 100% fonctionnel et intégré
+
+---
+
+*Structure mise à jour le 2025-12-31 - BazarKELY v3.8 (Session S28 - Budget Statistics Page + Multi-Year Analysis + UI Improvements)*

@@ -1,9 +1,9 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 4.8 (Construction POC Phases Dropdown Gap Documenté)  
-**Date de mise à jour:** 2025-11-23  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components  
+**Version:** 4.9 (Statistiques Budgétaires Multi-Années - Session S28)  
+**Date de mise à jour:** 2025-12-31  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté
 
 ---
@@ -1227,6 +1227,74 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Métriques:** -33% hauteur visuelle, -75% temps ajout article (15-20s → 3-5s), 7 badges feedback
 - **4 fichiers modifiés:** Header.tsx, PurchaseOrderForm.tsx, POCOrdersList.tsx
 
+## 🎉 GAPS RÉSOLUS (SESSION S28 - 2025-12-31)
+
+### **Gap Statistiques Budgétaires Multi-Années** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Absence de fonctionnalité d'analyse statistique budgétaire multi-années
+- **Solution implémentée:** Hook useMultiYearBudgetData.ts et page BudgetStatisticsPage.tsx complètes
+- **Fichiers créés:**
+  - `frontend/src/hooks/useMultiYearBudgetData.ts` (~890 lignes) - Hook statistiques multi-années
+  - `frontend/src/pages/BudgetStatisticsPage.tsx` (~690 lignes) - Page statistiques complète
+- **Fonctionnalités:**
+  - Comparaison de périodes (année, mois, plage personnalisée)
+  - Détection automatique catégories problématiques avec sévérité
+  - Graphiques d'évolution annuelle et mensuelle
+  - Métriques comparatives avec indicateurs visuels
+- **Impact:** Analyse budgétaire avancée maintenant disponible pour utilisateurs
+
+### **Gap Barres de Progression Budgets Dépassés** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Absence d'indication visuelle claire pour budgets dépassés
+- **Solution implémentée:** Barres de progression bicolores (vert + orange) dans BudgetsPage.tsx
+- **Fichier modifié:** `frontend/src/pages/BudgetsPage.tsx`
+- **Fonctionnalités:**
+  - Barre verte pour budgets respectés (spent <= budget)
+  - Barre orange pour budgets dépassés (spent > budget)
+  - Affichage conditionnel avec classes Tailwind dynamiques
+- **Impact:** Indication visuelle claire des budgets dépassés
+
+### **Gap Affichage Dépassement Budget** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Absence d'affichage du montant de dépassement pour budgets dépassés
+- **Solution implémentée:** Texte "Dépassé: -XXX Ar" affiché pour budgets dépassés
+- **Fichier modifié:** `frontend/src/pages/BudgetsPage.tsx`
+- **Fonctionnalités:**
+  - Formatage avec CurrencyDisplay et formatage négatif
+  - Affichage conditionnel uniquement pour budgets dépassés
+- **Impact:** Utilisateurs voient clairement le montant de dépassement
+
+### **Gap Icône Catégorie Épargne Manquante** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Icône manquante ou incorrecte pour catégorie épargne
+- **Solution implémentée:** Utilisation de PiggyBank pour catégorie épargne
+- **Fichiers modifiés:**
+  - `frontend/src/constants/index.ts` - Mise à jour TRANSACTION_CATEGORIES
+  - `frontend/src/pages/BudgetsPage.tsx` - Import et utilisation PiggyBank
+- **Impact:** Icône cohérente pour catégorie épargne
+
+### **Gap Chevrons Select Module Budget** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Chevrons natifs des selects visibles dans module Budget, style incohérent
+- **Solution implémentée:** Classe CSS `select-no-arrow` appliquée aux selects du module Budget
+- **Fichiers modifiés:**
+  - `frontend/src/pages/BudgetsPage.tsx` - Application classe select-no-arrow
+  - `frontend/src/index.css` - Style CSS select-no-arrow existant utilisé
+- **Impact:** Style uniforme sans flèches natives dans module Budget
+
+### **Gap Édition Champ Montant Transaction Récurrente** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Champ montant transaction récurrente non éditable ou problématique
+- **Solution implémentée:** Correction édition champ montant dans RecurringTransactionDetailPage.tsx
+- **Fichier modifié:** `frontend/src/pages/RecurringTransactionDetailPage.tsx`
+- **Impact:** Édition montant transaction récurrente maintenant fonctionnelle
+
+### **Gap Budgets Dupliqués Base de Données** ✅ RÉSOLU 2025-12-31
+- **Problème identifié:** Présence de budgets dupliqués dans base de données
+- **Solution implémentée:** Nettoyage base de données pour supprimer budgets dupliqués
+- **Impact:** Intégrité des données améliorée, pas de doublons dans budgets
+
+**Résumé Session S28:**
+- **7 gaps résolus:** Statistiques multi-années, barres bicolores, affichage dépassement, icône épargne, chevrons select, édition montant récurrent, budgets dupliqués
+- **2 fichiers créés:** useMultiYearBudgetData.ts, BudgetStatisticsPage.tsx
+- **3 fichiers modifiés:** BudgetsPage.tsx, constants/index.ts, RecurringTransactionDetailPage.tsx
+- **1 nettoyage DB:** Suppression budgets dupliqués
+- **Impact:** Module Budget enrichi avec statistiques avancées et améliorations UI
+
 ## ⚠️ GAPS RESTANTS (MISE À JOUR 23 NOVEMBRE 2025)
 
 ### **Gap Frontend AGENT03 Expectations** ⚠️ DOCUMENTÉ 2025-11-12
@@ -1477,8 +1545,8 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-**🎯 BazarKELY est une application PWA fonctionnelle avec système de notifications complet, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement anonyme, et transactions récurrentes complètes (Infrastructure + Services + UI) - prête pour la production !**
+**🎯 BazarKELY est une application PWA fonctionnelle avec système de notifications complet, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement anonyme, transactions récurrentes complètes (Infrastructure + Services + UI), et statistiques budgétaires multi-années avec comparaisons de périodes, détection de catégories problématiques, barres de progression bicolores, et améliorations UI complètes (Session S28 - 2025-12-31) - prête pour la production !**
 
 ---
 
-*Document généré automatiquement le 2025-11-15 - BazarKELY v4.6 (Construction POC Smart Defaults + Bugs Corrigés)*
+*Document généré automatiquement le 2025-12-31 - BazarKELY v4.9 (Statistiques Budgétaires Multi-Années - Session S28)*

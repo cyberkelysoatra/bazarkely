@@ -17,6 +17,7 @@ const AddAccountPage = lazy(() => import('../../pages/AddAccountPage'))
 const BudgetsPage = lazy(() => import('../../pages/BudgetsPage'))
 const AddBudgetPage = lazy(() => import('../../pages/AddBudgetPage'))
 const BudgetReviewPage = lazy(() => import('../../pages/BudgetReviewPage'))
+const BudgetStatisticsPage = lazy(() => import('../../pages/BudgetStatisticsPage'))
 const PriorityQuestionsPage = lazy(() => import('../../pages/PriorityQuestionsPage'))
 const ProfileCompletionPage = lazy(() => import('../../pages/ProfileCompletionPage'))
 const RecommendationsPage = lazy(() => import('../../pages/RecommendationsPage'))
@@ -170,6 +171,7 @@ const AppLayout = () => {
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/account/:accountId" element={<AccountDetailPage />} />
             <Route path="/add-account" element={<AddAccountPage />} />
+            <Route path="/budgets/statistics" element={<BudgetStatisticsPage />} />
             <Route path="/budgets" element={<BudgetsPage />} />
             <Route path="/add-budget" element={<AddBudgetPage />} />
             <Route path="/budget-review" element={<BudgetReviewPage />} />

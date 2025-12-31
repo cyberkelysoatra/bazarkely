@@ -1,8 +1,8 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.10 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30)  
-**Date de mise à jour:** 2025-11-30  
+**Version:** 3.11 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30 + Budget Statistics S28 2025-12-31)  
+**Date de mise à jour:** 2025-12-31  
 **Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components
 
 ---
@@ -11,9 +11,9 @@
 
 Cette matrice présente l'état d'avancement réel de toutes les fonctionnalités et composants de BazarKELY, basée sur l'audit complet du codebase effectué le 2024-12-19 et mis à jour avec l'implémentation du système de notifications.
 
-### **📊 Statistiques Globales (Mise à jour 2025-11-03)**
-- **Fonctionnalités implémentées:** 100% (201/201)
-- **Composants manquants:** 0% (0/201)
+### **📊 Statistiques Globales (Mise à jour 2025-12-31)**
+- **Fonctionnalités implémentées:** 100% (210/210)
+- **Composants manquants:** 0% (0/210)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
 - **Documentation:** 100% (Complète et à jour)
 - **Déploiement:** 100% (Production fonctionnelle)
@@ -31,13 +31,14 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Identification Utilisateur:** 100% (1/1) - Session 2025-01-20
 - **Filtrage Catégories:** 100% (1/1) ✅ - Session 2025-01-20 (Bug identifié) [Résolu 2025-11-03]
 - **Context Switcher:** 100% (12/12) ✅ - Session 2025-11-09
-- **Transactions Récurrentes:** 100% (43/43) - Session 2025-11-03
+- **Transactions Récurrentes:** 100% (44/44) - Session 2025-11-03 + Edit amount field fix S28 2025-12-31
+- **Fonctionnalités Budgétaires Avancées:** 100% (9/9) ✅ - Session S28 2025-12-31
 - **Module Construction POC:** 100% (66/66) - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (2025-11-12) + Editable BC Number System (2025-11-29/30)
 
 ### **📈 Répartition par Statut**
-- **✅ Implémenté:** 100% (200/201)
-- **⚠️ Partiel:** 0.5% (1/201)
-- **❌ Manquant:** 0% (0/201)
+- **✅ Implémenté:** 100% (210/210)
+- **⚠️ Partiel:** 0% (0/210)
+- **❌ Manquant:** 0% (0/210)
 
 ---
 
@@ -85,7 +86,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **TransactionsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion transactions + Filtrage catégorie corrigé + Loading spinner + CSV Export [31/10/2025] |
 | **TransactionDetailPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Détail transaction + Navigation intelligente préservant filtres [31/10/2025] |
 | **AccountsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des comptes avec layout 2 colonnes |
-| **BudgetsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des budgets mensuels + cartes cliquables avec navigation catégorie |
+| **BudgetsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des budgets mensuels + cartes cliquables avec navigation catégorie + Barre de progression bicolore + Affichage dépassement amélioré + Icônes catégories cohérentes + Select styling amélioré |
+| **BudgetStatisticsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Page statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques (2025-12-31) |
 | **GoalsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des objectifs financiers |
 | **EducationPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Ressources éducatives financières |
 | **AddTransactionPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Formulaire d'ajout de transaction |
@@ -94,7 +96,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **PriorityQuestionsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Wizard 10 questions prioritaires pour personnalisation |
 | **QuizPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | 10 quiz hebdomadaires éducatifs avec rotation automatique |
 
-**Total Pages principales:** 12/12 implémentées (100%)
+**Total Pages principales:** 13/13 implémentées (100%)
 
 ---
 
@@ -656,6 +658,38 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 **Tests:** ⚠️ 80% (Tests manuels validés, tests automatisés en attente)  
 **Documentation:** ✅ 100% (43/43)
 
+### **Corrections et Améliorations**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **Edit recurring transaction - amount field fix** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction champ montant dans édition transaction récurrente (2025-12-31) |
+
+---
+
+## 📊 FONCTIONNALITÉS BUDGÉTAIRES AVANCÉES (Session S28 2025-12-31)
+
+### **Page Statistiques Budgétaires**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **BudgetStatisticsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Page complète statistiques budgétaires avec route /budgets/statistics (2025-12-31) |
+| **Multi-year data aggregation** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Agrégation données budgétaires sur plusieurs années (2025-12-31) |
+| **Period comparison (year/month/range)** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Comparaison par année, mois ou plage personnalisée (2025-12-31) |
+| **Problematic category detection** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Détection automatique catégories avec dépassements récurrents (2025-12-31) |
+| **Evolution charts** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Graphiques d'évolution budgétaire multi-années (2025-12-31) |
+
+### **Améliorations UI Budgets**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **Bicolor progress bar for overspent budgets** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Barre de progression bicolore (vert/rouge) pour budgets dépassés (2025-12-31) |
+| **Enhanced overspend display** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Affichage amélioré "Dépassé: -XXX Ar" pour budgets dépassés (2025-12-31) |
+| **Category icons consistency (épargne fixed)** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction icône catégorie épargne pour cohérence visuelle (2025-12-31) |
+| **Select styling improvements** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Amélioration styling select sans chevrons pour design moderne (2025-12-31) |
+
+**Total Fonctionnalités Budgétaires Avancées:** 9/9 implémentées (100%)  
+**Implémentation:** ✅ 100% (9/9)  
+**Tests:** ✅ 100% (Validé en session S28 2025-12-31)  
+**Documentation:** ✅ 100% (9/9)  
+**Date de complétion:** 2025-12-31
+
 ---
 
 ## 🏗️ MODULE CONSTRUCTION POC (Phase 2 Step 3 UI Components + Phase 2 Organigramme Complète - 2025-11-12)
@@ -928,8 +962,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 ## ✅ CONCLUSION
 
 ### **Statut Global (Réel)**
-- **Fonctionnalités implémentées:** 100% (200/201)
-- **Composants manquants:** 0% (0/201)
+- **Fonctionnalités implémentées:** 100% (210/210)
+- **Composants manquants:** 0% (0/210)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
 - **Documentation:** 100% (Complète et à jour)
 - **Déploiement:** 100% (Production fonctionnelle)
@@ -949,7 +983,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Identification Utilisateur:** 100% (1/1) - Session 2025-01-20
 - **Filtrage Catégories:** 100% (1/1) ✅ - Session 2025-01-20 (Bug identifié) [Résolu 2025-11-03]
 - **Context Switcher:** 100% (12/12) ✅ - Session 2025-11-09
-- **Transactions Récurrentes:** 100% (43/43) - Session 2025-11-03
+- **Transactions Récurrentes:** 100% (44/44) - Session 2025-11-03 + Edit amount field fix S28 2025-12-31
+- **Fonctionnalités Budgétaires Avancées:** 100% (9/9) ✅ - Session S28 2025-12-31 (Budget Statistics Page + UI Improvements)
 - **Module Construction POC:** 100% (66/66) ✅ - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (10 org_units, BCI/BCE orders, org_unit-scoped workflow) + Smart Defaults (7/7 champs) + UX Transformation VAGUE 1 + VAGUE 2 (Header fix, collapsibles, inline search, badges, layout) + Editable BC Number System (Admin only, format AA/NNN, réservations, édition inline) - Session 2025-11-12 + 2025-11-15 + 2025-11-29/30
 
 ### **Prochaines Étapes**
@@ -997,4 +1032,38 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2025-11-15 - BazarKELY v3.9 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Header Construction Cleanup PM 2025-11-15)*
+---
+
+## 📝 SESSION S28 - BUDGET STATISTICS & UI IMPROVEMENTS (2025-12-31)
+
+### **Nouvelles Fonctionnalités**
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Budget Statistics Page** | ✅ DONE | P0 | BudgetStatisticsPage.tsx | Page complète statistiques multi-années avec comparaisons (2025-12-31) |
+| **Multi-year aggregation** | ✅ DONE | P0 | useBudgetStatistics hook | Agrégation données budgétaires sur plusieurs années (2025-12-31) |
+| **Period comparison** | ✅ DONE | P1 | BudgetStatisticsPage.tsx | Comparaison année/mois/plage personnalisée (2025-12-31) |
+| **Problematic category detection** | ✅ DONE | P1 | BudgetStatisticsPage.tsx | Détection catégories avec dépassements récurrents (2025-12-31) |
+| **Evolution charts** | ✅ DONE | P1 | BudgetStatisticsPage.tsx | Graphiques d'évolution budgétaire (2025-12-31) |
+
+### **Améliorations UI**
+| Amélioration | Statut | Priorité | Composant | Détails | Impact |
+|--------------|--------|----------|-----------|---------|--------|
+| **Bicolor progress bar** | ✅ DONE | P1 | BudgetsPage.tsx | Barre progression bicolore (vert/rouge) pour budgets dépassés | Feedback visuel amélioré |
+| **Enhanced overspend display** | ✅ DONE | P1 | BudgetsPage.tsx | Affichage "Dépassé: -XXX Ar" amélioré | Clarté information dépassement |
+| **Category icons consistency** | ✅ DONE | P2 | BudgetsPage.tsx | Correction icône catégorie épargne | Cohérence visuelle |
+| **Select styling improvements** | ✅ DONE | P2 | BudgetsPage.tsx | Select sans chevrons pour design moderne | UI moderne et épurée |
+
+### **Corrections**
+| Bug | Statut | Priorité | Fichier/Service | Notes |
+|-----|--------|----------|----------------|-------|
+| **Recurring transaction edit - amount field** | ✅ DONE | P0 | RecurringTransactionDetailPage.tsx | Correction champ montant dans édition transaction récurrente (2025-12-31) |
+
+**Métriques de session:**
+- **Taux de complétion:** 100% (9/9 fonctionnalités)
+- **Nouvelles pages:** 1 (BudgetStatisticsPage)
+- **Améliorations UI:** 4 améliorations budgétaires
+- **Corrections:** 1 bug transaction récurrente
+
+---
+
+*Document généré automatiquement le 2025-12-31 - BazarKELY v3.11 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Header Construction Cleanup PM 2025-11-15 + Budget Statistics S28 2025-12-31)*

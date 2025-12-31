@@ -109,31 +109,23 @@ export const TRANSACTION_CATEGORIES = {
     color: 'text-rose-500',
     bgColor: 'bg-rose-50'
   },
+  epargne: { 
+    name: 'Épargne', 
+    icon: 'PiggyBank', 
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-50'
+  },
   autres: { 
     name: 'Autres', 
     icon: 'MoreHorizontal', 
     color: 'text-slate-500',
     bgColor: 'bg-slate-50'
-  },
-  // Ajout des catégories avec accents pour compatibilité avec l'intelligence budgétaire
-  'Habillement': { 
-    name: 'Habillement', 
-    icon: 'Shirt', 
-    color: 'text-cyan-500',
-    bgColor: 'bg-cyan-50'
-  },
-  'Épargne': { 
-    name: 'Épargne', 
-    icon: 'PiggyBank', 
-    color: 'text-emerald-500',
-    bgColor: 'bg-emerald-50'
-  },
-  'Solidarité': { 
-    name: 'Solidarité', 
-    icon: 'HandHeart', 
-    color: 'text-rose-500',
-    bgColor: 'bg-rose-50'
   }
+  // NOTE: Entrées supprimées pour éviter les doublons et assurer la cohérence avec TransactionCategory:
+  // - 'Habillement' (doublon de 'vetements') - supprimé le 2025-01-XX
+  // - 'Épargne' (non présent dans TransactionCategory type) - supprimé le 2025-01-XX
+  // - 'Solidarité' (doublon de 'solidarite') - supprimé le 2025-01-XX
+  // Toutes les clés doivent correspondre exactement au type TransactionCategory (minuscules, sans accents)
 } as const;
 
 // Navigation mobile

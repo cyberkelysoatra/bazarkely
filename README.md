@@ -19,6 +19,7 @@
 - 📊 **Tableaux de bord interactifs** avec graphiques
 - 🎯 **Objectifs d'épargne** et suivi des progrès
 - 🔁 **Transactions récurrentes** - Automatisation complète des transactions périodiques
+- 📈 **Statistiques budgétaires multi-années** - Comparaisons année sur année, détection de catégories problématiques
 - 🏆 **Système de classement** avec leaderboard et gamification
 - 🎮 **Gamification éducative** pour l'inclusion financière
 - 🌐 **Fonctionnement offline** prioritaire
@@ -170,6 +171,34 @@ interface RecurringTransaction {
 ```
 
 **Session d'implémentation :** 2025-11-03 (Phase 1: Infrastructure + Phase 2: Services + Phase 3: UI)
+
+## 📈 Statistiques Budgétaires Multi-Années
+
+**BazarKELY** intègre un système complet d'analyse statistique budgétaire permettant des comparaisons multi-années et la détection de catégories problématiques.
+
+### Fonctionnalités
+
+- ✅ **Comparaison de périodes** - Comparaison année sur année, mois sur mois, ou plages personnalisées
+- ✅ **Détection de catégories problématiques** - Identification automatique des catégories avec dépassements récurrents
+- ✅ **Évolution temporelle** - Graphiques d'évolution annuelle et mensuelle avec tendances
+- ✅ **Métriques avancées** - Taux d'épargne, taux de conformité, analyse de tendances
+- ✅ **Barres de progression bicolores** - Affichage visuel des budgets dépassés (vert + orange)
+- ✅ **Indicateurs de dépassement** - Affichage "Dépassé: -XXX Ar" pour budgets dépassés
+
+### Architecture Technique
+
+**Hook personnalisé:**
+- **useMultiYearBudgetData.ts** (~890 lignes) - Hook pour statistiques multi-années avec comparaison de périodes, détection de catégories problématiques, calcul d'évolution temporelle
+
+**Page de statistiques:**
+- **BudgetStatisticsPage.tsx** (~690 lignes) - Page complète avec sélecteurs de périodes, graphiques d'évolution, liste des catégories problématiques, métriques comparatives
+
+**Améliorations UI:**
+- **Barres de progression bicolores** - Affichage vert pour budget respecté, orange pour dépassement dans BudgetsPage.tsx
+- **Icône épargne corrigée** - Utilisation de PiggyBank pour la catégorie épargne
+- **Suppression chevrons select** - Classe CSS `select-no-arrow` appliquée dans module Budget
+
+**Session d'implémentation :** 2025-12-31 (Session S28)
 
 ## 🎨 Interface Utilisateur et Navigation
 
@@ -947,4 +976,4 @@ frontend/src/modules/construction-poc/
 
 ---
 
-*Dernière mise à jour : 15 novembre 2025 (UX PurchaseOrderForm optimisée - VAGUE 1 + VAGUE 2, Header bug fix)*
+*Dernière mise à jour : 31 décembre 2025 (Statistiques Budgétaires Multi-Années - Session S28)*

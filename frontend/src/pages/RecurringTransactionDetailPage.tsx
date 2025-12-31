@@ -478,6 +478,88 @@ const RecurringTransactionDetailPage = () => {
           size="lg"
         >
           <div className="space-y-4">
+            {/* Champs de base de la transaction */}
+            <div className="space-y-4 border-b border-gray-200 pb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Informations de la transaction</h3>
+              
+              {/* Description */}
+              <div>
+                <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <input
+                  type="text"
+                  id="edit-description"
+                  value={recurring.description}
+                  onChange={(e) => setRecurring(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.description ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  required
+                />
+                {errors.description && (
+                  <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                )}
+              </div>
+
+              {/* Montant */}
+              <div>
+                <label htmlFor="edit-amount" className="block text-sm font-medium text-gray-700 mb-2">
+                  Montant ({currencySymbol}) *
+                </label>
+                <input
+                  type="number"
+                  id="edit-amount"
+                  min="0"
+                  step="0.01"
+                  value={recurring.amount}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    if (inputValue === '' || inputValue === '-') {
+                      // Allow empty input for user to clear field
+                      return;
+                    }
+                    const value = parseFloat(inputValue);
+                    if (!isNaN(value) && value >= 0) {
+                      setRecurring(prev => prev ? { ...prev, amount: value } : null);
+                    }
+                  }}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.amount ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  required
+                />
+                {errors.amount && (
+                  <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+                )}
+              </div>
+
+              {/* Catégorie */}
+              <div>
+                <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-2">
+                  Catégorie *
+                </label>
+                <select
+                  id="edit-category"
+                  value={recurring.category}
+                  onChange={(e) => setRecurring(prev => prev ? { ...prev, category: e.target.value } : null)}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.category ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  required
+                >
+                  {Object.entries(TRANSACTION_CATEGORIES).map(([key, cat]) => (
+                    <option key={key} value={key}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.category && (
+                  <p className="mt-1 text-sm text-red-600">{errors.category}</p>
+                )}
+              </div>
+            </div>
+
             <RecurringConfigSection
               frequency={recurring.frequency}
               setFrequency={(freq) => setRecurring(prev => prev ? { ...prev, frequency: freq } : null)}

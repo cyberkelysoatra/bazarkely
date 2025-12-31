@@ -1,9 +1,9 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)  
-**Date de mise à jour:** 2025-12-08  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready  
+**Version:** 2.24 (Statistiques Budgétaires Multi-Années - Session S28)  
+**Date de mise à jour:** 2025-12-31  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
 
 ---
@@ -73,7 +73,9 @@ bazarkely-2/
 │   │   │   │   └── LevelBadge.tsx # ✅ Badge niveau ultra-compact Duolingo-style (150 lignes)
 │   │   ├── hooks/           # Hooks personnalisés
 │   │   │   ├── usePWAInstall.ts   # ✅ Hook PWA avec diagnostic + mécanisme d'attente/retry
-│   │   │   └── useRecommendations.ts # ✅ Hook d'intégration recommandations (579 lignes)
+│   │   │   ├── useRecommendations.ts # ✅ Hook d'intégration recommandations (579 lignes)
+│   │   │   ├── useYearlyBudgetData.ts # ✅ Hook données budgétaires annuelles (470 lignes)
+│   │   │   └── useMultiYearBudgetData.ts # ✅ Hook statistiques multi-années (890 lignes) - Session S28
 │   │   ├── services/        # Services métier (auth, sync, etc.)
 │   │   │   ├── toastService.ts    # ✅ Service de notifications toast
 │   │   │   ├── dialogService.ts   # ✅ Service de remplacement des dialogues natifs
@@ -91,7 +93,8 @@ bazarkely-2/
 │   │   │   ├── ProfileCompletionPage.tsx # ✅ Wizard complétion profil 5 étapes (300 lignes)
 │   │   │   ├── CertificationPage.tsx # ✅ Page certification statistiques (200 lignes)
 │   │   │   ├── QuizPage.tsx # ✅ Interface quiz interactive (400 lignes)
-│   │   │   └── QuizResultsPage.tsx # ✅ Page résultats quiz (200 lignes)
+│   │   │   ├── QuizResultsPage.tsx # ✅ Page résultats quiz (200 lignes)
+│   │   │   └── BudgetStatisticsPage.tsx # ✅ Page statistiques budgétaires multi-années (690 lignes) - Session S28
 │   │   ├── stores/          # Gestion d'état (Zustand)
 │   │   │   └── certificationStore.ts # ✅ Store certification Zustand persist (200 lignes)
 │   │   ├── types/           # Types TypeScript
@@ -179,7 +182,8 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - **TransactionsPage** - Gestion des transactions + Filtrage catégorie corrigé + Loading spinner + CSV Export [31/10/2025]
 - **TransactionDetailPage** - Détail transaction + Navigation intelligente préservant filtres [31/10/2025]
 - **AccountsPage** - Gestion des comptes
-- **BudgetsPage** - Gestion des budgets
+- **BudgetsPage** - Gestion des budgets + Barres de progression bicolores + Affichage dépassement + Icône épargne corrigée - Session S28
+- **BudgetStatisticsPage** - Statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques - Session S28
 - **GoalsPage** - Gestion des objectifs
 - **EducationPage** - Contenu éducatif
 - **PWAInstructionsPage** - Guide d'installation PWA multi-navigateurs
@@ -1236,7 +1240,66 @@ interface UserGoal {
 
 **Fichier modifié:** `frontend/src/services/adminService.ts`
 
-#### **16.5 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ ET FONCTIONNEL
+#### **16.5 Module Budget et Statistiques** ✅ COMPLET (Session S28 - 2025-12-31)
+
+**Fonctionnalités BudgetsPage:**
+- **Gestion budgets mensuels/annuels** - Vue mensuelle et annuelle avec sélecteurs
+- **Barres de progression bicolores** - Affichage vert pour budget respecté, orange pour dépassement
+- **Affichage dépassement** - "Dépassé: -XXX Ar" pour budgets dépassés
+- **Icône épargne corrigée** - Utilisation de PiggyBank pour la catégorie épargne
+- **Suppression chevrons select** - Classe CSS `select-no-arrow` appliquée dans module Budget
+- **Intégration YearlyBudgetChart** - Graphique annuel avec données agrégées
+
+**Hook useYearlyBudgetData:**
+- **Fichier:** `frontend/src/hooks/useYearlyBudgetData.ts` (470 lignes)
+- **Fonctionnalités:** Agrégation annuelle budgets/transactions, breakdown par catégorie, données mensuelles
+- **Pattern:** Offline-first (IndexedDB → Supabase)
+- **Retour:** yearlyTotalBudget, yearlyTotalSpent, yearlyOverrun, categoryBreakdown, monthlyData
+
+**Hook useMultiYearBudgetData (Session S28):**
+- **Fichier:** `frontend/src/hooks/useMultiYearBudgetData.ts` (~890 lignes)
+- **Fonctionnalités:** Comparaison multi-années, détection catégories problématiques, évolution temporelle
+- **Comparaisons:** Année sur année, mois sur mois, plages personnalisées
+- **Détection problèmes:** Catégories avec dépassements récurrents, calcul sévérité (low/medium/high/critical)
+- **Évolution:** Graphiques d'évolution annuelle et mensuelle avec tendances
+- **Métriques:** Taux d'épargne, taux de conformité, analyse de tendances
+
+**Page BudgetStatisticsPage (Session S28):**
+- **Fichier:** `frontend/src/pages/BudgetStatisticsPage.tsx` (~690 lignes)
+- **Route:** `/budgets/statistics`
+- **Fonctionnalités:**
+  - Sélecteurs de périodes (année, mois, plage personnalisée) pour période 1 et période 2
+  - Comparaison côte à côte avec métriques (budget total, dépensé, épargne, taux d'épargne)
+  - Graphiques d'évolution (annuelle/mensuelle) avec ComposedChart Recharts
+  - Liste des catégories problématiques avec détails (mois affectés, tendance, sévérité)
+  - Métriques comparatives avec indicateurs visuels (flèches haut/bas)
+- **Design:** Interface responsive avec cartes, graphiques interactifs, badges de sévérité
+
+**Améliorations UI BudgetsPage (Session S28):**
+- **Barres de progression bicolores:** 
+  - Vert pour budgets respectés (spent <= budget)
+  - Orange pour budgets dépassés (spent > budget)
+  - Affichage conditionnel avec classes Tailwind dynamiques
+- **Affichage dépassement:**
+  - Texte "Dépassé: -XXX Ar" affiché pour budgets dépassés
+  - Formatage avec CurrencyDisplay et formatage négatif
+- **Icône épargne:**
+  - Correction de l'icône pour catégorie épargne (PiggyBank)
+  - Mise à jour dans TRANSACTION_CATEGORIES et BudgetsPage
+- **Suppression chevrons select:**
+  - Classe CSS `select-no-arrow` appliquée aux selects du module Budget
+  - Style uniforme sans flèches natives
+
+**Services Budget:**
+- **budgetService.ts** - CRUD budgets avec pattern offline-first
+- **budgetIntelligenceService.ts** - Analyse intelligente, détection tendances, recommandations
+- **budgetMonitoringService.ts** - Surveillance continue avec alertes automatiques
+
+**Composants Budget:**
+- **YearlyBudgetChart.tsx** - Graphique barres groupées pour données annuelles
+- **BudgetAdjustmentNotification.tsx** - Notification ajustements budgétaires suggérés
+
+#### **16.6 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ ET FONCTIONNEL
 
 **Architecture de Filtrage:**
 - **État:** `filterCategory` avec valeurs `TransactionCategory | 'all'`
@@ -1740,6 +1803,18 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 29. `README.md` - Documentation nouvelles fonctionnalités
 30. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour état technique complet
 
+**Fichiers créés (Session S28 - 2025-12-31 - Statistiques Budgétaires):**
+31. `frontend/src/hooks/useMultiYearBudgetData.ts` - Hook statistiques multi-années (~890 lignes)
+32. `frontend/src/pages/BudgetStatisticsPage.tsx` - Page statistiques budgétaires (~690 lignes)
+
+**Fichiers modifiés (Session S28 - 2025-12-31 - Améliorations UI Budget):**
+33. `frontend/src/pages/BudgetsPage.tsx` - Barres progression bicolores + affichage dépassement + icône épargne
+34. `frontend/src/constants/index.ts` - Correction icône épargne (PiggyBank)
+35. `frontend/src/pages/RecurringTransactionDetailPage.tsx` - Correction édition champ montant
+36. `README.md` - Documentation statistiques budgétaires multi-années
+37. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour module Budget et statistiques
+38. `GAP-TECHNIQUE-COMPLET.md` - Documentation gaps résolus Session S28
+
 ### **Next Steps** 🚀 AMÉLIORATIONS MINEURES
 1. **Améliorations mineures** - Composants et sécurité
 2. **Tests de performance** - Lighthouse et couverture
@@ -1779,7 +1854,7 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 - 🔁 **Transactions Récurrentes:** 100% fonctionnel (Infrastructure + Services + UI) [03/11/2025]
 - 🔄 **Context Switcher:** 100% opérationnel (Navigation bidirectionnelle BazarKELY ↔ Construction POC) [09/11/2025]
 
-**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement Supabase direct avec protection de la vie privée, interface admin enrichie avec accordéon utilisateur, navigation intelligente entre budgets et transactions, identification utilisateur dans le header, filtrage par catégorie avancé, transactions récurrentes complètes avec infrastructure Supabase/IndexedDB, services métier, et interface utilisateur complète, et Context Switcher opérationnel avec navigation bidirectionnelle entre modules BazarKELY et Construction POC (Session 2025-11-09).**
+**L'application est déployée en production et accessible à https://1sakely.org avec installation PWA native opérationnelle, système de notifications push complet, système de recommandations IA fonctionnel, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement Supabase direct avec protection de la vie privée, interface admin enrichie avec accordéon utilisateur, navigation intelligente entre budgets et transactions, identification utilisateur dans le header, filtrage par catégorie avancé, transactions récurrentes complètes avec infrastructure Supabase/IndexedDB, services métier, et interface utilisateur complète, Context Switcher opérationnel avec navigation bidirectionnelle entre modules BazarKELY et Construction POC (Session 2025-11-09), et statistiques budgétaires multi-années avec comparaisons de périodes, détection de catégories problématiques, barres de progression bicolores, et améliorations UI complètes (Session S28 - 2025-12-31).**
 
 **Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et des corrections techniques.**
 
