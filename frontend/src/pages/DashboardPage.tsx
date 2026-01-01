@@ -5,9 +5,10 @@ import { useAppStore } from '../stores/appStore';
 import accountService, { getTotalBalanceInCurrency } from '../services/accountService';
 import transactionService from '../services/transactionService';
 import notificationService from '../services/notificationService';
+import { goalService } from '../services/goalService';
 // Essential expense categories for emergency fund calculation
 const ESSENTIAL_CATEGORIES = ['Alimentation', 'Logement', 'Transport', 'Santé', 'Éducation'] as const;
-import type { Transaction } from '../types';
+import type { Transaction, Goal } from '../types';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
 import NotificationSettings from '../components/NotificationSettings';
@@ -73,6 +74,7 @@ const DashboardPage = () => {
   };
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [userAccounts, setUserAccounts] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
@@ -256,6 +258,20 @@ const DashboardPage = () => {
         const essentialMonthlyExpenses = calculateEssentialMonthlyExpenses(allTransactions);
         const emergencyFundGoal = calculateEmergencyFundGoal(essentialMonthlyExpenses);
         const emergencyFundProgress = calculateEmergencyFundProgress(totalBalance, emergencyFundGoal);
+
+        // Load goals from goalService
+        let userGoals: Goal[] = [];
+        try {
+          if (user?.id) {
+            console.log('🎯 Chargement des objectifs depuis goalService...');
+            userGoals = await goalService.getGoals(user.id);
+            console.log('📊 Objectifs récupérés:', userGoals.length);
+            setGoals(userGoals);
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des objectifs:', error);
+          // Continue without goals - fallback to emergency fund widget
+        }
 
         console.log('📈 Revenus mensuels:', monthlyIncome);
         console.log('📉 Dépenses mensuelles:', monthlyExpenses);
@@ -449,46 +465,143 @@ const DashboardPage = () => {
       </div>
 
       {/* Graphique de progression des objectifs */}
-      <div className="card">
+      <div 
+        className="card cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => navigate('/goals')}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Objectifs d'épargne</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Progression globale</h3>
           <Target className="w-5 h-5 text-primary-600" />
         </div>
         
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Fond d'urgence</span>
-            <span className="text-sm font-medium text-gray-900">{stats.goalsProgress}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-primary-600 h-2 rounded-full" 
-              style={{ width: `${stats.goalsProgress}%` }}
-            ></div>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>
-              <CurrencyDisplay
-                amount={stats.totalBalance}
-                originalCurrency="MGA"
-                displayCurrency={displayCurrency}
-                showConversion={true}
-                size="sm"
-                className="text-gray-500"
-              />
-            </span>
-            <span>
-              <CurrencyDisplay
-                amount={stats.emergencyFundGoal}
-                originalCurrency="MGA"
-                displayCurrency={displayCurrency}
-                showConversion={true}
-                size="sm"
-                className="text-gray-500"
-              />
-            </span>
-          </div>
-        </div>
+        {(() => {
+          // Calculate goals statistics
+          const activeGoals = goals.filter(goal => !goal.isCompleted);
+          const totalTarget = activeGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+          const totalCurrent = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+          const overallProgress = totalTarget > 0 ? Math.round((totalCurrent / totalTarget) * 100) : 0;
+          const top3Goals = activeGoals
+            .sort((a, b) => {
+              const aProgress = (a.currentAmount / a.targetAmount) * 100;
+              const bProgress = (b.currentAmount / b.targetAmount) * 100;
+              return bProgress - aProgress;
+            })
+            .slice(0, 3);
+
+          if (activeGoals.length > 0) {
+            return (
+              <div className="space-y-4">
+                {/* Stats row */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{activeGoals.length} objectif{activeGoals.length > 1 ? 's' : ''} actif{activeGoals.length > 1 ? 's' : ''}</span>
+                  <span className="text-sm font-semibold text-gray-900">{overallProgress}%</span>
+                </div>
+
+                {/* Total amounts row */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Total:</span>
+                  <span className="font-medium text-gray-900 inline-flex items-center gap-2">
+                    <CurrencyDisplay
+                      amount={totalCurrent}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                    />
+                    <span>/</span>
+                    <CurrencyDisplay
+                      amount={totalTarget}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                    />
+                  </span>
+                </div>
+
+                {/* Main progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-300" 
+                    style={{ width: `${Math.min(overallProgress, 100)}%` }}
+                  ></div>
+                </div>
+
+                {/* Top 3 goals list */}
+                {top3Goals.length > 0 && (
+                  <>
+                    <div className="border-t border-gray-200 pt-3 space-y-2">
+                      {top3Goals.map((goal) => {
+                        const goalProgress = goal.targetAmount > 0 
+                          ? Math.round((goal.currentAmount / goal.targetAmount) * 100) 
+                          : 0;
+                        return (
+                          <div key={goal.id} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-700 font-medium truncate flex-1 mr-2">{goal.name}</span>
+                              <span className="text-gray-600 flex-shrink-0">{goalProgress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                              <div 
+                                className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" 
+                                style={{ width: `${Math.min(goalProgress, 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          } else {
+            // Fallback: Show emergency fund suggestion
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Fond d'urgence</span>
+                  <span className="text-sm font-medium text-gray-900">{stats.goalsProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-primary-600 h-2 rounded-full" 
+                    style={{ width: `${stats.goalsProgress}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>
+                    <CurrencyDisplay
+                      amount={stats.totalBalance}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                      className="text-gray-500"
+                    />
+                  </span>
+                  <span>
+                    <CurrencyDisplay
+                      amount={stats.emergencyFundGoal}
+                      originalCurrency="MGA"
+                      displayCurrency={displayCurrency}
+                      showConversion={true}
+                      size="sm"
+                      className="text-gray-500"
+                    />
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/goals')}
+                  className="w-full mt-3 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                >
+                  Créer un objectif
+                </button>
+              </div>
+            );
+          }
+        })()}
       </div>
 
       {/* Transactions récentes */}
