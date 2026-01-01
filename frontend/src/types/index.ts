@@ -143,6 +143,13 @@ export interface Goal {
   // Goals ↔ Accounts linking
   linkedAccountId?: string; // UUID of linked savings account
   autoSync?: boolean; // Auto-sync balance to currentAmount
+  // Goal suggestions system
+  isSuggested?: boolean; // Whether this goal was suggested by the system
+  suggestionType?: string; // Type of suggestion (e.g., 'emergency_fund', 'debt_payoff')
+  suggestionAcceptedAt?: string; // ISO date string when suggestion was accepted
+  suggestionDismissedAt?: string; // ISO date string when suggestion was dismissed
+  // Milestones tracking
+  milestones?: any[]; // Array of GoalMilestone objects for tracking progress milestones
 }
 
 export interface QuizResult {
@@ -429,3 +436,12 @@ export interface AppState {
 // Réexport des types de transactions récurrentes pour commodité
 export type { RecurringTransaction, RecurrenceFrequency } from './recurring';
 export type { RecurringTransactionCreate, RecurringTransactionUpdate } from './recurring';
+
+// Réexport des types de suggestions d'objectifs
+export type { 
+  SuggestionType, 
+  MilestoneType, 
+  GoalMilestone, 
+  GoalSuggestion, 
+  FinancialProfile 
+} from './suggestions';

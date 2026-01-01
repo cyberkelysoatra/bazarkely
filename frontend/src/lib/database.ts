@@ -8,7 +8,8 @@ import type {
   MobileMoneyRate, 
   SyncOperation,
   FeeConfiguration,
-  RecurringTransaction
+  RecurringTransaction,
+  GoalMilestone
 } from '../types';
 
 // Types pour les notifications
@@ -113,6 +114,9 @@ export class BazarKELYDB extends Dexie {
   
   // Table pour les transactions récurrentes (Phase 1 - Infrastructure)
   recurringTransactions!: Table<RecurringTransaction>;
+  
+  // Table pour les jalons d'objectifs (Goal Suggestions System - S32)
+  goalMilestones!: Table<GoalMilestone>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -435,6 +439,65 @@ export class BazarKELYDB extends Dexie {
       }
       
       console.log('✅ [Database] Migration to v9 complete - Unified savings system indexes added');
+    });
+
+    // Version 10 - Goal Suggestions System: Ajout de goalMilestones et index pour suggestions
+    this.version(10).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 [Database] Migrating to v10 - Adding goal suggestions system and milestones');
+      
+      // Initialiser les nouveaux champs pour goals
+      try {
+        const goalsTable = trans.table('goals');
+        const goals = await goalsTable.toArray();
+        
+        for (const goal of goals) {
+          const updates: any = {};
+          // Initialiser isSuggested si non défini
+          if ((goal as any).isSuggested === undefined) {
+            updates.isSuggested = false;
+          }
+          // Initialiser suggestionType si non défini
+          if ((goal as any).suggestionType === undefined) {
+            updates.suggestionType = null;
+          }
+          // Initialiser suggestionAcceptedAt si non défini
+          if ((goal as any).suggestionAcceptedAt === undefined) {
+            updates.suggestionAcceptedAt = null;
+          }
+          // Initialiser suggestionDismissedAt si non défini
+          if ((goal as any).suggestionDismissedAt === undefined) {
+            updates.suggestionDismissedAt = null;
+          }
+          
+          if (Object.keys(updates).length > 0) {
+            await goalsTable.update(goal.id, updates);
+          }
+        }
+        
+        console.log(`✅ Migrated ${goals.length} goals with suggestion fields`);
+      } catch (error) {
+        console.warn('⚠️ Could not migrate goals table:', error);
+      }
+      
+      // La table goalMilestones sera créée automatiquement par Dexie
+      console.log('✅ [Database] Migration to v10 complete - Goal suggestions system and milestones added');
     });
 
     // Initialiser le pool de connexions

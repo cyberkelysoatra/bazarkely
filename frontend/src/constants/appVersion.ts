@@ -1,5 +1,5 @@
-export const APP_VERSION = '2.3.0';
-export const APP_BUILD_DATE = '2025-12-31';
+export const APP_VERSION = '2.4.0';
+export const APP_BUILD_DATE = '2026-01-01';
 
 export type VersionEntry = {
   version: string;
@@ -9,6 +9,23 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.4.0',
+    date: '2026-01-01',
+    type: 'minor',
+    changes: [
+      'Système de suggestions d\'objectifs intelligent',
+      'Analyse du profil financier automatique',
+      'Deadlines adaptatives selon capacité d\'épargne',
+      'UI suggestions avec Accepter/Plus tard',
+      'Section "Pourquoi ?" explicative',
+      'Badge "Suggéré" sur objectifs',
+      'Points de jalons (4 cercles progression)',
+      'Table goal_milestones Supabase',
+      'Fix suppression objectifs (showConfirm)',
+      'IndexedDB v10 avec nouveaux index'
+    ]
+  },
   {
     version: '2.3.0',
     date: '2025-12-31',
