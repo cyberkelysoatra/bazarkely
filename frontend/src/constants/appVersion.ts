@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.4.0';
+export const APP_VERSION = '2.4.1';
 export const APP_BUILD_DATE = '2026-01-01';
 
 export type VersionEntry = {
@@ -9,6 +9,14 @@ export type VersionEntry = {
 };
 
 export const VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: '2.4.1',
+    date: '2026-01-01',
+    type: 'patch',
+    changes: [
+      'Dashboard savings widget connected to goalService - S33'
+    ]
+  },
   {
     version: '2.4.0',
     date: '2026-01-01',
