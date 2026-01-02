@@ -10,6 +10,7 @@ import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import apiService from './apiService';
+import transactionService from './transactionService';
 
 class GoalService {
   /**
@@ -74,13 +75,20 @@ class GoalService {
     return {
       id: supabaseGoal.id,
       userId: supabaseGoal.user_id,
+      createdAt: supabaseGoal.created_at || supabaseGoal.createdAt || undefined,
       name: supabaseGoal.name,
       targetAmount: supabaseGoal.target_amount,
       currentAmount: supabaseGoal.current_amount || 0,
       deadline: supabaseGoal.target_date ? new Date(supabaseGoal.target_date) : new Date(),
       category: supabaseGoal.category || undefined,
       priority: (supabaseGoal.priority || 'medium') as 'low' | 'medium' | 'high',
-      isCompleted: supabaseGoal.is_completed || false
+      isCompleted: supabaseGoal.is_completed || false,
+      linkedAccountId: supabaseGoal.linked_account_id || undefined,
+      autoSync: supabaseGoal.auto_sync || undefined,
+      isSuggested: supabaseGoal.is_suggested || undefined,
+      suggestionType: supabaseGoal.suggestion_type || undefined,
+      suggestionAcceptedAt: supabaseGoal.suggestion_accepted_at || undefined,
+      suggestionDismissedAt: supabaseGoal.suggestion_dismissed_at || undefined
     };
   }
 
@@ -225,13 +233,15 @@ class GoalService {
       const goal: Goal = {
         id: goalId,
         userId,
+        createdAt: now.toISOString(),
         name: goalData.name,
         targetAmount: goalData.targetAmount,
         currentAmount: 0,
         deadline: goalData.deadline instanceof Date ? goalData.deadline : new Date(goalData.deadline),
         category: goalData.category,
         priority: goalData.priority,
-        isCompleted: false
+        isCompleted: false,
+        linkedAccountId: goalData.linkedAccountId
       };
 
       // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
@@ -339,22 +349,27 @@ class GoalService {
             .from('goals')
             .update(supabaseData as GoalUpdate)
             .eq('id', id)
-            .select()
-            .single();
+            .select();
           
           if (error) throw error;
           
-          if (data) {
-            const syncedGoal = this.mapSupabaseToGoal(data);
+          // Vérifier si des données ont été retournées (peut être vide à cause de RLS)
+          if (data && Array.isArray(data) && data.length > 0) {
+            const syncedGoal = this.mapSupabaseToGoal(data[0]);
             // Mettre à jour IndexedDB avec les données Supabase
             await db.goals.put(syncedGoal);
             console.log('🎯 [GoalService] ✅ Goal synchronisé avec Supabase');
             return syncedGoal;
           } else {
-            throw new Error('Aucune donnée retournée par Supabase');
+            // Supabase retourne 0 lignes (RLS policy ou ligne manquante)
+            // Ne pas bloquer - l'update IndexedDB a réussi, continuer avec le goal local
+            console.warn('🎯 [GoalService] ⚠️ Supabase a retourné 0 lignes (RLS ou ligne manquante), utilisation du goal IndexedDB');
+            await this.queueSyncOperation(userId, 'UPDATE', id, goalData);
+            return updatedGoal;
           }
         } catch (syncError) {
-          console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
+          // Erreur Supabase ne doit pas bloquer - l'update IndexedDB a réussi
+          console.warn('🎯 [GoalService] ⚠️ Erreur lors de la synchronisation Supabase (non-bloquant):', syncError);
           await this.queueSyncOperation(userId, 'UPDATE', id, goalData);
           return updatedGoal;
         }
@@ -547,6 +562,234 @@ class GoalService {
     } catch (error) {
       console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation depuis Supabase:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Récupérer l'historique de progression d'un objectif basé sur les transactions du compte lié
+   * 
+   * @param goalId - ID de l'objectif
+   * @param userId - ID de l'utilisateur
+   * @returns Tableau d'objets avec date (ISO string) et amount (cumulatif)
+   */
+  async getGoalProgressionHistory(goalId: string, userId: string): Promise<Array<{ date: string; amount: number }>> {
+    try {
+      console.log(`🎯 [GoalService] 📊 Récupération de l'historique de progression pour l'objectif ${goalId}...`);
+      
+      // STEP 1: Récupérer l'objectif
+      const goal = await this.getGoal(goalId);
+      if (!goal) {
+        console.warn(`🎯 [GoalService] ⚠️ Objectif ${goalId} non trouvé`);
+        return [];
+      }
+      
+      // STEP 2: Vérifier si l'objectif a un compte lié
+      if (!goal.linkedAccountId) {
+        console.log(`🎯 [GoalService] ℹ️ Objectif ${goalId} n'a pas de compte lié, historique non disponible`);
+        return [];
+      }
+      
+      // STEP 3: Récupérer toutes les transactions et filtrer par accountId
+      const allTransactions = await transactionService.getTransactions();
+      const accountTransactions = allTransactions.filter(t => {
+        // Inclure les transactions où le compte lié est impliqué
+        const isAccountInvolved = 
+          t.accountId === goal.linkedAccountId || 
+          t.targetAccountId === goal.linkedAccountId;
+        
+        return isAccountInvolved && 
+               t.userId === userId &&
+               (t.type === 'income' || t.type === 'expense' || t.type === 'transfer');
+      });
+      
+      if (accountTransactions.length === 0) {
+        console.log(`🎯 [GoalService] ℹ️ Aucune transaction trouvée pour le compte ${goal.linkedAccountId}`);
+        // Retourner au moins le point de départ et le point actuel
+        const startDate = goal.createdAt ? new Date(goal.createdAt) : new Date();
+        const today = new Date();
+        return [
+          { date: startDate.toISOString().split('T')[0], amount: 0 },
+          { date: today.toISOString().split('T')[0], amount: goal.currentAmount }
+        ];
+      }
+      
+      // STEP 4: Trier les transactions par date croissante
+      const sortedTransactions = [...accountTransactions].sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
+      
+      // STEP 5: Calculer le cumul par date
+      const dailyTotals = new Map<string, number>();
+      let cumulativeAmount = 0;
+      
+      // Déterminer la date de départ
+      const firstTransactionDate = sortedTransactions.length > 0 
+        ? new Date(sortedTransactions[0].date).toISOString().split('T')[0]
+        : null;
+      const startDate = goal.createdAt 
+        ? new Date(goal.createdAt).toISOString().split('T')[0]
+        : firstTransactionDate || new Date().toISOString().split('T')[0];
+      
+      // Ajouter le point de départ avec montant 0
+      dailyTotals.set(startDate, 0);
+      
+      // Traiter chaque transaction
+      for (const transaction of sortedTransactions) {
+        const transactionDate = new Date(transaction.date).toISOString().split('T')[0];
+        
+        // Ajouter le montant au cumul (positif pour income, négatif pour expense)
+        if (transaction.type === 'income') {
+          // Revenu = crédit sur le compte
+          cumulativeAmount += Math.abs(transaction.amount);
+        } else if (transaction.type === 'expense') {
+          // Dépense = débit sur le compte
+          cumulativeAmount -= Math.abs(transaction.amount);
+        } else if (transaction.type === 'transfer') {
+          // Pour les transferts, vérifier si le compte lié est source ou destination
+          if (transaction.accountId === goal.linkedAccountId) {
+            // Le compte lié est la source = débit (sortie)
+            cumulativeAmount -= Math.abs(transaction.amount);
+          } else if (transaction.targetAccountId === goal.linkedAccountId) {
+            // Le compte lié est la destination = crédit (entrée)
+            cumulativeAmount += Math.abs(transaction.amount);
+          }
+        }
+        
+        // Garder la dernière valeur cumulative pour chaque jour
+        dailyTotals.set(transactionDate, cumulativeAmount);
+      }
+      
+      // STEP 6: Convertir en tableau et trier par date
+      const progressionData = Array.from(dailyTotals.entries())
+        .map(([date, amount]) => ({
+          date,
+          amount: Math.max(0, amount) // S'assurer que le montant n'est jamais négatif
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      // STEP 7: Ajouter le point actuel (aujourd'hui) avec currentAmount
+      const today = new Date().toISOString().split('T')[0];
+      const lastEntry = progressionData[progressionData.length - 1];
+      
+      // Si le dernier point n'est pas aujourd'hui, ajouter le point actuel
+      if (!lastEntry || lastEntry.date !== today) {
+        progressionData.push({
+          date: today,
+          amount: goal.currentAmount
+        });
+      } else {
+        // Sinon, mettre à jour le dernier point avec currentAmount
+        lastEntry.amount = goal.currentAmount;
+      }
+      
+      console.log(`🎯 [GoalService] ✅ Historique de progression récupéré: ${progressionData.length} point(s)`);
+      
+      return progressionData;
+    } catch (error) {
+      console.error(`🎯 [GoalService] ❌ Erreur lors de la récupération de l'historique de progression:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Calculer les données de projection pour un objectif
+   * Calcule la progression linéaire depuis l'état actuel jusqu'à l'objectif à la date limite
+   * 
+   * @param currentAmount - Montant actuel
+   * @param targetAmount - Montant cible
+   * @param startDate - Date de début (ISO string)
+   * @param deadline - Date limite
+   * @returns Tableau d'objets avec date (ISO string) et projectedAmount (montant projeté)
+   */
+  calculateProjectionData(
+    currentAmount: number,
+    targetAmount: number,
+    startDate: string,
+    deadline: Date
+  ): Array<{ date: string; projectedAmount: number }> {
+    try {
+      console.log(`🎯 [GoalService] 📈 Calcul des données de projection...`);
+      
+      const start = new Date(startDate);
+      const end = new Date(deadline);
+      const today = new Date();
+      
+      // Si la date limite est dans le passé, retourner seulement le point actuel
+      if (end < today) {
+        return [
+          { date: today.toISOString().split('T')[0], projectedAmount: currentAmount }
+        ];
+      }
+      
+      // Si le montant actuel dépasse déjà l'objectif, retourner seulement le point actuel
+      if (currentAmount >= targetAmount) {
+        return [
+          { date: today.toISOString().split('T')[0], projectedAmount: currentAmount }
+        ];
+      }
+      
+      const projectionData: Array<{ date: string; projectedAmount: number }> = [];
+      
+      // Point de départ (aujourd'hui)
+      const todayStr = today.toISOString().split('T')[0];
+      projectionData.push({
+        date: todayStr,
+        projectedAmount: currentAmount
+      });
+      
+      // Calculer le nombre de jours entre aujourd'hui et la date limite
+      const daysDiff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const amountToSave = targetAmount - currentAmount;
+      const dailyIncrement = amountToSave / daysDiff;
+      
+      // Si moins de 30 jours, ajouter seulement le point final
+      if (daysDiff <= 30) {
+        const deadlineStr = end.toISOString().split('T')[0];
+        projectionData.push({
+          date: deadlineStr,
+          projectedAmount: targetAmount
+        });
+      } else {
+        // Ajouter des points mensuels intermédiaires pour une ligne plus lisse
+        const monthsDiff = Math.ceil(daysDiff / 30);
+        const monthlyIncrement = amountToSave / monthsDiff;
+        
+        // Ajouter des points mensuels
+        for (let i = 1; i < monthsDiff; i++) {
+          const intermediateDate = new Date(today);
+          intermediateDate.setMonth(intermediateDate.getMonth() + i);
+          
+          // Ne pas dépasser la date limite
+          if (intermediateDate > end) {
+            break;
+          }
+          
+          const projectedAmount = currentAmount + (monthlyIncrement * i);
+          projectionData.push({
+            date: intermediateDate.toISOString().split('T')[0],
+            projectedAmount: Math.min(projectedAmount, targetAmount)
+          });
+        }
+        
+        // Ajouter le point final (date limite)
+        const deadlineStr = end.toISOString().split('T')[0];
+        projectionData.push({
+          date: deadlineStr,
+          projectedAmount: targetAmount
+        });
+      }
+      
+      // Trier par date
+      projectionData.sort((a, b) => a.date.localeCompare(b.date));
+      
+      console.log(`🎯 [GoalService] ✅ Données de projection calculées: ${projectionData.length} point(s)`);
+      
+      return projectionData;
+    } catch (error) {
+      console.error(`🎯 [GoalService] ❌ Erreur lors du calcul des données de projection:`, error);
+      return [];
     }
   }
 }

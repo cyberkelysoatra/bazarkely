@@ -11,6 +11,32 @@ import type {
   UserUpdate, AccountUpdate, SupabaseTransactionUpdate, BudgetUpdate, GoalUpdate
 } from '../types/supabase';
 
+/**
+ * Convertit une chaîne camelCase en snake_case
+ * @param str - Chaîne en camelCase (ex: "linkedGoalId")
+ * @returns Chaîne en snake_case (ex: "linked_goal_id")
+ */
+const camelToSnake = (str: string): string => {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+};
+
+/**
+ * Convertit toutes les clés d'un objet de camelCase vers snake_case
+ * Crée une nouvelle copie de l'objet sans modifier l'original
+ * @param obj - Objet avec clés en camelCase
+ * @returns Nouvel objet avec clés en snake_case
+ */
+const convertKeysToSnakeCase = (obj: Record<string, any>): Record<string, any> => {
+  const result: Record<string, any> = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const snakeKey = camelToSnake(key);
+      result[snakeKey] = obj[key];
+    }
+  }
+  return result;
+};
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -122,8 +148,10 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(accountData);
       const { data, error } = await db.accounts()
-        .insert({ ...accountData, user_id: userId })
+        .insert({ ...snakeCaseData, user_id: userId })
         .select()
         .single();
       
@@ -142,16 +170,27 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(accountData);
       const { data, error } = await db.accounts()
-        .update(accountData)
+        .update(snakeCaseData)
         .eq('id', id)
         .eq('user_id', userId)
-        .select()
-        .single();
+        .select();
       
       if (error) throw error;
 
-      return { success: true, data };
+      // Vérifier si des données ont été retournées (peut être vide à cause de RLS)
+      if (data && Array.isArray(data) && data.length > 0) {
+        return { success: true, data: data[0] };
+      } else {
+        // Supabase retourne 0 lignes (RLS policy ou ligne manquante)
+        // Retourner une erreur gracieuse pour que accountService puisse utiliser IndexedDB
+        return { 
+          success: false, 
+          error: 'Supabase returned 0 rows (RLS policy or missing row)' 
+        };
+      }
     } catch (error) {
       return this.handleError(error, 'updateAccount');
     }
@@ -236,8 +275,10 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(transactionData);
       const { data, error } = await db.transactions()
-        .insert({ ...transactionData, user_id: userId })
+        .insert({ ...snakeCaseData, user_id: userId })
         .select()
         .single();
       
@@ -256,8 +297,10 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(transactionData);
       const { data, error } = await db.transactions()
-        .update(transactionData)
+        .update(snakeCaseData)
         .eq('id', id)
         .eq('user_id', userId)
         .select()
@@ -383,8 +426,10 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(budgetData);
       const { data, error } = await db.budgets()
-        .insert({ ...budgetData, user_id: userId })
+        .insert({ ...snakeCaseData, user_id: userId })
         .select()
         .single();
       
@@ -424,8 +469,10 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
+      // Convertir camelCase → snake_case pour Supabase
+      const snakeCaseData = convertKeysToSnakeCase(goalData);
       const { data, error } = await db.goals()
-        .insert({ ...goalData, user_id: userId })
+        .insert({ ...snakeCaseData, user_id: userId })
         .select()
         .single();
       

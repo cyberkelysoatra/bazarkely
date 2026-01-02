@@ -133,6 +133,7 @@ export interface Budget {
 export interface Goal {
   id: string;
   userId: string;
+  createdAt?: string; // ISO date string when goal was created
   name: string;
   targetAmount: number;
   currentAmount: number;

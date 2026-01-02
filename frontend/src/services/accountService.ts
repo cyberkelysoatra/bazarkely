@@ -342,12 +342,15 @@ class AccountService {
             console.log('✅ Compte synchronisé avec Supabase');
             return supabaseAccount;
           } else {
-            console.warn('⚠️ Échec de la synchronisation Supabase, ajout à la queue');
+            // Supabase retourne 0 lignes (RLS policy ou ligne manquante)
+            // Ne pas bloquer - l'update IndexedDB a réussi, continuer avec le compte local
+            console.warn('⚠️ Échec de la synchronisation Supabase (RLS ou ligne manquante), utilisation du compte IndexedDB');
             await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
             return updatedAccount;
           }
         } catch (syncError) {
-          console.error('❌ Erreur lors de la synchronisation Supabase:', syncError);
+          // Erreur Supabase ne doit pas bloquer - l'update IndexedDB a réussi
+          console.warn('⚠️ Erreur lors de la synchronisation Supabase (non-bloquant):', syncError);
           await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
           return updatedAccount;
         }

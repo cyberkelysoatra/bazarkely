@@ -757,6 +757,198 @@ class GoalSuggestionService {
   }
 
   /**
+   * Clear all dismissed suggestions from localStorage
+   * Allows user to see suggestions they previously dismissed
+   */
+  clearDismissedSuggestions(): void {
+    try {
+      console.log('💡 [GoalSuggestionService] 🗑️ Clearing dismissed suggestions...');
+      localStorage.removeItem(DISMISSED_SUGGESTIONS_KEY);
+      console.log('💡 [GoalSuggestionService] ✅ Dismissed suggestions cleared');
+    } catch (error) {
+      console.error(`💡 [GoalSuggestionService] ❌ Erreur lors de la suppression des suggestions rejetées:`, error);
+    }
+  }
+
+  /**
+   * Analyze completed goals to suggest next level objectives
+   * Example: If user completed "Fonds urgence 3 mois", suggest "Fonds urgence 6 mois"
+   * 
+   * @param completedGoals - Array of completed goals
+   * @param profile - Current financial profile
+   * @returns Array of next-level goal suggestions
+   */
+  private analyzeCompletedGoalsForNextLevel(
+    completedGoals: Goal[],
+    profile: FinancialProfile
+  ): GoalSuggestion[] {
+    const nextLevelSuggestions: GoalSuggestion[] = [];
+    const disposableIncome = profile.monthlyIncome - profile.monthlyExpenses;
+    const maxMonthlyContribution = disposableIncome * 0.3; // Max 30% du revenu disponible
+
+    console.log(`💡 [GoalSuggestionService] 🔍 Analyzing ${completedGoals.length} completed goal(s) for next-level suggestions...`);
+
+    for (const goal of completedGoals) {
+      // Check suggestionType for completed goals
+      if (goal.suggestionType === 'savings_3months') {
+        // Completed 3 months emergency fund -> suggest 6 months
+        console.log('💡 [GoalSuggestionService] 🎯 Completed 3-month fund, suggesting 6-month');
+        
+        const targetAmount = profile.monthlyExpenses * 6;
+        const remainingAmount = targetAmount - (profile.monthlyExpenses * 3); // Already have 3 months
+        
+        const adaptiveMonths = this.calculateAdaptiveDeadline(remainingAmount, maxMonthlyContribution);
+        
+        if (adaptiveMonths <= 60) {
+          const deadline = new Date();
+          deadline.setMonth(deadline.getMonth() + adaptiveMonths);
+          
+          nextLevelSuggestions.push({
+            type: 'savings_6months',
+            title: "Fonds d'urgence - 6 mois",
+            description: "Étendez votre réserve à 6 mois pour une sécurité maximale",
+            targetAmount: Math.round(targetAmount),
+            deadline: deadline.toISOString(),
+            priority: 'high',
+            reasoning: "Vous avez déjà atteint 3 mois de réserve ! Passez à l'étape suivante avec 6 mois pour une protection maximale.",
+            requiredMonthlyContribution: Math.round(maxMonthlyContribution),
+            icon: 'ShieldCheck',
+            category: 'epargne'
+          });
+        }
+      }
+      
+      if (goal.suggestionType === 'vacation' && goal.isCompleted) {
+        // Completed vacation goal -> suggest new vacation with higher target
+        console.log('💡 [GoalSuggestionService] 🎯 Completed vacation goal, suggesting new one');
+        
+        const previousTarget = goal.targetAmount;
+        const newTargetAmount = Math.max(
+          maxMonthlyContribution * 6,
+          previousTarget * 1.2 // 20% increase from previous
+        );
+        const deadline = new Date();
+        deadline.setMonth(deadline.getMonth() + 6);
+        
+        nextLevelSuggestions.push({
+          type: 'vacation',
+          title: "Épargne vacances - Nouveau projet",
+          description: "Planifiez vos prochaines vacances avec un budget plus confortable",
+          targetAmount: Math.round(newTargetAmount),
+          deadline: deadline.toISOString(),
+          priority: 'medium',
+          reasoning: "Bravo pour avoir atteint votre objectif vacances précédent ! Pourquoi ne pas viser plus haut pour vos prochaines vacances ?",
+          requiredMonthlyContribution: Math.round(maxMonthlyContribution),
+          icon: 'Palmtree',
+          category: 'vacances'
+        });
+      }
+      
+      if (goal.suggestionType === 'education' && goal.isCompleted) {
+        // Completed education goal -> suggest advanced education or new skill
+        console.log('💡 [GoalSuggestionService] 🎯 Completed education goal, suggesting advanced education');
+        
+        const newTargetAmount = maxMonthlyContribution * 12;
+        const deadline = new Date();
+        deadline.setMonth(deadline.getMonth() + 12);
+        
+        nextLevelSuggestions.push({
+          type: 'education',
+          title: "Formation avancée",
+          description: "Investissez dans une formation de niveau supérieur pour augmenter encore vos revenus",
+          targetAmount: Math.round(newTargetAmount),
+          deadline: deadline.toISOString(),
+          priority: 'medium',
+          reasoning: "Vous avez déjà investi dans votre éducation ! Continuez sur cette voie avec une formation plus avancée.",
+          requiredMonthlyContribution: Math.round(maxMonthlyContribution),
+          icon: 'GraduationCap',
+          category: 'education'
+        });
+      }
+    }
+
+    console.log(`💡 [GoalSuggestionService] ✅ Generated ${nextLevelSuggestions.length} next-level suggestion(s) from completed goals`);
+    return nextLevelSuggestions;
+  }
+
+  /**
+   * Request new suggestions - clears dismissed and regenerates with smart analysis
+   * Analyzes completed goals to suggest next level objectives
+   * 
+   * @param userId - User ID
+   * @returns Fresh suggestions based on current profile and goal history
+   */
+  async requestNewSuggestions(userId: string): Promise<GoalSuggestion[]> {
+    try {
+      console.log('💡 [GoalSuggestionService] 🔄 Requesting new suggestions...');
+      
+      // Step 1: Clear dismissed suggestions
+      this.clearDismissedSuggestions();
+      
+      // Step 2: Get all goals including completed ones for analysis
+      const allGoals = await goalService.getGoals(userId);
+      const completedGoals = allGoals.filter(g => g.isCompleted);
+      const activeGoals = allGoals.filter(g => !g.isCompleted);
+      
+      console.log('💡 [GoalSuggestionService] 📊 Goals analysis:', {
+        total: allGoals.length,
+        completed: completedGoals.length,
+        active: activeGoals.length
+      });
+      
+      // Step 3: Analyze financial profile
+      const profile = await this.analyzeFinancialProfile(userId);
+      
+      // Step 4: Analyze completed goals for "next level" suggestions
+      const nextLevelSuggestions = this.analyzeCompletedGoalsForNextLevel(completedGoals, profile);
+      
+      // Step 5: Get fresh suggestions from profile analysis
+      const freshSuggestions = this.generateSuggestions(profile);
+      
+      // Step 6: Filter out suggestions for goals user already has (non-completed)
+      const existingSuggestionTypes = new Set<string>();
+      activeGoals.forEach(goal => {
+        if (goal.suggestionType) {
+          existingSuggestionTypes.add(goal.suggestionType);
+        }
+      });
+      
+      // Filter fresh suggestions to exclude existing active goals
+      const filteredFreshSuggestions = freshSuggestions.filter(suggestion => {
+        if (existingSuggestionTypes.has(suggestion.type)) {
+          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping ${suggestion.type}: already has active goal with this suggestionType`);
+          return false;
+        }
+        return true;
+      });
+      
+      // Step 7: Merge and prioritize suggestions
+      // Next level suggestions have higher priority (they come first)
+      const allSuggestions = [...nextLevelSuggestions, ...filteredFreshSuggestions];
+      
+      // Step 8: Remove duplicates by suggestionType (keep first occurrence, which is next-level)
+      const uniqueSuggestions = allSuggestions.filter((suggestion, index, self) =>
+        index === self.findIndex(s => s.type === suggestion.type)
+      );
+      
+      // Step 9: Limit to max 3 suggestions
+      const finalSuggestions = uniqueSuggestions.slice(0, 3);
+      
+      console.log('💡 [GoalSuggestionService] ✅ Generated', finalSuggestions.length, 'new suggestion(s)');
+      console.log('💡 [GoalSuggestionService] 📋 Suggestions breakdown:', {
+        nextLevel: nextLevelSuggestions.length,
+        fresh: filteredFreshSuggestions.length,
+        final: finalSuggestions.length
+      });
+      
+      return finalSuggestions;
+    } catch (error) {
+      console.error(`💡 [GoalSuggestionService] ❌ Erreur lors de la demande de nouvelles suggestions:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Récupérer les jalons depuis localStorage
    */
   private getMilestonesFromStorage(): GoalMilestone[] {

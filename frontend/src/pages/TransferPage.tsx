@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRightLeft, Save, X, Settings, Repeat } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, ArrowRightLeft, Save, X, Settings, Repeat, Target } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -14,10 +15,26 @@ import { ACCOUNT_TYPES } from '../constants';
 import type { Account, CalculatedFees } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
 
+// Interface for navigation state from GoalsPage
+interface TransferNavigationState {
+  destinationAccountId?: string;
+  suggestedAmount?: number;
+  goalId?: string;
+  goalName?: string;
+  returnTo?: string;
+}
+
+// LocalStorage key for last used source account
+const LAST_SOURCE_ACCOUNT_KEY = 'bazarkely_last_transfer_source_account';
+
 const TransferPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAppStore();
   const { displayCurrency } = useCurrency();
+  
+  // Get navigation state from GoalsPage
+  const transferState = location.state as TransferNavigationState | null;
   
   const [formData, setFormData] = useState({
     amount: '',
@@ -27,6 +44,9 @@ const TransferPage = () => {
     date: new Date().toISOString().split('T')[0],
     notes: ''
   });
+  
+  // Store goal name for display
+  const [goalName, setGoalName] = useState<string | null>(null);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,12 +77,54 @@ const TransferPage = () => {
         const userAccounts = await accountService.getAccounts();
         console.log('📊 Comptes récupérés:', userAccounts);
         setAccounts(userAccounts);
+        
+        // Step 1: Apply localStorage source account (if valid)
+        const lastSourceId = localStorage.getItem(LAST_SOURCE_ACCOUNT_KEY);
+        if (lastSourceId && userAccounts.some(acc => acc.id === lastSourceId)) {
+          console.log('💾 [TransferPage] Compte source récupéré depuis localStorage:', lastSourceId);
+          setFormData(prev => ({
+            ...prev,
+            fromAccountId: lastSourceId
+          }));
+        }
+        
+        // Step 2-5: Pre-fill form if navigation state exists
+        if (transferState) {
+          console.log('🎯 [TransferPage] State reçu depuis GoalsPage:', transferState);
+          
+          // Step 2: Pre-select destination account (overrides nothing, new field)
+          if (transferState.destinationAccountId) {
+            setFormData(prev => ({
+              ...prev,
+              toAccountId: transferState.destinationAccountId!
+            }));
+          }
+          
+          // Step 3: Pre-fill suggested amount (overrides nothing, new field)
+          if (transferState.suggestedAmount) {
+            setFormData(prev => ({
+              ...prev,
+              amount: transferState.suggestedAmount!.toString()
+            }));
+          }
+          
+          // Step 4: Auto-fill description with consistent format
+          if (transferState.goalName) {
+            setFormData(prev => ({
+              ...prev,
+              description: `Épargne - ${transferState.goalName}`
+            }));
+            
+            // Store goal name for display banner
+            setGoalName(transferState.goalName);
+          }
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des comptes:', error);
       }
     };
     loadAccounts();
-  }, []);
+  }, [transferState]);
 
   // Filtrer les comptes disponibles pour chaque dropdown
   const availableSourceAccounts = useMemo(() => {
@@ -248,7 +310,25 @@ const TransferPage = () => {
         });
 
         console.log('✅ Transfert récurrent créé avec succès !');
-        navigate('/recurring'); // Rediriger vers la page des transactions récurrentes
+        
+        // Save source account to localStorage for next time
+        localStorage.setItem(LAST_SOURCE_ACCOUNT_KEY, formData.fromAccountId);
+        console.log('💾 [TransferPage] Compte source sauvegardé dans localStorage:', formData.fromAccountId);
+        
+        // Navigate back to returnTo path if provided, otherwise default to /recurring
+        if (transferState?.returnTo) {
+          // Clear location state
+          window.history.replaceState({}, document.title);
+          
+          // Show success toast
+          if (transferState.goalName) {
+            toast.success('Épargne ajoutée avec succès !');
+          }
+          
+          navigate(transferState.returnTo);
+        } else {
+          navigate('/recurring'); // Rediriger vers la page des transactions récurrentes
+        }
       } else {
         console.log('📅 Transfer form date:', formData.date);
         
@@ -293,7 +373,25 @@ const TransferPage = () => {
 
         // Succès
         console.log('✅ Transfert effectué avec succès !');
-        navigate('/transactions');
+        
+        // Save source account to localStorage for next time
+        localStorage.setItem(LAST_SOURCE_ACCOUNT_KEY, formData.fromAccountId);
+        console.log('💾 [TransferPage] Compte source sauvegardé dans localStorage:', formData.fromAccountId);
+        
+        // Navigate back to returnTo path if provided, otherwise default to /transactions
+        if (transferState?.returnTo) {
+          // Clear location state
+          window.history.replaceState({}, document.title);
+          
+          // Show success toast
+          if (transferState.goalName) {
+            toast.success('Épargne ajoutée avec succès !');
+          }
+          
+          navigate(transferState.returnTo);
+        } else {
+          navigate('/transactions');
+        }
       }
       
     } catch (error) {
@@ -347,6 +445,16 @@ const TransferPage = () => {
       {/* Formulaire */}
       <div className="p-4">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Info banner for goal contribution */}
+          {goalName && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-blue-600" />
+              <span className="text-blue-800 text-sm">
+                Contribution vers l'objectif: <strong>{goalName}</strong>
+              </span>
+            </div>
+          )}
+          
           {/* Message d'erreur */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">

@@ -9,6 +9,32 @@ import type { SyncOperation } from '../types';
 import { SYNC_PRIORITY } from '../types';
 
 /**
+ * Convertit une chaîne camelCase en snake_case
+ * @param str - Chaîne en camelCase (ex: "linkedGoalId")
+ * @returns Chaîne en snake_case (ex: "linked_goal_id")
+ */
+const camelToSnake = (str: string): string => {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+};
+
+/**
+ * Convertit toutes les clés d'un objet de camelCase vers snake_case
+ * Crée une nouvelle copie de l'objet sans modifier l'original
+ * @param obj - Objet avec clés en camelCase
+ * @returns Nouvel objet avec clés en snake_case
+ */
+const convertKeysToSnakeCase = (obj: Record<string, any>): Record<string, any> => {
+  const result: Record<string, any> = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const snakeKey = camelToSnake(key);
+      result[snakeKey] = obj[key];
+    }
+  }
+  return result;
+};
+
+/**
  * Nombre maximum de tentatives par opération
  */
 const MAX_RETRIES = 3;
@@ -501,16 +527,20 @@ async function processTransactionOperation(operation: SyncOperation): Promise<{ 
       case 'CREATE': {
         // Pour CREATE, on enlève l'id du data car Supabase le génère
         const { id, ...insertData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(insertData);
         const { error } = await supabase
           .from('transactions')
-          .insert(insertData);
+          .insert(snakeCaseData);
         return error ? { error } : null;
       }
       case 'UPDATE': {
         const { id, ...updateData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(updateData);
         const { error } = await supabase
           .from('transactions')
-          .update(updateData)
+          .update(snakeCaseData)
           .eq('id', id);
         return error ? { error } : null;
       }
@@ -540,16 +570,20 @@ async function processAccountOperation(operation: SyncOperation): Promise<{ erro
     switch (opType) {
       case 'CREATE': {
         const { id, ...insertData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(insertData);
         const { error } = await supabase
           .from('accounts')
-          .insert(insertData);
+          .insert(snakeCaseData);
         return error ? { error } : null;
       }
       case 'UPDATE': {
         const { id, ...updateData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(updateData);
         const { error } = await supabase
           .from('accounts')
-          .update(updateData)
+          .update(snakeCaseData)
           .eq('id', id);
         return error ? { error } : null;
       }
@@ -579,16 +613,20 @@ async function processBudgetOperation(operation: SyncOperation): Promise<{ error
     switch (opType) {
       case 'CREATE': {
         const { id, ...insertData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(insertData);
         const { error } = await supabase
           .from('budgets')
-          .insert(insertData);
+          .insert(snakeCaseData);
         return error ? { error } : null;
       }
       case 'UPDATE': {
         const { id, ...updateData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(updateData);
         const { error } = await supabase
           .from('budgets')
-          .update(updateData)
+          .update(snakeCaseData)
           .eq('id', id);
         return error ? { error } : null;
       }
@@ -618,16 +656,20 @@ async function processGoalOperation(operation: SyncOperation): Promise<{ error: 
     switch (opType) {
       case 'CREATE': {
         const { id, ...insertData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(insertData);
         const { error } = await supabase
           .from('goals')
-          .insert(insertData);
+          .insert(snakeCaseData);
         return error ? { error } : null;
       }
       case 'UPDATE': {
         const { id, ...updateData } = data;
+        // Convertir camelCase → snake_case pour Supabase
+        const snakeCaseData = convertKeysToSnakeCase(updateData);
         const { error } = await supabase
           .from('goals')
-          .update(updateData)
+          .update(snakeCaseData)
           .eq('id', id);
         return error ? { error } : null;
       }

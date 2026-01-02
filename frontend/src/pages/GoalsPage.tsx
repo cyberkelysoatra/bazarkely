@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock, Edit3, Trash2, X, Check, Landmark, RefreshCw, Lightbulb, Shield, PiggyBank, GraduationCap, Plane, Home, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock, Edit3, Trash2, X, Check, Landmark, RefreshCw, Lightbulb, Shield, PiggyBank, GraduationCap, Plane, Home, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../stores/appStore';
 import { goalService } from '../services/goalService';
@@ -14,6 +14,11 @@ import { CurrencyDisplay } from '../components/Currency';
 import type { Currency } from '../components/Currency';
 import Modal from '../components/UI/Modal';
 import { showConfirm } from '../utils/dialogUtils';
+import GoalProgressionChart from '../components/Goals/GoalProgressionChart';
+import MilestoneCelebrationModal from '../components/Goals/MilestoneCelebrationModal';
+import MilestoneBadges from '../components/Goals/MilestoneBadges';
+import celebrationService from '../services/celebrationService';
+import type { PendingCelebration, MilestoneThreshold } from '../services/celebrationService';
 
 const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
@@ -37,12 +42,24 @@ const GoalsPage = () => {
   const [createNewAccount, setCreateNewAccount] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   
+  // Chart state
+  const [selectedGoalForChart, setSelectedGoalForChart] = useState<Goal | null>(null);
+  
   // Suggestions state
   const [suggestions, setSuggestions] = useState<GoalSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isRequestingSuggestions, setIsRequestingSuggestions] = useState(false);
   
-  // Celebration state
+  // Link account modal state
+  const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
+  const [goalToLink, setGoalToLink] = useState<Goal | null>(null);
+  
+  // Celebration state (new celebrationService integration)
+  const [pendingCelebration, setPendingCelebration] = useState<PendingCelebration | null>(null);
+  const [goalBadges, setGoalBadges] = useState<Record<string, MilestoneThreshold[]>>({});
+  
+  // Legacy celebration state (keep for backward compatibility)
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationMilestone, setCelebrationMilestone] = useState<MilestoneType | null>(null);
   const [celebratedGoal, setCelebratedGoal] = useState<Goal | null>(null);
@@ -156,6 +173,59 @@ const GoalsPage = () => {
     }
   }, [goals, isLoading]);
 
+  // Check for pending celebrations when goals change (new celebrationService)
+  useEffect(() => {
+    const checkCelebrations = async () => {
+      console.log('🎉 [Celebrations] Starting celebration check...');
+      console.log('🎉 [Celebrations] Goals count:', goals?.length);
+      
+      if (!goals || goals.length === 0) {
+        console.log('🎉 [Celebrations] No goals, skipping celebration check');
+        return;
+      }
+      
+      // Load badges for all goals
+      const badgesMap: Record<string, MilestoneThreshold[]> = {};
+      for (const goal of goals) {
+        console.log(`🎉 [Celebrations] Loading badges for goal: ${goal.name} (${goal.id})`);
+        const celebrated = await celebrationService.getCelebratedMilestones(goal.id);
+        console.log(`🎉 [Celebrations] Goal ${goal.name}: celebrated milestones =`, celebrated);
+        badgesMap[goal.id] = celebrated;
+      }
+      setGoalBadges(badgesMap);
+      
+      // Check for first pending celebration (show one at a time)
+      for (const goal of goals) {
+        const percentage = (goal.currentAmount / goal.targetAmount) * 100;
+        console.log(`🎉 [Celebrations] Checking goal: ${goal.name}`);
+        console.log(`🎉 [Celebrations]   - currentAmount: ${goal.currentAmount} (type: ${typeof goal.currentAmount})`);
+        console.log(`🎉 [Celebrations]   - targetAmount: ${goal.targetAmount} (type: ${typeof goal.targetAmount})`);
+        console.log(`🎉 [Celebrations]   - percentage: ${percentage.toFixed(1)}%`);
+        
+        const pending = await celebrationService.checkForPendingCelebration(
+          goal.id,
+          goal.name,
+          goal.currentAmount,
+          goal.targetAmount
+        );
+        console.log(`🎉 [Celebrations] Goal ${goal.name}: pending celebration =`, pending);
+        
+        if (pending) {
+          console.log('🎉 [Celebrations] ✅ Found pending celebration:', pending);
+          console.log('🎉 [Celebrations] Setting pendingCelebration state...');
+          setPendingCelebration(pending);
+          break; // Show only one celebration at a time
+        } else {
+          console.log(`🎉 [Celebrations] No pending celebration for goal ${goal.name}`);
+        }
+      }
+      
+      console.log('🎉 [Celebrations] Celebration check complete');
+    };
+    
+    checkCelebrations();
+  }, [goals]);
+
   // Handlers
   const handleCreateGoal = () => {
     setEditingGoal(null);
@@ -222,8 +292,32 @@ const GoalsPage = () => {
     }
   };
 
-  const handleAddSavings = (goalId: string) => {
-    navigate(`/add-transaction?type=expense&category=epargne&goalId=${goalId}`);
+  const handleAddSavings = async (goal: Goal) => {
+    // Check if goal has linked account
+    if (!goal.linkedAccountId) {
+      // Show modal asking to link account
+      setGoalToLink(goal);
+      setShowLinkAccountModal(true);
+      return;
+    }
+    
+    // Calculate suggested amount (monthly contribution)
+    // Use targetAmount / 12 as default monthly contribution
+    const suggestedAmount = Math.round(goal.targetAmount / 12);
+    
+    // Prepare navigation state
+    const transferState = {
+      destinationAccountId: goal.linkedAccountId,
+      suggestedAmount: suggestedAmount,
+      goalId: goal.id,
+      goalName: goal.name,
+      returnTo: '/goals'
+    };
+    
+    console.log('🎯 [GoalsPage] Navigation vers /transfer avec state:', transferState);
+    
+    // Navigate to transfer page with state
+    navigate('/transfer', { state: transferState });
   };
 
   const handleSyncGoal = async (goalId: string) => {
@@ -270,6 +364,32 @@ const GoalsPage = () => {
     }
   };
 
+  const handleRequestSuggestions = async () => {
+    if (!user?.id) return;
+    
+    setIsRequestingSuggestions(true);
+    console.log('💡 [GoalsPage] Requesting new suggestions...');
+    
+    try {
+      const newSuggestions = await goalSuggestionService.requestNewSuggestions(user.id);
+      setSuggestions(newSuggestions);
+      
+      if (newSuggestions.length > 0) {
+        toast.success(`${newSuggestions.length} suggestion(s) disponible(s) !`);
+      } else {
+        toast('Aucune nouvelle suggestion pour le moment. Continuez vos objectifs actuels !', {
+          icon: 'ℹ️',
+          duration: 4000
+        });
+      }
+    } catch (error) {
+      console.error('💡 [GoalsPage] Error requesting suggestions:', error);
+      toast.error('Erreur lors de la génération des suggestions');
+    } finally {
+      setIsRequestingSuggestions(false);
+    }
+  };
+
   const handleCloseCelebration = async () => {
     if (celebratedGoal && celebrationMilestone) {
       await goalSuggestionService.markMilestoneCelebrated(celebratedGoal.id, celebrationMilestone);
@@ -281,6 +401,44 @@ const GoalsPage = () => {
     // Si c'est une célébration de complétion, recharger les suggestions
     if (celebrationMilestone === 'completed') {
       await loadSuggestions();
+    }
+  };
+
+  // Handler for new celebrationService celebrations
+  const handleCelebrationComplete = async () => {
+    if (!pendingCelebration) return;
+    
+    await celebrationService.markMilestoneAsCelebrated(
+      pendingCelebration.goalId,
+      pendingCelebration.goalName,
+      pendingCelebration.milestone
+    );
+    
+    // Update badges
+    setGoalBadges(prev => ({
+      ...prev,
+      [pendingCelebration.goalId]: [
+        ...(prev[pendingCelebration.goalId] || []),
+        pendingCelebration.milestone
+      ].sort((a, b) => a - b)
+    }));
+    
+    setPendingCelebration(null);
+    
+    // Check for more pending celebrations
+    if (goals) {
+      for (const goal of goals) {
+        const pending = await celebrationService.checkForPendingCelebration(
+          goal.id,
+          goal.name,
+          goal.currentAmount,
+          goal.targetAmount
+        );
+        if (pending) {
+          setTimeout(() => setPendingCelebration(pending), 500);
+          break;
+        }
+      }
     }
   };
 
@@ -347,14 +505,16 @@ const GoalsPage = () => {
         // Mettre à jour l'objectif
         await goalService.updateGoal(editingGoal.id, user.id, goalData);
         
-        // Mettre à jour autoSync dans IndexedDB directement
+        // Mettre à jour autoSync et linkedAccountId dans IndexedDB directement
         const updatedGoal = await goalService.getGoal(editingGoal.id);
         if (updatedGoal) {
           const goalWithAutoSync: Goal = {
             ...updatedGoal,
+            linkedAccountId: newLinkedAccountId || undefined,
             autoSync: newLinkedAccountId ? formData.autoSync : false
           };
           await db.goals.put(goalWithAutoSync);
+          console.log('💾 [GoalsPage] Goal mis à jour dans IndexedDB avec linkedAccountId:', newLinkedAccountId);
         }
         
         toast.success('Objectif modifié avec succès');
@@ -381,14 +541,17 @@ const GoalsPage = () => {
           if (formData.linkedAccountId) {
             await savingsService.linkGoalToAccount(newGoal.id, formData.linkedAccountId);
             
-            // Activer autoSync si demandé
-            if (formData.autoSync) {
+            // Récupérer l'objectif mis à jour pour s'assurer que linkedAccountId est bien présent
+            const updatedNewGoal = await goalService.getGoal(newGoal.id);
+            if (updatedNewGoal) {
+              // Activer autoSync si demandé et s'assurer que linkedAccountId est présent
               const goalWithAutoSync: Goal = {
-                ...newGoal,
+                ...updatedNewGoal,
                 linkedAccountId: formData.linkedAccountId,
-                autoSync: true
+                autoSync: formData.autoSync || false
               };
               await db.goals.put(goalWithAutoSync);
+              console.log('💾 [GoalsPage] Nouveau goal mis à jour dans IndexedDB avec linkedAccountId:', formData.linkedAccountId);
             }
           }
           
@@ -638,15 +801,36 @@ const GoalsPage = () => {
       )}
 
       {suggestions.length === 0 && !loadingSuggestions && (
-        <div className="card bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 text-center border border-purple-200">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+              <Lightbulb className="w-8 h-8 text-purple-600" />
             </div>
             <div>
-              <p className="font-medium text-gray-900">Bravo ! Vous êtes sur la bonne voie 🎉</p>
-              <p className="text-sm text-gray-600">Aucune suggestion pour le moment</p>
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                Pas de suggestions pour le moment
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Cliquez ci-dessous pour obtenir des recommandations personnalisées basées sur votre profil financier.
+              </p>
             </div>
+            <button
+              onClick={handleRequestSuggestions}
+              disabled={isRequestingSuggestions}
+              className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRequestingSuggestions ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Analyse en cours...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Suggérer objectifs
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -822,6 +1006,10 @@ const GoalsPage = () => {
                           </>
                         );
                       })()}
+                      {/* Milestone badges */}
+                      {goalBadges[goal.id] && goalBadges[goal.id].length > 0 && (
+                        <MilestoneBadges celebratedMilestones={goalBadges[goal.id]} />
+                      )}
                     </div>
                     {/* Milestone dots */}
                     {!goal.isCompleted && (() => {
@@ -926,7 +1114,7 @@ const GoalsPage = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAddSavings(goal.id);
+                        handleAddSavings(goal);
                       }}
                       className="text-sm px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
                     >
@@ -938,6 +1126,40 @@ const GoalsPage = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Évolution de l'épargne */}
+      <div className="card bg-white rounded-lg shadow-sm p-3">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Évolution de l'épargne</h2>
+          <select
+            value={selectedGoalForChart?.id || ''}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const goal = goals.find(g => g.id === selectedId);
+              setSelectedGoalForChart(goal || null);
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+          >
+            <option value="">Sélectionnez un objectif</option>
+            {goals.map((goal) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {selectedGoalForChart ? (
+          <GoalProgressionChart goal={selectedGoalForChart} />
+        ) : (
+          <div className="flex items-center justify-center py-12 text-center">
+            <div>
+              <Target className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-600">Sélectionnez un objectif pour voir son évolution</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {filteredGoals.length === 0 && (
@@ -978,7 +1200,7 @@ const GoalsPage = () => {
           onClick={() => {
             const firstActiveGoal = activeGoals[0];
             if (firstActiveGoal) {
-              handleAddSavings(firstActiveGoal.id);
+              handleAddSavings(firstActiveGoal);
             } else {
               toast.error('Aucun objectif actif disponible');
             }
@@ -993,7 +1215,56 @@ const GoalsPage = () => {
         </button>
       </div>
 
-      {/* Modal de célébration de jalon */}
+      {/* Link Account Modal */}
+      <Modal
+        isOpen={showLinkAccountModal}
+        onClose={() => {
+          setShowLinkAccountModal(false);
+          setGoalToLink(null);
+        }}
+        title="Compte épargne requis"
+        size="sm"
+      >
+        <div className="p-4">
+          <p className="text-gray-700 mb-6">
+            Cet objectif n'a pas de compte épargne lié. Voulez-vous en lier un maintenant ?
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => {
+                setShowLinkAccountModal(false);
+                if (goalToLink) {
+                  handleEditGoal(goalToLink);
+                }
+                setGoalToLink(null);
+              }}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              Lier un compte
+            </button>
+            <button
+              onClick={() => {
+                setShowLinkAccountModal(false);
+                setGoalToLink(null);
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Milestone Celebration Modal (new celebrationService) */}
+      {pendingCelebration && (
+        <MilestoneCelebrationModal
+          celebration={pendingCelebration}
+          onClose={() => setPendingCelebration(null)}
+          onCelebrated={handleCelebrationComplete}
+        />
+      )}
+
+      {/* Modal de célébration de jalon (legacy - keep for backward compatibility) */}
       <Modal
         isOpen={showCelebration}
         onClose={handleCloseCelebration}
@@ -1147,21 +1418,33 @@ const GoalsPage = () => {
             </label>
             <select
               id="goal-linkedAccountId"
-              value={createNewAccount ? '__create_new__' : formData.linkedAccountId}
+              value={createNewAccount ? '__create_new__' : (formData.linkedAccountId || '')}
               onChange={(e) => {
                 const value = e.target.value;
+                console.log('🔗 [GoalsPage] linkedAccountId changed to:', value);
+                
                 if (value === '__create_new__') {
                   setCreateNewAccount(true);
                   setNewAccountName('');
-                  setFormData(prev => ({ ...prev, linkedAccountId: '', autoSync: true }));
+                  setFormData(prev => {
+                    console.log('🔗 [GoalsPage] Setting linkedAccountId to empty string (create new account)');
+                    return { ...prev, linkedAccountId: '', autoSync: true };
+                  });
                 } else if (value === '') {
                   setCreateNewAccount(false);
                   setNewAccountName('');
-                  setFormData(prev => ({ ...prev, linkedAccountId: '', autoSync: false }));
+                  setFormData(prev => {
+                    console.log('🔗 [GoalsPage] Setting linkedAccountId to empty string (no account)');
+                    return { ...prev, linkedAccountId: '', autoSync: false };
+                  });
                 } else {
                   setCreateNewAccount(false);
                   setNewAccountName('');
-                  setFormData(prev => ({ ...prev, linkedAccountId: value, autoSync: prev.autoSync }));
+                  const accountId = value || ''; // Keep as string for form state
+                  setFormData(prev => {
+                    console.log('🔗 [GoalsPage] Setting linkedAccountId to:', accountId);
+                    return { ...prev, linkedAccountId: accountId, autoSync: prev.autoSync };
+                  });
                 }
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"

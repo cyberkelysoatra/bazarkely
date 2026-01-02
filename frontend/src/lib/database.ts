@@ -92,6 +92,15 @@ interface PerformanceMetrics {
   lastUpdated: Date;
 }
 
+// Type pour les célébrations de jalons d'objectifs
+interface GoalCelebration {
+  goalId: string;
+  goalName: string;
+  milestonesCompleted: number[]; // Array of MilestoneThreshold (25, 50, 75, 100) - stored as numbers
+  lastCelebratedAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
 export class BazarKELYDB extends Dexie {
   users!: Table<User>;
   accounts!: Table<Account>;
@@ -117,6 +126,9 @@ export class BazarKELYDB extends Dexie {
   
   // Table pour les jalons d'objectifs (Goal Suggestions System - S32)
   goalMilestones!: Table<GoalMilestone>;
+  
+  // Table pour les célébrations de jalons d'objectifs
+  goalCelebrations!: Table<GoalCelebration>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -498,6 +510,34 @@ export class BazarKELYDB extends Dexie {
       
       // La table goalMilestones sera créée automatiquement par Dexie
       console.log('✅ [Database] Migration to v10 complete - Goal suggestions system and milestones added');
+    });
+
+    // Version 11 - Goal Celebrations System: Ajout de goalCelebrations pour les célébrations de jalons
+    this.version(11).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]',
+      goalCelebrations: 'goalId, goalName, lastCelebratedAt, [goalId+lastCelebratedAt]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 [Database] Migrating to v11 - Adding goal celebrations system');
+      
+      // Migration: La table goalCelebrations sera créée automatiquement par Dexie
+      // Pas de migration de données nécessaire car c'est une nouvelle table
+      
+      console.log('✅ [Database] Migration to v11 complete - Goal celebrations system added');
     });
 
     // Initialiser le pool de connexions
