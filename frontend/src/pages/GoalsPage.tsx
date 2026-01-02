@@ -606,12 +606,38 @@ const GoalsPage = () => {
     }
   };
 
-  const getDaysRemaining = (deadline: Date) => {
-    const now = new Date();
-    const deadlineDate = deadline instanceof Date ? deadline : new Date(deadline);
-    const diffTime = deadlineDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const getDaysRemaining = (goal: Goal) => {
+    // If goal is already achieved, return 0
+    if (goal.currentAmount >= goal.targetAmount) {
+      return 0;
+    }
+    
+    // Calculate remaining amount needed
+    const amountRemaining = goal.targetAmount - goal.currentAmount;
+    
+    // Calculate monthly contribution
+    // Use requiredMonthlyContribution if available, otherwise calculate from targetAmount / 12
+    const monthlyContribution = (goal as any).requiredMonthlyContribution || Math.ceil(goal.targetAmount / 12);
+    
+    // Calculate months needed based on monthly contribution
+    let monthsNeeded = Math.ceil(amountRemaining / monthlyContribution);
+    
+    // Cap between 1 and 120 months (10 years max)
+    monthsNeeded = Math.max(1, Math.min(monthsNeeded, 120));
+    
+    // Convert months to days (approximate: 30 days per month)
+    const daysRemaining = monthsNeeded * 30;
+    
+    console.log(`📅 [GoalsPage] Calcul jours restants pour "${goal.name}":`, {
+      currentAmount: goal.currentAmount,
+      targetAmount: goal.targetAmount,
+      amountRemaining,
+      monthlyContribution,
+      monthsNeeded,
+      daysRemaining
+    });
+    
+    return daysRemaining;
   };
 
   // Helper pour obtenir l'icône d'une suggestion
@@ -925,7 +951,7 @@ const GoalsPage = () => {
       <div className="space-y-3">
         {filteredGoals.map((goal) => {
           const percentage = (goal.currentAmount / goal.targetAmount) * 100;
-          const daysRemaining = getDaysRemaining(goal.deadline);
+          const daysRemaining = getDaysRemaining(goal);
           const isOverdue = daysRemaining < 0 && !goal.isCompleted;
 
           return (

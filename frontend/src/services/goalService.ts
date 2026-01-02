@@ -700,31 +700,56 @@ class GoalService {
    * @param currentAmount - Montant actuel
    * @param targetAmount - Montant cible
    * @param startDate - Date de début (ISO string)
-   * @param deadline - Date limite
+   * @param deadline - Date limite (utilisée si monthlyContribution n'est pas fourni)
+   * @param monthlyContribution - Contribution mensuelle optionnelle pour recalculer la date de fin
    * @returns Tableau d'objets avec date (ISO string) et projectedAmount (montant projeté)
    */
   calculateProjectionData(
     currentAmount: number,
     targetAmount: number,
     startDate: string,
-    deadline: Date
+    deadline: Date,
+    monthlyContribution?: number
   ): Array<{ date: string; projectedAmount: number }> {
     try {
       console.log(`🎯 [GoalService] 📈 Calcul des données de projection...`);
       
       const start = new Date(startDate);
-      const end = new Date(deadline);
+      let end = new Date(deadline);
       const today = new Date();
       
-      // Si la date limite est dans le passé, retourner seulement le point actuel
-      if (end < today) {
+      // Si le montant actuel dépasse déjà l'objectif, retourner seulement le point actuel
+      if (currentAmount >= targetAmount) {
         return [
           { date: today.toISOString().split('T')[0], projectedAmount: currentAmount }
         ];
       }
       
-      // Si le montant actuel dépasse déjà l'objectif, retourner seulement le point actuel
-      if (currentAmount >= targetAmount) {
+      const amountToSave = targetAmount - currentAmount;
+      
+      // Si monthlyContribution est fourni et valide, recalculer la date de fin
+      if (monthlyContribution !== undefined && monthlyContribution > 0) {
+        console.log(`🎯 [GoalService] 💰 Recalcul de la projection avec contribution mensuelle: ${monthlyContribution.toLocaleString('fr-FR')} Ar`);
+        
+        // Calculer le nombre de mois nécessaires
+        const monthsNeeded = Math.ceil(amountToSave / monthlyContribution);
+        console.log(`🎯 [GoalService] 📅 Mois nécessaires calculés: ${monthsNeeded} mois`);
+        
+        // Limiter entre 1 et 120 mois (10 ans maximum)
+        const cappedMonths = Math.max(1, Math.min(monthsNeeded, 120));
+        if (cappedMonths !== monthsNeeded) {
+          console.log(`🎯 [GoalService] ⚠️ Mois limités de ${monthsNeeded} à ${cappedMonths} mois (limite: 120 mois)`);
+        }
+        
+        // Recalculer la date de fin basée sur les mois nécessaires
+        end = new Date(today);
+        end.setMonth(end.getMonth() + cappedMonths);
+        
+        console.log(`🎯 [GoalService] 📆 Nouvelle date de fin calculée: ${end.toISOString().split('T')[0]} (${cappedMonths} mois à partir d'aujourd'hui)`);
+      }
+      
+      // Si la date limite est dans le passé, retourner seulement le point actuel
+      if (end < today) {
         return [
           { date: today.toISOString().split('T')[0], projectedAmount: currentAmount }
         ];
@@ -741,23 +766,13 @@ class GoalService {
       
       // Calculer le nombre de jours entre aujourd'hui et la date limite
       const daysDiff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const amountToSave = targetAmount - currentAmount;
-      const dailyIncrement = amountToSave / daysDiff;
       
-      // Si moins de 30 jours, ajouter seulement le point final
-      if (daysDiff <= 30) {
-        const deadlineStr = end.toISOString().split('T')[0];
-        projectionData.push({
-          date: deadlineStr,
-          projectedAmount: targetAmount
-        });
-      } else {
-        // Ajouter des points mensuels intermédiaires pour une ligne plus lisse
+      // Si monthlyContribution est fourni, utiliser un incrément mensuel basé sur la contribution
+      if (monthlyContribution !== undefined && monthlyContribution > 0) {
         const monthsDiff = Math.ceil(daysDiff / 30);
-        const monthlyIncrement = amountToSave / monthsDiff;
         
-        // Ajouter des points mensuels
-        for (let i = 1; i < monthsDiff; i++) {
+        // Ajouter des points mensuels basés sur la contribution mensuelle
+        for (let i = 1; i <= monthsDiff; i++) {
           const intermediateDate = new Date(today);
           intermediateDate.setMonth(intermediateDate.getMonth() + i);
           
@@ -766,19 +781,56 @@ class GoalService {
             break;
           }
           
-          const projectedAmount = currentAmount + (monthlyIncrement * i);
+          const projectedAmount = Math.min(
+            currentAmount + (monthlyContribution * i),
+            targetAmount
+          );
+          
           projectionData.push({
             date: intermediateDate.toISOString().split('T')[0],
-            projectedAmount: Math.min(projectedAmount, targetAmount)
+            projectedAmount: projectedAmount
           });
         }
+      } else {
+        // Logique originale basée sur la date limite
+        const dailyIncrement = amountToSave / daysDiff;
         
-        // Ajouter le point final (date limite)
-        const deadlineStr = end.toISOString().split('T')[0];
-        projectionData.push({
-          date: deadlineStr,
-          projectedAmount: targetAmount
-        });
+        // Si moins de 30 jours, ajouter seulement le point final
+        if (daysDiff <= 30) {
+          const deadlineStr = end.toISOString().split('T')[0];
+          projectionData.push({
+            date: deadlineStr,
+            projectedAmount: targetAmount
+          });
+        } else {
+          // Ajouter des points mensuels intermédiaires pour une ligne plus lisse
+          const monthsDiff = Math.ceil(daysDiff / 30);
+          const monthlyIncrement = amountToSave / monthsDiff;
+          
+          // Ajouter des points mensuels
+          for (let i = 1; i < monthsDiff; i++) {
+            const intermediateDate = new Date(today);
+            intermediateDate.setMonth(intermediateDate.getMonth() + i);
+            
+            // Ne pas dépasser la date limite
+            if (intermediateDate > end) {
+              break;
+            }
+            
+            const projectedAmount = currentAmount + (monthlyIncrement * i);
+            projectionData.push({
+              date: intermediateDate.toISOString().split('T')[0],
+              projectedAmount: Math.min(projectedAmount, targetAmount)
+            });
+          }
+          
+          // Ajouter le point final (date limite)
+          const deadlineStr = end.toISOString().split('T')[0];
+          projectionData.push({
+            date: deadlineStr,
+            projectedAmount: targetAmount
+          });
+        }
       }
       
       // Trier par date

@@ -160,15 +160,56 @@ class GoalSuggestionService {
   }
 
   /**
+   * Calculer une contribution mensuelle réaliste basée sur le revenu
+   * PWA Phase 3 - Conservative approach: 15% of disposable income, bounded by 5-25% of monthly income
+   * 
+   * @param monthlyIncome - Revenu mensuel total
+   * @param disposableIncome - Revenu disponible (revenu - dépenses)
+   * @param targetAmount - Montant cible (optionnel, pour validation)
+   * @returns Contribution mensuelle réaliste
+   */
+  private calculateRealisticContribution(
+    monthlyIncome: number,
+    disposableIncome: number,
+    targetAmount?: number
+  ): number {
+    // Conservative: 15% of disposable income
+    const conservativeAmount = disposableIncome > 0 ? disposableIncome * 0.15 : 0;
+    
+    // Minimum: 5% of monthly income (ensures some savings even with tight budget)
+    const minimumAmount = monthlyIncome * 0.05;
+    
+    // Maximum: 25% of monthly income (prevents unrealistic contributions)
+    const maximumAmount = monthlyIncome * 0.25;
+    
+    // Use conservative amount, but ensure within min/max bounds
+    const realisticContribution = Math.max(minimumAmount, Math.min(conservativeAmount, maximumAmount));
+    
+    console.log(`💡 [GoalSuggestionService] 💰 Contribution calculation:`, {
+      monthlyIncome: monthlyIncome.toLocaleString('fr-FR'),
+      disposableIncome: disposableIncome.toLocaleString('fr-FR'),
+      conservative15Percent: conservativeAmount.toLocaleString('fr-FR'),
+      minimum5Percent: minimumAmount.toLocaleString('fr-FR'),
+      maximum25Percent: maximumAmount.toLocaleString('fr-FR'),
+      finalContribution: realisticContribution.toLocaleString('fr-FR'),
+      contributionPercentOfIncome: monthlyIncome > 0 ? ((realisticContribution / monthlyIncome) * 100).toFixed(1) + '%' : '0%'
+    });
+    
+    return realisticContribution;
+  }
+
+  /**
    * Calculer une échéance adaptative basée sur la capacité d'épargne de l'utilisateur
+   * PWA Phase 3 - Returns null if goal is unrealistic (no disposable income or > 36 months)
    * 
    * @param targetAmount - Montant cible à atteindre
    * @param maxMonthlyContribution - Contribution mensuelle maximale possible
-   * @returns Nombre de mois nécessaires (avec buffer de 20%, max 60 mois)
+   * @returns Nombre de mois nécessaires (avec buffer de 20%, max 60 mois) ou null si irréaliste
    */
-  private calculateAdaptiveDeadline(targetAmount: number, maxMonthlyContribution: number): number {
+  private calculateAdaptiveDeadline(targetAmount: number, maxMonthlyContribution: number): number | null {
     if (maxMonthlyContribution <= 0) {
-      return 60; // Retourner le maximum si pas de capacité d'épargne
+      console.log(`💡 [GoalSuggestionService] ⚠️ Impossible goal: no disposable income (maxMonthlyContribution = ${maxMonthlyContribution})`);
+      return null; // Don't suggest impossible goals
     }
     
     // Calculer les mois nécessaires
@@ -177,8 +218,15 @@ class GoalSuggestionService {
     // Ajouter 20% de buffer pour la sécurité
     const monthsWithBuffer = Math.ceil(monthsNeeded * 1.2);
     
+    // Validation: if monthsNeeded > 36 (3 years), consider if goal is realistic
+    if (monthsNeeded > 36) {
+      console.log(`💡 [GoalSuggestionService] ⚠️ Goal requires ${monthsNeeded} months (${(monthsNeeded / 12).toFixed(1)} years) - may be unrealistic`);
+    }
+    
     // Limiter à 60 mois (5 ans) maximum pour rester réaliste
-    return Math.min(monthsWithBuffer, 60);
+    const finalMonths = Math.min(monthsWithBuffer, 60);
+    
+    return finalMonths;
   }
 
   /**
@@ -193,17 +241,30 @@ class GoalSuggestionService {
       
       const suggestions: GoalSuggestion[] = [];
       const disposableIncome = profile.monthlyIncome - profile.monthlyExpenses;
-      const maxMonthlyContribution = disposableIncome * 0.3; // Max 30% du revenu disponible
+      
+      // PWA Phase 3 - Use realistic contribution calculation (15% of disposable, bounded by 5-25% of income)
+      const maxMonthlyContribution = this.calculateRealisticContribution(
+        profile.monthlyIncome,
+        disposableIncome
+      );
+      
+      console.log(`💡 [GoalSuggestionService] 📊 Financial profile summary:`, {
+        monthlyIncome: profile.monthlyIncome.toLocaleString('fr-FR') + ' Ar',
+        monthlyExpenses: profile.monthlyExpenses.toLocaleString('fr-FR') + ' Ar',
+        disposableIncome: disposableIncome.toLocaleString('fr-FR') + ' Ar',
+        savingsRate: profile.savingsRate.toFixed(1) + '%',
+        realisticMonthlyContribution: maxMonthlyContribution.toLocaleString('fr-FR') + ' Ar'
+      });
       
       // PRIORITÉ 1: Fonds d'urgence 3 mois (si couverture < 3 mois)
-      if (profile.emergencyFundMonths < 3) {
+      if (profile.emergencyFundMonths < 3 && maxMonthlyContribution > 0) {
         const targetAmount = profile.monthlyExpenses * 3;
         
         // Calculer l'échéance adaptative
         const adaptiveMonths = this.calculateAdaptiveDeadline(targetAmount, maxMonthlyContribution);
         
-        // Ne suggérer que si l'échéance adaptative est réaliste (<= 60 mois)
-        if (adaptiveMonths <= 60) {
+        // Ne suggérer que si l'échéance adaptative est réaliste (not null and <= 60 mois)
+        if (adaptiveMonths !== null && adaptiveMonths <= 60) {
           const deadline = new Date();
           deadline.setMonth(deadline.getMonth() + adaptiveMonths);
           
@@ -226,21 +287,29 @@ class GoalSuggestionService {
             category: 'epargne'
           });
         } else {
-          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: adaptive deadline (${adaptiveMonths} months) exceeds 60 months (unrealistic)`);
+          if (adaptiveMonths === null) {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: no disposable income (unrealistic goal)`);
+          } else {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: adaptive deadline (${adaptiveMonths} months) exceeds 60 months (unrealistic)`);
+          }
         }
       } else {
-        console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: already has ${profile.emergencyFundMonths.toFixed(1)} months coverage (>= 3)`);
+        if (maxMonthlyContribution <= 0) {
+          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: no disposable income available`);
+        } else {
+          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_3months: already has ${profile.emergencyFundMonths.toFixed(1)} months coverage (>= 3)`);
+        }
       }
       
       // PRIORITÉ 2: Fonds d'urgence 6 mois (si seulement 3 mois)
-      if (profile.emergencyFundMonths >= 3 && profile.emergencyFundMonths < 6) {
+      if (profile.emergencyFundMonths >= 3 && profile.emergencyFundMonths < 6 && maxMonthlyContribution > 0) {
         const targetAmount = profile.monthlyExpenses * 6;
         const remainingAmount = targetAmount - (profile.monthlyExpenses * profile.emergencyFundMonths);
         
         // Calculer l'échéance adaptative pour le montant restant
         const adaptiveMonths = this.calculateAdaptiveDeadline(remainingAmount, maxMonthlyContribution);
         
-        if (adaptiveMonths <= 60) {
+        if (adaptiveMonths !== null && adaptiveMonths <= 60) {
           const deadline = new Date();
           deadline.setMonth(deadline.getMonth() + adaptiveMonths);
           
@@ -262,10 +331,16 @@ class GoalSuggestionService {
             category: 'epargne'
           });
         } else {
-          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_6months: adaptive deadline (${adaptiveMonths} months) exceeds 60 months`);
+          if (adaptiveMonths === null) {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_6months: no disposable income (unrealistic goal)`);
+          } else {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_6months: adaptive deadline (${adaptiveMonths} months) exceeds 60 months`);
+          }
         }
       } else if (profile.emergencyFundMonths >= 6) {
         console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_6months: already has ${profile.emergencyFundMonths.toFixed(1)} months coverage (>= 6)`);
+      } else if (maxMonthlyContribution <= 0) {
+        console.log(`💡 [GoalSuggestionService] ⏭️ Skipping savings_6months: no disposable income available`);
       }
       
       // PRIORITÉ 3: Remboursement des dettes (si dettes existent)
@@ -275,7 +350,7 @@ class GoalSuggestionService {
         // Calculer l'échéance adaptative
         const adaptiveMonths = this.calculateAdaptiveDeadline(targetAmount, maxMonthlyContribution);
         
-        if (adaptiveMonths <= 60) {
+        if (adaptiveMonths !== null && adaptiveMonths <= 60) {
           const deadline = new Date();
           deadline.setMonth(deadline.getMonth() + adaptiveMonths);
           
@@ -297,7 +372,11 @@ class GoalSuggestionService {
             category: 'autre'
           });
         } else {
-          console.log(`💡 [GoalSuggestionService] ⏭️ Skipping debt_payoff: adaptive deadline (${adaptiveMonths} months) exceeds 60 months (unrealistic)`);
+          if (adaptiveMonths === null) {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping debt_payoff: no disposable income (unrealistic goal)`);
+          } else {
+            console.log(`💡 [GoalSuggestionService] ⏭️ Skipping debt_payoff: adaptive deadline (${adaptiveMonths} months) exceeds 60 months (unrealistic)`);
+          }
         }
       } else if (profile.debtAmount === 0) {
         console.log(`💡 [GoalSuggestionService] ⏭️ Skipping debt_payoff: no debts detected`);
@@ -306,7 +385,7 @@ class GoalSuggestionService {
       // PRIORITÉ 4: Épargne vacances (si fonds d'urgence OK OU taux d'épargne positif)
       // Utiliser un montant cible basé sur la capacité d'épargne (6 mois de max saving)
       if ((profile.emergencyFundMonths >= 3 || profile.savingsRate > 0) && 
-          suggestions.length < 3) {
+          suggestions.length < 3 && maxMonthlyContribution > 0) {
         const targetAmount = maxMonthlyContribution * 6; // 6 mois d'épargne maximale
         const deadline = new Date();
         deadline.setMonth(deadline.getMonth() + 6); // 6 mois pour un objectif réalisable
@@ -335,7 +414,7 @@ class GoalSuggestionService {
       // PRIORITÉ 5: Investissement éducation (si revenus stables ET taux d'épargne positif)
       // Utiliser un montant cible basé sur la capacité d'épargne (12 mois de max saving)
       if (profile.monthlyIncome > 500000 && profile.savingsRate > 0 && 
-          suggestions.length < 3) {
+          suggestions.length < 3 && maxMonthlyContribution > 0) {
         const targetAmount = maxMonthlyContribution * 12; // 12 mois d'épargne maximale
         const deadline = new Date();
         deadline.setMonth(deadline.getMonth() + 12); // 12 mois pour un objectif réalisable
@@ -784,7 +863,12 @@ class GoalSuggestionService {
   ): GoalSuggestion[] {
     const nextLevelSuggestions: GoalSuggestion[] = [];
     const disposableIncome = profile.monthlyIncome - profile.monthlyExpenses;
-    const maxMonthlyContribution = disposableIncome * 0.3; // Max 30% du revenu disponible
+    
+    // PWA Phase 3 - Use realistic contribution calculation
+    const maxMonthlyContribution = this.calculateRealisticContribution(
+      profile.monthlyIncome,
+      disposableIncome
+    );
 
     console.log(`💡 [GoalSuggestionService] 🔍 Analyzing ${completedGoals.length} completed goal(s) for next-level suggestions...`);
 
@@ -799,7 +883,7 @@ class GoalSuggestionService {
         
         const adaptiveMonths = this.calculateAdaptiveDeadline(remainingAmount, maxMonthlyContribution);
         
-        if (adaptiveMonths <= 60) {
+        if (adaptiveMonths !== null && adaptiveMonths <= 60) {
           const deadline = new Date();
           deadline.setMonth(deadline.getMonth() + adaptiveMonths);
           

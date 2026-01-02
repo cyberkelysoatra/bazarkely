@@ -76,11 +76,28 @@ const GoalProgressionChart: React.FC<GoalProgressionChartProps> = ({ goal, class
         
         // Calculate projection data
         const startDate = history.length > 0 ? history[0].date : new Date().toISOString().split('T')[0];
+        
+        // Calculate monthly contribution for accurate projections
+        // Check if goal has requiredMonthlyContribution or monthlyContribution property
+        const goalWithAny = goal as Goal & { requiredMonthlyContribution?: number; monthlyContribution?: number };
+        const monthlyContribution = goalWithAny.requiredMonthlyContribution 
+          || goalWithAny.monthlyContribution 
+          || Math.ceil((goal.targetAmount - goal.currentAmount) / 12);
+        
+        console.log('🎯 [GoalProgressionChart] Calculated monthlyContribution:', {
+          fromGoal: goalWithAny.requiredMonthlyContribution || goalWithAny.monthlyContribution || 'not found',
+          calculated: monthlyContribution,
+          remainingAmount: goal.targetAmount - goal.currentAmount,
+          targetAmount: goal.targetAmount,
+          currentAmount: goal.currentAmount
+        });
+        
         const projection = goalService.calculateProjectionData(
           goal.currentAmount,
           goal.targetAmount,
           startDate,
-          goal.deadline instanceof Date ? goal.deadline : new Date(goal.deadline)
+          goal.deadline instanceof Date ? goal.deadline : new Date(goal.deadline),
+          monthlyContribution
         );
 
         // Combine history and projection data
