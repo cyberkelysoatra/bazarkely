@@ -540,6 +540,38 @@ export class BazarKELYDB extends Dexie {
       console.log('✅ [Database] Migration to v11 complete - Goal celebrations system added');
     });
 
+    // Version 12 - Phase B1: Support pour requiredMonthlyContribution dans goals
+    // Ajoute le support pour le champ optionnel requiredMonthlyContribution dans le store goals
+    // Ce champ permet de stocker la contribution mensuelle requise pour calculer la deadline adaptative
+    // Pas de migration de données nécessaire car le champ est optionnel (défaut: undefined)
+    this.version(12).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]',
+      goalCelebrations: 'goalId, goalName, lastCelebratedAt, [goalId+lastCelebratedAt]'
+    }).upgrade(async (trans) => {
+      console.log('🔄 [Database] Migrating to v12 - Adding support for requiredMonthlyContribution field in goals');
+      
+      // Migration: Le champ requiredMonthlyContribution est optionnel et n'a pas besoin d'index
+      // Les goals existants auront undefined pour ce champ, ce qui est le comportement attendu
+      // Pas de transformation de données nécessaire
+      
+      console.log('✅ [Database] Migration to v12 complete - requiredMonthlyContribution field support added');
+    });
+
     // Initialiser le pool de connexions
     this.initializeConnectionPool();
     

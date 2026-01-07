@@ -1,0 +1,183 @@
+-- ============================================================================
+-- MIGRATION: Add required_monthly_contribution column to goals table
+-- Date: 2026-01-07
+-- Agent: AGENT05 - Database Migration
+-- ============================================================================
+-- 
+-- DESCRIPTION:
+-- Phase B1: Add required_monthly_contribution column to support automatic
+-- deadline recalculation based on monthly contribution amount. This column
+-- stores the calculated monthly contribution needed to reach the goal target
+-- amount by the deadline date.
+--
+-- USE CASE:
+-- When a user sets a goal with a target amount and deadline, the application
+-- calculates the required monthly contribution. This value is stored in the
+-- database to:
+-- 1. Display in UI without recalculation on every page load
+-- 2. Enable filtering/sorting goals by contribution amount
+-- 3. Support automatic deadline adjustment when contribution changes
+--
+-- CHANGES:
+-- 1. Add column: required_monthly_contribution NUMERIC(10, 2) NULL
+-- 2. Add descriptive comment on column
+-- 3. Create partial index (WHERE NOT NULL) for performance
+-- 4. Column is nullable for backward compatibility with existing goals
+--
+-- SAFETY:
+-- - Uses transaction wrapper (BEGIN/COMMIT) for atomicity
+-- - Idempotent: uses IF NOT EXISTS to allow multiple executions
+-- - No data deletion or modification
+-- - No impact on existing goals (column is NULL by default)
+-- - All other columns preserved
+-- ============================================================================
+
+BEGIN;
+
+-- ============================================================================
+-- STEP 1: Add required_monthly_contribution column
+-- ============================================================================
+-- Column type: NUMERIC(10, 2) allows amounts up to 99,999,999.99
+-- NULL constraint: Allows existing goals without this field (backward compatible)
+-- IF NOT EXISTS: Makes script idempotent (safe to run multiple times)
+ALTER TABLE public.goals 
+ADD COLUMN IF NOT EXISTS required_monthly_contribution NUMERIC(10, 2) NULL;
+
+-- ============================================================================
+-- STEP 2: Add descriptive comment on column
+-- ============================================================================
+COMMENT ON COLUMN public.goals.required_monthly_contribution IS 
+'Monthly contribution amount (in base currency) required to reach target by deadline. NULL for goals created before this feature or goals without deadline. Calculated as: (target_amount - current_amount) / months_remaining.';
+
+-- ============================================================================
+-- STEP 3: Create partial index for performance
+-- ============================================================================
+-- Partial index (WHERE NOT NULL) is more efficient than full index because:
+-- 1. Smaller index size (only indexes non-NULL values)
+-- 2. Faster queries when filtering/sorting by contribution amount
+-- 3. Better performance for goals with contribution data
+-- IF NOT EXISTS: Makes script idempotent
+CREATE INDEX IF NOT EXISTS idx_goals_required_monthly_contribution 
+ON public.goals(required_monthly_contribution) 
+WHERE required_monthly_contribution IS NOT NULL;
+
+COMMIT;
+
+-- ============================================================================
+-- ROLLBACK SCRIPT (for emergency use only)
+-- ============================================================================
+-- Uncomment and execute if you need to rollback this migration:
+--
+-- BEGIN;
+-- DROP INDEX IF EXISTS public.idx_goals_required_monthly_contribution;
+-- ALTER TABLE public.goals DROP COLUMN IF EXISTS required_monthly_contribution;
+-- COMMIT;
+--
+-- WARNING: Rolling back will permanently delete the column and all data in it.
+-- Make sure you have a backup before executing rollback.
+-- ============================================================================
+
+-- ============================================================================
+-- VÉRIFICATION POST-MIGRATION
+-- ============================================================================
+-- Run these queries in Supabase SQL Editor to verify migration success:
+--
+-- 1. Verify column exists:
+-- SELECT 
+--   column_name, 
+--   data_type, 
+--   numeric_precision, 
+--   numeric_scale,
+--   is_nullable
+-- FROM information_schema.columns
+-- WHERE table_schema = 'public'
+--   AND table_name = 'goals'
+--   AND column_name = 'required_monthly_contribution';
+--
+-- Expected result:
+-- column_name: required_monthly_contribution
+-- data_type: numeric
+-- numeric_precision: 10
+-- numeric_scale: 2
+-- is_nullable: YES
+--
+-- 2. Verify index exists:
+-- SELECT 
+--   indexname, 
+--   indexdef
+-- FROM pg_indexes
+-- WHERE schemaname = 'public'
+--   AND tablename = 'goals'
+--   AND indexname = 'idx_goals_required_monthly_contribution';
+--
+-- Expected result: Index should exist with WHERE clause
+--
+-- 3. Verify column comment:
+-- SELECT 
+--   obj_description('public.goals'::regclass, 'pg_class') as table_comment,
+--   col_description('public.goals'::regclass::oid, 
+--     (SELECT attnum FROM pg_attribute 
+--      WHERE attrelid = 'public.goals'::regclass 
+--      AND attname = 'required_monthly_contribution')) as column_comment;
+--
+-- Expected result: Column comment should describe the purpose
+--
+-- 4. Count goals with NULL vs non-NULL values:
+-- SELECT 
+--   COUNT(*) as total_goals,
+--   COUNT(required_monthly_contribution) as goals_with_contribution,
+--   COUNT(*) - COUNT(required_monthly_contribution) as goals_without_contribution
+-- FROM public.goals;
+--
+-- Expected result: All existing goals should have NULL (backward compatible)
+-- ============================================================================
+
+-- ============================================================================
+-- SAMPLE QUERIES: How to use the new column
+-- ============================================================================
+--
+-- 1. Get all goals with required monthly contribution:
+-- SELECT 
+--   id,
+--   name,
+--   target_amount,
+--   current_amount,
+--   target_date,
+--   required_monthly_contribution
+-- FROM public.goals
+-- WHERE required_monthly_contribution IS NOT NULL
+-- ORDER BY required_monthly_contribution ASC;
+--
+-- 2. Find goals requiring more than 100,000 MGA per month:
+-- SELECT 
+--   id,
+--   name,
+--   required_monthly_contribution
+-- FROM public.goals
+-- WHERE required_monthly_contribution > 100000
+-- ORDER BY required_monthly_contribution DESC;
+--
+-- 3. Update required_monthly_contribution for a specific goal:
+-- UPDATE public.goals
+-- SET required_monthly_contribution = 50000.00
+-- WHERE id = 'goal-uuid-here';
+--
+-- 4. Calculate and update required_monthly_contribution for all goals with deadline:
+-- UPDATE public.goals
+-- SET required_monthly_contribution = 
+--   CASE 
+--     WHEN target_date IS NOT NULL 
+--       AND target_date > CURRENT_DATE
+--       AND EXTRACT(EPOCH FROM (target_date::date - CURRENT_DATE)) > 0
+--     THEN 
+--       (target_amount - current_amount) / 
+--       GREATEST(
+--         EXTRACT(EPOCH FROM (target_date::date - CURRENT_DATE)) / 2592000, -- seconds to months
+--         1
+--       )
+--     ELSE NULL
+--   END
+-- WHERE target_date IS NOT NULL;
+--
+-- ============================================================================
+

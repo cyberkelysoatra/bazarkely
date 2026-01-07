@@ -1,6 +1,14 @@
-﻿export const APP_VERSION = '2.4.3';
-export const APP_BUILD_DATE = '2026-01-02';
+﻿export const APP_VERSION = '2.4.4';
+export const APP_BUILD_DATE = '2026-01-07';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.4',
+    date: '2026-01-07',
+    changes: [
+      'Phase B1: Add requiredMonthlyContribution field to Goal schema (TypeScript + IndexedDB v12 + Supabase)',
+      'Non-breaking: Field is optional for backward compatibility'
+    ]
+  },
   {
     version: '2.4.3',
     date: '2026-01-02',

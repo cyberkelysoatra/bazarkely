@@ -137,6 +137,13 @@ export interface Goal {
   name: string;
   targetAmount: number;
   currentAmount: number;
+  /**
+   * Monthly contribution amount required to reach the goal by the deadline
+   * Calculated based on targetAmount, currentAmount, and deadline
+   * Stored in base currency (MGA)
+   * Optional for backward compatibility with existing goals
+   */
+  requiredMonthlyContribution?: number;
   deadline: Date;
   category?: string;
   priority: 'low' | 'medium' | 'high';
