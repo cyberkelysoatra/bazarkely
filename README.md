@@ -17,7 +17,7 @@
 - 📱 **Support Mobile Money** (Orange Money, Mvola, Airtel Money)
 - 🔄 **Synchronisation multi-navigateur** (Chrome, Firefox, Safari, Edge)
 - 📊 **Tableaux de bord interactifs** avec graphiques
-- 🎯 **Objectifs d'épargne** et suivi des progrès
+- 🎯 **Objectifs d'épargne** et suivi des progrès - **Phase B (v2.5.0)** : Calcul automatique de la deadline basé sur la contribution mensuelle préconisée
 - 🔁 **Transactions récurrentes** - Automatisation complète des transactions périodiques
 - 📈 **Statistiques budgétaires multi-années** - Comparaisons année sur année, détection de catégories problématiques
 - 🏆 **Système de classement** avec leaderboard et gamification

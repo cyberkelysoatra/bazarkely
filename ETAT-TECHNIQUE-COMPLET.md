@@ -184,7 +184,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - **AccountsPage** - Gestion des comptes
 - **BudgetsPage** - Gestion des budgets + Barres de progression bicolores + Affichage dépassement + Icône épargne corrigée - Session S28
 - **BudgetStatisticsPage** - Statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques - Session S28
-- **GoalsPage** - Gestion des objectifs
+- **GoalsPage** - Gestion des objectifs + Phase B (v2.5.0) : Calcul automatique deadline + Affichage contribution mensuelle préconisée (Session S37)
 - **EducationPage** - Contenu éducatif
 - **PWAInstructionsPage** - Guide d'installation PWA multi-navigateurs
 
@@ -860,6 +860,13 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Gestion:** camelCase ↔ snake_case, Date ↔ ISO string
 
 #### **16.6.3 Services Métier** ✅ IMPLÉMENTÉS
+
+**goalService.ts (Phase B v2.5.0 - Session S37):**
+- **Calcul automatique deadline:** Méthode `recalculateDeadline()` basée sur `requiredMonthlyContribution`
+- **Synchronisation automatique:** Recalcul deadline lors modification `requiredMonthlyContribution` ou `targetAmount`
+- **Support requiredMonthlyContribution:** Mapping complet Frontend ↔ Supabase (camelCase ↔ snake_case)
+- **Migration IndexedDB:** Version 12 avec support `requiredMonthlyContribution`
+- **Fichiers:** `frontend/src/services/goalService.ts`, `frontend/src/types/index.ts`, `frontend/src/lib/database.ts`
 
 **recurringTransactionService.ts (500 lignes):**
 - **CRUD complet:** `create()`, `getAll()`, `getById()`, `getActive()`, `getUpcomingInDays()`, `update()`, `delete()`

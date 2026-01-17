@@ -1,9 +1,9 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 4.9 (Statistiques Budgétaires Multi-Années - Session S28)  
+**Version:** 5.0 (Phase B Goals Deadline Sync - Session S37)  
 **Date de mise à jour:** 2025-12-31  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0)  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté
 
 ---
@@ -52,6 +52,22 @@
 - **Scripts npm:** `test:lighthouse`, `test:lighthouse:dev`, `test:lighthouse:simple`
 - **Métriques:** Performance, Accessibilité, Bonnes pratiques, SEO, PWA
 - **Rapports:** Génération automatique HTML dans `lighthouse-reports/`
+
+### **Phase B Goals Deadline Sync (Session S37 - v2.5.0)** ✅ RÉSOLU
+- ✅ **Gap: requiredMonthlyContribution manquant dans Goal interface** - Résolu: Champ ajouté à `Goal` et `GoalFormData` interfaces
+- ✅ **Gap: requiredMonthlyContribution manquant dans IndexedDB schema** - Résolu: Migration Version 12 ajoutée
+- ✅ **Gap: requiredMonthlyContribution manquant dans Supabase schema** - Résolu: Colonne `required_monthly_contribution` ajoutée
+- ✅ **Gap: Pas de synchronisation automatique deadline ↔ contribution mensuelle** - Résolu: Méthode `recalculateDeadline()` implémentée dans `goalService.ts`
+- ✅ **Gap: requiredMonthlyContribution non transféré lors acceptSuggestion()** - Résolu: Transfert ajouté dans `goalSuggestionService.ts`
+- ✅ **Gap: Pas d'affichage UI contribution mensuelle** - Résolu: Affichage ajouté dans `GoalsPage.tsx` avec formatage devise
+- **Fichiers modifiés:**
+  - `frontend/src/types/index.ts` - Ajout `requiredMonthlyContribution?: number` à `Goal` et `GoalFormData`
+  - `frontend/src/lib/database.ts` - Migration Version 12 pour support `requiredMonthlyContribution`
+  - `frontend/src/types/supabase.ts` - Ajout `required_monthly_contribution: number | null` à `goals` table
+  - `frontend/src/services/goalService.ts` - Méthode `recalculateDeadline()` + logique sync automatique
+  - `frontend/src/services/goalSuggestionService.ts` - Transfert `requiredMonthlyContribution` lors acceptSuggestion()
+  - `frontend/src/pages/GoalsPage.tsx` - Affichage UI contribution mensuelle préconisée
+- **Statut:** 100% complété et déployé en production v2.5.0
 
 ### **Boutons Responsive** ✅ IMPLÉMENTÉS
 - **Fichier modifié:** `frontend/src/components/UI/Button.tsx`

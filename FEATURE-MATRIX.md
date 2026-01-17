@@ -88,7 +88,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **AccountsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des comptes avec layout 2 colonnes |
 | **BudgetsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des budgets mensuels + cartes cliquables avec navigation catégorie + Barre de progression bicolore + Affichage dépassement amélioré + Icônes catégories cohérentes + Select styling amélioré |
 | **BudgetStatisticsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Page statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques (2025-12-31) |
-| **GoalsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des objectifs financiers |
+| **GoalsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des objectifs financiers + Phase B (v2.5.0) : Affichage contribution mensuelle préconisée (Session S37) |
 | **EducationPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Ressources éducatives financières |
 | **AddTransactionPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Formulaire d'ajout de transaction |
 | **AddAccountPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Formulaire d'ajout de compte |
@@ -161,6 +161,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Push Notifications Core** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | API Notification native + Service Worker personnalisé |
 | **Budget Alerts** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Alertes 80%, 100%, 120% du budget mensuel |
 | **Goal Reminders** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Rappels 3 jours avant deadline si progression < 50% |
+| **Goals Deadline Sync (Phase B v2.5.0)** | ✅ DONE | 100% | ✅ Testé | ✅ Documenté | Calcul automatique deadline basé sur required_monthly_contribution + Affichage UI contribution mensuelle préconisée (Session S37) |
 | **Transaction Alerts** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Notifications immédiates pour montants > 100,000 Ar |
 | **Daily Summary** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Résumé quotidien automatique à 20h |
 | **Sync Notifications** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Statut de synchronisation des données |

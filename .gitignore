@@ -173,6 +173,14 @@ site/
 config/local.json
 config/local.js
 
+# Temporary agent analysis files (diagnostics/investigations)
+AGENT-*-INVESTIGATION.md
+AGENT-*-VERIFICATION.md
+AGENT-*-PROJECTION-CHART-ANALYSIS.md
+AGENT-*-CELEBRATION-INVESTIGATION.md
+AGENT-*-EUR-REFERENCE-LINE-INVESTIGATION.md
+AGENT-*-DOCUMENTATION-VERIFICATION.md
+
 
 
 
