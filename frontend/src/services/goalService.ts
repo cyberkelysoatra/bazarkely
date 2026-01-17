@@ -88,7 +88,10 @@ class GoalService {
       isSuggested: supabaseGoal.is_suggested || undefined,
       suggestionType: supabaseGoal.suggestion_type || undefined,
       suggestionAcceptedAt: supabaseGoal.suggestion_accepted_at || undefined,
-      suggestionDismissedAt: supabaseGoal.suggestion_dismissed_at || undefined
+      suggestionDismissedAt: supabaseGoal.suggestion_dismissed_at || undefined,
+      requiredMonthlyContribution: supabaseGoal.required_monthly_contribution !== null && supabaseGoal.required_monthly_contribution !== undefined 
+        ? Number(supabaseGoal.required_monthly_contribution) 
+        : undefined
     };
   }
 
@@ -110,19 +113,77 @@ class GoalService {
     if ('category' in goal && goal.category !== undefined) result.category = goal.category;
     if ('priority' in goal && goal.priority !== undefined) result.priority = goal.priority;
     if ('isCompleted' in goal && goal.isCompleted !== undefined) result.is_completed = goal.isCompleted;
+    if ('linkedAccountId' in goal && goal.linkedAccountId !== undefined) result.linked_account_id = goal.linkedAccountId;
+    if ('autoSync' in goal && goal.autoSync !== undefined) result.auto_sync = goal.autoSync;
+    if ('isSuggested' in goal && goal.isSuggested !== undefined) result.is_suggested = goal.isSuggested;
+    if ('suggestionType' in goal && goal.suggestionType !== undefined) result.suggestion_type = goal.suggestionType;
+    if ('suggestionAcceptedAt' in goal && goal.suggestionAcceptedAt !== undefined) result.suggestion_accepted_at = goal.suggestionAcceptedAt;
+    if ('suggestionDismissedAt' in goal && goal.suggestionDismissedAt !== undefined) result.suggestion_dismissed_at = goal.suggestionDismissedAt;
+    // PWA Phase B1 - Map requiredMonthlyContribution to required_monthly_contribution
+    if ('requiredMonthlyContribution' in goal && goal.requiredMonthlyContribution !== undefined) {
+      result.required_monthly_contribution = goal.requiredMonthlyContribution;
+    }
     
     return result;
   }
 
   /**
-   * Récupérer tous les goals (OFFLINE-FIRST PATTERN)
-   * 1. Essaie IndexedDB d'abord (toujours disponible)
-   * 2. Si IndexedDB vide et online, fetch depuis Supabase
-   * 3. Cache les résultats Supabase dans IndexedDB
+   * Récupérer tous les goals (OFFLINE-FIRST PATTERN avec priorité Supabase si en ligne)
+   * 1. Si online ET authentifié, fetch depuis Supabase d'abord (force sync)
+   * 2. Met à jour IndexedDB avec les données fraîches de Supabase
+   * 3. Fallback vers IndexedDB si offline ou erreur Supabase
+   * 4. Si IndexedDB vide et offline, retourne tableau vide
    */
   async getGoals(userId: string): Promise<Goal[]> {
     try {
-      // STEP 1: Essayer IndexedDB d'abord (offline-first)
+      const isOnline = navigator.onLine;
+      
+      // STEP 1: Si online avec session valide, prioriser Supabase pour forcer la sync
+      if (isOnline) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log('🎯 [GoalService] 🌐 En ligne - récupération depuis Supabase...');
+            
+            const response = await apiService.getGoals();
+            if (response.success && !response.error) {
+              // STEP 2: Mapper les données Supabase (inclut required_monthly_contribution)
+              const supabaseGoals = (response.data as any[]) || [];
+              const goals: Goal[] = supabaseGoals
+                .filter((g: any) => g.user_id === userId)
+                .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
+
+              // STEP 3: Mettre à jour IndexedDB avec les données fraîches
+              if (goals.length > 0) {
+                try {
+                  await db.goals.bulkPut(goals);
+                  console.log('🎯 [GoalService] 💾 Mise à jour du cache IndexedDB...');
+                  console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) récupéré(s) avec required_monthly_contribution`);
+                } catch (idbError) {
+                  console.error('🎯 [GoalService] ❌ Erreur lors de la mise à jour IndexedDB:', idbError);
+                  // Continuer même si la sauvegarde échoue
+                }
+              } else {
+                console.log('🎯 [GoalService] ℹ️ Aucun goal trouvé dans Supabase');
+              }
+
+              return goals;
+            } else {
+              console.error('🎯 [GoalService] ❌ Erreur Supabase, fallback IndexedDB:', response.error);
+              // Fallback vers IndexedDB en cas d'erreur Supabase
+            }
+          } else {
+            console.log('🎯 [GoalService] ⚠️ Pas de session valide, utilisation IndexedDB');
+            // Pas de session, utiliser IndexedDB
+          }
+        } catch (supabaseError) {
+          console.error('🎯 [GoalService] ❌ Erreur lors de la vérification de session, fallback IndexedDB:', supabaseError);
+          // Fallback vers IndexedDB en cas d'erreur
+        }
+      }
+
+      // STEP 4: Fallback - Récupérer depuis IndexedDB (offline-first)
       console.log('🎯 [GoalService] 💾 Récupération des goals depuis IndexedDB...');
       const localGoals = await db.goals
         .where('userId')
@@ -134,38 +195,15 @@ class GoalService {
         return localGoals;
       }
 
-      // STEP 2: IndexedDB vide, essayer Supabase si online
-      if (!navigator.onLine) {
+      // STEP 5: IndexedDB vide et offline
+      if (!isOnline) {
         console.warn('🎯 [GoalService] ⚠️ Mode offline et IndexedDB vide, retour d\'un tableau vide');
         return [];
       }
 
-      console.log('🎯 [GoalService] 🌐 IndexedDB vide, récupération depuis Supabase...');
-      const response = await apiService.getGoals();
-      if (!response.success || response.error) {
-        console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals depuis Supabase:', response.error);
-        return [];
-      }
-
-      // STEP 3: Mapper et sauvegarder dans IndexedDB
-      const supabaseGoals = (response.data as any[]) || [];
-      const goals: Goal[] = supabaseGoals
-        .filter((g: any) => g.user_id === userId)
-        .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
-
-      if (goals.length > 0) {
-        // Sauvegarder dans IndexedDB pour la prochaine fois
-        try {
-          await db.goals.bulkPut(goals);
-          console.log(`🎯 [GoalService] 💾 ${goals.length} goal(s) sauvegardé(s) dans IndexedDB`);
-        } catch (idbError) {
-          console.error('🎯 [GoalService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
-          // Continuer même si la sauvegarde échoue
-        }
-      }
-
-      console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) récupéré(s) depuis Supabase`);
-      return goals;
+      // Si on arrive ici, c'est qu'on est online mais Supabase a échoué et IndexedDB est vide
+      console.warn('🎯 [GoalService] ⚠️ IndexedDB vide et Supabase indisponible, retour d\'un tableau vide');
+      return [];
     } catch (error) {
       console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals:', error);
       // En cas d'erreur, essayer de retourner IndexedDB
@@ -241,8 +279,24 @@ class GoalService {
         category: goalData.category,
         priority: goalData.priority,
         isCompleted: false,
-        linkedAccountId: goalData.linkedAccountId
+        linkedAccountId: goalData.linkedAccountId,
+        // PWA Phase B3.2 - Include requiredMonthlyContribution if present
+        requiredMonthlyContribution: goalData.requiredMonthlyContribution
       };
+
+      // PWA Phase B3.2 - Recalculate deadline if requiredMonthlyContribution is present
+      if (goal.requiredMonthlyContribution !== undefined && goal.requiredMonthlyContribution > 0) {
+        console.log(`🎯 [GoalService] 📅 Recalcul de la date limite avec contribution mensuelle: ${goal.requiredMonthlyContribution.toLocaleString('fr-FR')} Ar`);
+        const recalculatedDeadline = this.recalculateDeadline(goal);
+        if (recalculatedDeadline !== null) {
+          goal.deadline = recalculatedDeadline;
+          console.log(`🎯 [GoalService] ✅ Date limite recalculée: ${recalculatedDeadline.toISOString().split('T')[0]}`);
+        } else {
+          console.log(`🎯 [GoalService] ⚠️ Impossible de recalculer la date limite, utilisation de la date fournie: ${goal.deadline.toISOString().split('T')[0]}`);
+        }
+      } else {
+        console.log(`🎯 [GoalService] ℹ️ Pas de contribution mensuelle requise, utilisation de la date limite fournie: ${goal.deadline.toISOString().split('T')[0]}`);
+      }
 
       // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
       console.log('🎯 [GoalService] 💾 Sauvegarde du goal dans IndexedDB...');
@@ -334,6 +388,37 @@ class GoalService {
         updatedGoal.deadline = goalData.deadline instanceof Date 
           ? goalData.deadline 
           : new Date(goalData.deadline);
+      }
+
+      // PWA Phase B3.3 - Recalculate deadline if requiredMonthlyContribution or targetAmount changed
+      const hasRequiredMonthlyContribution = updatedGoal.requiredMonthlyContribution !== undefined && updatedGoal.requiredMonthlyContribution > 0;
+      const requiredMonthlyContributionChanged = goalData.requiredMonthlyContribution !== undefined && 
+        goalData.requiredMonthlyContribution !== existingGoal.requiredMonthlyContribution;
+      const targetAmountChanged = goalData.targetAmount !== undefined && 
+        goalData.targetAmount !== existingGoal.targetAmount;
+      
+      if (hasRequiredMonthlyContribution && (requiredMonthlyContributionChanged || targetAmountChanged)) {
+        let triggerReason = '';
+        if (requiredMonthlyContributionChanged && targetAmountChanged) {
+          triggerReason = 'requiredMonthlyContribution et targetAmount modifiés';
+        } else if (requiredMonthlyContributionChanged) {
+          triggerReason = 'requiredMonthlyContribution modifié';
+        } else {
+          triggerReason = 'targetAmount modifié';
+        }
+        
+        console.log(`🎯 [GoalService] 📅 Recalcul automatique du deadline déclenché: ${triggerReason}`);
+        console.log(`🎯 [GoalService] 📊 Valeurs: contribution mensuelle = ${updatedGoal.requiredMonthlyContribution?.toLocaleString('fr-FR')} Ar, montant cible = ${updatedGoal.targetAmount.toLocaleString('fr-FR')} Ar, montant actuel = ${updatedGoal.currentAmount.toLocaleString('fr-FR')} Ar`);
+        
+        const recalculatedDeadline = this.recalculateDeadline(updatedGoal);
+        if (recalculatedDeadline !== null) {
+          updatedGoal.deadline = recalculatedDeadline;
+          console.log(`🎯 [GoalService] ✅ Deadline recalculé et mis à jour: ${recalculatedDeadline.toISOString().split('T')[0]}`);
+        } else {
+          console.log(`🎯 [GoalService] ⚠️ Recalcul impossible, deadline existant conservé: ${updatedGoal.deadline.toISOString().split('T')[0]}`);
+        }
+      } else if (hasRequiredMonthlyContribution) {
+        console.log(`🎯 [GoalService] ℹ️ Contribution mensuelle présente mais aucun champ pertinent modifié, deadline conservé: ${updatedGoal.deadline.toISOString().split('T')[0]}`);
       }
 
       console.log('🎯 [GoalService] 💾 Mise à jour du goal dans IndexedDB...');
@@ -842,6 +927,126 @@ class GoalService {
     } catch (error) {
       console.error(`🎯 [GoalService] ❌ Erreur lors du calcul des données de projection:`, error);
       return [];
+    }
+  }
+
+  /**
+   * Recalcule la date limite d'un objectif basée sur la contribution mensuelle requise
+   * 
+   * Cette fonction calcule dynamiquement la date limite nécessaire pour atteindre l'objectif
+   * en fonction du montant restant à épargner et de la contribution mensuelle requise.
+   * 
+   * **Formule utilisée :**
+   * - amountToSave = targetAmount - currentAmount
+   * - monthsNeeded = Math.ceil(amountToSave / requiredMonthlyContribution)
+   * - cappedMonths = Math.max(1, Math.min(monthsNeeded, 120))
+   * - deadline = today + cappedMonths months
+   * 
+   * **Cas limites gérés :**
+   * - Objectif déjà atteint (currentAmount >= targetAmount) → retourne aujourd'hui
+   * - Pas de contribution mensuelle définie (undefined ou <= 0) → retourne null
+   * - Montant restant négatif → retourne aujourd'hui
+   * - Durée très longue (> 120 mois) → limite à 120 mois (10 ans)
+   * - Contribution très élevée (< 1 mois nécessaire) → minimum 1 mois
+   * 
+   * **Exemples d'utilisation :**
+   * 
+   * ```typescript
+   * // Objectif avec contribution mensuelle valide
+   * const goal: Goal = {
+   *   id: '1',
+   *   userId: 'user1',
+   *   name: 'Vacances',
+   *   targetAmount: 1000000,
+   *   currentAmount: 200000,
+   *   requiredMonthlyContribution: 100000,
+   *   deadline: new Date('2024-12-31'),
+   *   priority: 'medium'
+   * };
+   * const newDeadline = goalService.recalculateDeadline(goal);
+   * // Retourne: Date dans ~8 mois (800000 / 100000 = 8 mois)
+   * 
+   * // Objectif déjà atteint
+   * const completedGoal: Goal = {
+   *   ...goal,
+   *   currentAmount: 1000000
+   * };
+   * const deadline = goalService.recalculateDeadline(completedGoal);
+   * // Retourne: Date d'aujourd'hui
+   * 
+   * // Objectif sans contribution mensuelle
+   * const goalWithoutContribution: Goal = {
+   *   ...goal,
+   *   requiredMonthlyContribution: undefined
+   * };
+   * const deadline = goalService.recalculateDeadline(goalWithoutContribution);
+   * // Retourne: null
+   * 
+   * // Objectif avec contribution très élevée (atteint en < 1 mois)
+   * const fastGoal: Goal = {
+   *   ...goal,
+   *   requiredMonthlyContribution: 10000000
+   * };
+   * const deadline = goalService.recalculateDeadline(fastGoal);
+   * // Retourne: Date dans 1 mois (minimum)
+   * 
+   * // Objectif nécessitant plus de 10 ans
+   * const longGoal: Goal = {
+   *   ...goal,
+   *   targetAmount: 100000000,
+   *   currentAmount: 0,
+   *   requiredMonthlyContribution: 50000
+   * };
+   * const deadline = goalService.recalculateDeadline(longGoal);
+   * // Retourne: Date dans 120 mois maximum (limite)
+   * ```
+   * 
+   * @param goal - L'objectif pour lequel recalculer la date limite
+   * @returns Date calculée ou null si le calcul n'est pas possible
+   *          Retourne la date d'aujourd'hui si l'objectif est déjà atteint
+   * 
+   * @since v2.4.4 - Phase B2
+   */
+  recalculateDeadline(goal: Goal): Date | null {
+    try {
+      console.log(`🎯 [GoalService] 📅 Recalcul de la date limite pour l'objectif "${goal.name}"...`);
+      
+      const today = new Date();
+      const amountToSave = goal.targetAmount - goal.currentAmount;
+      
+      // Cas 1: Objectif déjà atteint ou dépassé
+      if (amountToSave <= 0) {
+        console.log(`🎯 [GoalService] ✅ Objectif déjà atteint (${goal.currentAmount.toLocaleString('fr-FR')} >= ${goal.targetAmount.toLocaleString('fr-FR')}), retour de la date d'aujourd'hui`);
+        return today;
+      }
+      
+      // Cas 2: Pas de contribution mensuelle définie ou invalide
+      if (goal.requiredMonthlyContribution === undefined || goal.requiredMonthlyContribution <= 0) {
+        console.log(`🎯 [GoalService] ⚠️ Contribution mensuelle non définie ou invalide (${goal.requiredMonthlyContribution}), impossible de recalculer`);
+        return null;
+      }
+      
+      // Cas 3: Calcul du nombre de mois nécessaires
+      const monthsNeeded = Math.ceil(amountToSave / goal.requiredMonthlyContribution);
+      console.log(`🎯 [GoalService] 💰 Calcul: ${amountToSave.toLocaleString('fr-FR')} Ar à épargner / ${goal.requiredMonthlyContribution.toLocaleString('fr-FR')} Ar/mois = ${monthsNeeded} mois`);
+      
+      // Cas 4: Limiter entre 1 et 120 mois (10 ans maximum)
+      const cappedMonths = Math.max(1, Math.min(monthsNeeded, 120));
+      if (cappedMonths !== monthsNeeded) {
+        console.log(`🎯 [GoalService] ⚠️ Durée limitée de ${monthsNeeded} à ${cappedMonths} mois (${monthsNeeded > 120 ? 'maximum 120 mois' : 'minimum 1 mois'})`);
+      }
+      
+      // Cas 5: Calculer la nouvelle date limite
+      const newDeadline = new Date(today);
+      newDeadline.setMonth(newDeadline.getMonth() + cappedMonths);
+      
+      console.log(`🎯 [GoalService] ✅ Nouvelle date limite calculée: ${newDeadline.toISOString().split('T')[0]} (dans ${cappedMonths} mois)`);
+      
+      return newDeadline;
+    } catch (error) {
+      console.error(`🎯 [GoalService] ❌ Erreur lors du recalcul de la date limite:`, error);
+      // En cas d'erreur, retourner null plutôt que de lancer une exception
+      return null;
     }
   }
 }

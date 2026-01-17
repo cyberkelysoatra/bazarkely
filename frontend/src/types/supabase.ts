@@ -221,42 +221,63 @@ export interface Database {
           user_id: string
           name: string
           target_amount: number
-          current_amount: number
+          current_amount: number | null
           target_date: string | null
           category: string | null
           description: string | null
-          priority: string
-          is_completed: boolean
+          priority: string | null
+          is_completed: boolean | null
           created_at: string
           updated_at: string
+          linked_account_id: string | null
+          auto_sync: boolean | null
+          is_suggested: boolean
+          suggestion_type: string | null
+          suggestion_accepted_at: string | null
+          suggestion_dismissed_at: string | null
+          required_monthly_contribution: number | null
         }
         Insert: {
           id?: string
           user_id: string
           name: string
           target_amount: number
-          current_amount?: number
+          current_amount?: number | null
           target_date?: string | null
           category?: string | null
           description?: string | null
-          priority?: string
-          is_completed?: boolean
+          priority?: string | null
+          is_completed?: boolean | null
           created_at?: string
           updated_at?: string
+          linked_account_id?: string | null
+          auto_sync?: boolean | null
+          is_suggested?: boolean
+          suggestion_type?: string | null
+          suggestion_accepted_at?: string | null
+          suggestion_dismissed_at?: string | null
+          required_monthly_contribution?: number | null
         }
         Update: {
           id?: string
           user_id?: string
           name?: string
           target_amount?: number
-          current_amount?: number
+          current_amount?: number | null
           target_date?: string | null
           category?: string | null
           description?: string | null
-          priority?: string
-          is_completed?: boolean
+          priority?: string | null
+          is_completed?: boolean | null
           created_at?: string
           updated_at?: string
+          linked_account_id?: string | null
+          auto_sync?: boolean | null
+          is_suggested?: boolean
+          suggestion_type?: string | null
+          suggestion_accepted_at?: string | null
+          suggestion_dismissed_at?: string | null
+          required_monthly_contribution?: number | null
         }
       }
       mobile_money_rates: {

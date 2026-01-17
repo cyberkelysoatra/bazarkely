@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Target, Calendar, TrendingUp, CheckCircle, Clock, Edit3, Trash2, X, Check, Landmark, RefreshCw, Lightbulb, Shield, PiggyBank, GraduationCap, Plane, Home, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -58,6 +58,9 @@ const GoalsPage = () => {
   // Celebration state (new celebrationService integration)
   const [pendingCelebration, setPendingCelebration] = useState<PendingCelebration | null>(null);
   const [goalBadges, setGoalBadges] = useState<Record<string, MilestoneThreshold[]>>({});
+  
+  // Migration flag - one-time deadline recalculation per session
+  const migrationExecutedRef = useRef(false);
   
   // Legacy celebration state (keep for backward compatibility)
   const [showCelebration, setShowCelebration] = useState(false);
@@ -147,6 +150,93 @@ const GoalsPage = () => {
     }
   };
 
+  // One-time migration: Recalculate deadlines for goals with requiredMonthlyContribution
+  // This migrates existing goals created before Phase B3.4
+  const migrateGoalDeadlines = async () => {
+    if (!user || migrationExecutedRef.current || goals.length === 0) {
+      return;
+    }
+
+    migrationExecutedRef.current = true;
+    console.log('🔄 [GoalsPage] Migration B3.4: Vérification des deadlines à recalculer...');
+
+    try {
+      // Filter goals that have requiredMonthlyContribution but potentially outdated deadline
+      const goalsToMigrate = goals.filter(goal => {
+        // Only migrate goals with requiredMonthlyContribution
+        if (!goal.requiredMonthlyContribution || goal.requiredMonthlyContribution <= 0) {
+          return false;
+        }
+
+        // Skip completed goals
+        if (goal.isCompleted || goal.currentAmount >= goal.targetAmount) {
+          return false;
+        }
+
+        // Calculate expected deadline using recalculateDeadline formula
+        const expectedDeadline = goalService.recalculateDeadline(goal);
+        if (!expectedDeadline) {
+          return false; // Cannot recalculate (no valid contribution)
+        }
+
+        // Compare with current deadline (difference > 7 days)
+        const currentDeadline = goal.deadline instanceof Date ? goal.deadline : new Date(goal.deadline);
+        const diffDays = Math.abs((expectedDeadline.getTime() - currentDeadline.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return diffDays > 7; // Only migrate if difference is significant (> 7 days)
+      });
+
+      if (goalsToMigrate.length === 0) {
+        console.log('🔄 [GoalsPage] Migration B3.4: Aucun objectif nécessitant une mise à jour de deadline');
+        return;
+      }
+
+      console.log(`🔄 [GoalsPage] Migration B3.4: ${goalsToMigrate.length} objectif(s) nécessitant une mise à jour de deadline`);
+
+      // Update each goal in background (non-blocking)
+      for (const goal of goalsToMigrate) {
+        try {
+          const expectedDeadline = goalService.recalculateDeadline(goal);
+          if (!expectedDeadline) {
+            console.warn(`🔄 [GoalsPage] Migration B3.4: Impossible de recalculer la deadline pour "${goal.name}"`);
+            continue;
+          }
+
+          const currentDeadline = goal.deadline instanceof Date ? goal.deadline : new Date(goal.deadline);
+          const diffDays = Math.abs((expectedDeadline.getTime() - currentDeadline.getTime()) / (1000 * 60 * 60 * 24));
+
+          console.log(`🔄 [GoalsPage] Migration B3.4: Mise à jour deadline pour "${goal.name}":`, {
+            currentDeadline: currentDeadline.toISOString().split('T')[0],
+            expectedDeadline: expectedDeadline.toISOString().split('T')[0],
+            diffDays: Math.round(diffDays),
+            requiredMonthlyContribution: goal.requiredMonthlyContribution
+          });
+
+          // Call updateGoal to trigger recalculation
+          // Passing deadline will trigger the recalculation logic in updateGoal
+          await goalService.updateGoal(goal.id, goal.userId, {
+            deadline: expectedDeadline
+          });
+
+          console.log(`✅ [GoalsPage] Migration B3.4: Deadline mise à jour pour "${goal.name}"`);
+        } catch (error) {
+          console.error(`❌ [GoalsPage] Migration B3.4: Erreur lors de la mise à jour de "${goal.name}":`, error);
+          // Continue with other goals even if one fails
+        }
+      }
+
+      // Refresh goals after migration to reflect updated deadlines
+      if (goalsToMigrate.length > 0) {
+        console.log(`✅ [GoalsPage] Migration B3.4: Migration terminée. ${goalsToMigrate.length} objectif(s) mis à jour`);
+        // Reload goals to reflect changes
+        await refreshGoals();
+      }
+    } catch (error) {
+      console.error('❌ [GoalsPage] Migration B3.4: Erreur lors de la migration:', error);
+      // Don't block UI - migration failure is non-critical
+    }
+  };
+
   // Charger les objectifs réels et les comptes d'épargne
   useEffect(() => {
     refreshGoals();
@@ -165,6 +255,17 @@ const GoalsPage = () => {
     
     loadSavingsAccounts();
   }, [user]);
+
+  // Run migration after goals are loaded (one-time per session)
+  useEffect(() => {
+    if (!isLoading && goals.length > 0 && user && !migrationExecutedRef.current) {
+      // Run migration in background (non-blocking)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      migrateGoalDeadlines().catch(error => {
+        console.error('❌ [GoalsPage] Migration B3.4: Erreur non-critique:', error);
+      });
+    }
+  }, [goals, isLoading, user]);
 
   // Vérifier les jalons après le chargement des goals
   useEffect(() => {
@@ -1122,6 +1223,22 @@ const GoalsPage = () => {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Contribution mensuelle préconisée */}
+                  {goal.requiredMonthlyContribution && goal.requiredMonthlyContribution > 0 && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm text-blue-700">
+                        Contribution mensuelle préconisée :{' '}
+                        <span className="font-semibold">
+                          {new Intl.NumberFormat('fr-FR', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                          }).format(goal.requiredMonthlyContribution)} Ar/mois
+                        </span>
+                      </span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center justify-end pt-2 space-x-2">
                     {goal.linkedAccountId && (
