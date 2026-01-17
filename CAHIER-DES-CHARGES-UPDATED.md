@@ -1,8 +1,8 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.2 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)  
-**Date de mise à jour:** 2025-11-15  
+**Version:** 3.3 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-01-07  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories
 
@@ -85,6 +85,12 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Alertes de dépassement** (configurables)
 - **Objectifs d'épargne** avec suivi de progression
 - **Rapports visuels** (graphiques, tendances)
+- **Phase B Goals v2.5.0** ✅ COMPLÉTÉ (Session S37 2026-01-07)
+  - ✅ **Calcul automatique deadline** basé sur contribution mensuelle requise
+  - ✅ **Affichage contribution mensuelle préconisée** dans l'interface
+  - ✅ **Synchronisation Supabase optimisée** pour required_monthly_contribution
+  - ✅ **IndexedDB v12** avec support requiredMonthlyContribution
+  - ✅ **Types Supabase mis à jour** pour mapping complet camelCase ↔ snake_case
 
 ### **4. Synchronisation Multi-Appareils** ⚠️ PARTIELLEMENT COMPLET (70%)
 - **Synchronisation automatique** via Supabase ✅ IMPLÉMENTÉ
@@ -519,6 +525,15 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ **Déclencheurs contextuels** - Basés sur les actions et patterns utilisateur
 - ✅ **Apprentissage des préférences** - ML basique avec feedback like/dislike
 - ✅ **Interface dédiée** - `RecommendationsPage.tsx` (677 lignes) - 3 onglets + filtres
+
+### **Phase B Goals - Calcul Automatique Deadline** ✅ TERMINÉE (2026-01-07)
+- ✅ **Calcul automatique deadline** - Recalcul automatique basé sur `required_monthly_contribution`
+- ✅ **Affichage contribution mensuelle** - UI affiche la contribution mensuelle préconisée pour atteindre l'objectif
+- ✅ **Synchronisation Supabase optimisée** - Mapping complet `requiredMonthlyContribution` ↔ `required_monthly_contribution`
+- ✅ **IndexedDB v12** - Support du champ `requiredMonthlyContribution` dans le store goals
+- ✅ **Types Supabase mis à jour** - Types Row/Insert/Update complets avec tous les champs Goals (19 colonnes)
+- ✅ **Migration base de données** - Colonne `required_monthly_contribution` ajoutée à la table `goals` Supabase
+- ✅ **Fonctions de mapping** - `mapGoalToSupabase()` et `mapSupabaseToGoal()` mises à jour pour conversion bidirectionnelle
 - ✅ **Widget dashboard** - `RecommendationWidget.tsx` (303 lignes) - Intégration parfaite
 - ✅ **Hook d'intégration** - `useRecommendations.ts` (579 lignes) - Logique métier
 

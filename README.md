@@ -17,7 +17,7 @@
 - 📱 **Support Mobile Money** (Orange Money, Mvola, Airtel Money)
 - 🔄 **Synchronisation multi-navigateur** (Chrome, Firefox, Safari, Edge)
 - 📊 **Tableaux de bord interactifs** avec graphiques
-- 🎯 **Objectifs d'épargne** et suivi des progrès - **Phase B (v2.5.0)** : Calcul automatique de la deadline basé sur la contribution mensuelle préconisée
+- 🎯 **Objectifs d'épargne** et suivi des progrès - **Phase B (v2.5.0)** : Synchronisation automatique des deadlines basée sur la contribution mensuelle préconisée, recalcul automatique lors des modifications, migration automatique pour les objectifs existants, affichage de la contribution mensuelle dans l'interface
 - 🔁 **Transactions récurrentes** - Automatisation complète des transactions périodiques
 - 📈 **Statistiques budgétaires multi-années** - Comparaisons année sur année, détection de catégories problématiques
 - 🏆 **Système de classement** avec leaderboard et gamification
@@ -976,4 +976,4 @@ frontend/src/modules/construction-poc/
 
 ---
 
-*Dernière mise à jour : 31 décembre 2025 (Statistiques Budgétaires Multi-Années - Session S28)*
+*Dernière mise à jour : 7 janvier 2026 (Phase B Goals Deadline Sync - Session S37 - v2.5.0)*

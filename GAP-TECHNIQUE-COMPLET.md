@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.0 (Phase B Goals Deadline Sync - Session S37)  
-**Date de mise à jour:** 2025-12-31  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0)  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté
+**Version:** 5.1 (Phase B Goals Deadline Sync Complete - Session S37)  
+**Date de mise à jour:** 2026-01-07  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète
 
 ---
 
@@ -53,21 +53,27 @@
 - **Métriques:** Performance, Accessibilité, Bonnes pratiques, SEO, PWA
 - **Rapports:** Génération automatique HTML dans `lighthouse-reports/`
 
-### **Phase B Goals Deadline Sync (Session S37 - v2.5.0)** ✅ RÉSOLU
-- ✅ **Gap: requiredMonthlyContribution manquant dans Goal interface** - Résolu: Champ ajouté à `Goal` et `GoalFormData` interfaces
-- ✅ **Gap: requiredMonthlyContribution manquant dans IndexedDB schema** - Résolu: Migration Version 12 ajoutée
-- ✅ **Gap: requiredMonthlyContribution manquant dans Supabase schema** - Résolu: Colonne `required_monthly_contribution` ajoutée
-- ✅ **Gap: Pas de synchronisation automatique deadline ↔ contribution mensuelle** - Résolu: Méthode `recalculateDeadline()` implémentée dans `goalService.ts`
+### **Phase B Goals Deadline Sync (Session S37 - v2.5.0)** ✅ RÉSOLU COMPLÈTEMENT
+- ✅ **Gap: requiredMonthlyContribution manquant dans Goal interface** - Résolu: Champ ajouté à `Goal` et `GoalFormData` interfaces (lignes 140-146, 327)
+- ✅ **Gap: requiredMonthlyContribution manquant dans IndexedDB schema** - Résolu: Migration Version 12 ajoutée (ligne 547)
+- ✅ **Gap: requiredMonthlyContribution manquant dans Supabase schema** - Résolu: Colonne `required_monthly_contribution NUMERIC(10,2) NULL` ajoutée avec index partiel
+- ✅ **Gap: Types Supabase obsolètes** - Résolu: Types régénérés avec `required_monthly_contribution` (+50 lignes)
+- ✅ **Gap: Pas de synchronisation automatique deadline ↔ contribution mensuelle** - Résolu: Méthode `recalculateDeadline()` implémentée dans `goalService.ts` (lignes 895-1013)
+- ✅ **Gap: Pas de recalcul automatique lors modifications** - Résolu: Recalcul automatique dans `createGoal()` (lignes 249-261) et `updateGoal()` (lignes 355-384)
+- ✅ **Gap: Goals existants avec deadlines obsolètes** - Résolu: Migration B3.4 one-time dans `GoalsPage.tsx` (lignes 153-238)
 - ✅ **Gap: requiredMonthlyContribution non transféré lors acceptSuggestion()** - Résolu: Transfert ajouté dans `goalSuggestionService.ts`
-- ✅ **Gap: Pas d'affichage UI contribution mensuelle** - Résolu: Affichage ajouté dans `GoalsPage.tsx` avec formatage devise
+- ✅ **Gap: Pas d'affichage UI contribution mensuelle** - Résolu: Affichage ajouté dans `GoalsPage.tsx` avec formatage devise (lignes 1228-1237)
+- ✅ **Gap: Sync non optimisé (IndexedDB toujours prioritaire)** - Résolu: Sync optimisé avec priorité Supabase quand en ligne (lignes 137-224)
 - **Fichiers modifiés:**
   - `frontend/src/types/index.ts` - Ajout `requiredMonthlyContribution?: number` à `Goal` et `GoalFormData`
   - `frontend/src/lib/database.ts` - Migration Version 12 pour support `requiredMonthlyContribution`
-  - `frontend/src/types/supabase.ts` - Ajout `required_monthly_contribution: number | null` à `goals` table
-  - `frontend/src/services/goalService.ts` - Méthode `recalculateDeadline()` + logique sync automatique
+  - `frontend/src/types/supabase.ts` - Ajout `required_monthly_contribution: number | null` à `goals` table (+50 lignes)
+  - `frontend/src/services/goalService.ts` - Méthode `recalculateDeadline()` + logique sync automatique + sync optimisé (+88 lignes)
   - `frontend/src/services/goalSuggestionService.ts` - Transfert `requiredMonthlyContribution` lors acceptSuggestion()
-  - `frontend/src/pages/GoalsPage.tsx` - Affichage UI contribution mensuelle préconisée
-- **Statut:** 100% complété et déployé en production v2.5.0
+  - `frontend/src/pages/GoalsPage.tsx` - Migration B3.4 + Affichage UI contribution mensuelle préconisée (+250 lignes)
+  - `supabase/migrations/20260107200813_add_required_monthly_contribution_to_goals.sql` - Migration SQL Supabase
+- **Statut:** 100% complété et déployé en production v2.5.0 (commit c0cfc85, Netlify)
+- **Métriques:** ~388 lignes ajoutées, 8 fichiers modifiés, 0 régressions, backward compatibility 100%
 
 ### **Boutons Responsive** ✅ IMPLÉMENTÉS
 - **Fichier modifié:** `frontend/src/components/UI/Button.tsx`

@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.24 (Statistiques Budgétaires Multi-Années - Session S28)  
-**Date de mise à jour:** 2025-12-31  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories
+**Version:** 2.5.0 (Phase B Goals Deadline Sync - Session S37)  
+**Date de mise à jour:** 2026-01-07  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync
 
 ---
 
@@ -184,7 +184,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - **AccountsPage** - Gestion des comptes
 - **BudgetsPage** - Gestion des budgets + Barres de progression bicolores + Affichage dépassement + Icône épargne corrigée - Session S28
 - **BudgetStatisticsPage** - Statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques - Session S28
-- **GoalsPage** - Gestion des objectifs + Phase B (v2.5.0) : Calcul automatique deadline + Affichage contribution mensuelle préconisée (Session S37)
+- **GoalsPage** - Gestion des objectifs + Phase B (v2.5.0) : Synchronisation automatique deadlines + Recalcul automatique lors modifications + Migration automatique goals existants + Affichage contribution mensuelle préconisée (Session S37)
 - **EducationPage** - Contenu éducatif
 - **PWAInstructionsPage** - Guide d'installation PWA multi-navigateurs
 
@@ -862,11 +862,16 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 #### **16.6.3 Services Métier** ✅ IMPLÉMENTÉS
 
 **goalService.ts (Phase B v2.5.0 - Session S37):**
-- **Calcul automatique deadline:** Méthode `recalculateDeadline()` basée sur `requiredMonthlyContribution`
-- **Synchronisation automatique:** Recalcul deadline lors modification `requiredMonthlyContribution` ou `targetAmount`
+- **Calcul automatique deadline:** Méthode `recalculateDeadline()` basée sur `requiredMonthlyContribution` (lignes 895-1013)
+- **Formule:** `deadline = today + Math.ceil((targetAmount - currentAmount) / requiredMonthlyContribution) months`
+- **Edge cases gérés:** Goal atteint, pas de contribution, durée limites (1-120 mois)
+- **Synchronisation automatique:** Recalcul deadline lors modification `requiredMonthlyContribution` ou `targetAmount` (lignes 355-384)
+- **Sync optimisé:** Priorité Supabase quand en ligne pour force sync (lignes 137-224)
 - **Support requiredMonthlyContribution:** Mapping complet Frontend ↔ Supabase (camelCase ↔ snake_case)
-- **Migration IndexedDB:** Version 12 avec support `requiredMonthlyContribution`
-- **Fichiers:** `frontend/src/services/goalService.ts`, `frontend/src/types/index.ts`, `frontend/src/lib/database.ts`
+- **Migration IndexedDB:** Version 12 avec support `requiredMonthlyContribution` (ligne 547)
+- **Migration Supabase:** Colonne `required_monthly_contribution NUMERIC(10,2) NULL` avec index partiel
+- **Types Supabase régénérés:** `frontend/src/types/supabase.ts` avec `required_monthly_contribution` (+50 lignes)
+- **Fichiers modifiés:** `frontend/src/services/goalService.ts` (+88 lignes), `frontend/src/types/index.ts`, `frontend/src/lib/database.ts`, `frontend/src/types/supabase.ts` (+50 lignes), `frontend/src/pages/GoalsPage.tsx` (+250 lignes)
 
 **recurringTransactionService.ts (500 lignes):**
 - **CRUD complet:** `create()`, `getAll()`, `getById()`, `getActive()`, `getUpcomingInDays()`, `update()`, `delete()`
