@@ -203,34 +203,62 @@ const TransferPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // ============================================================================
+    // LOG #1 - Form submission entry point
+    // ============================================================================
+    console.group('💸 [TransferPage] Form Submission Started');
+    const amount = parseFloat(formData.amount);
+    console.log('📝 Form Data:', {
+      amount: amount,
+      displayCurrency: displayCurrency,
+      fromAccountId: formData.fromAccountId,
+      toAccountId: formData.toAccountId,
+      description: formData.description,
+      date: formData.date,
+      isRecurring: isRecurring
+    });
+    
     if (!user) {
       console.error('❌ Utilisateur non connecté');
+      console.groupEnd();
       return;
     }
 
     // Validation
     if (!formData.amount || !formData.description || !formData.fromAccountId || !formData.toAccountId) {
       console.error('❌ Veuillez remplir tous les champs obligatoires');
+      console.groupEnd();
       return;
     }
 
     if (formData.fromAccountId === formData.toAccountId) {
       const errorMessage = 'Le compte source et le compte destination doivent être différents';
       console.error('❌', errorMessage);
+      console.groupEnd();
       setError(errorMessage);
       return;
     }
 
-    const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       console.error('❌ Le montant doit être un nombre positif');
+      console.groupEnd();
       setError('❌ Le montant doit être un nombre positif');
       return;
     }
 
     // Vérifier le solde du compte source avec règles de découvert
     const fromAccount = accounts.find(acc => acc.id === formData.fromAccountId);
+    const toAccount = accounts.find(acc => acc.id === formData.toAccountId);
     const totalAmount = amount + (calculatedFees?.totalFees || 0);
+    
+    if (!fromAccount || !toAccount) {
+      const errorMessage = 'Compte source ou destination introuvable';
+      console.error('❌', errorMessage);
+      console.groupEnd();
+      setError(errorMessage);
+      return;
+    }
+    
     if (fromAccount) {
       const accountTypeConfig = ACCOUNT_TYPES[fromAccount.type as keyof typeof ACCOUNT_TYPES];
       const allowNegative = accountTypeConfig?.allowNegative ?? false;
@@ -239,9 +267,92 @@ const TransferPage = () => {
         const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
         const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} ${currencySymbol}`;
         console.error(`❌ ${errorMessage}`);
+        console.groupEnd();
         setError(errorMessage);
         return;
       }
+    }
+    
+    // ============================================================================
+    // LOG #2 - After account fetch and currency validation
+    // ============================================================================
+    console.log('📊 Accounts Loaded:', {
+      sourceAccount: {
+        id: fromAccount.id,
+        name: fromAccount.name,
+        currency: fromAccount.currency,
+        balance: fromAccount.balance,
+        type: fromAccount.type
+      },
+      targetAccount: {
+        id: toAccount.id,
+        name: toAccount.name,
+        currency: toAccount.currency,
+        balance: toAccount.balance,
+        type: toAccount.type
+      }
+    });
+
+    // ============================================================================
+    // STRICT CURRENCY VALIDATION - Fix EUR transfer bug
+    // ============================================================================
+    // Validate that both accounts have currency defined
+    if (!fromAccount.currency || fromAccount.currency.trim() === '') {
+      const errorMessage = `Le compte source "${fromAccount.name}" n'a pas de devise définie. Veuillez définir la devise dans les paramètres du compte avant d'effectuer un transfert.`;
+      console.error('❌ Currency validation failed - source account missing currency:', {
+        accountId: fromAccount.id,
+        accountName: fromAccount.name,
+        currency: fromAccount.currency
+      });
+      console.groupEnd();
+      toast.error(errorMessage, { duration: 6000 });
+      setError(errorMessage);
+      return;
+    }
+
+    if (!toAccount.currency || toAccount.currency.trim() === '') {
+      const errorMessage = `Le compte destination "${toAccount.name}" n'a pas de devise définie. Veuillez définir la devise dans les paramètres du compte avant d'effectuer un transfert.`;
+      console.error('❌ Currency validation failed - target account missing currency:', {
+        accountId: toAccount.id,
+        accountName: toAccount.name,
+        currency: toAccount.currency
+      });
+      console.groupEnd();
+      toast.error(errorMessage, { duration: 6000 });
+      setError(errorMessage);
+      return;
+    }
+
+    // ============================================================================
+    // CURRENCY MISMATCH DETECTION - User warnings
+    // ============================================================================
+    // Warning: Display currency mismatch with source account
+    if (displayCurrency !== fromAccount.currency) {
+      console.warn('⚠️ Display currency mismatch:', {
+        displayCurrency: displayCurrency,
+        sourceAccountCurrency: fromAccount.currency
+      });
+      toast.warning(
+        `La devise affichée (${displayCurrency}) ne correspond pas à la devise du compte source (${fromAccount.currency}). ` +
+        `Le montant sera traité en ${fromAccount.currency}.`,
+        { duration: 5000 }
+      );
+    }
+
+    // Info: Cross-currency transfer detected
+    if (fromAccount.currency !== toAccount.currency) {
+      console.warn('⚠️ Cross-currency transfer detected:', {
+        from: fromAccount.currency,
+        to: toAccount.currency,
+        amount: amount
+      });
+      toast.info(
+        `Transfert entre devises différentes : ${fromAccount.currency} → ${toAccount.currency}. ` +
+        `Le taux de change actuel sera appliqué.`,
+        { duration: 5000 }
+      );
+    } else {
+      console.log('✅ Same currency transfer - no conversion needed');
     }
     
     // Clear any previous error
@@ -280,6 +391,7 @@ const TransferPage = () => {
         });
         setRecurringErrors(errors);
         console.error('❌ Erreurs de validation:', validation.errors);
+        console.groupEnd();
         return;
       }
       setRecurringErrors({});
@@ -289,8 +401,21 @@ const TransferPage = () => {
 
     try {
       if (isRecurring) {
+        // ============================================================================
+        // LOG #3 - Before recurring transaction service call
+        // ============================================================================
+        console.log('🚀 Creating recurring transfer with:', {
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          amount: Math.abs(amount),
+          description: formData.description,
+          frequency: recurringConfig.frequency,
+          sourceCurrency: fromAccount.currency,
+          targetCurrency: toAccount.currency
+        });
+        
         // Créer un transfert récurrent
-        await recurringTransactionService.create({
+        const recurringResult = await recurringTransactionService.create({
           userId: user.id,
           accountId: formData.fromAccountId,
           targetAccountId: formData.toAccountId,
@@ -309,11 +434,21 @@ const TransferPage = () => {
           isActive: true
         });
 
+        // ============================================================================
+        // LOG #4 - After successful recurring transfer creation
+        // ============================================================================
+        console.log('✅ Recurring transfer created successfully:', {
+          recurringResult: recurringResult,
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          amount: Math.abs(amount)
+        });
         console.log('✅ Transfert récurrent créé avec succès !');
         
         // Save source account to localStorage for next time
         localStorage.setItem(LAST_SOURCE_ACCOUNT_KEY, formData.fromAccountId);
         console.log('💾 [TransferPage] Compte source sauvegardé dans localStorage:', formData.fromAccountId);
+        console.groupEnd();
         
         // Navigate back to returnTo path if provided, otherwise default to /recurring
         if (transferState?.returnTo) {
@@ -332,8 +467,23 @@ const TransferPage = () => {
       } else {
         console.log('📅 Transfer form date:', formData.date);
         
+        // ============================================================================
+        // LOG #3 - Before service call
+        // ============================================================================
+        console.log('🚀 Calling transactionService.createTransfer with:', {
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          amount: amount,
+          description: formData.description,
+          date: new Date(formData.date),
+          notes: formData.notes,
+          sourceCurrency: fromAccount.currency,
+          targetCurrency: toAccount.currency,
+          displayCurrency: displayCurrency
+        });
+        
         // Créer le transfert avec la méthode dédiée
-        await transactionService.createTransfer(user.id, {
+        const transferResult = await transactionService.createTransfer(user.id, {
           amount: amount,
           description: formData.description,
           fromAccountId: formData.fromAccountId,
@@ -371,12 +521,23 @@ const TransferPage = () => {
           }
         }
 
-        // Succès
+        // ============================================================================
+        // LOG #4 - After successful transfer
+        // ============================================================================
+        console.log('✅ Transfer completed successfully:', {
+          transferResult: transferResult,
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          amount: amount,
+          sourceCurrency: fromAccount.currency,
+          targetCurrency: toAccount.currency
+        });
         console.log('✅ Transfert effectué avec succès !');
         
         // Save source account to localStorage for next time
         localStorage.setItem(LAST_SOURCE_ACCOUNT_KEY, formData.fromAccountId);
         console.log('💾 [TransferPage] Compte source sauvegardé dans localStorage:', formData.fromAccountId);
+        console.groupEnd();
         
         // Navigate back to returnTo path if provided, otherwise default to /transactions
         if (transferState?.returnTo) {
@@ -395,8 +556,49 @@ const TransferPage = () => {
       }
       
     } catch (error) {
-      console.error('❌ Erreur lors du transfert:', error);
-      console.error('❌ Erreur lors du transfert. Veuillez réessayer.');
+      // ============================================================================
+      // LOG #5 - On error with enhanced error handling
+      // ============================================================================
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.error('❌ Transfer failed:', {
+        error: errorMessage,
+        errorObject: error,
+        formData: {
+          amount: formData.amount,
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          description: formData.description
+        },
+        accounts: {
+          source: fromAccount ? {
+            id: fromAccount.id,
+            name: fromAccount.name,
+            currency: fromAccount.currency
+          } : null,
+          target: toAccount ? {
+            id: toAccount.id,
+            name: toAccount.name,
+            currency: toAccount.currency
+          } : null
+        }
+      });
+      console.groupEnd();
+      
+      // Enhanced error message for currency issues
+      if (errorMessage.includes('devise') || errorMessage.includes('currency') || errorMessage.includes('Currency')) {
+        toast.error(
+          `Erreur de devise : ${errorMessage}. ` +
+          `Vérifiez que les comptes ont une devise définie dans les paramètres.`,
+          { duration: 6000 }
+        );
+        setError(`Erreur de devise : ${errorMessage}`);
+      } else if (errorMessage.includes('Solde insuffisant') || errorMessage.includes('insufficient')) {
+        toast.error(`Erreur : ${errorMessage}`, { duration: 5000 });
+        setError(errorMessage);
+      } else {
+        toast.error(`Erreur lors du transfert : ${errorMessage}`, { duration: 5000 });
+        setError(`Erreur lors du transfert : ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
     }

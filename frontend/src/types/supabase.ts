@@ -118,6 +118,12 @@ export interface Database {
           original_owner_id: string | null
           /** Date et heure du transfert au format ISO (nullable) */
           transferred_at: string | null
+          /** Code devise de la transaction originale avant conversion (nullable) */
+          original_currency: string | null
+          /** Montant original avant conversion dans original_currency (nullable) */
+          original_amount: number | null
+          /** Taux de change utilisé pour convertir original_amount vers account currency (nullable) */
+          exchange_rate_used: number | null
         }
         Insert: {
           id?: string
@@ -142,6 +148,12 @@ export interface Database {
           original_owner_id?: string | null
           /** Date et heure du transfert au format ISO (nullable) */
           transferred_at?: string | null
+          /** Code devise de la transaction originale avant conversion (nullable) */
+          original_currency?: string | null
+          /** Montant original avant conversion dans original_currency (nullable) */
+          original_amount?: number | null
+          /** Taux de change utilisé pour convertir original_amount vers account currency (nullable) */
+          exchange_rate_used?: number | null
         }
         Update: {
           id?: string
@@ -166,6 +178,12 @@ export interface Database {
           original_owner_id?: string | null
           /** Date et heure du transfert au format ISO (nullable) */
           transferred_at?: string | null
+          /** Code devise de la transaction originale avant conversion (nullable) */
+          original_currency?: string | null
+          /** Montant original avant conversion dans original_currency (nullable) */
+          original_amount?: number | null
+          /** Taux de change utilisé pour convertir original_amount vers account currency (nullable) */
+          exchange_rate_used?: number | null
         }
       }
       budgets: {

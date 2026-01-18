@@ -673,29 +673,103 @@ class TransactionService {
         return { success: false, error: 'Compte source ou destination introuvable' };
       }
 
+      // ============================================================================
+      // STRICT CURRENCY VALIDATION - Fix EUR transfer bug
+      // ============================================================================
+      console.group('💸 [TransactionService] Transfer Currency Validation');
+      console.log('📊 Source Account:', {
+        id: sourceAccount.id,
+        name: sourceAccount.name,
+        currency: sourceAccount.currency,
+        balance: sourceAccount.balance
+      });
+      console.log('📊 Target Account:', {
+        id: targetAccount.id,
+        name: targetAccount.name,
+        currency: targetAccount.currency,
+        balance: targetAccount.balance
+      });
+
+      // STRICT VALIDATION: Currency must be explicitly set (no fallback to MGA)
+      if (!sourceAccount.currency || sourceAccount.currency.trim() === '') {
+        const errorMsg = `Le compte source "${sourceAccount.name}" n'a pas de devise définie. ` +
+          `Veuillez définir la devise dans les paramètres du compte avant d'effectuer un transfert.`;
+        console.error('❌ Source account missing currency:', {
+          accountId: sourceAccount.id,
+          accountName: sourceAccount.name,
+          currency: sourceAccount.currency
+        });
+        console.groupEnd();
+        return { success: false, error: errorMsg };
+      }
+
+      if (!targetAccount.currency || targetAccount.currency.trim() === '') {
+        const errorMsg = `Le compte destination "${targetAccount.name}" n'a pas de devise définie. ` +
+          `Veuillez définir la devise dans les paramètres du compte avant d'effectuer un transfert.`;
+        console.error('❌ Target account missing currency:', {
+          accountId: targetAccount.id,
+          accountName: targetAccount.name,
+          currency: targetAccount.currency
+        });
+        console.groupEnd();
+        return { success: false, error: errorMsg };
+      }
+
+      const sourceCurrency = sourceAccount.currency;
+      const targetCurrency = targetAccount.currency;
+
       let targetAmount = transferData.amount;
 
-      // Convert if currencies differ
-      if (sourceAccount.currency !== targetAccount.currency) {
+      // Check if conversion needed
+      if (sourceCurrency === targetCurrency) {
+        console.log('✅ Same currency transfer - no conversion needed');
+        console.log(`💰 Transfer: ${transferData.amount} ${sourceCurrency} → ${targetCurrency} (same currency)`);
+        console.groupEnd();
+        // No conversion needed for same-currency transfers
+      } else {
+        console.log('🔄 Cross-currency transfer - conversion required');
+        console.log(`💱 Converting: ${transferData.amount} ${sourceCurrency} → ${targetCurrency}`);
+        
         try {
           const transferDate = transferData.date?.toISOString().split('T')[0];
+          
+          // Get exchange rate for logging
           const rateInfo = await getExchangeRate(
-            sourceAccount.currency || 'MGA',
-            targetAccount.currency || 'MGA',
+            sourceCurrency,
+            targetCurrency,
             transferDate
           );
+          
+          // Convert amount
           targetAmount = await convertAmount(
             transferData.amount,
-            sourceAccount.currency || 'MGA',
-            targetAccount.currency || 'MGA',
+            sourceCurrency,
+            targetCurrency,
             transferDate
           );
-          console.log(`💱 Transfer currency conversion: ${transferData.amount} ${sourceAccount.currency} = ${targetAmount} ${targetAccount.currency} (rate: ${rateInfo.rate})`);
-        } catch (conversionError) {
-          console.error('❌ Erreur lors de la conversion de devise pour le transfert:', conversionError);
-          // En cas d'erreur, utiliser le montant original (dégradation gracieuse)
-          // Note: Cela peut causer des problèmes si les devises sont différentes
+          
+          console.log('✅ Conversion successful:', {
+            originalAmount: transferData.amount,
+            originalCurrency: sourceCurrency,
+            convertedAmount: targetAmount,
+            targetCurrency: targetCurrency,
+            exchangeRate: rateInfo.rate,
+            rateSource: rateInfo.source
+          });
+          console.log(`💱 ${transferData.amount} ${sourceCurrency} = ${targetAmount} ${targetCurrency} (rate: ${rateInfo.rate})`);
+        } catch (conversionError: any) {
+          const errorMsg = `Erreur lors de la conversion de devise: ${conversionError?.message || 'Erreur inconnue'}. ` +
+            `Impossible de convertir ${transferData.amount} ${sourceCurrency} vers ${targetCurrency}.`;
+          console.error('❌ Currency conversion error:', {
+            error: conversionError,
+            fromCurrency: sourceCurrency,
+            toCurrency: targetCurrency,
+            amount: transferData.amount
+          });
+          console.groupEnd();
+          return { success: false, error: errorMsg };
         }
+        console.groupEnd();
       }
 
       // Appeler l'API de transfert avec les paramètres directs
