@@ -94,12 +94,24 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   };
 
   const handleCurrencyToggle = (newCurrency: Currency) => {
+    console.log('🔄 [CurrencyInput] Toggle clicked, current currency:', currency, 'switching to:', newCurrency);
+    
+    if (disabled) {
+      console.warn('⚠️ [CurrencyInput] Toggle disabled, ignoring click');
+      return;
+    }
+    
     // Convert current value to new currency if needed
     const currentNumValue = parseNumber(displayValue);
+    
+    // Call parent's onCurrencyChange handler
     onCurrencyChange(newCurrency);
+    
     // Keep the same numeric value, just change currency
     // The parent component can handle conversion if needed
     onChange(currentNumValue, newCurrency);
+    
+    console.log('✅ [CurrencyInput] Currency toggle completed, new currency:', newCurrency);
   };
 
   return (

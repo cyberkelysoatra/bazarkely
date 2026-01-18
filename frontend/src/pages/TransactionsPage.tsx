@@ -10,6 +10,7 @@ import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
+import { getTransactionDisplayAmount } from '../utils/currencyConversion';
 import Modal from '../components/UI/Modal';
 import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
@@ -997,21 +998,42 @@ const TransactionsPage = () => {
           const isTransfer = transaction.type === 'transfer';
           
           // Pour les transferts, déterminer l'affichage selon le contexte du compte filtré
-          let displayAmount = transaction.amount;
+          // Calculate display amount using stored exchange rate if available
+          const rawDisplayAmount = getTransactionDisplayAmount(transaction, displayCurrency);
+          let displayAmount = rawDisplayAmount;
           let isDebit = false;
           let isCredit = false;
           let displayDescription = transaction.description;
           let transferLabel = '';
           
           if (isTransfer) {
-            // Pour les transferts, se baser sur le signe du montant
+            // Pour les transferts, se baser sur le signe du montant ORIGINAL (transaction.amount)
+            // CRITICAL: Use transaction.amount (not converted amount) to determine debit/credit
+            // The sign of transaction.amount determines the transaction direction:
+            // - Negative amount = Debit (money going out)
+            // - Positive amount = Credit (money coming in)
             // Le filtrage par compte est déjà géré par filteredTransactions
             isDebit = transaction.amount < 0;
             isCredit = transaction.amount > 0;
-            displayAmount = Math.abs(transaction.amount);
+            displayAmount = Math.abs(rawDisplayAmount);
             displayDescription = isDebit ? `Sortie: ${transaction.description}` : `Entrée: ${transaction.description}`;
             transferLabel = isDebit ? 'Débit' : 'Crédit';
+            
+            console.log('🔄 [TransactionsPage] Transfer display:', {
+              transactionId: transaction.id,
+              originalAmount: transaction.amount,
+              convertedAmount: rawDisplayAmount,
+              isDebit,
+              isCredit,
+              description: displayDescription
+            });
+          } else {
+            // For income/expense, use absolute value for display
+            displayAmount = Math.abs(rawDisplayAmount);
           }
+          
+          // Determine original currency for CurrencyDisplay
+          const originalCurrency = transaction.originalCurrency || 'MGA';
           
           return (
             <div 
@@ -1169,10 +1191,11 @@ const TransactionsPage = () => {
                      isCredit ? '+' : '-'}</span>
                     <CurrencyDisplay
                       amount={displayAmount}
-                      originalCurrency="MGA"
+                      originalCurrency={originalCurrency}
                       displayCurrency={displayCurrency}
                       showConversion={true}
                       size="md"
+                      exchangeRateUsed={transaction.exchangeRateUsed}
                     />
                   </div>
                   <p className="text-sm text-gray-500">

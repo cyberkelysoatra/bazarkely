@@ -73,7 +73,13 @@ export interface Account {
   name: string;
   type: 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money';
   balance: number;
-  currency: 'MGA' | 'EUR';
+  /**
+   * Preferred display currency for UI purposes only (not a constraint)
+   * Accounts support multi-currency transactions (EUR and MGA can coexist)
+   * NULL/undefined means account has no preferred currency preference
+   * This field is for display purposes only and does not restrict transaction currencies
+   */
+  currency?: 'MGA' | 'EUR' | null;
   isDefault: boolean;
   displayOrder?: number;
   createdAt: Date;
@@ -307,6 +313,10 @@ export interface TransactionFormData {
   accountId: string;
   targetAccountId?: string;
   date: Date;
+  // Multi-currency fields (from form toggle, not /settings)
+  originalCurrency?: 'MGA' | 'EUR'; // Currency selected in form toggle
+  originalAmount?: number; // Amount user typed (same as amount if no conversion)
+  exchangeRateUsed?: number; // Exchange rate at transaction date
 }
 
 export interface BudgetFormData {
@@ -324,6 +334,7 @@ export interface GoalFormData {
   category?: string;
   priority: 'low' | 'medium' | 'high';
   linkedAccountId?: string; // UUID of linked savings account
+  requiredMonthlyContribution?: number; // Monthly contribution required to reach goal
 }
 
 // Types pour l'état de l'application

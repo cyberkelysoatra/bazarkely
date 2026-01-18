@@ -1,6 +1,35 @@
-﻿export const APP_VERSION = '2.4.5';
+﻿export const APP_VERSION = '2.4.6';
 export const APP_BUILD_DATE = '2026-01-18';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.6',
+    date: '2026-01-18',
+    changes: [
+      'Major Feature: Complete multi-currency support - Accounts can now hold both EUR and MGA transactions',
+      'PROMPT 1: Modified account schema to support multi-currency (currency field now optional/nullable)',
+      'PROMPT 1: Accounts with currency=null accept transactions in any currency',
+      'PROMPT 2: Transaction services now capture originalCurrency from form currency toggle',
+      'PROMPT 2: Exchange rates retrieved at transaction date (not current date)',
+      'PROMPT 2: Store originalAmount, originalCurrency, exchangeRateUsed for every transaction',
+      'PROMPT 3: Created currencyConversion.ts utility with convertAmountWithStoredRate()',
+      'PROMPT 3: Display logic uses stored exchangeRateUsed (never recalculates with current rate)',
+      'PROMPT 3: Transaction amounts convert correctly based on /settings displayCurrency',
+      'PROMPT 3: Created WalletBalanceDisplay component for dual currency display (X € + Y Ar)',
+      'PROMPT 4: TransferPage and AddTransactionPage now pass originalCurrency from form toggle',
+      'PROMPT 4: Form submission logs show currency source (form toggle, not /settings)',
+      'PROMPT 5: Fixed currency toggle button - clicking Ar/€ symbol now switches currency correctly',
+      'PROMPT 5: Added setDisplayCurrency call in onCurrencyChange handlers',
+      'PROMPT 5: Comprehensive debug logs for currency toggle flow',
+      'PROMPT 6: Fixed transfer display bug - debit transactions now show red arrow out, credit show green arrow in',
+      'PROMPT 6: Display logic uses transaction.amount (original) instead of converted amount for icon determination',
+      'Bug Fix: Replaced toast.warning() with toast() (react-hot-toast compatibility)',
+      'Architecture: Currency in /settings is UI display preference only, not account constraint',
+      'Architecture: Form currency toggle determines transaction originalCurrency, independent of /settings',
+      'Architecture: Historical exchange rates preserved in exchangeRateUsed field',
+      'Testing: Verified EUR→EUR transfers maintain 100€ without unwanted conversion',
+      'Breaking Change: None - Fully backward compatible with existing accounts and transactions'
+    ]
+  },
   {
     version: '2.4.5',
     date: '2026-01-18',

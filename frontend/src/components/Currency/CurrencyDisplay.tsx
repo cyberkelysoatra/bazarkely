@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { convertAmount } from '../../services/exchangeRateService';
+import { convertAmountWithStoredRate } from '../../utils/currencyConversion';
 import type { Currency } from './CurrencyToggle';
 
 interface CurrencyDisplayProps {
@@ -15,6 +16,7 @@ interface CurrencyDisplayProps {
   className?: string;
   colorBySign?: boolean;
   displayCurrency?: Currency; // Optional prop to control display currency from parent
+  exchangeRateUsed?: number; // Optional: stored exchange rate from transaction (for historical accuracy)
 }
 
 const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
@@ -24,7 +26,8 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   size = 'md',
   className = '',
   colorBySign = false,
-  displayCurrency: displayCurrencyProp
+  displayCurrency: displayCurrencyProp,
+  exchangeRateUsed
 }) => {
   const [displayCurrency, setDisplayCurrency] = useState<Currency>(displayCurrencyProp || originalCurrency);
   
@@ -88,6 +91,29 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       return;
     }
 
+    // If exchangeRateUsed is provided, use stored rate (for historical transactions)
+    if (exchangeRateUsed !== undefined && exchangeRateUsed > 0) {
+      try {
+        const converted = convertAmountWithStoredRate(
+          amount,
+          originalCurrency,
+          displayCurrency,
+          exchangeRateUsed
+        );
+        setConvertedAmount(converted);
+        setError(null);
+        setIsLoading(false);
+        return;
+      } catch (err: any) {
+        console.error('Error converting with stored rate:', err);
+        setError('Erreur de conversion');
+        setConvertedAmount(null);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Otherwise, use live exchange rate service (for backward compatibility)
     // Check cache first
     const cacheKey = `${amount}-${originalCurrency}-${displayCurrency}`;
     const cached = conversionCache.current.get(cacheKey);
@@ -123,7 +149,7 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
     };
 
     fetchConversion();
-  }, [amount, originalCurrency, displayCurrency]);
+  }, [amount, originalCurrency, displayCurrency, exchangeRateUsed]);
 
   const handleCurrencyClick = (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -78,7 +78,7 @@ class AccountService {
       name: supabaseAccount.name,
       type: supabaseAccount.type,
       balance: supabaseAccount.balance,
-      currency: supabaseAccount.currency,
+      currency: supabaseAccount.currency || null, // Support multi-currency: NULL means no preferred currency
       isDefault: supabaseAccount.is_default,
       displayOrder: supabaseAccount.display_order ?? undefined,
       createdAt: new Date(supabaseAccount.created_at)
@@ -214,13 +214,14 @@ class AccountService {
       const now = new Date();
 
       // Créer l'objet Account complet
+      // Support multi-currency: currency is optional (NULL means no preferred currency)
       const account: Account = {
         id: accountId,
         userId,
         name: accountData.name,
         type: accountData.type,
         balance: accountData.balance,
-        currency: accountData.currency,
+        currency: accountData.currency ?? null, // Default to null for multi-currency support
         isDefault: accountData.isDefault ?? false,
         displayOrder: accountData.displayOrder,
         createdAt: now
@@ -239,7 +240,7 @@ class AccountService {
             name: accountData.name,
             type: accountData.type,
             balance: accountData.balance,
-            currency: accountData.currency,
+            currency: accountData.currency ?? null, // Support multi-currency: NULL means no preferred currency
             is_default: accountData.isDefault ?? false,
             is_active: (accountData as any).isActive ?? true // isActive existe dans Supabase mais pas dans le type Account local
           };
@@ -328,7 +329,10 @@ class AccountService {
           if (accountData.name !== undefined) supabaseData.name = accountData.name;
           if (accountData.type !== undefined) supabaseData.type = accountData.type;
           if (accountData.balance !== undefined) supabaseData.balance = accountData.balance;
-          if (accountData.currency !== undefined) supabaseData.currency = accountData.currency;
+          // Support multi-currency: allow setting currency to null explicitly
+          if (accountData.currency !== undefined) {
+            supabaseData.currency = accountData.currency ?? null;
+          }
           if (accountData.isDefault !== undefined) supabaseData.is_default = accountData.isDefault;
           // isActive existe dans Supabase mais pas dans le type Account local
           if ((accountData as any).isActive !== undefined) supabaseData.is_active = (accountData as any).isActive;
@@ -585,14 +589,17 @@ export async function getTotalBalanceInCurrency(targetCurrency: 'MGA' | 'EUR' = 
     let total = 0;
     
     for (const account of accounts) {
-      if (account.currency === targetCurrency) {
+      // Support multi-currency: if account has no preferred currency, assume MGA
+      const accountCurrency = account.currency || 'MGA';
+      
+      if (accountCurrency === targetCurrency) {
         // Même devise, pas de conversion
         total += account.balance;
       } else {
         // Conversion nécessaire
         const converted = await convertAmount(
           account.balance,
-          account.currency,
+          accountCurrency,
           targetCurrency
         );
         total += converted;

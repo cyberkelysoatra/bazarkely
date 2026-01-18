@@ -52,7 +52,8 @@ const AddAccountPage = () => {
         type: formData.type,
         balance: formData.balance,
         isDefault: false, // Les nouveaux comptes ne sont pas par défaut
-        currency: 'MGA' as const
+        // currency is optional - NULL means multi-currency support (no preferred currency)
+        // Accounts can contain both EUR and MGA transactions
       });
 
       if (formData.type === 'especes') {

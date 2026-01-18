@@ -257,6 +257,12 @@ const AddTransactionPage = () => {
     // Store original currency and amount for multi-currency support
     const originalAmount = amount;
     const originalCurrency = transactionCurrency;
+    
+    console.log('📝 [AddTransactionPage] Submitting with currency toggle:', {
+      displayCurrency: transactionCurrency,
+      amount: originalAmount,
+      note: 'This currency comes from form toggle, not /settings'
+    });
 
     // Validation spécifique pour les transactions récurrentes
     if (isRecurring) {

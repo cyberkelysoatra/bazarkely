@@ -5,11 +5,14 @@ import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account } from '../types';
+import { CurrencyDisplay } from '../components/Currency';
+import { useCurrency } from '../hooks/useCurrency';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAppStore();
+  const { displayCurrency } = useCurrency();
   const [showBalances, setShowBalances] = useState(true);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,9 +40,9 @@ const AccountsPage = () => {
     loadAccounts();
   }, [user, location.pathname]); // Refresh when returning from other pages
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} Ar`;
-  };
+  // Note: For now, we use account.balance directly.
+  // In the future, we could calculate balance from transactions using calculateBankAccountBalance()
+  // for more accurate multi-currency display, but this requires loading all transactions.
 
   const getAccountIcon = (type: string) => {
     switch (type) {
@@ -103,7 +106,17 @@ const AccountsPage = () => {
           </button>
         </div>
         <p className="text-3xl font-bold text-primary-600 -mt-2">
-          {showBalances ? formatCurrency(totalBalance) : '•••••• Ar'}
+          {showBalances ? (
+            <CurrencyDisplay
+              amount={totalBalance}
+              originalCurrency="MGA"
+              displayCurrency={displayCurrency}
+              showConversion={true}
+              size="xl"
+            />
+          ) : (
+            <span className="text-gray-400">••••••</span>
+          )}
         </p> {/* NEGATIVE 8PX MARGIN FOR ULTRA-CLOSE SPACING */}
       </div>
 
@@ -149,7 +162,24 @@ const AccountsPage = () => {
                   className="flex flex-col items-end text-right hover:bg-gray-50 p-1 rounded-lg transition-colors" /* REDUCED BUTTON PADDING */
                 >
                   <p className="font-semibold text-gray-900">
-                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'}
+                    {showBalances ? (
+                      // For wallet accounts (especes), we should use WalletBalanceDisplay with transactions
+                      // For now, use CurrencyDisplay with account.balance
+                      // TODO: Load transactions and use WalletBalanceDisplay for wallet accounts
+                      account.type === 'especes' ? (
+                        <span>{account.balance.toLocaleString('fr-FR')} Ar</span>
+                      ) : (
+                        <CurrencyDisplay
+                          amount={account.balance}
+                          originalCurrency={account.currency || 'MGA'}
+                          displayCurrency={displayCurrency}
+                          showConversion={true}
+                          size="md"
+                        />
+                      )
+                    ) : (
+                      <span className="text-gray-400">••••</span>
+                    )}
                   </p>
                   {account.isDefault && (
                     <span className="text-xs text-primary-600 font-medium">Par défaut</span>
@@ -204,7 +234,24 @@ const AccountsPage = () => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">{account.name}</span>
                   <span className="font-medium text-gray-900">
-                    {showBalances ? formatCurrency(account.balance) : '•••• Ar'} ({percentage.toFixed(1)}%)
+                    {showBalances ? (
+                      account.type === 'especes' ? (
+                        <span>{account.balance.toLocaleString('fr-FR')} Ar ({percentage.toFixed(1)}%)</span>
+                      ) : (
+                        <>
+                          <CurrencyDisplay
+                            amount={account.balance}
+                            originalCurrency={account.currency || 'MGA'}
+                            displayCurrency={displayCurrency}
+                            showConversion={true}
+                            size="sm"
+                          />
+                          <span className="text-gray-500"> ({percentage.toFixed(1)}%)</span>
+                        </>
+                      )
+                    ) : (
+                      <span className="text-gray-400">•••• ({percentage.toFixed(1)}%)</span>
+                    )}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">

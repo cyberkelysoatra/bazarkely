@@ -308,29 +308,43 @@ class TransactionService {
    */
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>): Promise<Transaction | null> {
     try {
-      // Determine transaction currency (from input or account default)
+      // Determine transaction currency from FORM TOGGLE (not /settings or account currency)
+      // This is the currency the user selected in the transaction form
       const transactionCurrency = transactionData.originalCurrency || 'MGA';
+      const transactionDate = transactionData.date?.toISOString().split('T')[0];
+      
+      console.log('🎯 [TransactionService] Creating transaction with currency from form toggle:', {
+        originalCurrency: transactionCurrency,
+        originalAmount: transactionData.amount,
+        transactionDate: transactionDate,
+        note: 'Currency comes from form toggle, not /settings or account currency'
+      });
       
       // Get the account to check its currency
       const account = await accountService.getAccount(transactionData.accountId, userId);
-      const accountCurrency = account?.currency || 'MGA';
+      // Support multi-currency: if account has no preferred currency (null), don't convert
+      // Only convert if account has a specific preferred currency AND it differs from transaction currency
+      const accountCurrency = account?.currency;
 
       let amountToStore = transactionData.amount;
       let exchangeRateUsed: number | null = null;
 
-      // If currencies differ, convert to account currency
-      if (transactionCurrency !== accountCurrency) {
+      // If account has a preferred currency AND currencies differ, convert to account currency
+      // If accountCurrency is null/undefined, account supports multi-currency - no conversion needed
+      if (accountCurrency && transactionCurrency !== accountCurrency) {
         try {
-          const transactionDate = transactionData.date?.toISOString().split('T')[0];
+          // Get exchange rate at TRANSACTION DATE (not current date)
           const rateInfo = await getExchangeRate(transactionCurrency, accountCurrency, transactionDate);
           exchangeRateUsed = rateInfo.rate;
           amountToStore = await convertAmount(transactionData.amount, transactionCurrency, accountCurrency, transactionDate);
-          console.log(`📱 [TransactionService] 💱 Currency conversion: ${transactionData.amount} ${transactionCurrency} = ${amountToStore} ${accountCurrency} (rate: ${exchangeRateUsed})`);
+          console.log(`📱 [TransactionService] 💱 Currency conversion at transaction date (${transactionDate}): ${transactionData.amount} ${transactionCurrency} = ${amountToStore} ${accountCurrency} (rate: ${exchangeRateUsed})`);
         } catch (conversionError) {
           console.error('📱 [TransactionService] ❌ Erreur lors de la conversion de devise:', conversionError);
           // En cas d'erreur, utiliser le montant original (dégradation gracieuse)
           exchangeRateUsed = null;
         }
+      } else {
+        console.log(`📱 [TransactionService] ✅ No conversion needed: form currency (${transactionCurrency}) matches account currency (${accountCurrency || 'multi-currency'})`);
       }
 
       // Générer un UUID pour la transaction
@@ -349,9 +363,10 @@ class TransactionService {
         date: transactionData.date,
         targetAccountId: transactionData.targetAccountId,
         transferFee: transactionData.transferFee,
-        originalCurrency: transactionCurrency,
-        originalAmount: transactionData.amount,
-        exchangeRateUsed: exchangeRateUsed || undefined,
+        // Multi-currency fields: stored from form toggle and transaction date
+        originalCurrency: transactionCurrency, // From form toggle (not /settings)
+        originalAmount: transactionData.amount, // What user typed
+        exchangeRateUsed: exchangeRateUsed || undefined, // Rate at transaction date
         notes: transactionData.notes,
         createdAt: now,
         // Champs de transfert de propriété
@@ -362,6 +377,14 @@ class TransactionService {
         isRecurring: transactionData.isRecurring || false,
         recurringTransactionId: transactionData.recurringTransactionId,
       };
+      
+      console.log('💾 [TransactionService] Storing transaction with multi-currency fields:', {
+        originalAmount: transaction.originalAmount,
+        originalCurrency: transaction.originalCurrency,
+        exchangeRateUsed: transaction.exchangeRateUsed,
+        transactionDate: transactionDate,
+        storedAmount: transaction.amount
+      });
 
       // STEP 1: Sauvegarder dans IndexedDB immédiatement (offline-first)
       console.log('📱 [TransactionService] 💾 Sauvegarde de la transaction dans IndexedDB...');
@@ -658,6 +681,8 @@ class TransactionService {
       description: string;
       notes?: string;
       date?: Date;
+      // Multi-currency fields (from form toggle, not /settings)
+      originalCurrency?: 'MGA' | 'EUR'; // Currency selected in form toggle
     }
   ): Promise<{ success: boolean; transactions?: Transaction[]; error?: string }> {
     try {
@@ -715,15 +740,34 @@ class TransactionService {
         return { success: false, error: errorMsg };
       }
 
+      // Determine original currency from form toggle (not account currency or /settings)
+      // If not provided, use source account currency as fallback
+      const originalCurrency = transferData.originalCurrency || sourceAccount.currency || 'MGA';
+      
       const sourceCurrency = sourceAccount.currency;
       const targetCurrency = targetAccount.currency;
 
+      // Get exchange rate at TRANSACTION DATE (not current date)
+      const transferDate = transferData.date?.toISOString().split('T')[0];
+      let exchangeRateUsed: number | null = null;
       let targetAmount = transferData.amount;
 
       // Check if conversion needed
       if (sourceCurrency === targetCurrency) {
         console.log('✅ Same currency transfer - no conversion needed');
-        console.log(`💰 Transfer: ${transferData.amount} ${sourceCurrency} → ${targetCurrency} (same currency)`);
+        console.log(`💰 Transfer: ${transferData.amount} ${originalCurrency} → ${targetCurrency} (same currency)`);
+        
+        // Even for same currency, get exchange rate if originalCurrency differs
+        if (originalCurrency !== sourceCurrency) {
+          try {
+            const rateInfo = await getExchangeRate(originalCurrency, sourceCurrency, transferDate);
+            exchangeRateUsed = rateInfo.rate;
+            targetAmount = await convertAmount(transferData.amount, originalCurrency, sourceCurrency, transferDate);
+            console.log(`💱 Form currency (${originalCurrency}) differs from account currency (${sourceCurrency}), converted: ${transferData.amount} ${originalCurrency} = ${targetAmount} ${sourceCurrency}`);
+          } catch (conversionError) {
+            console.warn('⚠️ Could not convert form currency to account currency, using original amount');
+          }
+        }
         console.groupEnd();
         // No conversion needed for same-currency transfers
       } else {
@@ -731,18 +775,25 @@ class TransactionService {
         console.log(`💱 Converting: ${transferData.amount} ${sourceCurrency} → ${targetCurrency}`);
         
         try {
-          const transferDate = transferData.date?.toISOString().split('T')[0];
+          // First convert from originalCurrency (form toggle) to sourceCurrency if needed
+          let amountInSourceCurrency = transferData.amount;
+          if (originalCurrency !== sourceCurrency) {
+            const rateInfoSource = await getExchangeRate(originalCurrency, sourceCurrency, transferDate);
+            amountInSourceCurrency = await convertAmount(transferData.amount, originalCurrency, sourceCurrency, transferDate);
+            console.log(`💱 Step 1: Form currency to source account: ${transferData.amount} ${originalCurrency} = ${amountInSourceCurrency} ${sourceCurrency} (rate: ${rateInfoSource.rate})`);
+          }
           
-          // Get exchange rate for logging
+          // Then convert from sourceCurrency to targetCurrency
           const rateInfo = await getExchangeRate(
             sourceCurrency,
             targetCurrency,
             transferDate
           );
+          exchangeRateUsed = rateInfo.rate;
           
           // Convert amount
           targetAmount = await convertAmount(
-            transferData.amount,
+            amountInSourceCurrency,
             sourceCurrency,
             targetCurrency,
             transferDate
@@ -750,13 +801,15 @@ class TransactionService {
           
           console.log('✅ Conversion successful:', {
             originalAmount: transferData.amount,
-            originalCurrency: sourceCurrency,
+            originalCurrency: originalCurrency,
+            amountInSourceCurrency: amountInSourceCurrency,
+            sourceCurrency: sourceCurrency,
             convertedAmount: targetAmount,
             targetCurrency: targetCurrency,
             exchangeRate: rateInfo.rate,
             rateSource: rateInfo.source
           });
-          console.log(`💱 ${transferData.amount} ${sourceCurrency} = ${targetAmount} ${targetCurrency} (rate: ${rateInfo.rate})`);
+          console.log(`💱 ${amountInSourceCurrency} ${sourceCurrency} = ${targetAmount} ${targetCurrency} (rate: ${rateInfo.rate})`);
         } catch (conversionError: any) {
           const errorMsg = `Erreur lors de la conversion de devise: ${conversionError?.message || 'Erreur inconnue'}. ` +
             `Impossible de convertir ${transferData.amount} ${sourceCurrency} vers ${targetCurrency}.`;
@@ -777,10 +830,14 @@ class TransactionService {
       const response = await apiService.createTransfer({
         fromAccountId: transferData.fromAccountId,
         toAccountId: transferData.toAccountId,
-        amount: transferData.amount, // Montant original dans la devise source
+        amount: transferData.amount, // Montant original dans la devise du formulaire
         description: transferData.description,
         transferFee: 0,
-        date: transferData.date
+        date: transferData.date,
+        // Multi-currency fields
+        originalCurrency: originalCurrency,
+        originalAmount: transferData.amount,
+        exchangeRateUsed: exchangeRateUsed || undefined
       });
 
       if (!response.success || response.error) {
@@ -795,34 +852,24 @@ class TransactionService {
       console.log('🔍 Debit transaction:', fromTransaction);
       console.log('🔍 Credit transaction:', toTransaction);
       
+      // Use mapSupabaseToTransaction to properly map all fields including multi-currency
       const transactions: Transaction[] = [
-        {
-          id: fromTransaction.id,
-          userId: fromTransaction.user_id,
-          accountId: fromTransaction.account_id,
-          type: fromTransaction.type,
-          amount: fromTransaction.amount,
-          description: fromTransaction.description,
-          category: fromTransaction.category,
-          date: new Date(fromTransaction.date),
-          targetAccountId: fromTransaction.target_account_id,
-          notes: fromTransaction.notes || undefined,
-          createdAt: new Date(fromTransaction.created_at)
-        },
-        {
-          id: toTransaction.id,
-          userId: toTransaction.user_id,
-          accountId: toTransaction.account_id,
-          type: toTransaction.type,
-          amount: toTransaction.amount,
-          description: toTransaction.description,
-          category: toTransaction.category,
-          date: new Date(toTransaction.date),
-          targetAccountId: toTransaction.target_account_id,
-          notes: toTransaction.notes || undefined,
-          createdAt: new Date(toTransaction.created_at)
-        }
+        this.mapSupabaseToTransaction(fromTransaction),
+        this.mapSupabaseToTransaction(toTransaction)
       ];
+      
+      console.log('💱 Transfer transactions with multi-currency fields:', {
+        debit: {
+          originalCurrency: transactions[0].originalCurrency,
+          originalAmount: transactions[0].originalAmount,
+          exchangeRateUsed: transactions[0].exchangeRateUsed
+        },
+        credit: {
+          originalCurrency: transactions[1].originalCurrency,
+          originalAmount: transactions[1].originalAmount,
+          exchangeRateUsed: transactions[1].exchangeRateUsed
+        }
+      });
 
       // Mettre à jour les soldes des deux comptes
       // Source: débit du montant original dans sa devise

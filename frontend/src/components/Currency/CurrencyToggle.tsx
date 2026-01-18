@@ -21,11 +21,19 @@ const CurrencyToggle: React.FC<CurrencyToggleProps> = ({
   size = 'md',
   disabled = false
 }) => {
-  const handleClick = () => {
-    if (!disabled) {
-      const newCurrency: Currency = currency === 'MGA' ? 'EUR' : 'MGA';
-      onToggle(newCurrency);
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (disabled) {
+      console.warn('⚠️ [CurrencyToggle] Button disabled, ignoring click');
+      return;
     }
+    
+    const newCurrency: Currency = currency === 'MGA' ? 'EUR' : 'MGA';
+    console.log('🔄 [CurrencyToggle] Button clicked, toggling from', currency, 'to', newCurrency);
+    onToggle(newCurrency);
+    console.log('✅ [CurrencyToggle] Toggle completed');
   };
 
   const sizeClasses = {

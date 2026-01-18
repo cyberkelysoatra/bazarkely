@@ -341,6 +341,10 @@ class ApiService {
     description?: string;
     transferFee?: number;
     date?: Date;
+    // Multi-currency fields (from form toggle)
+    originalCurrency?: 'MGA' | 'EUR';
+    originalAmount?: number;
+    exchangeRateUsed?: number;
   }): Promise<ApiResponse<{ fromTransaction: Transaction; toTransaction: Transaction }>> {
     try {
       const userId = await this.getCurrentUserId();
@@ -348,11 +352,26 @@ class ApiService {
         return { success: false, error: 'Utilisateur non authentifié' };
       }
 
-      const { fromAccountId, toAccountId, amount, description, transferFee = 0, date } = transferData;
+      const { 
+        fromAccountId, 
+        toAccountId, 
+        amount, 
+        description, 
+        transferFee = 0, 
+        date,
+        originalCurrency,
+        originalAmount,
+        exchangeRateUsed
+      } = transferData;
       
       // Use provided date or default to current date
       const transferDate = date || new Date();
       console.log('📅 Transfer date being used:', transferDate.toISOString().split('T')[0]);
+      console.log('💱 Transfer multi-currency fields:', {
+        originalCurrency,
+        originalAmount,
+        exchangeRateUsed
+      });
 
       // Créer les deux transactions (débit et crédit)
       const { data: fromTransaction, error: fromError } = await db.transactions()
@@ -365,7 +384,11 @@ class ApiService {
           description: description || `Transfert vers ${toAccountId}`,
           target_account_id: toAccountId,
           transfer_fee: transferFee,
-          date: transferDate.toISOString().split('T')[0] // Format YYYY-MM-DD for Supabase
+          date: transferDate.toISOString().split('T')[0], // Format YYYY-MM-DD for Supabase
+          // Multi-currency fields
+          original_currency: originalCurrency || null,
+          original_amount: originalAmount || amount,
+          exchange_rate_used: exchangeRateUsed || null
         })
         .select()
         .single();
@@ -382,7 +405,11 @@ class ApiService {
           description: description || `Transfert depuis ${fromAccountId}`,
           target_account_id: fromAccountId,
           transfer_fee: 0,
-          date: transferDate.toISOString().split('T')[0] // Same date for both transactions
+          date: transferDate.toISOString().split('T')[0], // Same date for both transactions
+          // Multi-currency fields (same as debit transaction)
+          original_currency: originalCurrency || null,
+          original_amount: originalAmount || amount,
+          exchange_rate_used: exchangeRateUsed || null
         })
         .select()
         .single();

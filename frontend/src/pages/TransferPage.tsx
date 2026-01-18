@@ -31,7 +31,7 @@ const TransferPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAppStore();
-  const { displayCurrency } = useCurrency();
+  const { displayCurrency, setDisplayCurrency } = useCurrency();
   
   // Get navigation state from GoalsPage
   const transferState = location.state as TransferNavigationState | null;
@@ -332,10 +332,10 @@ const TransferPage = () => {
         displayCurrency: displayCurrency,
         sourceAccountCurrency: fromAccount.currency
       });
-      toast.warning(
+      toast(
         `La devise affichée (${displayCurrency}) ne correspond pas à la devise du compte source (${fromAccount.currency}). ` +
         `Le montant sera traité en ${fromAccount.currency}.`,
-        { duration: 5000 }
+        { duration: 5000, icon: '⚠️' }
       );
     }
 
@@ -470,16 +470,31 @@ const TransferPage = () => {
         // ============================================================================
         // LOG #3 - Before service call
         // ============================================================================
-        console.log('🚀 Calling transactionService.createTransfer with:', {
+        console.log('📝 [TransferPage] Submitting transfer with currency toggle:', {
+          amount: amount,
+          originalCurrency: displayCurrency, // From currency toggle in form
+          originalAmount: amount, // What user typed
           fromAccountId: formData.fromAccountId,
           toAccountId: formData.toAccountId,
-          amount: amount,
           description: formData.description,
           date: new Date(formData.date),
           notes: formData.notes,
           sourceCurrency: fromAccount.currency,
           targetCurrency: toAccount.currency,
-          displayCurrency: displayCurrency
+          note: 'Currency from form toggle, not /settings'
+        });
+        
+        console.log('🚀 Calling transactionService.createTransfer with:', {
+          fromAccountId: formData.fromAccountId,
+          toAccountId: formData.toAccountId,
+          amount: amount,
+          originalCurrency: displayCurrency,
+          originalAmount: amount,
+          description: formData.description,
+          date: new Date(formData.date),
+          notes: formData.notes,
+          sourceCurrency: fromAccount.currency,
+          targetCurrency: toAccount.currency
         });
         
         // Créer le transfert avec la méthode dédiée
@@ -489,7 +504,10 @@ const TransferPage = () => {
           fromAccountId: formData.fromAccountId,
           toAccountId: formData.toAccountId,
           notes: formData.notes,
-          date: new Date(formData.date)
+          date: new Date(formData.date),
+          // Multi-currency fields: currency from form toggle
+          originalCurrency: displayCurrency,
+          originalAmount: amount
         });
 
         // Si il y a des frais, créer des transactions de frais
@@ -503,7 +521,10 @@ const TransferPage = () => {
               category: 'autres',
               accountId: formData.fromAccountId,
               date: new Date(formData.date),
-              notes: 'Frais de transfert'
+              notes: 'Frais de transfert',
+              // Multi-currency: fees use same currency as transfer
+              originalCurrency: displayCurrency,
+              originalAmount: calculatedFees.transferFee
             });
           }
 
@@ -516,7 +537,10 @@ const TransferPage = () => {
               category: 'autres',
               accountId: formData.fromAccountId,
               date: new Date(formData.date),
-              notes: 'Frais de retrait'
+              notes: 'Frais de retrait',
+              // Multi-currency: fees use same currency as transfer
+              originalCurrency: displayCurrency,
+              originalAmount: calculatedFees.withdrawalFee
             });
           }
         }
@@ -731,8 +755,10 @@ const TransferPage = () => {
                 }));
               }}
               currency={displayCurrency}
-              onCurrencyChange={() => {
-                // Currency change is handled by the hook, no need to update formData
+              onCurrencyChange={(newCurrency) => {
+                console.log('🔄 [TransferPage] Currency toggle clicked, switching to:', newCurrency);
+                setDisplayCurrency(newCurrency);
+                console.log('✅ [TransferPage] Currency updated to:', newCurrency);
               }}
               placeholder="0"
               required
