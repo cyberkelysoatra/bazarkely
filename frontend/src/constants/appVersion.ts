@@ -1,6 +1,18 @@
-﻿export const APP_VERSION = '2.4.6';
-export const APP_BUILD_DATE = '2026-01-18';
+﻿export const APP_VERSION = '2.4.7';
+export const APP_BUILD_DATE = '2026-01-20';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.7',
+    date: '2026-01-20',
+    changes: [
+      'Fix: EUR double conversion bug in TransactionsPage',
+      'Fix: EUR transactions now display correctly with global currency toggle',
+      'Fix: 100 EUR correctly shows as 495,000 Ar (not 2,450,250,000 Ar)',
+      'Technical: Pass originalAmount directly to CurrencyDisplay',
+      'Technical: Eliminate double conversion in transaction display logic'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '2.4.6',
     date: '2026-01-18',

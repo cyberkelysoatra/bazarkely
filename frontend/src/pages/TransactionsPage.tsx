@@ -998,8 +998,10 @@ const TransactionsPage = () => {
           const isTransfer = transaction.type === 'transfer';
           
           // Pour les transferts, déterminer l'affichage selon le contexte du compte filtré
-          // Calculate display amount using stored exchange rate if available
-          const rawDisplayAmount = getTransactionDisplayAmount(transaction, displayCurrency);
+          // Use original amount directly - let CurrencyDisplay handle conversion
+          const rawDisplayAmount = transaction.originalAmount !== undefined
+            ? transaction.originalAmount
+            : transaction.amount;
           let displayAmount = rawDisplayAmount;
           let isDebit = false;
           let isCredit = false;
