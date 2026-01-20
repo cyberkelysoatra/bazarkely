@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.1 (Phase B Goals Deadline Sync Complete - Session S37)  
-**Date de mise à jour:** 2026-01-07  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète
+**Version:** 5.2 (EUR Transfer Bug Fix & Multi-Currency Accounts Complete - Session S38)  
+**Date de mise à jour:** 2026-01-18  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6)  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts
 
 ---
 
@@ -74,6 +74,42 @@
   - `supabase/migrations/20260107200813_add_required_monthly_contribution_to_goals.sql` - Migration SQL Supabase
 - **Statut:** 100% complété et déployé en production v2.5.0 (commit c0cfc85, Netlify)
 - **Métriques:** ~388 lignes ajoutées, 8 fichiers modifiés, 0 régressions, backward compatibility 100%
+
+### **EUR Transfer Bug Fix (Session S38 - v2.4.5)** ✅ RÉSOLU COMPLÈTEMENT
+- ✅ **Gap: Bug conversion incorrecte transferts EUR → EUR** - Résolu: Suppression fallback `|| 'MGA'` dans `transactionService.createTransfer()` (lignes 683-690)
+- ✅ **Gap: Validation devises manquante** - Résolu: Validation stricte requérant devises explicites pour les deux comptes
+- ✅ **Gap: Colonnes multi-devises manquantes Supabase** - Résolu: Colonnes `original_currency`, `original_amount`, `exchange_rate_used` ajoutées (migration `20260118134130_add_multi_currency_columns_to_transactions.sql`)
+- ✅ **Gap: Types Supabase obsolètes** - Résolu: Types régénérés avec colonnes multi-devises
+- ✅ **Gap: Logging insuffisant** - Résolu: Logs complets ajoutés pour validation devises et conversion
+- ✅ **Gap: Validation frontend manquante** - Résolu: Validation frontend dans `TransferPage.tsx` avec avertissements mismatch devise
+- **Cause racine identifiée:** Fallback `|| 'MGA'` quand `account.currency` était `undefined` causait traitement EUR comme MGA et conversion incorrecte
+- **Fichiers modifiés:**
+  - `frontend/src/services/transactionService.ts` - Suppression fallback MGA, validation stricte, capture originalCurrency
+  - `frontend/src/services/apiService.ts` - Pas de modification (bug était dans transactionService)
+  - `frontend/src/pages/TransferPage.tsx` - Validation frontend, avertissements mismatch devise
+  - `frontend/src/types/supabase.ts` - Types régénérés avec colonnes multi-devises
+  - `supabase/migrations/20260118134130_add_multi_currency_columns_to_transactions.sql` - Migration SQL Supabase
+- **Statut:** 100% complété et déployé en production v2.4.5 (2026-01-18)
+- **Métriques:** ~150 lignes modifiées, 5 fichiers modifiés, 0 régressions, backward compatibility 100%
+
+### **Multi-Currency Accounts (Session S38 - v2.4.6)** ✅ RÉSOLU COMPLÈTEMENT
+- ✅ **Gap: Comptes limités à une seule devise** - Résolu: `currency` maintenant optionnel/nullable (`currency?: 'MGA' | 'EUR' | null`)
+- ✅ **Gap: Transactions multi-devises non supportées** - Résolu: Comptes avec `currency: null` acceptent transactions dans toutes devises
+- ✅ **Gap: Capture devise originale manquante** - Résolu: Capture `originalCurrency` depuis toggle devise formulaire (pas depuis `/settings`)
+- ✅ **Gap: Taux de change historiques non préservés** - Résolu: Stockage `exchangeRateUsed` pour chaque transaction, utilisation taux historique pour conversion
+- ✅ **Gap: Conversion basée sur taux actuel** - Résolu: Nouvelle utilité `convertAmountWithStoredRate()` utilisant taux historique stocké
+- ✅ **Gap: Affichage multi-devises manquant** - Résolu: Composant `WalletBalanceDisplay` pour affichage dual currency (X € + Y Ar)
+- **Fichiers modifiés:**
+  - `frontend/src/types/index.ts` - Account interface: `currency` optionnel/nullable avec JSDoc complet
+  - `frontend/src/services/accountService.ts` - Gestion `currency: null`, default null si non fourni
+  - `frontend/src/services/transactionService.ts` - Capture originalCurrency, stockage taux historique
+  - `frontend/src/pages/AddAccountPage.tsx` - Suppression forced `currency: 'MGA'`
+  - `frontend/src/pages/TransferPage.tsx` - Capture originalCurrency depuis toggle formulaire
+  - `frontend/src/pages/AddTransactionPage.tsx` - Capture originalCurrency depuis toggle formulaire
+  - `frontend/src/utils/currencyConversion.ts` - Nouvelle utilité `convertAmountWithStoredRate()`
+  - `frontend/src/components/Currency/WalletBalanceDisplay.tsx` - Nouveau composant affichage dual currency
+- **Statut:** 100% complété et déployé en production v2.4.6 (2026-01-18)
+- **Métriques:** ~300 lignes ajoutées/modifiées, 8 fichiers modifiés, 1 nouveau fichier, 0 régressions, backward compatibility 100%
 
 ### **Boutons Responsive** ✅ IMPLÉMENTÉS
 - **Fichier modifié:** `frontend/src/components/UI/Button.tsx`

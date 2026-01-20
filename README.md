@@ -37,7 +37,7 @@
 - 🌀 **Plan d'Urgence Cyclone** : Préparation aux catastrophes naturelles
 - 🎤 **Interface Vocale** : Saisie vocale en français et malagasy
 - 📱 **Générateur QR Code** : Mobile Money et partage de données
-- 💱 **Support Multi-Devises** : MGA, EUR, USD pour la diaspora
+- 💱 **Support Multi-Devises** : MGA, EUR, USD pour la diaspora - **Session S38 (v2.4.6)** : Support complet multi-devises avec comptes pouvant contenir transactions EUR et MGA simultanément, capture de devise originale, taux de change historiques préservés
 - 🛒 **Marketplace Communautaire** : Commerce local et partage
 
 ## 🏆 Système de Classement et Leaderboard
@@ -976,4 +976,4 @@ frontend/src/modules/construction-poc/
 
 ---
 
-*Dernière mise à jour : 7 janvier 2026 (Phase B Goals Deadline Sync - Session S37 - v2.5.0)*
+*Dernière mise à jour : 18 janvier 2026 (EUR Transfer Bug Fix & Multi-Currency Accounts - Session S38 - v2.4.6)*

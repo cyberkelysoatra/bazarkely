@@ -533,7 +533,8 @@ class GoalSuggestionService {
         targetAmount: suggestion.targetAmount,
         deadline: suggestion.deadline ? new Date(suggestion.deadline) : new Date(),
         category: suggestion.category,
-        priority: suggestion.priority
+        priority: suggestion.priority,
+        requiredMonthlyContribution: suggestion.requiredMonthlyContribution
       };
       
       // Créer l'objectif via goalService
@@ -544,7 +545,8 @@ class GoalSuggestionService {
         ...goal,
         isSuggested: true,
         suggestionType: suggestion.type,
-        suggestionAcceptedAt: new Date().toISOString()
+        suggestionAcceptedAt: new Date().toISOString(),
+        requiredMonthlyContribution: suggestion.requiredMonthlyContribution
       };
       
       // Sauvegarder dans IndexedDB
@@ -558,8 +560,9 @@ class GoalSuggestionService {
             .update({
               is_suggested: true,
               suggestion_type: suggestion.type,
-              suggestion_accepted_at: goalWithSuggestion.suggestionAcceptedAt
-            })
+              suggestion_accepted_at: goalWithSuggestion.suggestionAcceptedAt,
+              required_monthly_contribution: goalWithSuggestion.requiredMonthlyContribution
+            } as any)
             .eq('id', goal.id);
         } catch (syncError) {
           console.error(`💡 [GoalSuggestionService] ⚠️ Erreur lors de la synchronisation Supabase:`, syncError);

@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.5.0 (Phase B Goals Deadline Sync - Session S37)  
-**Date de mise à jour:** 2026-01-07  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync
+**Version:** 2.4.6 (EUR Transfer Bug Fix & Multi-Currency Accounts - Session S38)  
+**Date de mise à jour:** 2026-01-18  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts
 
 ---
 
@@ -872,6 +872,32 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Migration Supabase:** Colonne `required_monthly_contribution NUMERIC(10,2) NULL` avec index partiel
 - **Types Supabase régénérés:** `frontend/src/types/supabase.ts` avec `required_monthly_contribution` (+50 lignes)
 - **Fichiers modifiés:** `frontend/src/services/goalService.ts` (+88 lignes), `frontend/src/types/index.ts`, `frontend/src/lib/database.ts`, `frontend/src/types/supabase.ts` (+50 lignes), `frontend/src/pages/GoalsPage.tsx` (+250 lignes)
+
+**transactionService.ts (EUR Transfer Bug Fix v2.4.5 - Session S38):**
+- **Bug fix fallback MGA:** Suppression `|| 'MGA'` fallback qui causait conversion incorrecte EUR (lignes 683-690)
+- **Validation stricte devises:** Transferts requièrent maintenant devises explicites pour les deux comptes
+- **Logging amélioré:** Logs complets pour validation devises et conversion dans `createTransfer()`
+- **Capture originalCurrency:** Capture `originalCurrency` depuis toggle devise formulaire (pas depuis `/settings`)
+- **Taux de change historique:** Récupération taux à la date transaction (pas date actuelle)
+- **Stockage multi-devises:** Champs `originalAmount`, `originalCurrency`, `exchangeRateUsed` pour chaque transaction
+- **Migration Supabase:** Colonnes `original_currency`, `original_amount`, `exchange_rate_used` ajoutées (migration `20260118134130_add_multi_currency_columns_to_transactions.sql`)
+- **Fichiers modifiés:** `frontend/src/services/transactionService.ts`, `frontend/src/types/supabase.ts` (types régénérés), `supabase/migrations/20260118134130_add_multi_currency_columns_to_transactions.sql`
+
+**accountService.ts (Multi-Currency Accounts v2.4.6 - Session S38):**
+- **Schéma modifié:** `currency` maintenant optionnel/nullable (`currency?: 'MGA' | 'EUR' | null`)
+- **Comptes multi-devises:** Comptes avec `currency: null` acceptent transactions dans toutes devises
+- **mapSupabaseToAccount:** Gestion `null` currency depuis Supabase (lignes 74-86)
+- **createAccount:** Default `currency: null` si non fourni (lignes 217-227, 238-245)
+- **updateAccount:** Support assignation explicite `null` (lignes 331-332)
+- **getTotalBalanceInCurrency:** Fallback MGA pour affichage si `currency: null` (lignes 582-608)
+- **JSDoc complet:** Explication philosophie multi-devises (devise = préférence affichage, pas contrainte)
+- **Fichiers modifiés:** `frontend/src/types/index.ts` (Account interface), `frontend/src/services/accountService.ts`, `frontend/src/pages/AddAccountPage.tsx`
+
+**currencyConversion.ts (Multi-Currency Accounts v2.4.6 - Session S38):**
+- **Nouvelle utilité:** `convertAmountWithStoredRate()` utilisant taux historique stocké
+- **Préservation historique:** Utilise `exchangeRateUsed` stocké dans transaction (jamais recalcul avec taux actuel)
+- **Conversion précise:** Conversion basée sur taux utilisé lors création transaction
+- **Fichier créé:** `frontend/src/utils/currencyConversion.ts`
 
 **recurringTransactionService.ts (500 lignes):**
 - **CRUD complet:** `create()`, `getAll()`, `getById()`, `getActive()`, `getUpcomingInDays()`, `update()`, `delete()`
