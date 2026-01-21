@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.4.6 (EUR Transfer Bug Fix & Multi-Currency Accounts - Session S38)  
-**Date de mise à jour:** 2026-01-18  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts
+**Version:** 2.4.8 (CurrencyDisplay HTML Nesting Fix - Session S40)  
+**Date de mise à jour:** 2026-01-21  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix
 
 ---
 
@@ -898,6 +898,15 @@ Utilisateur → QuizPage → certificationStore → localStorage → Certificati
 - **Préservation historique:** Utilise `exchangeRateUsed` stocké dans transaction (jamais recalcul avec taux actuel)
 - **Conversion précise:** Conversion basée sur taux utilisé lors création transaction
 - **Fichier créé:** `frontend/src/utils/currencyConversion.ts`
+
+**CurrencyDisplay.tsx (HTML Nesting Fix v2.4.8 - Session S40):**
+- **Problème résolu:** HTML nesting invalide (div dans p/button) causant dysfonctionnement toggle devise
+- **Solution:** Changement wrapper `<div>` → `<span>` avec `display: inline-flex` (fonctionne identiquement)
+- **Impact:** 5 instances problématiques corrigées (AccountsPage: 2, BudgetsPage: 3)
+- **Validation:** 30 instances totales validées, 0 régression, toggle devise fonctionnel partout
+- **Fichier modifié:** `frontend/src/components/Currency/CurrencyDisplay.tsx` (lignes 171, 205)
+- **Backward compatibility:** 100% - Aucun changement API, props, ou comportement
+- **Statut:** ✅ RÉSOLU - HTML valide, toggle devise fonctionnel, zéro régression
 
 **recurringTransactionService.ts (500 lignes):**
 - **CRUD complet:** `create()`, `getAll()`, `getById()`, `getActive()`, `getUpcomingInDays()`, `update()`, `delete()`

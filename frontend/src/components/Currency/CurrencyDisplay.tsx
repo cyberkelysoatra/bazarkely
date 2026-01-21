@@ -168,7 +168,7 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
     : 'text-gray-900';
 
   return (
-    <div className={`inline-flex items-center gap-1 ${sizeClasses[size]} ${fontClasses[size]} ${colorClass} ${className}`}>
+    <span className={`inline-flex items-center gap-1 ${sizeClasses[size]} ${fontClasses[size]} ${colorClass} ${className}`}>
       <span>{formatAmount(displayAmount, displayCurrency)}</span>
       {showConversion ? (
         <button
@@ -202,7 +202,7 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
           ⚠️
         </span>
       )}
-    </div>
+    </span>
   );
 };
 

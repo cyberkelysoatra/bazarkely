@@ -1,8 +1,8 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.13 (Développement Multi-Agents Validé + TransactionsPage Améliorée + CSV Export + Smart Navigation + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Context Switcher Finalisé + Construction POC Test Data Complètes + Phase 2 Organigramme Complète + Phase 3 Security 92% + Bug Fixes 2025-11-14 + Smart Defaults 2025-11-15 + UX Transformation VAGUE 1 + VAGUE 2 2025-11-15 + Editable BC Number System 2025-11-29/30 + Budget Statistics S28 2025-12-31 + Phase B Goals v2.5.0 S37 2026-01-07 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-01-18  
+**Version:** 3.14 (CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-01-21  
 **Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components
 
 ---
@@ -35,6 +35,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Fonctionnalités Budgétaires Avancées:** 100% (9/9) ✅ - Session S28 2025-12-31
 - **Module Construction POC:** 100% (66/66) - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (2025-11-12) + Editable BC Number System (2025-11-29/30)
 - **Multi-Currency Support:** 100% (3/3) ✅ - Session S38 2026-01-18 (Multi-Currency Accounts + Multi-Currency Transactions + EUR Transfer Bug Fix)
+- **CurrencyDisplay HTML Nesting Fix:** 100% (1/1) ✅ - Session S40 2026-01-21 (Wrapper div→span, 30 instances validées, 0 régression)
 
 ### **📈 Répartition par Statut**
 - **✅ Implémenté:** 100% (210/210)
@@ -288,6 +289,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Multi-Currency Accounts** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Support EUR et MGA dans même compte, currency field optionnel (Session S38 2026-01-18) |
 | **Multi-Currency Transactions** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Stockage originalCurrency, originalAmount, exchangeRateUsed (Session S38 2026-01-18) |
 | **EUR Transfer Bug Fix** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction conversion automatique EUR→EUR, migration Supabase multi-currency columns (Session S38 2026-01-18) |
+| **CurrencyDisplay HTML Nesting Fix** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction wrapper div→span pour HTML valide, toggle devise fonctionnel partout (Session S40 2026-01-21) |
 | **Interface Bilingue** | ⚠️ Partiel | 70% | ✅ Testé | ✅ Documenté | Français complet, Malgache partiel |
 
 **Total Madagascar:** 4.7/5 implémentés (94%)

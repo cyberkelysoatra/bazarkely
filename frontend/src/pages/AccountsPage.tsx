@@ -153,30 +153,32 @@ const AccountsPage = () => {
                 </div>
                 
                 {/* NEW RIGHT SECTION STRUCTURE - Clickable container with amount and manage button */}
-                <button
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log('🔍 Navigating to account:', account.id, 'Account name:', account.name);
                     navigate(`/account/${account.id}`);
                   }}
-                  className="flex flex-col items-end text-right hover:bg-gray-50 p-1 rounded-lg transition-colors" /* REDUCED BUTTON PADDING */
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/account/${account.id}`);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="flex flex-col items-end text-right hover:bg-gray-50 p-1 rounded-lg transition-colors cursor-pointer" /* REDUCED BUTTON PADDING */
                 >
                   <p className="font-semibold text-gray-900">
                     {showBalances ? (
-                      // For wallet accounts (especes), we should use WalletBalanceDisplay with transactions
-                      // For now, use CurrencyDisplay with account.balance
-                      // TODO: Load transactions and use WalletBalanceDisplay for wallet accounts
-                      account.type === 'especes' ? (
-                        <span>{account.balance.toLocaleString('fr-FR')} Ar</span>
-                      ) : (
-                        <CurrencyDisplay
-                          amount={account.balance}
-                          originalCurrency={account.currency || 'MGA'}
-                          displayCurrency={displayCurrency}
-                          showConversion={true}
-                          size="md"
-                        />
-                      )
+                      <CurrencyDisplay
+                        amount={account.balance}
+                        originalCurrency={account.currency || 'MGA'}
+                        displayCurrency={displayCurrency}
+                        showConversion={true}
+                        size="md"
+                      />
                     ) : (
                       <span className="text-gray-400">••••</span>
                     )}
@@ -188,7 +190,7 @@ const AccountsPage = () => {
                   <span className="text-xs text-gray-600 hover:text-blue-600 transition-colors mt-5">
                     Gérer le compte
                   </span>
-                </button>
+                </div>
               </div>
               
               {/* REMOVED BOTTOM SECTION - Completely removed bordered section with separate button */}
@@ -235,20 +237,16 @@ const AccountsPage = () => {
                   <span className="text-gray-600">{account.name}</span>
                   <span className="font-medium text-gray-900">
                     {showBalances ? (
-                      account.type === 'especes' ? (
-                        <span>{account.balance.toLocaleString('fr-FR')} Ar ({percentage.toFixed(1)}%)</span>
-                      ) : (
-                        <>
-                          <CurrencyDisplay
-                            amount={account.balance}
-                            originalCurrency={account.currency || 'MGA'}
-                            displayCurrency={displayCurrency}
-                            showConversion={true}
-                            size="sm"
-                          />
-                          <span className="text-gray-500"> ({percentage.toFixed(1)}%)</span>
-                        </>
-                      )
+                      <>
+                        <CurrencyDisplay
+                          amount={account.balance}
+                          originalCurrency={account.currency || 'MGA'}
+                          displayCurrency={displayCurrency}
+                          showConversion={true}
+                          size="sm"
+                        />
+                        <span className="text-gray-500"> ({percentage.toFixed(1)}%)</span>
+                      </>
                     ) : (
                       <span className="text-gray-400">•••• ({percentage.toFixed(1)}%)</span>
                     )}

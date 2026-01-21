@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.2 (EUR Transfer Bug Fix & Multi-Currency Accounts Complete - Session S38)  
-**Date de mise à jour:** 2026-01-18  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6)  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts
+**Version:** 5.3 (CurrencyDisplay HTML Nesting Fix Complete - Session S40)  
+**Date de mise à jour:** 2026-01-21  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8)  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix
 
 ---
 
@@ -1345,6 +1345,22 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Problème identifié:** Présence de budgets dupliqués dans base de données
 - **Solution implémentée:** Nettoyage base de données pour supprimer budgets dupliqués
 - **Impact:** Intégrité des données améliorée, pas de doublons dans budgets
+
+### **Gap CurrencyDisplay HTML Nesting Invalid** ✅ RÉSOLU 2026-01-21 (Session S40)
+- **Problème identifié:** `CurrencyDisplay` utilisait wrapper `<div>` avec `display: inline-flex`, causant HTML nesting invalide quand utilisé dans `<p>` ou `<button>` tags
+- **Impact:** 5 instances invalides identifiées (AccountsPage: 2, BudgetsPage: 3) causant dysfonctionnement toggle devise sur cartes de compte
+- **Cause racine:** Navigateurs corrigeaient automatiquement HTML invalide, cassant event handlers JavaScript
+- **Solution implémentée:** Changement wrapper `<div>` → `<span>` avec `display: inline-flex` (fonctionne identiquement)
+- **Fichier modifié:** `frontend/src/components/Currency/CurrencyDisplay.tsx` (lignes 171, 205)
+- **Validation complète:** 30 instances totales validées, 5 instances problématiques corrigées, 0 régression, toggle devise fonctionnel partout
+- **Backward compatibility:** 100% - Aucun changement API, props, ou comportement
+- **Lessons learned:**
+  - Utiliser éléments HTML sémantiquement appropriés (`span` pour inline components)
+  - Tester composants dans divers contextes parents pendant développement
+  - HTML validation errors peuvent casser JavaScript event handlers silencieusement
+  - Approche multi-agents pour diagnostic rapide (30 secondes)
+- **Statut:** ✅ RÉSOLU - HTML valide, toggle devise fonctionnel, zéro régression
+- **Métriques:** 2 lignes changées, 1 fichier modifié, 30 instances validées, 0 régression
 
 **Résumé Session S28:**
 - **7 gaps résolus:** Statistiques multi-années, barres bicolores, affichage dépassement, icône épargne, chevrons select, édition montant récurrent, budgets dupliqués
