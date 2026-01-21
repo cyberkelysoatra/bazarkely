@@ -1,6 +1,26 @@
-﻿export const APP_VERSION = '2.4.7';
-export const APP_BUILD_DATE = '2026-01-20';
+﻿export const APP_VERSION = '2.4.8';
+export const APP_BUILD_DATE = '2026-01-21';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.8',
+    date: '2026-01-21',
+    changes: [
+      'Bug Fix: CurrencyDisplay HTML Nesting - Fixed invalid HTML structure causing currency toggle malfunction',
+      'Bug Fix: Changed wrapper element from <div> to <span> for HTML5 compliance',
+      'Bug Fix: Resolved validation errors when CurrencyDisplay used inside <p> or <button> tags',
+      'Bug Fix: AccountsPage Button Nesting - Fixed button-in-button HTML error blocking currency toggle',
+      'Bug Fix: Replaced <button> parent with <div role="button"> for accessibility',
+      'Enhancement: Currency Toggle for Especes Accounts - Enabled currency conversion for cash accounts',
+      'Enhancement: Removed conditional rendering that excluded especes accounts from CurrencyDisplay',
+      'Technical: HTML5 Compliance - All CurrencyDisplay usages now pass HTML validation',
+      'Technical: Accessibility - Enhanced keyboard navigation for account cards',
+      'Validation: 30 CurrencyDisplay instances validated (100% pass rate, 0 regressions)',
+      'Documentation: Updated ETAT-TECHNIQUE-COMPLET.md, GAP-TECHNIQUE-COMPLET.md, FEATURE-MATRIX.md',
+      'Session: S40 (2026-01-21) - Multi-agent fix (AGENT 09, 10, 11, 12)',
+      'Commit: dd55724 - 6 files modified (+408 / -43 lines)'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '2.4.7',
     date: '2026-01-20',
