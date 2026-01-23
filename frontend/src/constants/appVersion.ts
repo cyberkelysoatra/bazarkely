@@ -1,6 +1,15 @@
-﻿export const APP_VERSION = 'v2.4.9';
-export const APP_BUILD_DATE = '2026-01-23';
+export const APP_VERSION = 'v2.4.10';
+export const APP_BUILD_DATE = '2026-01-24';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.10',
+    date: '2026-01-24',
+    changes: [
+      'Fix: Version synchronization between package.json and appVersion.ts',
+      'Deployment: Force Netlify deployment for documentation updates'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '2.4.9',
     date: '2026-01-23',
