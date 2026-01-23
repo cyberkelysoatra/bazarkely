@@ -4,6 +4,25 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 2.4.9 (2026-01-23)
+
+### 🎨 UI Optimizations
+- **Header Spacing:** Reduced spacing in search container (mt-4 p-4 → mt-2 p-3) for more compact interface
+- **Connection Status:** Changed layout from horizontal to vertical centered (icon above text)
+- **Vertical Spacing:** Reduced spacing between icon and text (space-y-2 → space-y-1) for compact display
+
+### 🔧 Technical Details
+- Modified Header.tsx line 918: mt-2 p-3 classes
+- Modified Header.tsx line 963: flex flex-col items-center justify-center space-y-1
+- Modified Header.tsx line 969: added text-center to span
+- Design system consistency: mt-2 p-3 pattern used 3x in project
+- Layout pattern: flex flex-col items-center used 7x in project
+
+### 📝 Session
+- **S41 (2026-01-23):** Header component UI optimizations
+
+---
+
 ## Version 2.4.8 (2026-01-21)
 
 ### 🐛 Bug Fixes

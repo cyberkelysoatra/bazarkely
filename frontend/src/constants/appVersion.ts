@@ -1,6 +1,22 @@
-﻿export const APP_VERSION = '2.4.8';
-export const APP_BUILD_DATE = '2026-01-21';
+﻿export const APP_VERSION = 'v2.4.9';
+export const APP_BUILD_DATE = '2026-01-23';
 export const VERSION_HISTORY = [
+  {
+    version: '2.4.9',
+    date: '2026-01-23',
+    changes: [
+      'UI Optimization: Header spacing reduced in search container (mt-4 p-4 → mt-2 p-3) for more compact interface',
+      'UI Optimization: Connection status layout changed from horizontal to vertical centered (icon above text)',
+      'UI Optimization: Reduced vertical spacing between icon and text (space-y-2 → space-y-1) for compact display',
+      'Technical: Modified Header.tsx line 918: mt-2 p-3 classes',
+      'Technical: Modified Header.tsx line 963: flex flex-col items-center justify-center space-y-1',
+      'Technical: Modified Header.tsx line 969: added text-center to span',
+      'Design System: mt-2 p-3 pattern used 3x in project for consistency',
+      'Layout Pattern: flex flex-col items-center used 7x in project',
+      'Session: S41 (2026-01-23) - Header UI optimizations'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '2.4.8',
     date: '2026-01-21',

@@ -915,7 +915,7 @@ const Header = () => {
         {/* Informations utilisateur - Hidden in Construction mode (banner only relevant for Family Budget) */}
         {/* FIX: Use pathname check to prevent Budget banner from showing in Construction module */}
         {user && !isConstructionModule && !location.pathname.includes('/construction') && (
-          <div className="mt-4 text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-4 border border-purple-300/50 shadow-lg">
+          <div className="mt-2 text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
             <div className="flex items-center justify-between flex-nowrap overflow-hidden"> {/* FORCE SINGLE LINE LAYOUT */}
               <div>
                 {showUsername && (
@@ -960,13 +960,13 @@ const Header = () => {
                   )}
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col items-center justify-center space-y-1">
                        {isOnline ? (
                          <Wifi className="w-4 h-4 text-green-500" />
                        ) : (
                          <WifiOff className="w-4 h-4 text-red-500" />
                        )}
-                <span className="text-xs text-purple-100 whitespace-nowrap">
+                <span className="text-xs text-purple-100 whitespace-nowrap text-center">
                   {isOnline ? 'En ligne' : 'Hors ligne'}
                 </span> {/* PREVENT TEXT WRAPPING KEEP ON SINGLE LINE */}
               </div>
