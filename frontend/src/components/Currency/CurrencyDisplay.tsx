@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { convertAmount } from '../../services/exchangeRateService';
 import { convertAmountWithStoredRate } from '../../utils/currencyConversion';
 import type { Currency } from './CurrencyToggle';
+import { NoTranslate } from '../../utils/excludeFromTranslation';
 
 interface CurrencyDisplayProps {
   amount: number;
@@ -169,7 +170,9 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
 
   return (
     <span className={`inline-flex items-center gap-1 ${sizeClasses[size]} ${fontClasses[size]} ${colorClass} ${className}`}>
-      <span>{formatAmount(displayAmount, displayCurrency)}</span>
+      <NoTranslate>
+        <span>{formatAmount(displayAmount, displayCurrency)}</span>
+      </NoTranslate>
       {showConversion ? (
         <button
           type="button"
@@ -191,11 +194,15 @@ const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
           {isLoading ? (
             <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
           ) : (
-            <span>{getCurrencySymbol(displayCurrency)}</span>
+            <NoTranslate>
+              <span>{getCurrencySymbol(displayCurrency)}</span>
+            </NoTranslate>
           )}
         </button>
       ) : (
-        <span className="text-gray-600">{getCurrencySymbol(displayCurrency)}</span>
+        <NoTranslate>
+          <span className="text-gray-600">{getCurrencySymbol(displayCurrency)}</span>
+        </NoTranslate>
       )}
       {error && (
         <span className="text-xs text-red-500 ml-1" title={error}>

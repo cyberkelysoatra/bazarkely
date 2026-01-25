@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { I18nextProvider } from 'react-i18next';
 // Build test - force new hash generation
 import { useAppStore, useSyncStore, useErrorStore } from './stores/appStore';
 import { usePreventTranslation } from './hooks/usePreventTranslation';
@@ -11,6 +12,8 @@ import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
 import safariServiceWorkerManager from './services/safariServiceWorkerManager';
 import { initSyncManager } from './services/syncManager';
+import './i18n'; // Initialize i18n system (side effect import)
+import i18n from './i18n';
 import './index.css';
 
 // Composants de base (à créer)
@@ -103,11 +106,12 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        
-        <Router>
-          <ModuleSwitcherProvider>
-            {/* ConstructionProvider mounted globally so Header (inside AppLayout) can access ConstructionContext */}
-            <ConstructionProvider>
+        {/* TODO Phase 3: Sync i18n.changeLanguage with appStore.language for VoiceInterface and PDF */}
+        <I18nextProvider i18n={i18n}>
+          <Router>
+            <ModuleSwitcherProvider>
+              {/* ConstructionProvider mounted globally so Header (inside AppLayout) can access ConstructionContext */}
+              <ConstructionProvider>
               <div className="min-h-screen bg-gray-50">
                 <AppLayout />
                 <IOSInstallPrompt />
@@ -181,6 +185,7 @@ function App() {
             </ConstructionProvider>
           </ModuleSwitcherProvider>
         </Router>
+        </I18nextProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

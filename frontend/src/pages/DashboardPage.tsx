@@ -669,11 +669,12 @@ const DashboardPage = () => {
                     }`}>
                       {isIncome || (isTransfer && !isDebit) ? '+' : ''}
                       <CurrencyDisplay
-                        amount={Math.abs(transaction.amount)}
-                        originalCurrency="MGA"
+                        amount={Math.abs(transaction.originalAmount ?? transaction.amount)}
+                        originalCurrency={transaction.originalCurrency || 'MGA'}
                         displayCurrency={displayCurrency}
                         showConversion={true}
                         size="sm"
+                        exchangeRateUsed={transaction.exchangeRateUsed}
                         className={isIncome || (isTransfer && !isDebit) ? 'text-green-600' : 'text-red-600'}
                       />
                     </div>

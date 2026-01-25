@@ -1,0 +1,206 @@
+{
+  "_comment": "BazarKELY English Translation File - Authentication section complete, others TODO",
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Sign in to your account",
+      "username": {
+        "label": "Username",
+        "placeholder": "Your username",
+        "required": "Username is required",
+        "minLength": "Username must contain at least 3 characters"
+      },
+      "password": {
+        "label": "Password",
+        "placeholder": "Your password",
+        "required": "Password is required",
+        "minLength": "Password must contain at least 6 characters",
+        "show": "Show password",
+        "hide": "Hide password"
+      },
+      "submit": "Sign In",
+      "loading": "Signing in...",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create account",
+      "error": "Sign in error",
+      "fillAllFields": "Please fill in all fields",
+      "googleSignIn": "Continue with Google",
+      "googleSignInLoading": "Signing in with Google...",
+      "googleSignInProcessing": "Processing your Google sign in..."
+    },
+    "register": {
+      "title": "Sign Up",
+      "subtitle": "Create your account to get started",
+      "username": {
+        "label": "Username",
+        "placeholder": "Your username",
+        "required": "Username is required",
+        "minLength": "Username must contain at least 3 characters"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "your@email.com",
+        "required": "Email is required",
+        "invalid": "Invalid email format"
+      },
+      "phone": {
+        "label": "Phone (optional)",
+        "placeholder": "+261 34 00 000 00",
+        "invalid": "Invalid phone format (e.g., +261 34 12 345 67)"
+      },
+      "password": {
+        "label": "Password",
+        "placeholder": "Your password",
+        "required": "Password is required",
+        "minLength": "Password must contain at least 6 characters",
+        "show": "Show password",
+        "hide": "Hide password"
+      },
+      "confirmPassword": {
+        "label": "Confirm Password",
+        "placeholder": "Confirm your password",
+        "required": "Password confirmation is required",
+        "mismatch": "Passwords do not match",
+        "show": "Show confirmation",
+        "hide": "Hide confirmation"
+      },
+      "submit": "Sign Up",
+      "loading": "Signing up...",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "error": "Sign up error",
+      "fillAllFields": "Please fill in all fields",
+      "passwordsMismatch": "Passwords do not match"
+    },
+    "passwordReset": {
+      "title": "Reset Password",
+      "subtitle": "Set a new password for your account",
+      "submit": "Reset Password",
+      "cancel": "Cancel",
+      "error": "Error resetting password",
+      "success": "Password reset successfully. You can now sign in.",
+      "fillAllFields": "Please fill in all fields",
+      "passwordsMismatch": "Passwords do not match",
+      "resetRequired": "Please reset your password"
+    },
+    "common": {
+      "appName": "BazarKELY",
+      "appTagline": "Family budget management - Madagascar",
+      "or": "or",
+      "terms": "By continuing, you agree to our terms of use",
+      "sessionError": "Session error",
+      "profileError": "Profile error",
+      "noSession": "No session established",
+      "oauthError": "OAuth processing error",
+      "unexpectedError": "Unexpected error. Please try again.",
+      "unexpectedGoogleError": "Unexpected error during Google sign in"
+    }
+  },
+  "common": {
+    "_comment": "TODO: Common UI elements will be translated in Phase 3",
+    "buttons": {
+      "save": "TODO: Save",
+      "cancel": "TODO: Cancel",
+      "delete": "TODO: Delete",
+      "edit": "TODO: Edit",
+      "create": "TODO: Create",
+      "update": "TODO: Update",
+      "close": "TODO: Close",
+      "confirm": "TODO: Confirm",
+      "back": "TODO: Back",
+      "next": "TODO: Next",
+      "previous": "TODO: Previous",
+      "submit": "TODO: Submit",
+      "loading": "TODO: Loading...",
+      "saving": "TODO: Saving...",
+      "deleting": "TODO: Deleting...",
+      "search": "TODO: Search",
+      "filter": "TODO: Filter",
+      "reset": "TODO: Reset",
+      "apply": "TODO: Apply"
+    },
+    "messages": {
+      "loading": "TODO: Loading...",
+      "saving": "TODO: Saving...",
+      "deleting": "TODO: Deleting...",
+      "success": "TODO: Operation successful",
+      "error": "TODO: An error occurred",
+      "noData": "TODO: No data available",
+      "noResults": "TODO: No results found",
+      "confirmDelete": "TODO: Are you sure you want to delete this item?",
+      "unsavedChanges": "TODO: You have unsaved changes"
+    },
+    "labels": {
+      "name": "TODO: Name",
+      "description": "TODO: Description",
+      "amount": "TODO: Amount",
+      "date": "TODO: Date",
+      "category": "TODO: Category",
+      "account": "TODO: Account",
+      "required": "TODO: Required",
+      "optional": "TODO: Optional",
+      "search": "TODO: Search",
+      "filter": "TODO: Filter",
+      "sort": "TODO: Sort",
+      "actions": "TODO: Actions"
+    },
+    "validation": {
+      "required": "TODO: This field is required",
+      "invalid": "TODO: Invalid format",
+      "minLength": "TODO: Must contain at least {min} characters",
+      "maxLength": "TODO: Must not exceed {max} characters",
+      "email": "TODO: Invalid email format",
+      "phone": "TODO: Invalid phone format",
+      "number": "TODO: Must be a number",
+      "positive": "TODO: Must be a positive number",
+      "date": "TODO: Invalid date",
+      "futureDate": "TODO: Date must be in the future"
+    }
+  },
+  "navigation": {
+    "_comment": "TODO: Navigation items will be translated in Phase 3",
+    "dashboard": "TODO: Dashboard",
+    "transactions": "TODO: Transactions",
+    "accounts": "TODO: Accounts",
+    "budgets": "TODO: Budgets",
+    "goals": "TODO: Goals",
+    "reports": "TODO: Reports",
+    "settings": "TODO: Settings",
+    "profile": "TODO: Profile",
+    "logout": "TODO: Logout"
+  },
+  "financial": {
+    "_comment": "TODO: Financial terms will be translated in Phase 4",
+    "income": "TODO: Income",
+    "expense": "TODO: Expense",
+    "transfer": "TODO: Transfer",
+    "balance": "TODO: Balance",
+    "budget": "TODO: Budget",
+    "category": "TODO: Category",
+    "account": "TODO: Account",
+    "transaction": "TODO: Transaction",
+    "currency": {
+      "mga": "TODO: Ariary",
+      "eur": "TODO: Euro",
+      "usd": "TODO: Dollar"
+    },
+    "amount": "TODO: Amount",
+    "total": "TODO: Total",
+    "remaining": "TODO: Remaining",
+    "spent": "TODO: Spent",
+    "saved": "TODO: Saved"
+  },
+  "errors": {
+    "_comment": "TODO: Error messages will be translated in Phase 5",
+    "generic": "TODO: An error occurred",
+    "network": "TODO: Network connection error",
+    "unauthorized": "TODO: Unauthorized",
+    "notFound": "TODO: Resource not found",
+    "serverError": "TODO: Server error",
+    "validation": "TODO: Validation error",
+    "saveFailed": "TODO: Save failed",
+    "deleteFailed": "TODO: Delete failed",
+    "loadFailed": "TODO: Load failed"
+  }
+}

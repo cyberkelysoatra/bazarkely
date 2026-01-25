@@ -1,0 +1,206 @@
+{
+  "_comment": "BazarKELY Malagasy Translation File - Authentication section complete, others TODO",
+  "auth": {
+    "login": {
+      "title": "Hiditra",
+      "subtitle": "Hiditra ao amin'ny kaontinao",
+      "username": {
+        "label": "Anaran'ny mpampiasa",
+        "placeholder": "Ny anaran'ny mpampiasanao",
+        "required": "Ilaina ny anaran'ny mpampiasa",
+        "minLength": "Tokony ho 3 litera farafahakeliny ny anaran'ny mpampiasa"
+      },
+      "password": {
+        "label": "Tenimiafina",
+        "placeholder": "Ny tenimiafinanao",
+        "required": "Ilaina ny tenimiafina",
+        "minLength": "Tokony ho 6 litera farafahakeliny ny tenimiafina",
+        "show": "Asehoy ny tenimiafina",
+        "hide": "Afeno ny tenimiafina"
+      },
+      "submit": "Hiditra",
+      "loading": "Eo am-pidirana...",
+      "forgotPassword": "Nadino ny tenimiafina?",
+      "noAccount": "Mbola tsy manana kaonty?",
+      "createAccount": "Mamorona kaonty",
+      "error": "Tsy nahomby ny fidirana",
+      "fillAllFields": "Mangataha ny fenoana ny saha rehetra",
+      "googleSignIn": "Hiditra amin'ny Google",
+      "googleSignInLoading": "Eo am-pidirana amin'ny Google...",
+      "googleSignInProcessing": "Eo am-pamakiana ny fidirana amin'ny Google..."
+    },
+    "register": {
+      "title": "Misoratra anarana",
+      "subtitle": "Mamorona kaonty hanombohana",
+      "username": {
+        "label": "Anaran'ny mpampiasa",
+        "placeholder": "Ny anaran'ny mpampiasanao",
+        "required": "Ilaina ny anaran'ny mpampiasa",
+        "minLength": "Tokony ho 3 litera farafahakeliny ny anaran'ny mpampiasa"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "ny@email.com",
+        "required": "Ilaina ny email",
+        "invalid": "Tsy mety ny endriky ny email"
+      },
+      "phone": {
+        "label": "Finday (tsy voatery)",
+        "placeholder": "+261 34 00 000 00",
+        "invalid": "Tsy mety ny endriky ny finday (ohatra: +261 34 12 345 67)"
+      },
+      "password": {
+        "label": "Tenimiafina",
+        "placeholder": "Ny tenimiafinanao",
+        "required": "Ilaina ny tenimiafina",
+        "minLength": "Tokony ho 6 litera farafahakeliny ny tenimiafina",
+        "show": "Asehoy ny tenimiafina",
+        "hide": "Afeno ny tenimiafina"
+      },
+      "confirmPassword": {
+        "label": "Hamafisina ny tenimiafina",
+        "placeholder": "Hamafisina ny tenimiafinanao",
+        "required": "Ilaina ny famafisana ny tenimiafina",
+        "mismatch": "Tsy mitovy ny tenimiafina",
+        "show": "Asehoy ny famafisana",
+        "hide": "Afeno ny famafisana"
+      },
+      "submit": "Misoratra anarana",
+      "loading": "Eo am-pisoratana anarana...",
+      "hasAccount": "Efa manana kaonty?",
+      "signIn": "Hiditra",
+      "error": "Tsy nahomby ny fisoratana anarana",
+      "fillAllFields": "Mangataha ny fenoana ny saha rehetra",
+      "passwordsMismatch": "Tsy mitovy ny tenimiafina"
+    },
+    "passwordReset": {
+      "title": "Averina ny tenimiafina",
+      "subtitle": "Mametraka tenimiafina vaovao ho an'ny kaontinao",
+      "submit": "Averina ny tenimiafina",
+      "cancel": "Avela",
+      "error": "Tsy nahomby ny famerenana ny tenimiafina",
+      "success": "Nahomby ny famerenana ny tenimiafina. Azonao atao izao ny hiditra.",
+      "fillAllFields": "Mangataha ny fenoana ny saha rehetra",
+      "passwordsMismatch": "Tsy mitovy ny tenimiafina",
+      "resetRequired": "Mangataha ny famerenana ny tenimiafinanao"
+    },
+    "common": {
+      "appName": "BazarKELY",
+      "appTagline": "Fitantanana tetibola fianakaviana - Madagasikara",
+      "or": "na",
+      "terms": "Amin'ny fanohyana, manaiky ny fepetranay ianao",
+      "sessionError": "Tsy mety ny fivoriana",
+      "profileError": "Tsy mety ny profil",
+      "noSession": "Tsy nisy fivoriana niforona",
+      "oauthError": "Tsy mety ny famakiana OAuth",
+      "unexpectedError": "Tsy nampoizina ny fahadisoana. Andramo indray.",
+      "unexpectedGoogleError": "Tsy nampoizina ny fahadisoana rehefa miditra amin'ny Google"
+    }
+  },
+  "common": {
+    "_comment": "TODO: Common UI elements will be translated in Phase 3",
+    "buttons": {
+      "save": "TODO: Tehirizina",
+      "cancel": "TODO: Avela",
+      "delete": "TODO: Fafana",
+      "edit": "TODO: Ovaina",
+      "create": "TODO: Amboarina",
+      "update": "TODO: Havaozina",
+      "close": "TODO: Akanina",
+      "confirm": "TODO: Manamafy",
+      "back": "TODO: Miverina",
+      "next": "TODO: Manaraka",
+      "previous": "TODO: Teo aloha",
+      "submit": "TODO: Alefa",
+      "loading": "TODO: Eo am-pamakiana...",
+      "saving": "TODO: Eo am-pitehirizana...",
+      "deleting": "TODO: Eo am-pamafana...",
+      "search": "TODO: Hitady",
+      "filter": "TODO: Sivana",
+      "reset": "TODO: Averina",
+      "apply": "TODO: Ampiharina"
+    },
+    "messages": {
+      "loading": "TODO: Eo am-pamakiana...",
+      "saving": "TODO: Eo am-pitehirizana...",
+      "deleting": "TODO: Eo am-pamafana...",
+      "success": "TODO: Nahomby ny asa",
+      "error": "TODO: Nisy fahadisoana",
+      "noData": "TODO: Tsy misy angona",
+      "noResults": "TODO: Tsy misy vokatra hita",
+      "confirmDelete": "TODO: Azo antoka ve fa te-hamafa ity zavatra ity ianao?",
+      "unsavedChanges": "TODO: Misy fanovana tsy voatahiry"
+    },
+    "labels": {
+      "name": "TODO: Anarana",
+      "description": "TODO: Famaritana",
+      "amount": "TODO: Vola",
+      "date": "TODO: Daty",
+      "category": "TODO: Sokajy",
+      "account": "TODO: Kaonty",
+      "required": "TODO: Ilaina",
+      "optional": "TODO: Tsy voatery",
+      "search": "TODO: Hitady",
+      "filter": "TODO: Sivana",
+      "sort": "TODO: Tarihina",
+      "actions": "TODO: Asa"
+    },
+    "validation": {
+      "required": "TODO: Ilaina ity saha ity",
+      "invalid": "TODO: Tsy mety ny endrika",
+      "minLength": "TODO: Tokony ho {min} litera farafahakeliny",
+      "maxLength": "TODO: Tsy tokony ho mihoatra ny {max} litera",
+      "email": "TODO: Tsy mety ny endriky ny email",
+      "phone": "TODO: Tsy mety ny endriky ny finday",
+      "number": "TODO: Tokony ho isa",
+      "positive": "TODO: Tokony ho isa tsara",
+      "date": "TODO: Tsy mety ny daty",
+      "futureDate": "TODO: Tokony ho amin'ny hoavy ny daty"
+    }
+  },
+  "navigation": {
+    "_comment": "TODO: Navigation items will be translated in Phase 3",
+    "dashboard": "TODO: Tabilao",
+    "transactions": "TODO: Fivarotana",
+    "accounts": "TODO: Kaonty",
+    "budgets": "TODO: Tetibola",
+    "goals": "TODO: Tanjona",
+    "reports": "TODO: Tatitra",
+    "settings": "TODO: Fikirana",
+    "profile": "TODO: Profil",
+    "logout": "TODO: Hidiana"
+  },
+  "financial": {
+    "_comment": "TODO: Financial terms will be translated in Phase 4",
+    "income": "TODO: Fidiram-bola",
+    "expense": "TODO: Fandaniana",
+    "transfer": "TODO: Fampindramam-bola",
+    "balance": "TODO: Sanda",
+    "budget": "TODO: Tetibola",
+    "category": "TODO: Sokajy",
+    "account": "TODO: Kaonty",
+    "transaction": "TODO: Fivarotana",
+    "currency": {
+      "mga": "TODO: Ariary",
+      "eur": "TODO: Euro",
+      "usd": "TODO: Dôlara"
+    },
+    "amount": "TODO: Vola",
+    "total": "TODO: Totaly",
+    "remaining": "TODO: Sisa",
+    "spent": "TODO: Lany",
+    "saved": "TODO: Voatahiry"
+  },
+  "errors": {
+    "_comment": "TODO: Error messages will be translated in Phase 5",
+    "generic": "TODO: Nisy fahadisoana",
+    "network": "TODO: Tsy mety ny fifandraisana",
+    "unauthorized": "TODO: Tsy nahazo alalana",
+    "notFound": "TODO: Tsy hita ny loharanom-baovao",
+    "serverError": "TODO: Tsy mety ny mpizara",
+    "validation": "TODO: Tsy mety ny fanamarinana",
+    "saveFailed": "TODO: Tsy nahomby ny fitahirizana",
+    "deleteFailed": "TODO: Tsy nahomby ny famafana",
+    "loadFailed": "TODO: Tsy nahomby ny famakiana"
+  }
+}
