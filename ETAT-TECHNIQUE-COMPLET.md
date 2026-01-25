@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.4.8 (CurrencyDisplay HTML Nesting Fix - Session S40)  
-**Date de mise à jour:** 2026-01-21  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix
+**Version:** 2.4.10 (i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display - Session S41)  
+**Date de mise à jour:** 2026-01-25  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41)
 
 ---
 
@@ -3251,6 +3251,66 @@ import type { PurchaseOrder, PurchaseOrderStatus, OrgUnit } from '../types/const
 - ✅ Simulation rôle admin fonctionnelle
 - ✅ Aucune régression détectée
 - ✅ Aucune erreur TypeScript
+
+### **21. Système i18n Multi-Langues (Session S41 - 2026-01-25)** ✅ COMPLET
+
+#### **21.1 Infrastructure i18n** ✅ IMPLÉMENTÉE
+- **Bibliothèque:** react-i18next avec i18next-browser-languagedetector
+- **Configuration:** `frontend/src/i18n.ts` (166 lignes)
+- **Langues supportées:** Français (fr), Anglais (en), Malgache (mg)
+- **Détection automatique:** Ordre de priorité (1) localStorage appStore, (2) navigator language, (3) défaut français
+- **Intégration appStore:** Synchronisation avec `appStore.language` pour VoiceInterface et PDF generation
+- **Configuration i18next:**
+  - Namespace: `translation` (default)
+  - Interpolation: `escapeValue: false` (React escape déjà)
+  - React: `useSuspense: false` (meilleure gestion erreurs)
+  - Debug: `true` (développement)
+  - Language code normalization: `load: 'languageOnly'` (fr au lieu de fr-FR)
+
+#### **21.2 Fichiers de Traduction** ✅ IMPLÉMENTÉS
+- **fr.json:** `frontend/src/locales/fr.json` - Traductions françaises complètes
+- **en.json:** `frontend/src/locales/en.json` - Traductions anglaises complètes
+- **mg.json:** `frontend/src/locales/mg.json` - Traductions malgaches complètes
+- **Structure:** Organisation par sections (auth, dashboard, transactions, etc.)
+- **Couverture:** Sections authentification, dashboard, transactions, budgets, paramètres
+
+#### **21.3 Protection Traduction Automatique** ✅ IMPLÉMENTÉE
+- **Fichier:** `frontend/src/utils/excludeFromTranslation.tsx` (258 lignes)
+- **Composant NoTranslate:** Protection multi-couches contre traduction navigateur
+  - `translate="no"` (W3C standard)
+  - `className="notranslate"` (Google Translate)
+  - `lang="fr"` (language hint)
+  - `data-no-translate="true"` (couche supplémentaire)
+- **Utilitaires:**
+  - `protectAmount()` - Protection montants financiers
+  - `protectCurrency()` - Protection codes devises (MGA, EUR, USD)
+  - `protectUserName()` - Protection noms utilisateurs
+  - `getNoTranslateAttrs()` - Attributs HTML pour protection
+  - `getNoTranslateClass()` - Classe CSS pour protection
+  - `withNoTranslate()` - HOC pour protection composants entiers
+- **Type guards:** `isAmount()`, `isCurrencyCode()`, `isUserName()`
+
+#### **21.4 Intégration Composants** ✅ IMPLÉMENTÉE
+- **CurrencyDisplay:** Protection active via `excludeFromTranslation` pour montants et devises
+- **DashboardPage:** Fix bug affichage EUR (lignes 672-677)
+  - Utilisation `transaction.originalAmount` au lieu de `transaction.amount`
+  - Passage `transaction.originalCurrency` au lieu de hardcodé "MGA"
+  - Passage `transaction.exchangeRateUsed` pour conversion historique correcte
+- **HTML Meta Tags:** `frontend/index.html` avec `lang="fr" translate="no"` et `<meta name="google" content="notranslate" />`
+- **Netlify Headers:** `frontend/public/_headers` avec `Content-Language: fr` et `X-Content-Type-Options: nosniff`
+
+#### **21.5 Fix Dashboard EUR Display Bug** ✅ RÉSOLU
+- **Problème:** Transaction EUR affichée incorrectement (0,20 EUR au lieu de 1000,00 EUR) dans DashboardPage
+- **Cause:** `CurrencyDisplay` utilisé avec `originalCurrency="MGA"` hardcodé et sans `exchangeRateUsed`
+- **Solution:** Utilisation correcte des propriétés multi-devises (`originalAmount`, `originalCurrency`, `exchangeRateUsed`)
+- **Fichier modifié:** `frontend/src/pages/DashboardPage.tsx` (lignes 672-677)
+- **Statut:** ✅ Résolu et aligné avec TransactionsPage.tsx
+
+#### **21.6 Métriques**
+- **Fichiers créés:** 4 (i18n.ts, excludeFromTranslation.tsx, fr.json, en.json, mg.json)
+- **Lignes de code:** ~600 lignes (i18n config + utilitaires + traductions)
+- **Composants protégés:** CurrencyDisplay avec protection active
+- **Bugs résolus:** 1 (Dashboard EUR display)
 
 ---
 

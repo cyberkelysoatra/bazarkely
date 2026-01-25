@@ -322,6 +322,15 @@ interface RecurringTransaction {
 - **Scripts d'automation** : `setup-multiagent-test.ps1` et `cleanup-worktrees.ps1`
 - **Documentation** : `MULTI-AGENT-WORKFLOWS.md` et `CURSOR-2.0-CONFIG.md`
 
+**Système i18n Multi-Langues (Session S41 - 2026-01-25) :**
+- **Bibliothèque** : react-i18next avec i18next-browser-languagedetector
+- **Langues supportées** : Français (fr), Anglais (en), Malgache (mg)
+- **Configuration** : `frontend/src/i18n.ts` avec détection automatique de langue
+- **Fichiers de traduction** : `frontend/src/locales/fr.json`, `en.json`, `mg.json`
+- **Protection traduction** : `frontend/src/utils/excludeFromTranslation.tsx` avec composant `NoTranslate`
+- **Intégration** : Synchronisation avec appStore language state pour VoiceInterface et PDF generation
+- **Détection langue** : Ordre de priorité (1) localStorage appStore, (2) navigator language, (3) défaut français
+
 ```
 📁 bazarkely/
 ├── 📁 frontend/          # React PWA (Vite + TypeScript)
@@ -976,4 +985,4 @@ frontend/src/modules/construction-poc/
 
 ---
 
-*Dernière mise à jour : 18 janvier 2026 (EUR Transfer Bug Fix & Multi-Currency Accounts - Session S38 - v2.4.6)*
+*Dernière mise à jour : 25 janvier 2026 (Session S41 - Système i18n Multi-Langues FR/EN/MG + Protection Traduction + Fix Dashboard EUR Display - v2.4.10)*

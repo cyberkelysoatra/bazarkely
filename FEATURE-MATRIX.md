@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.14 (CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-01-21  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components
+**Version:** 3.15 (i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-01-25  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix
 
 ---
 
@@ -36,6 +36,9 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Module Construction POC:** 100% (66/66) - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (2025-11-12) + Editable BC Number System (2025-11-29/30)
 - **Multi-Currency Support:** 100% (3/3) ✅ - Session S38 2026-01-18 (Multi-Currency Accounts + Multi-Currency Transactions + EUR Transfer Bug Fix)
 - **CurrencyDisplay HTML Nesting Fix:** 100% (1/1) ✅ - Session S40 2026-01-21 (Wrapper div→span, 30 instances validées, 0 régression)
+- **i18n Infrastructure Phase 1/3:** 100% (1/1) ✅ - Session S41 2026-01-25 (react-i18next + 3 languages FR/EN/MG + 85+ translation keys auth section)
+- **Translation Protection:** 100% (1/1) ✅ - Session S41 2026-01-25 (excludeFromTranslation.tsx utility + CurrencyDisplay protected + 44+ files)
+- **Dashboard EUR Display Bug Fix:** 100% (1/1) ✅ - Session S41 2026-01-25 (Fixed hardcoded originalCurrency="MGA" → transaction.originalCurrency, 100 EUR displayed correctly)
 
 ### **📈 Répartition par Statut**
 - **✅ Implémenté:** 100% (210/210)
@@ -84,7 +87,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 | Composant | Statut | Implémentation | Tests | Documentation | Notes |
 |-----------|--------|----------------|-------|---------------|-------|
-| **DashboardPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Page d'accueil avec statistiques et navigation |
+| **DashboardPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Page d'accueil avec statistiques et navigation + Bug fix affichage EUR (hardcoded originalCurrency="MGA" corrigé → transaction.originalCurrency) (Session S41 2026-01-25) |
 | **TransactionsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion transactions + Filtrage catégorie corrigé + Loading spinner + CSV Export [31/10/2025] |
 | **TransactionDetailPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Détail transaction + Navigation intelligente préservant filtres [31/10/2025] |
 | **AccountsPage.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Gestion des comptes avec layout 2 colonnes |
@@ -290,9 +293,45 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Multi-Currency Transactions** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Stockage originalCurrency, originalAmount, exchangeRateUsed (Session S38 2026-01-18) |
 | **EUR Transfer Bug Fix** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction conversion automatique EUR→EUR, migration Supabase multi-currency columns (Session S38 2026-01-18) |
 | **CurrencyDisplay HTML Nesting Fix** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction wrapper div→span pour HTML valide, toggle devise fonctionnel partout (Session S40 2026-01-21) |
-| **Interface Bilingue** | ⚠️ Partiel | 70% | ✅ Testé | ✅ Documenté | Français complet, Malgache partiel |
+| **Interface Bilingue** | ⚠️ Partiel | 33% | ✅ Testé | ✅ Documenté | Infrastructure i18n Phase 1/3 complétée (react-i18next + 3 langues + 85+ clés auth), traduction composants en attente (Session S41 2026-01-25) |
 
 **Total Madagascar:** 4.7/5 implémentés (94%)
+
+---
+
+## 🌐 INTERNATIONALISATION (i18n) ET PROTECTION TRADUCTION (Session S41 2026-01-25)
+
+### **Infrastructure i18n Phase 1/3**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **react-i18next Library** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Bibliothèque i18n installée et configurée (Session S41 2026-01-25) |
+| **Configuration i18n** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Configuration complète avec détection langue et fallback (Session S41 2026-01-25) |
+| **Fichiers de traduction FR** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | 85+ clés de traduction pour section authentification (Session S41 2026-01-25) |
+| **Fichiers de traduction EN** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Traductions anglaises complètes pour section auth (Session S41 2026-01-25) |
+| **Fichiers de traduction MG** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Traductions malgaches complètes pour section auth (Session S41 2026-01-25) |
+| **Provider i18n** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | I18nextProvider intégré dans App.tsx (Session S41 2026-01-25) |
+
+**Total Infrastructure i18n Phase 1/3:** 6/6 implémentés (100%)  
+**Phase 2/3 (Traduction Composants):** ⏳ EN ATTENTE  
+**Phase 3/3 (Traduction Pages):** ⏳ EN ATTENTE
+
+### **Protection Traduction**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **excludeFromTranslation Utility** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Utilitaire excludeFromTranslation.tsx pour protection éléments (Session S41 2026-01-25) |
+| **CurrencyDisplay Protection** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | CurrencyDisplay protégé avec translate="no" + lang="fr" + className="notranslate" (Session S41 2026-01-25) |
+| **AddTransactionPage Protection** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Form + button + span protégés contre traduction navigateur (Session S41 2026-01-25) |
+| **Fichiers Protégés** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | 44+ fichiers protégés contre traduction automatique navigateur (Session S41 2026-01-25) |
+
+**Total Protection Traduction:** 4/4 implémentés (100%)
+
+### **Corrections de Bugs**
+| Bug | Statut | Implémentation | Tests | Documentation | Notes |
+|-----|--------|----------------|-------|---------------|-------|
+| **Dashboard EUR Display Bug** | ✅ RÉSOLU | 100% | ✅ Testé | ✅ Documenté | Correction hardcoded originalCurrency="MGA" → transaction.originalCurrency || 'MGA', ajout exchangeRateUsed prop (Session S41 2026-01-25) |
+| **Transaction Amount Source** | ✅ RÉSOLU | 100% | ✅ Testé | ✅ Documenté | Utilisation transaction.originalAmount ?? transaction.amount au lieu de transaction.amount uniquement (Session S41 2026-01-25) |
+
+**Total Corrections Bugs:** 2/2 résolues (100%)
 
 ---
 

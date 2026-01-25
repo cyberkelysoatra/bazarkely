@@ -1,10 +1,10 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.3 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-01-07  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories
+**Version:** 3.4 (i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-01-25  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix
 
 ---
 
@@ -29,7 +29,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 ### 3. **Fonctionnalités Madagascar** ✅ COMPLET
 - **Gestion Mobile Money** (Orange Money, Mvola, Airtel Money) ✅ IMPLÉMENTÉ
 - **Calcul automatique des frais** de transfert et retrait ✅ IMPLÉMENTÉ
-- **Interface en français et malgache** ⚠️ PARTIELLEMENT IMPLÉMENTÉ (70%)
+- **Interface en français et malgache** ⚠️ PARTIELLEMENT IMPLÉMENTÉ (33% - Infrastructure i18n Phase 1/3 complétée: react-i18next + 3 langues FR/EN/MG + 85+ clés traduction auth section, traduction composants en attente Phase 2/3) (Session S41 2026-01-25)
 - **Adaptation aux revenus locaux** (MGA) ✅ IMPLÉMENTÉ
 
 ### 4. **Expérience Utilisateur** ✅ COMPLET (100%)
@@ -101,10 +101,29 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 ### **5. Fonctionnalités Madagascar** ✅ COMPLET
 - **Calcul des frais Mobile Money** en temps réel
 - **Taux de change** MGA (si applicable)
-- **Interface bilingue** (Français/Malgache) ⚠️ PARTIELLEMENT IMPLÉMENTÉ
+- **Interface bilingue** (Français/Malgache) ⚠️ PARTIELLEMENT IMPLÉMENTÉ (33% - Infrastructure i18n Phase 1/3 complétée, traduction composants en attente Phase 2/3) (Session S41 2026-01-25)
+- **Protection traduction navigateur** ✅ IMPLÉMENTÉ (100% - excludeFromTranslation.tsx utility + CurrencyDisplay protégé + 44+ fichiers protégés) (Session S41 2026-01-25)
 - **Adaptation culturelle** (fêtes, événements locaux)
 
-### **6. Interface d'Administration Enrichie** ✅ COMPLET (100%)
+### **6. Infrastructure Internationalisation (i18n) Phase 1/3** ✅ COMPLET (100%) (Session S41 2026-01-25)
+- **Bibliothèque react-i18next** ✅ IMPLÉMENTÉ (100% - Installation et configuration complète)
+- **Configuration i18n** ✅ IMPLÉMENTÉ (100% - Détection langue, fallback, provider intégré)
+- **Fichiers de traduction** ✅ IMPLÉMENTÉ (100% - 3 langues FR/EN/MG avec 85+ clés traduction section authentification)
+- **Provider i18n** ✅ IMPLÉMENTÉ (100% - I18nextProvider intégré dans App.tsx)
+- **Phase 2/3 (Traduction Composants):** ⏳ EN ATTENTE
+- **Phase 3/3 (Traduction Pages):** ⏳ EN ATTENTE
+
+### **7. Protection Traduction Navigateur** ✅ COMPLET (100%) (Session S41 2026-01-25)
+- **Utilitaire excludeFromTranslation** ✅ IMPLÉMENTÉ (100% - excludeFromTranslation.tsx pour protection éléments)
+- **Protection CurrencyDisplay** ✅ IMPLÉMENTÉ (100% - translate="no" + lang="fr" + className="notranslate")
+- **Protection AddTransactionPage** ✅ IMPLÉMENTÉ (100% - Form + button + span protégés)
+- **Fichiers protégés** ✅ IMPLÉMENTÉ (100% - 44+ fichiers protégés contre traduction automatique navigateur)
+
+### **8. Corrections de Bugs Dashboard** ✅ COMPLET (100%) (Session S41 2026-01-25)
+- **Dashboard EUR Display Bug** ✅ RÉSOLU (100% - Correction hardcoded originalCurrency="MGA" → transaction.originalCurrency || 'MGA', ajout exchangeRateUsed prop)
+- **Transaction Amount Source** ✅ RÉSOLU (100% - Utilisation transaction.originalAmount ?? transaction.amount)
+
+### **9. Interface d'Administration Enrichie** ✅ COMPLET (100%)
 
 #### **Identification Utilisateur dans le Header** 👤
 - **Affichage "Compte actif"** dans le menu dropdown du header
@@ -135,7 +154,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Requêtes optimisées** avec requêtes parallèles pour les performances
 - **Gestion des données manquantes** avec fallbacks appropriés
 
-### **7. Navigation Intelligente Budgets → Transactions** ✅ COMPLET (100%)
+### **10. Navigation Intelligente Budgets → Transactions** ✅ COMPLET (100%)
 
 #### **Cartes Budget Cliquables** 🖱️
 - **Cartes budget interactives** avec curseur pointer pour indiquer la cliquabilité
@@ -162,7 +181,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Statut:** Bug identifié, priorité HAUTE pour correction
 - **Workaround temporaire:** Utiliser les filtres manuels sur la page des transactions
 
-### **8. Système de Notifications Push** ✅ COMPLET (100%)
+### **11. Système de Notifications Push** ✅ COMPLET (100%)
 
 #### **Types de Notifications** 🔔
 - ✅ **Alertes de Budget** - Seuils 80%, 100%, 120% du budget mensuel
@@ -578,6 +597,9 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ Système Certification (75%) - 250 questions + 5 niveaux + quiz interactif (Session 2025-10-16)
 - ✅ Interface Admin Enrichie (100%) - Identification utilisateur + accordéon + données financières (Session 2025-01-20)
 - ✅ Navigation Intelligente (100%) - Cartes budget cliquables + filtrage catégorie (Session 2025-01-20)
+- ✅ Infrastructure i18n Phase 1/3 (100%) - react-i18next + 3 langues FR/EN/MG + 85+ clés auth (Session S41 2026-01-25)
+- ✅ Protection Traduction Navigateur (100%) - excludeFromTranslation utility + CurrencyDisplay protégé + 44+ fichiers (Session S41 2026-01-25)
+- ✅ Dashboard EUR Bug Fix (100%) - Correction hardcoded originalCurrency="MGA" → transaction.originalCurrency (Session S41 2026-01-25)
 - ⚠️ Sécurité des données (60%)
 - ✅ Fonctionnalités Madagascar
 
@@ -593,7 +615,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 
 **⚠️ Amélioration Pending:** PROMPT 18 - Responsive Button Sizing (non appliqué lors de la session 2025-01-11)
 
-**🎯 BazarKELY est une application PWA fonctionnelle avec installation native opérationnelle, système de notifications push complet, interface UI ultra-optimisée, système de recommandations IA avec gamification, système de certification financière complet, interface admin enrichie avec données utilisateur détaillées, navigation intelligente entre budgets et transactions, et prête pour la production !**
+**🎯 BazarKELY est une application PWA fonctionnelle avec installation native opérationnelle, système de notifications push complet, interface UI ultra-optimisée, système de recommandations IA avec gamification, système de certification financière complet, interface admin enrichie avec données utilisateur détaillées, navigation intelligente entre budgets et transactions, infrastructure i18n Phase 1/3 complétée (react-i18next + 3 langues), protection traduction navigateur (44+ fichiers protégés), correction bug affichage EUR Dashboard, et prête pour la production !**
 
 **📋 Voir [RESUME-SESSION-2025-10-12.md](./RESUME-SESSION-2025-10-12.md) pour détails complets de l'implémentation du système de recommandations et de gamification.**
 

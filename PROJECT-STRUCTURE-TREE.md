@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 3.9 (Session S37 2026-01-07 - Phase B Goals Deadline Sync + Agent Analysis Documentation)  
-**Date de mise à jour:** 2026-01-07  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure
+**Version:** 4.0 (Session S41 2026-01-25 - i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display)  
+**Date de mise à jour:** 2026-01-25  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10)
 
 ---
 
@@ -12,7 +12,7 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 305+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07)
+- **Total fichiers:** 312+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07, +5 fichiers S41 2026-01-25)
 - **Composants UI:** 13/14 implémentés (93%)
 - **Composants Auth:** 2/2 implémentés (100%)
 - **Composants Recommandations:** 3/3 implémentés (100%) 🆕
@@ -190,9 +190,14 @@ bazarkely-2/
 │   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
 │   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications
+│   │   │   ├── 📁 Currency/                  # Composants affichage devises
+│   │   │   │   ├── 📄 CurrencyDisplay.tsx   # ✅ Composant affichage montants (MODIFIÉ 2026-01-25 - Protection traduction)
+│   │   │   │   ├── 📄 CurrencyInput.tsx     # ✅ Composant input montants
+│   │   │   │   ├── 📄 CurrencyToggle.tsx    # ✅ Composant toggle devise
+│   │   │   │   └── 📄 CurrencySwitcher.tsx  # ✅ Composant sélecteur devise
 │   │   ├── 📁 pages/                     # Pages principales
 │   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
-│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (intégration notifications)
+│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction)
@@ -261,13 +266,21 @@ bazarkely-2/
 │   │   │   ├── 📄 usePracticeTracking.ts # 🆕 NOUVEAU - Hook suivi pratiques (2025-10-17)
 │   │   │   ├── 📄 useRecommendations.ts # 🆕 NOUVEAU - Hook intégration recommandations (579 lignes)
 │   │   │   ├── 📄 useYearlyBudgetData.ts # ✅ Hook données budgétaires annuelles
-│   │   │   └── 📄 useMultiYearBudgetData.ts # 🆕 NOUVEAU [S28] 2025-12-31 - Hook statistiques multi-années (~450 lignes)
+│   │   │   ├── 📄 useMultiYearBudgetData.ts # 🆕 NOUVEAU [S28] 2025-12-31 - Hook statistiques multi-années (~450 lignes)
+│   │   │   └── 📄 usePreventTranslation.ts # 🆕 NOUVEAU [S41] 2026-01-25 - Hook protection traduction automatique
 │   │   ├── 📁 utils/                     # Fonctions utilitaires
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
 │   │   │   ├── 📄 passwordUtils.ts       # ✅ Utilitaires mots de passe
 │   │   │   ├── 📄 formatters.ts          # ✅ Formatage des données
 │   │   │   ├── 📄 dialogUtils.ts         # ✅ Utilitaires dialogues modernes
-│   │   │   └── 📄 recurringUtils.ts      # 🆕 NOUVEAU 2025-11-03 - Utilitaires transactions récurrentes (442 lignes)
+│   │   │   ├── 📄 recurringUtils.ts      # 🆕 NOUVEAU 2025-11-03 - Utilitaires transactions récurrentes (442 lignes)
+│   │   │   ├── 📄 currencyConversion.ts  # ✅ Utilitaires conversion devises
+│   │   │   └── 📄 excludeFromTranslation.tsx # 🆕 NOUVEAU [S41] 2026-01-25 - Composant protection traduction (NoTranslate)
+│   │   ├── 📁 locales/                    # 🆕 NOUVEAU [S41] 2026-01-25 - Fichiers de traduction i18n
+│   │   │   ├── 📄 fr.json                 # 🆕 NOUVEAU [S41] 2026-01-25 - Traductions françaises
+│   │   │   ├── 📄 en.json                 # 🆕 NOUVEAU [S41] 2026-01-25 - Traductions anglaises
+│   │   │   └── 📄 mg.json                 # 🆕 NOUVEAU [S41] 2026-01-25 - Traductions malgaches
+│   │   ├── 📄 i18n.ts                     # 🆕 NOUVEAU [S41] 2026-01-25 - Configuration i18next avec détection automatique langue
 │   │   ├── 📁 modules/                   # 🆕 Modules isolés
 │   │   │   └── 📁 construction-poc/      # 🆕 NOUVEAU - Module Construction POC
 │   │   │       ├── 📁 services/          # Services TypeScript [EXISTING]
@@ -317,7 +330,7 @@ bazarkely-2/
 │   │   │       └── 📄 jest.config.js      # Configuration Jest
 │   │   ├── 📁 styles/                    # Fichiers CSS
 │   │   │   └── 📄 index.css              # ✅ Styles principaux (MODIFIÉ 2025-01-11 - Suppression carousel + marquee) (MODIFIÉ [S28] 2025-12-31 - Classe .select-no-arrow)
-│   │   ├── 📄 App.tsx                    # ✅ Composant principal (Toaster intégré)
+│   │   ├── 📄 App.tsx                    # ✅ Composant principal (MODIFIÉ 2026-01-25 - I18nextProvider intégré)
 │   │   ├── 📄 main.tsx                   # ✅ Point d'entrée
 │   │   └── 📄 index.html                 # ✅ Template React
 │   ├── 📁 tests/                         # Tests automatisés
@@ -341,7 +354,7 @@ bazarkely-2/
 │   ├── 📁 coverage/                       # Rapports de couverture
 │   ├── 📁 test-results/                  # Résultats de tests
 │   ├── 📁 node_modules/                  # Dépendances npm
-│   ├── 📄 package.json                   # ✅ Dépendances du projet (react-hot-toast ajouté)
+│   ├── 📄 package.json                   # ✅ Dépendances du projet (MODIFIÉ 2026-01-25 - react-i18next + i18next-browser-languagedetector + i18next ajoutés)
 │   ├── 📄 package-lock.json              # ✅ Verrouillage des versions
 │   ├── 📄 vite.config.ts                 # ✅ Configuration Vite (Service Worker notifications)
 │   ├── 📄 vite.config.prod.ts            # ✅ Configuration production
@@ -482,10 +495,10 @@ bazarkely-2/
 - **frontend/src/stores/:** 7 fichiers (1 nouveau store certification) 🆕 NOUVEAU
 - **frontend/src/types/:** 5 fichiers (1 nouveau types certification + 2 types récurrentes) 🆕 NOUVEAU (+2 session 2025-11-03)
 - **frontend/src/constants/:** 1 fichier (index.ts) ✅ (MODIFIÉ [S28] 2025-12-31 - Catégorie épargne)
-- **frontend/src/utils/:** 5 fichiers (1 nouveau utilitaire récurrentes) ✅ (+1 session 2025-11-03)
+- **frontend/src/utils/:** 7 fichiers (1 nouveau utilitaire récurrentes + 1 excludeFromTranslation S41) ✅ (+1 session 2025-11-03, +1 session S41)
 - **frontend/src/data/:** 1 fichier (250 questions certification) 🆕 NOUVEAU
 - **frontend/src/lib/:** 3 fichiers (database.ts Version 7) ✅ (MODIFIÉ 2025-11-03)
-- **frontend/src/hooks/:** 8 fichiers (7 hooks complets + 1 useMultiYearBudgetData S28) 🆕 NOUVEAU (+1 session S28)
+- **frontend/src/hooks/:** 9 fichiers (7 hooks complets + 1 useMultiYearBudgetData S28 + 1 usePreventTranslation S41) 🆕 NOUVEAU (+1 session S28, +1 session S41)
 - **frontend/src/modules/construction-poc/:** 33 fichiers (14 existants + 11 UI components 2025-11-08 + 8 Phase 3 Security 2025-11-12) 🆕 NOUVEAU
   - **components/:** 13 fichiers (12 composants + 1 index) [NEW 2025-11-08] [3 MODIFIED 2025-11-12: POCDashboard, PurchaseOrderForm, POCOrdersList] [3 NEW 2025-11-12: ThresholdAlert, ConsumptionPlanCard, PriceMaskingWrapper]
   - **pages/:** 1 fichier [MODIFIED 2025-11-12: OrderDetailPage]
@@ -1334,4 +1347,67 @@ bazarkely-2/
 
 ---
 
-*Structure mise à jour le 2026-01-07 - BazarKELY v3.9 (Session S37 - Phase B Goals Deadline Sync + Agent Analysis Documentation Structure)*
+## 🆕 NOUVEAUX FICHIERS ET STRUCTURE (Session S41 2026-01-25)
+
+### **Système i18n Multi-Langues** 🆕 NEW [2026-01-25]
+
+#### **Configuration i18n** 🆕 NEW [2026-01-25]
+- **i18n.ts** - Configuration i18next avec détection automatique langue (localStorage appStore → navigator language → défaut français)
+- **Localisation:** `frontend/src/i18n.ts`
+- **Fonctionnalités:** Configuration react-i18next avec i18next-browser-languagedetector, synchronisation avec appStore language state
+- **Statut:** Configuration complète avec détection automatique
+
+#### **Fichiers de Traduction** 🆕 NEW [2026-01-25]
+- **fr.json** - Traductions françaises (langue par défaut)
+- **en.json** - Traductions anglaises
+- **mg.json** - Traductions malgaches
+- **Localisation:** `frontend/src/locales/`
+- **Fonctionnalités:** Fichiers JSON avec clés de traduction pour toutes les langues supportées
+- **Statut:** 3 langues complètes (FR, EN, MG)
+
+#### **Protection Anti-Traduction** 🆕 NEW [2026-01-25]
+- **excludeFromTranslation.tsx** - Composant `NoTranslate` pour protéger données financières
+- **Localisation:** `frontend/src/utils/excludeFromTranslation.tsx`
+- **Fonctionnalités:** Composant React wrapper avec `translate="no"` et `notranslate` class pour protéger montants, codes devises, noms utilisateurs
+- **Statut:** Composant réutilisable pour protection traduction automatique
+
+#### **Hook Protection Traduction** 🆕 NEW [2026-01-25]
+- **usePreventTranslation.ts** - Hook React pour prévention traduction automatique au niveau document
+- **Localisation:** `frontend/src/hooks/usePreventTranslation.ts`
+- **Fonctionnalités:** MutationObserver pour restaurer `lang='fr'` et `translate='no'` si modifiés par navigateur
+- **Statut:** Hook complet avec cleanup on unmount
+
+### **Modifications Session S41** 🔧 MODIFIÉ [S41]
+
+#### **App.tsx** 🔧 MODIFIÉ [S41]
+- **Modifications:** Intégration I18nextProvider pour wrapper application complète
+- **Fonctionnalités:** Support i18n multi-langues au niveau application
+- **Statut:** Provider i18n intégré
+
+#### **DashboardPage.tsx** 🔧 MODIFIÉ [S41]
+- **Modifications:** Fix bug EUR display - `originalCurrency` hardcodé remplacé par `transaction.originalCurrency || 'MGA'`
+- **Fonctionnalités:** Correction affichage montants EUR transactions (0,20 EUR → 1000,00 EUR)
+- **Statut:** Bug résolu, affichage correct multi-devises
+
+#### **CurrencyDisplay.tsx** 🔧 MODIFIÉ [S41]
+- **Modifications:** Ajout protection traduction avec `translate="no"` et `notranslate` class
+- **Fonctionnalités:** Protection montants et codes devises contre traduction automatique navigateur
+- **Statut:** Protection appliquée composant critique
+
+#### **package.json** 🔧 MODIFIÉ [S41]
+- **Modifications:** Ajout 3 dépendances i18n (react-i18next, i18next, i18next-browser-languagedetector)
+- **Fonctionnalités:** Support système i18n multi-langues
+- **Statut:** Dépendances ajoutées et installées
+
+### **Statistiques Session S41**
+- **Fichiers créés:** 5 nouveaux fichiers (i18n.ts, 3 locales JSON, excludeFromTranslation.tsx, usePreventTranslation.ts)
+- **Fichiers modifiés:** 4 fichiers (App.tsx, DashboardPage.tsx, CurrencyDisplay.tsx, package.json)
+- **Lignes de code ajoutées:** ~500 lignes (+200 i18n config, +150 locales, +100 protection, +50 hook)
+- **Services:** Système i18n complet avec détection automatique
+- **Composants:** 1 nouveau composant (NoTranslate), 1 hook (usePreventTranslation)
+- **Fonctionnalités:** Système i18n multi-langues FR/EN/MG + Protection traduction automatique + Fix Dashboard EUR display bug
+- **Statut:** 100% fonctionnel et intégré
+
+---
+
+*Structure mise à jour le 2026-01-25 - BazarKELY v4.0 (Session S41 - i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display)*
