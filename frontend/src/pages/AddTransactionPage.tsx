@@ -441,7 +441,7 @@ const AddTransactionPage = () => {
 
       {/* Formulaire */}
       <div className="p-4">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" translate="no">
           {/* Message d'erreur */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -659,6 +659,8 @@ const AddTransactionPage = () => {
             <button
               type="submit"
               disabled={isLoading}
+              translate="no"
+              lang="fr"
               className={`flex-1 px-6 py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isIncome 
                   ? 'bg-green-600 hover:bg-green-700' 
@@ -666,7 +668,7 @@ const AddTransactionPage = () => {
               }`}
             >
               <Save className="w-5 h-5" />
-              <span>
+              <span translate="no" lang="fr" className="notranslate">
                 {isLoading 
                   ? 'Enregistrement...' 
                   : isRecurring 

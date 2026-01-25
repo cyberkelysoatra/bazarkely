@@ -4,6 +4,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 // Build test - force new hash generation
 import { useAppStore, useSyncStore, useErrorStore } from './stores/appStore';
+import { usePreventTranslation } from './hooks/usePreventTranslation';
 import feeService from './services/feeService';
 import apiService from './services/apiService';
 import dialogService from './services/dialogService';
@@ -32,6 +33,9 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Prevent automatic translation across entire application
+  usePreventTranslation();
+  
   const { setUser, setAuthenticated } = useAppStore();
   const { setOnline } = useSyncStore();
   const { error, clearError } = useErrorStore();
