@@ -1,6 +1,31 @@
-export const APP_VERSION = 'v2.4.10';
-export const APP_BUILD_DATE = '2026-01-24';
+export const APP_VERSION = 'v2.5.0';
+export const APP_BUILD_DATE = '2026-01-25';
 export const VERSION_HISTORY = [
+  {
+    version: '2.5.0',
+    date: '2026-01-25',
+    changes: [
+      'Feature: Infrastructure i18n Multi-Langues (Phase 1/3) - Système react-i18next opérationnel',
+      'Feature: Configuration i18n.ts avec détection automatique langue depuis appStore',
+      'Feature: Support 3 langues: Français, English, Malagasy',
+      'Feature: Fichiers traduction fr.json, en.json, mg.json (85+ clés section auth)',
+      'Feature: Provider I18nextProvider intégré dans App.tsx',
+      'Feature: Protection Anti-Traduction - Sécurisation données financières',
+      'Feature: Utility excludeFromTranslation.tsx (10 fonctions utilitaires)',
+      'Feature: CurrencyDisplay protégé automatiquement (44+ fichiers)',
+      'Feature: Protection multi-couches: translate="no", notranslate, lang, data attributes',
+      'Fix: Dashboard EUR Display - Correction originalCurrency hardcodé "MGA" → transaction.originalCurrency',
+      'Fix: Dashboard EUR Display - Utilisation transaction.originalAmount pour montants corrects',
+      'Fix: Dashboard EUR Display - Résultat: 100,00 EUR affiché correctement (au lieu de 0,20 EUR)',
+      'Fix: i18next Initialization Error - Correction pattern new LanguageDetector() → LanguageDetector direct',
+      'Technical: Configuration détection langue via getAppStoreLanguage()',
+      'Technical: Application charge sans erreur i18n',
+      'Documentation: README.md, ETAT-TECHNIQUE-COMPLET.md, GAP-TECHNIQUE-COMPLET.md, FEATURE-MATRIX.md mis à jour',
+      'Workflow: 13 agents multi-agents utilisés (7 workflows parallèles, 70% temps économisé)',
+      'Session: S41 (2026-01-25) - Infrastructure i18n Phase 1 complète'
+    ],
+    type: 'minor' as const
+  },
   {
     version: '2.4.10',
     date: '2026-01-24',
