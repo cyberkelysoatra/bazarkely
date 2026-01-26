@@ -82,12 +82,6 @@ const RecurringTransactionsWidget: React.FC<RecurringTransactionsWidgetProps> = 
             </span>
           )}
         </div>
-        <button
-          onClick={() => navigate('/recurring')}
-          className="text-blue-600 hover:text-blue-700 transition-colors text-sm font-medium"
-        >
-          Voir tout
-        </button>
       </div>
 
       {upcomingRecurring.length === 0 ? (
@@ -99,7 +93,7 @@ const RecurringTransactionsWidget: React.FC<RecurringTransactionsWidgetProps> = 
             onClick={() => navigate('/add-transaction?recurring=true')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
-            Créer une récurrence
+            Créer une charge FIXE
           </button>
         </div>
       ) : (

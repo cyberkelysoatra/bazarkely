@@ -1,7 +1,7 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import apiService from '../../services/apiService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
@@ -625,10 +625,10 @@ const Header = () => {
 
   return (
     <header className="backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-50 overscroll-none">
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 md:px-8 lg:px-12 xl:max-w-7xl xl:mx-auto">
         {/* FIX: Conditional flex layout - justify-between for both, but ml-auto on Role Badge in Construction for right alignment */}
         <div className="flex items-center justify-between">
-          {/* Logo et titre */}
+          {/* Logo et titre (LEFT) */}
           <div className="flex items-center space-x-4">
             <button
               onClick={(e) => {
@@ -685,6 +685,65 @@ const Header = () => {
               </div>
             )}
           </div>
+
+          {/* BANNER (CENTER) - Desktop only inline, mobile stays below */}
+          {user && !isConstructionModule && !location.pathname.includes('/construction') && (
+            <div className="hidden lg:block lg:flex-1 lg:mx-4">
+              <div className="text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
+                <div className="flex items-center justify-between flex-nowrap overflow-hidden">
+                  <div>
+                    {showUsername && (
+                      <span className="font-semibold text-white whitespace-nowrap">Bonjour, {user.username?.charAt(0).toUpperCase() + user.username?.slice(1).toLowerCase()} !</span>
+                    )}
+                    <div className="relative">
+                      {messages.length > 0 && messages[currentMessage] && (
+                        <div className="flex items-center space-x-2">
+                          <span 
+                            onClick={messages[currentMessage]?.action}
+                            className={`text-purple-100 ml-2 whitespace-nowrap overflow-hidden transition-all duration-1000 ease-in-out cursor-pointer hover:bg-purple-500/20 hover:bg-opacity-80 px-3 py-1 rounded-lg flex items-center space-x-2 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            <span>{messages[currentMessage]?.text}</span>
+                            {(() => {
+                              const IconComponent = messages[currentMessage]?.icon;
+                              return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
+                            })()}
+                            <ChevronRight className="w-3 h-3" />
+                          </span>
+                          {messages[currentMessage]?.type === 'priority-questionnaire' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePriorityQuestionnaireBannerDismiss();
+                              }}
+                              className="text-purple-200 hover:text-white transition-colors p-1 rounded-full hover:bg-purple-500/20"
+                              title="Fermer"
+                            >
+                              <span className="text-sm font-bold">×</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {showTooltip && messages[currentMessage]?.type === 'motivational' && (
+                        <div className="absolute top-full left-0 mt-2 bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border z-50 whitespace-nowrap">
+                          💡 Conseil : Cliquez pour plus d'inspiration !
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center justify-center space-y-1">
+                    {isOnline ? (
+                      <Wifi className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <WifiOff className="w-4 h-4 text-red-500" />
+                    )}
+                    <span className="text-xs text-purple-100 whitespace-nowrap text-center">
+                      {isOnline ? 'En ligne' : 'Hors ligne'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Right side container - Role Badge (Construction) or Budget actions */}
           <div className="flex items-center">
@@ -912,17 +971,15 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Informations utilisateur - Hidden in Construction mode (banner only relevant for Family Budget) */}
-        {/* FIX: Use pathname check to prevent Budget banner from showing in Construction module */}
+        {/* Mobile banner - visible only on mobile, same position as before */}
         {user && !isConstructionModule && !location.pathname.includes('/construction') && (
-          <div className="mt-2 text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
-            <div className="flex items-center justify-between flex-nowrap overflow-hidden"> {/* FORCE SINGLE LINE LAYOUT */}
+          <div className="mt-2 lg:hidden text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
+            <div className="flex items-center justify-between flex-nowrap overflow-hidden">
               <div>
                 {showUsername && (
                   <span className="font-semibold text-white whitespace-nowrap">Bonjour, {user.username?.charAt(0).toUpperCase() + user.username?.slice(1).toLowerCase()} !</span>
-                )} {/* GREETING SYNCHRONIZED WITH USERNAME 60 SECOND TIMER */}
+                )}
                 <div className="relative">
-                  {/* Vérification de sécurité pour le rendu des messages */}
                   {messages.length > 0 && messages[currentMessage] && (
                     <div className="flex items-center space-x-2">
                       <span 
@@ -936,7 +993,6 @@ const Header = () => {
                         })()}
                         <ChevronRight className="w-3 h-3" />
                       </span>
-                      {/* Close button for priority questionnaire banner */}
                       {messages[currentMessage]?.type === 'priority-questionnaire' && (
                         <button
                           onClick={(e) => {
@@ -951,8 +1007,6 @@ const Header = () => {
                       )}
                     </div>
                   )}
-                  
-                  {/* Tooltip pour les messages motivationnels */}
                   {showTooltip && messages[currentMessage]?.type === 'motivational' && (
                     <div className="absolute top-full left-0 mt-2 bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border z-50 whitespace-nowrap">
                       💡 Conseil : Cliquez pour plus d'inspiration !
@@ -961,17 +1015,94 @@ const Header = () => {
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center space-y-1">
-                       {isOnline ? (
-                         <Wifi className="w-4 h-4 text-green-500" />
-                       ) : (
-                         <WifiOff className="w-4 h-4 text-red-500" />
-                       )}
+                {isOnline ? (
+                  <Wifi className="w-4 h-4 text-green-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-500" />
+                )}
                 <span className="text-xs text-purple-100 whitespace-nowrap text-center">
                   {isOnline ? 'En ligne' : 'Hors ligne'}
-                </span> {/* PREVENT TEXT WRAPPING KEEP ON SINGLE LINE */}
+                </span>
               </div>
             </div>
           </div>
+        )}
+
+        {/* LINE 2: Navigation Items (DESKTOP ONLY) */}
+        {!isConstructionModule && (
+          <nav className="hidden lg:flex items-center justify-between mt-4">
+            <NavLink 
+              to="/dashboard" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <Home className="w-5 h-5 mb-1" />
+              <span className="text-xs">Accueil</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/accounts" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <Wallet className="w-5 h-5 mb-1" />
+              <span className="text-xs">Comptes</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/transactions" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <ArrowUpDown className="w-5 h-5 mb-1" />
+              <span className="text-xs">Transactions</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/budgets" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <PieChart className="w-5 h-5 mb-1" />
+              <span className="text-xs">Budgets</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/family" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <Users className="w-5 h-5 mb-1" />
+              <span className="text-xs">Famille</span>
+            </NavLink>
+            
+            <NavLink 
+              to="/goals" 
+              className={({ isActive }) => 
+                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                }`
+              }
+            >
+              <Target className="w-5 h-5 mb-1" />
+              <span className="text-xs">Objectifs</span>
+            </NavLink>
+          </nav>
         )}
       </div>
       

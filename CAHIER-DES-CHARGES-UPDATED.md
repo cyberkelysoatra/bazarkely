@@ -1,10 +1,10 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.4 (i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-01-25  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix
+**Version:** 3.5 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-01-26  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
 
@@ -43,6 +43,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Interface admin enrichie** ✅ IMPLÉMENTÉ (100% - Identification utilisateur + accordéon + données financières)
 - **Navigation intelligente** ✅ IMPLÉMENTÉ (100% - Cartes budget cliquables + filtrage catégorie)
 - **Formulaire commande intelligent** ✅ IMPLÉMENTÉ (95% - Smart defaults basés sur rôle utilisateur, réduction 40% temps remplissage, UX transformation VAGUE 1 + VAGUE 2) - Session 2025-11-15
+- **Desktop Dashboard Enhancement** ✅ IMPLÉMENTÉ (100% - Layout 2 colonnes desktop + Responsive header + Sticky sidebar + Layout component library + Mobile preservation + BottomNav visibility management) - Session S42 2026-01-26 (v2.6.0)
 
 ## 🔧 FONCTIONNALITÉS TECHNIQUES
 
@@ -123,7 +124,42 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Dashboard EUR Display Bug** ✅ RÉSOLU (100% - Correction hardcoded originalCurrency="MGA" → transaction.originalCurrency || 'MGA', ajout exchangeRateUsed prop)
 - **Transaction Amount Source** ✅ RÉSOLU (100% - Utilisation transaction.originalAmount ?? transaction.amount)
 
-### **9. Interface d'Administration Enrichie** ✅ COMPLET (100%)
+### **9. Desktop Dashboard Enhancement** ✅ COMPLET (100%) (Session S42 2026-01-26 - v2.6.0)
+
+#### **Layout Desktop Optimisé** 🖥️
+- **Layout 2 colonnes:** Main content (2/3 width) + Sidebar (1/3 width) sur desktop (lg+)
+- **Mobile-first préservé:** Layout single-column sur mobile, transition progressive tablet→desktop
+- **Max-width centré:** xl:max-w-7xl xl:mx-auto pour contenu centré sur grands écrans
+- **Responsive padding:** p-4 (mobile) → md:px-8 md:space-y-6 (tablet) → lg:px-12 (desktop)
+
+#### **Header Navigation Responsive** 📱
+- **2-line layout desktop:** Navigation justifiée sur 2 lignes pour desktop uniquement
+- **Mobile layout intact:** Header mobile préservé exactement, aucune régression
+- **Responsive container:** Header content avec xl:max-w-7xl xl:mx-auto et md:px-8 lg:px-12
+
+#### **Sticky Sidebar** 📌
+- **Position sticky:** Sidebar sticky avec lg:top-40 pour clearance header
+- **Mobile behavior:** Sidebar apparaît en bas sur mobile (lg:col-span-1)
+- **Self-start alignment:** lg:self-start pour alignement en haut du conteneur
+
+#### **Layout Component Library** 🧩
+- **DashboardContainer.tsx:** Responsive container avec mobile-first, maxWidth configurable (sm-md-lg-xl-2xl-7xl-full)
+- **ResponsiveGrid.tsx:** Grid component avec 3 types variants (stats: 2→4 cols, actions: 2 cols→flex, cards: 1→2→3 cols)
+- **ResponsiveStatCard.tsx:** Enhanced stat card avec responsive padding (p-4→p-6→p-8), text (text-xl→text-4xl), icons (w-5→w-7), gradient support
+
+#### **Mobile Preservation** 📱
+- **Zero regressions:** Expérience mobile identique, aucune fonctionnalité cassée
+- **Mobile-first approach:** Toutes les améliorations desktop sont additives
+- **Progressive enhancement:** Améliorations desktop uniquement, mobile intact
+
+#### **BottomNav Visibility Management** 👆
+- **Desktop hidden:** BottomNav masqué sur desktop (lg:hidden)
+- **Mobile visible:** BottomNav visible uniquement sur mobile (< 1024px)
+- **Responsive behavior:** Transition automatique selon taille écran
+
+**Total Desktop Enhancement:** 6/6 fonctionnalités implémentées (100%)
+
+### **10. Interface d'Administration Enrichie** ✅ COMPLET (100%)
 
 #### **Identification Utilisateur dans le Header** 👤
 - **Affichage "Compte actif"** dans le menu dropdown du header
@@ -154,7 +190,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Requêtes optimisées** avec requêtes parallèles pour les performances
 - **Gestion des données manquantes** avec fallbacks appropriés
 
-### **10. Navigation Intelligente Budgets → Transactions** ✅ COMPLET (100%)
+### **11. Navigation Intelligente Budgets → Transactions** ✅ COMPLET (100%)
 
 #### **Cartes Budget Cliquables** 🖱️
 - **Cartes budget interactives** avec curseur pointer pour indiquer la cliquabilité
@@ -181,7 +217,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - **Statut:** Bug identifié, priorité HAUTE pour correction
 - **Workaround temporaire:** Utiliser les filtres manuels sur la page des transactions
 
-### **11. Système de Notifications Push** ✅ COMPLET (100%)
+### **12. Système de Notifications Push** ✅ COMPLET (100%)
 
 #### **Types de Notifications** 🔔
 - ✅ **Alertes de Budget** - Seuils 80%, 100%, 120% du budget mensuel
@@ -320,10 +356,13 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 
 ## 🧩 COMPOSANTS UI
 
-### **Composants Layout** ✅ COMPLET (3/3)
+### **Composants Layout** ✅ COMPLET (6/6)
 - **AppLayout.tsx** ✅ IMPLÉMENTÉ (100%)
 - **Header.tsx** ✅ IMPLÉMENTÉ (100%)
 - **BottomNav.tsx** ✅ IMPLÉMENTÉ (100% - Ultra-compacte 48-56px vs 80-90px)
+- **DashboardContainer.tsx** ✅ IMPLÉMENTÉ (100% - Responsive container mobile-first, maxWidth configurable) - Session S42 2026-01-26 (v2.6.0)
+- **ResponsiveGrid.tsx** ✅ IMPLÉMENTÉ (100% - Grid avec 3 types variants stats/actions/cards) - Session S42 2026-01-26 (v2.6.0)
+- **ResponsiveStatCard.tsx** ✅ IMPLÉMENTÉ (100% - Stat card responsive avec gradient support) - Session S42 2026-01-26 (v2.6.0)
 
 ### **Composants Spécialisés** ⚠️ PARTIELLEMENT COMPLET (2/3)
 - **ErrorBoundary.tsx** ✅ IMPLÉMENTÉ (100%)
@@ -600,6 +639,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 - ✅ Infrastructure i18n Phase 1/3 (100%) - react-i18next + 3 langues FR/EN/MG + 85+ clés auth (Session S41 2026-01-25)
 - ✅ Protection Traduction Navigateur (100%) - excludeFromTranslation utility + CurrencyDisplay protégé + 44+ fichiers (Session S41 2026-01-25)
 - ✅ Dashboard EUR Bug Fix (100%) - Correction hardcoded originalCurrency="MGA" → transaction.originalCurrency (Session S41 2026-01-25)
+- ✅ Desktop Dashboard Enhancement (100%) - Layout 2 colonnes desktop + Responsive header + Sticky sidebar + Layout component library + Mobile preservation + BottomNav visibility management (Session S42 2026-01-26 v2.6.0)
 - ⚠️ Sécurité des données (60%)
 - ✅ Fonctionnalités Madagascar
 
@@ -1128,4 +1168,4 @@ interface QuizSession {
 
 ---
 
-*Document généré automatiquement le 2025-11-15 - BazarKELY v3.2 (Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*
+*Document généré automatiquement le 2026-01-26 - BazarKELY v3.5 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*

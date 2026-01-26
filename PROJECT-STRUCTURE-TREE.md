@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 4.0 (Session S41 2026-01-25 - i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display)  
-**Date de mise à jour:** 2026-01-25  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10)
+**Version:** 4.1 (Session 2026-01-26 - Desktop Enhancement + Layout Components + Navigation Restructure)  
+**Date de mise à jour:** 2026-01-26  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.4.11)
 
 ---
 
@@ -12,8 +12,9 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 312+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07, +5 fichiers S41 2026-01-25)
+- **Total fichiers:** 315+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07, +5 fichiers S41 2026-01-25, +3 fichiers layout components 2026-01-26)
 - **Composants UI:** 13/14 implémentés (93%)
+- **Composants Layout:** 6/6 implémentés (100%) 🆕 NOUVEAU 2026-01-26 (+3 composants responsive)
 - **Composants Auth:** 2/2 implémentés (100%)
 - **Composants Recommandations:** 3/3 implémentés (100%) 🆕
 - **Composants Certification:** 6/6 implémentés (100%) 🆕 NOUVEAU
@@ -163,14 +164,17 @@ bazarkely-2/
 │   │   │   │       ├── 📄 LoginForm.test.tsx
 │   │   │   │       └── 📄 RegisterForm.test.tsx
 │   │   │   ├── 📁 Layout/                    # Composants de layout
-│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel) (MODIFIÉ 2025-01-20 - Identification utilisateur dropdown "Compte actif") (MODIFIÉ 2025-11-15 - Bug fix budget banner AGENT09) (MODIFIÉ 2025-11-15 PM - 8 corrections itératives cleanup Budget Construction AGENT09)
+│   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel) (MODIFIÉ 2025-01-20 - Identification utilisateur dropdown "Compte actif") (MODIFIÉ 2025-11-15 - Bug fix budget banner AGENT09) (MODIFIÉ 2025-11-15 PM - 8 corrections itératives cleanup Budget Construction AGENT09) (MODIFIÉ 2026-01-26 - 2-line desktop layout, navigation integration)
 │   │   │   │   ├── 📄 Footer.tsx             # ✅ Footer
-│   │   │   │   └── 📄 AppLayout.tsx          # ✅ Layout principal
+│   │   │   │   ├── 📄 AppLayout.tsx          # ✅ Layout principal
+│   │   │   │   ├── 📄 DashboardContainer.tsx # 🆕 NOUVEAU [2026-01-26] - Responsive container with mobile-first approach
+│   │   │   │   ├── 📄 ResponsiveGrid.tsx     # 🆕 NOUVEAU [2026-01-26] - Grid with variants (stats, actions, cards)
+│   │   │   │   └── 📄 ResponsiveStatCard.tsx # 🆕 NOUVEAU [2026-01-26] - Enhanced stat card with responsive padding
 │   │   │   ├── 📁 Navigation/                # Composants de navigation
-│   │   │   │   └── 📄 BottomNav.tsx          # ✅ Navigation mobile (MODIFIÉ 2025-01-11 - Ultra-compacte 48-56px)
+│   │   │   │   └── 📄 BottomNav.tsx          # ✅ Navigation mobile (MODIFIÉ 2025-01-11 - Ultra-compacte 48-56px) (MODIFIÉ 2026-01-26 - Desktop visibility lg:hidden)
 │   │   │   ├── 📁 Dashboard/                 # Composants dashboard
 │   │   │   │   ├── 📄 RecommendationWidget.tsx # 🆕 NOUVEAU - Widget recommandations (303 lignes)
-│   │   │   │   └── 📄 RecurringTransactionsWidget.tsx # 🆕 NOUVEAU 2025-11-03 - Widget transactions récurrentes (146 lignes)
+│   │   │   │   └── 📄 RecurringTransactionsWidget.tsx # 🆕 NOUVEAU 2025-11-03 - Widget transactions récurrentes (146 lignes) (MODIFIÉ 2026-01-26 - Button text update "Créer une charge FIXE")
 │   │   │   ├── 📁 RecurringConfig/           # 🆕 NOUVEAU 2025-11-03 - Configuration transactions récurrentes
 │   │   │   │   └── 📄 RecurringConfigSection.tsx # 🆕 NOUVEAU 2025-11-03 - Section configuration récurrence (358 lignes)
 │   │   │   ├── 📁 RecurringTransactions/     # 🆕 NOUVEAU 2025-11-03 - Composants transactions récurrentes
@@ -197,7 +201,7 @@ bazarkely-2/
 │   │   │   │   └── 📄 CurrencySwitcher.tsx  # ✅ Composant sélecteur devise
 │   │   ├── 📁 pages/                     # Pages principales
 │   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
-│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency)
+│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction)

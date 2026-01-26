@@ -2,7 +2,7 @@
 
 > **Application PWA de gestion budgétaire familiale spécialement conçue pour le contexte économique et culturel de Madagascar**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/bazarkely/bazarkely)
+[![Version](https://img.shields.io/badge/version-2.6.0-blue.svg)](https://github.com/bazarkely/bazarkely)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-ready-orange.svg)](https://1sakely.org)
 [![OVH PRO](https://img.shields.io/badge/hosting-OVH%20PRO-purple.svg)](https://1sakely.org)
@@ -202,6 +202,36 @@ interface RecurringTransaction {
 
 ## 🎨 Interface Utilisateur et Navigation
 
+### 🖥️ Amélioration Desktop (Session 2026-01-26 - v2.6.0)
+
+**Fonctionnalité :** Amélioration complète de l'expérience desktop avec layout responsive et composants réutilisables.
+
+**Composants Layout Créés :**
+- ✅ **DashboardContainer** (`frontend/src/components/layout/DashboardContainer.tsx`) - Container responsive avec max-width et padding adaptatif
+- ✅ **ResponsiveGrid** (`frontend/src/components/layout/ResponsiveGrid.tsx`) - Grille flexible avec variants (stats, actions, cards)
+- ✅ **ResponsiveStatCard** (`frontend/src/components/layout/ResponsiveStatCard.tsx`) - Carte statistique avec padding et texte responsive
+
+**Améliorations Dashboard :**
+- **Layout desktop :** Layout 2 colonnes (2/3 contenu principal + 1/3 sidebar) sur écrans larges (`lg:grid-cols-3`)
+- **Sidebar sticky :** Positionnement sticky avec clearance header (`lg:sticky lg:top-40`)
+- **Grille statistiques :** 2 colonnes mobile, 4 colonnes desktop (`md:grid-cols-4`)
+- **Padding responsive :** Cartes statistiques avec `p-4 md:p-6 lg:p-8`
+- **Actions rapides :** Layout flex horizontal sur desktop (`lg:flex lg:justify-center`)
+
+**Améliorations Header :**
+- **Layout 2 lignes desktop :** Navigation intégrée dans header sur desktop uniquement (`lg:flex`)
+- **Banner centré :** Message utilisateur centré sur desktop, mobile inchangé
+- **Navigation desktop :** 6 liens navigation (Accueil, Comptes, Transactions, Budgets, Famille, Objectifs) avec icônes
+- **BottomNav masqué :** Navigation mobile masquée sur desktop (`lg:hidden`)
+
+**Architecture Multi-Agents :**
+- **Agent 09 :** Approche conservative avec classes Tailwind additives uniquement
+- **Agent 10 :** Approche modulaire avec composants réutilisables
+- **Agent 11 :** Approche intégrée avec layout 2 colonnes et sidebar sticky
+- **Workflow :** 3 approches testées en parallèle, approche intégrée retenue
+
+**Session d'implémentation :** 2026-01-26 (Session S42)
+
 ### Identification Utilisateur dans le Header
 
 **Fonctionnalité :** Affichage intelligent de l'identité utilisateur dans le menu déroulant du header.
@@ -331,6 +361,15 @@ interface RecurringTransaction {
 - **Intégration** : Synchronisation avec appStore language state pour VoiceInterface et PDF generation
 - **Détection langue** : Ordre de priorité (1) localStorage appStore, (2) navigator language, (3) défaut français
 
+**Amélioration Desktop (Session S42 - 2026-01-26 - v2.6.0) :**
+- **Composants layout** : DashboardContainer, ResponsiveGrid, ResponsiveStatCard pour layout responsive
+- **Dashboard desktop** : Layout 2 colonnes (2/3 contenu + 1/3 sidebar sticky) avec `lg:grid-cols-3`
+- **Header desktop** : Navigation intégrée avec 6 liens (Accueil, Comptes, Transactions, Budgets, Famille, Objectifs)
+- **BottomNav** : Masquage automatique sur desktop (`lg:hidden`) pour navigation header uniquement
+- **Grille statistiques** : 2 colonnes mobile → 4 colonnes desktop (`md:grid-cols-4`)
+- **Padding responsive** : Cartes avec `p-4 md:p-6 lg:p-8` pour meilleure utilisation espace desktop
+- **Architecture** : Multi-agents (Agent 09 conservative, Agent 10 modulaire, Agent 11 intégrée) - approche intégrée retenue
+
 ```
 📁 bazarkely/
 ├── 📁 frontend/          # React PWA (Vite + TypeScript)
@@ -344,9 +383,12 @@ interface RecurringTransaction {
 │   │   │   └── RecurringTransactionDetailPage.tsx # Détails transaction récurrente
 │   │   ├── 📁 components/
 │   │   │   ├── 📁 Layout/
-│   │   │   │   └── Header.tsx       # Identification utilisateur + Context Switcher trigger
+│   │   │   │   ├── Header.tsx              # Identification utilisateur + Navigation desktop + Context Switcher trigger
+│   │   │   │   ├── DashboardContainer.tsx  # Container responsive avec max-width (Session 2026-01-26)
+│   │   │   │   ├── ResponsiveGrid.tsx      # Grille flexible avec variants (Session 2026-01-26)
+│   │   │   │   └── ResponsiveStatCard.tsx  # Carte statistique responsive (Session 2026-01-26)
 │   │   │   ├── 📁 Navigation/
-│   │   │   │   └── BottomNav.tsx    # Navigation + Context Switcher mode
+│   │   │   │   └── BottomNav.tsx    # Navigation mobile (masquée desktop lg:hidden) + Context Switcher mode
 │   │   │   └── 📁 Leaderboard/      # Système de classement
 │   │   ├── 📁 contexts/
 │   │   │   └── ModuleSwitcherContext.tsx # Context Switcher state management

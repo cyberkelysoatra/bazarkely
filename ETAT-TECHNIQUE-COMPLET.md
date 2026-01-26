@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.4.10 (i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display - Session S41)  
-**Date de mise à jour:** 2026-01-25  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41)
+**Version:** 2.6.0 (Desktop Enhancement + Layout Components + Header Navigation - Session S42)  
+**Date de mise à jour:** 2026-01-26  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42)
 
 ---
 
@@ -178,7 +178,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 
 #### **Pages Principales** ✅ FONCTIONNELLES
 - **AuthPage** - Authentification (OAuth + email/password)
-- **DashboardPage** - Vue d'ensemble des finances + intégration notifications + calcul fonds d'urgence (corrigé 2025-10-19)
+- **DashboardPage** - Vue d'ensemble des finances + intégration notifications + calcul fonds d'urgence (corrigé 2025-10-19) + Layout desktop 2 colonnes avec sidebar sticky (Session 2026-01-26)
 - **TransactionsPage** - Gestion des transactions + Filtrage catégorie corrigé + Loading spinner + CSV Export [31/10/2025]
 - **TransactionDetailPage** - Détail transaction + Navigation intelligente préservant filtres [31/10/2025]
 - **AccountsPage** - Gestion des comptes
@@ -203,7 +203,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - **Bouton paramètres** - Accès direct aux paramètres
 - **Initialisation automatique** - Démarrage du système au chargement
 
-#### **Composants UI** ✅ 14/15 IMPLÉMENTÉS (93.3%)
+#### **Composants UI** ✅ 17/18 IMPLÉMENTÉS (94.4%)
 
 **Composants existants:**
 - ✅ **Button.tsx** - 6 variants (primary, secondary, danger, ghost, outline, link)
@@ -218,7 +218,10 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - ✅ **usePWAInstall.ts** - Hook PWA avec diagnostic complet + mécanisme d'attente/retry + détection navigateur
 - ✅ **NotificationPermissionRequest.tsx** - Demande de permission notifications avec UI moderne
 - ✅ **NotificationSettings.tsx** - Interface de paramètres notifications complète
-- ✅ **BottomNav.tsx** - Navigation ultra-compacte (48-56px vs 80-90px) - Session 2025-01-11
+- ✅ **BottomNav.tsx** - Navigation ultra-compacte (48-56px vs 80-90px) - Session 2025-01-11, masquée desktop (lg:hidden) - Session 2026-01-26
+- ✅ **DashboardContainer.tsx** - Container responsive avec max-width et padding adaptatif (Session 2026-01-26)
+- ✅ **ResponsiveGrid.tsx** - Grille flexible avec variants stats/actions/cards (Session 2026-01-26)
+- ✅ **ResponsiveStatCard.tsx** - Carte statistique avec padding et texte responsive (Session 2026-01-26)
 
 **Composants manquants:**
 - ❌ **LoadingSpinner.tsx** - Composant de chargement réutilisable (N'EXISTE PAS)
@@ -465,6 +468,16 @@ Utilisateur → Permission → Service Worker → IndexedDB → Monitoring → N
 - **Fonctionnement:** Mode Family Budget continue de fonctionner normalement avec tous les 7 messages générés
 - **Commentaire technique:** "Early return: Skip banner message generation in Construction module for performance optimization"
 - **Statut:** ✅ Optimisation implémentée et testée
+
+**Navigation Desktop Header (Session 2026-01-26 - v2.6.0):**
+- **Layout 2 lignes:** Header restructuré avec navigation intégrée sur desktop uniquement (`lg:flex`)
+- **Banner centré:** Message utilisateur centré sur desktop (`lg:flex-1 lg:mx-4`), mobile inchangé
+- **Navigation desktop:** 6 liens avec icônes (Accueil, Comptes, Transactions, Budgets, Famille, Objectifs)
+- **NavLink React Router:** Utilisation `NavLink` avec états actifs (`isActive ? 'bg-white/20' : 'hover:bg-white/10'`)
+- **Icônes Lucide:** Home, Wallet, ArrowUpDown, PieChart, Users, Target
+- **Masquage mobile:** Navigation desktop masquée sur mobile (`hidden lg:flex`)
+- **BottomNav masqué:** Navigation mobile masquée sur desktop (`lg:hidden` dans BottomNav.tsx)
+- **Statut:** ✅ Navigation desktop complète et fonctionnelle
 
 ### **9. Système Budget et Éducation Financière** ✅ COMPLET
 
@@ -3312,6 +3325,51 @@ import type { PurchaseOrder, PurchaseOrderStatus, OrgUnit } from '../types/const
 - **Composants protégés:** CurrencyDisplay avec protection active
 - **Bugs résolus:** 1 (Dashboard EUR display)
 
+#### **22. Desktop Enhancement Layout Components (Session S42 - v2.6.0)** ✅ COMPLET
+
+**Objectif:** Amélioration complète de l'expérience desktop avec layout responsive et composants réutilisables.
+
+**Composants Layout Créés:**
+- ✅ **DashboardContainer.tsx** (`frontend/src/components/layout/DashboardContainer.tsx`) - Container responsive avec max-width configurable (sm, md, lg, xl, 2xl, 7xl, full)
+- ✅ **ResponsiveGrid.tsx** (`frontend/src/components/layout/ResponsiveGrid.tsx`) - Grille flexible avec 3 variants (stats: 2→4 colonnes, actions: 2 colonnes→flex horizontal, cards: 1→2→3 colonnes)
+- ✅ **ResponsiveStatCard.tsx** (`frontend/src/components/layout/ResponsiveStatCard.tsx`) - Carte statistique avec padding responsive (`p-4 md:p-6 lg:p-8`) et texte responsive (`text-xl sm:text-2xl md:text-3xl lg:text-4xl`)
+
+**Améliorations DashboardPage:**
+- **Layout desktop:** Layout 2 colonnes (2/3 contenu principal + 1/3 sidebar) sur écrans larges (`lg:grid-cols-3`)
+- **Sidebar sticky:** Positionnement sticky avec clearance header (`lg:sticky lg:top-40 lg:self-start`)
+- **Grille statistiques:** 2 colonnes mobile, 4 colonnes desktop (`grid-cols-2 md:grid-cols-4`)
+- **Padding responsive:** Cartes statistiques avec `p-4 md:p-6 lg:p-8`
+- **Actions rapides:** Layout flex horizontal sur desktop (`lg:flex lg:justify-center`)
+- **Espacement vertical:** `space-y-4 md:space-y-6 lg:space-y-0` (mobile/tablet/desktop)
+
+**Améliorations Header:**
+- **Layout 2 lignes desktop:** Header restructuré avec navigation intégrée sur desktop uniquement
+- **Banner centré:** Message utilisateur centré sur desktop (`lg:flex-1 lg:mx-4`), mobile inchangé (`lg:hidden` sur banner mobile)
+- **Navigation desktop:** 6 liens avec icônes Lucide (Home, Wallet, ArrowUpDown, PieChart, Users, Target)
+- **NavLink React Router:** Utilisation `NavLink` avec états actifs (`isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'`)
+- **Masquage mobile:** Navigation desktop masquée sur mobile (`hidden lg:flex`)
+- **BottomNav masqué:** Navigation mobile masquée sur desktop (`lg:hidden` dans BottomNav.tsx)
+
+**Architecture Multi-Agents:**
+- **Agent 09:** Approche conservative avec classes Tailwind additives uniquement (testée)
+- **Agent 10:** Approche modulaire avec composants réutilisables (testée)
+- **Agent 11:** Approche intégrée avec layout 2 colonnes et sidebar sticky (retenue)
+- **Workflow:** 3 approches testées en parallèle, approche intégrée retenue pour meilleure UX
+
+**Fichiers modifiés:**
+- `frontend/src/pages/DashboardPage.tsx` - Layout 2 colonnes avec sidebar sticky, intégration nouveaux composants
+- `frontend/src/components/Layout/Header.tsx` - Navigation desktop intégrée, layout 2 lignes, banner centré
+- `frontend/src/components/Navigation/BottomNav.tsx` - Masquage desktop (`lg:hidden`)
+
+**Métriques:**
+- **Fichiers créés:** 3 (DashboardContainer, ResponsiveGrid, ResponsiveStatCard)
+- **Lignes de code:** ~400 lignes (composants + intégration)
+- **Mobile préservé:** 100% (aucune régression mobile)
+- **Desktop amélioré:** 100% (layout optimisé avec sidebar sticky)
+- **Bugs résolus:** 0 (travail propre sans bugs)
+
+**Statut:** ✅ Complété et déployé en production v2.6.0 (2026-01-26)
+
 ---
 
 ## 🐛 DETTE TECHNIQUE (TECHNICAL DEBT)
@@ -3360,4 +3418,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2025-12-08 - BazarKELY v2.23 (Espace Famille - paid_by Column + Payer Name Resolution + Debug Logging Cleanup)*
+*Document généré automatiquement le 2026-01-26 - BazarKELY v2.6.0 (Desktop Enhancement Layout Components + Header Navigation - Session S42)*

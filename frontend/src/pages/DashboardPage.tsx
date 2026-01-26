@@ -18,6 +18,9 @@ import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
 import { CurrencyDisplay } from '../components/Currency';
 import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
+import DashboardContainer from '../components/layout/DashboardContainer';
+import ResponsiveGrid from '../components/layout/ResponsiveGrid';
+import ResponsiveStatCard from '../components/layout/ResponsiveStatCard';
 
 const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
@@ -332,35 +335,39 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="p-4 pb-20 space-y-4">
-      {/* Demande de permission pour les notifications */}
-      {!isNotificationBannerDismissed && (
-        <NotificationPermissionRequest 
-          onDismiss={handleNotificationBannerDismiss}
-          onPermissionGranted={() => setNotificationPermission('granted')}
-          onPermissionDenied={() => setNotificationPermission('denied')}
-        />
-      )}
+    <DashboardContainer>
+      {/* Desktop Layout Wrapper - Two column layout on lg+ screens */}
+      <div className="lg:grid lg:grid-cols-3 lg:gap-8 space-y-4 md:space-y-6 lg:space-y-0">
+        {/* Main Content Area - 2/3 width on desktop */}
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+          {/* Demande de permission pour les notifications */}
+          {!isNotificationBannerDismissed && (
+            <NotificationPermissionRequest 
+              onDismiss={handleNotificationBannerDismiss}
+              onPermissionGranted={() => setNotificationPermission('granted')}
+              onPermissionDenied={() => setNotificationPermission('denied')}
+            />
+          )}
 
-      {/* Bouton de paramètres de notifications */}
-      {notificationPermission === 'granted' && (
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            onClick={() => setShowNotificationSettings(true)}
-            className="flex items-center space-x-2"
-          >
-            <Bell className="h-4 w-4" />
-            <span>Paramètres Notifications</span>
-          </Button>
-        </div>
-      )}
-      
-      {/* Statistiques principales */}
-      <div className="grid grid-cols-2 gap-6">
+          {/* Bouton de paramètres de notifications */}
+          {notificationPermission === 'granted' && (
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowNotificationSettings(true)}
+                className="flex items-center space-x-2"
+              >
+                <Bell className="h-4 w-4" />
+                <span>Paramètres Notifications</span>
+              </Button>
+            </div>
+          )}
+          
+          {/* Statistiques principales - 2x2 grid on all screen sizes */}
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
         <div 
           onClick={() => navigate('/transactions?filter=transfer')}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-blue-100">Solde total</h3>
@@ -374,7 +381,7 @@ const DashboardPage = () => {
               <Wallet className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
+          <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-white whitespace-nowrap">
             <CurrencyDisplay
               amount={stats.totalBalance}
               originalCurrency="MGA"
@@ -388,7 +395,7 @@ const DashboardPage = () => {
 
         <div 
           onClick={() => navigate('/transactions?filter=income')}
-          className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl md:shadow-xl md:hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-green-100">Revenus</h3>
@@ -402,7 +409,7 @@ const DashboardPage = () => {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
+          <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-white whitespace-nowrap">
             <CurrencyDisplay
               amount={stats.monthlyIncome}
               originalCurrency="MGA"
@@ -416,7 +423,7 @@ const DashboardPage = () => {
 
         <div 
           onClick={() => navigate('/transactions?filter=expense')}
-          className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+          className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl md:shadow-xl md:hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-red-100">Dépenses</h3>
@@ -444,7 +451,7 @@ const DashboardPage = () => {
 
         <div 
           onClick={() => navigate('/budgets')}
-          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-yellow-100">Budget</h3>
@@ -458,17 +465,17 @@ const DashboardPage = () => {
               <PieChart className="w-6 h-6 text-white" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">
+          <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-white">
             {stats.budgetUtilization}%
           </p>
         </div>
-      </div>
+          </div>
 
-      {/* Graphique de progression des objectifs */}
-      <div 
-        className="card cursor-pointer hover:shadow-lg transition-shadow"
-        onClick={() => navigate('/goals')}
-      >
+          {/* Graphique de progression des objectifs */}
+          <div 
+            className="card cursor-pointer hover:shadow-lg md:hover:shadow-xl transition-all duration-300"
+            onClick={() => navigate('/goals')}
+          >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Progression globale</h3>
           <Target className="w-5 h-5 text-primary-600" />
@@ -602,10 +609,10 @@ const DashboardPage = () => {
             );
           }
         })()}
-      </div>
+          </div>
 
-      {/* Transactions récentes */}
-      <div className="card">
+          {/* Transactions récentes */}
+          <div className="card md:hover:shadow-xl transition-all duration-300">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Transactions récentes</h3>
           <button 
@@ -684,21 +691,18 @@ const DashboardPage = () => {
             })
           )}
         </div>
-      </div>
+          </div>
 
-      {/* Widget Transactions récurrentes */}
-      {user && <RecurringTransactionsWidget userId={user.id} />}
+          {/* Résumé mensuel pour familles diaspora */}
+          <MonthlySummaryCard 
+            className="md:hover:shadow-xl transition-all duration-300" 
+            displayCurrency={displayCurrency}
+            monthlyIncome={stats.monthlyIncome}
+            monthlyExpenses={stats.monthlyExpenses}
+          />
 
-      {/* Résumé mensuel pour familles diaspora */}
-      <MonthlySummaryCard 
-        className="mt-6" 
-        displayCurrency={displayCurrency}
-        monthlyIncome={stats.monthlyIncome}
-        monthlyExpenses={stats.monthlyExpenses}
-      />
-
-      {/* Actions rapides */}
-      <div className="grid grid-cols-2 gap-4">
+          {/* Actions rapides */}
+          <ResponsiveGrid type="actions">
         <button 
           onClick={handleAddIncome}
           className="card-interactive text-center py-6 focus:outline-none focus:ring-2 focus:ring-green-200"
@@ -720,6 +724,16 @@ const DashboardPage = () => {
           </div>
           <p className="text-sm font-semibold text-gray-900">Ajouter dépense</p>
         </button>
+          </ResponsiveGrid>
+        </div>
+
+        {/* Sidebar Area - 1/3 width on desktop, appears below main on mobile */}
+        <div className="lg:col-span-1 space-y-4 md:space-y-6 lg:sticky lg:top-40 lg:self-start">
+          {/* Widget Transactions récurrentes */}
+          {user && <RecurringTransactionsWidget userId={user.id} />}
+          
+          {/* Future: Budget alerts, Tips, Quick stats can be added here */}
+        </div>
       </div>
 
       {/* Modal des paramètres de notifications */}
@@ -731,7 +745,7 @@ const DashboardPage = () => {
       >
         <NotificationSettings onClose={() => setShowNotificationSettings(false)} />
       </Modal>
-    </div>
+    </DashboardContainer>
   );
 };
 
