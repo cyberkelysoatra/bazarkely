@@ -18,9 +18,9 @@ import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
 import { CurrencyDisplay } from '../components/Currency';
 import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
-import DashboardContainer from '../components/layout/DashboardContainer';
-import ResponsiveGrid from '../components/layout/ResponsiveGrid';
-import ResponsiveStatCard from '../components/layout/ResponsiveStatCard';
+import DashboardContainer from '../components/Layout/DashboardContainer';
+import ResponsiveGrid from '../components/Layout/ResponsiveGrid';
+import ResponsiveStatCard from '../components/Layout/ResponsiveStatCard';
 
 const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
