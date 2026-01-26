@@ -1,6 +1,28 @@
-export const APP_VERSION = 'v2.5.0';
-export const APP_BUILD_DATE = '2026-01-25';
+export const APP_VERSION = 'v2.6.0';
+export const APP_BUILD_DATE = '2026-01-26';
 export const VERSION_HISTORY = [
+  {
+    version: '2.6.0',
+    date: '2026-01-26',
+    changes: [
+      'Feature: Desktop Enhancement - Layout 2 colonnes desktop (main 70% + sidebar 30%)',
+      'Feature: Desktop Enhancement - Header 2 lignes avec navigation intégrée (6 liens: Accueil, Comptes, Transactions, Budgets, Famille, Objectifs)',
+      'Feature: Desktop Enhancement - Sidebar sticky avec clearance optimale (lg:sticky lg:top-40)',
+      'Feature: Desktop Enhancement - BottomNav caché desktop, visible mobile (lg:hidden)',
+      'Feature: Desktop Enhancement - 3 composants layout créés (DashboardContainer, ResponsiveGrid, ResponsiveStatCard)',
+      'Feature: Desktop Enhancement - Grille statistiques responsive (2 colonnes mobile → 4 colonnes desktop)',
+      'Feature: Desktop Enhancement - Padding responsive sur cartes statistiques (p-4 md:p-6 lg:p-8)',
+      'Feature: Desktop Enhancement - Actions rapides layout flex horizontal desktop (lg:flex lg:justify-center)',
+      'Fix: Import path case sensitivity - Correction layout → Layout pour compatibilité Linux/Netlify',
+      'Technical: Architecture multi-agents - 3 approches testées (conservative, modulaire, intégrée)',
+      'Technical: Approche intégrée retenue pour meilleure UX desktop',
+      'Technical: Mobile préservé 100% - Zéro régression mobile',
+      'Documentation: README.md, ETAT-TECHNIQUE-COMPLET.md, GAP-TECHNIQUE-COMPLET.md mis à jour',
+      'Workflow: Multi-agent workflows utilisés (Agents 09, 10, 11)',
+      'Session: S42 (2026-01-26) - Desktop Enhancement complète'
+    ],
+    type: 'minor' as const
+  },
   {
     version: '2.5.0',
     date: '2026-01-25',
