@@ -20,6 +20,8 @@ import ShareWithFamilySection from '../components/Family/ShareWithFamilySection'
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
 import type { FamilyGroup, FamilySharingRule } from '../types/family';
+import { useBudgetGauge } from '../hooks/useBudgetGauge';
+import BudgetGauge from '../components/BudgetGauge';
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -70,6 +72,24 @@ const AddTransactionPage = () => {
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
+
+  // Budget gauge hook - called at top level, hook handles early return internally
+  const {
+    budgetAmount,
+    spentAmount,
+    projectedSpent,
+    percentage,
+    remaining,
+    status,
+    loading: budgetLoading,
+    error: budgetError,
+    hasBudget
+  } = useBudgetGauge(
+    formData.category,
+    parseFloat(formData.amount) || 0,
+    formData.date,
+    isExpense
+  );
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -524,17 +544,40 @@ const AddTransactionPage = () => {
 
           {/* Catégorie */}
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-              Catégorie *
-              <button
-                type="button"
-                onClick={() => setShowHelpModal(true)}
-                className="ml-2 inline-flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                title="Aide pour la catégorisation"
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
-            </label>
+            {/* Label and Budget Gauge Row */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 flex-shrink-0">
+                Catégorie *
+                <button
+                  type="button"
+                  onClick={() => setShowHelpModal(true)}
+                  className="ml-2 inline-flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Aide pour la catégorisation"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+              </label>
+              {/* Budget Gauge - Show only when category selected and transaction is expense */}
+              {formData.category && isExpense && (
+                <div className="flex-1 min-w-0">
+                  <BudgetGauge
+                    budgetAmount={budgetAmount}
+                    spentAmount={spentAmount}
+                    projectedSpent={projectedSpent}
+                    percentage={percentage}
+                    remaining={remaining}
+                    status={status}
+                    category={formData.category}
+                    displayCurrency={transactionCurrency}
+                    loading={budgetLoading}
+                    error={budgetError}
+                    hasBudget={hasBudget}
+                    compact={false}
+                  />
+                </div>
+              )}
+            </div>
+            {/* Select Element Row */}
             <select
               id="category"
               name="category"

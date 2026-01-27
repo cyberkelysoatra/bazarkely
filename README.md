@@ -135,7 +135,7 @@ Le système de classement utilise quatre nouvelles colonnes ajoutées à la tabl
 - **RecurringTransactionsWidget** - Widget dashboard avec prochaines occurrences
 
 **Intégration :**
-- **AddTransactionPage** - Toggle "Transaction récurrente" avec configuration complète
+- **AddTransactionPage** - Toggle "Transaction récurrente" avec configuration complète + **Budget Gauge** affichant le statut budgétaire en temps réel lors de la sélection d'une catégorie (dépenses uniquement), mise à jour instantanée lors des changements de catégorie ou de montant
 - **TransactionsPage** - Badge récurrent + filtre "Récurrentes"
 - **Routes :** `/recurring` (liste), `/recurring/:id` (détail)
 
@@ -199,6 +199,46 @@ interface RecurringTransaction {
 - **Suppression chevrons select** - Classe CSS `select-no-arrow` appliquée dans module Budget
 
 **Session d'implémentation :** 2025-12-31 (Session S28)
+
+## 💰 Jauge Budget Temps Réel (Budget Gauge)
+
+**BazarKELY** intègre un système de jauge budgétaire en temps réel permettant de visualiser l'état du budget lors de la création d'une transaction.
+
+### Fonctionnalités
+
+- ✅ **Affichage temps réel** - Jauge mise à jour instantanément lors de la sélection de catégorie ou modification du montant
+- ✅ **Calculs automatiques** - Pourcentage utilisé, montant dépensé, montant projeté (avec transaction en cours), montant restant
+- ✅ **Barre de progression bicolore** - Affichage vert + rouge pour budgets dépassés, couleur unique (vert/jaune/rouge) selon statut
+- ✅ **Logique spéciale Épargne** - Statut inversé pour catégorie Épargne (0% = dépassé, 100% = bon)
+- ✅ **Support multi-devises** - Affichage des montants avec CurrencyDisplay pour conversion MGA/EUR
+- ✅ **Mode compact** - Support d'un mode compact pour intégration dans formulaires
+- ✅ **Gestion d'états** - Gestion des états loading, error, et no-budget
+
+### Architecture Technique
+
+**Hook personnalisé:**
+- **useBudgetGauge.ts** (~373 lignes) - Hook React personnalisé pour logique jauge budget
+  - **Paramètres:** `category` (string), `currentAmount` (number), `date` (string), `isExpense` (boolean)
+  - **Retour:** `budgetAmount`, `spentAmount`, `projectedSpent`, `percentage`, `remaining`, `status`, `loading`, `error`, `hasBudget`
+  - **Fonctionnalités:** Récupération budget via `getBudgetByCategory`, filtrage transactions par catégorie/mois/année, calculs montants dépensés avec conversion multi-devises, calcul statut avec logique spéciale Épargne
+
+**Composant présentiel:**
+- **BudgetGauge.tsx** (~125 lignes) - Composant React présentiel pour affichage jauge
+  - **Props:** `budgetAmount`, `spentAmount`, `projectedSpent`, `percentage`, `remaining`, `status`, `category`, `displayCurrency`, `loading`, `error`, `hasBudget`, `compact?`
+  - **Fonctionnalités:** Barre de progression bicolore (vert + rouge) pour budgets dépassés, barre couleur unique selon statut (vert/jaune/rouge), affichage montants avec CurrencyDisplay, gestion états loading/error/no-budget, mode compact optionnel
+
+**Service étendu:**
+- **budgetService.ts** - Méthode `getBudgetByCategory` ajoutée
+  - **Signature:** `getBudgetByCategory(category: string, month: number, year: number): Promise<Budget | null>`
+  - **Fonctionnalités:** Récupération budget pour catégorie/mois/année spécifiques, pattern offline-first via `getBudgets`, matching case-insensitive des catégories
+
+**Intégration:**
+- **AddTransactionPage.tsx** - Intégration jauge budget lors de la création transaction
+  - **Affichage conditionnel:** Jauge affichée uniquement pour transactions de type dépense avec catégorie sélectionnée
+  - **Mise à jour réactive:** Jauge mise à jour instantanément lors des changements de catégorie, montant, ou date
+  - **Position:** Affichée sous le champ catégorie dans le formulaire de transaction
+
+**Session d'implémentation :** 2026-01-27 (Session S43)
 
 ## 🎨 Interface Utilisateur et Navigation
 
@@ -376,6 +416,7 @@ interface RecurringTransaction {
 │   ├── 📁 src/
 │   │   ├── 📁 pages/     # Pages principales
 │   │   │   ├── AdminPage.tsx        # Interface admin avec accordéon
+│   │   │   ├── AddTransactionPage.tsx # Création transaction + Budget Gauge temps réel (Session S43 2026-01-27)
 │   │   │   ├── BudgetsPage.tsx      # Navigation intelligente
 │   │   │   ├── TransactionsPage.tsx # Filtrage par catégorie + Loading + CSV Export + Badge récurrent
 │   │   │   ├── TransactionDetailPage.tsx # Navigation intelligente préservant filtres
@@ -389,12 +430,16 @@ interface RecurringTransaction {
 │   │   │   │   └── ResponsiveStatCard.tsx  # Carte statistique responsive (Session 2026-01-26)
 │   │   │   ├── 📁 Navigation/
 │   │   │   │   └── BottomNav.tsx    # Navigation mobile (masquée desktop lg:hidden) + Context Switcher mode
+│   │   │   ├── BudgetGauge.tsx      # Composant jauge budget avec barre progression bicolore (Session S43 2026-01-27)
 │   │   │   └── 📁 Leaderboard/      # Système de classement
 │   │   ├── 📁 contexts/
 │   │   │   └── ModuleSwitcherContext.tsx # Context Switcher state management
+│   │   ├── 📁 hooks/     # Hooks personnalisés
+│   │   │   └── useBudgetGauge.ts   # Hook jauge budget avec calculs temps réel (Session S43 2026-01-27)
 │   │   ├── 📁 services/  # Services
 │   │   │   ├── leaderboardService.ts
 │   │   │   ├── adminService.ts      # Données enrichies admin
+│   │   │   ├── budgetService.ts     # Gestion budgets + getBudgetByCategory (Session S43 2026-01-27)
 │   │   │   ├── recurringTransactionService.ts # CRUD transactions récurrentes
 │   │   │   └── recurringTransactionMonitoringService.ts # Monitoring automatique
 │   │   ├── 📁 store/     # Zustand stores

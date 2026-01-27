@@ -1,8 +1,8 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.16 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-01-26  
+**Version:** 3.17 (Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-01-27  
 **Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
@@ -11,8 +11,8 @@
 
 Cette matrice présente l'état d'avancement réel de toutes les fonctionnalités et composants de BazarKELY, basée sur l'audit complet du codebase effectué le 2024-12-19 et mis à jour avec l'implémentation du système de notifications.
 
-### **📊 Statistiques Globales (Mise à jour 2025-12-31)**
-- **Fonctionnalités implémentées:** 100% (210/210)
+### **📊 Statistiques Globales (Mise à jour 2026-01-27)**
+- **Fonctionnalités implémentées:** 100% (211/211)
 - **Composants manquants:** 0% (0/210)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
 - **Documentation:** 100% (Complète et à jour)
@@ -32,7 +32,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Filtrage Catégories:** 100% (1/1) ✅ - Session 2025-01-20 (Bug identifié) [Résolu 2025-11-03]
 - **Context Switcher:** 100% (12/12) ✅ - Session 2025-11-09
 - **Transactions Récurrentes:** 100% (44/44) - Session 2025-11-03 + Edit amount field fix S28 2025-12-31
-- **Fonctionnalités Budgétaires Avancées:** 100% (9/9) ✅ - Session S28 2025-12-31
+- **Fonctionnalités Budgétaires Avancées:** 100% (10/10) ✅ - Session S28 2025-12-31 + Budget Gauge S43 2026-01-27
 - **Module Construction POC:** 100% (66/66) - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (2025-11-12) + Editable BC Number System (2025-11-29/30)
 - **Multi-Currency Support:** 100% (3/3) ✅ - Session S38 2026-01-18 (Multi-Currency Accounts + Multi-Currency Transactions + EUR Transfer Bug Fix)
 - **CurrencyDisplay HTML Nesting Fix:** 100% (1/1) ✅ - Session S40 2026-01-21 (Wrapper div→span, 30 instances validées, 0 régression)
@@ -42,7 +42,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Desktop Dashboard Enhancement:** 100% (6/6) ✅ - Session S42 2026-01-26 (Desktop layout optimization + Responsive header + Sticky sidebar + Layout component library + Mobile preservation + BottomNav visibility management) (v2.6.0)
 
 ### **📈 Répartition par Statut**
-- **✅ Implémenté:** 100% (216/216)
+- **✅ Implémenté:** 100% (217/217)
 - **⚠️ Partiel:** 0% (0/216)
 - **❌ Manquant:** 0% (0/216)
 
@@ -777,11 +777,16 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Category icons consistency (épargne fixed)** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction icône catégorie épargne pour cohérence visuelle (2025-12-31) |
 | **Select styling improvements** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Amélioration styling select sans chevrons pour design moderne (2025-12-31) |
 
-**Total Fonctionnalités Budgétaires Avancées:** 9/9 implémentées (100%)  
-**Implémentation:** ✅ 100% (9/9)  
-**Tests:** ✅ 100% (Validé en session S28 2025-12-31)  
-**Documentation:** ✅ 100% (9/9)  
-**Date de complétion:** 2025-12-31
+### **Fonctionnalités AddTransactionPage**
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **Budget Gauge in AddTransaction** | ✅ DONE | 100% | ✅ Testé | ✅ Documenté | Affiche statut budget temps réel lors sélection catégorie dépense, barre progression avec pourcentage et montant restant, barre bicolore si dépassement, mise à jour instantanée sur changement catégorie/montant, masqué pour transactions income, composants useBudgetGauge hook et BudgetGauge component (Session S43 2026-01-27) |
+
+**Total Fonctionnalités Budgétaires Avancées:** 10/10 implémentées (100%)  
+**Implémentation:** ✅ 100% (10/10)  
+**Tests:** ✅ 100% (Validé en session S28 2025-12-31 + S43 2026-01-27)  
+**Documentation:** ✅ 100% (10/10)  
+**Date de complétion:** 2025-12-31 + 2026-01-27
 
 ---
 
@@ -1055,8 +1060,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 ## ✅ CONCLUSION
 
 ### **Statut Global (Réel)**
-- **Fonctionnalités implémentées:** 100% (216/216)
-- **Composants manquants:** 0% (0/216)
+- **Fonctionnalités implémentées:** 100% (217/217)
+- **Composants manquants:** 0% (0/217)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
 - **Documentation:** 100% (Complète et à jour)
 - **Déploiement:** 100% (Production fonctionnelle)
@@ -1077,7 +1082,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Filtrage Catégories:** 100% (1/1) ✅ - Session 2025-01-20 (Bug identifié) [Résolu 2025-11-03]
 - **Context Switcher:** 100% (12/12) ✅ - Session 2025-11-09
 - **Transactions Récurrentes:** 100% (44/44) - Session 2025-11-03 + Edit amount field fix S28 2025-12-31
-- **Fonctionnalités Budgétaires Avancées:** 100% (9/9) ✅ - Session S28 2025-12-31 (Budget Statistics Page + UI Improvements)
+- **Fonctionnalités Budgétaires Avancées:** 100% (10/10) ✅ - Session S28 2025-12-31 (Budget Statistics Page + UI Improvements) + Budget Gauge S43 2026-01-27
 - **Module Construction POC:** 100% (66/66) ✅ - Phase 2 Step 3 UI Components + Phase 2 Organigramme complétée (10 org_units, BCI/BCE orders, org_unit-scoped workflow) + Smart Defaults (7/7 champs) + UX Transformation VAGUE 1 + VAGUE 2 (Header fix, collapsibles, inline search, badges, layout) + Editable BC Number System (Admin only, format AA/NNN, réservations, édition inline) - Session 2025-11-12 + 2025-11-15 + 2025-11-29/30
 - **Desktop Dashboard Enhancement:** 100% (6/6) ✅ - Session S42 2026-01-26 (Desktop layout optimization + Responsive header + Sticky sidebar + Layout component library + Mobile preservation + BottomNav visibility management) (v2.6.0)
 
@@ -1160,4 +1165,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-01-26 - BazarKELY v3.16 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+*Document généré automatiquement le 2026-01-27 - BazarKELY v3.17 (Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*

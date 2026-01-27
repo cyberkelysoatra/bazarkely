@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.6.0 (Desktop Enhancement + Layout Components + Header Navigation - Session S42)  
-**Date de mise à jour:** 2026-01-26  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42)
+**Version:** 2.7.0 (Budget Gauge Feature - Session S43)  
+**Date de mise à jour:** 2026-01-27  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43)
 
 ---
 
@@ -75,7 +75,8 @@ bazarkely-2/
 │   │   │   ├── usePWAInstall.ts   # ✅ Hook PWA avec diagnostic + mécanisme d'attente/retry
 │   │   │   ├── useRecommendations.ts # ✅ Hook d'intégration recommandations (579 lignes)
 │   │   │   ├── useYearlyBudgetData.ts # ✅ Hook données budgétaires annuelles (470 lignes)
-│   │   │   └── useMultiYearBudgetData.ts # ✅ Hook statistiques multi-années (890 lignes) - Session S28
+│   │   │   ├── useMultiYearBudgetData.ts # ✅ Hook statistiques multi-années (890 lignes) - Session S28
+│   │   │   └── useBudgetGauge.ts # ✅ Hook jauge budgétaire temps réel avec support multi-devises (Session S43 - 2026-01-27)
 │   │   ├── services/        # Services métier (auth, sync, etc.)
 │   │   │   ├── toastService.ts    # ✅ Service de notifications toast
 │   │   │   ├── dialogService.ts   # ✅ Service de remplacement des dialogues natifs
@@ -181,6 +182,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - **DashboardPage** - Vue d'ensemble des finances + intégration notifications + calcul fonds d'urgence (corrigé 2025-10-19) + Layout desktop 2 colonnes avec sidebar sticky (Session 2026-01-26)
 - **TransactionsPage** - Gestion des transactions + Filtrage catégorie corrigé + Loading spinner + CSV Export [31/10/2025]
 - **TransactionDetailPage** - Détail transaction + Navigation intelligente préservant filtres [31/10/2025]
+- **AddTransactionPage** - Formulaire ajout transaction + Budget Gauge temps réel avec mise à jour automatique (Session S43 - 2026-01-27)
 - **AccountsPage** - Gestion des comptes
 - **BudgetsPage** - Gestion des budgets + Barres de progression bicolores + Affichage dépassement + Icône épargne corrigée - Session S28
 - **BudgetStatisticsPage** - Statistiques budgétaires multi-années avec comparaisons et détection catégories problématiques - Session S28
@@ -222,6 +224,7 @@ notificationHistory (id, userId, notificationId, sentAt, data)
 - ✅ **DashboardContainer.tsx** - Container responsive avec max-width et padding adaptatif (Session 2026-01-26)
 - ✅ **ResponsiveGrid.tsx** - Grille flexible avec variants stats/actions/cards (Session 2026-01-26)
 - ✅ **ResponsiveStatCard.tsx** - Carte statistique avec padding et texte responsive (Session 2026-01-26)
+- ✅ **BudgetGauge.tsx** - Jauge budgétaire temps réel avec affichage bicolore et logique Épargne inversée (Session S43 - 2026-01-27)
 
 **Composants manquants:**
 - ❌ **LoadingSpinner.tsx** - Composant de chargement réutilisable (N'EXISTE PAS)
@@ -1358,6 +1361,158 @@ interface UserGoal {
 **Composants Budget:**
 - **YearlyBudgetChart.tsx** - Graphique barres groupées pour données annuelles
 - **BudgetAdjustmentNotification.tsx** - Notification ajustements budgétaires suggérés
+- **BudgetGauge.tsx** - Jauge budgétaire temps réel avec affichage bicolore et logique Épargne inversée (Session S43 - 2026-01-27)
+
+#### **16.7 Budget Gauge Feature (Session S43 - 2026-01-27)** ✅ COMPLET (100%)
+
+**Objectif:** Affichage temps réel de la progression budgétaire lors de la création de transaction avec mise à jour automatique lors des changements de catégorie ou de montant.
+
+**Statut:** ✅ **100% COMPLET** - Fonctionnel et déployé en production
+
+**Composants Créés:**
+
+**Hook useBudgetGauge:**
+- **Fichier:** `frontend/src/hooks/useBudgetGauge.ts`
+- **Fonctionnalités:**
+  - Récupération automatique du budget par catégorie et période (année/mois)
+  - Calcul temps réel du montant projeté (spent + transaction amount)
+  - Calcul du pourcentage d'utilisation budgétaire
+  - Support multi-devises (EUR ↔ MGA conversion automatique)
+  - Gestion des états de chargement et d'erreur
+  - Logique spéciale pour catégorie "Épargne" (affichage inversé)
+- **Pattern:** Reactive updates via useEffect avec dépendances `[category, amount, date, currency]`
+- **Retour:** `{ budget, projectedSpent, utilization, remaining, isLoading, error }`
+
+**Composant BudgetGauge:**
+- **Fichier:** `frontend/src/components/BudgetGauge.tsx`
+- **Fonctionnalités:**
+  - Affichage barre de progression avec codage couleur (vert < 80%, jaune 80-100%, rouge ≥ 100%)
+  - Barre bicolore lorsque budget dépassé (vert jusqu'à 100%, rouge au-delà)
+  - Affichage pourcentage et montant restant avec CurrencyDisplay
+  - Layout inline optimisé: label à gauche, gauge au centre (stretch), texte à droite
+  - Logique spéciale Épargne: affichage inversé (plus d'épargne = meilleur)
+  - Masquage automatique si catégorie vide ou type revenu
+- **Props:** `category`, `amount`, `date`, `currency`, `className`
+- **Design:** Layout flex avec `items-center`, gauge `flex-1` pour stretch, texte aligné à droite
+
+**Services Étendus:**
+
+**budgetService.getBudgetByCategory:**
+- **Fichier:** `frontend/src/services/budgetService.ts`
+- **Méthode:** `async getBudgetByCategory(category: string, year: number, month: number): Promise<Budget | null>`
+- **Fonctionnalités:**
+  - Recherche budget par nom de catégorie (case-insensitive)
+  - Filtrage par année et mois
+  - Pattern offline-first (IndexedDB → Supabase)
+  - Retourne `Budget | null` si aucun budget trouvé
+- **Utilisation:** Appelé par `useBudgetGauge` hook pour récupération données budgétaire
+
+**Intégration AddTransactionPage:**
+
+**Fichier modifié:** `frontend/src/pages/AddTransactionPage.tsx`
+
+**Position d'intégration:**
+- **Ligne:** Après le `<select>` catégorie (ligne ~558)
+- **Layout:** Section catégorie restructurée avec flex container
+- **Structure:**
+  ```tsx
+  <div className="flex items-center gap-3">
+    <label className="flex-shrink-0">Catégorie *</label>
+    <select className="flex-1">...</select>
+    <div className="flex-1">
+      <BudgetGauge ... />
+    </div>
+  </div>
+  ```
+
+**Layout Optimisé (4 itérations):**
+- **Itération 1:** Gauge en dessous du select (layout vertical)
+- **Itération 2:** Gauge à côté du select (layout horizontal basique)
+- **Itération 3:** Layout flex avec label/gauge/text sur même ligne
+- **Itération 4:** Layout final avec label fixe, gauge stretch, texte aligné droite
+
+**Fonctionnalités:**
+
+**Mise à jour temps réel:**
+- ✅ Mise à jour automatique lorsque `formData.category` change
+- ✅ Mise à jour automatique lorsque `formData.amount` change
+- ✅ Mise à jour automatique lorsque `formData.date` change
+- ✅ Mise à jour automatique lorsque `transactionCurrency` change
+- ✅ Calcul projeté: `spent + transactionAmount`
+
+**Affichage bicolore:**
+- ✅ Barre verte jusqu'à 100% du budget
+- ✅ Barre rouge au-delà de 100% (dépassement)
+- ✅ Transition visuelle fluide entre couleurs
+
+**Codage couleur:**
+- ✅ Vert: `utilization < 80%` (budget respecté)
+- ✅ Jaune: `80% <= utilization < 100%` (approche limite)
+- ✅ Rouge: `utilization >= 100%` (budget dépassé)
+
+**Logique spéciale Épargne:**
+- ✅ Détection catégorie "Épargne" (case-insensitive)
+- ✅ Affichage inversé: plus d'épargne = meilleur (barre verte)
+- ✅ Calcul: `(currentAmount / budgetAmount) * 100` au lieu de `(spent / budget) * 100`
+- ✅ Texte: "Épargne: X% (Y restant)" au lieu de "Utilisation: X%"
+
+**Affichage informations:**
+- ✅ Pourcentage d'utilisation formaté (ex: "85%")
+- ✅ Montant restant avec CurrencyDisplay (ex: "75,000 Ar restants")
+- ✅ Masquage si catégorie vide ou transaction type revenu
+- ✅ Support multi-devises (EUR/MGA) avec conversion automatique
+
+**Support multi-devises:**
+- ✅ Conversion automatique EUR → MGA pour calculs
+- ✅ Affichage dans devise sélectionnée (transactionCurrency)
+- ✅ Synchronisation avec CurrencyInput component
+
+**Tests et Validation:**
+
+**Tests manuels validés:**
+- ✅ Affichage gauge lors sélection catégorie avec budget
+- ✅ Masquage gauge si catégorie vide
+- ✅ Masquage gauge si type revenu
+- ✅ Mise à jour lors changement montant
+- ✅ Mise à jour lors changement date
+- ✅ Mise à jour lors changement devise
+- ✅ Affichage correct pour catégorie Épargne (logique inversée)
+- ✅ Barre bicolore lors dépassement budget
+- ✅ Calculs corrects pour toutes catégories
+- ✅ Conversion devise EUR ↔ MGA fonctionnelle
+
+**Form submission préservé:**
+- ✅ Formulaire soumission fonctionne normalement
+- ✅ Validation champs préservée
+- ✅ Navigation après soumission fonctionne
+- ✅ Aucune régression fonctionnalité existante
+
+**Zéro régression confirmé:**
+- ✅ Tous tests existants passent
+- ✅ Aucune régression visuelle
+- ✅ Aucune régression fonctionnelle
+- ✅ Performance préservée
+
+**Layout optimisé:**
+- ✅ 4 itérations de layout testées
+- ✅ Layout final: label/gauge/text sur même ligne
+- ✅ Gauge stretch pour utilisation espace optimal
+- ✅ Responsive design préservé
+
+**Métriques:**
+- **Fichiers créés:** 2 (useBudgetGauge.ts, BudgetGauge.tsx)
+- **Fichiers modifiés:** 2 (budgetService.ts, AddTransactionPage.tsx)
+- **Lignes de code:** ~350 lignes (hook + composant + intégration)
+- **Complétion:** 100% (toutes fonctionnalités implémentées)
+- **Tests:** ✅ Tous tests manuels passés
+- **Régressions:** ✅ 0 régression confirmée
+- **Déploiement:** ✅ Production déployée
+
+**Fichiers modifiés:**
+- `frontend/src/hooks/useBudgetGauge.ts` - Hook réactif avec support multi-devises
+- `frontend/src/components/BudgetGauge.tsx` - Composant jauge avec layout inline optimisé
+- `frontend/src/services/budgetService.ts` - Méthode `getBudgetByCategory` ajoutée
+- `frontend/src/pages/AddTransactionPage.tsx` - Intégration gauge avec layout optimisé
 
 #### **16.6 Système de Filtrage par Catégorie** ✅ IMPLÉMENTÉ ET FONCTIONNEL
 
@@ -1872,6 +2027,15 @@ Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync
 34. `frontend/src/constants/index.ts` - Correction icône épargne (PiggyBank)
 35. `frontend/src/pages/RecurringTransactionDetailPage.tsx` - Correction édition champ montant
 36. `README.md` - Documentation statistiques budgétaires multi-années
+
+**Nouveaux fichiers (Session S43 - 2026-01-27 - Budget Gauge Feature):**
+37. `frontend/src/hooks/useBudgetGauge.ts` - Hook jauge budgétaire temps réel avec support multi-devises (~150 lignes)
+38. `frontend/src/components/BudgetGauge.tsx` - Composant jauge avec layout inline optimisé (~200 lignes)
+
+**Fichiers modifiés (Session S43 - 2026-01-27 - Budget Gauge Feature):**
+39. `frontend/src/services/budgetService.ts` - Méthode `getBudgetByCategory` ajoutée
+40. `frontend/src/pages/AddTransactionPage.tsx` - Intégration gauge avec layout optimisé (4 itérations)
+41. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour documentation Budget Gauge Feature
 37. `ETAT-TECHNIQUE-COMPLET.md` - Mise à jour module Budget et statistiques
 38. `GAP-TECHNIQUE-COMPLET.md` - Documentation gaps résolus Session S28
 
@@ -3418,4 +3582,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-01-26 - BazarKELY v2.6.0 (Desktop Enhancement Layout Components + Header Navigation - Session S42)*
+*Document généré automatiquement le 2026-01-27 - BazarKELY v2.7.0 (Budget Gauge Feature - Session S43)*

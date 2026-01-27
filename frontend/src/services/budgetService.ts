@@ -266,6 +266,53 @@ class BudgetService {
   }
 
   /**
+   * Récupérer un budget par catégorie, mois et année
+   * 
+   * @param category - Nom de la catégorie (comparaison case-insensitive)
+   * @param month - Numéro du mois (1-12)
+   * @param year - Année (ex: 2024)
+   * @returns Budget correspondant ou null si non trouvé
+   * 
+   * @example
+   * ```ts
+   * const budget = await budgetService.getBudgetByCategory('alimentation', 1, 2024);
+   * if (budget) {
+   *   console.log(`Budget: ${budget.amount} Ar`);
+   * }
+   * ```
+   */
+  async getBudgetByCategory(category: string, month: number, year: number): Promise<Budget | null> {
+    try {
+      // Normaliser la catégorie pour comparaison case-insensitive
+      const normalizedCategory = category.trim().toLowerCase();
+      
+      // Récupérer tous les budgets (utilise le pattern offline-first)
+      const budgets = await this.getBudgets();
+      
+      // Filtrer par catégorie (case-insensitive), mois et année
+      const matchingBudget = budgets.find(budget => {
+        const budgetCategory = String(budget.category).trim().toLowerCase();
+        return (
+          budgetCategory === normalizedCategory &&
+          budget.month === month &&
+          budget.year === year
+        );
+      });
+
+      if (matchingBudget) {
+        console.log(`💰 [BudgetService] ✅ Budget trouvé pour catégorie "${category}", mois ${month}, année ${year}`);
+        return matchingBudget;
+      }
+
+      console.log(`💰 [BudgetService] ⚠️ Aucun budget trouvé pour catégorie "${category}", mois ${month}, année ${year}`);
+      return null;
+    } catch (error) {
+      console.error('💰 [BudgetService] ❌ Erreur lors de la récupération du budget par catégorie:', error);
+      return null;
+    }
+  }
+
+  /**
    * Créer un nouveau budget (OFFLINE-FIRST PATTERN)
    * 1. Sauvegarder dans IndexedDB d'abord
    * 2. Si online, sync vers Supabase

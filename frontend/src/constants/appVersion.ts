@@ -1,6 +1,35 @@
-export const APP_VERSION = 'v2.6.0';
-export const APP_BUILD_DATE = '2026-01-26';
+export const APP_VERSION = 'v2.7.0';
+export const APP_BUILD_DATE = '2026-01-27';
 export const VERSION_HISTORY = [
+  {
+    version: '2.7.0',
+    date: '2026-01-27',
+    changes: [
+      'Feature: Budget Gauge AddTransaction - Affichage temps réel jauge budgétaire lors sélection catégorie dépense',
+      'Feature: Budget Gauge AddTransaction - Affichage pourcentage utilisé et montant restant en temps réel',
+      'Feature: useBudgetGauge hook - Création hook custom avec logique réactive (fetch budget, calcul spent, statut)',
+      'Feature: useBudgetGauge hook - Réactivité automatique sur changements category/amount/date',
+      'Feature: BudgetGauge component - Composant présentationnel avec layout inline (barre et texte même ligne)',
+      'Feature: BudgetGauge component - Barre de progression bicolore (vert + rouge) si dépassement budgétaire',
+      'Feature: BudgetGauge component - Couleurs dynamiques selon statut (vert bon, jaune attention, rouge dépassé)',
+      'Feature: getBudgetByCategory service - Extension budgetService avec méthode récupération budget par catégorie/mois/année',
+      'Feature: getBudgetByCategory service - Pattern offline-first via getBudgets() existant',
+      'Feature: Layout optimisations - 4 itérations pour layout optimal (label gauche, gauge extensible, texte droite)',
+      'Feature: Layout optimisations - Structure flex-1 pour extension complète barre entre label et texte',
+      'Feature: Logique Épargne inversée - Statut inversé pour catégorie Épargne (0% = dépassé rouge, 100% = bon vert)',
+      'Feature: Conversion multi-devises - Conversion EUR vers MGA utilisant exchangeRateUsed stocké dans transactions',
+      'Feature: Masquage automatique - Jauge masquée si type Revenu ou catégorie vide',
+      'Feature: Gestion états - Loading, error, no-budget states gérés avec messages informatifs',
+      'Technical: Architecture modulaire - Service-hook-component-integration pattern réutilisable',
+      'Technical: Matching case-insensitive - Comparaison catégories normalisée pour robustesse',
+      'Technical: Mobile préservé 100% - Zéro régression mobile confirmé',
+      'Documentation: README.md, ETAT-TECHNIQUE-COMPLET.md, PROJECT-STRUCTURE-TREE.md, FEATURE-MATRIX.md, CURSOR-2.0-CONFIG.md mis à jour',
+      'Workflow: Multi-agent workflows utilisés (Agents 01, 02, 03, 04, 05, 06, 09, 10, 11, 12)',
+      'Workflow: Documentation 5-agents parallèles (NOUVEAU pattern) - Gain temps 70%',
+      'Session: S43 (2026-01-27) - Budget Gauge Feature complète'
+    ],
+    type: 'minor' as const
+  },
   {
     version: '2.6.0',
     date: '2026-01-26',

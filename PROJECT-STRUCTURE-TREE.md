@@ -1,9 +1,9 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 4.1 (Session 2026-01-26 - Desktop Enhancement + Layout Components + Navigation Restructure)  
-**Date de mise à jour:** 2026-01-26  
-**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.4.11)
+**Version:** 4.2 (Session S43 2026-01-27 - Budget Gauge Feature + AddTransaction Integration)  
+**Date de mise à jour:** 2026-01-27  
+**Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.4.11) + Budget Gauge Feature (v2.4.12)
 
 ---
 
@@ -12,7 +12,7 @@
 Cette structure présente l'organisation complète du projet BazarKELY avec tous les composants existants, y compris les nouveaux composants créés lors des sessions de développement.
 
 ### **📊 Statistiques du Projet**
-- **Total fichiers:** 315+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07, +5 fichiers S41 2026-01-25, +3 fichiers layout components 2026-01-26)
+- **Total fichiers:** 316+ fichiers (+11 fichiers Step 3 Construction POC UI Components 2025-11-08, +3 fichiers analyses 2025-11-14, +1 migration 2025-11-14, +1 migration 2025-11-15, +2 analyses 2025-11-15, +2 fichiers S28 2025-12-31, +15 fichiers agent-analysis S37 2026-01-07, +5 fichiers S41 2026-01-25, +3 fichiers layout components 2026-01-26, +2 fichiers S43 2026-01-27)
 - **Composants UI:** 13/14 implémentés (93%)
 - **Composants Layout:** 6/6 implémentés (100%) 🆕 NOUVEAU 2026-01-26 (+3 composants responsive)
 - **Composants Auth:** 2/2 implémentés (100%)
@@ -194,6 +194,7 @@ bazarkely-2/
 │   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
 │   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications
+│   │   │   ├── 📄 BudgetGauge.tsx # 🆕 NOUVEAU [S43] 2026-01-27 - Composant budget gauge avec layout inline, barre progression et montants
 │   │   │   ├── 📁 Currency/                  # Composants affichage devises
 │   │   │   │   ├── 📄 CurrencyDisplay.tsx   # ✅ Composant affichage montants (MODIFIÉ 2026-01-25 - Protection traduction)
 │   │   │   │   ├── 📄 CurrencyInput.tsx     # ✅ Composant input montants
@@ -204,7 +205,7 @@ bazarkely-2/
 │   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
-│   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction)
+│   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé)
 │   │   │   ├── 📄 AddBudgetPage.tsx      # ✅ Ajout budget (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 AccountsPage.tsx       # ✅ Gestion des comptes (MODIFIÉ 2025-01-11 - Layout 2 colonnes + Transfert)
 │   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage) (MODIFIÉ 2025-01-20 - Cartes budget cliquables + navigation catégorie) (MODIFIÉ [S28] 2025-12-31 - Barre progression bicolore + icône épargne + style select)
@@ -239,7 +240,8 @@ bazarkely-2/
 │   │   │   ├── 📄 safariCompatibility.ts  # ✅ Compatibilité Safari
 │   │   │   ├── 📄 safariServiceWorkerManager.ts # ✅ Gestionnaire SW Safari
 │   │   │   ├── 📄 toastService.ts        # ✅ Service notifications toast
-│   │   │   └── 📄 dialogService.ts       # ✅ Service dialogues modernes
+│   │   │   ├── 📄 dialogService.ts       # ✅ Service dialogues modernes
+│   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs
@@ -271,7 +273,8 @@ bazarkely-2/
 │   │   │   ├── 📄 useRecommendations.ts # 🆕 NOUVEAU - Hook intégration recommandations (579 lignes)
 │   │   │   ├── 📄 useYearlyBudgetData.ts # ✅ Hook données budgétaires annuelles
 │   │   │   ├── 📄 useMultiYearBudgetData.ts # 🆕 NOUVEAU [S28] 2025-12-31 - Hook statistiques multi-années (~450 lignes)
-│   │   │   └── 📄 usePreventTranslation.ts # 🆕 NOUVEAU [S41] 2026-01-25 - Hook protection traduction automatique
+│   │   │   ├── 📄 usePreventTranslation.ts # 🆕 NOUVEAU [S41] 2026-01-25 - Hook protection traduction automatique
+│   │   │   └── 📄 useBudgetGauge.ts # 🆕 NOUVEAU [S43] 2026-01-27 - Hook budget gauge logic (fetch budget, calculate spent/projected, determine status)
 │   │   ├── 📁 utils/                     # Fonctions utilitaires
 │   │   │   ├── 📄 cn.ts                  # ✅ Utilitaires CSS
 │   │   │   ├── 📄 passwordUtils.ts       # ✅ Utilitaires mots de passe
@@ -502,7 +505,7 @@ bazarkely-2/
 - **frontend/src/utils/:** 7 fichiers (1 nouveau utilitaire récurrentes + 1 excludeFromTranslation S41) ✅ (+1 session 2025-11-03, +1 session S41)
 - **frontend/src/data/:** 1 fichier (250 questions certification) 🆕 NOUVEAU
 - **frontend/src/lib/:** 3 fichiers (database.ts Version 7) ✅ (MODIFIÉ 2025-11-03)
-- **frontend/src/hooks/:** 9 fichiers (7 hooks complets + 1 useMultiYearBudgetData S28 + 1 usePreventTranslation S41) 🆕 NOUVEAU (+1 session S28, +1 session S41)
+- **frontend/src/hooks/:** 10 fichiers (7 hooks complets + 1 useMultiYearBudgetData S28 + 1 usePreventTranslation S41 + 1 useBudgetGauge S43) 🆕 NOUVEAU (+1 session S28, +1 session S41, +1 session S43)
 - **frontend/src/modules/construction-poc/:** 33 fichiers (14 existants + 11 UI components 2025-11-08 + 8 Phase 3 Security 2025-11-12) 🆕 NOUVEAU
   - **components/:** 13 fichiers (12 composants + 1 index) [NEW 2025-11-08] [3 MODIFIED 2025-11-12: POCDashboard, PurchaseOrderForm, POCOrdersList] [3 NEW 2025-11-12: ThresholdAlert, ConsumptionPlanCard, PriceMaskingWrapper]
   - **pages/:** 1 fichier [MODIFIED 2025-11-12: OrderDetailPage]
@@ -1414,4 +1417,44 @@ bazarkely-2/
 
 ---
 
-*Structure mise à jour le 2026-01-25 - BazarKELY v4.0 (Session S41 - i18n Multi-Langues + Protection Traduction + Fix Dashboard EUR Display)*
+## 🆕 NOUVEAUX FICHIERS ET STRUCTURE (Session S43 2026-01-27)
+
+### **Budget Gauge Feature** 🆕 NEW [2026-01-27]
+
+#### **Hook Budget Gauge** 🆕 NEW [2026-01-27]
+- **useBudgetGauge.ts** - Hook personnalisé pour logique budget gauge
+- **Localisation:** `frontend/src/hooks/useBudgetGauge.ts`
+- **Fonctionnalités:** Récupère budget par catégorie, calcule montants dépensés et projetés, détermine statut (safe/warning/danger), gestion état loading/error
+- **Statut:** Hook complet avec calculs en temps réel
+
+#### **Composant Budget Gauge** 🆕 NEW [2026-01-27]
+- **BudgetGauge.tsx** - Composant présentational pour affichage budget gauge
+- **Localisation:** `frontend/src/components/BudgetGauge.tsx`
+- **Fonctionnalités:** Layout inline avec barre de progression, affichage montants (budget/spent/remaining), statuts visuels (safe/warning/danger)
+- **Statut:** Composant réutilisable avec props TypeScript
+
+### **Modifications Session S43** 🔧 MODIFIÉ [S43]
+
+#### **budgetService.ts** 🔧 MODIFIÉ [S43]
+- **Modifications:** Ajout méthode `getBudgetByCategory(category, month, year)` pour récupération budget par catégorie et période
+- **Fonctionnalités:** Pattern offline-first (IndexedDB → Supabase), filtrage par catégorie, mois et année
+- **Statut:** Méthode ajoutée et fonctionnelle
+
+#### **AddTransactionPage.tsx** 🔧 MODIFIÉ [S43]
+- **Modifications:** Intégration composant BudgetGauge avec layout optimisé
+- **Fonctionnalités:** Affichage budget gauge lors sélection catégorie dépense, mise à jour temps réel montants
+- **Statut:** Intégration complète avec hook useBudgetGauge
+
+### **Statistiques Session S43**
+- **Fichiers créés:** 2 nouveaux fichiers (useBudgetGauge.ts, BudgetGauge.tsx)
+- **Fichiers modifiés:** 2 fichiers (budgetService.ts, AddTransactionPage.tsx)
+- **Lignes de code ajoutées:** ~300 lignes (+150 hook, +100 composant, +50 service)
+- **Hooks:** 1 nouveau hook (useBudgetGauge)
+- **Composants:** 1 nouveau composant (BudgetGauge)
+- **Services:** 1 méthode ajoutée (getBudgetByCategory)
+- **Fonctionnalités:** Budget gauge feature complète avec calculs temps réel et affichage visuel
+- **Statut:** 100% fonctionnel et intégré
+
+---
+
+*Structure mise à jour le 2026-01-27 - BazarKELY v4.2 (Session S43 - Budget Gauge Feature + AddTransaction Integration)*
