@@ -7,9 +7,10 @@ import { supabase } from '../lib/supabase';
 import type {
   ReimbursementRequest,
   ReimbursementRequestRow,
-  FamilyMemberBalanceRow,
   ReimbursementStatus as ReimbursementRequestStatus,
 } from '../types/family';
+// Import the row format type (snake_case) as FamilyMemberBalanceRow
+import type { FamilyMemberBalance as FamilyMemberBalanceRowType } from '../types/family';
 
 /**
  * Structure de la table reimbursement_requests (nouvelle version)
@@ -94,6 +95,98 @@ export interface CreateReimbursementData {
 }
 
 // ============================================================================
+// TYPES POUR PAYMENT ALLOCATION (Phase 1)
+// ============================================================================
+
+/**
+ * Résultat de l'allocation d'un paiement
+ */
+export interface PaymentAllocationResult {
+  paymentId: string;
+  totalAmount: number;
+  allocatedAmount: number;
+  surplusAmount: number;
+  allocations: PaymentAllocation[];
+  remainingBalances: RemainingBalance[];
+  creditBalanceCreated: boolean;
+  creditBalanceId?: string;
+}
+
+/**
+ * Allocation d'un paiement à une demande de remboursement
+ */
+export interface PaymentAllocation {
+  reimbursementRequestId: string;
+  allocatedAmount: number;
+  requestAmount: number;
+  remainingAmount: number;
+  isFullyPaid: boolean;
+}
+
+/**
+ * Solde restant après allocation
+ */
+export interface RemainingBalance {
+  reimbursementRequestId: string;
+  remainingAmount: number;
+  status: 'pending' | 'settled';
+}
+
+/**
+ * Entrée dans l'historique des paiements
+ */
+export interface PaymentHistoryEntry {
+  paymentId: string;
+  fromMemberId: string;
+  fromMemberName: string;
+  toMemberId: string;
+  toMemberName: string;
+  totalAmount: number;
+  allocatedAmount: number;
+  surplusAmount: number;
+  notes?: string;
+  createdAt: Date;
+  allocations: PaymentAllocationDetail[];
+}
+
+/**
+ * Détail d'allocation dans l'historique
+ */
+export interface PaymentAllocationDetail {
+  reimbursementRequestId: string;
+  requestDescription: string;
+  allocatedAmount: number;
+  requestAmount: number;
+  remainingAmount: number;
+  isFullyPaid: boolean;
+}
+
+/**
+ * Solde de crédit entre deux membres
+ */
+export interface MemberCreditBalance {
+  id: string;
+  fromMemberId: string;
+  fromMemberName: string;
+  toMemberId: string;
+  toMemberName: string;
+  creditAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
+  lastPaymentDate?: Date;
+}
+
+/**
+ * Détails complets d'une allocation de paiement
+ */
+export interface PaymentAllocationDetails {
+  payment: PaymentHistoryEntry;
+  allocations: PaymentAllocationDetail[];
+  creditBalance?: MemberCreditBalance;
+  relatedRequests: ReimbursementRequest[];
+}
+
+// ============================================================================
 // FONCTIONS DE CONVERSION
 // ============================================================================
 
@@ -101,7 +194,7 @@ export interface CreateReimbursementData {
  * Convertit une ligne Supabase (snake_case) vers FamilyMemberBalance (camelCase)
  */
 function mapRowToFamilyMemberBalance(
-  row: FamilyMemberBalanceRow
+  row: FamilyMemberBalanceRowType
 ): FamilyMemberBalance {
   return {
     familyGroupId: row.family_group_id,
@@ -1085,3 +1178,700 @@ export async function getReimbursementsByMember(
   }
 }
 
+// ============================================================================
+// PAYMENT ALLOCATION FUNCTIONS (Phase 1)
+// ============================================================================
+
+/**
+ * Enregistre un paiement de remboursement avec allocation FIFO automatique
+ * 
+ * Algorithme FIFO (First In First Out):
+ * - Trie les demandes en attente par date de création (plus ancienne en premier)
+ * - Alloue le paiement séquentiellement jusqu'à épuisement
+ * - Met à jour le statut des demandes (settled si complètement payée, pending avec montant réduit si partielle)
+ * - Détecte le surplus et crée/met à jour un solde de crédit (acompte)
+ * 
+ * @param fromMemberId - ID du membre débiteur (qui paie)
+ * @param toMemberId - ID du membre créancier (qui reçoit)
+ * @param amount - Montant total du paiement
+ * @param notes - Notes optionnelles sur le paiement
+ * @param groupId - ID du groupe familial (optionnel, peut être inféré)
+ * @returns Résultat de l'allocation avec détails
+ * @throws Error si l'utilisateur n'est pas authentifié, montant invalide, ou erreur de base de données
+ */
+export async function recordReimbursementPayment(
+  fromMemberId: string,
+  toMemberId: string,
+  amount: number,
+  notes?: string,
+  groupId?: string
+): Promise<PaymentAllocationResult> {
+  try {
+    // Vérifier l'authentification
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    // Validation du montant
+    if (amount <= 0) {
+      throw new Error('Le montant du paiement doit être supérieur à zéro');
+    }
+
+    // Récupérer les informations des membres et valider qu'ils appartiennent au même groupe
+    const { data: fromMember, error: fromMemberError } = await supabase
+      .from('family_members')
+      .select('id, family_group_id, user_id, display_name')
+      .eq('id', fromMemberId)
+      .single();
+
+    if (fromMemberError || !fromMember) {
+      throw new Error('Membre débiteur introuvable');
+    }
+
+    const { data: toMember, error: toMemberError } = await supabase
+      .from('family_members')
+      .select('id, family_group_id, user_id, display_name')
+      .eq('id', toMemberId)
+      .single();
+
+    if (toMemberError || !toMember) {
+      throw new Error('Membre créancier introuvable');
+    }
+
+    // Déterminer le groupId si non fourni
+    const finalGroupId = groupId || fromMember.family_group_id;
+    if (!finalGroupId) {
+      throw new Error('Impossible de déterminer le groupe familial');
+    }
+
+    // Vérifier que les deux membres appartiennent au même groupe
+    if (fromMember.family_group_id !== toMember.family_group_id || fromMember.family_group_id !== finalGroupId) {
+      throw new Error('Les membres doivent appartenir au même groupe familial');
+    }
+
+    // Vérifier que l'utilisateur est membre du groupe
+    const { data: membership, error: membershipError } = await supabase
+      .from('family_members')
+      .select('id')
+      .eq('family_group_id', finalGroupId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (membershipError || !membership) {
+      throw new Error("Vous n'êtes pas membre de ce groupe familial");
+    }
+
+    // Récupérer les demandes de remboursement en attente (FIFO: triées par date de création ASC)
+    const { data: pendingRequests, error: requestsError } = await supabase
+      .from('reimbursement_requests')
+      .select('*')
+      .eq('from_member_id', fromMemberId)
+      .eq('to_member_id', toMemberId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true }); // FIFO: plus ancienne en premier
+
+    if (requestsError) {
+      console.error('Erreur lors de la récupération des demandes en attente:', requestsError);
+      throw new Error(`Erreur lors de la récupération des demandes: ${requestsError.message}`);
+    }
+
+    const requests = pendingRequests || [];
+
+    // ALGORITHME FIFO: Allouer le paiement aux demandes les plus anciennes en premier
+    let remainingPayment = amount;
+    const allocations: PaymentAllocation[] = [];
+    const remainingBalances: RemainingBalance[] = [];
+
+    for (const request of requests) {
+      if (remainingPayment <= 0) {
+        break; // Plus de paiement à allouer
+      }
+
+      const requestAmount = request.amount || 0;
+      const allocatedToThisRequest = Math.min(remainingPayment, requestAmount);
+      const remainingInRequest = requestAmount - allocatedToThisRequest;
+      const isFullyPaid = allocatedToThisRequest >= requestAmount;
+
+      allocations.push({
+        reimbursementRequestId: request.id,
+        allocatedAmount: allocatedToThisRequest,
+        requestAmount: requestAmount,
+        remainingAmount: remainingInRequest,
+        isFullyPaid: isFullyPaid,
+      });
+
+      remainingBalances.push({
+        reimbursementRequestId: request.id,
+        remainingAmount: remainingInRequest,
+        status: isFullyPaid ? 'settled' : 'pending',
+      });
+
+      remainingPayment -= allocatedToThisRequest;
+    }
+
+    const allocatedAmount = amount - remainingPayment;
+    const surplusAmount = remainingPayment; // Le reste après allocation
+
+    // Créer l'enregistrement de paiement
+    const { data: payment, error: paymentError } = await supabase
+      .from('reimbursement_payments')
+      .insert({
+        family_group_id: finalGroupId,
+        from_member_id: fromMemberId,
+        to_member_id: toMemberId,
+        total_amount: amount,
+        allocated_amount: allocatedAmount,
+        surplus_amount: surplusAmount,
+        currency: 'MGA', // TODO: Récupérer depuis la première demande ou paramètre
+        notes: notes || null,
+        created_by: user.id,
+      } as any)
+      .select()
+      .single();
+
+    if (paymentError || !payment) {
+      console.error('Erreur lors de la création du paiement:', paymentError);
+      throw new Error(`Erreur lors de la création du paiement: ${paymentError?.message || 'Aucune donnée retournée'}`);
+    }
+
+    const paymentId = payment.id;
+
+    // Créer les allocations de paiement
+    if (allocations.length > 0) {
+      const allocationInserts = allocations.map(allocation => ({
+        payment_id: paymentId,
+        reimbursement_request_id: allocation.reimbursementRequestId,
+        allocated_amount: allocation.allocatedAmount,
+        request_amount: allocation.requestAmount,
+        remaining_amount: allocation.remainingAmount,
+        is_fully_paid: allocation.isFullyPaid,
+      }));
+
+      const { error: allocationsError } = await supabase
+        .from('reimbursement_payment_allocations')
+        .insert(allocationInserts as any);
+
+      if (allocationsError) {
+        console.error('Erreur lors de la création des allocations:', allocationsError);
+        // Rollback: supprimer le paiement créé
+        await supabase.from('reimbursement_payments').delete().eq('id', paymentId);
+        throw new Error(`Erreur lors de la création des allocations: ${allocationsError.message}`);
+      }
+
+      // Mettre à jour les statuts des demandes de remboursement
+      for (const allocation of allocations) {
+        const updateData: any = {
+          updated_at: new Date().toISOString(),
+        };
+
+        if (allocation.isFullyPaid) {
+          // Demande complètement payée: marquer comme settled
+          updateData.status = 'settled';
+          updateData.settled_at = new Date().toISOString();
+          updateData.settled_by = user.id;
+        } else {
+          // Demande partiellement payée: réduire le montant et garder pending
+          updateData.amount = allocation.remainingAmount;
+        }
+
+        const { error: updateError } = await supabase
+          .from('reimbursement_requests')
+          .update(updateData)
+          .eq('id', allocation.reimbursementRequestId);
+
+        if (updateError) {
+          console.error(`Erreur lors de la mise à jour de la demande ${allocation.reimbursementRequestId}:`, updateError);
+          // Continuer avec les autres demandes même en cas d'erreur
+        }
+      }
+    }
+
+    // Gérer le surplus: créer ou mettre à jour le solde de crédit
+    let creditBalanceId: string | undefined;
+    let creditBalanceCreated = false;
+
+    if (surplusAmount > 0) {
+      // Vérifier si un solde de crédit existe déjà
+      const { data: existingCredit, error: creditCheckError } = await supabase
+        .from('member_credit_balance')
+        .select('id, credit_amount')
+        .eq('family_group_id', finalGroupId)
+        .eq('from_member_id', fromMemberId)
+        .eq('to_member_id', toMemberId)
+        .single();
+
+      if (creditCheckError && creditCheckError.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, ce qui est normal si le solde n'existe pas encore
+        console.error('Erreur lors de la vérification du solde de crédit:', creditCheckError);
+        // Ne pas faire échouer le paiement si la vérification échoue
+      }
+
+      if (existingCredit) {
+        // Mettre à jour le solde existant
+        const { data: updatedCredit, error: updateCreditError } = await supabase
+          .from('member_credit_balance')
+          .update({
+            credit_amount: (existingCredit.credit_amount || 0) + surplusAmount,
+            updated_at: new Date().toISOString(),
+            last_payment_date: new Date().toISOString(),
+          } as any)
+          .eq('id', existingCredit.id)
+          .select()
+          .single();
+
+        if (updateCreditError) {
+          console.error('Erreur lors de la mise à jour du solde de crédit:', updateCreditError);
+          // Ne pas faire échouer le paiement si la mise à jour du crédit échoue
+        } else {
+          creditBalanceId = updatedCredit?.id;
+          creditBalanceCreated = true;
+        }
+      } else {
+        // Créer un nouveau solde de crédit
+        const { data: newCredit, error: createCreditError } = await supabase
+          .from('member_credit_balance')
+          .insert({
+            family_group_id: finalGroupId,
+            from_member_id: fromMemberId,
+            to_member_id: toMemberId,
+            credit_amount: surplusAmount,
+            currency: 'MGA',
+            last_payment_date: new Date().toISOString(),
+          } as any)
+          .select()
+          .single();
+
+        if (createCreditError) {
+          console.error('Erreur lors de la création du solde de crédit:', createCreditError);
+          // Ne pas faire échouer le paiement si la création du crédit échoue
+        } else {
+          creditBalanceId = newCredit?.id;
+          creditBalanceCreated = true;
+        }
+      }
+    }
+
+    console.log(`💰 [ReimbursementService] Paiement enregistré: ${amount} Ar, ${allocations.length} allocation(s), surplus: ${surplusAmount} Ar`);
+
+    return {
+      paymentId,
+      totalAmount: amount,
+      allocatedAmount,
+      surplusAmount,
+      allocations,
+      remainingBalances,
+      creditBalanceCreated,
+      creditBalanceId,
+    };
+  } catch (error) {
+    console.error('Erreur dans recordReimbursementPayment:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère l'historique des paiements de remboursement avec filtres et pagination
+ * 
+ * @param groupId - ID du groupe familial
+ * @param options - Options de filtrage et pagination
+ * @returns Tableau des entrées d'historique de paiement
+ * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ */
+export async function getPaymentHistory(
+  groupId: string,
+  options?: {
+    fromMemberId?: string;
+    toMemberId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<PaymentHistoryEntry[]> {
+  try {
+    // Vérifier l'authentification
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    // Vérifier que l'utilisateur est membre du groupe
+    const { data: membership, error: membershipError } = await supabase
+      .from('family_members')
+      .select('id')
+      .eq('family_group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (membershipError || !membership) {
+      throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas");
+    }
+
+    // Construire la requête avec filtres
+    let query = supabase
+      .from('reimbursement_payments')
+      .select(`
+        *,
+        from_member:family_members!reimbursement_payments_from_member_id_fkey(
+          display_name
+        ),
+        to_member:family_members!reimbursement_payments_to_member_id_fkey(
+          display_name
+        )
+      `)
+      .eq('family_group_id', groupId);
+
+    // Appliquer les filtres
+    if (options?.fromMemberId) {
+      query = query.eq('from_member_id', options.fromMemberId);
+    }
+    if (options?.toMemberId) {
+      query = query.eq('to_member_id', options.toMemberId);
+    }
+    if (options?.startDate) {
+      query = query.gte('created_at', options.startDate.toISOString());
+    }
+    if (options?.endDate) {
+      query = query.lte('created_at', options.endDate.toISOString());
+    }
+
+    // Trier par date de création (plus récent en premier)
+    query = query.order('created_at', { ascending: false });
+
+    // Pagination
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+    if (options?.offset) {
+      query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
+    }
+
+    const { data: payments, error: paymentsError } = await query;
+
+    if (paymentsError) {
+      console.error('Erreur lors de la récupération de l\'historique des paiements:', paymentsError);
+      throw new Error(`Erreur lors de la récupération: ${paymentsError.message}`);
+    }
+
+    if (!payments || payments.length === 0) {
+      return [];
+    }
+
+    // Récupérer les allocations pour chaque paiement
+    const paymentIds = payments.map((p: any) => p.id);
+    const { data: allocations, error: allocationsError } = await supabase
+      .from('reimbursement_payment_allocations')
+      .select(`
+        *,
+        reimbursement_request:reimbursement_requests(
+          shared_transaction:family_shared_transactions(
+            transactions(
+              description
+            )
+          )
+        )
+      `)
+      .in('payment_id', paymentIds);
+
+    if (allocationsError) {
+      console.error('Erreur lors de la récupération des allocations:', allocationsError);
+      // Continuer sans allocations plutôt que de faire échouer
+    }
+
+    // Grouper les allocations par payment_id
+    const allocationsByPayment = new Map<string, any[]>();
+    (allocations || []).forEach((alloc: any) => {
+      const paymentId = alloc.payment_id;
+      const existing = allocationsByPayment.get(paymentId) || [];
+      existing.push(alloc);
+      allocationsByPayment.set(paymentId, existing);
+    });
+
+    // Mapper les résultats
+    return payments.map((payment: any) => {
+      const paymentAllocations = allocationsByPayment.get(payment.id) || [];
+      
+      const allocationDetails: PaymentAllocationDetail[] = paymentAllocations.map((alloc: any) => {
+        // Extraire la description de la transaction
+        const sharedTransaction = alloc.reimbursement_request?.shared_transaction;
+        const transaction = Array.isArray(sharedTransaction?.transactions)
+          ? sharedTransaction.transactions[0]
+          : sharedTransaction?.transactions;
+        const description = transaction?.description || 'Transaction sans description';
+
+        return {
+          reimbursementRequestId: alloc.reimbursement_request_id,
+          requestDescription: description,
+          allocatedAmount: alloc.allocated_amount || 0,
+          requestAmount: alloc.request_amount || 0,
+          remainingAmount: alloc.remaining_amount || 0,
+          isFullyPaid: alloc.is_fully_paid || false,
+        };
+      });
+
+      const fromMember = Array.isArray(payment.from_member) ? payment.from_member[0] : payment.from_member;
+      const toMember = Array.isArray(payment.to_member) ? payment.to_member[0] : payment.to_member;
+
+      return {
+        paymentId: payment.id,
+        fromMemberId: payment.from_member_id,
+        fromMemberName: fromMember?.display_name || 'Membre inconnu',
+        toMemberId: payment.to_member_id,
+        toMemberName: toMember?.display_name || 'Membre inconnu',
+        totalAmount: payment.total_amount || 0,
+        allocatedAmount: payment.allocated_amount || 0,
+        surplusAmount: payment.surplus_amount || 0,
+        notes: payment.notes || undefined,
+        createdAt: new Date(payment.created_at),
+        allocations: allocationDetails,
+      };
+    });
+  } catch (error) {
+    console.error('Erreur dans getPaymentHistory:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère le solde de crédit (acompte) entre deux membres
+ * 
+ * @param fromMemberId - ID du membre débiteur
+ * @param toMemberId - ID du membre créancier
+ * @param groupId - ID du groupe familial
+ * @returns Solde de crédit ou null si aucun solde n'existe
+ * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ */
+export async function getMemberCreditBalance(
+  fromMemberId: string,
+  toMemberId: string,
+  groupId: string
+): Promise<MemberCreditBalance | null> {
+  try {
+    // Vérifier l'authentification
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    // Vérifier que l'utilisateur est membre du groupe
+    const { data: membership, error: membershipError } = await supabase
+      .from('family_members')
+      .select('id')
+      .eq('family_group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (membershipError || !membership) {
+      throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas");
+    }
+
+    // Récupérer le solde de crédit avec les noms des membres
+    const { data: creditBalance, error: creditError } = await supabase
+      .from('member_credit_balance')
+      .select(`
+        *,
+        from_member:family_members!member_credit_balance_from_member_id_fkey(
+          display_name
+        ),
+        to_member:family_members!member_credit_balance_to_member_id_fkey(
+          display_name
+        )
+      `)
+      .eq('family_group_id', groupId)
+      .eq('from_member_id', fromMemberId)
+      .eq('to_member_id', toMemberId)
+      .single();
+
+    if (creditError) {
+      if (creditError.code === 'PGRST116') {
+        // Aucune ligne trouvée, ce qui est normal
+        return null;
+      }
+      console.error('Erreur lors de la récupération du solde de crédit:', creditError);
+      throw new Error(`Erreur lors de la récupération: ${creditError.message}`);
+    }
+
+    if (!creditBalance) {
+      return null;
+    }
+
+    const fromMember = Array.isArray(creditBalance.from_member) ? creditBalance.from_member[0] : creditBalance.from_member;
+    const toMember = Array.isArray(creditBalance.to_member) ? creditBalance.to_member[0] : creditBalance.to_member;
+
+    return {
+      id: creditBalance.id,
+      fromMemberId: creditBalance.from_member_id,
+      fromMemberName: fromMember?.display_name || 'Membre inconnu',
+      toMemberId: creditBalance.to_member_id,
+      toMemberName: toMember?.display_name || 'Membre inconnu',
+      creditAmount: creditBalance.credit_amount || 0,
+      createdAt: new Date(creditBalance.created_at),
+      updatedAt: new Date(creditBalance.updated_at),
+      lastPaymentDate: creditBalance.last_payment_date ? new Date(creditBalance.last_payment_date) : undefined,
+    };
+  } catch (error) {
+    console.error('Erreur dans getMemberCreditBalance:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère les détails complets d'une allocation de paiement spécifique
+ * 
+ * @param paymentId - ID du paiement
+ * @returns Détails complets du paiement ou null si non trouvé
+ * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ */
+export async function getAllocationDetails(
+  paymentId: string
+): Promise<PaymentAllocationDetails | null> {
+  try {
+    // Vérifier l'authentification
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
+    // Récupérer le paiement avec les informations des membres
+    const { data: payment, error: paymentError } = await supabase
+      .from('reimbursement_payments')
+      .select(`
+        *,
+        from_member:family_members!reimbursement_payments_from_member_id_fkey(
+          display_name
+        ),
+        to_member:family_members!reimbursement_payments_to_member_id_fkey(
+          display_name
+        )
+      `)
+      .eq('id', paymentId)
+      .single();
+
+    if (paymentError) {
+      if (paymentError.code === 'PGRST116') {
+        return null; // Paiement non trouvé
+      }
+      console.error('Erreur lors de la récupération du paiement:', paymentError);
+      throw new Error(`Erreur lors de la récupération: ${paymentError.message}`);
+    }
+
+    if (!payment) {
+      return null;
+    }
+
+    // Vérifier que l'utilisateur est membre du groupe
+    const { data: membership, error: membershipError } = await supabase
+      .from('family_members')
+      .select('id')
+      .eq('family_group_id', payment.family_group_id)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (membershipError || !membership) {
+      throw new Error("Vous n'êtes pas autorisé à consulter ce paiement");
+    }
+
+    // Récupérer les allocations avec les détails des demandes
+    const { data: allocations, error: allocationsError } = await supabase
+      .from('reimbursement_payment_allocations')
+      .select(`
+        *,
+        reimbursement_request:reimbursement_requests(
+          *,
+          shared_transaction:family_shared_transactions(
+            transactions(
+              description
+            )
+          )
+        )
+      `)
+      .eq('payment_id', paymentId);
+
+    if (allocationsError) {
+      console.error('Erreur lors de la récupération des allocations:', allocationsError);
+      throw new Error(`Erreur lors de la récupération des allocations: ${allocationsError.message}`);
+    }
+
+    // Mapper les allocations avec les détails
+    const allocationDetails: PaymentAllocationDetail[] = (allocations || []).map((alloc: any) => {
+      const sharedTransaction = alloc.reimbursement_request?.shared_transaction;
+      const transaction = Array.isArray(sharedTransaction?.transactions)
+        ? sharedTransaction.transactions[0]
+        : sharedTransaction?.transactions;
+      const description = transaction?.description || 'Transaction sans description';
+
+      return {
+        reimbursementRequestId: alloc.reimbursement_request_id,
+        requestDescription: description,
+        allocatedAmount: alloc.allocated_amount || 0,
+        requestAmount: alloc.request_amount || 0,
+        remainingAmount: alloc.remaining_amount || 0,
+        isFullyPaid: alloc.is_fully_paid || false,
+      };
+    });
+
+    // Récupérer les demandes de remboursement liées
+    const requestIds = allocationDetails.map(a => a.reimbursementRequestId);
+    const { data: requests, error: requestsError } = await supabase
+      .from('reimbursement_requests')
+      .select('*')
+      .in('id', requestIds);
+
+    const relatedRequests = requests ? requests.map(mapRowToReimbursementRequest) : [];
+
+    // Récupérer le solde de crédit si un surplus existe
+    let creditBalance: MemberCreditBalance | undefined;
+    if (payment.surplus_amount > 0) {
+      const credit = await getMemberCreditBalance(
+        payment.from_member_id,
+        payment.to_member_id,
+        payment.family_group_id
+      );
+      creditBalance = credit || undefined;
+    }
+
+    const fromMember = Array.isArray(payment.from_member) ? payment.from_member[0] : payment.from_member;
+    const toMember = Array.isArray(payment.to_member) ? payment.to_member[0] : payment.to_member;
+
+    const paymentEntry: PaymentHistoryEntry = {
+      paymentId: payment.id,
+      fromMemberId: payment.from_member_id,
+      fromMemberName: fromMember?.display_name || 'Membre inconnu',
+      toMemberId: payment.to_member_id,
+      toMemberName: toMember?.display_name || 'Membre inconnu',
+      totalAmount: payment.total_amount || 0,
+      allocatedAmount: payment.allocated_amount || 0,
+      surplusAmount: payment.surplus_amount || 0,
+      notes: payment.notes || undefined,
+      createdAt: new Date(payment.created_at),
+      allocations: allocationDetails,
+    };
+
+    return {
+      payment: paymentEntry,
+      allocations: allocationDetails,
+      creditBalance,
+      relatedRequests,
+    };
+  } catch (error) {
+    console.error('Erreur dans getAllocationDetails:', error);
+    throw error;
+  }
+}

@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, RefreshCw, CheckCircle, Clock, User, ArrowRight, 
-  TrendingUp, TrendingDown, Settings
+  TrendingUp, TrendingDown, Settings, Wallet
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFamily } from '../contexts/FamilyContext';
@@ -23,6 +23,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
+import ReimbursementPaymentModal, { type PendingDebt } from '../components/Family/ReimbursementPaymentModal';
 
 const FamilyReimbursementsPage = () => {
   const navigate = useNavigate();
@@ -40,6 +41,12 @@ const FamilyReimbursementsPage = () => {
     isOpen: boolean;
     reimbursementId: string | null;
   }>({ isOpen: false, reimbursementId: null });
+
+  const [paymentModal, setPaymentModal] = useState<{
+    isOpen: boolean;
+    debtorMemberId: string | null;
+    debtorName: string;
+  }>({ isOpen: false, debtorMemberId: null, debtorName: '' });
 
   // Fonction pour charger les données
   const loadData = async () => {
@@ -151,6 +158,60 @@ const FamilyReimbursementsPage = () => {
     console.log('[FILTER IOwe] currentMemberId:', currentMemberId, '| Found:', filtered.length, 'items');
     return filtered;
   }, [pendingReimbursements, currentMemberId]);
+
+  // Unique debtors in "On me doit" (group by requestedFrom) for one payment button per debtor
+  const uniqueDebtorsOwedToMe = useMemo(() => {
+    const byDebtor = new Map<string, { debtorMemberId: string; debtorName: string; items: ReimbursementWithDetails[] }>();
+    for (const r of reimbursementsOwedToMe) {
+      const id = r.requestedFrom;
+      if (!id) continue;
+      const existing = byDebtor.get(id);
+      if (existing) {
+        existing.items.push(r);
+      } else {
+        byDebtor.set(id, {
+          debtorMemberId: id,
+          debtorName: r.fromMemberName || 'Membre',
+          items: [r]
+        });
+      }
+    }
+    return Array.from(byDebtor.values());
+  }, [reimbursementsOwedToMe]);
+
+  // Convert ReimbursementWithDetails to PendingDebt for the payment modal
+  const toPendingDebts = (items: ReimbursementWithDetails[]): PendingDebt[] =>
+    items.map((r) => {
+      const row = r as ReimbursementWithDetails & { currency?: string; description?: string; familySharedTransactionId?: string };
+      return {
+        reimbursementId: r.id,
+        amount: r.amount,
+        currency: row.currency || 'MGA',
+        description: r.transactionDescription || row.description || 'Transaction sans description',
+        date: r.transactionDate ? new Date(r.transactionDate) : new Date(),
+        transactionId: row.familySharedTransactionId || r.id
+      };
+    });
+
+  const handleOpenPaymentModal = (debtorMemberId: string, debtorName: string) => {
+    const debtorGroup = uniqueDebtorsOwedToMe.find((d) => d.debtorMemberId === debtorMemberId);
+    if (!debtorGroup || debtorGroup.items.length === 0) return;
+    setPaymentModal({
+      isOpen: true,
+      debtorMemberId,
+      debtorName
+    });
+  };
+
+  const handleClosePaymentModal = () => {
+    setPaymentModal({ isOpen: false, debtorMemberId: null, debtorName: '' });
+  };
+
+  const handlePaymentRecorded = () => {
+    loadData();
+    toast.success('Paiement enregistré');
+    handleClosePaymentModal();
+  };
 
   // Gérer le marquage comme remboursé
   const handleMarkAsReimbursed = async () => {
@@ -341,8 +402,21 @@ const FamilyReimbursementsPage = () => {
               <TrendingUp className="w-5 h-5 text-green-600" />
               <span>On me doit</span>
             </h2>
-            <div className="space-y-3">
-              {reimbursementsOwedToMe.map((reimbursement) => (
+            {uniqueDebtorsOwedToMe.map(({ debtorMemberId, debtorName, items }) => (
+              <div key={debtorMemberId} className="space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="font-medium text-gray-700">{debtorName}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPaymentModal(debtorMemberId, debtorName)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span>Enregistrer paiement</span>
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {items.map((reimbursement) => (
                 <div
                   key={reimbursement.id}
                   className="card hover:shadow-lg transition-shadow"
@@ -390,8 +464,10 @@ const FamilyReimbursementsPage = () => {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -464,6 +540,21 @@ const FamilyReimbursementsPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {paymentModal.debtorMemberId && activeFamilyGroup && (
+        <ReimbursementPaymentModal
+          isOpen={paymentModal.isOpen}
+          onClose={handleClosePaymentModal}
+          debtorMemberId={paymentModal.debtorMemberId}
+          debtorName={paymentModal.debtorName}
+          familyGroupId={activeFamilyGroup.id}
+          pendingDebts={toPendingDebts(
+            uniqueDebtorsOwedToMe.find((d) => d.debtorMemberId === paymentModal.debtorMemberId)?.items ?? []
+          )}
+          onPaymentRecorded={handlePaymentRecorded}
+        />
+      )}
 
       {/* Confirm Dialog */}
       <ConfirmDialog

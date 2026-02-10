@@ -13,9 +13,9 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
 import { useSyncStore } from '../stores/appStore';
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
-import { supabase } from '../lib/supabase';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
+import { getPendingReimbursements } from '../services/reimbursementService';
 import type { 
   FamilyGroup, 
   FamilyMember, 
@@ -149,30 +149,16 @@ const FamilyDashboardPage = () => {
           })
           .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
 
-        // Calculer les demandes de remboursement en attente depuis les transactions partagées
-        // Le montant est dans la table transactions liée
-        const { data: rawTransactions, error: rawError } = await supabase
-          .from('family_shared_transactions')
-          .select(`
-            id,
-            has_reimbursement_request,
-            transactions (
-              amount
-            )
-          `)
-          .eq('family_group_id', selectedGroupId)
-          .eq('has_reimbursement_request', true);
-
-        if (rawError) {
-          console.error('Erreur lors de la récupération des transactions avec demande:', rawError);
-        }
+        // Calculer les demandes de remboursement en attente en utilisant le service correct
+        // Le service getPendingReimbursements filtre par status = 'pending' dans reimbursement_requests
+        const pendingReimbursements = await getPendingReimbursements(selectedGroupId);
 
         // Calculer le nombre et le montant total des demandes en attente
-        const pendingCount = rawTransactions?.length || 0;
-        const pendingAmount = rawTransactions?.reduce((sum: number, t: any) => {
-          const amount = t.transactions?.amount || 0;
-          return sum + Math.abs(amount);
-        }, 0) || 0;
+        const pendingCount = pendingReimbursements.length;
+        const pendingAmount = pendingReimbursements.reduce((sum, reimbursement) => {
+          // Utiliser le montant de remboursement (amount), pas transactionAmount
+          return sum + Math.abs(reimbursement.amount || 0);
+        }, 0);
 
         // Calculer le solde net = revenus - dépenses
         const netBalance = totalIncome - totalExpenses;
@@ -246,24 +232,15 @@ const FamilyDashboardPage = () => {
               })
               .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
 
-            // Recalculate pending reimbursement requests
-            const { data: rawTransactions } = await supabase
-              .from('family_shared_transactions')
-              .select(`
-                id,
-                has_reimbursement_request,
-                transactions (
-                  amount
-                )
-              `)
-              .eq('family_group_id', selectedGroupId)
-              .eq('has_reimbursement_request', true);
+            // Recalculate pending reimbursement requests using correct service
+            // The service getPendingReimbursements filters by status = 'pending' in reimbursement_requests
+            const pendingReimbursements = await getPendingReimbursements(selectedGroupId);
 
-            const pendingCount = rawTransactions?.length || 0;
-            const pendingAmount = rawTransactions?.reduce((sum: number, t: any) => {
-              const amount = t.transactions?.amount || 0;
-              return sum + Math.abs(amount);
-            }, 0) || 0;
+            const pendingCount = pendingReimbursements.length;
+            const pendingAmount = pendingReimbursements.reduce((sum, reimbursement) => {
+              // Use reimbursement amount (amount), not transactionAmount
+              return sum + Math.abs(reimbursement.amount || 0);
+            }, 0);
 
             const netBalance = totalIncome - totalExpenses;
 

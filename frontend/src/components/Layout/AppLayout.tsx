@@ -51,8 +51,7 @@ import ConstructionRoute from '../../modules/construction-poc/components/Constru
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions'
 
 // Family Context
-// TODO: FamilyContext file does not exist - needs to be created
-// import { FamilyProvider } from '../../contexts/FamilyContext'
+import { FamilyProvider } from '../../contexts/FamilyContext'
 
 // Construction POC Components - Lazy Loading for Code Splitting
 const POCDashboard = React.lazy(() => import('../../modules/construction-poc/components/POCDashboard'))
@@ -118,10 +117,9 @@ const ConstructionRoutes: React.FC = () => {
 };
 
 // Family Routes component - Wrapped with FamilyProvider
-// TODO: FamilyProvider is commented out until FamilyContext is created
 const FamilyRoutes: React.FC = () => {
   return (
-    // <FamilyProvider>
+    <FamilyProvider>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<FamilyDashboardPage />} />
@@ -133,7 +131,7 @@ const FamilyRoutes: React.FC = () => {
           <Route path="*" element={<Navigate to="/family" replace />} />
         </Routes>
       </Suspense>
-    // </FamilyProvider>
+    </FamilyProvider>
   );
 };
 
