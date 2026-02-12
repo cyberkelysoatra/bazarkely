@@ -616,10 +616,17 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                 return (
                   <div key={payment.id} className="card p-3">
                     {/* Clickable header */}
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={toggleExpanded}
-                      className="w-full flex items-center justify-between mb-2 hover:bg-gray-50 -m-1 p-1 rounded transition-colors"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleExpanded();
+                        }
+                      }}
+                      className="w-full flex items-center justify-between mb-2 hover:bg-gray-50 -m-1 p-1 rounded transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                     >
                       <span className="text-xs text-gray-500">
                         {payment.date.toLocaleDateString('fr-FR', {
@@ -644,7 +651,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                           }`}
                         />
                       </div>
-                    </button>
+                    </div>
                     
                     {/* Collapsible content */}
                     {isExpanded && (

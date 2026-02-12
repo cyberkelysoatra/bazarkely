@@ -1456,8 +1456,6 @@ export async function recordReimbursementPayment(
       }
     }
 
-    console.log(`💰 [ReimbursementService] Paiement enregistré: ${amount} Ar, ${allocations.length} allocation(s), surplus: ${surplusAmount} Ar`);
-
     return {
       paymentId,
       totalAmount: amount,
