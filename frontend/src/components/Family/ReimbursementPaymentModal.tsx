@@ -134,11 +134,9 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
         const currentMember = memberBalances.find(b => b.userId === user.id);
         if (currentMember) {
           setCreditorMemberId(currentMember.memberId);
-        } else {
-          console.error('[PaymentModal] Current user member not found');
         }
       } catch (err) {
-        console.error('[PaymentModal] Error fetching member balances:', err);
+        // Error fetching member balances - silently fail
       }
     };
 
@@ -189,8 +187,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
 
         setPaymentHistory(transformedHistory);
       } catch (err: any) {
-        console.error('Error fetching payment history:', err);
-        // Don't show error toast, just log and set empty array
+        // Don't show error toast, just set empty array
         setPaymentHistory([]);
       } finally {
         setIsLoadingHistory(false);
@@ -215,14 +212,6 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
       return [];
     }
 
-    // Debug logging: trace amount flow
-    console.log('[AllocationPreview] Amount parsing:', {
-      rawInput: paymentAmount,
-      cleanedAmount,
-      parsedAmount,
-      pendingDebtsCount: pendingDebts.length
-    });
-
     const paymentValue = parsedAmount;
     const allocations: AllocationPreview[] = [];
     let remainingPayment = paymentValue;
@@ -240,17 +229,6 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
       const remainingBefore = debtAmount - allocatedAmount;
       const percentage = debtAmount > 0 ? (allocatedAmount / debtAmount) * 100 : 0;
 
-      // Debug logging: trace each allocation
-      console.log('[AllocationPreview] Allocating to debt:', {
-        description: debt.description,
-        debtAmount,
-        allocatedAmount,
-        remainingBefore,
-        percentage: percentage.toFixed(2) + '%',
-        remainingPaymentBefore: remainingPayment,
-        remainingPaymentAfter: remainingPayment - allocatedAmount
-      });
-
       allocations.push({
         reimbursementId: debt.reimbursementId,
         description: debt.description,
@@ -264,18 +242,6 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
 
       remainingPayment -= allocatedAmount;
     }
-
-    // Debug logging: final allocations array
-    console.log('[AllocationPreview] Final allocations:', {
-      totalAllocations: allocations.length,
-      totalAllocated: allocations.reduce((sum, a) => sum + a.allocatedAmount, 0),
-      allocations: allocations.map(a => ({
-        description: a.description,
-        allocatedAmount: a.allocatedAmount,
-        percentage: a.percentage.toFixed(2) + '%',
-        isFullyPaid: a.isFullyPaid
-      }))
-    });
 
     // Sort: partial payments first (priority), then fully paid
     // Partial payments have percentage < 100, fully paid have percentage >= 100
@@ -356,16 +322,6 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
         familyGroupId        // groupId
       );
 
-      // Log allocation result for debugging
-      console.log('[PaymentModal] Payment recorded:', {
-        paymentId: result.paymentId,
-        totalAmount: result.totalAmount,
-        allocatedAmount: result.allocatedAmount,
-        surplusAmount: result.surplusAmount,
-        allocationsCount: result.allocations.length,
-        creditBalanceCreated: result.creditBalanceCreated
-      });
-
       toast.success('Paiement enregistré avec succès', {
         duration: 3000,
         icon: '✅'
@@ -381,7 +337,6 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
     } catch (err: any) {
       const errorMessage = err?.message || 'Erreur lors de l\'enregistrement du paiement';
       setError(errorMessage);
-      console.error('[PaymentModal] Error recording payment:', err);
       toast.error(errorMessage, {
         duration: 4000
       });

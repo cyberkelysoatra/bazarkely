@@ -68,19 +68,10 @@ const FamilyReimbursementsPage = () => {
         setCurrentMemberId(currentMember.memberId);
       }
 
-      console.log('[REIMBURSEMENTS DEBUG]', {
-        userId: user?.id,
-        memberBalancesCount: memberBalances.length,
-        memberBalances: memberBalances.map(b => ({ userId: b.userId, memberId: b.memberId, name: b.displayName })),
-        currentMemberFound: currentMember ? { userId: currentMember.userId, memberId: currentMember.memberId } : null,
-        currentMemberIdSet: currentMember?.memberId || null
-      });
-
       // Charger les remboursements en attente
       const reimbursements = await getPendingReimbursements(activeFamilyGroup.id);
       setPendingReimbursements(reimbursements);
     } catch (err: any) {
-      console.error('Erreur lors du chargement des remboursements:', err);
       setError(err.message || 'Erreur lors du chargement des remboursements');
     } finally {
       setIsLoading(false);
@@ -101,9 +92,6 @@ const FamilyReimbursementsPage = () => {
     const unsubscribe = subscribeToReimbursements(
       activeFamilyGroup.id,
       (payload) => {
-        const eventType = payload.eventType;
-        console.log('[Reimbursements] Realtime event:', eventType);
-        
         // Refetch les données pour refléter les changements
         loadData();
       }
@@ -120,42 +108,26 @@ const FamilyReimbursementsPage = () => {
   const totalPendingToReceive = currentMemberBalance?.pendingToReceive || 0;
   const totalPendingToPay = currentMemberBalance?.pendingToPay || 0;
 
-  console.log('[FILTER DEBUG]', {
-    currentMemberId,
-    pendingReimbursementsCount: pendingReimbursements.length,
-    sampleItems: pendingReimbursements.slice(0, 3).map(r => ({
-      id: r.id,
-      requestedBy: r.requestedBy,
-      requestedFrom: r.requestedFrom,
-      toMemberName: r.toMemberName,
-      fromMemberName: r.fromMemberName
-    }))
-  });
-
   // Filtrer les remboursements avec useMemo pour éviter les problèmes de timing
   // "On me doit" = je suis le créancier (to_member_id mappé vers requestedBy)
   const reimbursementsOwedToMe = useMemo(() => {
     if (!currentMemberId) {
-      console.log('[FILTER OwedToMe] No currentMemberId, returning empty array');
       return [];
     }
     const filtered = pendingReimbursements.filter(
       r => r.toMemberName && r.requestedBy === currentMemberId
     );
-    console.log('[FILTER OwedToMe] currentMemberId:', currentMemberId, '| Found:', filtered.length, 'items');
     return filtered;
   }, [pendingReimbursements, currentMemberId]);
 
   // "Je dois" = je suis le débiteur (from_member_id mappé vers requestedFrom)
   const reimbursementsIOwe = useMemo(() => {
     if (!currentMemberId) {
-      console.log('[FILTER IOwe] No currentMemberId, returning empty array');
       return [];
     }
     const filtered = pendingReimbursements.filter(
       r => r.fromMemberName && r.requestedFrom === currentMemberId
     );
-    console.log('[FILTER IOwe] currentMemberId:', currentMemberId, '| Found:', filtered.length, 'items');
     return filtered;
   }, [pendingReimbursements, currentMemberId]);
 
@@ -234,7 +206,6 @@ const FamilyReimbursementsPage = () => {
 
       setConfirmDialog({ isOpen: false, reimbursementId: null });
     } catch (err: any) {
-      console.error('Erreur lors du marquage comme remboursé:', err);
       toast.error(err.message || 'Erreur lors du marquage comme remboursé');
     }
   };

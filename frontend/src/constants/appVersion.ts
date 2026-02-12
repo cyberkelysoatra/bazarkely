@@ -1,6 +1,15 @@
-export const APP_VERSION = 'v2.8.0';
+export const APP_VERSION = 'v2.8.1';
 export const APP_BUILD_DATE = '2026-02-12';
 export const VERSION_HISTORY = [
+  {
+    version: '2.8.1',
+    date: '2026-02-12',
+    changes: [
+      'Cleanup: Removed 17 debug console.log statements from ReimbursementPaymentModal.tsx and FamilyReimbursementsPage.tsx',
+      'Session: S48 (2026-02-12) - Debug cleanup patch'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '2.8.0',
     date: '2026-02-12',
