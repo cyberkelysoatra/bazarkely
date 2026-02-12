@@ -3,7 +3,7 @@
  * Affiche les remboursements où l'utilisateur est créancier ou débiteur
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, RefreshCw, CheckCircle, Clock, User, ArrowRight, 
@@ -49,7 +49,7 @@ const FamilyReimbursementsPage = () => {
   }>({ isOpen: false, debtorMemberId: null, debtorName: '' });
 
   // Fonction pour charger les données
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!isAuthenticated || !user || !activeFamilyGroup || familyLoading) {
       return;
     }
@@ -85,7 +85,7 @@ const FamilyReimbursementsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAuthenticated, user, activeFamilyGroup, familyLoading]);
 
   // Charger les données au montage
   useEffect(() => {
@@ -113,7 +113,7 @@ const FamilyReimbursementsPage = () => {
     return () => {
       unsubscribe();
     };
-  }, [activeFamilyGroup?.id, subscribeToReimbursements]);
+  }, [activeFamilyGroup?.id, subscribeToReimbursements, loadData]);
 
   // Calculer les totaux
   const currentMemberBalance = balances.find(b => b.memberId === currentMemberId);

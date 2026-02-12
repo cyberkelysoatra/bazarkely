@@ -1,6 +1,22 @@
-export const APP_VERSION = 'v2.7.0';
-export const APP_BUILD_DATE = '2026-01-27';
+export const APP_VERSION = 'v2.8.0';
+export const APP_BUILD_DATE = '2026-02-12';
 export const VERSION_HISTORY = [
+  {
+    version: '2.8.0',
+    date: '2026-02-12',
+    changes: [
+      'Feature: Collapsible Payment History - Payment history section now collapsible for better UI organization',
+      'Feature: Progress Bars in Allocation Preview - Visual progress bars showing allocation distribution across requests',
+      'Feature: Amount Parsing Fix - Improved amount parsing logic for better accuracy in payment processing',
+      'Feature: Payment Status Indicators - Visual indicators showing payment status (pending, settled, partial)',
+      'UI Enhancement: Better organization of payment information with collapsible sections',
+      'UI Enhancement: Visual feedback for payment allocations with progress bars',
+      'Technical: Enhanced amount parsing for multi-currency support',
+      'Technical: Payment status tracking improvements',
+      'Session: S44 (2026-02-12) - Payment allocation UI enhancements'
+    ],
+    type: 'minor' as const
+  },
   {
     version: '2.7.0',
     date: '2026-01-27',
