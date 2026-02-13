@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, RefreshCw, CheckCircle, Clock, User, ArrowRight, 
-  TrendingUp, TrendingDown, Settings, Wallet
+  TrendingUp, TrendingDown, Settings, Wallet, BarChart2
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFamily } from '../contexts/FamilyContext';
@@ -24,6 +24,7 @@ import ConfirmDialog from '../components/UI/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 import ReimbursementPaymentModal, { type PendingDebt } from '../components/Family/ReimbursementPaymentModal';
+import ReimbursementStatsSection from '../components/Family/ReimbursementStatsSection';
 
 const FamilyReimbursementsPage = () => {
   const navigate = useNavigate();
@@ -41,6 +42,8 @@ const FamilyReimbursementsPage = () => {
     isOpen: boolean;
     reimbursementId: string | null;
   }>({ isOpen: false, reimbursementId: null });
+
+  const [activeTab, setActiveTab] = useState<'owed-to-me' | 'i-owe' | 'stats'>('owed-to-me');
 
   const [paymentModal, setPaymentModal] = useState<{
     isOpen: boolean;
@@ -299,40 +302,67 @@ const FamilyReimbursementsPage = () => {
       {/* Content */}
       <div className="p-4 space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600 mb-1">On me doit</p>
-                <div className="text-lg font-bold text-green-600">
-                  <CurrencyDisplay
-                    amount={totalPendingToReceive}
-                    originalCurrency="MGA"
-                    displayCurrency={displayCurrency}
-                    showConversion={true}
-                    size="lg"
-                  />
-                </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div
+            onClick={() => setActiveTab('owed-to-me')}
+            className={`card bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer transition-all hover:shadow-md min-h-[80px] ${
+              activeTab === 'owed-to-me' ? 'ring-2 ring-green-400' : ''
+            }`}
+          >
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex flex-row items-center justify-between">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <p className="text-xs text-gray-600">On me doit</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
+              <div className="text-sm font-bold text-green-600 truncate">
+                <CurrencyDisplay
+                  amount={totalPendingToReceive}
+                  originalCurrency="MGA"
+                  displayCurrency={displayCurrency}
+                  showConversion={true}
+                  size="lg"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="card bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600 mb-1">Je dois</p>
-                <div className="text-lg font-bold text-red-600">
-                  <CurrencyDisplay
-                    amount={totalPendingToPay}
-                    originalCurrency="MGA"
-                    displayCurrency={displayCurrency}
-                    showConversion={true}
-                    size="lg"
-                  />
-                </div>
+          <div
+            onClick={() => setActiveTab('i-owe')}
+            className={`card bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer transition-all hover:shadow-md min-h-[80px] ${
+              activeTab === 'i-owe' ? 'ring-2 ring-red-400' : ''
+            }`}
+          >
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex flex-row items-center justify-between">
+                <TrendingDown className="w-5 h-5 text-red-600" />
+                <p className="text-xs text-gray-600">Je dois</p>
               </div>
-              <TrendingDown className="w-8 h-8 text-red-600" />
+              <div className="text-sm font-bold text-red-600 truncate">
+                <CurrencyDisplay
+                  amount={totalPendingToPay}
+                  originalCurrency="MGA"
+                  displayCurrency={displayCurrency}
+                  showConversion={true}
+                  size="lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('stats')}
+            className={`card bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 cursor-pointer transition-all hover:shadow-md min-h-[80px] ${
+              activeTab === 'stats' ? 'ring-2 ring-purple-400' : ''
+            }`}
+          >
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex flex-row items-center justify-between">
+                <BarChart2 className="w-5 h-5 text-purple-600" />
+                <p className="text-xs text-gray-600">Statistiques</p>
+              </div>
+              <div className="text-sm font-bold text-purple-600 truncate">
+                {pendingReimbursements.length}
+              </div>
             </div>
           </div>
         </div>
@@ -348,7 +378,7 @@ const FamilyReimbursementsPage = () => {
         )}
 
         {/* Empty State */}
-        {!isLoading && reimbursementsOwedToMe.length === 0 && reimbursementsIOwe.length === 0 && (
+        {!isLoading && reimbursementsOwedToMe.length === 0 && reimbursementsIOwe.length === 0 && activeTab !== 'stats' && (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-12 h-12 text-purple-600" />
@@ -367,7 +397,7 @@ const FamilyReimbursementsPage = () => {
         )}
 
         {/* Section 1: On me doit */}
-        {!isLoading && reimbursementsOwedToMe.length > 0 && (
+        {activeTab === 'owed-to-me' && !isLoading && reimbursementsOwedToMe.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
@@ -443,7 +473,7 @@ const FamilyReimbursementsPage = () => {
         )}
 
         {/* Section 2: Je dois */}
-        {!isLoading && reimbursementsIOwe.length > 0 && (
+        {activeTab === 'i-owe' && !isLoading && reimbursementsIOwe.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
               <TrendingDown className="w-5 h-5 text-red-600" />
@@ -498,6 +528,24 @@ const FamilyReimbursementsPage = () => {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Section 3: Statistiques */}
+        {activeTab === 'stats' && !isLoading && (
+          <ReimbursementStatsSection
+            pendingReimbursements={pendingReimbursements.map(r => ({
+              id: r.id,
+              requestedBy: r.requestedBy,
+              requestedFrom: r.requestedFrom,
+              requestedByName: r.toMemberName,
+              requestedFromName: r.fromMemberName,
+              amount: r.amount,
+              category: r.transactionCategory || undefined,
+              createdAt: r.createdAt,
+              status: r.status
+            }))}
+            currentMemberId={currentMemberId || ''}
+          />
         )}
 
         {/* Settings Link */}
