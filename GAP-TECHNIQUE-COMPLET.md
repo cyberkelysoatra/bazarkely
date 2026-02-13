@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.5 (Desktop Enhancement + Layout Components + Header Navigation - Session S42)  
-**Date de mise à jour:** 2026-01-26  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0)  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42)
+**Version:** 5.6 (Family Reimbursements Payment System Phase 1 Fixes - Session S47 v2.8.0)  
+**Date de mise à jour:** 2026-02-12  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0)  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47)
 
 ---
 
@@ -1419,7 +1419,91 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **1 nettoyage DB:** Suppression budgets dupliqués
 - **Impact:** Module Budget enrichi avec statistiques avancées et améliorations UI
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 23 NOVEMBRE 2025)
+## 🎉 GAPS RÉSOLUS (SESSION S47 - 2026-02-12 - PAYMENT SYSTEM PHASE 1 FIXES v2.8.0)
+
+### **Gap Amount Parsing Bug (500 000 Ar Display)** ✅ RÉSOLU 2026-02-12
+- **Problème identifié:** Montants avec espaces milliers (ex: "500 000") non parsés correctement dans le champ de saisie du `ReimbursementPaymentModal`, causant `NaN` ou valeur incorrecte
+- **Solution implémentée:** Fix parsing montant avec suppression espaces avant `parseFloat()`, input formatting MGA avec espaces milliers préservé visuellement
+- **Fichier modifié:** `frontend/src/components/Family/ReimbursementPaymentModal.tsx`
+- **Impact:** Saisie montants MGA avec formatting espaces milliers fonctionne correctement
+- **Statut:** ✅ RÉSOLU - Déployé v2.8.0
+
+### **Gap Payment History Visual Feedback Missing** ✅ RÉSOLU 2026-02-12
+- **Problème identifié:** Section historique paiements manquait de feedback visuel — pas de collapsible toggle, pas d'indicateurs de statut, présentation plate
+- **Solution implémentée:** Historique paiements collapsible avec toggle afficher/masquer, dates formatées, montants avec allocation details, loading states
+- **Fichier modifié:** `frontend/src/components/Family/ReimbursementPaymentModal.tsx`
+- **Impact:** Historique paiements lisible, interactif, avec feedback visuel complet
+- **Statut:** ✅ RÉSOLU - Déployé v2.8.0
+
+### **Gap Allocation Preview Without Status Indicators** ✅ RÉSOLU 2026-02-12
+- **Problème identifié:** Preview allocation FIFO manquait d'indicateurs de statut visuels — pas de progress bars, pas de distinction partiel/complet, pas de couleurs
+- **Solution implémentée:** Progress bars par dette montrant pourcentage allocation, couleurs distinctes (bleu = partiel, vert = fully paid), calcul remaining balance par dette, indicateurs visuels statut paiement
+- **Fichier modifié:** `frontend/src/components/Family/ReimbursementPaymentModal.tsx`
+- **Impact:** Preview allocation intuitive avec feedback visuel immédiat
+- **Statut:** ✅ RÉSOLU - Déployé v2.8.0
+
+**Résumé Session S47:**
+- **3 gaps résolus:** Amount parsing bug, payment history visual feedback, allocation preview status indicators
+- **Version déployée:** v2.8.0
+- **Fichier principal modifié:** `ReimbursementPaymentModal.tsx`
+- **Régression:** 0
+
+---
+
+## 🎉 GAPS RÉSOLUS (SESSION S48 - 2026-02-12 - CLEANUP & HTML FIX v2.8.2)
+
+### **Gap console.log DEBUG remboursements** ✅ RÉSOLU 2026-02-12
+- **Problème identifié:** 18 `console.log` de debug présents dans le code Payment System (9 dans `FamilyReimbursementsPage.tsx`, 8 dans `ReimbursementPaymentModal.tsx`, 1 dans `reimbursementService.ts`), polluant la console navigateur en production avec données potentiellement sensibles (montants, IDs membres)
+- **Cause additionnelle:** Fichier disque non sauvegardé par Cursor après première suppression — modifications visuellement appliquées dans l'éditeur mais pas persistées sur disque
+- **Solution implémentée:** Suppression des 18 `console.log`, double vérification READ + Ctrl+S forcé pour confirmer sauvegarde disque
+- **Fichiers modifiés:**
+  - `frontend/src/pages/FamilyReimbursementsPage.tsx` (9 console.log supprimés)
+  - `frontend/src/components/Family/ReimbursementPaymentModal.tsx` (8 console.log supprimés)
+  - `frontend/src/services/reimbursementService.ts` (1 console.log supprimé)
+- **Impact:** Console navigateur propre en production, zéro fuite données debug
+- **Statut:** ✅ RÉSOLU - Déployé v2.8.2
+
+### **Gap button imbriqué HTML invalide** ✅ RÉSOLU 2026-02-12
+- **Problème identifié:** `ReimbursementPaymentModal.tsx` ligne ~619 — `<button>` toggleExpanded wrappait un composant `CurrencyDisplay` qui rend son propre `<button>` interne pour toggle devise, créant une imbrication `<button><button>` invalide en HTML
+- **Solution implémentée:** Remplacé `<button>` parent par `<div role="button" tabIndex={0}>` avec handler `onKeyDown` pour accessibilité clavier (Enter/Space), préservant le comportement interactif sans HTML invalide
+- **Fichier modifié:** `frontend/src/components/Family/ReimbursementPaymentModal.tsx`
+- **Impact:** HTML valide, accessibilité préservée, zéro régression fonctionnelle
+- **Statut:** ✅ RÉSOLU - Déployé v2.8.2
+
+**Résumé Session S48:**
+- **2 gaps résolus:** console.log DEBUG cleanup (18 logs supprimés), button imbriqué HTML invalide
+- **Version déployée:** v2.8.2
+
+---
+
+## 🎉 GAPS RÉSOLUS (SESSION S49 - 2026-02-13 - REIMBURSEMENT DASHBOARD PHASE 2 v2.9.0)
+
+### **Gap Phase 2 Dashboard Remboursements** ✅ RÉSOLU 2026-02-13
+- **Problème identifié:** Aucune visualisation statistique des remboursements familiaux — pas de graphiques, pas de répartition par catégorie, pas d'évolution temporelle
+- **Solution implémentée:** `ReimbursementStatsSection.tsx` (261 lignes) avec 3 graphiques recharts : PieChart répartition par catégorie (transactionCategory), LineChart évolution mensuelle des dettes, BarChart résumé par membre (pendingToReceive vs pendingToPay). Navigation par cartes summary cliquables (vert/rouge/violet). `transactionCategory` ajouté à `ReimbursementWithDetails` interface et `getPendingReimbursements()` query Supabase.
+- **Fichiers modifiés:**
+  - `frontend/src/components/Family/ReimbursementStatsSection.tsx` (créé — 261 lignes)
+  - `frontend/src/pages/FamilyReimbursementsPage.tsx` (intégration cartes + onglet stats)
+  - `frontend/src/services/reimbursementService.ts` (transactionCategory ajouté)
+- **Impact:** Dashboard statistiques remboursements complet, Phase 2 déployée production
+- **Statut:** ✅ RÉSOLU - Déployé v2.9.0 (commit e000e0c)
+
+**Résumé Session S49:**
+- **1 gap résolu:** Phase 2 Dashboard Remboursements
+- **Version déployée:** v2.9.0
+- **Fichier principal créé:** `ReimbursementStatsSection.tsx`
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 12 FÉVRIER 2026)
+
+### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
+- **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé
+- **Symptôme:** `git diff` ne montre aucune modification alors que l'éditeur affiche le code modifié
+- **Règle:** Après toute suppression/modification par Cursor, toujours READ le fichier pour confirmer sauvegarde disque avant `git add`. Forcer Ctrl+S si divergence détectée
+- **Fichier de référence:** À ajouter dans `CURSOR-2.0-CONFIG.md` section "Règles de Débogage"
+- **Priorité:** HAUTE - Règle opérationnelle critique pour fiabilité des modifications
 
 ### **Gap Frontend AGENT03 Expectations** ⚠️ DOCUMENTÉ 2025-11-12
 - **Problème identifié:** Frontend AGENT03 peut s'attendre à `is_active` dans poc_org_units mais colonne n'existe pas
@@ -1626,13 +1710,13 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - ✅ **Système i18n Multi-Langues:** 100% (nouveau - Session S41)
 - ❌ **Classement Backend:** 0% (inchangé)
 
-### **Métriques Globales (Mise à jour Session S42 - 2026-01-26)**
-- **Fonctionnalités implémentées:** 11/11 (100%) - +1 (Desktop Enhancement Layout Components)
-- **Gaps résolus Session S42:** 7/7 (100%) - Layout desktop, composants réutilisables, navigation header, sidebar sticky, BottomNav masquage, grille responsive, padding responsive
-- **Gaps résolus total:** 12 gaps majeurs résolus (Phase B Goals, EUR Transfer, Multi-Currency, CurrencyDisplay HTML Nesting, i18n + Dashboard EUR, Desktop Enhancement)
-- **Nouveaux gaps identifiés:** 0 (Session S42)
-- **Conformité documentation:** 99% (amélioration +1%)
-- **Prêt pour production:** OUI (toutes fonctionnalités critiques implémentées + desktop experience optimisée)
+### **Métriques Globales (Mise à jour Session S49 - 2026-02-13)**
+- **Fonctionnalités implémentées:** 13/13 (100%) - +1 (Reimbursement Dashboard Phase 2)
+- **Gaps résolus Session S49:** 1/1 (100%) - Phase 2 Dashboard Remboursements
+- **Gaps résolus total:** 18 gaps majeurs résolus (Phase B Goals, EUR Transfer, Multi-Currency, CurrencyDisplay HTML Nesting, i18n + Dashboard EUR, Desktop Enhancement, Payment System Phase 1 x3, S48 cleanup x2, S49 Phase 2 Dashboard)
+- **Nouveaux gaps identifiés:** 0 (Session S49)
+- **Conformité documentation:** 99% (maintenu)
+- **Prêt pour production:** OUI (toutes fonctionnalités critiques implémentées + desktop experience optimisée + payment system Phase 1+2 déployé v2.9.0)
 
 ---
 
@@ -1671,8 +1755,8 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-**🎯 BazarKELY est une application PWA fonctionnelle avec système de notifications complet, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement anonyme, transactions récurrentes complètes (Infrastructure + Services + UI), statistiques budgétaires multi-années avec comparaisons de périodes, détection de catégories problématiques, barres de progression bicolores, améliorations UI complètes (Session S28 - 2025-12-31), système i18n multi-langues FR/EN/MG (Session S41 - 2026-01-25), et amélioration desktop complète avec layout components et navigation header (Session S42 - 2026-01-26) - prête pour la production !**
+**🎯 BazarKELY est une application PWA fonctionnelle avec système de notifications complet, système de certification avec 250 questions, suivi des pratiques utilisateur, génération de certificats PDF, classement anonyme, transactions récurrentes complètes (Infrastructure + Services + UI), statistiques budgétaires multi-années avec comparaisons de périodes, détection de catégories problématiques, barres de progression bicolores, améliorations UI complètes (Session S28 - 2025-12-31), système i18n multi-langues FR/EN/MG (Session S41 - 2026-01-25), amélioration desktop complète avec layout components et navigation header (Session S42 - 2026-01-26), et système paiements flexibles Family Reimbursements Phase 1 avec allocation FIFO multi-dettes, paiements partiels, surplus handling, historique collapsible et indicateurs de statut (Sessions S45-S47, v2.8.0 - 2026-02-12) - prête pour la production !**
 
 ---
 
-*Document généré automatiquement le 2026-01-26 - BazarKELY v5.5 (Desktop Enhancement Layout Components - Session S42)*
+*Document généré automatiquement le 2026-02-12 - BazarKELY v5.6 (Family Reimbursements Payment System Phase 1 Fixes - Session S47 v2.8.0)*

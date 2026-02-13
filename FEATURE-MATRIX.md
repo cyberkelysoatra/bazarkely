@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.18 (Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-02-11  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1
+**Version:** 2.9.0 (Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-02-13  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0
 
 ---
 
@@ -11,8 +11,8 @@
 
 Cette matrice présente l'état d'avancement réel de toutes les fonctionnalités et composants de BazarKELY, basée sur l'audit complet du codebase effectué le 2024-12-19 et mis à jour avec l'implémentation du système de notifications.
 
-### **📊 Statistiques Globales (Mise à jour 2026-01-27)**
-- **Fonctionnalités implémentées:** 100% (211/211)
+### **📊 Statistiques Globales (Mise à jour 2026-02-13)**
+- **Fonctionnalités implémentées:** 100% (212/212)
 - **Composants manquants:** 0% (0/210)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
 - **Documentation:** 100% (Complète et à jour)
@@ -40,12 +40,14 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Translation Protection:** 100% (1/1) ✅ - Session S41 2026-01-25 (excludeFromTranslation.tsx utility + CurrencyDisplay protected + 44+ files)
 - **Dashboard EUR Display Bug Fix:** 100% (1/1) ✅ - Session S41 2026-01-25 (Fixed hardcoded originalCurrency="MGA" → transaction.originalCurrency, 100 EUR displayed correctly)
 - **Desktop Dashboard Enhancement:** 100% (6/6) ✅ - Session S42 2026-01-26 (Desktop layout optimization + Responsive header + Sticky sidebar + Layout component library + Mobile preservation + BottomNav visibility management) (v2.6.0)
-- **Family Reimbursements Payment System (Phase 1):** 100% (5/5) ✅ - Session S45 2026-02-10 + Corrections S46 2026-02-11 (Multi-debt FIFO allocation + Partial payments + Surplus handling + Payment history + ReimbursementPaymentModal)
+- **Family Reimbursements Payment System (Phase 1):** 100% (8/8) ✅ - Session S45 2026-02-10 + Corrections S46 2026-02-11 + Payment UI Enhancements S47 2026-02-12 (Multi-debt FIFO allocation + Partial payments + Surplus handling + Payment history accordion + Progress bars + Payment status indicators + Amount parsing fix + ReimbursementPaymentModal)
+- **Paiements Flexibles Phase 1 Validation:** 100% (1/1) ✅ - Session S48 2026-02-12 (18 console.log cleaned + button HTML fix + validated production 1sakely.org)
+- **Reimbursement Dashboard Phase 2:** 100% (1/1) ✅ - Session S49 2026-02-13 (ReimbursementStatsSection.tsx 261 lignes, PieChart catégories + LineChart évolution + BarChart membres, cartes summary cliquables, transactionCategory service)
 
 ### **📈 Répartition par Statut**
-- **✅ Implémenté:** 100% (217/217)
-- **⚠️ Partiel:** 0% (0/216)
-- **❌ Manquant:** 0% (0/216)
+- **✅ Implémenté:** 100% (218/218)
+- **⚠️ Partiel:** 0% (0/218)
+- **❌ Manquant:** 0% (0/218)
 
 ---
 
@@ -174,16 +176,19 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Web Share API** | ❌ Manquant | 0% | ❌ Non testé | ✅ Documenté | Non implémenté |
 | **Payment Request API** | ❌ Manquant | 0% | ❌ Non testé | ✅ Documenté | Non implémenté |
 
-### **Family Reimbursements Payment System (Phase 1)** ✅ 100% COMPLÉTÉ (Session S45 2026-02-10 + Corrections S46 2026-02-11)
+### **Family Reimbursements Payment System (Phase 1)** ✅ PRODUCTION VALIDATED (Session S45 2026-02-10 + Corrections S46 2026-02-11 + Payment UI Enhancements S47 2026-02-12 + Cleanup & Validation S48 2026-02-12)
 | Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
 |----------------|--------|----------------|-------|---------------|-------|
 | **Multi-debt Allocation FIFO** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Allocation séquentielle FIFO (plus ancienne dette payée en premier), preview temps réel, progress bars par dette (S45 2026-02-10, service corrigé S46 2026-02-11) |
 | **Partial Payments** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Paiement partiel met à jour `amount` dans reimbursement_request, paiement exact change `status` à 'settled', multi-dettes supporté (S45 2026-02-10, service corrigé S46 2026-02-11) |
 | **Surplus Handling (Acompte)** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Détection automatique quand montant > total dettes, création/update `member_credit_balance`, section verte UI "Acompte détecté" (S45 2026-02-10, schema corrigé S46 2026-02-11) |
-| **Payment History** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Section collapsible historique paiements passés, dates/montants/allocations, loading & empty states (S45 2026-02-10) |
+| **Payment History** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Section collapsible historique paiements passés avec accordion, dates/montants/allocations, loading & empty states (S45 2026-02-10, accordion enhancement S47 2026-02-12) |
 | **ReimbursementPaymentModal** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Modal responsive 590 lignes (full-screen mobile, overlay desktop), input montant MGA, compteur notes 500 chars, form validation, intégration FamilyReimbursementsPage complétée S46 2026-02-11 |
+| **Progress Bars in Allocation Preview** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Barres de progression visuelles dans preview allocation montrant progression paiement par dette (S47 2026-02-12) |
+| **Payment Status Indicators (Checkmarks)** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Indicateurs visuels avec checkmarks pour statut paiement (payé/non payé) dans historique et preview (S47 2026-02-12) |
+| **Amount Parsing Fix French Format** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Correction parsing montants format français (virgule décimale, espaces séparateurs milliers) pour input paiement (S47 2026-02-12) |
 
-**Total Family Reimbursements Payment System (Phase 1):** 5/5 implémentés (100%)
+**Total Family Reimbursements Payment System (Phase 1):** 8/8 implémentés (100%)
 
 **Backend & Database:**
 - 3 nouvelles tables : `reimbursement_payments` (12 colonnes), `reimbursement_payment_allocations` (6 colonnes), `member_credit_balance` (8 colonnes)
@@ -196,6 +201,17 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - ⚠️ Schema mismatches initiaux corrigés : CHECK constraints avec subqueries non supportées PostgreSQL
 - ⚠️ Service functions implémentées S45 mais modal integration service calls connectées S46
 - ⚠️ Diagnostic multi-agents (Agent 5 schema + Agent 9 modal + Agent 12 integration) a identifié et corrigé les gaps
+
+**Production Validation (Session S48 2026-02-12):**
+- ✅ PRODUCTION VALIDATED — Paiement enregistré 500 000 Ar, 8 allocations FIFO, historique accordéon, console propre - S48 2026-02-12
+- ✅ 18 console.log DEBUG supprimés (9 FamilyReimbursementsPage + 8 ReimbursementPaymentModal + 1 reimbursementService)
+- ✅ Button HTML imbriqué corrigé (div role="button" remplace button parent autour de CurrencyDisplay)
+- ✅ Déployé v2.8.2 sur https://1sakely.org
+
+### **Reimbursement Dashboard Phase 2** ✅ DONE (Session S49 2026-02-13 - v2.9.0)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Reimbursement Dashboard Phase 2** | ✅ DONE | P0 | ReimbursementStatsSection.tsx | PieChart catégories + LineChart évolution + BarChart membres, navigation cartes summary, transactionCategory service | S49 2026-02-13 |
 
 ### **PWA Advanced Features - Notifications**
 | Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
@@ -1189,4 +1205,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-02-11 - BazarKELY v3.18 (Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+*Document généré automatiquement le 2026-02-12 - BazarKELY v2.8.0 (Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
