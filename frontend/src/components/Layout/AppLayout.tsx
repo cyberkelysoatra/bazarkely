@@ -39,6 +39,7 @@ const FamilyBalancePage = lazy(() => import('../../pages/FamilyBalancePage'))
 const FamilyMembersPage = lazy(() => import('../../pages/FamilyMembersPage'))
 const FamilyTransactionsPage = lazy(() => import('../../pages/FamilyTransactionsPage'))
 const FamilyReimbursementsPage = lazy(() => import('../../pages/FamilyReimbursementsPage'))
+const LoansPage = lazy(() => import('../../pages/LoansPage'))
 
 // Analytics Pages - Lazy loaded
 const AdvancedAnalytics = lazy(() => import('../Analytics/AdvancedAnalytics'))
@@ -128,6 +129,7 @@ const FamilyRoutes: React.FC = () => {
           <Route path="members" element={<FamilyMembersPage />} />
           <Route path="transactions" element={<FamilyTransactionsPage />} />
           <Route path="reimbursements" element={<FamilyReimbursementsPage />} />
+          <Route path="loans" element={<LoansPage />} />
           <Route path="*" element={<Navigate to="/family" replace />} />
         </Routes>
       </Suspense>

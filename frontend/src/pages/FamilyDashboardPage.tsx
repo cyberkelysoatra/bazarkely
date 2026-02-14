@@ -7,7 +7,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Users, Plus, Copy, Share2, Receipt, ArrowRightLeft, UserPlus, Crown,
-  TrendingDown, Calendar, Clock, CheckCircle, XCircle, RefreshCw, Wallet
+  TrendingDown, Calendar, Clock, CheckCircle, XCircle, RefreshCw, Wallet,
+  HandCoins
 } from 'lucide-react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
@@ -734,6 +735,13 @@ const FamilyDashboardPage = () => {
 
         {/* Actions rapides */}
         <div className="grid grid-cols-1 gap-3">
+          <button
+            onClick={() => navigate('/family/loans')}
+            className="card hover:shadow-lg transition-shadow flex items-center justify-center space-x-2 py-4 bg-orange-50 border-orange-200 text-orange-700"
+          >
+            <HandCoins className="w-5 h-5" />
+            <span>Prêts</span>
+          </button>
           <button
             onClick={() => navigate(`/family/${selectedGroupId}/share-expense`)}
             className="card hover:shadow-lg transition-shadow flex items-center justify-center space-x-2 py-4 bg-purple-50 border-purple-200 text-purple-700"

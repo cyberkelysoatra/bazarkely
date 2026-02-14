@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell, HandCoins, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getMyLoans } from '../services/loanService';
+import type { Loan } from '../services/loanService';
 import { useAppStore } from '../stores/appStore';
 import accountService, { getTotalBalanceInCurrency } from '../services/accountService';
 import transactionService from '../services/transactionService';
@@ -79,6 +81,7 @@ const DashboardPage = () => {
   const [userAccounts, setUserAccounts] = useState<any[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
@@ -317,6 +320,21 @@ const DashboardPage = () => {
     }
     fetchConvertedBalance();
   }, [displayCurrency, userAccounts]);
+
+  // Fetch active loans for widget
+  useEffect(() => {
+    const fetchLoans = async () => {
+      if (!user) return;
+      try {
+        const allLoans = await getMyLoans();
+        const active = allLoans.filter(l => !l.isITheBorrower && l.status !== 'closed');
+        setActiveLoans(active);
+      } catch (err) {
+        console.error('[Dashboard] Error fetching loans:', err);
+      }
+    };
+    fetchLoans();
+  }, [user]);
 
   // Gestionnaires d'événements pour les boutons
   const handleAddIncome = () => {
@@ -731,6 +749,37 @@ const DashboardPage = () => {
         <div className="lg:col-span-1 space-y-4 md:space-y-6 lg:sticky lg:top-40 lg:self-start">
           {/* Widget Transactions récurrentes */}
           {user && <RecurringTransactionsWidget userId={user.id} />}
+
+          {/* Widget Prêts actifs — visible uniquement si prêts actifs > 0 */}
+          {activeLoans.length > 0 && (
+            <div
+              onClick={() => navigate('/family/loans')}
+              className="card cursor-pointer hover:shadow-lg transition-all duration-300"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
+                  <HandCoins className="w-4 h-4 text-orange-600" />
+                  <span>Prêts actifs</span>
+                </h3>
+                {activeLoans.some(l => l.status === 'late') && (
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>En retard</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Prêts actifs:</span>
+                <span className="font-semibold text-gray-900">{activeLoans.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-gray-600">Total dû:</span>
+                <span className="font-semibold text-gray-900">
+                  {activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0).toLocaleString('fr-FR')} Ar
+                </span>
+              </div>
+            </div>
+          )}
           
           {/* Future: Budget alerts, Tips, Quick stats can be added here */}
         </div>
