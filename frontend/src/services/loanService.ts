@@ -418,7 +418,8 @@ export async function getUnlinkedRevenueTransactions(): Promise<
       .from('loan_repayments').select('transaction_id').not('transaction_id', 'is', null);
     const linkedIds = (linked || []).map((r) => r.transaction_id).filter(Boolean) as string[];
     // Fetch income transactions not yet linked
-    let query = supabase.from('transactions').select('id, description, amount, date, currency')
+    // Note: Use original_currency column (not currency) - column renamed in migration 20260118134130
+    let query = supabase.from('transactions').select('id, description, amount, date, original_currency')
       .eq('user_id', user.id).eq('type', 'income').order('date', { ascending: false }).limit(50);
     if (linkedIds.length > 0) {
       query = query.not('id', 'in', `(${linkedIds.join(',')})`);
@@ -426,7 +427,7 @@ export async function getUnlinkedRevenueTransactions(): Promise<
     const { data, error } = await query;
     if (error) throw new Error(`Erreur récupération transactions: ${error.message}`);
     return (data || []).map((t) => ({
-      id: t.id, description: t.description || '', amount: t.amount, date: t.date, currency: t.currency || 'MGA',
+      id: t.id, description: t.description || '', amount: t.amount, date: t.date, currency: (t.original_currency || 'MGA') as string,
     }));
   } catch (error) {
     console.error('Erreur dans getUnlinkedRevenueTransactions:', error);
