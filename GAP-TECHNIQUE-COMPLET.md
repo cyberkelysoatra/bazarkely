@@ -1,10 +1,10 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.6 (Family Reimbursements Payment System Phase 1 Fixes - Session S47 v2.8.0)  
-**Date de mise à jour:** 2026-02-12  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0)  
-**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47)
+**Version:** 5.8 (Module Prêts Familiaux Phase 1+2 - Session S52 v3.0.0)  
+**Date de mise à jour:** 2026-02-15  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0)  
+**Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
 ---
 
@@ -1496,7 +1496,54 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 12 FÉVRIER 2026)
+## 🎉 GAPS RÉSOLUS (SESSION S51 - 2026-02-14 - DOCUMENTATION CLEANUP v2.9.0)
+
+### **Gap Documentation désorganisée** ✅ RÉSOLU 2026-02-14
+- **Problème identifié:** 115+ fichiers `.md` accumulés dans la racine du projet sur 50+ sessions — fichiers temporaires `AGENT-*.md`, résumés de session mélangés avec documentation active, fichiers redondants et obsolètes. Navigabilité et maintenabilité du projet sérieusement dégradées. Capacité projet Claude AI à 46%.
+- **Solution implémentée:**
+  - 60+ fichiers `AGENT-*.md` temporaires supprimés
+  - 30+ fichiers archivés vers structure `docs/archive/` (sous-dossiers : `sessions/2025`, `sessions/2026`, `setup`, `frontend`, `backend`, `database`)
+  - 5 fichiers redondants supprimés (`README-TECHNIQUE.md`, `ANALYSE-ADMINPAGE.md`, `BUG-INVESTIGATIONS.md`, `VALIDATION-DOCUMENTATION.md`, `SUPABASE-SCHEMA-INVESTIGATION.md`)
+  - Résultat final : **12 fichiers `.md` actifs** en racine du projet
+  - Capacité Claude AI récupérée : 46% → 21% (25% libéré, 15 fichiers uniques)
+- **Impact:** Navigation projet simplifiée, recherche documentation accélérée, historique préservé dans `docs/archive/`, capacité Claude AI libérée
+- **Statut:** ✅ RÉSOLU - Session S51 (2026-02-14)
+
+**Résumé Session S51:**
+- **1 gap résolu:** Documentation désorganisée
+- **Version courante:** v2.9.0 (inchangée)
+- **Régression:** 0
+
+---
+
+## 🎉 GAPS RÉSOLUS (SESSION S52 - 2026-02-15 - MODULE PRÊTS FAMILIAUX v3.0.0)
+
+### **Gap Aucun système de suivi des prêts personnels** ✅ RÉSOLU 2026-02-15
+- **Problème identifié:** Aucun module de gestion des prêts personnels/familiaux dans l'application — pas de suivi des montants prêtés/empruntés, pas de calcul d'intérêts, pas d'historique de remboursements
+- **Solution implémentée:** Module complet Prêts Familiaux Phase 1+2 : 3 tables Supabase (`personal_loans`, `loan_repayments`, `loan_interest_periods`) avec RLS (4 policies/table), service TypeScript `loanService.ts` (12 fonctions), UI React `LoansPage.tsx` (CreateLoanModal, PaymentModal direct+lié, RepaymentHistorySection, LoanCard expandable), moteur financier (intérêts d'abord puis capital, capitalisation automatique, auto-statut), navigation intégrée (FamilyDashboardPage, AppLayout route `/family/loans`, DashboardPage LoanWidget)
+- **Impact:** Suivi complet des prêts personnels avec intérêts configurables, remboursements ventilés, historique détaillé
+- **Statut:** ✅ RÉSOLU - Déployé v3.0.0 (commit 3fa8a59)
+
+### **Gap React anti-pattern composant dans composant** ✅ RÉSOLU 2026-02-15
+- **Problème identifié:** `CreateLoanModal` défini initialement à l'intérieur de `LoansPage` causant perte de focus des champs input à chaque re-render (composant recréé à chaque render du parent)
+- **Solution implémentée:** Extraction de `CreateLoanModal` en composant top-level dans le même fichier, en dehors du composant `LoansPage`
+- **Impact:** Focus inputs stable, performance améliorée
+- **Statut:** ✅ RÉSOLU - v3.0.0
+
+### **Gap 406 getLastUsedInterestSettings** ✅ RÉSOLU 2026-02-15
+- **Problème identifié:** `loanService.getLastUsedInterestSettings()` utilisait `.single()` qui retourne erreur 406 quand aucun résultat (0 prêts existants)
+- **Solution implémentée:** Remplacement de `.single()` par `.maybeSingle()` qui retourne `null` au lieu d'une erreur quand aucune ligne trouvée
+- **Impact:** Création du premier prêt fonctionne sans erreur
+- **Statut:** ✅ RÉSOLU - v3.0.0
+
+**Résumé Session S52:**
+- **3 gaps résolus:** Système prêts manquant, anti-pattern React, erreur 406 Supabase
+- **Version déployée:** v3.0.0
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 15 FÉVRIER 2026)
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
 - **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé
@@ -1759,4 +1806,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-02-12 - BazarKELY v5.6 (Family Reimbursements Payment System Phase 1 Fixes - Session S47 v2.8.0)*
+*Document généré automatiquement le 2026-02-15 - BazarKELY v5.8 (Module Prêts Familiaux Phase 1+2 - Session S52 v3.0.0)*

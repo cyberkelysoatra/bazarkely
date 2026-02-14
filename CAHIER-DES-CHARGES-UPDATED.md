@@ -1,9 +1,9 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.5 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-01-26  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0  
+**Version:** 3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-02-15  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
@@ -1168,4 +1168,124 @@ interface QuizSession {
 
 ---
 
-*Document généré automatiquement le 2026-01-26 - BazarKELY v3.5 (Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*
+## 💰 MODULE PRETS FAMILIAUX v3.0.0 (S52 2026-02-15)
+
+### **Description du Module**
+
+Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les prêts entre membres de manière structurée et transparente. Le système supporte deux types d'utilisateurs : les prêteurs (qui prêtent de l'argent) et les emprunteurs (qui empruntent de l'argent), avec un moteur financier intelligent pour le calcul des intérêts et la gestion des remboursements.
+
+### **Types d'Utilisateurs**
+
+#### **1. Prêteur (Je prête)**
+- Crée un prêt avec montant principal, taux d'intérêt, durée
+- Suit les remboursements reçus
+- Visualise l'historique des paiements avec détail intérêts/capital
+- Voit le statut du prêt (pending/active/late/closed)
+
+#### **2. Emprunteur (J'emprunte)**
+- Visualise les prêts qu'il doit rembourser
+- Effectue des paiements directs ou lie des transactions existantes
+- Consulte l'historique de ses remboursements
+- Voit les intérêts dus et capital restant
+
+### **Règles Financières**
+
+#### **Priorité Intérêts → Capital**
+- Les paiements sont d'abord appliqués aux intérêts dus
+- Le capital n'est remboursé qu'après paiement complet des intérêts
+- Calcul automatique des intérêts par période
+
+#### **Capitalisation des Intérêts en Retard**
+- Les intérêts non payés sont capitalisés (ajoutés au capital)
+- Génération automatique de périodes d'intérêts en retard
+- Fonction `capitalizeOverdueInterests()` pour gestion automatique
+
+#### **Statuts Automatiques**
+- **pending:** Prêt créé mais pas encore actif
+- **active:** Prêt actif avec remboursements en cours
+- **late:** Prêt en retard (paiements manqués)
+- **closed:** Prêt complètement remboursé
+
+### **Fonctionnalités Implémentées Phase 1+2**
+
+#### **Infrastructure Backend**
+- **3 tables Supabase:** `personal_loans`, `loan_repayments`, `loan_interest_periods`
+- **RLS Policies:** 4 policies par table (SELECT, INSERT, UPDATE, DELETE)
+- **Indexes:** Optimisation performance avec indexes sur clés fréquentes
+- **Triggers:** Trigger `updated_at` automatique
+
+#### **Service CRUD Complet**
+- **loanService.ts:** 12 fonctions complètes
+  - `getMyLoans()` - Récupération prêts prêteur/emprunteur
+  - `createLoan()` - Création nouveau prêt
+  - `recordPayment()` - Enregistrement paiement
+  - `getRepaymentHistory()` - Historique remboursements
+  - `getUnlinkedRevenueTransactions()` - Transactions disponibles pour rapprochement
+  - `generateInterestPeriod()` - Génération période intérêts
+  - `capitalizeOverdueInterests()` - Capitalisation intérêts retard
+
+#### **Interface Utilisateur**
+- **LoansPage.tsx:** Page principale `/family/loans`
+  - Sections Prêtées/Empruntées avec onglets
+  - Compteurs actifs/total prêts
+  - Cartes prêts expandables avec détails
+- **CreateLoanModal:** Modal création prêt
+  - Toggle Je prête/J'emprunte
+  - Pré-remplissage taux d'intérêt
+  - Tous champs requis
+- **PaymentModal:** Modal paiement
+  - Mode paiement direct
+  - Rapprochement transaction existante
+  - Affichage intérêts dus
+- **RepaymentHistorySection:** Section accordéon
+  - Historique paiements détaillé
+  - Détail intérêts/capital par versement
+- **LoanCard:** Carte prêt expandable
+  - Clic expand/collapse
+  - Bouton paiement intégré
+  - Chevron rotation animation
+
+#### **Intégrations**
+- **FamilyDashboardPage:** Bouton "Prêts" premier bouton grille actions
+- **DashboardPage:** LoanWidget avec compteur actifs + badge retard
+- **AppLayout:** Route `/family/loans` avec lazy import
+
+### **Moteur Financier**
+
+#### **Calcul Intérêts**
+- Calcul automatique par période selon taux et durée
+- Génération périodes d'intérêts avec `generateInterestPeriod()`
+- Support intérêts simples et capitalisation
+
+#### **Gestion Remboursements**
+- Allocation automatique intérêts → capital
+- Mise à jour statut prêt automatique
+- Historique complet des paiements
+
+#### **Capitalisation Retard**
+- Détection automatique intérêts en retard
+- Capitalisation via `capitalizeOverdueInterests()`
+- Mise à jour capital et recalcul intérêts
+
+### **Phase 3 - Roadmap Planifiée**
+
+#### **Notifications Push**
+- Rappels paiements échéance
+- Alertes prêts en retard
+- Notifications remboursements reçus
+
+#### **Photo Justificatif**
+- Upload photo justificatif paiement
+- Stockage Supabase Storage
+- Affichage dans historique remboursements
+
+#### **Intérêts Automatiques Périodiques**
+- Génération automatique périodes intérêts
+- Calcul intérêts mensuels/hebdomadaires
+- Notifications automatiques échéances
+
+**Statut Phase 3:** ⏳ EN ATTENTE - Fonctionnalités avancées planifiées pour sessions futures
+
+---
+
+*Document généré automatiquement le 2026-02-15 - BazarKELY v3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*

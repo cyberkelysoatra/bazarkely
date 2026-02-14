@@ -166,7 +166,7 @@ bazarkely-2/
 │   │   │   ├── 📁 Layout/                    # Composants de layout
 │   │   │   │   ├── 📄 Header.tsx             # ✅ Header principal (MODIFIÉ 2025-01-11 - Timer username + animations) (MODIFIÉ 2025-10-17 - Affichage score réel) (MODIFIÉ 2025-01-20 - Identification utilisateur dropdown "Compte actif") (MODIFIÉ 2025-11-15 - Bug fix budget banner AGENT09) (MODIFIÉ 2025-11-15 PM - 8 corrections itératives cleanup Budget Construction AGENT09) (MODIFIÉ 2026-01-26 - 2-line desktop layout, navigation integration)
 │   │   │   │   ├── 📄 Footer.tsx             # ✅ Footer
-│   │   │   │   ├── 📄 AppLayout.tsx          # ✅ Layout principal
+│   │   │   │   ├── 📄 AppLayout.tsx          # ✅ Layout principal (MODIFIÉ [S52] 2026-02-15 - Route /family/loans ajoutee)
 │   │   │   │   ├── 📄 DashboardContainer.tsx # 🆕 NOUVEAU [2026-01-26] - Responsive container with mobile-first approach
 │   │   │   │   ├── 📄 ResponsiveGrid.tsx     # 🆕 NOUVEAU [2026-01-26] - Grid with variants (stats, actions, cards)
 │   │   │   │   └── 📄 ResponsiveStatCard.tsx # 🆕 NOUVEAU [2026-01-26] - Enhanced stat card with responsive padding
@@ -202,7 +202,7 @@ bazarkely-2/
 │   │   │   │   └── 📄 CurrencySwitcher.tsx  # ✅ Composant sélecteur devise
 │   │   ├── 📁 pages/                     # Pages principales
 │   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
-│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset)
+│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset) (MODIFIÉ [S52] 2026-02-15 - LoanWidget ajoute sidebar)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé)
@@ -222,6 +222,8 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
+│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection
+│   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions)
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration (MODIFIÉ 2025-01-20 - Grille 3 colonnes mobile + accordéon utilisateur + objectif Fond d'urgence)
 │   │   ├── 📁 services/                  # Services métier
 │   │   │   ├── 📄 authService.ts         # ✅ Service d'authentification
@@ -242,6 +244,7 @@ bazarkely-2/
 │   │   │   ├── 📄 toastService.ts        # ✅ Service notifications toast
 │   │   │   ├── 📄 dialogService.ts       # ✅ Service dialogues modernes
 │   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
+│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs
@@ -497,8 +500,8 @@ bazarkely-2/
 - **frontend/src/components/Dashboard/:** 2 fichiers (2 composants) 🆕 NOUVEAU (+1 session 2025-11-03)
 - **frontend/src/components/RecurringConfig/:** 1 fichier (1 composant) 🆕 NOUVEAU 2025-11-03
 - **frontend/src/components/RecurringTransactions/:** 2 fichiers (2 composants) 🆕 NOUVEAU 2025-11-03
-- **frontend/src/pages/:** 20 fichiers (18 pages + 2 RecurringTransactions + 1 BudgetStatistics S28) 🆕 NOUVEAU (+2 session 2025-11-03, +1 session S28)
-- **frontend/src/services/:** 25+ fichiers (12 nouveaux services ajoutés) ✅ (+3 session 2025-11-03)
+- **frontend/src/pages/:** 21 fichiers (18 pages + 2 RecurringTransactions + 1 BudgetStatistics S28 + 1 LoansPage S52) 🆕 NOUVEAU (+2 session 2025-11-03, +1 session S28, +1 session S52)
+- **frontend/src/services/:** 26+ fichiers (12 nouveaux services ajoutés + 1 loanService S52) ✅ (+3 session 2025-11-03, +1 session S52)
 - **frontend/src/stores/:** 7 fichiers (1 nouveau store certification) 🆕 NOUVEAU
 - **frontend/src/types/:** 5 fichiers (1 nouveau types certification + 2 types récurrentes) 🆕 NOUVEAU (+2 session 2025-11-03)
 - **frontend/src/constants/:** 1 fichier (index.ts) ✅ (MODIFIÉ [S28] 2025-12-31 - Catégorie épargne)

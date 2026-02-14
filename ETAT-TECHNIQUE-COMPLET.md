@@ -1,10 +1,10 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 2.9.0 (Reimbursement Dashboard Phase 2 - Session S49)  
-**Date de mise à jour:** 2026-02-13  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0)  
-**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49)
+**Version:** 3.0.0 (Module Prêts Familiaux Phase 1+2 - Session S52)  
+**Date de mise à jour:** 2026-02-15  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0)  
+**Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
 ---
 
@@ -1198,6 +1198,97 @@ family_shared_transactions (
 - Data mapping `ReimbursementWithDetails` → `ReimbursementStatsData` (toMemberName→requestedByName, fromMemberName→requestedFromName, transactionCategory→category)
 
 **Prêt pour Production:** ✅ OUI - Reimbursement Dashboard Phase 2 déployé v2.9.0 (commit e000e0c)
+
+#### **16.7.8 Documentation Cleanup** ✅ COMPLÉTÉ (Session S51 - 2026-02-14)
+
+**Date de complétion:** 14 février 2026  
+**Statut:** ✅ COMPLÉTÉ - Nettoyage documentation projet complet
+
+**Avant nettoyage:**
+- 115+ fichiers `.md` dans la racine du projet
+- 60+ fichiers `AGENT-*.md` temporaires (rapports agents Cursor)
+- Fichiers de session mélangés avec documentation active
+- Fichiers redondants et obsolètes accumulés sur 50+ sessions
+- Capacité projet Claude AI : 46% utilisée
+
+**Après nettoyage:**
+- **12 fichiers `.md` actifs** en racine du projet :
+  - `README.md` — Documentation principale
+  - `ETAT-TECHNIQUE-COMPLET.md` — État technique détaillé
+  - `FEATURE-MATRIX.md` — Matrice fonctionnalités
+  - `GAP-TECHNIQUE-COMPLET.md` — Écarts techniques
+  - `CURSOR-2.0-CONFIG.md` — Configuration Cursor
+  - `PROJECT-STRUCTURE-TREE.md` — Arborescence projet
+  - `RESUME-SESSION-2026-02-10-S45-PHASE1-PAIEMENTS-FLEXIBLES.md`
+  - `RESUME-SESSION-2026-02-11-S46-PAYMENT-SYSTEM-FIX.md`
+  - `RESUME-SESSION-2026-02-13-S49.md`
+  - `RESUME-SESSION-2026-02-13-S50.md`
+  - + quelques résumés de session récents
+- **Structure `docs/archive/`** créée avec sous-dossiers :
+  - `docs/archive/sessions/2025/` — Résumés sessions 2025
+  - `docs/archive/sessions/2026/` — Résumés sessions 2026 anciennes
+  - `docs/archive/setup/` — Guides d'installation
+  - `docs/archive/frontend/` — Documentation frontend archivée
+  - `docs/archive/backend/` — Documentation backend archivée
+  - `docs/archive/database/` — Documentation base de données archivée
+
+**Actions réalisées:**
+- ✅ 60+ fichiers `AGENT-*.md` temporaires supprimés
+- ✅ 30+ fichiers archivés vers `docs/archive/`
+- ✅ 5 fichiers redondants supprimés : `README-TECHNIQUE.md`, `ANALYSE-ADMINPAGE.md`, `BUG-INVESTIGATIONS.md`, `VALIDATION-DOCUMENTATION.md`, `SUPABASE-SCHEMA-INVESTIGATION.md`
+- ✅ Projet Claude AI nettoyé : 46% → 21% capacité, 15 fichiers uniques
+
+**Impact:**
+- Navigation projet simplifiée (12 fichiers actifs vs 115+)
+- Recherche documentation accélérée
+- Capacité Claude AI libérée (25% récupérée)
+- Historique préservé dans `docs/archive/`
+
+#### **16.7.9 Module Prêts Familiaux Phase 1+2** ✅ COMPLÉTÉ (Session S52 - 2026-02-15)
+
+**Date de complétion:** 15 février 2026  
+**Statut:** ✅ PRODUCTION - Module Prêts Familiaux déployé v3.0.0 (commit 3fa8a59)
+
+**Tables Supabase (3 nouvelles avec RLS — 4 policies par table):**
+
+| Table | Colonnes principales | Description |
+|-------|---------------------|-------------|
+| `personal_loans` | `lender_user_id`, `borrower_user_id` (nullable), `borrower_name`, `borrower_phone`, `is_i_the_borrower`, `amount_initial`, `currency` (MGA/EUR), `interest_rate`, `interest_frequency` (daily/weekly/monthly), `current_capital`, `due_date`, `description`, `photo_url`, `status` (pending/active/late/closed) | Prêts personnels avec support prêteur/emprunteur, taux d'intérêt configurable |
+| `loan_repayments` | `loan_id`, `transaction_id` (nullable FK transactions), `amount_paid`, `interest_portion`, `capital_portion`, `payment_date`, `notes` | Historique remboursements avec ventilation intérêts/capital |
+| `loan_interest_periods` | `loan_id`, `period_start`, `period_end`, `capital_at_start`, `interest_amount`, `status` (paid/unpaid/capitalized) | Périodes d'intérêts avec capitalisation automatique |
+
+**Service — `loanService.ts` (12 fonctions):**
+- `getMyLoans()` — Liste tous les prêts de l'utilisateur (prêteur ou emprunteur)
+- `getLoanById()` — Détail d'un prêt par ID
+- `createLoan()` — Création d'un nouveau prêt
+- `updateLoanStatus()` — Mise à jour du statut (pending → active → closed)
+- `deleteLoan()` — Suppression d'un prêt
+- `getLastUsedInterestSettings()` — Récupère derniers paramètres d'intérêt utilisés
+- `recordPayment()` — Enregistrement d'un paiement (mode direct ou lié à transaction)
+- `getUnpaidInterestPeriods()` — Périodes d'intérêts impayées
+- `generateInterestPeriod()` — Génération d'une période d'intérêt
+- `capitalizeOverdueInterests()` — Capitalisation des intérêts en retard
+- `getRepaymentHistory()` — Historique des remboursements d'un prêt
+- `getUnlinkedRevenueTransactions()` — Transactions revenus non liées (pour lien paiement)
+
+**UI — `LoansPage.tsx`:**
+- `CreateLoanModal` — Composant top-level pour création de prêt (formulaire complet avec intérêts, devise, échéance)
+- `PaymentModal` — Modal paiement avec 2 modes : direct (saisie manuelle) et lié (sélection transaction existante)
+- `RepaymentHistorySection` — Section historique des remboursements avec ventilation intérêts/capital
+- `LoanCard` — Carte expandable avec résumé prêt, progression remboursement, actions
+
+**Moteur financier:**
+- Ventilation paiement : intérêts d'abord, puis capital (interest-first split)
+- Capitalisation automatique des intérêts en retard
+- Mise à jour auto du statut : pending → active → closed
+- Support multi-devises MGA/EUR
+
+**Intégration navigation:**
+- Bouton "Prêts" dans `FamilyDashboardPage.tsx` (1er élément de la grille)
+- Route `/family/loans` dans `AppLayout.tsx` (FamilyRoutes)
+- `LoanWidget` inline dans `DashboardPage.tsx` sidebar
+
+**Prêt pour Production:** ✅ OUI - Module Prêts Familiaux déployé v3.0.0 (commit 3fa8a59). Zéro régression confirmée.
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3638,4 +3729,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-02-13 - BazarKELY v2.9.0 (Reimbursement Dashboard Phase 2 - Session S49)*
+*Document généré automatiquement le 2026-02-15 - BazarKELY v3.0.0 (Module Prêts Familiaux Phase 1+2 - Session S52)*

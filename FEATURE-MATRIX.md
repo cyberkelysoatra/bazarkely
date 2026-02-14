@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 2.9.0 (Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-02-13  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0
+**Version:** 3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-02-15  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15
 
 ---
 
@@ -11,7 +11,7 @@
 
 Cette matrice présente l'état d'avancement réel de toutes les fonctionnalités et composants de BazarKELY, basée sur l'audit complet du codebase effectué le 2024-12-19 et mis à jour avec l'implémentation du système de notifications.
 
-### **📊 Statistiques Globales (Mise à jour 2026-02-13)**
+### **📊 Statistiques Globales (Mise à jour 2026-02-14 — Session S51)**
 - **Fonctionnalités implémentées:** 100% (212/212)
 - **Composants manquants:** 0% (0/210)
 - **Tests automatisés:** 40% (Configuration présente, résultats partiels)
@@ -43,6 +43,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Family Reimbursements Payment System (Phase 1):** 100% (8/8) ✅ - Session S45 2026-02-10 + Corrections S46 2026-02-11 + Payment UI Enhancements S47 2026-02-12 (Multi-debt FIFO allocation + Partial payments + Surplus handling + Payment history accordion + Progress bars + Payment status indicators + Amount parsing fix + ReimbursementPaymentModal)
 - **Paiements Flexibles Phase 1 Validation:** 100% (1/1) ✅ - Session S48 2026-02-12 (18 console.log cleaned + button HTML fix + validated production 1sakely.org)
 - **Reimbursement Dashboard Phase 2:** 100% (1/1) ✅ - Session S49 2026-02-13 (ReimbursementStatsSection.tsx 261 lignes, PieChart catégories + LineChart évolution + BarChart membres, cartes summary cliquables, transactionCategory service)
+- **Documentation Cleanup:** 100% (1/1) ✅ - Session S51 2026-02-14 (115+ .md files archived → 12 active root files, docs/archive/ structure, Claude AI project synchronized 15 files 21% capacity)
+- **Module Prets Familiaux Phase 1+2:** 100% (11/11) ✅ - Session S52 2026-02-15 (Tables Supabase + loanService CRUD + LoansPage + CreateLoanModal + PaymentModal + RepaymentHistorySection + LoanCard + FamilyDashboardPage button + LoanWidget Dashboard + Route AppLayout + Moteur financier interets->capital) (v3.0.0)
 
 ### **📈 Répartition par Statut**
 - **✅ Implémenté:** 100% (218/218)
@@ -212,6 +214,23 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
 |----------------|--------|----------|-------------------|-------|
 | **Reimbursement Dashboard Phase 2** | ✅ DONE | P0 | ReimbursementStatsSection.tsx | PieChart catégories + LineChart évolution + BarChart membres, navigation cartes summary, transactionCategory service | S49 2026-02-13 |
+
+### **Module Prets Familiaux - Session S52 2026-02-15** ✅ 100% COMPLÉTÉ (v3.0.0)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Tables Supabase personal_loans + loan_repayments + loan_interest_periods** | ✅ DONE | P0 | Supabase SQL | RLS 4 policies/table, indexes, trigger updated_at - S52 |
+| **loanService.ts - CRUD + moteur financier** | ✅ DONE | P0 | loanService.ts | 12 fonctions: getMyLoans, createLoan, recordPayment, getRepaymentHistory, getUnlinkedRevenueTransactions, generateInterestPeriod, capitalizeOverdueInterests - S52 |
+| **LoansPage /family/loans** | ✅ DONE | P0 | LoansPage.tsx | Sections Pretes/Empruntees, onglets Tous/Pretes/Empruntes, compteurs actifs/total - S52 |
+| **CreateLoanModal top-level** | ✅ DONE | P0 | LoansPage.tsx | Toggle Je prete/J emprunte, pre-remplissage taux, tous champs, bug focus corrige - S52 |
+| **PaymentModal direct + link** | ✅ DONE | P0 | LoansPage.tsx | Mode paiement direct + rapprochement transaction existante, interets dus affiches - S52 |
+| **RepaymentHistorySection accordion** | ✅ DONE | P0 | LoansPage.tsx | Historique paiements avec detail interets/capital par versement - S52 |
+| **LoanCard expandable** | ✅ DONE | P0 | LoansPage.tsx | Clic expand/collapse, bouton paiement, chevron rotation - S52 |
+| **Bouton Prets FamilyDashboardPage** | ✅ DONE | P0 | FamilyDashboardPage.tsx | 1er bouton grille actions, icone HandCoins, navigate /family/loans - S52 |
+| **LoanWidget Dashboard** | ✅ DONE | P1 | DashboardPage.tsx | Compteur actifs + total prete + badge rouge retard, masque si 0 prets - S52 |
+| **Route /family/loans AppLayout** | ✅ DONE | P0 | AppLayout.tsx | Lazy import LoansPage, dans FamilyRoutes authenticated - S52 |
+| **Moteur financier interets->capital** | ✅ DONE | P0 | loanService.ts | Priorite interets, capitalisation retard, auto-status pending/active/closed - S52 |
+
+**Total Session S52:** 11/11 implémentés (100%)
 
 ### **PWA Advanced Features - Notifications**
 | Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
@@ -1205,4 +1224,37 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-02-12 - BazarKELY v2.8.0 (Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+---
+
+## 🧹 MAINTENANCE & DOCUMENTATION (Session S51 2026-02-14)
+
+### **Documentation Cleanup** ✅ DONE (Session S51 2026-02-14)
+| Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
+|----------------|--------|----------------|-------|---------------|-------|
+| **Archive Structure Created** | ✅ DONE | 100% | ✅ Validé | ✅ Documenté | docs/archive/ structure créée avec sous-dossiers: sessions/2025, sessions/2026, setup, frontend, backend, database (S51 2026-02-14) |
+| **Root .md Files Cleanup** | ✅ DONE | 100% | ✅ Validé | ✅ Documenté | 115+ fichiers .md réduits à 12 fichiers actifs en racine, fichiers obsolètes archivés dans docs/archive/ (S51 2026-02-14) |
+| **Claude AI Project Synchronized** | ✅ DONE | 100% | ✅ Validé | ✅ Documenté | Projet Claude AI synchronisé avec 15 fichiers uniques, 21% capacité utilisée (S51 2026-02-14) |
+| **Session Documentation Archived** | ✅ DONE | 100% | ✅ Validé | ✅ Documenté | Sessions 2025 et 2026 organisées chronologiquement dans docs/archive/sessions/ (S51 2026-02-14) |
+
+**Total Documentation Cleanup:** 4/4 complétés (100%)
+
+**Détails d'implémentation:**
+- **docs/archive/sessions/2025/**: Sessions historiques 2025 archivées
+- **docs/archive/sessions/2026/**: Sessions 2026 archivées
+- **docs/archive/setup/**: Documentation de configuration archivée
+- **docs/archive/frontend/**: Documentation frontend archivée
+- **docs/archive/backend/**: Documentation backend archivée
+- **docs/archive/database/**: Documentation base de données archivée
+- **Fichiers racine actifs:** 12 fichiers .md essentiels conservés en racine
+- **Réduction:** 115+ → 12 fichiers actifs (-89% encombrement racine)
+
+**Métriques de session S51:**
+- **Fichiers archivés:** 115+
+- **Fichiers actifs en racine:** 12
+- **Structure archive:** 6 sous-dossiers thématiques
+- **Claude AI capacity:** 21% (15 fichiers uniques)
+- **Taux de complétion:** 100%
+
+---
+
+*Document généré automatiquement le 2026-02-15 - BazarKELY v3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
