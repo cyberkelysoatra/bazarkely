@@ -1,6 +1,26 @@
-export const APP_VERSION = 'v2.9.0';
-export const APP_BUILD_DATE = '2026-02-12';
+export const APP_VERSION = 'v3.0.0';
+export const APP_BUILD_DATE = '2026-02-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.0.0',
+    date: '2026-02-15',
+    changes: [
+      'Feature: Module Prets Familiaux Phase 1+2 - Système complet de gestion des prêts personnels',
+      'Feature: Page LoansPage.tsx - Interface de gestion des prêts avec sections "J\'ai prêté" et "J\'ai emprunté"',
+      'Feature: CreateLoanModal - Modal de création de prêt avec gestion taux d\'intérêt, fréquences, et échéances',
+      'Feature: PaymentModal - Enregistrement de paiements (direct ou lié à transaction) avec calcul intérêts courus',
+      'Feature: RepaymentHistorySection - Historique des remboursements avec accordéon collapsible',
+      'Feature: LoanCard expansion - Cartes de prêt cliquables avec détails étendus (paiements, historique)',
+      'Feature: Intégration loanService.ts - Service complet pour CRUD prêts, paiements, et calculs d\'intérêts',
+      'Technical: Architecture modulaire - Composants modaux extraits au niveau top-level pour éviter re-mount',
+      'Technical: Gestion état avancée - selectedLoanId, showPaymentModal pour contrôle expansion et modals',
+      'UI Enhancement: Badges de statut (pending, active, late, closed) avec couleurs distinctes',
+      'UI Enhancement: Barres de progression pour visualisation remboursement',
+      'UI Enhancement: Affichage multi-devises (MGA/EUR) avec CurrencyDisplay',
+      'Session: Module Prets Familiaux Phase 1+2 complète'
+    ],
+    type: 'major' as const
+  },
   {
     version: '2.8.1',
     date: '2026-02-12',
