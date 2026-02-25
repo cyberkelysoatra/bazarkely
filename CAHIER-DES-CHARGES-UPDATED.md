@@ -1,9 +1,9 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-02-15  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0  
+**Version:** 3.0.1 (Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-02-17  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0 + Comportement Attendu Remboursements et Prêts v3.0.1  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
@@ -1168,6 +1168,138 @@ interface QuizSession {
 
 ---
 
+## 🔄 COMPORTEMENT ATTENDU — REMBOURSEMENTS ET PRÊTS
+
+### **1. MODULE REMBOURSEMENTS DÉPENSES**
+
+#### **Règles d'Accès et Visibilité**
+- **Seul le payeur (`paid_by`) peut déclencher une demande de remboursement**
+- Le bouton "Demander remboursement" est visible ET cliquable UNIQUEMENT par le payeur
+- Les autres membres ne voient pas ce bouton sur la transaction partagée
+
+#### **Processus de Demande**
+- Le payeur clique sur le bouton "Demander remboursement" dans `TransactionsPage`
+- Une modal s'ouvre affichant :
+  - Les membres avec qui la transaction est partagée
+  - Les montants éditables pour chaque membre
+  - Possibilité de modifier les montants avant validation
+- Les demandes sont créées dans la table `reimbursement_requests` avec :
+  - `shared_transaction_id` : ID de la transaction partagée
+  - `from_member_id` : ID du membre débiteur (celui qui doit rembourser)
+  - `to_member_id` : ID du membre créancier (le payeur)
+  - `amount` : Montant à rembourser
+  - `currency` : Devise de la transaction
+  - `status` : Statut de la demande (pending, accepted, rejected, settled)
+
+#### **Vue du Débiteur**
+- Le débiteur voit la demande dans deux endroits :
+  - **TransactionsPage** : La transaction partagée affiche une notification de demande en attente
+  - **FamilyReimbursementsPage** : La demande apparaît dans la liste des remboursements en attente
+- Le débiteur peut :
+  - **Accepter** la demande : Le statut passe à `accepted`
+  - **Refuser** la demande : Le statut passe à `rejected`
+
+### **2. MODULE LOANSPAGE**
+
+#### **État Actuel (S52-S53)**
+
+##### **Types de Prêts Gérés**
+- **Prêts formels** : Prêts avec intérêts calculés automatiquement
+  - Taux d'intérêt défini à la création
+  - Calcul automatique des intérêts par période
+  - Capitalisation des intérêts en retard
+- **Dettes informelles** : Dettes sans intérêts
+  - Montant fixe à rembourser
+  - Pas de calcul d'intérêts
+  - Suivi simple du remboursement
+
+##### **Création Actuelle**
+- Les prêts/dettes sont créés via `CreateLoanModal` dans `LoansPage`
+- Toggle "Je prête" / "J'emprunte" pour définir le rôle
+- Option de partage avec le groupe familial disponible
+
+##### **Visibilité dans FamilyReimbursementsPage**
+- Les prêts/dettes créés dans `LoansPage` **n'apparaissent PAS automatiquement** dans `FamilyReimbursementsPage`
+- Ils apparaissent dans `FamilyReimbursementsPage` **SEULEMENT si marqués "partagé"** par le créateur du prêt
+- Le créateur peut choisir de partager ou non un prêt avec le groupe familial
+
+#### **État Futur (S54 - Planifié)**
+
+##### **Création via AddTransactionPage**
+- **Dépense - Prêt accordé** : Catégorie transaction qui crée automatiquement un prêt formel dans `LoansPage`
+  - Option de partage avec le groupe familial
+  - Intégration avec système de transactions existant
+- **Dépense - Remboursement dette** : Catégorie transaction qui enregistre un paiement pour dette informelle
+  - Option de partage avec le groupe familial
+  - Mise à jour automatique du statut de la dette
+- **Revenu - Remboursement prêt** : Catégorie transaction qui enregistre un paiement pour prêt reçu
+  - Option de partage avec le groupe familial
+  - Mise à jour automatique du statut du prêt
+- **Revenu - Prêt reçu** : Catégorie transaction qui crée automatiquement une dette informelle dans `LoansPage`
+  - Option de partage avec le groupe familial
+  - Intégration avec système de transactions existant
+
+##### **LoansPage Consultation Uniquement**
+- `LoansPage` devient une page de **consultation uniquement**
+- Suppression de `CreateLoanModal` de `LoansPage`
+- Toutes les créations de prêts/dettes passent par `AddTransactionPage`
+- `LoansPage` affiche uniquement :
+  - Liste des prêts/dettes existants
+  - Historique des remboursements
+  - Détails et statistiques
+  - Actions de consultation (pas de création)
+
+##### **Référence**
+- Voir `ARCHITECTURE-PRETS-S54.md` pour le plan de refactoring complet
+- 21 emplacements de code identifiés nécessitant vérification pour conformité
+
+### **3. FAMILYREIMBURSEMENTSPAGE**
+
+#### **Vue Centrale Agrégée**
+- `FamilyReimbursementsPage` est la vue centrale qui agrège :
+  - **Demandes de remboursement de dépenses partagées** : Demandes créées depuis `TransactionsPage` par le payeur
+  - **Prêts/dettes marqués partagés** : Prêts créés dans `LoansPage` et explicitement marqués comme partagés
+
+#### **Système de Paiement FIFO**
+- Pour les dettes multiples envers la même personne :
+  - Les paiements sont appliqués selon l'ordre FIFO (First In, First Out)
+  - La dette la plus ancienne est payée en premier
+  - Le système calcule automatiquement l'allocation du paiement entre les dettes multiples
+  - Un preview en temps réel montre comment le paiement sera réparti
+
+#### **Fonctionnalités**
+- Affichage des remboursements en attente (où l'utilisateur est créancier ou débiteur)
+- Système de paiement avec modal dédiée (`ReimbursementPaymentModal`)
+- Historique des paiements avec détails intérêts/capital par versement
+- Statistiques avec graphiques (PieChart catégories, LineChart évolution, BarChart membres)
+
+### **4. TABLE ACTIVE SUPABASE**
+
+#### **Table Remboursements**
+- **Nom de la table** : `reimbursement_requests` (PAS `family_reimbursement_requests`)
+- **Schéma principal** :
+  - `id` : UUID, clé primaire
+  - `shared_transaction_id` : UUID, référence à `family_shared_transactions.id`
+  - `from_member_id` : UUID, ID du membre débiteur
+  - `to_member_id` : UUID, ID du membre créancier (payeur)
+  - `amount` : NUMERIC, montant à rembourser
+  - `currency` : TEXT, devise (ex: 'MGA', 'EUR')
+  - `status` : TEXT, statut (pending, accepted, rejected, settled)
+  - `created_at` : TIMESTAMP, date de création
+  - `updated_at` : TIMESTAMP, date de mise à jour
+
+#### **Relations**
+- `shared_transaction_id` → `family_shared_transactions.id`
+- `from_member_id` → `family_group_members.user_id`
+- `to_member_id` → `family_group_members.user_id`
+
+#### **Politiques RLS**
+- Les utilisateurs ne peuvent voir que les remboursements où ils sont créancier OU débiteur
+- Les utilisateurs peuvent créer des demandes uniquement pour les transactions où ils sont payeur
+- Les utilisateurs peuvent accepter/refuser uniquement les demandes où ils sont débiteur
+
+---
+
 ## 💰 MODULE PRETS FAMILIAUX v3.0.0 (S52 2026-02-15)
 
 ### **Description du Module**
@@ -1288,4 +1420,4 @@ Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les 
 
 ---
 
-*Document généré automatiquement le 2026-02-15 - BazarKELY v3.0.0 (Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*
+*Document généré automatiquement le 2026-02-17 - BazarKELY v3.0.1 (Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*

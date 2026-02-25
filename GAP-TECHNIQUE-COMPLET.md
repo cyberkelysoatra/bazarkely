@@ -1,8 +1,8 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.8 (Module Prêts Familiaux Phase 1+2 - Session S52 v3.0.0)  
-**Date de mise à jour:** 2026-02-15  
+**Version:** 5.9 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53 v3.0.1)  
+**Date de mise à jour:** 2026-02-17  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0)  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -1543,7 +1543,22 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 15 FÉVRIER 2026)
+## ⚠️ GAPS RESTANTS (MISE À JOUR 17 FÉVRIER 2026)
+
+### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
+- **Problème identifié:** 21 appels `.from()` dans `reimbursementService.ts`, `TransactionDetailPage.tsx` et `familySharingService.ts` peuvent viser une mauvaise table de remboursements selon les flux
+- **Clarification architecture (S53):** la table active confirmée est `reimbursement_requests` (schéma: `shared_transaction_id`, `from_member_id`, `to_member_id`) et non `family_reimbursement_requests`
+- **Solution prévue (S54):** auditer/corriger tous les appels `.from()` pour utiliser systématiquement `reimbursement_requests`
+- **Impact:** bouton remboursement peut échouer, ou créer/lire des données dans une table incorrecte
+- **Référence documentation:** `FONCTIONNEMENT-MODULES.md`
+- **Priorité:** HAUTE
+
+### **Gap Loans Architecture - Isolated Creation Flow** 🔄 PLANIFIÉ S54
+- **Problème identifié:** création de prêt isolée dans `LoansPage.tsx`, incohérente avec le flux principal de saisie des transactions
+- **Solution prévue (S54):** intégrer les prêts comme catégories dans `AddTransactionPage` pour unifier le parcours utilisateur
+- **Référence:** `ARCHITECTURE-PRETS-S54.md`
+- **Impact:** friction UX et duplication des flux de saisie tant que non refactorisé
+- **Priorité:** MOYENNE
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
 - **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé
@@ -1806,4 +1821,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-02-15 - BazarKELY v5.8 (Module Prêts Familiaux Phase 1+2 - Session S52 v3.0.0)*
+*Document généré automatiquement le 2026-02-17 - BazarKELY v5.9 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53 v3.0.1)*
