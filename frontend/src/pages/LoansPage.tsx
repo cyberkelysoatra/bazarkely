@@ -19,14 +19,16 @@ import {
   getUnpaidInterestPeriods,
   getUnlinkedRevenueTransactions,
   recordPayment,
-  getRepaymentHistory
+  getRepaymentHistory,
+  getTotalUnpaidInterestByLoan
 } from '../services/loanService';
 import type { 
   Loan, 
   CreateLoanInput, 
   InterestFrequency,
   LoanRepayment,
-  LoanInterestPeriod
+  LoanInterestPeriod,
+  UnpaidInterestSummary
 } from '../services/loanService';
 import { CurrencyDisplay } from '../components/Currency';
 import Modal from '../components/UI/Modal';
@@ -634,9 +636,10 @@ const RepaymentHistorySection = ({ loanId, currency }: RepaymentHistorySectionPr
 
 const LoansPage = () => {
   const navigate = useNavigate();
-  const { isLoading: isAuthLoading, isAuthenticated } = useRequireAuth();
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useRequireAuth();
   const { displayCurrency } = useCurrency();
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [unpaidInterestSummaries, setUnpaidInterestSummaries] = useState<UnpaidInterestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'lender' | 'borrower'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -649,6 +652,22 @@ const LoansPage = () => {
       loadLoans();
     }
   }, [isAuthLoading, isAuthenticated]);
+
+  useEffect(() => {
+    const loadUnpaidInterestSummary = async () => {
+      if (isAuthLoading || !isAuthenticated || !user?.id) {
+        return;
+      }
+      try {
+        const summaries = await getTotalUnpaidInterestByLoan(user.id);
+        setUnpaidInterestSummaries(summaries || []);
+      } catch {
+        setUnpaidInterestSummaries([]);
+      }
+    };
+
+    loadUnpaidInterestSummary();
+  }, [isAuthLoading, isAuthenticated, user?.id]);
 
   const loadLoans = async () => {
     try {
@@ -793,6 +812,22 @@ const LoansPage = () => {
           ))}
         </div>
 
+        {unpaidInterestSummaries.length > 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  {unpaidInterestSummaries.length} prêt(s) ont des intérêts dus ce mois
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Vérifiez les prêts concernés pour régulariser les périodes d&apos;intérêts impayées.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Loans List */}
         {filteredLoans.length === 0 ? (
           <div className="text-center py-12">
@@ -816,6 +851,7 @@ const LoansPage = () => {
               const loanName = loan.isITheBorrower 
                 ? `Emprunté à ${loan.lenderName}` 
                 : `Prêté à ${loan.borrowerName}`;
+              const unpaidInterestSummary = unpaidInterestSummaries.find(summary => summary.loanId === loan.id);
 
               return (
                 <div key={loan.id}>
@@ -839,6 +875,14 @@ const LoansPage = () => {
                           <div className="flex items-center space-x-2 mt-0.5">
                             {getStatusIcon(loan.status)}
                             <span className="text-xs text-gray-500">{getStatusLabel(loan.status)}</span>
+                            {unpaidInterestSummary && (
+                              <>
+                                <span className="text-xs text-gray-400">•</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium whitespace-nowrap">
+                                  ⚠️ Intérêts dus: {unpaidInterestSummary.totalUnpaid.toLocaleString('fr-FR')} {unpaidInterestSummary.currency === 'EUR' ? '€' : 'Ar'}
+                                </span>
+                              </>
+                            )}
                             {loan.description && (
                               <>
                                 <span className="text-xs text-gray-400">•</span>

@@ -544,3 +544,99 @@ export async function getRepaymentIndexForTransaction(
     return 1;
   }
 }
+
+/**
+ * Résumé des intérêts impayés par prêt pour un utilisateur
+ */
+export interface UnpaidInterestSummary {
+  loanId: string;
+  borrowerName: string;
+  totalUnpaid: number;
+  periodCount: number;
+  currency: string;
+}
+
+/**
+ * Récupère le total des intérêts impayés groupés par prêt pour un utilisateur
+ * @param userId - ID de l'utilisateur (lender ou borrower)
+ * @returns Tableau des résumés d'intérêts impayés par prêt
+ */
+export async function getTotalUnpaidInterestByLoan(userId: string): Promise<UnpaidInterestSummary[]> {
+  try {
+    if (!userId) {
+      return [];
+    }
+
+    // Step 1: Get loan IDs where user is lender or borrower
+    const { data: loansData, error: loansError } = await supabase
+      .from('personal_loans')
+      .select('id, borrower_name, currency')
+      .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`);
+
+    if (loansError) {
+      console.error('Erreur dans getTotalUnpaidInterestByLoan (loans):', loansError);
+      return [];
+    }
+
+    if (!loansData || loansData.length === 0) {
+      return [];
+    }
+
+    const loanIds = loansData.map((l) => l.id);
+    const loansMap = new Map<string, { borrowerName: string; currency: string }>();
+    loansData.forEach((loan) => {
+      loansMap.set(loan.id, {
+        borrowerName: loan.borrower_name || 'Inconnu',
+        currency: loan.currency || 'MGA',
+      });
+    });
+
+    // Step 2: Query unpaid interest periods for these loans
+    const { data: periodsData, error: periodsError } = await supabase
+      .from('loan_interest_periods')
+      .select('loan_id, interest_amount')
+      .in('loan_id', loanIds)
+      .eq('status', 'unpaid');
+
+    if (periodsError) {
+      console.error('Erreur dans getTotalUnpaidInterestByLoan (periods):', periodsError);
+      return [];
+    }
+
+    if (!periodsData || periodsData.length === 0) {
+      return [];
+    }
+
+    // Step 3: Group by loan_id and calculate totals
+    const summaryMap = new Map<string, UnpaidInterestSummary>();
+
+    periodsData.forEach((period: any) => {
+      const loanId = period.loan_id;
+      const interestAmount = period.interest_amount || 0;
+      const loanInfo = loansMap.get(loanId);
+
+      if (!loanInfo) {
+        return; // Skip if loan info missing
+      }
+
+      if (!summaryMap.has(loanId)) {
+        summaryMap.set(loanId, {
+          loanId: loanId,
+          borrowerName: loanInfo.borrowerName,
+          totalUnpaid: 0,
+          periodCount: 0,
+          currency: loanInfo.currency,
+        });
+      }
+
+      const summary = summaryMap.get(loanId)!;
+      summary.totalUnpaid += interestAmount;
+      summary.periodCount += 1;
+    });
+
+    return Array.from(summaryMap.values());
+  } catch (error) {
+    console.error('Erreur dans getTotalUnpaidInterestByLoan:', error);
+    return [];
+  }
+}

@@ -615,11 +615,8 @@ const TransactionsPage = () => {
         description: repaymentDescription || `Remb. ${transaction.description}`,
         notes: repaymentNotes || undefined,
       });
-      console.log('[DEBUG-REPAYMENT] createdRepaymentTransaction:', createdRepaymentTransaction);
       const loanId = await getLoanIdByTransactionId(transaction.id);
-      console.log('[DEBUG-REPAYMENT] transaction.id:', transaction.id, '| loanId found:', loanId);
       if (loanId && createdRepaymentTransaction?.id) {
-        console.log('[DEBUG-REPAYMENT] Calling recordPayment with:', { loanId, amountValue, repaymentDate, notes: repaymentNotes, transactionId: createdRepaymentTransaction?.id });
         await recordPayment(
           loanId,
           amountValue,
@@ -627,14 +624,12 @@ const TransactionsPage = () => {
           repaymentNotes || undefined,
           createdRepaymentTransaction.id
         );
-        console.log('[DEBUG-REPAYMENT] recordPayment completed successfully');
       }
       const refreshed = await transactionService.getUserTransactions(user.id);
       setTransactions(refreshed);
       toast.success('Remboursement enregistré');
       resetRepaymentForm();
     } catch (error: any) {
-      console.log('[DEBUG-REPAYMENT] ERROR:', error);
       toast.error(error?.message || 'Erreur lors de l’enregistrement du remboursement');
     }
   };
