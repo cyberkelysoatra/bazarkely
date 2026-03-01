@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle, Calendar } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft, X, Loader2, Download, Repeat, Users, UserCheck, Receipt, Clock, CheckCircle, Calendar, Edit, Trash2, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -15,6 +15,7 @@ import Modal from '../components/UI/Modal';
 import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
+import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction } from '../services/loanService';
 import { toast } from 'react-hot-toast';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
 import type { FamilyGroup } from '../types/family';
@@ -74,12 +75,25 @@ const TransactionsPage = () => {
   
   // Track which transaction is currently requesting reimbursement
   const [requestingReimbursement, setRequestingReimbursement] = useState<string | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
+  const [showRepaymentModal, setShowRepaymentModal] = useState<string | null>(null);
+  const [repaymentAmount, setRepaymentAmount] = useState<string>('');
+  const [repaymentAccountId, setRepaymentAccountId] = useState<string>('');
+  const [repaymentDate, setRepaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [repaymentDescription, setRepaymentDescription] = useState<string>('');
+  const [repaymentNotes, setRepaymentNotes] = useState<string>('');
+  const [repaymentAccounts, setRepaymentAccounts] = useState<Account[]>([]);
+  const [repaymentHistory, setRepaymentHistory] = useState<Array<{amount_paid: number; payment_date: string; notes?: string; transactionId?: string}>>([]);
+  const [parentLoanInfo, setParentLoanInfo] = useState<{transactionId: string | null; amountInitial: number; createdAt: string} | null>(null);
+  const [repaymentIndex, setRepaymentIndex] = useState<number>(1);
+  const [loanProgress, setLoanProgress] = useState<{ totalRepaid: number; remaining: number; percentage: number } | null>(null);
+  const [loanProgressLoading, setLoanProgressLoading] = useState<boolean>(false);
   
   // Function to reload reimbursement statuses
   const loadReimbursementStatuses = useCallback(async () => {
     // Set loading state to true at the start
     setIsLoadingReimbursementStatuses(true);
-    console.log('[DEBUG] loadReimbursementStatuses called, activeFamilyGroup:', !!activeFamilyGroup, 'sharedTransactionsMap.size:', sharedTransactionsMap.size);
 
     if (!activeFamilyGroup || sharedTransactionsMap.size === 0) {
       setReimbursementStatuses(new Map());
@@ -94,10 +108,8 @@ const TransactionsPage = () => {
 
       setReimbursementStatuses(statuses);
       // Set loading state to false after state is updated
-      console.log('[DEBUG] loadReimbursementStatuses success, statuses:', statuses);
       setIsLoadingReimbursementStatuses(false);
     } catch (err) {
-      console.error('[LOAD REIMBURSEMENT] Error loading reimbursement statuses:', err);
       // Set loading state to false even on error
       setIsLoadingReimbursementStatuses(false);
     }
@@ -153,7 +165,6 @@ const TransactionsPage = () => {
           const userTransactions = await transactionService.getUserTransactions(user.id);
           setTransactions(userTransactions);
         } catch (error) {
-          console.error('Erreur lors du chargement des transactions:', error);
         } finally {
           setIsLoading(false);
         }
@@ -194,7 +205,6 @@ const TransactionsPage = () => {
           const transferred = await transactionService.getUserTransferredTransactions(user.id);
           setTransferredTransactions(transferred);
         } catch (error) {
-          console.error('Erreur lors du chargement des transactions transférées:', error);
         }
       }
     };
@@ -261,6 +271,107 @@ const TransactionsPage = () => {
   useEffect(() => {
     loadReimbursementStatuses();
   }, [loadReimbursementStatuses]);
+
+  useEffect(() => {
+    const loadAccountsForRepayment = async () => {
+      if (!user) {
+        setRepaymentAccounts([]);
+        return;
+      }
+      try {
+        const localAccounts = await db.accounts.where('userId').equals(user.id).toArray();
+        setRepaymentAccounts(localAccounts);
+      } catch {
+        setRepaymentAccounts([]);
+      }
+    };
+    loadAccountsForRepayment();
+  }, [user]);
+
+  useEffect(() => {
+    if (showRepaymentModal && !repaymentAccountId && repaymentAccounts.length > 0) {
+      setRepaymentAccountId(repaymentAccounts[0].id);
+    }
+  }, [showRepaymentModal, repaymentAccounts]);
+
+  useEffect(() => {
+    const loadLoanProgressForDrawer = async () => {
+      if (!selectedTransactionId) {
+        setLoanProgress(null);
+        setLoanProgressLoading(false);
+        setParentLoanInfo(null);
+        return;
+      }
+
+      const selectedTransaction = transactions.find(t => t.id === selectedTransactionId);
+      const isSelectedLoanCategory = selectedTransaction
+        ? ['loan', 'loan_received'].includes(selectedTransaction.category)
+        : false;
+      const isRepaymentCategory = selectedTransaction
+        ? ['loan_repayment', 'loan_repayment_received'].includes(selectedTransaction.category)
+        : false;
+
+      if (selectedTransaction && isRepaymentCategory) {
+        setLoanProgress(null);
+        setLoanProgressLoading(false);
+        setParentLoanInfo(null);
+        try {
+          const result: any = await getLoanByRepaymentTransactionId(selectedTransaction.id);
+          setParentLoanInfo({
+            transactionId: result?.loan?.transactionId || null,
+            amountInitial: result?.loan?.amountInitial || 0,
+            createdAt: result?.loan?.createdAt || ''
+          });
+        } catch {
+          setParentLoanInfo(null);
+        }
+        return;
+      }
+
+      if (!selectedTransaction || !isSelectedLoanCategory) {
+        setLoanProgress(null);
+        setLoanProgressLoading(false);
+        setParentLoanInfo(null);
+        return;
+      }
+
+      setLoanProgressLoading(true);
+      setLoanProgress(null);
+      setParentLoanInfo(null);
+
+      try {
+        const loanId = await getLoanIdByTransactionId(selectedTransaction.id);
+
+        if (!loanId) {
+          setLoanProgress(null);
+          return;
+        }
+
+        const repayments = await getRepaymentHistory(loanId);
+        setRepaymentHistory(repayments.map((r: any) => ({ amount_paid: r.amountPaid ?? r.amount_paid, payment_date: r.paymentDate ?? r.payment_date, notes: r.notes, transactionId: r.transactionId ?? r.transaction_id ?? undefined })));
+        const totalRepaid = repayments.reduce((sum, repayment: any) => {
+          return sum + Number(repayment.amount_paid ?? repayment.amountPaid ?? 0);
+        }, 0);
+        const loanAmount = Math.abs(selectedTransaction.amount);
+        const remaining = Math.max(loanAmount - totalRepaid, 0);
+        const percentage = loanAmount > 0 ? Math.min((totalRepaid / loanAmount) * 100, 100) : 0;
+
+        setLoanProgress({ totalRepaid, remaining, percentage });
+      } catch {
+        setLoanProgress(null);
+      } finally {
+        setLoanProgressLoading(false);
+      }
+    };
+
+    loadLoanProgressForDrawer();
+  }, [selectedTransactionId, transactions]);
+
+  useEffect(() => {
+    if (loanProgress && showRepaymentModal) {
+      setRepaymentAmount(loanProgress.remaining.toString());
+    }
+  }, [loanProgress, showRepaymentModal]);
   
   // Reload reimbursement statuses when window regains focus (user returns from detail page)
   useEffect(() => {
@@ -288,7 +399,6 @@ const TransactionsPage = () => {
             setFilteredAccount(null);
           }
         } catch (error) {
-          console.error('Erreur lors du chargement du compte:', error);
           setFilteredAccount(null);
         }
       } else {
@@ -318,7 +428,6 @@ const TransactionsPage = () => {
         }
       }
     } catch (e) {
-      console.error('Error loading period filter from localStorage:', e);
     }
   }, []);
 
@@ -339,13 +448,195 @@ const TransactionsPage = () => {
         localStorage.removeItem(CUSTOM_DATE_RANGE_STORAGE_KEY);
       }
     } catch (e) {
-      console.error('Error saving period filter to localStorage:', e);
     }
   }, [periodFilter, customDateRange]);
 
   // Helper function to sort transactions by date (newest first)
   const sortTransactionsByDateDesc = (transactions: Transaction[]) => {
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  };
+
+  const toggleTransactionDrawer = (transactionId: string) => {
+    setSelectedTransactionId(prev => {
+      const nextId = prev === transactionId ? null : transactionId;
+      if (nextId) {
+        setTimeout(() => {
+          const el = document.getElementById(`transaction-${transactionId}`);
+          if (el) {
+            const header = document.querySelector('header');
+            const headerOffset = header ? header.getBoundingClientRect().height + 8 : 72;
+            const rect = el.getBoundingClientRect();
+            window.scrollBy({ top: rect.top - headerOffset, behavior: 'smooth' });
+          }
+        }, 50);
+      }
+      return nextId;
+    });
+  };
+
+  const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Supprimer cette transaction ?')) {
+      return;
+    }
+
+    try {
+      const success = await transactionService.deleteTransaction(transactionId);
+      if (!success) {
+        toast.error('Erreur lors de la suppression de la transaction');
+        return;
+      }
+
+      setTransactions(prev => prev.filter(t => t.id !== transactionId));
+      setTransferredTransactions(prev => prev.filter(t => t.id !== transactionId));
+      setSharedTransactionIds(prev => {
+        const updated = new Set(prev);
+        updated.delete(transactionId);
+        return updated;
+      });
+      setSharedTransactionsMap(prev => {
+        const updated = new Map(prev);
+        updated.delete(transactionId);
+        return updated;
+      });
+      setReimbursementStatuses(prev => {
+        const updated = new Map(prev);
+        updated.delete(transactionId);
+        return updated;
+      });
+      setSelectedTransactionId(prev => (prev === transactionId ? null : prev));
+      toast.success('Transaction supprimée');
+    } catch (error) {
+      toast.error('Erreur lors de la suppression de la transaction');
+    }
+  };
+
+  const getRepaymentInfo = (category: string): { type: 'income' | 'expense'; category: string } => {
+    switch (category) {
+      case 'loan':
+        return { type: 'income', category: 'loan_repayment_received' };
+      case 'loan_received':
+        return { type: 'expense', category: 'loan_repayment' };
+      case 'loan_repayment':
+        return { type: 'income', category: 'loan_repayment_received' };
+      case 'loan_repayment_received':
+      default:
+        return { type: 'expense', category: 'loan_repayment' };
+    }
+  };
+
+  const resetRepaymentForm = () => {
+    setShowRepaymentModal(null);
+    setRepaymentAmount('');
+    setRepaymentAccountId('');
+    setRepaymentDate(new Date().toISOString().split('T')[0]);
+    setRepaymentDescription('');
+    setRepaymentNotes('');
+    setRepaymentHistory([]);
+    setParentLoanInfo(null);
+    setRepaymentIndex(1);
+  };
+
+  const getOrdinalLabel = (n: number): string => {
+    if (n === 1) return '1er';
+    return `${n}e`;
+  };
+
+  const openRepaymentModal = async (transaction: Transaction) => {
+    setShowRepaymentModal(transaction.id);
+    setRepaymentAmount(Math.abs(transaction.amount).toString());
+    setRepaymentAccountId(transaction.accountId || '');
+    setRepaymentDate(new Date().toISOString().split('T')[0]);
+    const beneficiaryName = transaction.description
+      ?.replace(/^Pr[eê]t\s+(?:[aà]|de)\s+/i, '')
+      .trim();
+    setRepaymentDescription(
+      transaction.category === 'loan'
+        ? `Remb. de ${beneficiaryName || transaction.description}`
+        : `Remb. ${transaction.description}`
+    );
+    setRepaymentNotes('');
+    setRepaymentIndex(1);
+
+    setLoanProgressLoading(true);
+    setLoanProgress(null);
+
+    try {
+      const loanId = await getLoanIdByTransactionId(transaction.id);
+
+      if (!loanId) {
+        setLoanProgress(null);
+        setRepaymentIndex(1);
+        return;
+      }
+
+      const currentRepaymentIndex = await getRepaymentIndexForTransaction(loanId, transaction.id);
+      setRepaymentIndex((currentRepaymentIndex || 0) + 1);
+
+      const repayments = await getRepaymentHistory(loanId);
+      setRepaymentHistory(repayments.map((r: any) => ({ amount_paid: r.amountPaid ?? r.amount_paid, payment_date: r.paymentDate ?? r.payment_date, notes: r.notes, transactionId: r.transactionId ?? r.transaction_id ?? undefined })));
+      const totalRepaid = repayments.reduce((sum, repayment: any) => {
+        return sum + Number(repayment.amount_paid ?? repayment.amountPaid ?? 0);
+      }, 0);
+      const loanAmount = Math.abs(transaction.amount);
+      const remaining = Math.max(loanAmount - totalRepaid, 0);
+      const percentage = loanAmount > 0 ? Math.min((totalRepaid / loanAmount) * 100, 100) : 0;
+
+      setLoanProgress({ totalRepaid, remaining, percentage });
+    } catch {
+      setLoanProgress(null);
+    } finally {
+      setLoanProgressLoading(false);
+    }
+  };
+
+  const handleConfirmRepayment = async (transaction: Transaction) => {
+    if (!user) {
+      toast.error('Utilisateur non connecté');
+      return;
+    }
+    const amountValue = parseFloat(repaymentAmount);
+    if (!amountValue || amountValue <= 0) {
+      toast.error('Montant invalide');
+      return;
+    }
+    if (!repaymentAccountId) {
+      toast.error('Veuillez sélectionner un compte');
+      return;
+    }
+    try {
+      const repayment = getRepaymentInfo(transaction.category);
+      const createdRepaymentTransaction = await transactionService.createTransaction(user.id, {
+        type: repayment.type,
+        category: repayment.category as TransactionCategory,
+        amount: amountValue,
+        accountId: repaymentAccountId,
+        date: new Date(repaymentDate),
+        description: repaymentDescription || `Remb. ${transaction.description}`,
+        notes: repaymentNotes || undefined,
+      });
+      console.log('[DEBUG-REPAYMENT] createdRepaymentTransaction:', createdRepaymentTransaction);
+      const loanId = await getLoanIdByTransactionId(transaction.id);
+      console.log('[DEBUG-REPAYMENT] transaction.id:', transaction.id, '| loanId found:', loanId);
+      if (loanId && createdRepaymentTransaction?.id) {
+        console.log('[DEBUG-REPAYMENT] Calling recordPayment with:', { loanId, amountValue, repaymentDate, notes: repaymentNotes, transactionId: createdRepaymentTransaction?.id });
+        await recordPayment(
+          loanId,
+          amountValue,
+          repaymentDate,
+          repaymentNotes || undefined,
+          createdRepaymentTransaction.id
+        );
+        console.log('[DEBUG-REPAYMENT] recordPayment completed successfully');
+      }
+      const refreshed = await transactionService.getUserTransactions(user.id);
+      setTransactions(refreshed);
+      toast.success('Remboursement enregistré');
+      resetRepaymentForm();
+    } catch (error: any) {
+      console.log('[DEBUG-REPAYMENT] ERROR:', error);
+      toast.error(error?.message || 'Erreur lors de l’enregistrement du remboursement');
+    }
   };
 
   // Handle sharing/unsharing transaction with family (toggle)
@@ -400,7 +691,6 @@ const TransactionsPage = () => {
           return newMap;
         });
       } catch (error: any) {
-        console.error('Erreur lors du partage de la transaction:', error);
         const errorMessage = error?.message || 'Erreur lors du partage de la transaction';
         
         // Check if transaction is already shared
@@ -444,7 +734,6 @@ const TransactionsPage = () => {
           return newMap;
         });
       } catch (error: any) {
-        console.error('Erreur lors du retrait du partage:', error);
         const errorMessage = error?.message || 'Erreur lors du retrait du partage';
         toast.error(errorMessage);
       } finally {
@@ -474,21 +763,58 @@ const TransactionsPage = () => {
         return;
       }
       
-      // Create reimbursement request for each debtor in splitDetails
-      const promises = (sharedTransaction.splitDetails || [])
-        .filter(split => {
-          // Exclude the creditor (payer) from debtors
-          const splitMember = memberBalances.find(b => b.memberId === split.memberId);
-          return splitMember && splitMember.userId !== sharedTransaction.paidBy;
-        })
-        .map(split => createReimbursementRequest({
-          sharedTransactionId: sharedTransaction.id,
-          fromMemberId: split.memberId,
-          toMemberId: creditorMember.memberId,
-          amount: Math.abs(split.amount),
-          currency: 'MGA',
-          note: `Remboursement pour: ${sharedTransaction.description || 'Transaction partagée'}`,
-        }));
+      // FIX: Handle empty splitDetails for 'paid_by_one' transactions
+      // When splitDetails is empty, find all active members excluding the creditor
+      const hasSplitDetails = sharedTransaction.splitDetails && sharedTransaction.splitDetails.length > 0;
+      
+      let promises: Promise<any>[];
+      
+      if (!hasSplitDetails) {
+        // Case 1: Empty splitDetails (e.g., splitType 'paid_by_one')
+        // Find all active family members excluding the creditor
+        const debtorMembers = memberBalances.filter(
+          member => member.userId !== sharedTransaction.paidBy
+        );
+        
+        if (debtorMembers.length === 0) {
+          toast.error('Aucun membre à rembourser pour cette transaction');
+          setRequestingReimbursement(null);
+          return;
+        }
+        
+        // Calculate amount per member: split transaction amount equally among all debtors
+        const transactionAmount = Math.abs(sharedTransaction.amount);
+        const amountPerMember = transactionAmount / debtorMembers.length;
+        
+        // Create reimbursement request for each debtor member
+        promises = debtorMembers.map(debtorMember =>
+          createReimbursementRequest({
+            sharedTransactionId: sharedTransaction.id,
+            fromMemberId: debtorMember.memberId,
+            toMemberId: creditorMember.memberId,
+            amount: amountPerMember,
+            currency: 'MGA',
+            note: `Remboursement pour: ${sharedTransaction.description || 'Transaction partagée'}`,
+          })
+        );
+      } else {
+        // Case 2: splitDetails has values (existing behavior preserved)
+        // Create reimbursement request for each debtor in splitDetails
+        promises = (sharedTransaction.splitDetails || [])
+          .filter(split => {
+            // Exclude the creditor (payer) from debtors
+            const splitMember = memberBalances.find(b => b.memberId === split.memberId);
+            return splitMember && splitMember.userId !== sharedTransaction.paidBy;
+          })
+          .map(split => createReimbursementRequest({
+            sharedTransactionId: sharedTransaction.id,
+            fromMemberId: split.memberId,
+            toMemberId: creditorMember.memberId,
+            amount: Math.abs(split.amount),
+            currency: 'MGA',
+            note: `Remboursement pour: ${sharedTransaction.description || 'Transaction partagée'}`,
+          }));
+      }
       
       if (promises.length === 0) {
         toast.error('Aucun membre à rembourser pour cette transaction');
@@ -507,7 +833,6 @@ const TransactionsPage = () => {
       
       toast.success('Demande de remboursement envoyée');
     } catch (err: any) {
-      console.error('Error requesting reimbursement:', err);
       toast.error(err.message || 'Erreur lors de la demande de remboursement');
     } finally {
       setRequestingReimbursement(null);
@@ -688,7 +1013,6 @@ const TransactionsPage = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Erreur lors de l\'export CSV:', error);
     }
   };
 
@@ -1020,15 +1344,6 @@ const TransactionsPage = () => {
             displayAmount = Math.abs(rawDisplayAmount);
             displayDescription = isDebit ? `Sortie: ${transaction.description}` : `Entrée: ${transaction.description}`;
             transferLabel = isDebit ? 'Débit' : 'Crédit';
-            
-            console.log('🔄 [TransactionsPage] Transfer display:', {
-              transactionId: transaction.id,
-              originalAmount: transaction.amount,
-              convertedAmount: rawDisplayAmount,
-              isDebit,
-              isCredit,
-              description: displayDescription
-            });
           } else {
             // For income/expense, use absolute value for display
             displayAmount = Math.abs(rawDisplayAmount);
@@ -1037,15 +1352,27 @@ const TransactionsPage = () => {
           // Determine original currency for CurrencyDisplay
           const originalCurrency = transaction.originalCurrency || 'MGA';
           
+          const isDrawerOpen = selectedTransactionId === transaction.id;
+          const isShared = sharedTransactionIds.has(transaction.id);
+          const status = isLoadingReimbursementStatuses
+            ? 'loading'
+            : (reimbursementStatuses.get(transaction.id) || 'none');
+          const isLoanCategory = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(transaction.category);
+          const isRepaymentCat = ['loan_repayment', 'loan_repayment_received'].includes(transaction.category);
+
           return (
-            <div 
-              key={transaction.id}
-              id={`transaction-${transaction.id}`}
-              onClick={() => {
-                navigate(`/transaction/${transaction.id}`);
-              }}
-              className="card hover:shadow-lg transition-shadow cursor-pointer"
-            >
+            <div key={transaction.id} className="space-y-2">
+              <div
+                id={`transaction-${transaction.id}`}
+                onClick={() => toggleTransactionDrawer(transaction.id)}
+                className={`card hover:shadow-lg transition-all cursor-pointer ${
+                  isDrawerOpen
+                    ? 'ring-2 ring-purple-200'
+                    : highlightedTransactionId === transaction.id
+                    ? 'ring-2 ring-green-400 ring-offset-2'
+                    : ''
+                }`}
+              >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -1078,41 +1405,36 @@ const TransactionsPage = () => {
                           <RecurringBadge size="sm" />
                         </span>
                       )}
-                      {activeFamilyGroup && (() => {
-                        const isShared = sharedTransactionIds.has(transaction.id);
-                        return (
-                          <button
-                            onClick={(e) => handleShareTransaction(e, transaction)}
-                            disabled={sharingTransactionId === transaction.id}
-                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                              isShared 
-                                ? 'text-purple-600 hover:bg-purple-50' 
-                                : 'text-gray-400 hover:bg-gray-50'
-                            }`}
-                            title={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
-                            aria-label={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
-                          >
-                            {sharingTransactionId === transaction.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : isShared ? (
-                              <UserCheck className="w-4 h-4" />
-                            ) : (
-                              <Users className="w-4 h-4" />
-                            )}
-                          </button>
-                        );
-                      })()}
+                      {activeFamilyGroup && (
+                        <button
+                          onClick={(e) => handleShareTransaction(e, transaction)}
+                          disabled={sharingTransactionId === transaction.id}
+                          className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isShared
+                              ? 'text-purple-600 hover:bg-purple-50'
+                              : 'text-gray-400 hover:bg-gray-50'
+                          }`}
+                          title={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
+                          aria-label={isShared ? 'Retirer le partage' : 'Partager avec la famille'}
+                        >
+                          {sharingTransactionId === transaction.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : isShared ? (
+                            <UserCheck className="w-4 h-4" />
+                          ) : (
+                            <Users className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
                       {/* Reimbursement Request Icon - Only for creditor on shared transactions */}
                       {activeFamilyGroup && sharedTransactionsMap.has(transaction.id) && (() => {
                         const sharedTx = sharedTransactionsMap.get(transaction.id);
                         const isCreditor = sharedTx?.paidBy === user?.id;
                         // Only get status if not loading, otherwise default to 'none' for loading state
-                        const status = isLoadingReimbursementStatuses 
-                          ? 'loading' 
+                        const status = isLoadingReimbursementStatuses
+                          ? 'loading'
                           : (reimbursementStatuses.get(transaction.id) || 'none');
                         const isRequesting = requestingReimbursement === transaction.id;
-                        console.log('[DEBUG] Button state:', { transactionId: transaction.id, status, isRequesting, isLoadingReimbursementStatuses });
-                        
                         if (!isCreditor) return null;
                         
                         return (
@@ -1203,6 +1525,323 @@ const TransactionsPage = () => {
                   <p className="text-sm text-gray-500">
                     {new Date(transaction.createdAt).toLocaleDateString('fr-FR')}
                   </p>
+                </div>
+              </div>
+              </div>
+
+              <div
+                className="overflow-hidden transition-all duration-300 ease-in-out"
+                style={{ maxHeight: isDrawerOpen ? (showRepaymentModal === transaction.id ? '1800px' : '600px') : '0px' }}
+              >
+                <div className="card bg-gradient-to-br from-purple-50/80 to-white border-purple-100 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="text-sm font-semibold text-purple-700">Details transaction</h5>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTransactionId(null);
+                      }}
+                      className="p-1 rounded hover:bg-purple-100 transition-colors"
+                      title="Fermer"
+                    >
+                      <X className="w-4 h-4 text-purple-600" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                    <div className={`bg-white/80 rounded-lg p-2 ${isLoanCategory ? 'col-span-2' : ''}`}>
+                      <p className="text-gray-500 text-xs">Montant</p>
+                      {['loan', 'loan_received'].includes(transaction.category) ? (
+                        loanProgressLoading ? (
+                          <p className="text-xs font-medium text-gray-600">Chargement solde...</p>
+                        ) : !loanProgress ? (
+                          <p className="font-semibold text-gray-900">
+                            <CurrencyDisplay
+                              amount={displayAmount}
+                              originalCurrency={originalCurrency}
+                              displayCurrency={displayCurrency}
+                              showConversion={true}
+                              size="sm"
+                              exchangeRateUsed={transaction.exchangeRateUsed}
+                            />
+                          </p>
+                        ) : (
+                          <div className="mt-1">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                              <span>Remboursé: {loanProgress.totalRepaid.toLocaleString('fr-FR')} Ar</span>
+                              <span>Restant: {loanProgress.remaining.toLocaleString('fr-FR')} Ar</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div
+                                className="bg-green-500 h-3 rounded-full transition-all duration-500"
+                                style={{ width: `${loanProgress.percentage}%` }}
+                              />
+                            </div>
+                            <div className="text-center text-xs font-semibold text-green-700 mt-1">
+                              {loanProgress.percentage.toFixed(1)}% remboursé
+                            </div>
+                          </div>
+                        )
+                      ) : isRepaymentCat ? (
+                        parentLoanInfo ? (
+                          <div
+                            className="cursor-pointer hover:bg-green-50 rounded p-1 -m-1 transition-colors flex justify-between items-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (parentLoanInfo.transactionId) {
+                                setSelectedTransactionId(null);
+                                setTimeout(() => {
+                                  const el = document.getElementById(`transaction-${parentLoanInfo.transactionId}`);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    el.classList.add('ring-2', 'ring-green-400', 'ring-offset-2');
+                                    setTimeout(() => el.classList.remove('ring-2', 'ring-green-400', 'ring-offset-2'), 2000);
+                                  }
+                                }, 150);
+                              }
+                            }}
+                          >
+                            <p className="text-xs text-gray-500">Dette initiale 🔗</p>
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-900 text-xs">{parentLoanInfo.amountInitial.toLocaleString('fr-FR')} Ar</p>
+                              <p className="text-xs text-gray-400">{new Date(parentLoanInfo.createdAt).toLocaleDateString('fr-FR')}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs font-medium text-gray-600">Chargement...</p>
+                        )
+                      ) : (
+                        <p className="font-semibold text-gray-900">
+                          <CurrencyDisplay
+                            amount={displayAmount}
+                            originalCurrency={originalCurrency}
+                            displayCurrency={displayCurrency}
+                            showConversion={true}
+                            size="sm"
+                            exchangeRateUsed={transaction.exchangeRateUsed}
+                          />
+                        </p>
+                      )}
+                    </div>
+                    {!(showRepaymentModal === transaction.id) && !isLoanCategory && (
+                      <div className="bg-white/80 rounded-lg p-2">
+                        <p className="text-gray-500 text-xs">Categorie</p>
+                        <p className="font-semibold text-gray-900">{category.name}</p>
+                      </div>
+                    )}
+                    {!isLoanCategory && (
+                      <div className="bg-white/80 rounded-lg p-2">
+                        <p className="text-gray-500 text-xs">Date</p>
+                        <p className="font-semibold text-gray-900">
+                          {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    )}
+                    {!(showRepaymentModal === transaction.id) && !isLoanCategory && (
+                      <div className="bg-white/80 rounded-lg p-2">
+                        <p className="text-gray-500 text-xs">Compte</p>
+                        <p className="font-semibold text-gray-900 truncate">{transaction.accountId}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {isLoanCategory && repaymentHistory.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Historique des remboursements</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {repaymentHistory.map((r, i) => (
+                          <div
+                            key={i}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (r.transactionId) {
+                                resetRepaymentForm();
+                                setSelectedTransactionId(null);
+                                setHighlightedTransactionId(r.transactionId);
+                                setTimeout(() => {
+                                  const el = document.getElementById(`transaction-${r.transactionId}`);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    el.classList.add('ring-2', 'ring-green-400', 'ring-offset-2');
+                                    setTimeout(() => {
+                                      el.classList.remove('ring-2', 'ring-green-400', 'ring-offset-2');
+                                      setHighlightedTransactionId(null);
+                                    }, 2000);
+                                  }
+                                }, 150);
+                              }
+                            }}
+                            className={`flex justify-between items-center px-3 py-1.5 bg-gray-50 rounded-lg text-xs ${r.transactionId ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                          >
+                            <span className="text-gray-500">{new Date(r.payment_date).toLocaleDateString('fr-FR')}</span>
+                            <span className="font-semibold text-green-700">+{r.amount_paid.toLocaleString('fr-FR')} Ar</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 text-sm">
+                    <div className="bg-white/80 rounded-lg p-2">
+                      <p className="text-gray-500 text-xs">Notes</p>
+                      <p className="text-gray-800">{transaction.notes || 'Aucune note'}</p>
+                    </div>
+
+                    {!isLoanCategory && (
+                      <div className="bg-white/80 rounded-lg p-2">
+                        <p className="text-gray-500 text-xs">Partage famille</p>
+                        <p className="text-gray-800">
+                          {isShared ? `Partagee (${activeFamilyGroup?.name || 'groupe actif'})` : 'Non partagee'}
+                        </p>
+                      </div>
+                    )}
+
+                    {isShared && !isLoanCategory && (
+                      <div className="bg-white/80 rounded-lg p-2">
+                        <p className="text-gray-500 text-xs">Remboursement</p>
+                        <p className="text-gray-800">
+                          {status === 'loading'
+                            ? 'Chargement...'
+                            : status === 'none'
+                            ? 'Aucune demande'
+                            : status === 'pending'
+                            ? 'En attente'
+                            : 'Effectue'}
+                        </p>
+                      </div>
+                    )}
+
+                    {isLoanCategory && (
+                      <div className="bg-purple-100/70 rounded-lg p-2 border border-purple-200">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <p className="text-purple-700 text-xs font-medium">Informations pret</p>
+                            <p className="text-purple-800">
+                              Categorie: {transaction.category.replace(/_/g, ' ')}
+                            </p>
+                          </div>
+                          <div className="flex-1 text-right">
+                            <p className="text-purple-700 text-xs font-medium">Partage famille</p>
+                            <p className="text-purple-800">
+                              {isShared ? `Partagee (${activeFamilyGroup?.name || 'groupe actif'})` : 'Non partagee'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-100">
+                    {isLoanCategory && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openRepaymentModal(transaction);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                      >
+                        💸 Rembourser
+                      </button>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/transaction/${transaction.id}`, { state: { autoEdit: true } });
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        Modifier
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteTransaction(e, transaction.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Supprimer
+                      </button>
+                      <ChevronDown className={`w-4 h-4 text-purple-500 transition-transform ${isDrawerOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+                  {showRepaymentModal === transaction.id && (
+                    <div onClick={(e) => { e.stopPropagation(); }} className="mt-2 p-3 bg-white rounded-lg border border-green-200 shadow-sm">
+                      <h6 className="text-sm font-semibold text-green-700 mb-2">Initier {getOrdinalLabel(repaymentIndex)} remboursement</h6>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Montant</label>
+                          <input
+                            type="number"
+                            value={repaymentAmount}
+                            onChange={(e) => setRepaymentAmount(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Compte</label>
+                          <select
+                            value={repaymentAccountId}
+                            onChange={(e) => setRepaymentAccountId(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                          >
+                            <option value="">Sélectionner un compte</option>
+                            {repaymentAccounts.map((account) => (
+                              <option key={account.id} value={account.id}>
+                                {account.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={repaymentDate}
+                            onChange={(e) => setRepaymentDate(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Description</label>
+                          <input
+                            type="text"
+                            value={repaymentDescription}
+                            onChange={(e) => setRepaymentDescription(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                          <textarea
+                            rows={2}
+                            value={repaymentNotes}
+                            onChange={(e) => setRepaymentNotes(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 resize-none"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              resetRepaymentForm();
+                            }}
+                            className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfirmRepayment(transaction);
+                            }}
+                            className="px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700"
+                          >
+                            Confirmer
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

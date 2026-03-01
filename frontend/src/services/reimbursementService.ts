@@ -1027,7 +1027,7 @@ export async function createReimbursementRequest(
     const { data: sharedTransaction, error: transactionError } =
       await supabase
         .from('family_shared_transactions')
-        .select('family_group_id')
+        .select('family_group_id, transaction_id')
         .eq('id', data.sharedTransactionId)
         .single();
 
@@ -1050,10 +1050,10 @@ export async function createReimbursementRequest(
       );
     }
 
-    // Vérifier que from_member_id et to_member_id sont des membres du groupe
+    // Vérifier que from_member_id et to_member_id sont des membres du groupe et récupérer leurs user_id
     const { data: fromMember, error: fromMemberError } = await supabase
       .from('family_members')
-      .select('id, family_group_id')
+      .select('id, family_group_id, user_id')
       .eq('id', data.fromMemberId)
       .eq('family_group_id', sharedTransaction.family_group_id)
       .single();
@@ -1064,7 +1064,7 @@ export async function createReimbursementRequest(
 
     const { data: toMember, error: toMemberError } = await supabase
       .from('family_members')
-      .select('id, family_group_id')
+      .select('id, family_group_id, user_id')
       .eq('id', data.toMemberId)
       .eq('family_group_id', sharedTransaction.family_group_id)
       .single();
@@ -1075,19 +1075,16 @@ export async function createReimbursementRequest(
 
     // Créer la demande de remboursement
     const { data: created, error: createError } = await supabase
-      .from('reimbursement_requests')
+      .from('family_reimbursement_requests')
       .insert({
-        shared_transaction_id: data.sharedTransactionId,
-        from_member_id: data.fromMemberId,
-        to_member_id: data.toMemberId,
+        family_group_id: sharedTransaction.family_group_id,
+        transaction_id: sharedTransaction.transaction_id,
+        requested_by: user.id,
+        requested_from: fromMember.user_id,
         amount: data.amount,
-        currency: data.currency,
+        percentage: null, // Optional, can be calculated from split details if needed
         status: 'pending',
         notes: data.note || null,
-        // Si la table utilise family_group_id, l'ajouter
-        ...(sharedTransaction.family_group_id && {
-          family_group_id: sharedTransaction.family_group_id,
-        }),
       } as any)
       .select()
       .single();
@@ -1106,6 +1103,20 @@ export async function createReimbursementRequest(
       throw new Error(
         'Erreur lors de la création: aucune donnée retournée'
       );
+    }
+
+    // Update family_shared_transactions to set has_reimbursement_request = true
+    const { error: updateError } = await supabase
+      .from('family_shared_transactions')
+      .update({ has_reimbursement_request: true })
+      .eq('id', data.sharedTransactionId);
+
+    if (updateError) {
+      console.error(
+        'Erreur lors de la mise à jour de has_reimbursement_request:',
+        updateError
+      );
+      // Don't throw - the request was created successfully
     }
 
     return mapRowToReimbursementRequest(created);

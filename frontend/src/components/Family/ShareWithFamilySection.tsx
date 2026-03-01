@@ -13,6 +13,7 @@ interface ShareWithFamilySectionProps {
     requestReimbursement: boolean;
   }) => void;
   transactionType?: 'income' | 'expense' | 'transfer';
+  transactionCategory?: string;
   userSharingMode?: 'selective' | 'share_all';
   disabled?: boolean;
 }
@@ -23,6 +24,7 @@ const ShareWithFamilySection: React.FC<ShareWithFamilySectionProps> = ({
   selectedGroupId: initialSelectedGroupId,
   onShareChange,
   transactionType = 'expense',
+  transactionCategory,
   userSharingMode = 'selective',
   disabled = false,
 }) => {
@@ -32,6 +34,8 @@ const ShareWithFamilySection: React.FC<ShareWithFamilySectionProps> = ({
   );
   const [requestReimbursement, setRequestReimbursement] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
+  const isLoanFamilyContext = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(transactionCategory || '');
+  const isLoanCreationContext = transactionCategory === 'loan' || transactionCategory === 'loan_received';
 
   // Update parent when state changes
   useEffect(() => {
@@ -56,6 +60,16 @@ const ShareWithFamilySection: React.FC<ShareWithFamilySectionProps> = ({
       setIsShared(true);
     }
   };
+
+  // For loan categories, hide privacy/reimbursement toggles and keep sharing on.
+  useEffect(() => {
+    if (isLoanFamilyContext) {
+      if (selectedGroupId) {
+        setIsShared(true);
+      }
+      setRequestReimbursement(false);
+    }
+  }, [isLoanFamilyContext, selectedGroupId]);
 
   // If user has no family groups
   if (familyGroups.length === 0) {
@@ -99,6 +113,11 @@ const ShareWithFamilySection: React.FC<ShareWithFamilySectionProps> = ({
           Partage avec la famille
         </h3>
       </div>
+      {isLoanCreationContext && (
+        <p className="text-xs text-purple-700 mb-4">
+          Permettre aux membres sélectionnés de suivre ce prêt et ses remboursements.
+        </p>
+      )}
 
       {/* Family Group Selection */}
       <div className="mb-4">
@@ -122,36 +141,38 @@ const ShareWithFamilySection: React.FC<ShareWithFamilySectionProps> = ({
       </div>
 
       {/* Share Toggle */}
-      <div className="mb-4">
-        <label className="relative inline-flex items-center cursor-pointer w-full">
-          <input
-            type="checkbox"
-            checked={isShared}
-            onChange={(e) => handleShareToggle(e.target.checked)}
-            disabled={disabled || isLoading || !selectedGroupId}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
-          <div className="ml-3 flex items-center gap-2 flex-1">
-            {isShared ? (
-              <Share2 className="w-4 h-4 text-purple-600" />
-            ) : (
-              <Lock className="w-4 h-4 text-gray-400" />
-            )}
-            <span className={`text-sm ${isShared ? 'text-purple-700 font-medium' : 'text-gray-600'}`}>
-              {toggleLabel}
-            </span>
-          </div>
-        </label>
-        {!selectedGroupId && (
-          <p className="text-xs text-gray-500 mt-1 ml-14">
-            Sélectionnez d'abord un groupe familial
-          </p>
-        )}
-      </div>
+      {!isLoanFamilyContext && (
+        <div className="mb-4">
+          <label className="relative inline-flex items-center cursor-pointer w-full">
+            <input
+              type="checkbox"
+              checked={isShared}
+              onChange={(e) => handleShareToggle(e.target.checked)}
+              disabled={disabled || isLoading || !selectedGroupId}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+            <div className="ml-3 flex items-center gap-2 flex-1">
+              {isShared ? (
+                <Share2 className="w-4 h-4 text-purple-600" />
+              ) : (
+                <Lock className="w-4 h-4 text-gray-400" />
+              )}
+              <span className={`text-sm ${isShared ? 'text-purple-700 font-medium' : 'text-gray-600'}`}>
+                {toggleLabel}
+              </span>
+            </div>
+          </label>
+          {!selectedGroupId && (
+            <p className="text-xs text-gray-500 mt-1 ml-14">
+              Sélectionnez d'abord un groupe familial
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Request Reimbursement (only for expenses) */}
-      {transactionType === 'expense' && (
+      {transactionType === 'expense' && !isLoanFamilyContext && (
         <div className="mb-2">
           <label className="relative inline-flex items-center cursor-pointer w-full">
             <input

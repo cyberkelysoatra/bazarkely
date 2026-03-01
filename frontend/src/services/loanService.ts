@@ -17,6 +17,7 @@ export interface PersonalLoan {
   dueDate: string | null;
   description: string | null;
   photoUrl: string | null;
+  transactionId?: string | null; // Transaction ID that created this loan
   status: LoanStatus;
   createdAt: string;
   updatedAt: string;
@@ -65,6 +66,7 @@ export interface CreateLoanInput {
   dueDate?: string | null;
   description?: string | null;
   photoUrl?: string | null;
+  transactionId?: string; // Optional transaction ID to link loan creation to a transaction
 }
 
 function mapLoanRow(row: any): PersonalLoan {
@@ -75,6 +77,7 @@ function mapLoanRow(row: any): PersonalLoan {
     currency: row.currency, interestRate: row.interest_rate,
     interestFrequency: row.interest_frequency, currentCapital: row.current_capital,
     dueDate: row.due_date, description: row.description, photoUrl: row.photo_url,
+    transactionId: row.transaction_id || null,
     status: row.status, createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
@@ -202,6 +205,7 @@ export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> 
         due_date: input.dueDate || null,
         description: input.description || null,
         photo_url: input.photoUrl || null,
+        transaction_id: input.transactionId || null,
         status: 'pending' as LoanStatus,
       })
       .select()
@@ -432,5 +436,111 @@ export async function getUnlinkedRevenueTransactions(): Promise<
   } catch (error) {
     console.error('Erreur dans getUnlinkedRevenueTransactions:', error);
     throw error instanceof Error ? error : new Error('Erreur inconnue');
+  }
+}
+
+export async function getActiveLoansForDropdown(): Promise<
+  { id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }[]
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('personal_loans')
+      .select('id, is_i_the_borrower, lender_name, borrower_name, current_capital, currency')
+      .eq('status', 'active')
+      .or(`lender_user_id.eq.${user.id},borrower_user_id.eq.${user.id}`)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Erreur dans getActiveLoansForDropdown:', error);
+      return [];
+    }
+    if (!data || data.length === 0) return [];
+    return data.map((loan) => {
+      const isITheBorrower = loan.is_i_the_borrower === true;
+      const lenderName = loan.lender_name || 'Prêteur inconnu';
+      const borrowerName = loan.borrower_name || 'Emprunteur inconnu';
+      const amount = loan.current_capital;
+      const formattedAmount = amount.toLocaleString('fr-FR');
+      const label = isITheBorrower
+        ? `Dette envers ${lenderName} ${formattedAmount}`
+        : `Prêt à ${borrowerName} ${formattedAmount}`;
+      return {
+        id: loan.id,
+        label,
+        remainingBalance: amount,
+        currency: loan.currency,
+        isITheBorrower,
+      };
+    });
+  } catch (error) {
+    console.error('Erreur dans getActiveLoansForDropdown:', error);
+    return [];
+  }
+}
+
+/**
+ * Récupère l'ID d'un prêt à partir de l'ID de transaction associé
+ * @param transactionId - ID de la transaction
+ * @returns ID du prêt ou null si aucun prêt n'est associé à cette transaction
+ */
+export async function getLoanIdByTransactionId(transactionId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('personal_loans')
+      .select('id')
+      .eq('transaction_id', transactionId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.id;
+  } catch (error) {
+    console.error('Erreur dans getLoanIdByTransactionId:', error);
+    return null;
+  }
+}
+
+/**
+ * Récupère un prêt à partir de l'ID de transaction d'un remboursement
+ * @param repaymentTransactionId - ID de la transaction de remboursement
+ * @returns Objet contenant loanId et loan (LoanWithDetails) ou null si non trouvé
+ */
+export async function getLoanByRepaymentTransactionId(
+  repaymentTransactionId: string
+): Promise<{ loanId: string; loan: LoanWithDetails | null } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('loan_repayments')
+      .select('loan_id, payment_date, created_at')
+      .eq('transaction_id', repaymentTransactionId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const loan = await getLoanById(data.loan_id);
+    return { loanId: data.loan_id, loan };
+  } catch (error) {
+    console.error('Erreur dans getLoanByRepaymentTransactionId:', error);
+    return null;
+  }
+}
+
+/**
+ * Récupère l'index (numéro) d'un remboursement dans l'historique d'un prêt
+ * Utile pour afficher "2e remboursement" par exemple
+ * @param loanId - ID du prêt
+ * @param repaymentTransactionId - ID de la transaction de remboursement
+ * @returns Index du remboursement (1-based) ou 1 si non trouvé
+ */
+export async function getRepaymentIndexForTransaction(
+  loanId: string,
+  repaymentTransactionId: string
+): Promise<number> {
+  try {
+    const repayments = await getRepaymentHistory(loanId);
+    const sorted = [...repayments].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const index = sorted.findIndex(r => r.transactionId === repaymentTransactionId);
+    return index >= 0 ? index + 1 : sorted.length + 1;
+  } catch {
+    return 1;
   }
 }

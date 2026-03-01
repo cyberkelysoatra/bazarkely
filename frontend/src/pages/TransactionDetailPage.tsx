@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
@@ -16,6 +16,7 @@ import RecurringConfigSection from '../components/RecurringConfig/RecurringConfi
 import { validateRecurringData } from '../utils/recurringUtils';
 import recurringTransactionService from '../services/recurringTransactionService';
 import type { RecurrenceFrequency } from '../types/recurring';
+import { getActiveLoansForDropdown } from '../services/loanService';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -70,6 +71,22 @@ const TransactionDetailPage = () => {
     notes: '',
     accountId: ''
   });
+  const [beneficiaryName, setBeneficiaryName] = useState<string>('');
+  const [interestRate, setInterestRate] = useState<string>('');
+  const [durationMonths, setDurationMonths] = useState<string>('');
+  const [selectedLoanId, setSelectedLoanId] = useState<string>('');
+  const [activeLoans, setActiveLoans] = useState<Array<{ id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }>>([]);
+  const [activeLoansLoading, setActiveLoansLoading] = useState<boolean>(false);
+  const location = useLocation();
+  const isLoanCategory = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(editData.category);
+  const isRepaymentCategory = ['loan_repayment', 'loan_repayment_received'].includes(editData.category);
+  const isLoanCreation = ['loan', 'loan_received'].includes(editData.category);
+
+  useEffect(() => {
+    if ((location.state as { autoEdit?: boolean } | null)?.autoEdit) {
+      setIsEditing(true);
+    }
+  }, []);
 
   // Scroll to top on mount to ensure content is visible below fixed header
   useEffect(() => {
@@ -113,6 +130,19 @@ const TransactionDetailPage = () => {
           notes: transactionData.notes || '',
           accountId: transactionData.accountId
         });
+        const isLoanTx = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(transactionData.category);
+        if (isLoanTx) {
+          const desc = transactionData.description || '';
+          const notes = transactionData.notes || '';
+          const beneficiaryMatch = desc.match(/Prêt (?:à|de)\s+(.+)$/i);
+          if (beneficiaryMatch?.[1]) setBeneficiaryName(beneficiaryMatch[1].trim());
+          const interestMatch = notes.match(/Taux:\s*([\d.,]+)\s*%/i);
+          if (interestMatch?.[1]) setInterestRate(interestMatch[1].replace(',', '.'));
+          const durationMatch = notes.match(/Durée:\s*(\d+)\s*mois/i);
+          if (durationMatch?.[1]) setDurationMonths(durationMatch[1]);
+          const loanIdMatch = notes.match(/loan_id:\s*([a-fA-F0-9-]{36})/i);
+          if (loanIdMatch?.[1]) setSelectedLoanId(loanIdMatch[1]);
+        }
         
         // Charger tous les comptes de l'utilisateur
         const allAccounts = await accountService.getUserAccounts(user.id);
@@ -313,6 +343,37 @@ const TransactionDetailPage = () => {
     checkExistingRecurring();
   }, [transaction, user]);
 
+  useEffect(() => {
+    const loadActiveLoans = async () => {
+      if (!isRepaymentCategory) {
+        setActiveLoans([]);
+        setSelectedLoanId('');
+        return;
+      }
+      setActiveLoansLoading(true);
+      try {
+        const loans = await getActiveLoansForDropdown();
+        setActiveLoans(loans);
+      } catch (error) {
+        console.error('Erreur lors du chargement des prêts actifs:', error);
+        setActiveLoans([]);
+      } finally {
+        setActiveLoansLoading(false);
+      }
+    };
+    loadActiveLoans();
+  }, [isRepaymentCategory]);
+
+  useEffect(() => {
+    if (!isLoanCategory) {
+      setBeneficiaryName('');
+      setInterestRate('');
+      setDurationMonths('');
+      setSelectedLoanId('');
+      setActiveLoans([]);
+    }
+  }, [isLoanCategory]);
+
   const handleEdit = () => {
     // Prevent editing transfers
     if (isTransfer) {
@@ -326,12 +387,27 @@ const TransactionDetailPage = () => {
     if (!transaction || !user) return;
     
     try {
+      let nextDescription = editData.description;
+      let nextNotes = editData.notes;
+      if (isLoanCategory) {
+        if (isLoanCreation && beneficiaryName.trim()) {
+          nextDescription = editData.category === 'loan'
+            ? `Prêt à ${beneficiaryName.trim()}`
+            : `Prêt de ${beneficiaryName.trim()}`;
+          const loanDetails: string[] = [];
+          if (interestRate.trim()) loanDetails.push(`Taux: ${interestRate.trim()}%`);
+          if (durationMonths.trim()) loanDetails.push(`Durée: ${durationMonths.trim()} mois`);
+          if (loanDetails.length > 0) nextNotes = loanDetails.join(' | ');
+        } else if (isRepaymentCategory && selectedLoanId) {
+          nextNotes = `loan_id: ${selectedLoanId}`;
+        }
+      }
       const updatedTransactionData = {
-        description: editData.description,
+        description: nextDescription,
         amount: transaction.type === 'income' ? parseFloat(editData.amount) : -parseFloat(editData.amount),
         category: editData.category as TransactionCategory,
         date: new Date(editData.date),
-        notes: editData.notes,
+        notes: nextNotes,
         accountId: editData.accountId
       };
       
@@ -1013,11 +1089,110 @@ const TransactionDetailPage = () => {
                   {Object.entries(TRANSACTION_CATEGORIES).map(([key, value]) => (
                     <option key={key} value={key}>{value.name}</option>
                   ))}
+                  <option value="" disabled>──────────</option>
+                  {transaction.type === 'expense' && (
+                    <>
+                      <option value="loan">💰 Prêt accordé</option>
+                      <option value="loan_repayment">💸 Remboursement dette</option>
+                    </>
+                  )}
+                  {transaction.type === 'income' && (
+                    <>
+                      <option value="loan_repayment_received">💰 Remboursement prêt reçu</option>
+                      <option value="loan_received">💵 Prêt reçu</option>
+                    </>
+                  )}
                 </select>
               ) : (
                 <p className="text-gray-900">{TRANSACTION_CATEGORIES[transaction.category]?.name || transaction.category || 'Autres'}</p>
               )}
             </div>
+
+            {isEditing && !isTransfer && isLoanCreation && (
+              <div className="space-y-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Informations sur le prêt</h3>
+                <div>
+                  <label htmlFor="beneficiaryName" className="block text-sm font-medium text-gray-700 mb-2">
+                    {editData.category === 'loan' ? 'Bénéficiaire' : 'Prêteur'}
+                  </label>
+                  <input
+                    id="beneficiaryName"
+                    type="text"
+                    value={beneficiaryName}
+                    onChange={(e) => setBeneficiaryName(e.target.value)}
+                    placeholder={editData.category === 'loan' ? 'Nom du bénéficiaire' : 'Nom du prêteur'}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-2">
+                    Taux d'intérêt % / mois (optionnel)
+                  </label>
+                  <input
+                    id="interestRate"
+                    type="number"
+                    value={interestRate}
+                    onChange={(e) => setInterestRate(e.target.value)}
+                    placeholder="Ex: 2.5"
+                    min="0"
+                    step="0.1"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="durationMonths" className="block text-sm font-medium text-gray-700 mb-2">
+                    Échéance (mois) (optionnel)
+                  </label>
+                  <input
+                    id="durationMonths"
+                    type="number"
+                    value={durationMonths}
+                    onChange={(e) => setDurationMonths(e.target.value)}
+                    placeholder="Ex: 12"
+                    min="1"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {isEditing && !isTransfer && isRepaymentCategory && (
+              <div className="space-y-4 bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Informations sur le remboursement</h3>
+                <div>
+                  <label htmlFor="selectedLoanId" className="block text-sm font-medium text-gray-700 mb-2">
+                    Prêt concerné
+                  </label>
+                  <select
+                    id="selectedLoanId"
+                    value={selectedLoanId}
+                    onChange={(e) => setSelectedLoanId(e.target.value)}
+                    disabled={activeLoansLoading}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">{activeLoansLoading ? 'Chargement...' : 'Sélectionner un prêt'}</option>
+                    {activeLoans.map((loan) => (
+                      <option key={loan.id} value={loan.id}>
+                        {loan.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedLoanId && (
+                  <div className="bg-white border border-slate-200 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Solde restant</label>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {(() => {
+                        const selectedLoan = activeLoans.find((loan) => loan.id === selectedLoanId);
+                        return selectedLoan
+                          ? `${selectedLoan.remainingBalance.toLocaleString('fr-FR')} ${selectedLoan.currency}`
+                          : '-';
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Date */}
             <div>
@@ -1145,8 +1320,8 @@ const TransactionDetailPage = () => {
                   </label>
                 </div>
 
-                {/* Toggle: Demander remboursement (only if shared) */}
-                {isShared && (
+                {/* Toggle: Demander remboursement (only if shared and not loan category) */}
+                {!isLoanCategory && isShared && (
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">

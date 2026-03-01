@@ -1543,7 +1543,28 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 17 FÉVRIER 2026)
+## 🎉 GAPS RÉSOLUS (SESSION S54 - 2026-03-01 - TRANSACTIONS INLINE LOAN DRAWER v3.1.0)
+
+### **Gap loan_repayments non écrit à la création transactionnelle** ✅ RÉSOLU 2026-03-01
+- **Problème identifié:** Les remboursements créés depuis le flux transaction pouvaient ne pas créer d'entrée dans `loan_repayments`, rendant l'historique et la progression incohérents
+- **Solution implémentée:** Appel `recordPayment` branché sur la création de remboursement, avec écriture effective dans `loan_repayments`
+- **Impact:** Historique des remboursements et calcul progression alignés avec les transactions
+- **Statut:** ✅ RÉSOLU - Déployé v3.1.0
+
+### **Gap absence de jauge progression dans la vue Transactions** ✅ RÉSOLU 2026-03-01
+- **Problème identifié:** Les remboursements de prêt dans `TransactionsPage.tsx` n'affichaient pas de progression ni de contexte prêt parent
+- **Solution implémentée:** Drawer inline spécifique prêt avec jauge, historique, infos prêt parent cliquables, mini-modal remboursement enrichi
+- **Impact:** Suivi visuel immédiat du remboursement directement depuis la liste des transactions
+- **Statut:** ✅ RÉSOLU - Déployé v3.1.0
+
+**Résumé Session S54:**
+- **2 gaps résolus:** écriture `loan_repayments` + jauge progression dans vue transactions
+- **Version déployée:** v3.1.0
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 01 MARS 2026)
 
 ### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
 - **Problème identifié:** 21 appels `.from()` dans `reimbursementService.ts`, `TransactionDetailPage.tsx` et `familySharingService.ts` peuvent viser une mauvaise table de remboursements selon les flux
@@ -1558,6 +1579,19 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Solution prévue (S54):** intégrer les prêts comme catégories dans `AddTransactionPage` pour unifier le parcours utilisateur
 - **Référence:** `ARCHITECTURE-PRETS-S54.md`
 - **Impact:** friction UX et duplication des flux de saisie tant que non refactorisé
+- **Priorité:** MOYENNE
+
+### **Gap Debug Logs Temporaires S54 à Nettoyer** ⚠️ EN ATTENTE
+- **Problème identifié:** des `console.log` de debug temporaires ont été ajoutés pendant la stabilisation S54 (transactions/remboursements prêts)
+- **Solution prévue:** suppression complète des logs temporaires après validation finale du flux inline drawer
+- **Impact:** console bruitée et risque d'exposition d'informations techniques en production
+- **Priorité:** MOYENNE
+
+### **Gap TransactionDetailPage - Formulaire édition prêt incomplet** ⚠️ EN ATTENTE
+- **Problème identifié:** `TransactionDetailPage` n'intègre pas encore la même jauge progression/historique prêt que `TransactionsPage` pour l'édition des transactions de remboursement
+- **Solution prévue:** intégrer les mêmes composants de contexte prêt (jauge, historique, info prêt parent) dans le formulaire d'édition
+- **Référence:** alignement UX avec flux S54 (Transactions inline drawer)
+- **Impact:** incohérence UX entre vue liste et vue détail/édition
 - **Priorité:** MOYENNE
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
@@ -1821,4 +1855,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-02-17 - BazarKELY v5.9 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53 v3.0.1)*
+*Document généré automatiquement le 2026-03-01 - BazarKELY v5.9 (Transactions Inline Loan Drawer - Session S54 v3.1.0)*

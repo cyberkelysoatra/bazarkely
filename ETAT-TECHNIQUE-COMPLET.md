@@ -1,9 +1,9 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.0.1 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53)  
-**Date de mise à jour:** 2026-02-17  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0)  
+**Version:** 3.1.0 (Transactions Inline Loan Drawer - Session S54)  
+**Date de mise à jour:** 2026-03-01  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + Transactions Inline Loan Drawer (v3.1.0)  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
 ---
@@ -1257,7 +1257,7 @@ family_shared_transactions (
 | `loan_repayments` | `loan_id`, `transaction_id` (nullable FK transactions), `amount_paid`, `interest_portion`, `capital_portion`, `payment_date`, `notes` | Historique remboursements avec ventilation intérêts/capital |
 | `loan_interest_periods` | `loan_id`, `period_start`, `period_end`, `capital_at_start`, `interest_amount`, `status` (paid/unpaid/capitalized) | Périodes d'intérêts avec capitalisation automatique |
 
-**Service — `loanService.ts` (12 fonctions):**
+**Service — `loanService.ts` (15 fonctions):**
 - `getMyLoans()` — Liste tous les prêts de l'utilisateur (prêteur ou emprunteur)
 - `getLoanById()` — Détail d'un prêt par ID
 - `createLoan()` — Création d'un nouveau prêt
@@ -1270,6 +1270,9 @@ family_shared_transactions (
 - `capitalizeOverdueInterests()` — Capitalisation des intérêts en retard
 - `getRepaymentHistory()` — Historique des remboursements d'un prêt
 - `getUnlinkedRevenueTransactions()` — Transactions revenus non liées (pour lien paiement)
+- `getLoanIdByTransactionId()` — Résolution prêt parent depuis transaction de remboursement
+- `getLoanByRepaymentTransactionId()` — Chargement prêt parent depuis transaction liée
+- `getRepaymentIndexForTransaction()` — Index ordinal du remboursement dans l'historique
 
 **UI — `LoansPage.tsx`:**
 - `CreateLoanModal` — Composant top-level pour création de prêt (formulaire complet avec intérêts, devise, échéance)
@@ -1282,6 +1285,7 @@ family_shared_transactions (
 - Capitalisation automatique des intérêts en retard
 - Mise à jour auto du statut : pending → active → closed
 - Support multi-devises MGA/EUR
+- Écriture `loan_repayments` à la création de remboursement: ✅ IMPLÉMENTÉE (via `recordPayment` appelé lors création transaction)
 
 **Intégration navigation:**
 - Bouton "Prêts" dans `FamilyDashboardPage.tsx` (1er élément de la grille)
@@ -1319,6 +1323,30 @@ family_shared_transactions (
 - `ARCHITECTURE-PRETS-S54.md` — plan de refactor détaillé (phases, impacts, migration UX)
 
 **Statut:** 🔄 PLANIFIÉ S54 (documentation prête, implémentation à venir)
+
+#### **16.7.12 Transactions Inline Drawer - Intégration Prêts (Session S54)** ✅ COMPLÉTÉ (2026-03-01)
+
+**Version:** v3.1.0  
+**Statut:** ✅ PRODUCTION - Vue transaction enrichie pour catégories de prêt
+
+**TransactionsPage.tsx — nouveautés inline drawer:**
+- Affichage spécifique prêts dans le drawer inline: jauge progression + historique + infos prêt parent
+- Catégories `loan_repayment` / `loan_repayment_received`: cellule Montant enrichie avec info prêt parent cliquable
+- Layout conditionnel catégories prêt: jauge intégrée dans cellule Montant, sections Date/Catégorie/Compte/Remboursement masquées
+- Mini-modal remboursement: jauge progression, liste historique, titre ordinal, montant pré-rempli avec le reste à payer
+- Navigation UX: clic sur une ligne historique → scroll vers carte cible + highlight anneau vert
+- Correction description: format `Remb. de [name]` pour remboursements catégorie prêt
+
+**Couche service et persistance:**
+- Extension modèle `PersonalLoan`: ajout `transactionId`
+- Nouvelles fonctions service utilisées par le drawer: `getLoanIdByTransactionId`, `getLoanByRepaymentTransactionId`, `getRepaymentIndexForTransaction`
+- Persistance confirmée: écriture `loan_repayments` lors création remboursement transactionnel (`recordPayment`)
+
+**Qualité / logs:**
+- Nettoyage `TransactionsPage.tsx`: 14 `console.log` supprimés
+- Logs debug temporaires réintroduits pour validation S54 (à retirer session suivante)
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.1.0
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3759,4 +3787,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-02-17 - BazarKELY v3.0.1 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53)*
+*Document généré automatiquement le 2026-03-01 - BazarKELY v3.1.0 (Transactions Inline Loan Drawer - Session S54)*

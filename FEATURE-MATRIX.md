@@ -251,6 +251,17 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 **Référence:** Voir `ARCHITECTURE-PRETS-S54.md` pour plan de refactoring complet
 
+### **Module Prêts Familiaux - Transactions View S54** ✅ IMPLÉMENTÉ (v3.1.0)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Repayment progress gauge in transaction view** | ✅ IMPLÉMENTÉ v3.1.0 | P0 | TransactionsPage.tsx | Jauge progression affichée dans la cellule Montant pour catégories prêt |
+| **Repayment history in transaction drawer** | ✅ IMPLÉMENTÉ v3.1.0 | P0 | TransactionsPage.tsx | Historique remboursements affiché dans drawer inline avec navigation vers carte cible |
+| **loan_repayments written on repayment creation** | ✅ IMPLÉMENTÉ v3.1.0 | P0 | loanService.ts + TransactionsPage.tsx | `recordPayment` appelé sur création remboursement transactionnel, écriture confirmée |
+| **Parent loan navigation from repayment transaction** | ✅ IMPLÉMENTÉ v3.1.0 | P0 | TransactionsPage.tsx + loanService.ts | Infos prêt parent cliquables depuis transaction `loan_repayment` / `loan_repayment_received` |
+| **Ordinal repayment title** | ✅ IMPLÉMENTÉ v3.1.0 | P1 | TransactionsPage.tsx | Titre dynamique ordinal (ex: "Initier 2e remboursement") |
+
+**Total Session S54 (Transactions View):** 5/5 implémentés (100%)
+
 ### **PWA Advanced Features - Notifications**
 | Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
 |----------------|--------|----------------|-------|---------------|-------|
