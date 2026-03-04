@@ -2,7 +2,7 @@ import { db } from '../lib/database'
 
 export interface NotificationData {
   id: string
-  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day' | 'recurring_reminder' | 'recurring_created'
+  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day' | 'recurring_reminder' | 'recurring_created' | 'loan_due_reminder' | 'loan_overdue_alert'
   title: string
   body: string
   icon?: string
@@ -31,6 +31,9 @@ export interface NotificationSettings {
   seasonalReminders: boolean
   familyEventReminders: boolean
   marketDayReminders: boolean
+  loanReminders: boolean
+  loanOverdueAlerts: boolean
+  loanReminderDaysBefore: number
   quietHours: {
     enabled: boolean
     start: string // HH:MM format
@@ -78,7 +81,7 @@ class NotificationService {
 
     try {
       // Enregistrer le service worker pour les notifications
-      if ('serviceWorker' in navigator) {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         this.serviceWorkerRegistration = await navigator.serviceWorker.ready
         console.log('🔔 Service Worker prêt pour les notifications')
         
@@ -312,6 +315,74 @@ class NotificationService {
   }
 
   /**
+   * Vérifie les rappels de prêts (appelée quotidiennement à 9h)
+   */
+  async scheduleLoanCheck(userId: string): Promise<void> {
+    try {
+      // Import dynamique pour éviter les dépendances circulaires
+      const { getMyLoans } = await import('./loanService')
+      const loans = await getMyLoans()
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+      // Récupérer les notifications envoyées dans les dernières 24h pour déduplication
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      const recentNotifications = await db.notifications
+        .where('userId')
+        .equals(userId)
+        .and(n => n.timestamp >= yesterday)
+        .and(n => n.type === 'loan_due_reminder' || n.type === 'loan_overdue_alert')
+        .toArray()
+
+      const recentLoanIds = new Set(recentNotifications.map(n => n.data?.loanId).filter(Boolean))
+
+      for (const loan of loans) {
+        // Ignorer les prêts fermés
+        if (loan.status === 'closed') continue
+
+        // Vérifier si notification déjà envoyée dans les 24h
+        if (recentLoanIds.has(loan.id)) continue
+
+        const dueDate = loan.dueDate ? new Date(loan.dueDate) : null
+
+        if (!dueDate) continue
+
+        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+        const daysUntilDue = Math.ceil((dueDateOnly.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        const daysOverdue = Math.ceil((today.getTime() - dueDateOnly.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Rappel de remboursement à venir
+        if (daysUntilDue > 0 && daysUntilDue <= (this.settings?.loanReminderDaysBefore || 3)) {
+          await this.showNotification({
+            type: 'loan_due_reminder',
+            title: 'Remboursement à venir',
+            body: `Remboursement pour ${loan.borrowerName} dans ${daysUntilDue} jour(s)`,
+            priority: 'normal',
+            userId,
+            clickAction: '/loans',
+            data: { loanId: loan.id, borrowerName: loan.borrowerName, daysUntilDue }
+          })
+        }
+
+        // Alerte de prêt en retard
+        if (loan.isOverdue && daysOverdue > 0) {
+          await this.showNotification({
+            type: 'loan_overdue_alert',
+            title: 'Prêt en retard',
+            body: `Remboursement pour ${loan.borrowerName} en retard de ${daysOverdue} jour(s)`,
+            priority: 'high',
+            userId,
+            clickAction: '/loans',
+            data: { loanId: loan.id, borrowerName: loan.borrowerName, daysOverdue }
+          })
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification des rappels de prêts:', error)
+    }
+  }
+
+  /**
    * Surveille les transactions importantes (immédiat)
    */
   async scheduleTransactionWatch(userId: string, transaction: any): Promise<void> {
@@ -488,7 +559,11 @@ class NotificationService {
       }
 
       // Sauvegarder aussi dans localStorage
-      localStorage.setItem('bazarkely-notification-settings', JSON.stringify(settings))
+      try {
+        localStorage.setItem('bazarkely-notification-settings', JSON.stringify(settings))
+      } catch (storageError) {
+        console.error('❌ Erreur localStorage lors de la sauvegarde des paramètres:', storageError)
+      }
       
       await this.loadSettings()
       return true
@@ -502,7 +577,22 @@ class NotificationService {
    * Obtient les paramètres actuels
    */
   getSettings(): NotificationSettings | null {
-    return this.settings
+    try {
+      if (this.settings) {
+        return this.settings
+      }
+
+      const userData = localStorage.getItem('bazarkely-user')
+      const userId = userData ? (JSON.parse(userData)?.id || '') : ''
+      const fallback = this.getDefaultSettings(userId)
+      this.settings = fallback
+      return fallback
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des paramètres:', error)
+      const fallback = this.getDefaultSettings('')
+      this.settings = fallback
+      return fallback
+    }
   }
 
   /**
@@ -524,6 +614,17 @@ class NotificationService {
         const user = await this.getCurrentUser()
         if (user) {
           await this.scheduleGoalCheck(user.id)
+        }
+      }
+    }, 60 * 60 * 1000)) // 1 heure
+
+    // Vérification des prêts quotidiennement à 9h
+    this.intervals.set('loans', setInterval(async () => {
+      const now = new Date()
+      if (now.getHours() === 9) {
+        const user = await this.getCurrentUser()
+        if (user) {
+          await this.scheduleLoanCheck(user.id)
         }
       }
     }, 60 * 60 * 1000)) // 1 heure
@@ -589,6 +690,10 @@ class NotificationService {
         return this.settings.transactionAlerts // Utiliser le même paramètre
       case 'recurring_created':
         return this.settings.transactionAlerts // Utiliser le même paramètre
+      case 'loan_due_reminder':
+        return this.settings.loanReminders
+      case 'loan_overdue_alert':
+        return this.settings.loanOverdueAlerts
       default:
         return true
     }
@@ -718,7 +823,7 @@ class NotificationService {
   /**
    * Obtient les paramètres par défaut
    */
-  private getDefaultSettings(userId: string): NotificationSettings {
+  getDefaultSettings(userId: string): NotificationSettings {
     return {
       id: this.generateId(),
       userId,
@@ -732,6 +837,9 @@ class NotificationService {
       seasonalReminders: true,
       familyEventReminders: true,
       marketDayReminders: true,
+      loanReminders: true,
+      loanOverdueAlerts: true,
+      loanReminderDaysBefore: 3,
       quietHours: {
         enabled: true,
         start: '22:00',

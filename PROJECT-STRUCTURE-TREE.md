@@ -65,6 +65,10 @@ bazarkely-2/
 ├── 📄 PROJECT-STRUCTURE-TREE.md           # Cette structure
 ├── 📄 RESUME-SESSION-2025-10-31.md        # 🆕 NOUVEAU [31/10/2025] - Résumé session multi-agents
 ├── 📄 RESUME-SESSION-2026-01-07-S37-FINAL.md # 🆕 NEW [2026-01-07] - Résumé session S37 Phase B Goals Deadline Sync
+├── 📄 RESUME-SESSION-2026-02-15.md        # 🆕 NEW [S52 2026-02-15] - Résumé session S52 Module Prets Familiaux
+├── 📄 RESUME-SESSION-2026-02-15-S53.md    # 🆕 NEW [S53 2026-02-15] - Résumé session S53 Fix bug currency/original_currency
+├── 📄 RESUME-SESSION-2026-02-17.md        # 🆕 NEW [S53 2026-02-17] - Résumé session S53 Documentation architecture
+├── 📄 RESUME-SESSION-2026-03-01-S55.md    # 🆕 NEW [S55 2026-03-01] - Résumé session S55 Phase 3 Loans pg_cron + UI improvements
 ├── 📄 MULTI-AGENT-WORKFLOWS.md            # 🆕 NOUVEAU [31/10/2025] - Workflows multi-agents validés
 ├── 📄 CURSOR-2.0-CONFIG.md                # 🆕 NOUVEAU [31/10/2025] - Configuration Cursor 2.0
 ├── 📄 setup-multiagent-test.ps1           # 🆕 NOUVEAU [31/10/2025] - Script automation setup worktrees
@@ -114,6 +118,8 @@ bazarkely-2/
 │       ├── 📄 20251112215308_phase3_security_foundations.sql # 🆕 NEW [2025-11-12] - Migration Phase 3 Security (RLS + policies)
 │       ├── 📄 20251114124405_add_alert_type_to_poc_alerts.sql # 🆕 NEW [2025-11-14] - Migration ajout colonne alert_type (exécutée)
 │       └── 📄 20251115120000_make_supplier_company_id_nullable.sql # 🆕 NEW [2025-11-15] - Migration supplier company_id nullable
+│   └── 📁 functions/                      # Fonctions Supabase
+│       └── 📄 generate_monthly_interest_periods.sql # 🆕 NEW [S55 2026-03-01] - Fonction génération périodes intérêts mensuelles (appelée par pg_cron jobid=1)
 ├── 📁 backend/                            # Spécifications API backend
 │   ├── 📄 API-PRACTICE-TRACKING-SPEC.md  # 🆕 NOUVEAU - Spécification API suivi pratiques (2025-10-17)
 │   └── 📄 LEADERBOARD-API-SPEC.md        # 🆕 NOUVEAU - Spécification API classement (2025-10-17)
@@ -222,7 +228,7 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
-│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection
+│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix)
 │   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions)
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration (MODIFIÉ 2025-01-20 - Grille 3 colonnes mobile + accordéon utilisateur + objectif Fond d'urgence)
 │   │   ├── 📁 services/                  # Services métier
@@ -244,7 +250,7 @@ bazarkely-2/
 │   │   │   ├── 📄 toastService.ts        # ✅ Service notifications toast
 │   │   │   ├── 📄 dialogService.ts       # ✅ Service dialogues modernes
 │   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
-│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier
+│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée)
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs

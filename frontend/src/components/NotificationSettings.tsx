@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, Settings, Clock, Shield, DollarSign, Target, AlertTriangle, Smartphone, Calendar, Home, ShoppingCart } from 'lucide-react'
+import { Bell, Settings, Clock, Shield, DollarSign, Target, AlertTriangle, Smartphone, Calendar, Home, ShoppingCart, HandCoins } from 'lucide-react'
 import Button from './UI/Button'
 import Card from './UI/Card'
 import Alert from './UI/Alert'
@@ -21,12 +21,27 @@ const NotificationSettingsComponent: React.FC<NotificationSettingsProps> = ({ on
 
   const loadSettings = async () => {
     try {
-      const currentSettings = notificationService.getSettings()
-      setSettings(currentSettings)
+      try {
+        await notificationService.initialize()
+      } catch {
+        // Ignore init errors in localhost/dev (e.g. no Service Worker)
+      }
+
+      const resolvedSettings =
+        notificationService.getSettings() ?? notificationService.getDefaultSettings('')
+
+      setSettings(resolvedSettings)
+      setLoading(false)
     } catch (error) {
       console.error('Erreur lors du chargement des paramètres:', error)
       toast.error('Erreur lors du chargement des paramètres')
-    } finally {
+
+      try {
+        setSettings(notificationService.getDefaultSettings(''))
+      } catch {
+        setSettings(null)
+      }
+
       setLoading(false)
     }
   }
@@ -89,6 +104,23 @@ const NotificationSettingsComponent: React.FC<NotificationSettingsProps> = ({ on
       ...settings,
       maxDailyNotifications: Math.max(1, Math.min(20, value))
     })
+  }
+
+  const handleLoanReminderDaysBeforeChange = async (value: number) => {
+    if (!settings) return
+
+    const updatedSettings = {
+      ...settings,
+      loanReminderDaysBefore: Math.max(1, Math.min(30, value))
+    }
+
+    setSettings(updatedSettings)
+
+    try {
+      await notificationService.saveSettings(updatedSettings)
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des jours de rappel prêt:', error)
+    }
   }
 
   if (loading) {
@@ -174,6 +206,20 @@ const NotificationSettingsComponent: React.FC<NotificationSettingsProps> = ({ on
       description: 'Rappel du Zoma (marché du vendredi)',
       icon: ShoppingCart,
       color: 'text-green-600'
+    },
+    {
+      key: 'loanReminders' as keyof NotificationSettings,
+      title: 'Rappels prêts',
+      description: 'Rappel avant la date d\'échéance d\'un prêt',
+      icon: HandCoins,
+      color: 'text-amber-600'
+    },
+    {
+      key: 'loanOverdueAlerts' as keyof NotificationSettings,
+      title: 'Alertes retard prêts',
+      description: 'Alerte quand un prêt dépasse sa date d\'échéance',
+      icon: AlertTriangle,
+      color: 'text-orange-600'
     }
   ]
 
@@ -222,6 +268,24 @@ const NotificationSettingsComponent: React.FC<NotificationSettingsProps> = ({ on
             </Card>
           ))}
         </div>
+
+        {settings.loanReminders && (
+          <Card className="p-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Jours avant échéance pour le rappel
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={settings.loanReminderDaysBefore}
+                onChange={(e) => handleLoanReminderDaysBeforeChange(parseInt(e.target.value, 10) || 1)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Heures silencieuses */}

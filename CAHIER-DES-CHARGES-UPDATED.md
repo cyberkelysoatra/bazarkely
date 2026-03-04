@@ -1,9 +1,9 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.0.1 (Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-02-17  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0 + Comportement Attendu Remboursements et Prêts v3.0.1  
+**Version:** 3.2.0 (Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-03-01  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0 + Comportement Attendu Remboursements et Prêts v3.0.1 + Prêts Phase 3 Intérêts Automatiques v3.2.0  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
@@ -1401,23 +1401,25 @@ Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les 
 
 ### **Phase 3 - Roadmap Planifiée**
 
-#### **Notifications Push**
+**Statut Phase 3:** 🔄 EN COURS (33% complété - 1/3 features done)
+
+#### **Notifications Push** ⏳ EN ATTENTE
 - Rappels paiements échéance
 - Alertes prêts en retard
 - Notifications remboursements reçus
 
-#### **Photo Justificatif**
+#### **Photo Justificatif** ⏳ EN ATTENTE
 - Upload photo justificatif paiement
 - Stockage Supabase Storage
 - Affichage dans historique remboursements
 
-#### **Intérêts Automatiques Périodiques**
-- Génération automatique périodes intérêts
-- Calcul intérêts mensuels/hebdomadaires
-- Notifications automatiques échéances
-
-**Statut Phase 3:** ⏳ EN ATTENTE - Fonctionnalités avancées planifiées pour sessions futures
+#### **Intérêts Automatiques Périodiques** ✅ COMPLÉTÉ (Session S55 2026-03-01)
+- ✅ **Génération automatique périodes intérêts** - Job pg_cron mensuel exécute fonction `generate_monthly_interest_periods()`
+- ✅ **Calcul intérêts mensuels automatique** - Fonction Supabase génère périodes pour tous prêts actifs avec calcul automatique
+- ✅ **Affichage intérêts dus** - Service `getTotalUnpaidInterestByLoan()` calcule total intérêts impayés par prêt
+- ✅ **Interface utilisateur** - Bannière totale intérêts dus + badges individuels par prêt dans LoansPage
+- ✅ **Interface TypeScript** - `UnpaidInterestSummary` pour typage données intérêts impayés
 
 ---
 
-*Document généré automatiquement le 2026-02-17 - BazarKELY v3.0.1 (Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*
+*Document généré automatiquement le 2026-03-01 - BazarKELY v3.2.0 (Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*

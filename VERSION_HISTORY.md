@@ -4,6 +4,42 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.3.0 - 2026-03-04 (Session S56)
+
+### ✨ Nouvelles Fonctionnalités
+
+- **Phase 3 Prêts - Notifications Push** - Rappels d'échéance et alertes de retard pour les prêts
+  - Rappels avant échéance des prêts (`loan due reminders`)
+  - Alertes de retard lorsque l'échéance est dépassée (`overdue alerts`)
+  - Paramètre configurable du nombre de jours avant échéance
+  - Intégration de `NotificationSettings` dans `SettingsPage`
+  - Correctif `notificationService` avec garde compatible Service Worker (`SW-ready guard fix`)
+
+---
+
+## Version 3.2.0 - 2026-03-01 (Session S55)
+
+### ✨ Nouvelles Fonctionnalités
+
+- **Automatisation mensuelle des intérêts (pg_cron)** - Génération planifiée des périodes d'intérêts impayées
+  - Job `pg_cron` configuré pour exécuter la génération mensuelle
+  - Fonction Supabase `generate_monthly_interest_periods()` intégrée au flux de production
+
+- **Synthèse intérêts impayés par prêt** - Nouveau calcul agrégé côté service
+  - Ajout de `getTotalUnpaidInterestByLoan()` dans `loanService.ts`
+  - Ajout de l'interface `UnpaidInterestSummary` pour structurer le retour
+
+- **UI LoansPage - Alerting intérêts dus** - Visibilité immédiate des prêts avec intérêts non réglés
+  - Banner d'alerte en haut de page lorsque des périodes impayées existent
+  - Badge par prêt dans la liste (`Intérêts dus`) pour identifier les prêts concernés
+
+### 🔧 Détails Techniques
+
+- Source de vérité version synchronisée avec la production (commit `ac45e1b`)
+- Session S55 déployée en production (`1sakely.org`)
+
+---
+
 ## Version 2.6.0 - 2026-01-26 (Session S42)
 
 ### 🎨 Desktop Enhancement

@@ -1348,6 +1348,33 @@ family_shared_transactions (
 
 **Prêt pour Production:** ✅ OUI - Déployé v3.1.0
 
+#### **16.7.13 Phase 3 Prêts - Génération Automatique des Intérêts (Session S55)** ✅ COMPLÉTÉ (2026-03-01)
+
+**Version:** v3.2.0  
+**Commit:** `ac45e1b`  
+**Statut:** ✅ PRODUCTION - Génération périodique des intérêts active + suivi impayés intégré UI
+
+**Base de données / Automatisation Supabase:**
+- ✅ Fonction créée: `public.generate_monthly_interest_periods()` (`SECURITY DEFINER`)
+- ✅ Job `pg_cron` actif: `generate_monthly_interest_periods_job`
+- ✅ Planification: `0 0 1 * *` (exécution mensuelle automatique le 1er jour du mois)
+- ✅ Validation SQL production: écriture `loan_repayments` confirmée sur création remboursement
+
+**Service `loanService.ts` (Phase 3):**
+- ✅ Nouvelle interface: `UnpaidInterestSummary`
+- ✅ Nouvelle fonction: `getTotalUnpaidInterestByLoan(userId)`
+- ✅ Couverture métier: agrégation intérêts impayés par prêt pour affichage dashboard/écran prêts
+
+**UI `LoansPage.tsx` (Phase 3):**
+- ✅ Bandeau intérêts impayés ajouté (résumé global)
+- ✅ Badge intérêts impayés par prêt ajouté sur chaque carte
+- ✅ Correctif layout overflow badge appliqué (affichage stable desktop/mobile)
+
+**Qualité / Debug:**
+- ✅ Nettoyage `TransactionsPage.tsx`: suppression de 5 `console.log` `[DEBUG-REPAYMENT]`
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.2.0 (Session S55, 2026-03-01)
+
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
 #### **17.1 Première Session Multi-Agents Réussie** ✅ IMPLÉMENTÉE

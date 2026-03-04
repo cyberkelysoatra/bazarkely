@@ -1,4 +1,5 @@
 {
+  "version": "3.3.0",
   "devDependencies": {
     "workbox-core": "^7.4.0",
     "workbox-precaching": "^7.4.0",

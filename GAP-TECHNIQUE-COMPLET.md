@@ -1564,6 +1564,22 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
+## 🎉 GAPS RÉSOLUS (SESSION S55 - 2026-03-01 - PHASE 3 PRÊTS INTÉRÊTS AUTO v3.2.0)
+
+### **Gap Intérêts automatiques périodiques** ✅ RÉSOLU 2026-03-01
+- **Problème identifié:** Les périodes d'intérêts n'étaient pas générées automatiquement, nécessitant un suivi manuel et risquant des oublis de calcul mensuel
+- **Solution implémentée:** Fonction `public.generate_monthly_interest_periods()` (`SECURITY DEFINER`) + job Supabase `pg_cron` `generate_monthly_interest_periods_job` planifié `0 0 1 * *`
+- **Validation:** job actif + exécution automatisée mensuelle confirmée
+- **Impact:** Génération des intérêts périodiques fiabilisée sans intervention manuelle
+- **Statut:** ✅ RÉSOLU - Déployé v3.2.0 (commit ac45e1b)
+
+**Résumé Session S55:**
+- **1 gap résolu:** Intérêts automatiques périodiques
+- **Version déployée:** v3.2.0
+- **Régression:** 0
+
+---
+
 ## ⚠️ GAPS RESTANTS (MISE À JOUR 01 MARS 2026)
 
 ### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
@@ -1593,6 +1609,18 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Référence:** alignement UX avec flux S54 (Transactions inline drawer)
 - **Impact:** incohérence UX entre vue liste et vue détail/édition
 - **Priorité:** MOYENNE
+
+### **Gap Incohérence fins de ligne LF/CRLF** ⚠️ IDENTIFIÉ S55
+- **Problème identifié:** incohérence de fins de ligne (LF/CRLF) sur plusieurs fichiers, générant des diffs parasites et un bruit de review
+- **Solution prévue:** normaliser via `.gitattributes` et vérification éditeur/CI pour imposer un style unique
+- **Impact:** historiques git pollués, reviews plus difficiles, risque de conflits inutiles
+- **Priorité:** MOYENNE
+
+### **Gap Versioning non synchronisé appVersion.ts/package.json** ⚠️ IDENTIFIÉ S55
+- **Problème identifié:** incohérences ponctuelles de version entre `frontend/src/constants/appVersion.ts` et `frontend/package.json`
+- **Solution prévue:** verrouiller le bump synchronisé (script/version check CI + checklist release)
+- **Impact:** confusion version déployée vs version affichée, risque de faux diagnostics production
+- **Priorité:** HAUTE
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
 - **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { CurrencySwitcher } from '../components/Currency/CurrencySwitcher';
+import NotificationSettings from '../components/NotificationSettings';
 
 /**
  * Storage key for display currency preference
@@ -106,7 +107,18 @@ const SettingsPage: React.FC = () => {
             />
           </section>
 
-          {/* Section 2: Placeholder for future settings */}
+          {/* Section 2: Notifications */}
+          <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Notifications
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Configurez vos alertes et rappels.
+            </p>
+            <NotificationSettings onClose={() => {}} />
+          </section>
+
+          {/* Section 3: Placeholder for future settings */}
           <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               Autres paramètres

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Target, PieChart, Bell, HandCoins, AlertTriangle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, PieChart, HandCoins, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyLoans } from '../services/loanService';
 import type { Loan } from '../services/loanService';
@@ -13,10 +13,7 @@ const ESSENTIAL_CATEGORIES = ['Alimentation', 'Logement', 'Transport', 'Santé',
 import type { Transaction, Goal } from '../types';
 import { TRANSACTION_CATEGORIES } from '../constants';
 import NotificationPermissionRequest from '../components/NotificationPermissionRequest';
-import NotificationSettings from '../components/NotificationSettings';
 import RecurringTransactionsWidget from '../components/Dashboard/RecurringTransactionsWidget';
-import Button from '../components/UI/Button';
-import Modal from '../components/UI/Modal';
 import useNotifications from '../hooks/useNotifications';
 import { CurrencyDisplay } from '../components/Currency';
 import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
@@ -83,8 +80,6 @@ const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
-  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
 
   // Create account map for efficient account name lookup
   const accountMap = useMemo(() => {
@@ -152,10 +147,12 @@ const DashboardPage = () => {
         
         // Vérifier la permission actuelle
         const permission = notificationService.isPermissionGranted() ? 'granted' : Notification.permission;
-        setNotificationPermission(permission);
 
         // Démarrer les vérifications périodiques
         if (permission === 'granted') {
+          // TODO(consolidation): This dashboard-level interval block duplicates checks already started
+          // by notificationService.initialize() -> startPeriodicChecks(). Keep both for now to avoid
+          // regression risk, then consolidate into a single scheduler source of truth.
           // Vérifier les budgets toutes les heures
           setInterval(() => {
             if (user?.id) {
@@ -168,6 +165,7 @@ const DashboardPage = () => {
             const now = new Date();
             if (now.getHours() === 9 && user?.id) {
               notificationService.scheduleGoalCheck(user.id);
+              notificationService.scheduleLoanCheck(user.id);
             }
           }, 60 * 60 * 1000); // 1 heure
 
@@ -362,23 +360,7 @@ const DashboardPage = () => {
           {!isNotificationBannerDismissed && (
             <NotificationPermissionRequest 
               onDismiss={handleNotificationBannerDismiss}
-              onPermissionGranted={() => setNotificationPermission('granted')}
-              onPermissionDenied={() => setNotificationPermission('denied')}
             />
-          )}
-
-          {/* Bouton de paramètres de notifications */}
-          {notificationPermission === 'granted' && (
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowNotificationSettings(true)}
-                className="flex items-center space-x-2"
-              >
-                <Bell className="h-4 w-4" />
-                <span>Paramètres Notifications</span>
-              </Button>
-            </div>
           )}
           
           {/* Statistiques principales - 2x2 grid on all screen sizes */}
@@ -785,15 +767,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Modal des paramètres de notifications */}
-      <Modal
-        isOpen={showNotificationSettings}
-        onClose={() => setShowNotificationSettings(false)}
-        title="Paramètres de Notifications"
-        size="lg"
-      >
-        <NotificationSettings onClose={() => setShowNotificationSettings(false)} />
-      </Modal>
     </DashboardContainer>
   );
 };
