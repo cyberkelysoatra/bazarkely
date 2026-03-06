@@ -10,8 +10,8 @@ import {
   ChevronRight, Users, Wallet, Loader2, ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
+import { useAppStore } from '../stores/appStore';
 import { 
   getMyLoans, 
   createLoan, 
@@ -636,7 +636,7 @@ const RepaymentHistorySection = ({ loanId, currency }: RepaymentHistorySectionPr
 
 const LoansPage = () => {
   const navigate = useNavigate();
-  const { user, isLoading: isAuthLoading, isAuthenticated } = useRequireAuth();
+  const { user } = useAppStore();
   const { displayCurrency } = useCurrency();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [unpaidInterestSummaries, setUnpaidInterestSummaries] = useState<UnpaidInterestSummary[]>([]);
@@ -648,14 +648,12 @@ const LoansPage = () => {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated) {
-      loadLoans();
-    }
-  }, [isAuthLoading, isAuthenticated]);
+    loadLoans();
+  }, []);
 
   useEffect(() => {
     const loadUnpaidInterestSummary = async () => {
-      if (isAuthLoading || !isAuthenticated || !user?.id) {
+      if (!user?.id) {
         return;
       }
       try {
@@ -667,7 +665,7 @@ const LoansPage = () => {
     };
 
     loadUnpaidInterestSummary();
-  }, [isAuthLoading, isAuthenticated, user?.id]);
+  }, [user?.id]);
 
   const loadLoans = async () => {
     try {
@@ -714,7 +712,7 @@ const LoansPage = () => {
     }
   };
 
-  if (isAuthLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 pb-20">
         <div className="p-4">
