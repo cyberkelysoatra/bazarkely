@@ -23,7 +23,7 @@ import Input from '../UI/Input';
 import Button from '../UI/Button';
 import { CurrencyDisplay } from '../Currency';
 import { useCurrency } from '../../hooks/useCurrency';
-import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { useAppStore } from '../../stores/appStore';
 import { 
   recordReimbursementPayment, 
   getPaymentHistory,
@@ -104,7 +104,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
   onPaymentRecorded
 }) => {
   const { displayCurrency } = useCurrency();
-  const { user } = useRequireAuth();
+  const { user } = useAppStore();
   
   // State for creditor member ID (current user's memberId)
   const [creditorMemberId, setCreditorMemberId] = useState<string | null>(null);
@@ -131,7 +131,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
     const fetchCreditorMemberId = async () => {
       try {
         const memberBalances = await getMemberBalances(familyGroupId);
-        const currentMember = memberBalances.find(b => b.userId === user.id);
+        const currentMember = memberBalances.find(b => b.userId === user?.id);
         if (currentMember) {
           setCreditorMemberId(currentMember.memberId);
         }

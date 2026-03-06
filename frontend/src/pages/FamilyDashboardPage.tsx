@@ -10,9 +10,8 @@ import {
   TrendingDown, Calendar, Clock, CheckCircle, XCircle, RefreshCw, Wallet,
   HandCoins
 } from 'lucide-react';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCurrency } from '../hooks/useCurrency';
-import { useSyncStore } from '../stores/appStore';
+import { useAppStore, useSyncStore } from '../stores/appStore';
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 import * as familyGroupService from '../services/familyGroupService';
 import * as familySharingService from '../services/familySharingService';
@@ -30,7 +29,7 @@ import { OfflineAlert } from '../components/UI/Alert';
 const FamilyDashboardPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
+  const { user } = useAppStore();
   const { displayCurrency } = useCurrency();
   const { isOnline } = useSyncStore();
   const { subscribeToSharedTransactions } = useFamilyRealtime();
@@ -70,7 +69,7 @@ const FamilyDashboardPage = () => {
 
   // Fonction pour charger les groupes familiaux
   const loadFamilyGroups = async () => {
-    if (!isAuthenticated || !user) return;
+    if (!user) return;
 
     try {
       setIsLoading(true);
@@ -91,15 +90,15 @@ const FamilyDashboardPage = () => {
 
   // Charger les groupes familiaux - attendre que l'auth soit vérifiée
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated) {
+    if (user) {
       loadFamilyGroups();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthLoading, isAuthenticated, user]);
+  }, [user]);
 
   // Charger les données du groupe sélectionné - attendre que l'auth soit vérifiée
   useEffect(() => {
-    if (isAuthLoading || !isAuthenticated) return;
+    if (!user) return;
     
     const loadGroupData = async () => {
       if (!selectedGroupId || !user) return;
@@ -178,7 +177,7 @@ const FamilyDashboardPage = () => {
     };
 
     loadGroupData();
-  }, [isAuthLoading, isAuthenticated, selectedGroupId, user]);
+  }, [selectedGroupId, user]);
 
   // Realtime subscription for shared transactions
   useEffect(() => {
@@ -280,22 +279,6 @@ const FamilyDashboardPage = () => {
   };
 
   const selectedGroup = familyGroups.find(g => g.id === selectedGroupId);
-
-  // État de chargement de l'authentification
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 pb-20">
-        <div className="p-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Vérification de l'authentification...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // État de chargement des données
   if (isLoading) {

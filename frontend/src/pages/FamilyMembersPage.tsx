@@ -6,27 +6,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users } from 'lucide-react';
-import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useAppStore } from '../stores/appStore';
 
 const FamilyMembersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoading: isAuthLoading, isAuthenticated } = useRequireAuth();
-
-  // État de chargement de l'authentification
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 pb-20">
-        <div className="p-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Vérification de l'authentification...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const { user } = useAppStore();
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">

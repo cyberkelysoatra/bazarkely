@@ -9,7 +9,7 @@ import {
   ArrowLeft, RefreshCw, CheckCircle, Clock, User, ArrowRight, 
   TrendingUp, TrendingDown, Settings, Wallet, BarChart2
 } from 'lucide-react';
-import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useAppStore } from '../stores/appStore';
 import { useFamily } from '../contexts/FamilyContext';
 import { 
   getMemberBalances, 
@@ -28,7 +28,7 @@ import ReimbursementStatsSection from '../components/Family/ReimbursementStatsSe
 
 const FamilyReimbursementsPage = () => {
   const navigate = useNavigate();
-  const { isLoading: isAuthLoading, isAuthenticated, user } = useRequireAuth();
+  const { user } = useAppStore();
   const { activeFamilyGroup, loading: familyLoading } = useFamily();
   const { displayCurrency } = useCurrency();
   const { subscribeToReimbursements } = useFamilyRealtime();
@@ -53,7 +53,7 @@ const FamilyReimbursementsPage = () => {
 
   // Fonction pour charger les données
   const loadData = useCallback(async () => {
-    if (!isAuthenticated || !user || !activeFamilyGroup || familyLoading) {
+    if (!user || !activeFamilyGroup || familyLoading) {
       return;
     }
 
@@ -79,12 +79,12 @@ const FamilyReimbursementsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user, activeFamilyGroup, familyLoading]);
+  }, [user, activeFamilyGroup, familyLoading]);
 
   // Charger les données au montage
   useEffect(() => {
     loadData();
-  }, [isAuthenticated, user, activeFamilyGroup, familyLoading]);
+  }, [user, activeFamilyGroup, familyLoading]);
 
   // Abonnement realtime pour les demandes de remboursement
   useEffect(() => {
@@ -213,8 +213,8 @@ const FamilyReimbursementsPage = () => {
     }
   };
 
-  // État de chargement de l'authentification
-  if (isAuthLoading || familyLoading) {
+  // État de chargement
+  if (familyLoading) {
     return (
       <div className="min-h-screen bg-slate-50 pb-20">
         <div className="p-4">
