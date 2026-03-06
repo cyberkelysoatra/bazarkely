@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.2.0 (Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-03-01  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01
+**Version:** 3.3.1 (Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-03-05  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01 + Prêts Phase 3 Notifications Push v3.3.0 S56 2026-03-04 + Bug Fix useRequireAuth Loop v3.3.1 S57 2026-03-05
 
 ---
 
@@ -45,7 +45,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Reimbursement Dashboard Phase 2:** 100% (1/1) ✅ - Session S49 2026-02-13 (ReimbursementStatsSection.tsx 261 lignes, PieChart catégories + LineChart évolution + BarChart membres, cartes summary cliquables, transactionCategory service)
 - **Documentation Cleanup:** 100% (1/1) ✅ - Session S51 2026-02-14 (115+ .md files archived → 12 active root files, docs/archive/ structure, Claude AI project synchronized 15 files 21% capacity)
 - **Module Prets Familiaux Phase 1+2:** 100% (11/11) ✅ - Session S52 2026-02-15 (Tables Supabase + loanService CRUD + LoansPage + CreateLoanModal + PaymentModal + RepaymentHistorySection + LoanCard + FamilyDashboardPage button + LoanWidget Dashboard + Route AppLayout + Moteur financier interets->capital) (v3.0.0)
-- **Module Prêts Phase 3:** 33% (2/6) ✅ - Session S55 2026-03-01 (pg_cron job + fonction Supabase + getTotalUnpaidInterestByLoan + UnpaidInterestSummary + banner intérêts dus + badge par prêt) (v3.2.0)
+- **Module Prêts Phase 3:** 50% (2/4 items done) ✅ - Session S55 2026-03-01 + S56 2026-03-04 (pg_cron DONE, Notifications Push DONE, Photo Justificatif PENDING, Edge Cases Remboursements PENDING) (v3.3.1)
 
 ### **📈 Répartition par Statut**
 - **✅ Implémenté:** 100% (218/218)
@@ -69,7 +69,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **RegisterForm.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Composant autonome avec 5 champs + validation Madagascar |
 | **usePWAInstall.ts** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Hook PWA avec diagnostic + mécanisme d'attente/retry |
 | **NotificationPermissionRequest.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Demande de permission notifications avec UI moderne |
-| **NotificationSettings.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Interface de paramètres notifications complète |
+| **NotificationSettings.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Interface de paramètres notifications complète, intégrée dans SettingsPage avec section prêts (S56) |
 | **BottomNav.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Navigation ultra-compacte (48-56px vs 80-90px) |
 | **Header.tsx** | ✅ Implémenté | 100% | ✅ Testé | ✅ Documenté | Messages interactifs + identification utilisateur dropdown "Compte actif" avec fallback firstName/username |
 | **LoadingSpinner.tsx** | ❌ Manquant | 0% | ❌ Non testé | ❌ Non documenté | Composant manquant |
@@ -274,7 +274,24 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **badge par prêt LoansPage** | ✅ DONE | P1 | LoansPage.tsx | Badge rouge affichant intérêts impayés par prêt individuel dans LoanCard, masqué si 0 - S55 |
 
 **Total Session S55:** 6/6 implémentés (100% - Intérêts Automatiques Périodiques feature complète)
-**Phase 3 Completion:** 33% (1/3 features done - Intérêts Automatiques Périodiques complété, Notifications Push et Photo Justificatif en attente)
+
+### **Module Prêts Phase 3 - Session S56 2026-03-04** ✅ 66% COMPLÉTÉ (v3.3.0)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **scheduleLoanCheck()** | ✅ DONE | P0 | notificationService.ts | Fonction vérification prêts échéance/retard avec calcul jours avant échéance, déclenchement notifications - S56 |
+| **loan_due_reminder type** | ✅ DONE | P0 | notificationService.ts | Type notification rappel échéance prêt, déclenché X jours avant due_date - S56 |
+| **loan_overdue_alert type** | ✅ DONE | P0 | notificationService.ts | Type notification alerte prêt en retard, déclenché après due_date passé - S56 |
+| **loanReminders/loanOverdueAlerts/loanReminderDaysBefore settings** | ✅ DONE | P0 | notificationService.ts + IndexedDB | Paramètres utilisateur activation/désactivation rappels/alertes prêts + jours avant échéance - S56 |
+| **NotificationSettings in SettingsPage** | ✅ DONE | P0 | SettingsPage.tsx | Intégration NotificationSettings dans page paramètres (pas modal uniquement), section prêts avec toggles - S56 |
+| **SW-ready guard** | ✅ DONE | P0 | notificationService.ts | Vérification service worker disponible avant déclenchement notifications prêts - S56 |
+
+**Total Session S56:** 6/6 implémentés (100% - Notifications Push feature complète)
+**Phase 3 Completion:** 50% (2/4 items done - pg_cron DONE S55, Notifications Push DONE S56, Photo Justificatif PENDING, Edge Cases Remboursements PENDING)
+
+### **Module Prêts Phase 3 - Bug Fix S57 2026-03-05** ✅ RÉSOLU (v3.3.1)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **useRequireAuth loop /family/loans** | ✅ RESOLVED | P0 | LoansPage.tsx + useRequireAuth.ts | Boucle infinie résolue sur route /family/loans, correction hook authentification - S57 |
 
 ### **PWA Advanced Features - Notifications**
 | Fonctionnalité | Statut | Implémentation | Tests | Documentation | Notes |
@@ -1301,4 +1318,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-03-01 - BazarKELY v3.2.0 (Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+*Document généré automatiquement le 2026-03-05 - BazarKELY v3.3.1 (Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*

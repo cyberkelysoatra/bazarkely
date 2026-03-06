@@ -1,9 +1,9 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.9 (Diagnostic Remboursements + Plan Refactor Prêts S54 - Session S53 v3.0.1)  
-**Date de mise à jour:** 2026-02-17  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0)  
+**Version:** 5.10 (Auth Loop Fix LoansPage - Session S57 v3.3.1)  
+**Date de mise à jour:** 2026-03-04  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + LoansPage Auth Loop Fix (v3.3.1)  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
 ---
@@ -1580,7 +1580,44 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 01 MARS 2026)
+## 🎉 GAPS RÉSOLUS (SESSION S56 - 2026-03-04 - PHASE 3 PRÊTS NOTIFICATIONS PUSH v3.3.0)
+
+### **Gap Phase 3 Prêts - Notifications Push** ✅ RÉSOLU 2026-03-04
+- **Problème identifié:** Absence de notifications push spécialisées pour échéances/retards de prêts et absence de paramétrage dédié côté utilisateur
+- **Solution implémentée:** `scheduleLoanCheck()` dans `notificationService.ts`, types `loan_due_reminder` + `loan_overdue_alert`, paramètres `loanReminders` + `loanOverdueAlerts` + `loanReminderDaysBefore`, déplacement `NotificationSettings` vers `SettingsPage`, correctif guard SW-ready (`navigator.serviceWorker.controller`)
+- **Impact:** Alertes prêt automatisées et paramétrables, meilleure prévention des retards
+- **Statut:** ✅ RÉSOLU - Déployé v3.3.0 (commit c583e31)
+
+**Résumé Phase 3 Prêts (Session S56):**
+- **Progression:** 66% (2/3 fonctionnalités complétées)
+- ✅ Intérêts Automatiques (S55)
+- ✅ Notifications Push (S56)
+- ⏳ Photo Justificatif (en attente)
+
+---
+
+## 🎉 GAPS RÉSOLUS (SESSION S57 - 2026-03-04 - AUTH LOOP FIX v3.3.1)
+
+### **Gap useRequireAuth loop sur `/family/loans`** ✅ RÉSOLU
+- **Problème identifié:** `LoansPage.tsx` utilisait `useRequireAuth`, provoquant une boucle de vérification auth sur la route `/family/loans`
+- **Solution implémentée:** suppression de `useRequireAuth` et migration vers le pattern `useAppStore()` dans `LoansPage.tsx`
+- **Impact:** navigation `/family/loans` stable, boucle auth éliminée
+- **Statut:** ✅ RÉSOLU - Déployé v3.3.1 (commit d0ced12)
+
+### **Gap Versioning non synchronisé appVersion.ts/package.json** ✅ RÉSOLU
+- **Problème identifié:** décalage observé (`package.json` à v3.1.0) vs version applicative attendue
+- **Solution implémentée:** synchronisation `frontend/package.json` et `frontend/src/constants/appVersion.ts` en v3.3.1
+- **Impact:** version affichée et version build alignées
+- **Statut:** ✅ RÉSOLU - Session S57
+
+**Résumé Session S57:**
+- **2 gaps résolus:** boucle auth LoansPage + synchronisation versioning
+- **Version déployée:** v3.3.1
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 04 MARS 2026)
 
 ### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
 - **Problème identifié:** 21 appels `.from()` dans `reimbursementService.ts`, `TransactionDetailPage.tsx` et `familySharingService.ts` peuvent viser une mauvaise table de remboursements selon les flux
@@ -1597,10 +1634,10 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Impact:** friction UX et duplication des flux de saisie tant que non refactorisé
 - **Priorité:** MOYENNE
 
-### **Gap Debug Logs Temporaires S54 à Nettoyer** ⚠️ EN ATTENTE
-- **Problème identifié:** des `console.log` de debug temporaires ont été ajoutés pendant la stabilisation S54 (transactions/remboursements prêts)
-- **Solution prévue:** suppression complète des logs temporaires après validation finale du flux inline drawer
-- **Impact:** console bruitée et risque d'exposition d'informations techniques en production
+### **Gap Edge Cases Remboursements Familiaux** ⚠️ EN ATTENTE
+- **Problème identifié:** cas limites encore à valider/corriger (surplus complexes, multi-débiteurs, enchaînements paiements partiels)
+- **Solution prévue:** batterie de tests manuels + correction des scénarios limites identifiés
+- **Impact:** risque d'incohérence métier sur des cas rares mais critiques
 - **Priorité:** MOYENNE
 
 ### **Gap TransactionDetailPage - Formulaire édition prêt incomplet** ⚠️ EN ATTENTE
@@ -1616,11 +1653,15 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Impact:** historiques git pollués, reviews plus difficiles, risque de conflits inutiles
 - **Priorité:** MOYENNE
 
-### **Gap Versioning non synchronisé appVersion.ts/package.json** ⚠️ IDENTIFIÉ S55
-- **Problème identifié:** incohérences ponctuelles de version entre `frontend/src/constants/appVersion.ts` et `frontend/package.json`
-- **Solution prévue:** verrouiller le bump synchronisé (script/version check CI + checklist release)
-- **Impact:** confusion version déployée vs version affichée, risque de faux diagnostics production
-- **Priorité:** HAUTE
+### **Note Versioning (S57)** ✅ CORRIGÉ
+- **Chemin confirmé:** `appVersion.ts` = `frontend/src/constants/appVersion.ts` (et non `frontend/src/utils/appVersion.ts`)
+- **Statut:** synchronisation versions `package.json` + `appVersion.ts` appliquée en v3.3.1
+
+### **Gap Phase 3 Prêts - Photo Justificatif** ⏳ EN ATTENTE
+- **Problème identifié:** fonctionnalité justificatif photo pour les prêts non implémentée dans le flux Phase 3
+- **Solution prévue:** ajout capture/upload justificatif photo et affichage dans détail prêt/remboursement
+- **Impact:** traçabilité visuelle incomplète pour validation des opérations de prêt
+- **Priorité:** MOYENNE
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
 - **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé
@@ -1883,4 +1924,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-03-01 - BazarKELY v5.9 (Transactions Inline Loan Drawer - Session S54 v3.1.0)*
+*Document généré automatiquement le 2026-03-04 - BazarKELY v5.10 (Auth Loop Fix LoansPage - Session S57 v3.3.1)*

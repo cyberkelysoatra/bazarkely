@@ -1,8 +1,8 @@
 # 📁 PROJECT STRUCTURE TREE - BazarKELY
 ## Structure Complète du Projet avec Composants
 
-**Version:** 4.2 (Session S43 2026-01-27 - Budget Gauge Feature + AddTransaction Integration)  
-**Date de mise à jour:** 2026-01-27  
+**Version:** 4.3 (Session S57 2026-03-06 - Fix useRequireAuth loop bug)  
+**Date de mise à jour:** 2026-03-06  
 **Statut:** ✅ PRODUCTION - Structure mise à jour avec PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + Construction POC Phase 2 Organigramme + Construction POC Phase 3 Security 92% + Bug Fixes Session 2025-11-14 + Budget Statistics S28 + Phase B Goals Deadline Sync (v2.5.0) + Agent Analysis Documentation Structure + Système i18n Multi-Langues (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.4.11) + Budget Gauge Feature (v2.4.12)
 
 ---
@@ -69,6 +69,8 @@ bazarkely-2/
 ├── 📄 RESUME-SESSION-2026-02-15-S53.md    # 🆕 NEW [S53 2026-02-15] - Résumé session S53 Fix bug currency/original_currency
 ├── 📄 RESUME-SESSION-2026-02-17.md        # 🆕 NEW [S53 2026-02-17] - Résumé session S53 Documentation architecture
 ├── 📄 RESUME-SESSION-2026-03-01-S55.md    # 🆕 NEW [S55 2026-03-01] - Résumé session S55 Phase 3 Loans pg_cron + UI improvements
+├── 📄 RESUME-SESSION-2026-03-04-S56.md    # 🆕 NEW [S56 2026-03-04] - Résumé session S56 Phase 3 notifications push prêts complète
+├── 📄 RESUME-SESSION-2026-03-06-S57.md    # 🆕 NEW [S57 2026-03-06] - Résumé session S57 Fix useRequireAuth loop bug
 ├── 📄 MULTI-AGENT-WORKFLOWS.md            # 🆕 NOUVEAU [31/10/2025] - Workflows multi-agents validés
 ├── 📄 CURSOR-2.0-CONFIG.md                # 🆕 NOUVEAU [31/10/2025] - Configuration Cursor 2.0
 ├── 📄 setup-multiagent-test.ps1           # 🆕 NOUVEAU [31/10/2025] - Script automation setup worktrees
@@ -199,7 +201,7 @@ bazarkely-2/
 │   │   │   ├── 📁 Leaderboard/               # 🆕 NOUVEAU - Composants classement (2025-10-17)
 │   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
-│   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications
+│   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications (MODIFIÉ [S56] 2026-03-04 - SW-ready guard fix + intégration SettingsPage)
 │   │   │   ├── 📄 BudgetGauge.tsx # 🆕 NOUVEAU [S43] 2026-01-27 - Composant budget gauge avec layout inline, barre progression et montants
 │   │   │   ├── 📁 Currency/                  # Composants affichage devises
 │   │   │   │   ├── 📄 CurrencyDisplay.tsx   # ✅ Composant affichage montants (MODIFIÉ 2026-01-25 - Protection traduction)
@@ -208,7 +210,7 @@ bazarkely-2/
 │   │   │   │   └── 📄 CurrencySwitcher.tsx  # ✅ Composant sélecteur devise
 │   │   ├── 📁 pages/                     # Pages principales
 │   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
-│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset) (MODIFIÉ [S52] 2026-02-15 - LoanWidget ajoute sidebar)
+│   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset) (MODIFIÉ [S52] 2026-02-15 - LoanWidget ajoute sidebar) (MODIFIÉ [S56] 2026-03-04 - Notifications push prêts)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé)
@@ -218,6 +220,7 @@ bazarkely-2/
 │   │   │   ├── 📄 BudgetStatisticsPage.tsx # 🆕 NOUVEAU [S28] 2025-12-31 - Page statistiques budgétaires multi-années (~600 lignes)
 │   │   │   ├── 📄 GoalsPage.tsx         # ✅ Gestion des objectifs
 │   │   │   ├── 📄 EducationPage.tsx     # ✅ Contenu éducatif
+│   │   │   ├── 📄 SettingsPage.tsx      # ✅ Page paramètres (MODIFIÉ [S56] 2026-03-04 - NotificationSettings intégré)
 │   │   │   ├── 📄 PWAInstructionsPage.tsx # ✅ Instructions installation PWA multi-navigateurs
 │   │   │   ├── 📄 PriorityQuestionsPage.tsx # ✅ Wizard 10 questions prioritaires
 │   │   │   ├── 📄 QuizPage.tsx            # ✅ Quiz hebdomadaires éducatifs
@@ -228,7 +231,7 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
-│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix)
+│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place)
 │   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions)
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration (MODIFIÉ 2025-01-20 - Grille 3 colonnes mobile + accordéon utilisateur + objectif Fond d'urgence)
 │   │   ├── 📁 services/                  # Services métier
@@ -237,7 +240,7 @@ bazarkely-2/
 │   │   │   ├── 📄 adminService.ts        # ✅ Service d'administration (MODIFIÉ 2025-01-20 - Interface AdminUser enrichie + RPC function + requêtes parallèles)
 │   │   │   ├── 📄 certificateService.ts  # 🆕 NOUVEAU - Service génération certificats PDF (2025-10-17)
 │   │   │   ├── 📄 leaderboardService.ts  # 🆕 NOUVEAU - Service classement API (2025-10-17)
-│   │   │   ├── 📄 notificationService.ts # ✅ NOUVEAU - Service notifications push complet (MODIFIÉ 2025-11-03 - Intégration transactions récurrentes)
+│   │   │   ├── 📄 notificationService.ts # ✅ NOUVEAU - Service notifications push complet (MODIFIÉ 2025-11-03 - Intégration transactions récurrentes) (MODIFIÉ [S56] 2026-03-04 - scheduleLoanCheck() + loan_due_reminder + loan_overdue_alert)
 │   │   │   ├── 📄 recurringTransactionService.ts # 🆕 NOUVEAU 2025-11-03 - Service CRUD transactions récurrentes (525 lignes)
 │   │   │   └── 📄 recurringTransactionMonitoringService.ts # 🆕 NOUVEAU 2025-11-03 - Service monitoring génération automatique (171 lignes)
 │   │   │   ├── 📄 recommendationEngineService.ts # 🆕 NOUVEAU - Moteur recommandations IA (948 lignes)

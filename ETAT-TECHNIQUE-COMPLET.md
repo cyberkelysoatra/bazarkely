@@ -1,8 +1,8 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.1.0 (Transactions Inline Loan Drawer - Session S54)  
-**Date de mise à jour:** 2026-03-01  
+**Version:** 3.3.1 (LoansPage Auth Loop Fix - Session S57)  
+**Date de mise à jour:** 2026-03-04  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + Transactions Inline Loan Drawer (v3.1.0)  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -1374,6 +1374,44 @@ family_shared_transactions (
 - ✅ Nettoyage `TransactionsPage.tsx`: suppression de 5 `console.log` `[DEBUG-REPAYMENT]`
 
 **Prêt pour Production:** ✅ OUI - Déployé v3.2.0 (Session S55, 2026-03-01)
+
+#### **16.7.14 Phase 3 Prêts - Notifications Push (Session S56)** ✅ COMPLÉTÉ (2026-03-04)
+
+**Version:** v3.3.0  
+**Commit:** `c583e31`  
+**Statut:** ✅ PRODUCTION - Notifications prêts opérationnelles et configurables
+
+**Service notifications (`notificationService.ts`):**
+- ✅ `scheduleLoanCheck()` ajouté pour orchestrer la vérification/programmation des notifications liées aux prêts
+- ✅ Nouveaux types de notifications: `loan_due_reminder` et `loan_overdue_alert`
+- ✅ Correctif SW-ready guard: vérification `navigator.serviceWorker.controller` avant programmation (fix de robustesse, ligne 84)
+
+**Paramètres utilisateur:**
+- ✅ Nouvelles préférences: `loanReminders`, `loanOverdueAlerts`, `loanReminderDaysBefore`
+- ✅ `NotificationSettings` déplacé dans `SettingsPage` pour centraliser la configuration notifications
+
+**UI / Expérience:**
+- ✅ Notifications d'échéance et de retard prêtes pour push en production
+- ✅ Cohérence UX renforcée via réglages dédiés dans les paramètres globaux
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.3.0 (Session S56, 2026-03-04)
+
+#### **16.7.15 LoansPage Auth Pattern Fix (Session S57)** ✅ COMPLÉTÉ
+
+**Version:** v3.3.1  
+**Commit:** `d0ced12`  
+**Statut:** ✅ PRODUCTION - Boucle auth corrigée sur `/family/loans`
+
+**Correctif appliqué (`LoansPage.tsx`):**
+- ✅ Suppression de `useRequireAuth`
+- ✅ Migration vers le pattern `useAppStore()` pour lecture état auth/session
+- ✅ Résolution du bug de boucle auth sur route `/family/loans`
+
+**Synchronisation version:**
+- ✅ `frontend/package.json` corrigé vers `v3.3.1` (ancien état observé: `v3.1.0`)
+- ✅ `frontend/src/constants/appVersion.ts` aligné en `v3.3.1`
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.3.1 (Session S57)
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3814,4 +3852,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-03-01 - BazarKELY v3.1.0 (Transactions Inline Loan Drawer - Session S54)*
+*Document généré automatiquement le 2026-03-04 - BazarKELY v3.3.1 (LoansPage Auth Loop Fix - Session S57)*
