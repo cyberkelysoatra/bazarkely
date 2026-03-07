@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.3.1 (Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-03-05  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01 + Prêts Phase 3 Notifications Push v3.3.0 S56 2026-03-04 + Bug Fix useRequireAuth Loop v3.3.1 S57 2026-03-05
+**Version:** 3.3.3 (Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-03-07  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01 + Prêts Phase 3 Notifications Push v3.3.0 S56 2026-03-04 + Bug Fix useRequireAuth Loop v3.3.1 S57 2026-03-05 + Prêts Phase 3 Photo Justificatif + Auth Stability v3.3.3 S58 2026-03-07
 
 ---
 
@@ -45,7 +45,8 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Reimbursement Dashboard Phase 2:** 100% (1/1) ✅ - Session S49 2026-02-13 (ReimbursementStatsSection.tsx 261 lignes, PieChart catégories + LineChart évolution + BarChart membres, cartes summary cliquables, transactionCategory service)
 - **Documentation Cleanup:** 100% (1/1) ✅ - Session S51 2026-02-14 (115+ .md files archived → 12 active root files, docs/archive/ structure, Claude AI project synchronized 15 files 21% capacity)
 - **Module Prets Familiaux Phase 1+2:** 100% (11/11) ✅ - Session S52 2026-02-15 (Tables Supabase + loanService CRUD + LoansPage + CreateLoanModal + PaymentModal + RepaymentHistorySection + LoanCard + FamilyDashboardPage button + LoanWidget Dashboard + Route AppLayout + Moteur financier interets->capital) (v3.0.0)
-- **Module Prêts Phase 3:** 50% (2/4 items done) ✅ - Session S55 2026-03-01 + S56 2026-03-04 (pg_cron DONE, Notifications Push DONE, Photo Justificatif PENDING, Edge Cases Remboursements PENDING) (v3.3.1)
+- **Module Prêts Phase 3:** 75% (3/4 items done) ✅ - Session S55 2026-03-01 + S56 2026-03-04 + S58 2026-03-07 (pg_cron DONE, Notifications Push DONE, Photo Justificatif DONE, Edge Cases Remboursements PENDING) (v3.3.3)
+- **Auth Stability:** 100% (1/1) ✅ - Session S58 2026-03-07 (Single auth pattern useAppStore only, useRequireAuth éradiqué de toutes les pages - 7 fichiers migrés) (v3.3.3)
 
 ### **📈 Répartition par Statut**
 - **✅ Implémenté:** 100% (218/218)
@@ -286,7 +287,21 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **SW-ready guard** | ✅ DONE | P0 | notificationService.ts | Vérification service worker disponible avant déclenchement notifications prêts - S56 |
 
 **Total Session S56:** 6/6 implémentés (100% - Notifications Push feature complète)
-**Phase 3 Completion:** 50% (2/4 items done - pg_cron DONE S55, Notifications Push DONE S56, Photo Justificatif PENDING, Edge Cases Remboursements PENDING)
+
+### **Module Prêts Phase 3 - Session S58 2026-03-07** ✅ 75% COMPLÉTÉ (v3.3.3)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Photo justificatif paiement** | ✅ DONE | P0 | LoansPage.tsx + Supabase Storage | Upload photo justificatif remboursement, bucket loan-receipts, colonne receipt_photo_url, UI upload + affichage, sanitization fix - S58 |
+
+**Total Session S58:** 1/1 implémenté (100% - Photo Justificatif feature complète)
+**Phase 3 Completion:** 75% (3/4 items done - pg_cron DONE S55, Notifications Push DONE S56, Photo Justificatif DONE S58, Edge Cases Remboursements PENDING)
+
+### **Module Auth Stability - Session S58 2026-03-07** ✅ COMPLÉTÉ (v3.3.3)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Single auth pattern (useAppStore only)** | ✅ DONE | P0 | 7 pages migrées | useRequireAuth éradiqué de toutes les pages protégées, migration vers useAppStore.isAuthenticated uniquement - S58 |
+
+**Total Session S58 (Auth):** 1/1 implémenté (100% - Auth stability complète)
 
 ### **Module Prêts Phase 3 - Bug Fix S57 2026-03-05** ✅ RÉSOLU (v3.3.1)
 | Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
@@ -1318,4 +1333,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-03-05 - BazarKELY v3.3.1 (Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+*Document généré automatiquement le 2026-03-07 - BazarKELY v3.3.3 (Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*

@@ -71,6 +71,7 @@ bazarkely-2/
 ├── 📄 RESUME-SESSION-2026-03-01-S55.md    # 🆕 NEW [S55 2026-03-01] - Résumé session S55 Phase 3 Loans pg_cron + UI improvements
 ├── 📄 RESUME-SESSION-2026-03-04-S56.md    # 🆕 NEW [S56 2026-03-04] - Résumé session S56 Phase 3 notifications push prêts complète
 ├── 📄 RESUME-SESSION-2026-03-06-S57.md    # 🆕 NEW [S57 2026-03-06] - Résumé session S57 Fix useRequireAuth loop bug
+├── 📄 RESUME-SESSION-2026-03-07-S58.md    # 🆕 NEW [S58 2026-03-07] - Résumé session S58 Auth migration + photo justificatif prêts
 ├── 📄 MULTI-AGENT-WORKFLOWS.md            # 🆕 NOUVEAU [31/10/2025] - Workflows multi-agents validés
 ├── 📄 CURSOR-2.0-CONFIG.md                # 🆕 NOUVEAU [31/10/2025] - Configuration Cursor 2.0
 ├── 📄 setup-multiagent-test.ps1           # 🆕 NOUVEAU [31/10/2025] - Script automation setup worktrees
@@ -122,6 +123,8 @@ bazarkely-2/
 │       └── 📄 20251115120000_make_supplier_company_id_nullable.sql # 🆕 NEW [2025-11-15] - Migration supplier company_id nullable
 │   └── 📁 functions/                      # Fonctions Supabase
 │       └── 📄 generate_monthly_interest_periods.sql # 🆕 NEW [S55 2026-03-01] - Fonction génération périodes intérêts mensuelles (appelée par pg_cron jobid=1)
+│   └── 📁 storage/                        # Supabase Storage buckets
+│       └── 📁 loan-receipts/              # 🆕 NEW [S58 2026-03-07] - Bucket privé pour justificatifs paiement prêts (RLS 3 policies)
 ├── 📁 backend/                            # Spécifications API backend
 │   ├── 📄 API-PRACTICE-TRACKING-SPEC.md  # 🆕 NOUVEAU - Spécification API suivi pratiques (2025-10-17)
 │   └── 📄 LEADERBOARD-API-SPEC.md        # 🆕 NOUVEAU - Spécification API classement (2025-10-17)
@@ -200,6 +203,8 @@ bazarkely-2/
 │   │   │   │   └── 📄 CertificateDisplay.tsx # 🆕 NOUVEAU - Liste certificats téléchargement (2025-10-17)
 │   │   │   ├── 📁 Leaderboard/               # 🆕 NOUVEAU - Composants classement (2025-10-17)
 │   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
+│   │   │   ├── 📁 Family/                     # Composants Espace Famille
+│   │   │   │   └── 📄 ReimbursementPaymentModal.tsx # ✅ Composant modal paiement remboursements (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
 │   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications (MODIFIÉ [S56] 2026-03-04 - SW-ready guard fix + intégration SettingsPage)
 │   │   │   ├── 📄 BudgetGauge.tsx # 🆕 NOUVEAU [S43] 2026-01-27 - Composant budget gauge avec layout inline, barre progression et montants
@@ -231,8 +236,13 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
-│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place)
-│   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions)
+│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place) (MODIFIÉ [S58] 2026-03-07 - PaymentModal receipt upload UI)
+│   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions) (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📄 FamilySettingsPage.tsx   # ✅ Page paramètres famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📄 FamilyBalancePage.tsx    # ✅ Page balance famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📄 FamilyMembersPage.tsx    # ✅ Page membres famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📄 FamilyTransactionsPage.tsx # ✅ Page transactions famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📄 FamilyReimbursementsPage.tsx # ✅ Page remboursements famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   └── 📄 AdminPage.tsx           # ✅ Page d'administration (MODIFIÉ 2025-01-20 - Grille 3 colonnes mobile + accordéon utilisateur + objectif Fond d'urgence)
 │   │   ├── 📁 services/                  # Services métier
 │   │   │   ├── 📄 authService.ts         # ✅ Service d'authentification
@@ -253,7 +263,7 @@ bazarkely-2/
 │   │   │   ├── 📄 toastService.ts        # ✅ Service notifications toast
 │   │   │   ├── 📄 dialogService.ts       # ✅ Service dialogues modernes
 │   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
-│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée)
+│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée) (MODIFIÉ [S58] 2026-03-07 - uploadLoanReceipt ajoutée, 683 lignes)
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs

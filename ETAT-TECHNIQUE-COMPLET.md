@@ -1,8 +1,8 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.3.1 (LoansPage Auth Loop Fix - Session S57)  
-**Date de mise à jour:** 2026-03-04  
+**Version:** 3.3.3 (Family Auth Pattern Migration + Loan Receipt Upload - Session S58)  
+**Date de mise à jour:** 2026-03-07  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + Transactions Inline Loan Drawer (v3.1.0)  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -1412,6 +1412,32 @@ family_shared_transactions (
 - ✅ `frontend/src/constants/appVersion.ts` aligné en `v3.3.1`
 
 **Prêt pour Production:** ✅ OUI - Déployé v3.3.1 (Session S57)
+
+#### **16.7.16 Family Auth Migration + Justificatif Photo Prêts (Session S58)** ✅ COMPLÉTÉ
+
+**Version:** v3.3.3  
+**Commits:** `d0ced12` (v3.3.2 auth fix), version finale déployée `v3.3.3`  
+**Statut:** ✅ PRODUCTION - Pattern auth unifié + upload justificatif opérationnel
+
+**Migration Auth (100% pages Family):**
+- ✅ Migration de 7 fichiers du pattern `useRequireAuth` vers `useAppStore`:  
+  `FamilyTransactionsPage`, `FamilyMembersPage`, `FamilyBalancePage`, `FamilyDashboardPage`, `FamilyReimbursementsPage`, `FamilySettingsPage`, `ReimbursementPaymentModal`
+- ✅ `useRequireAuth` supprimé des pages Family
+- ✅ `useAppStore()` devient le pattern auth unique sur 100% des pages Family
+- ✅ Bug de boucle auth éliminé sur l'ensemble des routes Family
+
+**Prêts - Upload justificatif photo (Phase 3):**
+- ✅ `uploadLoanReceipt()` ajouté dans `loanService.ts`
+- ✅ Colonne `receipt_url` ajoutée sur `loan_repayments`
+- ✅ Champ upload optionnel ajouté dans `PaymentModal` (mode direct uniquement)
+- ✅ Bucket Supabase Storage `loan-receipts` configuré avec policies RLS
+- ✅ Correctif sanitization nom de fichier pour caractères spéciaux
+
+**Dette technique identifiée S58:**
+- ⚠️ `loanService.ts` atteint **683 lignes** (dépasse le guideline 300 lignes)
+- 🔄 Refactor planifié S59: split en `loanService.ts` + `loanStorageService.ts`
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.3.3 (Session S58, 2026-03-07)
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3852,4 +3878,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-03-04 - BazarKELY v3.3.1 (LoansPage Auth Loop Fix - Session S57)*
+*Document généré automatiquement le 2026-03-07 - BazarKELY v3.3.3 (Family Auth Pattern Migration + Loan Receipt Upload - Session S58)*

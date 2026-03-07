@@ -1,9 +1,9 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.10 (Auth Loop Fix LoansPage - Session S57 v3.3.1)  
-**Date de mise à jour:** 2026-03-04  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + LoansPage Auth Loop Fix (v3.3.1)  
+**Version:** 5.11 (Family Auth Migration + Loan Receipt Upload - Session S58 v3.3.3)  
+**Date de mise à jour:** 2026-03-07  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + LoansPage Auth Loop Fix (v3.3.1) + Family Pages Auth Migration + Loan Receipt Upload (v3.3.3)  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
 ---
@@ -1617,7 +1617,28 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 04 MARS 2026)
+## 🎉 GAPS RÉSOLUS (SESSION S58 - 2026-03-07 - FAMILY AUTH MIGRATION + RECEIPT UPLOAD v3.3.3)
+
+### **Gap useRequireAuth loop sur pages Family** ✅ RÉSOLU
+- **Problème identifié:** plusieurs pages Family utilisaient encore `useRequireAuth`, exposant des boucles auth sur navigation familiale
+- **Solution implémentée:** migration de 7 fichiers vers `useAppStore()` (`FamilyTransactionsPage`, `FamilyMembersPage`, `FamilyBalancePage`, `FamilyDashboardPage`, `FamilyReimbursementsPage`, `FamilySettingsPage`, `ReimbursementPaymentModal`)
+- **Impact:** pattern auth unifié, navigation Family stabilisée
+- **Statut:** ✅ RÉSOLU - Déployé v3.3.2/v3.3.3
+
+### **Gap FamilySettingsPage HIGH RISK dual-hook conflict** ✅ RÉSOLU
+- **Problème identifié:** conflit potentiel dual-hook lié au pattern auth dans `FamilySettingsPage`
+- **Solution implémentée:** suppression du pattern `useRequireAuth`, bascule sur `useAppStore()` uniquement
+- **Impact:** suppression du risque de conflit/loop auth sur paramètres famille
+- **Statut:** ✅ RÉSOLU - Session S58
+
+**Résumé Session S58:**
+- **2 gaps résolus:** auth loop Family pages + conflit dual-hook FamilySettingsPage
+- **Version déployée:** v3.3.3
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 07 MARS 2026)
 
 ### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
 - **Problème identifié:** 21 appels `.from()` dans `reimbursementService.ts`, `TransactionDetailPage.tsx` et `familySharingService.ts` peuvent viser une mauvaise table de remboursements selon les flux
@@ -1640,6 +1661,18 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Impact:** risque d'incohérence métier sur des cas rares mais critiques
 - **Priorité:** MOYENNE
 
+### **Gap loanService.ts trop volumineux (683 lignes)** ⚠️ IDENTIFIÉ S58
+- **Problème identifié:** `loanService.ts` atteint 683 lignes (au-delà du guideline 300 lignes), mélange logique métier prêts et logique storage upload
+- **Solution prévue (S59):** split en `loanService.ts` (métier) + `loanStorageService.ts` (upload/signed URL/storage)
+- **Impact:** maintenance difficile, risque de régressions, lisibilité réduite
+- **Priorité:** HAUTE
+
+### **Gap PaymentModal mode direct sans transaction liée** ⚠️ EN ATTENTE
+- **Problème identifié:** mode direct de `PaymentModal` n'écrit pas de transaction liée dans la table `transactions` (flux pré-S54)
+- **Solution prévue:** aligner avec l'architecture d'intégration S54 (création/liaison transactionnelle systématique)
+- **Impact:** traçabilité comptable partielle entre module prêts et ledger transactions
+- **Priorité:** MOYENNE
+
 ### **Gap TransactionDetailPage - Formulaire édition prêt incomplet** ⚠️ EN ATTENTE
 - **Problème identifié:** `TransactionDetailPage` n'intègre pas encore la même jauge progression/historique prêt que `TransactionsPage` pour l'édition des transactions de remboursement
 - **Solution prévue:** intégrer les mêmes composants de contexte prêt (jauge, historique, info prêt parent) dans le formulaire d'édition
@@ -1657,11 +1690,11 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Chemin confirmé:** `appVersion.ts` = `frontend/src/constants/appVersion.ts` (et non `frontend/src/utils/appVersion.ts`)
 - **Statut:** synchronisation versions `package.json` + `appVersion.ts` appliquée en v3.3.1
 
-### **Gap Phase 3 Prêts - Photo Justificatif** ⏳ EN ATTENTE
-- **Problème identifié:** fonctionnalité justificatif photo pour les prêts non implémentée dans le flux Phase 3
-- **Solution prévue:** ajout capture/upload justificatif photo et affichage dans détail prêt/remboursement
-- **Impact:** traçabilité visuelle incomplète pour validation des opérations de prêt
-- **Priorité:** MOYENNE
+### **Gap Durabilité `receipt_url` (signed URL 1 an)** ⚠️ IDENTIFIÉ S58
+- **Problème identifié:** `receipt_url` stocke actuellement une signed URL avec expiration ~1 an, pouvant invalider les justificatifs historiques
+- **Solution prévue:** stratégie URL permanente (path stocké + signed URL régénérée à la demande, ou URL publique sécurisée)
+- **Impact:** risque de liens justificatifs expirés en production
+- **Priorité:** HAUTE
 
 ### **Gap Règle #14 Cursor Disk Save Verification** ⚠️ RÈGLE OPÉRATIONNELLE
 - **Problème identifié:** Après suppression/modification par Cursor, les changements peuvent être visuellement appliqués dans l'éditeur mais non persistés sur le disque. Découvert lors du nettoyage console.log Session S48 : première passe de suppression affichée dans l'éditeur mais fichier disque inchangé
@@ -1924,4 +1957,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-03-04 - BazarKELY v5.10 (Auth Loop Fix LoansPage - Session S57 v3.3.1)*
+*Document généré automatiquement le 2026-03-07 - BazarKELY v5.11 (Family Auth Migration + Loan Receipt Upload - Session S58 v3.3.3)*
