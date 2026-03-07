@@ -322,6 +322,26 @@ const TransactionsPage = () => {
             amountInitial: result?.loan?.amountInitial || 0,
             createdAt: result?.loan?.createdAt || ''
           });
+          if (selectedTransaction.category === 'loan_repayment_received' && (result?.loan?.id || result?.loanId)) {
+            const history = await getRepaymentHistory(result?.loan?.id || result?.loanId);
+            const filtered = history.filter((r: any) => (r.transactionId ?? r.transaction_id) !== selectedTransaction.id);
+            setRepaymentHistory(
+              filtered.map((r: any) => ({
+                amount_paid: r.amountPaid ?? r.amount_paid ?? 0,
+                payment_date: r.paymentDate ?? r.payment_date,
+                notes: r.notes,
+                transactionId: r.transactionId ?? r.transaction_id ?? undefined
+              }))
+            );
+            const totalPaid = filtered.reduce((sum: number, r: any) => sum + (r.amountPaid ?? r.amount_paid ?? 0), 0);
+            const amountInitial = result?.loan?.amountInitial || result?.loan?.amount_initial || 0;
+            const percentage = amountInitial > 0 ? Math.min(100, Math.round((totalPaid / amountInitial) * 100)) : 0;
+            setLoanProgress({
+              totalRepaid: totalPaid,
+              remaining: Math.max(amountInitial - totalPaid, 0),
+              percentage
+            });
+          }
         } catch {
           setParentLoanInfo(null);
         }
@@ -553,7 +573,7 @@ const TransactionsPage = () => {
     setRepaymentDescription(
       transaction.category === 'loan'
         ? `Remb. de ${beneficiaryName || transaction.description}`
-        : `Remb. ${transaction.description}`
+        : `Remb. de ${beneficiaryName || transaction.description}`
     );
     setRepaymentNotes('');
     setRepaymentIndex(1);
@@ -1579,28 +1599,48 @@ const TransactionsPage = () => {
                         )
                       ) : isRepaymentCat ? (
                         parentLoanInfo ? (
-                          <div
-                            className="cursor-pointer hover:bg-green-50 rounded p-1 -m-1 transition-colors flex justify-between items-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (parentLoanInfo.transactionId) {
-                                setSelectedTransactionId(null);
-                                setTimeout(() => {
-                                  const el = document.getElementById(`transaction-${parentLoanInfo.transactionId}`);
-                                  if (el) {
-                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    el.classList.add('ring-2', 'ring-green-400', 'ring-offset-2');
-                                    setTimeout(() => el.classList.remove('ring-2', 'ring-green-400', 'ring-offset-2'), 2000);
-                                  }
-                                }, 150);
-                              }
-                            }}
-                          >
-                            <p className="text-xs text-gray-500">Dette initiale 🔗</p>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900 text-xs">{parentLoanInfo.amountInitial.toLocaleString('fr-FR')} Ar</p>
-                              <p className="text-xs text-gray-400">{new Date(parentLoanInfo.createdAt).toLocaleDateString('fr-FR')}</p>
+                          <div className="space-y-2">
+                            <div
+                              className="cursor-pointer hover:bg-green-50 rounded p-1 -m-1 transition-colors flex justify-between items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (parentLoanInfo.transactionId) {
+                                  setSelectedTransactionId(null);
+                                  setTimeout(() => {
+                                    const el = document.getElementById(`transaction-${parentLoanInfo.transactionId}`);
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      el.classList.add('ring-2', 'ring-green-400', 'ring-offset-2');
+                                      setTimeout(() => el.classList.remove('ring-2', 'ring-green-400', 'ring-offset-2'), 2000);
+                                    }
+                                  }, 150);
+                                }
+                              }}
+                            >
+                              <p className="text-xs text-gray-500">Dette initiale 🔗</p>
+                              <div className="text-right">
+                                <p className="font-semibold text-gray-900 text-xs">{parentLoanInfo.amountInitial.toLocaleString('fr-FR')} Ar</p>
+                                <p className="text-xs text-gray-400">{new Date(parentLoanInfo.createdAt).toLocaleDateString('fr-FR')}</p>
+                              </div>
                             </div>
+                            {transaction.category === 'loan_repayment_received' && repaymentHistory.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                  <span>Remboursé</span>
+                                  <span>{loanProgress?.percentage ? Math.round(loanProgress.percentage) : 0}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                  <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${loanProgress?.percentage ? Math.round(loanProgress.percentage) : 0}%` }} />
+                                </div>
+                                <p className="text-xs font-medium text-gray-600 mb-1">Historique des versements</p>
+                                {repaymentHistory.map((r: any, i: number) => (
+                                  <div key={r.id || i} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-0">
+                                    <span className="text-gray-500">{new Date(r.payment_date).toLocaleDateString('fr-FR')}</span>
+                                    <span className="font-semibold text-green-700">+{r.amount_paid.toLocaleString('fr-FR')} Ar</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-xs font-medium text-gray-600">Chargement...</p>
