@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle, 
-  ChevronRight, Users, Wallet, Loader2, ChevronDown
+  ChevronRight, Users, Wallet, Loader2, ChevronDown, Paperclip
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCurrency } from '../hooks/useCurrency';
@@ -19,6 +19,7 @@ import {
   getUnpaidInterestPeriods,
   getUnlinkedRevenueTransactions,
   recordPayment,
+  uploadLoanReceipt,
   getRepaymentHistory,
   getTotalUnpaidInterestByLoan
 } from '../services/loanService';
@@ -277,9 +278,11 @@ interface PaymentModalProps {
 }
 
 const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, onSuccess }: PaymentModalProps) => {
+  const { user } = useAppStore();
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [mode, setMode] = useState<'direct' | 'link'>('direct');
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
@@ -328,6 +331,11 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
     setAmountPaid(Math.abs(transaction.amount).toString());
   };
 
+  const handleClose = () => {
+    setReceiptFile(null);
+    onClose();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -338,12 +346,17 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
 
     try {
       setSubmitting(true);
+      let receiptUrl: string | null = null;
+      if (receiptFile && user?.id) {
+        receiptUrl = await uploadLoanReceipt(user.id, receiptFile);
+      }
       await recordPayment(
         loanId,
         parseFloat(amountPaid),
         paymentDate,
         notes.trim() || undefined,
-        mode === 'link' ? selectedTransactionId : undefined
+        mode === 'link' ? selectedTransactionId : undefined,
+        receiptUrl
       );
       toast.success('Paiement enregistré avec succès');
       onSuccess();
@@ -357,7 +370,7 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
   return (
     <Modal
       isOpen={true}
-      onClose={onClose}
+      onClose={handleClose}
       title={`Enregistrer un paiement - ${loanName}`}
       size="lg"
     >
@@ -370,6 +383,7 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
               setMode('direct');
               setSelectedTransactionId(null);
               setAmountPaid('');
+              setReceiptFile(null);
             }}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
               mode === 'direct'
@@ -383,6 +397,7 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
             type="button"
             onClick={() => {
               setMode('link');
+              setReceiptFile(null);
               loadUnlinkedTransactions();
             }}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
@@ -440,6 +455,21 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 placeholder="Notes sur ce paiement..."
               />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-gray-500" />
+                Justificatif (optionnel)
+              </label>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+              <p className="text-xs text-gray-500">
+                {receiptFile ? receiptFile.name : 'Aucun fichier'}
+              </p>
             </div>
           </>
         )}
@@ -522,7 +552,7 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
           <Button
             type="button"
             variant="secondary"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={submitting}
           >
             Annuler
