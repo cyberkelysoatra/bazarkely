@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle, 
-  ChevronRight, Users, Wallet, Loader2, ChevronDown, Paperclip
+  ChevronRight, Users, Wallet, Loader2, ChevronDown, Paperclip, Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCurrency } from '../hooks/useCurrency';
@@ -19,6 +19,7 @@ import {
   getUnpaidInterestPeriods,
   getUnlinkedRevenueTransactions,
   recordPayment,
+  deleteLoan,
   uploadLoanReceipt,
   getRepaymentHistory,
   getTotalUnpaidInterestByLoan
@@ -35,6 +36,7 @@ import { CurrencyDisplay } from '../components/Currency';
 import Modal from '../components/UI/Modal';
 import Input from '../components/UI/Input';
 import Button from '../components/UI/Button';
+import ConfirmDialog from '../components/UI/ConfirmDialog';
 
 interface CreateLoanModalProps {
   isOpen: boolean;
@@ -676,6 +678,7 @@ const LoansPage = () => {
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [loanToDelete, setLoanToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadLoans();
@@ -706,6 +709,18 @@ const LoansPage = () => {
       console.error('[LoansPage] Error loading loans:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteLoan = async (id: string) => {
+    try {
+      await deleteLoan(id);
+      setLoans(prev => prev.filter(l => l.id !== id));
+      toast.success('Prêt supprimé');
+    } catch {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setLoanToDelete(null);
     }
   };
 
@@ -963,6 +978,13 @@ const LoansPage = () => {
                           loanId={loan.id}
                           currency={loan.currency || 'MGA'}
                         />
+                        <button
+                          onClick={() => setLoanToDelete(loan.id)}
+                          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors text-sm font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Supprimer ce prêt
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1004,6 +1026,17 @@ const LoansPage = () => {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={loanToDelete !== null}
+        onClose={() => setLoanToDelete(null)}
+        onConfirm={() => loanToDelete && handleDeleteLoan(loanToDelete)}
+        title="Supprimer ce prêt ?"
+        message="Cette action est irréversible. Le prêt et tout son historique de remboursements seront définitivement supprimés."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+      />
     </div>
   );
 };
