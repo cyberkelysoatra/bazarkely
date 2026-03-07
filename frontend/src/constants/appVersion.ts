@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v3.3.3';
+export const APP_VERSION = 'v3.4.0';
 export const APP_VERSION_NAME = 'Loans Transaction View S54';
 export const LAST_UPDATED = '2026-03-07';
 export const APP_BUILD_DATE = '2026-03-07';
