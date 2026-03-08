@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, X, Wallet, CreditCard, PiggyBank, Smartphone } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
+import { useCurrency } from '../hooks/useCurrency';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
 
 const AddAccountPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
+  const { displayCurrency } = useCurrency();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -174,7 +176,7 @@ const AddAccountPage = () => {
           {/* Solde initial */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Solde initial (MGA)
+              Solde initial ({displayCurrency === 'EUR' ? 'EUR' : 'MGA'})
             </label>
             <input
               type="number"
