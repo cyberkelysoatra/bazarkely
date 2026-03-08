@@ -333,7 +333,7 @@ const TransactionsPage = () => {
                 transactionId: r.transactionId ?? r.transaction_id ?? undefined
               }))
             );
-            const totalPaid = filtered.reduce((sum: number, r: any) => sum + (r.amountPaid ?? r.amount_paid ?? 0), 0);
+            const totalPaid = history.reduce((sum: number, r: any) => sum + (r.amountPaid ?? r.amount_paid ?? 0), 0);
             const amountInitial = result?.loan?.amountInitial || result?.loan?.amount_initial || 0;
             const percentage = amountInitial > 0 ? Math.min(100, Math.round((totalPaid / amountInitial) * 100)) : 0;
             setLoanProgress({
@@ -568,12 +568,10 @@ const TransactionsPage = () => {
     setRepaymentAccountId(transaction.accountId || '');
     setRepaymentDate(new Date().toISOString().split('T')[0]);
     const beneficiaryName = transaction.description
-      ?.replace(/^Pr[eê]t\s+(?:[aà]|de)\s+/i, '')
+      ?.replace(/^(?:Remb\.\s+(?:Pr[eê]t\s+)?(?:[aà]|de)\s+|Remb\.\s+(?:de\s+)?|Pr[eê]t\s+(?:[aà]|de)\s+)/i, '')
       .trim();
     setRepaymentDescription(
-      transaction.category === 'loan'
-        ? `Remb. de ${beneficiaryName || transaction.description}`
-        : `Remb. de ${beneficiaryName || transaction.description}`
+      `Remb. de ${beneficiaryName || transaction.description}`
     );
     setRepaymentNotes('');
     setRepaymentIndex(1);
@@ -582,7 +580,13 @@ const TransactionsPage = () => {
     setLoanProgress(null);
 
     try {
-      const loanId = await getLoanIdByTransactionId(transaction.id);
+      let loanId: string | null = null;
+      if (transaction.category === 'loan_repayment_received') {
+        const repaymentResult: any = await getLoanByRepaymentTransactionId(transaction.id);
+        loanId = repaymentResult?.loan?.id || repaymentResult?.loanId || null;
+      } else {
+        loanId = await getLoanIdByTransactionId(transaction.id);
+      }
 
       if (!loanId) {
         setLoanProgress(null);
@@ -590,19 +594,28 @@ const TransactionsPage = () => {
         return;
       }
 
-      const currentRepaymentIndex = await getRepaymentIndexForTransaction(loanId, transaction.id);
-      setRepaymentIndex((currentRepaymentIndex || 0) + 1);
-
       const repayments = await getRepaymentHistory(loanId);
-      setRepaymentHistory(repayments.map((r: any) => ({ amount_paid: r.amountPaid ?? r.amount_paid, payment_date: r.paymentDate ?? r.payment_date, notes: r.notes, transactionId: r.transactionId ?? r.transaction_id ?? undefined })));
+      const currentRepaymentIndex = repayments.length;
+      setRepaymentIndex(currentRepaymentIndex + 1);
+      const filteredRepayments = transaction.category === 'loan_repayment_received'
+        ? repayments.filter((r: any) => (r.transactionId ?? r.transaction_id) !== transaction.id)
+        : repayments;
+      setRepaymentHistory(filteredRepayments.map((r: any) => ({ amount_paid: r.amountPaid ?? r.amount_paid, payment_date: r.paymentDate ?? r.payment_date, notes: r.notes, transactionId: r.transactionId ?? r.transaction_id ?? undefined })));
       const totalRepaid = repayments.reduce((sum, repayment: any) => {
         return sum + Number(repayment.amount_paid ?? repayment.amountPaid ?? 0);
       }, 0);
-      const loanAmount = Math.abs(transaction.amount);
+      let loanAmount: number;
+      if (transaction.category === 'loan_repayment_received') {
+        const loanData: any = await getLoanByRepaymentTransactionId(transaction.id);
+        loanAmount = Math.abs(loanData?.loan?.amountInitial || loanData?.loan?.amount_initial || transaction.amount);
+      } else {
+        loanAmount = Math.abs(transaction.amount);
+      }
       const remaining = Math.max(loanAmount - totalRepaid, 0);
       const percentage = loanAmount > 0 ? Math.min((totalRepaid / loanAmount) * 100, 100) : 0;
 
       setLoanProgress({ totalRepaid, remaining, percentage });
+      setRepaymentAmount(remaining > 0 ? remaining.toString() : '0');
     } catch {
       setLoanProgress(null);
     } finally {
@@ -1632,9 +1645,35 @@ const TransactionsPage = () => {
                                 <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                   <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${loanProgress?.percentage ? Math.round(loanProgress.percentage) : 0}%` }} />
                                 </div>
+                                <div className="flex justify-between text-xs mt-1 mb-2">
+                                  <span className="text-gray-600">Remboursé : <span className="font-semibold text-green-700">{(loanProgress?.totalRepaid || 0).toLocaleString('fr-FR')} Ar</span></span>
+                                  <span className="text-gray-600">Restant : <span className="font-semibold text-red-600">{(loanProgress?.remaining || 0).toLocaleString('fr-FR')} Ar</span></span>
+                                </div>
                                 <p className="text-xs font-medium text-gray-600 mb-1">Historique des versements</p>
                                 {repaymentHistory.map((r: any, i: number) => (
-                                  <div key={r.id || i} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-0">
+                                  <div
+                                    key={r.id || i}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (r.transactionId) {
+                                        resetRepaymentForm();
+                                        setSelectedTransactionId(null);
+                                        setHighlightedTransactionId(r.transactionId);
+                                        setTimeout(() => {
+                                          const el = document.getElementById(`transaction-${r.transactionId}`);
+                                          if (el) {
+                                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            el.classList.add('ring-2', 'ring-green-400', 'ring-offset-2');
+                                            setTimeout(() => {
+                                              el.classList.remove('ring-2', 'ring-green-400', 'ring-offset-2');
+                                              setHighlightedTransactionId(null);
+                                            }, 2000);
+                                          }
+                                        }, 150);
+                                      }
+                                    }}
+                                    className={`flex justify-between text-xs py-1 border-b border-gray-100 last:border-0 ${r.transactionId ? 'cursor-pointer hover:bg-gray-50 rounded' : ''}`}
+                                  >
                                     <span className="text-gray-500">{new Date(r.payment_date).toLocaleDateString('fr-FR')}</span>
                                     <span className="font-semibold text-green-700">+{r.amount_paid.toLocaleString('fr-FR')} Ar</span>
                                   </div>
@@ -1680,7 +1719,7 @@ const TransactionsPage = () => {
                     )}
                   </div>
 
-                  {isLoanCategory && repaymentHistory.length > 0 && (
+                  {isLoanCategory && transaction.category !== 'loan_repayment_received' && repaymentHistory.length > 0 && (
                     <div className="mb-2">
                       <p className="text-xs font-semibold text-gray-600 mb-1">Historique des remboursements</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
