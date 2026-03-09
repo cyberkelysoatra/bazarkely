@@ -21,6 +21,8 @@ export interface PersonalLoan {
   photoUrl: string | null;
   transactionId?: string | null; // Transaction ID that created this loan
   status: LoanStatus;
+  lenderConfirmedAt: string | null;
+  borrowerConfirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +36,8 @@ export interface LoanRepayment {
   capitalPortion: number;
   paymentDate: string;
   notes: string | null;
+  confirmedAt: string | null;
+  confirmedByUserId: string | null;
   createdAt: string;
 }
 
@@ -80,7 +84,8 @@ function mapLoanRow(row: any): PersonalLoan {
     interestFrequency: row.interest_frequency, currentCapital: row.current_capital,
     dueDate: row.due_date, description: row.description, photoUrl: row.photo_url,
     transactionId: row.transaction_id || null,
-    status: row.status, createdAt: row.created_at, updatedAt: row.updated_at,
+    status: row.status, lenderConfirmedAt: row.lender_confirmed_at ?? null, borrowerConfirmedAt: row.borrower_confirmed_at ?? null,
+    createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 
@@ -89,7 +94,8 @@ function mapRepaymentRow(row: any): LoanRepayment {
     id: row.id, loanId: row.loan_id, transactionId: row.transaction_id,
     amountPaid: row.amount_paid, interestPortion: row.interest_portion,
     capitalPortion: row.capital_portion, paymentDate: row.payment_date,
-    notes: row.notes, createdAt: row.created_at,
+    notes: row.notes, confirmedAt: row.confirmed_at ?? null, confirmedByUserId: row.confirmed_by_user_id ?? null,
+    createdAt: row.created_at,
   };
 }
 function mapInterestPeriodRow(row: any): LoanInterestPeriod {
@@ -642,4 +648,73 @@ export async function getTotalUnpaidInterestByLoan(userId: string): Promise<Unpa
     console.error('Erreur dans getTotalUnpaidInterestByLoan:', error);
     return [];
   }
+}
+
+/**
+ * Confirms a loan as the borrower, setting borrower_confirmed_at and activating the loan
+ * @param loanId - ID of the loan to confirm
+ */
+export async function confirmLoanAsBorrower(loanId: string): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Utilisateur non authentifié');
+
+    const { error } = await supabase
+      .from('personal_loans')
+      .update({
+        borrower_confirmed_at: new Date().toISOString(),
+        status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', loanId);
+
+    if (error) throw new Error(`Erreur confirmation prêt: ${error.message}`);
+  } catch (error) {
+    console.error('Erreur dans confirmLoanAsBorrower:', error);
+    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la confirmation du prêt');
+  }
+}
+
+/**
+ * Confirms a repayment as the lender, setting confirmed_at and confirmed_by_user_id
+ * @param repaymentId - ID of the repayment to confirm
+ */
+export async function confirmRepaymentAsLender(repaymentId: string): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Utilisateur non authentifié');
+
+    const { error } = await supabase
+      .from('loan_repayments')
+      .update({
+        confirmed_at: new Date().toISOString(),
+        confirmed_by_user_id: user.id
+      })
+      .eq('id', repaymentId);
+
+    if (error) throw new Error(`Erreur confirmation remboursement: ${error.message}`);
+  } catch (error) {
+    console.error('Erreur dans confirmRepaymentAsLender:', error);
+    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la confirmation du remboursement');
+  }
+}
+
+/**
+ * Checks if a loan is pending borrower confirmation
+ * Lender created this loan, borrower has not confirmed yet.
+ * @param loan - The loan to check
+ * @returns true if loan is pending borrower confirmation
+ */
+export function isPendingBorrowerConfirmation(loan: PersonalLoan): boolean {
+  return loan.status === 'pending' && loan.borrowerConfirmedAt === null && loan.isITheBorrower === false;
+}
+
+/**
+ * Checks if a repayment is pending lender confirmation
+ * Borrower declared this repayment, lender has not confirmed receipt yet.
+ * @param repayment - The repayment to check
+ * @returns true if repayment is pending lender confirmation
+ */
+export function isPendingLenderRepaymentConfirmation(repayment: LoanRepayment): boolean {
+  return repayment.confirmedAt === null;
 }

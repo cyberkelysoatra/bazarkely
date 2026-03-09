@@ -1,8 +1,8 @@
 # 📊 GAP TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Écarts entre Vision Fonctionnelle et État Réel
 
-**Version:** 5.11 (Family Auth Migration + Loan Receipt Upload - Session S58 v3.3.3)  
-**Date de mise à jour:** 2026-03-07  
+**Version:** 5.13 (Loans Split + Double Validation - Session S60 v3.5.0)  
+**Date de mise à jour:** 2026-03-08  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Budget Éducation + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories Corrigé + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) Complète + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Family Reimbursements Payment System Phase 1 (v2.8.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + LoansPage Auth Loop Fix (v3.3.1) + Family Pages Auth Migration + Loan Receipt Upload (v3.3.3)  
 **Audit:** ✅ COMPLET - Toutes les incohérences identifiées et corrigées + Optimisations UI + Budget Éducation + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Anonyme + Correction Calcul Fonds d'Urgence + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories Documenté + Phase B Goals Deadline Sync Complète + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Family Reimbursements Payment System Phase 1 Fixes (Session S47) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -1638,7 +1638,55 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-## ⚠️ GAPS RESTANTS (MISE À JOUR 07 MARS 2026)
+## 🎉 GAPS RÉSOLUS (SESSION S59 - 2026-03-08 - LOANS DRAWER FIXES + STORAGE SPLIT v3.4.4)
+
+### **Gap loanService.ts > 300 lignes** ✅ RÉSOLU S59
+- **Problème identifié:** `loanService.ts` à 683 lignes, mélangeant logique métier prêts + stockage upload
+- **Solution implémentée:** split en `loanService.ts` (607 lignes) + `loanStorageService.ts` (43 lignes), `uploadLoanReceipt()` isolé
+- **Impact:** structure service clarifiée, dette technique réduite
+- **Statut:** ✅ RÉSOLU - Déployé v3.4.0
+
+### **Gap Drawer loan_repayment_received (titre/jauge/historique)** ✅ RÉSOLU S59
+- **Problème identifié:** titre incorrect, chargement jauge incomplet, historique ambigu sur `loan_repayment_received`
+- **Solution implémentée:** titre `Remb. de X`, jauge via `getLoanByRepaymentTransactionId`, historique filtré (hors transaction courante), navigation entre versements
+- **Impact:** drawer cohérent et utilisable en production pour remboursements reçus
+- **Statut:** ✅ RÉSOLU - Déployé v3.4.2/v3.4.3
+
+### **Gap Label devise hardcodé MGA (AddAccountPage)** ✅ RÉSOLU S59
+- **Problème identifié:** libellé solde initial non dynamique côté devise
+- **Solution implémentée:** intégration `useCurrency` + libellé dynamique `Solde initial (EUR)` lorsque toggle EUR actif
+- **Impact:** cohérence UI multi-devises améliorée
+- **Statut:** ✅ RÉSOLU - Déployé v3.4.4
+
+**Résumé Session S59:**
+- **3 gaps résolus:** split service, corrections drawer remboursement reçu, libellé devise dynamique
+- **Versions déployées:** v3.4.0 -> v3.4.4
+- **Régression:** 0
+
+---
+
+## 🎉 GAPS RÉSOLUS (SESSION S60 - 2026-03-08 - LOANS SPLIT + DOUBLE VALIDATION v3.5.0)
+
+### **Gap LoansPage.tsx > 300 lignes** ✅ RÉSOLU S60
+- **Problème identifié:** `LoansPage.tsx` à 1044 lignes, complexité trop élevée
+- **Solution implémentée:** split modulaire en 3 composants (`CreateLoanModal.tsx`, `PaymentModal.tsx`, `RepaymentHistorySection.tsx`) + `index.ts`, page réduite à 407 lignes
+- **Impact:** lisibilité et maintenabilité améliorées
+- **Statut:** ✅ RÉSOLU - Déployé v3.5.0
+
+### **Gap Pas de validation double prêteur/emprunteur** ✅ RÉSOLU S60
+- **Problème identifié:** absence de workflow de confirmation croisée sur prêt/remboursement
+- **Solution implémentée:** nouvelles colonnes DB (`borrower_confirmed_at`, `confirmed_at`, `confirmed_by_user_id`) + 4 fonctions `loanService` + badges/action de confirmation UI
+- **Impact:** sécurisation métier des confirmations prêteur/emprunteur
+- **Statut:** ✅ RÉSOLU - Déployé v3.5.0
+
+**Résumé Session S60:**
+- **2 gaps résolus:** split LoansPage + double validation prêteur/emprunteur
+- **Version déployée:** v3.5.0
+- **Régression:** 0
+
+---
+
+## ⚠️ GAPS RESTANTS (MISE À JOUR 08 MARS 2026)
 
 ### **Gap Remboursements - Wrong Table References** ⚠️ IDENTIFIÉ S53, FIX PLANIFIÉ S54
 - **Problème identifié:** 21 appels `.from()` dans `reimbursementService.ts`, `TransactionDetailPage.tsx` et `familySharingService.ts` peuvent viser une mauvaise table de remboursements selon les flux
@@ -1656,15 +1704,15 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 - **Priorité:** MOYENNE
 
 ### **Gap Edge Cases Remboursements Familiaux** ⚠️ EN ATTENTE
-- **Problème identifié:** cas limites encore à valider/corriger (surplus complexes, multi-débiteurs, enchaînements paiements partiels)
+- **Problème identifié:** edge cases remboursements familiaux non finalisés (surplus + multi-débiteurs)
 - **Solution prévue:** batterie de tests manuels + correction des scénarios limites identifiés
 - **Impact:** risque d'incohérence métier sur des cas rares mais critiques
 - **Priorité:** MOYENNE
 
-### **Gap loanService.ts trop volumineux (683 lignes)** ⚠️ IDENTIFIÉ S58
-- **Problème identifié:** `loanService.ts` atteint 683 lignes (au-delà du guideline 300 lignes), mélange logique métier prêts et logique storage upload
-- **Solution prévue (S59):** split en `loanService.ts` (métier) + `loanStorageService.ts` (upload/signed URL/storage)
-- **Impact:** maintenance difficile, risque de régressions, lisibilité réduite
+### **Gap TransactionsPage.tsx 2069L — split à planifier** ⚠️ OUVERT
+- **Problème identifié:** `TransactionsPage.tsx` (2069L) dépasse largement le guideline 300 lignes
+- **Solution prévue:** extraction en sous-composants + hooks dédiés (plan S60/S61)
+- **Impact:** maintenance difficile, onboarding lent, risque de régressions
 - **Priorité:** HAUTE
 
 ### **Gap PaymentModal mode direct sans transaction liée** ⚠️ EN ATTENTE
@@ -1957,4 +2005,4 @@ Le filtrage par catégorie ne fonctionnait pas lors de la navigation depuis les 
 
 ---
 
-*Document généré automatiquement le 2026-03-07 - BazarKELY v5.11 (Family Auth Migration + Loan Receipt Upload - Session S58 v3.3.3)*
+*Document généré automatiquement le 2026-03-08 - BazarKELY v5.13 (Loans Split + Double Validation - Session S60 v3.5.0)*

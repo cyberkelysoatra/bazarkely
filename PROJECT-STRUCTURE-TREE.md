@@ -72,6 +72,8 @@ bazarkely-2/
 ├── 📄 RESUME-SESSION-2026-03-04-S56.md    # 🆕 NEW [S56 2026-03-04] - Résumé session S56 Phase 3 notifications push prêts complète
 ├── 📄 RESUME-SESSION-2026-03-06-S57.md    # 🆕 NEW [S57 2026-03-06] - Résumé session S57 Fix useRequireAuth loop bug
 ├── 📄 RESUME-SESSION-2026-03-07-S58.md    # 🆕 NEW [S58 2026-03-07] - Résumé session S58 Auth migration + photo justificatif prêts
+├── 📄 RESUME-SESSION-2026-03-08-S59.md    # 🆕 NEW [S59 2026-03-08] - Résumé session S59 Split loanService + drawer fixes + delete loan
+├── 📄 RESUME-SESSION-2026-03-09-S60.md    # 🆕 NEW [S60 2026-03-09] - Résumé session S60 Split LoansPage + double validation prêts
 ├── 📄 MULTI-AGENT-WORKFLOWS.md            # 🆕 NOUVEAU [31/10/2025] - Workflows multi-agents validés
 ├── 📄 CURSOR-2.0-CONFIG.md                # 🆕 NOUVEAU [31/10/2025] - Configuration Cursor 2.0
 ├── 📄 setup-multiagent-test.ps1           # 🆕 NOUVEAU [31/10/2025] - Script automation setup worktrees
@@ -205,6 +207,11 @@ bazarkely-2/
 │   │   │   │   └── 📄 LeaderboardComponent.tsx # 🆕 NOUVEAU - Classement utilisateurs pagination (2025-10-17)
 │   │   │   ├── 📁 Family/                     # Composants Espace Famille
 │   │   │   │   └── 📄 ReimbursementPaymentModal.tsx # ✅ Composant modal paiement remboursements (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
+│   │   │   ├── 📁 Loans/                      # Composants Prêts Familiaux
+│   │   │   │   ├── 📄 CreateLoanModal.tsx     # 🆕 NEW [S60 2026-03-09] Modal création prêt, 236 lignes
+│   │   │   │   ├── 📄 PaymentModal.tsx       # 🆕 NEW [S60 2026-03-09] Modal paiement prêt, 315 lignes
+│   │   │   │   ├── 📄 RepaymentHistorySection.tsx # 🆕 NEW [S60 2026-03-09] Section historique remboursements, 129 lignes
+│   │   │   │   └── 📄 index.ts               # 🆕 NEW [S60 2026-03-09] Exports composants Loans, 4 lignes
 │   │   │   ├── 📄 NotificationPermissionRequest.tsx # ✅ NOUVEAU - Demande permission notifications
 │   │   │   └── 📄 NotificationSettings.tsx # ✅ NOUVEAU - Interface paramètres notifications (MODIFIÉ [S56] 2026-03-04 - SW-ready guard fix + intégration SettingsPage)
 │   │   │   ├── 📄 BudgetGauge.tsx # 🆕 NOUVEAU [S43] 2026-01-27 - Composant budget gauge avec layout inline, barre progression et montants
@@ -216,11 +223,12 @@ bazarkely-2/
 │   │   ├── 📁 pages/                     # Pages principales
 │   │   │   ├── 📄 AuthPage.tsx           # ✅ Page d'authentification (MODIFIÉ 2025-10-17 - 3 points intégration tracking)
 │   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset) (MODIFIÉ [S52] 2026-02-15 - LoanWidget ajoute sidebar) (MODIFIÉ [S56] 2026-03-04 - Notifications push prêts)
-│   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export)
+│   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export) (MODIFIÉ [S59] 2026-03-08 - Drawer loan_repayment_received fixes, 2068 lignes)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
 │   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé)
 │   │   │   ├── 📄 AddBudgetPage.tsx      # ✅ Ajout budget (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 AccountsPage.tsx       # ✅ Gestion des comptes (MODIFIÉ 2025-01-11 - Layout 2 colonnes + Transfert)
+│   │   │   ├── 📄 AddAccountPage.tsx      # ✅ Ajout compte (MODIFIÉ [S59] 2026-03-08 - Label EUR/MGA dynamique, 222 lignes)
 │   │   │   ├── 📄 BudgetsPage.tsx       # ✅ Gestion des budgets (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage) (MODIFIÉ 2025-01-20 - Cartes budget cliquables + navigation catégorie) (MODIFIÉ [S28] 2025-12-31 - Barre progression bicolore + icône épargne + style select)
 │   │   │   ├── 📄 BudgetStatisticsPage.tsx # 🆕 NOUVEAU [S28] 2025-12-31 - Page statistiques budgétaires multi-années (~600 lignes)
 │   │   │   ├── 📄 GoalsPage.tsx         # ✅ Gestion des objectifs
@@ -236,7 +244,7 @@ bazarkely-2/
 │   │   │   ├── 📄 QuizResultsPage.tsx     # 🆕 NOUVEAU - Page résultats + seuil 90% + retry
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
-│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place) (MODIFIÉ [S58] 2026-03-07 - PaymentModal receipt upload UI)
+│   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place) (MODIFIÉ [S58] 2026-03-07 - PaymentModal receipt upload UI) (MODIFIÉ [S59] 2026-03-08 - Delete button avec ConfirmDialog, 1044 lignes) (MODIFIÉ [S60] 2026-03-09 - Split composants, 407 lignes)
 │   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions) (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📄 FamilySettingsPage.tsx   # ✅ Page paramètres famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📄 FamilyBalancePage.tsx    # ✅ Page balance famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
@@ -263,7 +271,8 @@ bazarkely-2/
 │   │   │   ├── 📄 toastService.ts        # ✅ Service notifications toast
 │   │   │   ├── 📄 dialogService.ts       # ✅ Service dialogues modernes
 │   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
-│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée) (MODIFIÉ [S58] 2026-03-07 - uploadLoanReceipt ajoutée, 683 lignes)
+│   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée) (MODIFIÉ [S58] 2026-03-07 - uploadLoanReceipt ajoutée, 683 lignes) (MODIFIÉ [S59] 2026-03-08 - Split storage, 607 lignes, re-export uploadLoanReceipt) (MODIFIÉ [S60] 2026-03-09 - Double validation, 720 lignes, +4 fonctions validation)
+│   │   │   ├── 📄 loanStorageService.ts   # 🆕 NEW [S59 2026-03-08] Service storage prêts: uploadLoanReceipt isolé, 43 lignes
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs
@@ -279,7 +288,8 @@ bazarkely-2/
 │   │   │   ├── 📄 recurring.ts           # 🆕 NOUVEAU 2025-11-03 - Types transactions récurrentes (53 lignes)
 │   │   │   └── 📄 supabase-recurring.ts  # 🆕 NOUVEAU 2025-11-03 - Types Supabase transactions récurrentes (253 lignes)
 │   │   ├── 📁 constants/                 # Constantes de l'application
-│   │   │   └── 📄 index.ts               # ✅ Constantes principales (MODIFIÉ [S28] 2025-12-31 - Ajout catégorie épargne TRANSACTION_CATEGORIES)
+│   │   │   ├── 📄 index.ts               # ✅ Constantes principales (MODIFIÉ [S28] 2025-12-31 - Ajout catégorie épargne TRANSACTION_CATEGORIES)
+│   │   │   └── 📄 appVersion.ts          # ✅ Version application (MODIFIÉ [S59] 2026-03-08 - v3.4.4)
 │   │   ├── 📁 lib/                       # Utilitaires
 │   │   │   ├── 📄 supabase.ts            # ✅ Configuration Supabase
 │   │   │   ├── 📄 database.ts             # ✅ Base de données (Version 7 - Tables transactions récurrentes) (MODIFIÉ 2025-11-03)

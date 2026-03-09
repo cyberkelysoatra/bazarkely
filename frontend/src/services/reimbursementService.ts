@@ -1027,7 +1027,7 @@ export async function createReimbursementRequest(
     const { data: sharedTransaction, error: transactionError } =
       await supabase
         .from('family_shared_transactions')
-        .select('family_group_id, transaction_id')
+        .select('family_group_id')
         .eq('id', data.sharedTransactionId)
         .single();
 
@@ -1050,10 +1050,10 @@ export async function createReimbursementRequest(
       );
     }
 
-    // Vérifier que from_member_id et to_member_id sont des membres du groupe et récupérer leurs user_id
+    // Vérifier que from_member_id et to_member_id sont des membres du groupe
     const { data: fromMember, error: fromMemberError } = await supabase
       .from('family_members')
-      .select('id, family_group_id, user_id')
+      .select('id, family_group_id')
       .eq('id', data.fromMemberId)
       .eq('family_group_id', sharedTransaction.family_group_id)
       .single();
@@ -1064,7 +1064,7 @@ export async function createReimbursementRequest(
 
     const { data: toMember, error: toMemberError } = await supabase
       .from('family_members')
-      .select('id, family_group_id, user_id')
+      .select('id, family_group_id')
       .eq('id', data.toMemberId)
       .eq('family_group_id', sharedTransaction.family_group_id)
       .single();
@@ -1075,16 +1075,15 @@ export async function createReimbursementRequest(
 
     // Créer la demande de remboursement
     const { data: created, error: createError } = await supabase
-      .from('family_reimbursement_requests')
+      .from('reimbursement_requests')
       .insert({
-        family_group_id: sharedTransaction.family_group_id,
-        transaction_id: sharedTransaction.transaction_id,
-        requested_by: user.id,
-        requested_from: fromMember.user_id,
+        shared_transaction_id: data.sharedTransactionId,
+        from_member_id: data.fromMemberId,
+        to_member_id: data.toMemberId,
         amount: data.amount,
-        percentage: null, // Optional, can be calculated from split details if needed
+        currency: data.currency,
         status: 'pending',
-        notes: data.note || null,
+        note: data.note || null,
       } as any)
       .select()
       .single();

@@ -1,9 +1,9 @@
 # 📋 CAHIER DES CHARGES - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.3.3 (Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
-**Date de mise à jour:** 2026-03-07  
-**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0 + Comportement Attendu Remboursements et Prêts v3.0.1 + Prêts Phase 3 Intérêts Automatiques v3.2.0 + Prêts Phase 3 Notifications Push v3.3.0 + Bug Fix useRequireAuth Loop v3.3.1 + Prêts Phase 3 Photo Justificatif + Auth Stability v3.3.3  
+**Version:** 3.5.0 (Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2 + Phase B Goals v2.5.0 S37)  
+**Date de mise à jour:** 2026-03-09  
+**Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Prets Familiaux Phase 1+2 v3.0.0 + Comportement Attendu Remboursements et Prêts v3.0.1 + Prêts Phase 3 Intérêts Automatiques v3.2.0 + Prêts Phase 3 Notifications Push v3.3.0 + Bug Fix useRequireAuth Loop v3.3.1 + Prêts Phase 3 Photo Justificatif + Auth Stability v3.3.3 + Prêts Refactoring + UI Improvements v3.4.4 + Double Validation Prêts + Split Composants v3.5.0  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Comportements + Génération PDF + Classement Anonyme + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0
 
 ---
@@ -1406,7 +1406,7 @@ Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les 
 
 ### **Phase 3 - Roadmap Planifiée**
 
-**Statut Phase 3:** 🔄 EN COURS (75% complété - 3/4 items done: pg_cron DONE S55, Notifications Push DONE S56, Photo Justificatif DONE S58, Edge Cases Remboursements PENDING)
+**Statut Phase 3:** 🔄 EN COURS (85% complété - split ✅, delete ✅, drawer ✅, validation ✅, split composants ✅, edge cases ⏳: pg_cron DONE S55, Notifications Push DONE S56, Photo Justificatif DONE S58, Split/Delete/Drawer DONE S59, Double Validation DONE S60, Split Composants DONE S60, Edge Cases Remboursements EN COURS)
 
 #### **Notifications Push** ✅ COMPLÉTÉ (Session S56 2026-03-04)
 - ✅ **Rappels paiements échéance** - Fonction `scheduleLoanCheck()` vérifie prêts échéance, déclenche notifications `loan_due_reminder` X jours avant due_date
@@ -1423,7 +1423,20 @@ Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les 
 - ✅ **Affichage dans historique remboursements** - Affichage photo dans RepaymentHistorySection avec preview et téléchargement
 - ✅ **Sanitization fix** - Correction sanitization noms fichiers pour sécurité upload
 
-#### **Edge Cases Remboursements** ⏳ EN ATTENTE
+#### **Refactoring + UI Improvements** ✅ COMPLÉTÉ (Session S59 2026-03-08)
+- ✅ **Split loanService.ts + loanStorageService.ts** - Séparation logique Supabase (loanService) et IndexedDB (loanStorageService), refactoring complet
+- ✅ **Bouton suppression prêt avec confirmation** - Bouton suppression avec ConfirmDialog, validation suppression prêt, mise à jour état local
+- ✅ **Drawer transaction loan_repayment_received complet** - Drawer transaction loan_repayment_received avec titre ordinal, jauge progression, historique remboursements, navigation prêt parent
+- ✅ **openRepaymentModal unifié** - Fonction unifiée openRepaymentModal(loanId, loanAmount, repaymentIndex) pour tous types remboursements
+- ✅ **Label devise dynamique formulaire compte** - Label EUR/MGA dynamique selon sélection utilisateur dans AddAccountPage, affichage cohérent formulaire compte
+
+#### **Double Validation Prêts** ✅ IMPLÉMENTÉ (Session S60 2026-03-09 - v3.5.0)
+- ✅ **Règle de validation** - Le receveur (emprunteur pour remboursement, prêteur pour création prêt) confirme la transaction. Le donneur (prêteur pour remboursement, emprunteur pour création prêt) n'a pas besoin de validation.
+- ✅ **Scénario 1: Création prêt par prêteur** - Le prêteur crée le prêt, l'emprunteur confirme la réception. Badge "ATTENTE CONFIRMATION" affiché jusqu'à confirmation emprunteur.
+- ✅ **Scénario 2: Remboursement par emprunteur** - L'emprunteur effectue le remboursement, le prêteur confirme la réception. Badge "ATTENTE CONFIRMATION" affiché jusqu'à confirmation prêteur.
+- ✅ **Scénario 3: Garde-fou suppression** - Protection contre suppression prêt si remboursements en attente de validation. Validation requise avant suppression.
+
+#### **Edge Cases Remboursements** ⏳ EN COURS
 - Gestion surplus remboursements (montant > capital restant)
 - Gestion multi-débiteurs (prêts avec plusieurs emprunteurs)
 - Validation et gestion erreurs avancées
@@ -1437,4 +1450,4 @@ Le module Prets Familiaux permet aux membres d'un groupe familial de gérer les 
 
 ---
 
-*Document généré automatiquement le 2026-03-07 - BazarKELY v3.3.3 (Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*
+*Document généré automatiquement le 2026-03-09 - BazarKELY v3.5.0 (Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Comportement Attendu Remboursements et Prêts S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Construction POC Phase 2 Organigramme + Smart Defaults PurchaseOrderForm + UX Transformation VAGUE 1 + VAGUE 2)*

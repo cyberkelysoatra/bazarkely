@@ -1,8 +1,8 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.3.3 (Family Auth Pattern Migration + Loan Receipt Upload - Session S58)  
-**Date de mise à jour:** 2026-03-07  
+**Version:** 3.5.0 (Loans Split + Double Validation - Session S60)  
+**Date de mise à jour:** 2026-03-08  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + Transactions Inline Loan Drawer (v3.1.0)  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -1438,6 +1438,77 @@ family_shared_transactions (
 - 🔄 Refactor planifié S59: split en `loanService.ts` + `loanStorageService.ts`
 
 **Prêt pour Production:** ✅ OUI - Déployé v3.3.3 (Session S58, 2026-03-07)
+
+#### **16.7.17 Loans Drawer Fixes + Storage Split + EUR Label (Session S59)** ✅ COMPLÉTÉ
+
+**Version:** v3.4.4 (commits `46f6769` -> `fa463cf`)  
+**Statut:** ✅ PRODUCTION
+
+**Split `loanService.ts` (v3.4.0):**
+- ✅ `loanStorageService.ts` créé (**43 lignes**) — `uploadLoanReceipt()` isolé
+- ✅ `loanService.ts` réduit à **607 lignes** — re-export backward compatible conservé
+- ✅ Tous consumers intacts (`LoansPage`, `DashboardPage`, `TransactionsPage`, `AddTransactionPage`)
+
+**Bouton suppression prêt (v3.4.1):**
+- ✅ `handleDeleteLoan()` ajouté dans `LoansPage.tsx`
+- ✅ `ConfirmDialog` variant danger + bouton rouge
+- ✅ CASCADE SQL confirmé (`loan_repayments` + `loan_interest_periods`)
+
+**Drawer `loan_repayment_received` (v3.4.2 -> v3.4.3):**
+- ✅ Titre `Remb. de X` (au lieu de `à X`)
+- ✅ Jauge `loanProgress` chargée via `getLoanByRepaymentTransactionId`
+- ✅ Historique filtré (exclusion transaction courante)
+- ✅ Navigation cliquable vers autres versements
+- ✅ Doublon `repaymentHistory` supprimé (condition `isLoanCategory` + exclusion `loan_repayment_received`)
+- ✅ `openRepaymentModal`: `loanId` résolu, `loanAmount` correct, `repaymentIndex` unifié (`repayments.length + 1`)
+- ✅ Regex description unifiée pour `loan` + `loan_repayment_received`
+
+**Label EUR/MGA dynamique (v3.4.4):**
+- ✅ `AddAccountPage.tsx` — hook `useCurrency` intégré
+- ✅ `Solde initial (EUR)` affiché quand toggle EUR actif
+
+**Dette technique S59:**
+- ⚠️ `LoansPage.tsx` **1044 lignes** — split planifié S60
+- ⚠️ `TransactionsPage.tsx` **2069 lignes** — split planifié S60
+- ⚠️ Double validation prêteur/emprunteur — feature planifiée S60
+
+**Prêt pour Production:** ✅ OUI - Déployé v3.4.4 (Session S59, 2026-03-08, commit `fa463cf`)
+
+#### **16.7.18 Loans Split + Double Validation (Session S60)** ✅ COMPLÉTÉ
+
+**Version:** v3.5.0  
+**Statut:** ✅ PRODUCTION
+
+**Split `LoansPage.tsx` (S60):**
+- ✅ `LoansPage.tsx` réduit de **1044L** à **407L**
+- ✅ Composants extraits dans `frontend/src/components/Loans/`:
+  - `CreateLoanModal.tsx` (**236L**)
+  - `PaymentModal.tsx` (**315L**)
+  - `RepaymentHistorySection.tsx` (**129L**)
+  - `index.ts` (**4L**)
+
+**Double validation prêteur/emprunteur (S60):**
+- ✅ Colonne `personal_loans.borrower_confirmed_at` ajoutée
+- ✅ Colonnes `loan_repayments.confirmed_at` + `loan_repayments.confirmed_by_user_id` ajoutées
+- ✅ Nouvelles fonctions `loanService.ts`:
+  - `confirmLoanAsBorrower`
+  - `confirmRepaymentAsLender`
+  - `isPendingBorrowerConfirmation`
+  - `isPendingLenderRepaymentConfirmation`
+- ✅ Badges UI ajoutés:
+  - rouge pulse `ATTENTE CONFIRMATION` (emprunteur)
+  - orange `En attente de confirmation emprunteur` (prêteur)
+  - bouton vert `Confirmer réception` (prêteur sur remboursements)
+- ✅ Guard suppression emprunteur ajouté (borrower-delete guard)
+
+**État services prêts (S60):**
+- ✅ `loanService.ts` porté à **720 lignes** (extension double validation)
+
+**Phase 3 Prêts — avancement:** **85%**
+- ✅ `pg_cron` intérêts automatiques
+- ✅ Photo justificatif upload
+- ✅ Double validation prêteur/emprunteur
+- ⏳ Edge cases remboursements familiaux (surplus + multi-débiteurs)
 
 ### **17. Développement Multi-Agents** ✅ VALIDÉ (Session 2025-10-31)
 
@@ -3878,4 +3949,4 @@ Gap entre la couche de données (fonctionnelle) et la couche de présentation (d
 
 ---
 
-*Document généré automatiquement le 2026-03-07 - BazarKELY v3.3.3 (Family Auth Pattern Migration + Loan Receipt Upload - Session S58)*
+*Document généré automatiquement le 2026-03-08 - BazarKELY v3.5.0 (Loans Split + Double Validation - Session S60)*

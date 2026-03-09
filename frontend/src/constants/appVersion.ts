@@ -1,8 +1,17 @@
-export const APP_VERSION = 'v3.4.4';
+export const APP_VERSION = '3.5.0';
 export const APP_VERSION_NAME = 'Loans Transaction View S54';
 export const LAST_UPDATED = '2026-03-07';
 export const APP_BUILD_DATE = '2026-03-07';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.0',
+    date: '2026-03-09',
+    description: 'Double validation prêts - badge ATTENTE CONFIRMATION, split LoansPage 1044L→407L, confirmation emprunteur/prêteur',
+    changes: [
+      'Double validation prêts - badge ATTENTE CONFIRMATION, split LoansPage 1044L→407L, confirmation emprunteur/prêteur'
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.0.0',
     date: '2026-02-15',
