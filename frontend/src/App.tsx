@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { I18nextProvider } from 'react-i18next';
 // Build test - force new hash generation
@@ -18,6 +18,7 @@ import './index.css';
 
 // Composants de base (à créer)
 import AppLayout from './components/Layout/AppLayout';
+import LoanConfirmPage from './pages/LoanConfirmPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -108,12 +109,15 @@ function App() {
       <QueryClientProvider client={queryClient}>
         {/* TODO Phase 3: Sync i18n.changeLanguage with appStore.language for VoiceInterface and PDF */}
         <I18nextProvider i18n={i18n}>
-          <Router>
+          <BrowserRouter>
             <ModuleSwitcherProvider>
               {/* ConstructionProvider mounted globally so Header (inside AppLayout) can access ConstructionContext */}
               <ConstructionProvider>
               <div className="min-h-screen bg-gray-50">
-                <AppLayout />
+                <Routes>
+                  <Route path="/loan-confirm/:token" element={<LoanConfirmPage />} />
+                  <Route path="*" element={<AppLayout />} />
+                </Routes>
                 <IOSInstallPrompt />
                 <UpdatePrompt />
             
@@ -184,7 +188,7 @@ function App() {
               </div>
             </ConstructionProvider>
           </ModuleSwitcherProvider>
-        </Router>
+        </BrowserRouter>
         </I18nextProvider>
       </QueryClientProvider>
     </ErrorBoundary>

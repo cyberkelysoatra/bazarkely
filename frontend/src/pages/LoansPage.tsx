@@ -26,7 +26,6 @@ import type {
 import { CurrencyDisplay } from '../components/Currency';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
-import CreateLoanModal from '../components/Loans/CreateLoanModal';
 import PaymentModal from '../components/Loans/PaymentModal';
 import RepaymentHistorySection from '../components/Loans/RepaymentHistorySection';
 
@@ -38,7 +37,6 @@ const LoansPage = () => {
   const [unpaidInterestSummaries, setUnpaidInterestSummaries] = useState<UnpaidInterestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'lender' | 'borrower'>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
@@ -164,7 +162,7 @@ const LoansPage = () => {
               </div>
             </div>
             <Button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/add-transaction?type=expense&category=loan')}
               variant="primary"
               className="bg-green-600 hover:bg-green-700"
             >
@@ -397,16 +395,6 @@ const LoansPage = () => {
           </div>
         )}
       </div>
-
-      {/* Create Loan Modal */}
-      <CreateLoanModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
-          setShowCreateModal(false);
-          loadLoans();
-        }}
-      />
 
       {/* Payment Modal */}
       {showPaymentModal && selectedLoan && (

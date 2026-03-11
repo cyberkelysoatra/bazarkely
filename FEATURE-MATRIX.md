@@ -1,9 +1,9 @@
 # 📊 FEATURE MATRIX - BazarKELY
 ## Matrice de Fonctionnalités et Composants
 
-**Version:** 3.5.0 (Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
-**Date de mise à jour:** 2026-03-09  
-**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01 + Prêts Phase 3 Notifications Push v3.3.0 S56 2026-03-04 + Bug Fix useRequireAuth Loop v3.3.1 S57 2026-03-05 + Prêts Phase 3 Photo Justificatif + Auth Stability v3.3.3 S58 2026-03-07 + Prêts Refactoring + UI Improvements v3.4.4 S59 2026-03-08 + Double Validation Prêts + Split Composants v3.5.0 S60 2026-03-09
+**Version:** 3.5.1 (Loan Acknowledgment System S61 2026-03-11 + Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18)  
+**Date de mise à jour:** 2026-03-11  
+**Statut:** ✅ AUDIT COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Gamification + Certification + Suivi Pratiques + Certificats PDF + Classement + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Bug Filtrage Catégories + Transactions Récurrentes + Construction POC Phase 2 Step 3 UI Components + i18n Infrastructure Phase 1/3 + Translation Protection + Dashboard EUR Bug Fix + Desktop Enhancement v2.6.0 + Family Reimbursements Payment System Phase 1 + Payment UI Enhancements v2.8.0 + Documentation Cleanup S51 2026-02-14 + Prets Familiaux Phase 1+2 v3.0.0 S52 2026-02-15 + Architecture Clarification S53 2026-02-17 + Prêts Phase 3 Intérêts Automatiques v3.2.0 S55 2026-03-01 + Prêts Phase 3 Notifications Push v3.3.0 S56 2026-03-04 + Bug Fix useRequireAuth Loop v3.3.1 S57 2026-03-05 + Prêts Phase 3 Photo Justificatif + Auth Stability v3.3.3 S58 2026-03-07 + Prêts Refactoring + UI Improvements v3.4.4 S59 2026-03-08 + Double Validation Prêts + Split Composants v3.5.0 S60 2026-03-09 + Loan Acknowledgment System v3.5.1 S61 2026-03-11
 
 ---
 
@@ -45,7 +45,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 - **Reimbursement Dashboard Phase 2:** 100% (1/1) ✅ - Session S49 2026-02-13 (ReimbursementStatsSection.tsx 261 lignes, PieChart catégories + LineChart évolution + BarChart membres, cartes summary cliquables, transactionCategory service)
 - **Documentation Cleanup:** 100% (1/1) ✅ - Session S51 2026-02-14 (115+ .md files archived → 12 active root files, docs/archive/ structure, Claude AI project synchronized 15 files 21% capacity)
 - **Module Prets Familiaux Phase 1+2:** 100% (11/11) ✅ - Session S52 2026-02-15 (Tables Supabase + loanService CRUD + LoansPage + CreateLoanModal + PaymentModal + RepaymentHistorySection + LoanCard + FamilyDashboardPage button + LoanWidget Dashboard + Route AppLayout + Moteur financier interets->capital) (v3.0.0)
-- **Module Prêts Phase 3:** 85% (split ✅, delete ✅, drawer ✅, validation ✅, split composants ✅, edge cases ⏳) ✅ - Session S55 2026-03-01 + S56 2026-03-04 + S58 2026-03-07 + S59 2026-03-08 + S60 2026-03-09 (pg_cron DONE, Notifications Push DONE, Photo Justificatif DONE, Split/Delete/Drawer DONE, Double Validation DONE, Split Composants DONE, Edge Cases EN COURS) (v3.5.0)
+- **Module Prêts Phase 3:** 85% (split ✅, delete ✅, drawer ✅, validation ✅, split composants ✅, acknowledgment ✅, edge cases ⏳) ✅ - Session S55 2026-03-01 + S56 2026-03-04 + S58 2026-03-07 + S59 2026-03-08 + S60 2026-03-09 + S61 2026-03-11 (pg_cron DONE, Notifications Push DONE, Photo Justificatif DONE, Split/Delete/Drawer DONE, Double Validation DONE, Split Composants DONE, Loan Acknowledgment DONE, Edge Cases EN COURS) (v3.5.1)
 - **Auth Stability:** 100% (1/1) ✅ - Session S58 2026-03-07 (Single auth pattern useAppStore only, useRequireAuth éradiqué de toutes les pages - 7 fichiers migrés) (v3.3.3)
 
 ### **📈 Répartition par Statut**
@@ -229,7 +229,7 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Tables Supabase personal_loans + loan_repayments + loan_interest_periods** | ✅ DONE | P0 | Supabase SQL | RLS 4 policies/table, indexes, trigger updated_at - S52 |
 | **loanService.ts - CRUD + moteur financier** | ✅ DONE | P0 | loanService.ts | 12 fonctions: getMyLoans, createLoan, recordPayment, getRepaymentHistory, getUnlinkedRevenueTransactions, generateInterestPeriod, capitalizeOverdueInterests - S52 |
 | **LoansPage /family/loans** | ✅ DONE | P0 | LoansPage.tsx | Sections Pretes/Empruntees, onglets Tous/Pretes/Empruntes, compteurs actifs/total - S52 |
-| **CreateLoanModal top-level** | ✅ DONE | P0 | LoansPage.tsx | Toggle Je prete/J emprunte, pre-remplissage taux, tous champs, bug focus corrige - S52 |
+| **CreateLoanModal top-level** | ❌ REMOVED S61 | P0 | LoansPage.tsx | Supprimé S61, création prêt uniquement via AddTransactionPage - Était DONE S52 |
 | **PaymentModal direct + link** | ✅ DONE | P0 | LoansPage.tsx | Mode paiement direct + rapprochement transaction existante, interets dus affiches - S52 |
 | **RepaymentHistorySection accordion** | ✅ DONE | P0 | LoansPage.tsx | Historique paiements avec detail interets/capital par versement - S52 |
 | **LoanCard expandable** | ✅ DONE | P0 | LoansPage.tsx | Clic expand/collapse, bouton paiement, chevron rotation - S52 |
@@ -243,11 +243,11 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 ### **Module Prets Familiaux - Refactoring S54 (PLANNED)** ⏳ PLANNÉ (Session S54)
 | Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
 |----------------|--------|----------|-------------------|-------|
-| **Loans integration AddTransactionPage (Dépense: Prêt accordé)** | ⏳ PLANNED | P0 | AddTransactionPage.tsx | Catégorie "Prêt accordé" crée prêt formel dans LoansPage, option partage famille - S54 |
-| **Loans integration AddTransactionPage (Dépense: Remboursement dette)** | ⏳ PLANNED | P0 | AddTransactionPage.tsx | Catégorie "Remboursement dette" enregistre paiement dette informelle, option partage famille - S54 |
-| **Loans integration AddTransactionPage (Revenu: Remboursement prêt)** | ⏳ PLANNED | P0 | AddTransactionPage.tsx | Catégorie "Remboursement prêt" enregistre paiement prêt reçu, option partage famille - S54 |
-| **Loans integration AddTransactionPage (Revenu: Prêt reçu)** | ⏳ PLANNED | P0 | AddTransactionPage.tsx | Catégorie "Prêt reçu" crée dette informelle dans LoansPage, option partage famille - S54 |
-| **LoansPage refactoring consultation-only** | ⏳ PLANNED | P0 | LoansPage.tsx | Suppression CreateLoanModal, LoansPage devient consultation uniquement, création via AddTransactionPage - S54 |
+| **Loans integration AddTransactionPage (Dépense: Prêt accordé)** | ✅ IMPLÉMENTÉ S54-S61 | P0 | AddTransactionPage.tsx | Catégorie "Prêt accordé" crée prêt formel, option partage famille, champ borrowerPhone ajouté S61 - S54-S61 |
+| **Loans integration AddTransactionPage (Dépense: Remboursement dette)** | ✅ IMPLÉMENTÉ S54 | P0 | AddTransactionPage.tsx | Catégorie "Remboursement dette" enregistre paiement dette informelle, option partage famille - S54 |
+| **Loans integration AddTransactionPage (Revenu: Remboursement prêt)** | ✅ IMPLÉMENTÉ S54 | P0 | AddTransactionPage.tsx | Catégorie "Remboursement prêt" enregistre paiement prêt reçu, option partage famille - S54 |
+| **Loans integration AddTransactionPage (Revenu: Prêt reçu)** | ✅ IMPLÉMENTÉ S54-S61 | P0 | AddTransactionPage.tsx | Catégorie "Prêt reçu" crée dette informelle, option partage famille, champ borrowerPhone ajouté S61 - S54-S61 |
+| **LoansPage refactoring consultation-only** | ✅ IMPLÉMENTÉ S61 | P0 | LoansPage.tsx | CreateLoanModal supprimé S61, LoansPage consultation uniquement, création via AddTransactionPage - S54 planifié, S61 implémenté |
 
 **Total Session S54:** 5/5 planifiés (0% implémentés)
 
@@ -313,7 +313,18 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 | **Split composants LoansPage** | ✅ IMPLÉMENTÉ | P0 | LoansPage.tsx | Refactoring composants volumineux en sous-composants modulaires (LoanCard, LoanSection, etc.) - S60 |
 
 **Total Session S60:** 2/2 implémentés (100% - Double Validation + Split Composants complètes)
-**Phase 3 Completion:** 85% (split ✅, delete ✅, drawer ✅, validation ✅, split composants ✅, edge cases ⏳)
+
+### **Module Prêts Phase 3 - Session S61 2026-03-11** ✅ 85% COMPLÉTÉ (v3.5.1)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Loan acknowledgment system (table + RPC + service)** | ✅ IMPLÉMENTÉ | P0 | Supabase + loanService.ts | Table loan_acknowledgments, RPC acknowledgeLoan(), service acknowledgeLoan(), système confirmation prêts - S61 |
+| **Page publique acknowledgment** | ✅ IMPLÉMENTÉ | P0 | LoanAcknowledgmentPage.tsx | Page publique /loan/acknowledge/:token pour confirmation prêt sans authentification - S61 |
+| **WhatsApp link generation** | ✅ IMPLÉMENTÉ | P0 | loanService.ts | Génération liens WhatsApp pour partage confirmation prêt avec emprunteur - S61 |
+| **borrowerPhone dans AddTransactionPage** | ✅ IMPLÉMENTÉ | P0 | AddTransactionPage.tsx | Champ téléphone emprunteur ajouté formulaire création prêt - S61 |
+| **Single loan creation path (AddTransactionPage only)** | ✅ IMPLÉMENTÉ | P0 | LoansPage.tsx + AddTransactionPage.tsx | CreateLoanModal supprimé, création prêt uniquement via AddTransactionPage - S61 |
+
+**Total Session S61:** 5/5 implémentés (100% - Loan Acknowledgment System complète)
+**Phase 3 Completion:** 85% (split ✅, delete ✅, drawer ✅, validation ✅, split composants ✅, acknowledgment ✅, edge cases ⏳)
 
 ### **Module Auth Stability - Session S58 2026-03-07** ✅ COMPLÉTÉ (v3.3.3)
 | Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
@@ -1352,4 +1363,4 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 ---
 
-*Document généré automatiquement le 2026-03-09 - BazarKELY v3.5.0 (Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*
+*Document généré automatiquement le 2026-03-11 - BazarKELY v3.5.1 (Loan Acknowledgment System S61 2026-03-11 + Double Validation Prêts + Split Composants S60 2026-03-09 + Prêts Refactoring + UI Improvements S59 2026-03-08 + Prêts Phase 3 Photo Justificatif + Auth Stability S58 2026-03-07 + Bug Fix useRequireAuth Loop S57 2026-03-05 + Prêts Phase 3 Notifications Push S56 2026-03-04 + Prêts Phase 3 Intérêts Automatiques S55 2026-03-01 + Architecture Clarification S53 2026-02-17 + Prets Familiaux Phase 1+2 S52 2026-02-15 + Documentation Cleanup S51 2026-02-14 + Reimbursement Dashboard Phase 2 S49 2026-02-13 + Phase 1 Production Validated S48 2026-02-12 + Payment UI Enhancements S47 2026-02-12 + Family Reimbursements Payment System Phase 1 S45/S46 2026-02-10/11 + Budget Gauge AddTransaction S43 2026-01-27 + Desktop Enhancement v2.6.0 S42 2026-01-26 + i18n Infrastructure Phase 1/3 S41 2026-01-25 + Translation Protection S41 2026-01-25 + Dashboard EUR Bug Fix S41 2026-01-25 + CurrencyDisplay HTML Nesting Fix S40 2026-01-21 + Multi-Currency Transactions S38 2026-01-18 + EUR Transfer Bug Fix S38 2026-01-18 + Budget Statistics S28 2025-12-31)*

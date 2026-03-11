@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
@@ -23,6 +23,7 @@ import type { FamilyGroup, FamilySharingRule } from '../types/family';
 import { useBudgetGauge } from '../hooks/useBudgetGauge';
 import BudgetGauge from '../components/BudgetGauge';
 import { getActiveLoansForDropdown } from '../services/loanService';
+import { createAcknowledgment, getWhatsAppLink } from '../services/loanAcknowledgmentService';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -80,6 +81,10 @@ const AddTransactionPage = () => {
   const [durationMonths, setDurationMonths] = useState<string>('');
   const [activeLoans, setActiveLoans] = useState<Array<{ id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }>>([]);
   const [activeLoansLoading, setActiveLoansLoading] = useState<boolean>(false);
+  const [borrowerPhone, setBorrowerPhone] = useState<string>('');
+  const [loanSuccessStep, setLoanSuccessStep] = useState<boolean>(false);
+  const [loanWhatsappUrl, setLoanWhatsappUrl] = useState<string>('');
+  const [loanSuccessData, setLoanSuccessData] = useState<{ borrowerName: string; amountInitial: number; currency: string } | null>(null);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -132,9 +137,19 @@ const AddTransactionPage = () => {
         
         // Set default category after loading
         if (fetchedCategories.length > 0) {
+          const categoryParam = searchParams.get('category');
+        const hardcodedLoanCategories = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'];
           setFormData(prev => {
-            // Only set default if category is empty (was reset above)
             if (!prev.category) {
+              if (categoryParam) {
+              // Loan categories are hardcoded in JSX, not in DB — apply directly
+              if (hardcodedLoanCategories.includes(categoryParam)) {
+                return { ...prev, category: categoryParam };
+              }
+              // DB categories — match by name
+                const match = fetchedCategories.find(c => c.name === categoryParam);
+                if (match) return { ...prev, category: match.name };
+              }
               return { ...prev, category: fetchedCategories[0].name };
             }
             return prev;
@@ -502,6 +517,19 @@ const AddTransactionPage = () => {
                   .single();
                 
                 if (loanError) throw new Error(`Erreur création prêt: ${loanError.message}`);
+                const phone = borrowerPhone.trim();
+                if (phone && loanData) {
+                  try {
+                    const token = await createAcknowledgment(loanData.id);
+                    const url = getWhatsAppLink(phone, beneficiaryName.trim() || 'l\'emprunteur', Math.abs(amount), originalCurrency, token);
+                    setLoanWhatsappUrl(url);
+                  } catch (ackError) {
+                    console.warn('Acknowledgment creation failed (non-blocking):', ackError);
+                  }
+                  setLoanSuccessData({ borrowerName: beneficiaryName.trim() || 'l\'emprunteur', amountInitial: Math.abs(amount), currency: originalCurrency });
+                  setLoanSuccessStep(true);
+                  return;
+                }
                 toast.success('Prêt créé avec succès');
               }
               
@@ -600,6 +628,10 @@ const AddTransactionPage = () => {
               setBeneficiaryName('');
               setInterestRate('');
               setDurationMonths('');
+              setBorrowerPhone('');
+              setLoanSuccessStep(false);
+              setLoanWhatsappUrl('');
+              setLoanSuccessData(null);
             } catch (loanError: any) {
               console.error('❌ Erreur lors de la gestion du prêt:', loanError);
               toast.error(loanError?.message || 'Erreur lors de la gestion du prêt');
@@ -647,6 +679,40 @@ const AddTransactionPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
+      {loanSuccessStep && loanSuccessData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full flex flex-col items-center gap-4 text-center">
+            <CheckCircle2 size={48} className="text-green-500" />
+            <h3 className="text-lg font-semibold text-gray-800">Prêt créé avec succès !</h3>
+            <p className="text-gray-600">
+              <span className="font-medium">{loanSuccessData.borrowerName}</span>{' — '}
+              <span className="font-semibold">{loanSuccessData.amountInitial.toLocaleString('fr-FR')} {loanSuccessData.currency}</span>
+            </p>
+            {loanWhatsappUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(loanWhatsappUrl, '_blank');
+                  setLoanSuccessStep(false);
+                  setLoanWhatsappUrl('');
+                  setLoanSuccessData(null);
+                  toast.success('Prêt créé avec succès');
+                }}
+                className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>📱</span> Envoyer via WhatsApp
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { setLoanSuccessStep(false); setLoanWhatsappUrl(''); setLoanSuccessData(null); toast.success('Prêt créé avec succès'); }}
+              className="text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              {loanWhatsappUrl ? 'Fermer sans envoyer' : 'Fermer'}
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="px-4 py-4">
@@ -994,6 +1060,23 @@ const AddTransactionPage = () => {
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+              {/* Téléphone (pour confirmation WhatsApp) */}
+              {formData.category === 'loan' && (
+                <div>
+                  <label htmlFor="borrowerPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                    Téléphone de l'emprunteur (optionnel)
+                  </label>
+                  <input
+                    type="tel"
+                    id="borrowerPhone"
+                    value={borrowerPhone}
+                    onChange={(e) => setBorrowerPhone(e.target.value)}
+                    placeholder="Ex: 034 00 000 00"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Permet d'envoyer un lien de confirmation via WhatsApp</p>
+                </div>
+              )}
 
             </div>
           )}

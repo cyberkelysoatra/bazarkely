@@ -74,6 +74,7 @@ bazarkely-2/
 ├── 📄 RESUME-SESSION-2026-03-07-S58.md    # 🆕 NEW [S58 2026-03-07] - Résumé session S58 Auth migration + photo justificatif prêts
 ├── 📄 RESUME-SESSION-2026-03-08-S59.md    # 🆕 NEW [S59 2026-03-08] - Résumé session S59 Split loanService + drawer fixes + delete loan
 ├── 📄 RESUME-SESSION-2026-03-09-S60.md    # 🆕 NEW [S60 2026-03-09] - Résumé session S60 Split LoansPage + double validation prêts
+├── 📄 RESUME-SESSION-2026-03-11-S61.md    # 🆕 NEW [S61 2026-03-11] - Résumé session S61 Reconnaissance prêt WhatsApp + suppression CreateLoanModal
 ├── 📄 MULTI-AGENT-WORKFLOWS.md            # 🆕 NOUVEAU [31/10/2025] - Workflows multi-agents validés
 ├── 📄 CURSOR-2.0-CONFIG.md                # 🆕 NOUVEAU [31/10/2025] - Configuration Cursor 2.0
 ├── 📄 setup-multiagent-test.ps1           # 🆕 NOUVEAU [31/10/2025] - Script automation setup worktrees
@@ -208,7 +209,7 @@ bazarkely-2/
 │   │   │   ├── 📁 Family/                     # Composants Espace Famille
 │   │   │   │   └── 📄 ReimbursementPaymentModal.tsx # ✅ Composant modal paiement remboursements (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📁 Loans/                      # Composants Prêts Familiaux
-│   │   │   │   ├── 📄 CreateLoanModal.tsx     # 🆕 NEW [S60 2026-03-09] Modal création prêt, 236 lignes
+│   │   │   │   ├── 📄 CreateLoanModal.tsx     # ❌ DELETED [S61 2026-03-11] Supprimé — création prêt via AddTransactionPage uniquement
 │   │   │   │   ├── 📄 PaymentModal.tsx       # 🆕 NEW [S60 2026-03-09] Modal paiement prêt, 315 lignes
 │   │   │   │   ├── 📄 RepaymentHistorySection.tsx # 🆕 NEW [S60 2026-03-09] Section historique remboursements, 129 lignes
 │   │   │   │   └── 📄 index.ts               # 🆕 NEW [S60 2026-03-09] Exports composants Loans, 4 lignes
@@ -225,7 +226,7 @@ bazarkely-2/
 │   │   │   ├── 📄 DashboardPage.tsx      # ✅ Tableau de bord (MODIFIÉ 2026-01-25 - Fix bug EUR display originalCurrency) (MODIFIÉ 2026-01-26 - Desktop layout, sidebar sticky offset) (MODIFIÉ [S52] 2026-02-15 - LoanWidget ajoute sidebar) (MODIFIÉ [S56] 2026-03-04 - Notifications push prêts)
 │   │   │   ├── 📄 TransactionsPage.tsx   # ✅ Gestion transactions (MODIFIÉ 2025-01-20 - Filtrage catégorie + badge) (MODIFIÉ 2025-10-31 - Fix race condition + Loading spinner + CSV Export) (MODIFIÉ [S59] 2026-03-08 - Drawer loan_repayment_received fixes, 2068 lignes)
 │   │   ├── 📄 TransactionDetailPage.tsx # ✅ Détail transaction (MODIFIÉ 2025-10-31 - Smart navigation préservant filtres)
-│   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé)
+│   │   │   ├── 📄 AddTransactionPage.tsx # ✅ Ajout transaction (MODIFIÉ 2025-10-17 - Appel trackTransaction) (MODIFIÉ 2026-01-27 - Intégration BudgetGauge avec layout optimisé) (MODIFIÉ [S61] 2026-03-11 - borrowerPhone + WhatsApp overlay, fix category query param)
 │   │   │   ├── 📄 AddBudgetPage.tsx      # ✅ Ajout budget (MODIFIÉ 2025-10-17 - Appel trackBudgetUsage)
 │   │   │   ├── 📄 AccountsPage.tsx       # ✅ Gestion des comptes (MODIFIÉ 2025-01-11 - Layout 2 colonnes + Transfert)
 │   │   │   ├── 📄 AddAccountPage.tsx      # ✅ Ajout compte (MODIFIÉ [S59] 2026-03-08 - Label EUR/MGA dynamique, 222 lignes)
@@ -245,6 +246,7 @@ bazarkely-2/
 │   │   │   ├── 📄 RecurringTransactionsPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page gestion transactions récurrentes (292 lignes)
 │   │   │   ├── 📄 RecurringTransactionDetailPage.tsx # 🆕 NOUVEAU 2025-11-03 - Page détail transaction récurrente (MODIFIÉ [S28] 2025-12-31 - Fix champ montant)
 │   │   │   ├── 📄 LoansPage.tsx            # 🆕 NEW [S52 2026-02-15] Page prets /family/loans avec CreateLoanModal + PaymentModal + RepaymentHistorySection (MODIFIÉ [S55] 2026-03-01 - Banner unpaid interest + badge overflow fix) (MODIFIÉ [S57] 2026-03-06 - useRequireAuth removed, useAppStore à la place) (MODIFIÉ [S58] 2026-03-07 - PaymentModal receipt upload UI) (MODIFIÉ [S59] 2026-03-08 - Delete button avec ConfirmDialog, 1044 lignes) (MODIFIÉ [S60] 2026-03-09 - Split composants, 407 lignes)
+│   │   │   ├── 📄 LoanConfirmPage.tsx      # 🆕 NEW [S61 2026-03-11] Page publique confirmation prêt par token, 92 lignes
 │   │   │   ├── 📄 FamilyDashboardPage.tsx  # ✅ Page dashboard famille (MODIFIÉ [S52] 2026-02-15 - Bouton Prets ajoute 1er grille actions) (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📄 FamilySettingsPage.tsx   # ✅ Page paramètres famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
 │   │   │   ├── 📄 FamilyBalancePage.tsx    # ✅ Page balance famille (MODIFIÉ [S58] 2026-03-07 - useRequireAuth removed)
@@ -273,6 +275,7 @@ bazarkely-2/
 │   │   │   └── 📄 budgetService.ts       # ✅ Service budgets (MODIFIÉ 2026-01-27 - Ajout méthode getBudgetByCategory)
 │   │   │   ├── 📄 loanService.ts          # 🆕 NEW [S52 2026-02-15] Service prets: 12 fonctions CRUD + moteur financier (MODIFIÉ [S55] 2026-03-01 - getTotalUnpaidInterestByLoan ajoutée) (MODIFIÉ [S58] 2026-03-07 - uploadLoanReceipt ajoutée, 683 lignes) (MODIFIÉ [S59] 2026-03-08 - Split storage, 607 lignes, re-export uploadLoanReceipt) (MODIFIÉ [S60] 2026-03-09 - Double validation, 720 lignes, +4 fonctions validation)
 │   │   │   ├── 📄 loanStorageService.ts   # 🆕 NEW [S59 2026-03-08] Service storage prêts: uploadLoanReceipt isolé, 43 lignes
+│   │   │   ├── 📄 loanAcknowledgmentService.ts # 🆕 NEW [S61 2026-03-11] Service reconnaissance prêts par token WhatsApp, 160 lignes
 │   │   ├── 📁 stores/                    # Gestion d'état (Zustand)
 │   │   │   ├── 📄 appStore.ts            # ✅ Store principal
 │   │   │   ├── 📄 errorStore.ts          # ✅ Store des erreurs
@@ -369,7 +372,7 @@ bazarkely-2/
 │   │   │       └── 📄 jest.config.js      # Configuration Jest
 │   │   ├── 📁 styles/                    # Fichiers CSS
 │   │   │   └── 📄 index.css              # ✅ Styles principaux (MODIFIÉ 2025-01-11 - Suppression carousel + marquee) (MODIFIÉ [S28] 2025-12-31 - Classe .select-no-arrow)
-│   │   ├── 📄 App.tsx                    # ✅ Composant principal (MODIFIÉ 2026-01-25 - I18nextProvider intégré)
+│   │   ├── 📄 App.tsx                    # ✅ Composant principal (MODIFIÉ 2026-01-25 - I18nextProvider intégré) (MODIFIÉ [S61] 2026-03-11 - Route publique /loan-confirm/:token ajoutée)
 │   │   ├── 📄 main.tsx                   # ✅ Point d'entrée
 │   │   └── 📄 index.html                 # ✅ Template React
 │   ├── 📁 tests/                         # Tests automatisés
