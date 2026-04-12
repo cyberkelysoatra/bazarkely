@@ -102,6 +102,15 @@ function App() {
         // Initialiser le SyncManager (détecte Background Sync et active fallback si nécessaire)
         initSyncManager();
 
+        // ✅ Vérifier la session Supabase au démarrage
+        // NE PAS appeler setAuthenticated(false) si getSession() retourne null :
+        // cela déclencherait un unmount/remount du Dashboard pendant le refresh token (bug boucle).
+        // Le SIGNED_OUT event de onAuthStateChange gère la déconnexion réelle.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await loadUserFromSupabase(session.user.id);
+        }
+
         // Tester la connexion API (mode offline)
         const isConnected = await apiService.testConnection();
         if (!isConnected) {
@@ -115,21 +124,11 @@ function App() {
 
     initializeApp();
 
-    // ✅ onAuthStateChange est la SEULE source de vérité pour l'état d'authentification.
-    // INITIAL_SESSION se déclenche immédiatement depuis localStorage (pas de réseau) —
-    // évite le flash isAuthenticated false→true qui déclenchait un remontage du Dashboard.
+    // ✅ onAuthStateChange gère les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth state change:', event);
 
-      if (event === 'INITIAL_SESSION') {
-        if (session?.user) {
-          await loadUserFromSupabase(session.user.id);
-        } else {
-          // Pas de session au démarrage → forcer la déconnexion du store
-          setUser(null);
-          setAuthenticated(false);
-        }
-      } else if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user) {
         await loadUserFromSupabase(session.user.id);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // Token refreshed silencieusement — s'assurer que le store reste cohérent

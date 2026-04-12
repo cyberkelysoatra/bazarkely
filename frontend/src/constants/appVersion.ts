@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.6';
-export const APP_VERSION_NAME = 'Fix connexion Google bloquée';
+export const APP_VERSION = '3.5.7';
+export const APP_VERSION_NAME = 'Fix connexion Google — approche auth simplifiée';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.7',
+    date: '2026-04-13',
+    description: 'Fix connexion Google — approche auth simplifiée',
+    changes: [
+      'Fix (App.tsx): Retour à getSession() dans initializeApp() SANS appel setAuthenticated(false) — préserve le flux OAuth Google existant tout en évitant la boucle de rechargement',
+      'Fix (App.tsx): Suppression du handler INITIAL_SESSION qui bloquait le callback Google OAuth',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.6',
     date: '2026-04-13',
