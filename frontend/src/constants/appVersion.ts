@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.5.5';
-export const APP_VERSION_NAME = 'Fix boucle de chargement — INITIAL_SESSION auth';
-export const LAST_UPDATED = '2026-04-12';
-export const APP_BUILD_DATE = '2026-04-12';
+export const APP_VERSION = '3.5.6';
+export const APP_VERSION_NAME = 'Fix connexion Google bloquée';
+export const LAST_UPDATED = '2026-04-13';
+export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.6',
+    date: '2026-04-13',
+    description: 'Fix connexion Google bloquée',
+    changes: [
+      'Fix (supabase.ts): Suppression du timeout global fetch 8s — avortait setSession() OAuth sans rejeter la promesse → isLoading bloqué sur true indéfiniment',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.5',
     date: '2026-04-12',
