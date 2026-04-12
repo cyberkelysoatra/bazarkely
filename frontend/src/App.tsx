@@ -12,6 +12,7 @@ import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
 import safariServiceWorkerManager from './services/safariServiceWorkerManager';
 import { initSyncManager } from './services/syncManager';
+import { supabase } from './lib/supabase';
 import './i18n'; // Initialize i18n system (side effect import)
 import i18n from './i18n';
 import './index.css';
@@ -61,47 +62,90 @@ function App() {
     };
   }, [setOnline]);
 
-  // Initialisation de l'application
+  // Initialisation de l'application + écoute session Supabase
   useEffect(() => {
     const initializeApp = async () => {
       try {
         // Initialiser le service de dialogues modernes
         dialogService.initialize();
-        
+
         // Initialiser les services de base
         await feeService.initializeDefaultFees();
-        
+
         // Initialiser le Service Worker adaptatif
         await safariServiceWorkerManager.initialize();
-        
+
         // Initialiser le SyncManager (détecte Background Sync et active fallback si nécessaire)
         initSyncManager();
-        
-        // Vérifier si l'utilisateur est connecté
-        const storedUser = localStorage.getItem('bazarkely-user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          
-          setUser(userData);
-          setAuthenticated(true);
-          
-          // Note: Username is now handled by Supabase Auth directly
-          
-          // Tester la connexion API
-          const isConnected = await apiService.testConnection();
-          if (!isConnected) {
-            console.warn('⚠️ Connexion API non disponible, mode hors ligne');
-          }
-          
+
+        // ✅ Vérifier la vraie session Supabase (pas localStorage)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await loadUserFromSupabase(session.user.id);
+        } else {
+          // Aucune session Supabase valide → s'assurer que le store est vide
+          setUser(null);
+          setAuthenticated(false);
         }
-        
-        
+
+        // Tester la connexion API (mode offline)
+        const isConnected = await apiService.testConnection();
+        if (!isConnected) {
+          console.warn('⚠️ Connexion API non disponible, mode hors ligne');
+        }
+
       } catch (error) {
         console.error('❌ Erreur lors de l\'initialisation:', error);
       }
     };
 
+    // ✅ Chargement du profil utilisateur depuis la table users
+    const loadUserFromSupabase = async (userId: string) => {
+      try {
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (error || !userData) {
+          console.warn('⚠️ Profil utilisateur introuvable dans users, session Supabase valide mais profil manquant');
+          // La session est valide même sans profil dans la table users
+          setAuthenticated(true);
+          return;
+        }
+
+        setUser(userData as any);
+        setAuthenticated(true);
+        console.log('✅ Session Supabase restaurée pour:', userData.email);
+      } catch (err) {
+        console.error('❌ Erreur lors du chargement du profil:', err);
+      }
+    };
+
     initializeApp();
+
+    // ✅ Écouter les changements d'état d'authentification Supabase (token refresh, sign-out, sign-in)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state change:', event);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadUserFromSupabase(session.user.id);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Token refreshed silencieusement — s'assurer que le store reste cohérent
+        const { setAuthenticated: setAuth } = useAppStore.getState();
+        setAuth(true);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setAuthenticated(false);
+        console.log('🚪 Session Supabase terminée — déconnexion du store');
+      }
+    });
+
+    // Cleanup : désabonnement au démontage du composant
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [setUser, setAuthenticated]);
 
   return (
@@ -115,7 +159,7 @@ function App() {
               <ConstructionProvider>
               <div className="min-h-screen bg-gray-50">
                 <Routes>
-                  <Route path="/loan-confirm/:token" element={<LoanConfirmPage />} />
+                  <Route path="/loan-confirm/:token/*" element={<LoanConfirmPage />} />
                   <Route path="*" element={<AppLayout />} />
                 </Routes>
                 <IOSInstallPrompt />
