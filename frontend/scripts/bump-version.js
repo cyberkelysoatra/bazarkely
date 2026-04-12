@@ -1,12 +1,15 @@
-const fs = require('fs');
-const path = require('path');
+import { readFileSync, writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Get bump type from command line (patch, minor, major)
 const bumpType = process.argv[2] || 'patch';
 
 // Read current version from appVersion.ts
-const appVersionPath = path.join(__dirname, '../src/constants/appVersion.ts');
-let content = fs.readFileSync(appVersionPath, 'utf8');
+const appVersionPath = join(__dirname, '../src/constants/appVersion.ts');
+let content = readFileSync(appVersionPath, 'utf8');
 
 // Extract current version
 const versionMatch = content.match(/APP_VERSION = '(\d+)\.(\d+)\.(\d+)'/);
@@ -38,25 +41,24 @@ const newVersion = `${major}.${minor}.${patch}`;
 const today = new Date().toISOString().split('T')[0];
 
 // Update APP_VERSION
-content = content.replace(/APP_VERSION = '[^']+'/,  `APP_VERSION = '${newVersion}'`);
+content = content.replace(/APP_VERSION = '[^']+'/, `APP_VERSION = '${newVersion}'`);
 
 // Update APP_BUILD_DATE
-content = content.replace(/APP_BUILD_DATE = '[^']+'/,  `APP_BUILD_DATE = '${today}'`);
+content = content.replace(/APP_BUILD_DATE = '[^']+'/, `APP_BUILD_DATE = '${today}'`);
 
 // Write back
-fs.writeFileSync(appVersionPath, content);
+writeFileSync(appVersionPath, content);
 
 // Also update package.json
-const packagePath = path.join(__dirname, '../package.json');
-const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const packagePath = join(__dirname, '../package.json');
+const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 packageJson.version = newVersion;
-fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + '\n');
+writeFileSync(packagePath, JSON.stringify(packageJson, null, 4) + '\n');
 
 console.log(`Version bumped to ${newVersion} (${bumpType})`);
 console.log(`Build date: ${today}`);
 console.log('');
 console.log('Next steps:');
 console.log('1. Add new entry to VERSION_HISTORY in appVersion.ts');
-console.log('2. git add -A && git commit -m "chore: bump version to ' + newVersion + '"');
+console.log(`2. git add -A && git commit -m "chore: bump version to ${newVersion}"`);
 console.log('3. git push origin main');
-

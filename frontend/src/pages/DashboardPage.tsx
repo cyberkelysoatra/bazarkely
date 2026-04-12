@@ -192,17 +192,24 @@ const DashboardPage = () => {
 
   // Charger les données réelles
   useEffect(() => {
+    // Flag pour ignorer les mises à jour d'un effet devenu obsolète (user changé pendant le fetch)
+    let cancelled = false;
+
+    // Filet de sécurité : forcer isLoading=false après 10s quoi qu'il arrive
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('⚠️ Dashboard safety timeout: isLoading forcé à false après 10s');
+        setIsLoading(false);
+      }
+    }, 10000);
+
     const loadDashboardData = async () => {
       if (!user) {
-        console.log('⚠️ Aucun utilisateur connecté');
         setIsLoading(false);
         return;
       }
 
-      console.log('🔍 User object:', user);
-      console.log('🔍 User ID:', user?.id);
-
-      // Vérifier les notifications (ancien système)
+      // Fire-and-forget : ne pas bloquer le chargement des données
       if (user?.id) {
         checkBudgetAlerts(user.id);
         checkGoalReminders(user.id);
@@ -213,35 +220,27 @@ const DashboardPage = () => {
         setIsLoading(true);
 
         // Charger les comptes depuis Supabase
-        console.log('🔍 Chargement des comptes depuis Supabase...');
         const userAccounts = await accountService.getAccounts();
-        console.log('📊 Comptes récupérés:', userAccounts);
+        if (cancelled) return;
         setUserAccounts(userAccounts);
 
         // Calculer le solde total
         const totalBalance = userAccounts.reduce((sum, account) => sum + account.balance, 0);
-        console.log('💰 Solde total calculé:', totalBalance);
 
         // Charger les transactions récentes
-        console.log('🔍 Chargement des transactions depuis Supabase...');
         const allTransactions = await transactionService.getTransactions();
-        console.log('📊 Transactions récupérées:', allTransactions.length);
+        if (cancelled) return;
+
         const sortedTransactions = allTransactions
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 4);
-        console.log('📅 Recent transactions sorted (newest first):', sortedTransactions.map(t => ({
-          id: t.id,
-          description: t.description,
-          date: t.date,
-          amount: t.amount
-        })));
         setRecentTransactions(sortedTransactions);
 
-        // Surveiller les transactions importantes pour les notifications
+        // Fire-and-forget : ne PAS awaiter scheduleTransactionWatch — peut pendre sur réseau lent
         if (user?.id) {
           for (const transaction of sortedTransactions) {
             if (transaction.amount > 100000) {
-              await notificationService.scheduleTransactionWatch(user.id, transaction);
+              notificationService.scheduleTransactionWatch(user.id, transaction);
             }
           }
         }
@@ -273,21 +272,14 @@ const DashboardPage = () => {
         let userGoals: Goal[] = [];
         try {
           if (user?.id) {
-            console.log('🎯 Chargement des objectifs depuis goalService...');
             userGoals = await goalService.getGoals(user.id);
-            console.log('📊 Objectifs récupérés:', userGoals.length);
+            if (cancelled) return;
             setGoals(userGoals);
           }
         } catch (error) {
           console.error('Erreur lors du chargement des objectifs:', error);
           // Continue without goals - fallback to emergency fund widget
         }
-
-        console.log('📈 Revenus mensuels:', monthlyIncome);
-        console.log('📉 Dépenses mensuelles:', monthlyExpenses);
-        console.log('🏠 Dépenses essentielles mensuelles:', essentialMonthlyExpenses);
-        console.log('🎯 Objectif fond d\'urgence (6 mois):', emergencyFundGoal);
-        console.log('📊 Progression fond d\'urgence:', emergencyFundProgress.toFixed(1) + '%');
 
         // Calculer l'utilisation du budget (simulation)
         const budgetUtilization = monthlyExpenses > 0 ? Math.min((monthlyExpenses / (monthlyIncome || 1)) * 100, 100) : 0;
@@ -297,23 +289,32 @@ const DashboardPage = () => {
           monthlyIncome,
           monthlyExpenses,
           budgetUtilization: Math.round(budgetUtilization),
-          goalsProgress: Math.round(emergencyFundProgress), // Use calculated emergency fund progress
-          essentialMonthlyExpenses, // Add essential expenses to stats
-          emergencyFundGoal // Add emergency fund goal to stats
+          goalsProgress: Math.round(emergencyFundProgress),
+          essentialMonthlyExpenses,
+          emergencyFundGoal
         };
 
-        console.log('📊 Statistiques finales:', finalStats);
-        setStats(finalStats);
+        if (!cancelled) {
+          setStats(finalStats);
+        }
 
       } catch (error) {
         console.error('Erreur lors du chargement des données du dashboard:', error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          clearTimeout(safetyTimeout);
+        }
       }
     };
 
     loadDashboardData();
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(safetyTimeout);
+    };
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch balance in preferred currency
   useEffect(() => {

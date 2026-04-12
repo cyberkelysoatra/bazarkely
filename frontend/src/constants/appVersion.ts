@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.5.2';
-export const APP_VERSION_NAME = 'Bug fixes Dashboard & Menu';
+export const APP_VERSION = '3.5.3';
+export const APP_VERSION_NAME = 'Fix chargement dashboard (robuste)';
 export const LAST_UPDATED = '2026-04-12';
 export const APP_BUILD_DATE = '2026-04-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.3',
+    date: '2026-04-12',
+    description: 'Fix robuste du dashboard bloqué en chargement (intermittent)',
+    changes: [
+      'Fix: scheduleTransactionWatch retiré du chemin critique (était await dans une boucle — bloquait le finally si réseau lent)',
+      'Fix: Flag cancelled ajouté pour ignorer les mises à jour d\'un fetch devenu obsolète (exécutions concurrentes)',
+      'Fix: Timeout de sécurité 10s — isLoading forcé à false quoi qu\'il arrive',
+      'Fix: Script bump-version.js converti en ESM (était cassé depuis passage type:module)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.2',
     date: '2026-04-12',
