@@ -195,6 +195,7 @@ const DashboardPage = () => {
     const loadDashboardData = async () => {
       if (!user) {
         console.log('⚠️ Aucun utilisateur connecté');
+        setIsLoading(false);
         return;
       }
 
