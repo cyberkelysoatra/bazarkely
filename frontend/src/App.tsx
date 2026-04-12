@@ -85,6 +85,8 @@ function App() {
         console.log('✅ Session Supabase restaurée pour:', userData.email);
       } catch (err) {
         console.error('❌ Erreur lors du chargement du profil:', err);
+        // Session Supabase valide même si la requête échoue → laisser l'utilisateur accéder
+        setAuthenticated(true);
       }
     };
 

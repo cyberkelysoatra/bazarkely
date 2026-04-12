@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.5.7';
-export const APP_VERSION_NAME = 'Fix connexion Google — approche auth simplifiée';
+export const APP_VERSION = '3.5.8';
+export const APP_VERSION_NAME = 'Fix connexion Google — setAuthenticated après erreur réseau';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.8',
+    date: '2026-04-13',
+    description: 'Fix connexion Google — setAuthenticated après erreur réseau',
+    changes: [
+      'Fix (App.tsx): loadUserFromSupabase() appelait setAuthenticated(true) uniquement dans le cas succès/profil absent, mais PAS dans le bloc catch — si la requête Supabase échouait, l\'utilisateur restait bloqué indéfiniment sur la page d\'authentification',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.7',
     date: '2026-04-13',
