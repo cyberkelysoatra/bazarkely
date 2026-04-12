@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.5.11';
-export const APP_VERSION_NAME = 'Fix connexion Google — timeout DB query loadUserFromSupabase';
+export const APP_VERSION = '3.5.12';
+export const APP_VERSION_NAME = 'Hardening auth — timeout DB sur toutes les requêtes users';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.12',
+    date: '2026-04-13',
+    description: 'Hardening auth — timeout 5s sur toutes les requêtes DB users',
+    changes: [
+      'Fix (authService.ts): toutes les requêtes supabase.from("users") utilisent maintenant withTimeout(5000) — login(), handleOAuthCallback(), waitForUserProfile(), getCurrentUser()',
+      'Fix (authService.ts): waitForUserProfile() réduit à 5 tentatives (au lieu de 10) avec timeout par requête',
+      'Pattern: les requêtes DB Supabase peuvent hanger silencieusement → toujours utiliser withTimeout() dans les chemins critiques',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.11',
     date: '2026-04-13',

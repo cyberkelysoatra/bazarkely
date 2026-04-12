@@ -4,8 +4,12 @@
  */
 
 import type { User } from '../types/supabase';
-import { supabase, getCurrentUser, isAuthenticated as checkAuth } from '../lib/supabase';
+import { supabase, getCurrentUser, isAuthenticated as checkAuth, withTimeout } from '../lib/supabase';
 import { handleSupabaseError } from '../lib/supabase';
+
+// Timeout par défaut pour toutes les requêtes DB Supabase dans le flux d'auth
+// Les requêtes DB peuvent hanger silencieusement sans throw ni réponse
+const DB_TIMEOUT_MS = 5000;
 
 class AuthService {
   /**
@@ -30,12 +34,11 @@ class AuthService {
         return { success: false, error: 'Aucun utilisateur trouvé' };
       }
 
-      // Récupérer les données utilisateur depuis la table users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single() as { data: User | null; error: any };
+      // Récupérer les données utilisateur depuis la table users (avec timeout)
+      const { data: userData, error: userError } = await withTimeout(
+        supabase.from('users').select('*').eq('id', data.user.id).single() as any,
+        DB_TIMEOUT_MS, 'login/users'
+      ) as { data: User | null; error: any };
 
       if (userError) {
         console.log('❌ Erreur lors de la récupération des données utilisateur:', userError.message);
@@ -272,12 +275,11 @@ class AuthService {
       console.log('⏳ Attente de la création du profil utilisateur...');
       await this.waitForUserProfile(currentUser.id);
 
-      // Récupérer les données utilisateur depuis la table users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single() as { data: User | null; error: any };
+      // Récupérer les données utilisateur depuis la table users (avec timeout)
+      const { data: userData, error: userError } = await withTimeout(
+        supabase.from('users').select('*').eq('id', currentUser.id).single() as any,
+        DB_TIMEOUT_MS, 'handleOAuthCallback/users'
+      ) as { data: User | null; error: any };
 
       if (userError) {
         console.log('❌ Erreur lors de la récupération des données utilisateur:', userError.message);
@@ -330,29 +332,28 @@ class AuthService {
   /**
    * Attendre que le profil utilisateur soit créé par le trigger
    */
-  private async waitForUserProfile(userId: string, maxAttempts: number = 10, delayMs: number = 1000): Promise<void> {
+  private async waitForUserProfile(userId: string, maxAttempts: number = 5, delayMs: number = 1000): Promise<void> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', userId)
-          .single();
+        const { data: userData, error } = await withTimeout(
+          supabase.from('users').select('id').eq('id', userId).single(),
+          DB_TIMEOUT_MS, `waitForUserProfile attempt ${attempt}`
+        );
 
         if (!error && userData) {
           console.log('✅ Profil utilisateur créé avec succès');
           return;
         }
       } catch (error) {
-        console.log(`⚠️ Tentative ${attempt}/${maxAttempts} - Profil utilisateur pas encore créé`);
+        console.log(`⚠️ Tentative ${attempt}/${maxAttempts} - timeout/erreur profil utilisateur`);
       }
-      
+
       if (attempt < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
-    
-    console.warn('⚠️ Profil utilisateur non créé après toutes les tentatives, mais la connexion a réussi');
+
+    console.warn('⚠️ Profil utilisateur non trouvé après toutes les tentatives, connexion maintenue');
   }
 
   /**
@@ -407,12 +408,11 @@ class AuthService {
       const user = await getCurrentUser();
       if (!user) return null;
 
-      // Récupérer les données utilisateur depuis la table users
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single() as { data: User | null; error: any };
+      // Récupérer les données utilisateur depuis la table users (avec timeout)
+      const { data: userData, error } = await withTimeout(
+        supabase.from('users').select('*').eq('id', user.id).single() as any,
+        DB_TIMEOUT_MS, 'getCurrentUser/users'
+      ) as { data: User | null; error: any };
 
       if (error) {
         console.error('❌ Erreur lors de la récupération des données utilisateur:', error);
