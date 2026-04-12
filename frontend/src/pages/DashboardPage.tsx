@@ -26,6 +26,9 @@ const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
+  // Utiliser l'ID comme dépendance stable — évite les re-runs quand Supabase
+  // appelle setUser() plusieurs fois avec le même utilisateur (objets différents, données identiques)
+  const userId = user?.id ?? null;
   const { checkBudgetAlerts, checkGoalReminders, checkMadagascarNotifications } = useNotifications();
   const [stats, setStats] = useState({
     totalBalance: 0,
@@ -188,7 +191,7 @@ const DashboardPage = () => {
     return () => {
       intervals.forEach(clearInterval);
     };
-  }, [user]);
+  }, [userId]);
 
   // Charger les données réelles
   useEffect(() => {
@@ -314,7 +317,7 @@ const DashboardPage = () => {
       cancelled = true;
       clearTimeout(safetyTimeout);
     };
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId]); // userId stable — évite re-runs sur setUser() multi-appels Supabase // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch balance in preferred currency
   useEffect(() => {

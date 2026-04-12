@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.3';
-export const APP_VERSION_NAME = 'Fix chargement dashboard (robuste)';
+export const APP_VERSION = '3.5.4';
+export const APP_VERSION_NAME = 'Fix chargement dashboard — cause racine';
 export const LAST_UPDATED = '2026-04-12';
 export const APP_BUILD_DATE = '2026-04-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.4',
+    date: '2026-04-12',
+    description: 'Fix cause racine du dashboard bloqué — dépendance useEffect sur userId au lieu de user',
+    changes: [
+      'Fix: useEffect([user]) remplacé par useEffect([userId]) dans DashboardPage — Supabase appelait setUser() 2x au démarrage (getSession + onAuthStateChange SIGNED_IN), chaque appel créait une nouvelle référence objet, re-déclenchant le fetch et annulant le précédent via cancelled=true',
+      'Fix: Même correction appliquée aux 3 useEffects (notifications, données, prêts)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.3',
     date: '2026-04-12',
