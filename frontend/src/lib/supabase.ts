@@ -20,7 +20,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: false  // captureOAuthTokens() in main.tsx handles URL tokens manually
   },
   realtime: {
     params: {

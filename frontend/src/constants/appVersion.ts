@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.9';
-export const APP_VERSION_NAME = 'Fix connexion Google — bypass waitForUserProfile';
+export const APP_VERSION = '3.5.10';
+export const APP_VERSION_NAME = 'Fix connexion Google — detectSessionInUrl false';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.10',
+    date: '2026-04-13',
+    description: 'Fix connexion Google — detectSessionInUrl false',
+    changes: [
+      'Fix (supabase.ts): detectSessionInUrl: true causait un conflit avec captureOAuthTokens() — le client Supabase traitait les tokens du hash en parallèle de setSession(), bloquant ce dernier indéfiniment',
+      'Fix: désactivé detectSessionInUrl car main.tsx gère déjà la capture manuelle des tokens OAuth',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.9',
     date: '2026-04-13',
