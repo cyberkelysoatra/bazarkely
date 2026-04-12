@@ -64,41 +64,6 @@ function App() {
 
   // Initialisation de l'application + écoute session Supabase
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Initialiser le service de dialogues modernes
-        dialogService.initialize();
-
-        // Initialiser les services de base
-        await feeService.initializeDefaultFees();
-
-        // Initialiser le Service Worker adaptatif
-        await safariServiceWorkerManager.initialize();
-
-        // Initialiser le SyncManager (détecte Background Sync et active fallback si nécessaire)
-        initSyncManager();
-
-        // ✅ Vérifier la vraie session Supabase (pas localStorage)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadUserFromSupabase(session.user.id);
-        } else {
-          // Aucune session Supabase valide → s'assurer que le store est vide
-          setUser(null);
-          setAuthenticated(false);
-        }
-
-        // Tester la connexion API (mode offline)
-        const isConnected = await apiService.testConnection();
-        if (!isConnected) {
-          console.warn('⚠️ Connexion API non disponible, mode hors ligne');
-        }
-
-      } catch (error) {
-        console.error('❌ Erreur lors de l\'initialisation:', error);
-      }
-    };
-
     // ✅ Chargement du profil utilisateur depuis la table users
     const loadUserFromSupabase = async (userId: string) => {
       try {
@@ -123,13 +88,48 @@ function App() {
       }
     };
 
+    const initializeApp = async () => {
+      try {
+        // Initialiser le service de dialogues modernes
+        dialogService.initialize();
+
+        // Initialiser les services de base
+        await feeService.initializeDefaultFees();
+
+        // Initialiser le Service Worker adaptatif
+        await safariServiceWorkerManager.initialize();
+
+        // Initialiser le SyncManager (détecte Background Sync et active fallback si nécessaire)
+        initSyncManager();
+
+        // Tester la connexion API (mode offline)
+        const isConnected = await apiService.testConnection();
+        if (!isConnected) {
+          console.warn('⚠️ Connexion API non disponible, mode hors ligne');
+        }
+
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation:', error);
+      }
+    };
+
     initializeApp();
 
-    // ✅ Écouter les changements d'état d'authentification Supabase (token refresh, sign-out, sign-in)
+    // ✅ onAuthStateChange est la SEULE source de vérité pour l'état d'authentification.
+    // INITIAL_SESSION se déclenche immédiatement depuis localStorage (pas de réseau) —
+    // évite le flash isAuthenticated false→true qui déclenchait un remontage du Dashboard.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth state change:', event);
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          await loadUserFromSupabase(session.user.id);
+        } else {
+          // Pas de session au démarrage → forcer la déconnexion du store
+          setUser(null);
+          setAuthenticated(false);
+        }
+      } else if (event === 'SIGNED_IN' && session?.user) {
         await loadUserFromSupabase(session.user.id);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // Token refreshed silencieusement — s'assurer que le store reste cohérent

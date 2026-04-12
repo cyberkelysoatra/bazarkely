@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.5.4';
-export const APP_VERSION_NAME = 'Fix chargement dashboard — cause racine';
+export const APP_VERSION = '3.5.5';
+export const APP_VERSION_NAME = 'Fix boucle de chargement — INITIAL_SESSION auth';
 export const LAST_UPDATED = '2026-04-12';
 export const APP_BUILD_DATE = '2026-04-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.5',
+    date: '2026-04-12',
+    description: 'Fix boucle de chargement — INITIAL_SESSION auth',
+    changes: [
+      'Fix (App.tsx): onAuthStateChange INITIAL_SESSION comme source de vérité auth — élimine flash isAuthenticated false→true qui causait remontage du Dashboard en boucle',
+      'Fix (App.tsx): Suppression setUser(null) dans initializeApp() — évite kick vers /auth pendant refresh token Supabase',
+      'Fix (supabase.ts): Timeout global 8s sur toutes les requêtes Supabase — empêche blocage infini sur réseau lent',
+      'Fix (authService.ts): Nettoyage localStorage avant signOut Supabase — déconnexion garantie même hors ligne',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.4',
     date: '2026-04-12',

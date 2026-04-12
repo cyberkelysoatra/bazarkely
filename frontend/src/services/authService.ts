@@ -359,30 +359,33 @@ class AuthService {
    * Déconnexion utilisateur avec Supabase Auth
    */
   async logout(): Promise<boolean> {
+    console.log('🚪 Déconnexion en cours...');
+
+    // Nettoyer les données locales EN PREMIER — même si Supabase est inaccessible
+    localStorage.removeItem('bazarkely-user');
+    localStorage.removeItem('bazarkely-authenticated');
+    // Vider le store Zustand persisté
+    const zustandKeys = Object.keys(localStorage).filter(k => k.startsWith('bazarkely'));
+    zustandKeys.forEach(k => localStorage.removeItem(k));
+    sessionStorage.clear();
+
     try {
-      console.log('🚪 Déconnexion en cours...');
-      
-      // Déconnexion avec Supabase
-      const { error } = await supabase.auth.signOut();
-      
+      // Tentative de déconnexion Supabase avec timeout de 4s
+      const signOutPromise = supabase.auth.signOut();
+      const timeout = new Promise<{ error: Error }>(resolve =>
+        setTimeout(() => resolve({ error: new Error('signOut timeout') }), 4000)
+      );
+      const { error } = await Promise.race([signOutPromise, timeout]) as any;
       if (error) {
-        console.error('❌ Erreur lors de la déconnexion:', error);
-        return false;
+        console.warn('⚠️ Supabase signOut:', error.message, '— session locale nettoyee quand meme');
+      } else {
+        console.log('✅ Deconnexion Supabase reussie');
       }
-      
-      // Effacer les données locales
-      localStorage.removeItem('bazarkely-user');
-      localStorage.removeItem('bazarkely-authenticated');
-      sessionStorage.clear();
-      sessionStorage.setItem('bazarkely-logged-out', 'true');
-      
-      console.log('✅ Déconnexion réussie');
-      return true;
-      
     } catch (error) {
-      console.error('❌ Erreur lors de la déconnexion:', error);
-      return false;
+      console.warn('⚠️ Supabase signOut echoue (offline?) — session locale nettoyee quand meme');
     }
+
+    return true;
   }
 
   /**
