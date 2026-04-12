@@ -67,15 +67,20 @@ function App() {
     // ✅ Chargement du profil utilisateur depuis la table users
     const loadUserFromSupabase = async (userId: string) => {
       try {
-        const { data: userData, error } = await supabase
+        // Timeout 5s : si la table users ne répond pas, on laisse quand même l'utilisateur accéder
+        const queryPromise = supabase
           .from('users')
           .select('*')
           .eq('id', userId)
           .single();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('DB timeout after 5s')), 5000)
+        );
+
+        const { data: userData, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
         if (error || !userData) {
           console.warn('⚠️ Profil utilisateur introuvable dans users, session Supabase valide mais profil manquant');
-          // La session est valide même sans profil dans la table users
           setAuthenticated(true);
           return;
         }
@@ -84,8 +89,8 @@ function App() {
         setAuthenticated(true);
         console.log('✅ Session Supabase restaurée pour:', userData.email);
       } catch (err) {
-        console.error('❌ Erreur lors du chargement du profil:', err);
-        // Session Supabase valide même si la requête échoue → laisser l'utilisateur accéder
+        console.error('❌ Erreur/timeout lors du chargement du profil:', err);
+        // Session valide même si la requête DB échoue ou timeout → laisser accéder
         setAuthenticated(true);
       }
     };

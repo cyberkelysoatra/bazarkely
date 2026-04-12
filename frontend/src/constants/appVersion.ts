@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.5.10';
-export const APP_VERSION_NAME = 'Fix connexion Google — detectSessionInUrl false';
+export const APP_VERSION = '3.5.11';
+export const APP_VERSION_NAME = 'Fix connexion Google — timeout DB query loadUserFromSupabase';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.11',
+    date: '2026-04-13',
+    description: 'Fix connexion Google — timeout 5s sur requête DB users',
+    changes: [
+      'Fix (App.tsx): loadUserFromSupabase() — la requête Supabase users table ne throwait pas, elle hangait indéfiniment. Ajout d\'un Promise.race() avec timeout 5s : après 5s sans réponse, setAuthenticated(true) est appelé via le catch, la session reste valide',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.10',
     date: '2026-04-13',
