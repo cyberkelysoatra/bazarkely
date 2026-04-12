@@ -138,13 +138,15 @@ const DashboardPage = () => {
 
   // Initialiser le système de notifications
   useEffect(() => {
+    const intervals: ReturnType<typeof setInterval>[] = [];
+
     const initializeNotifications = async () => {
       if (!user) return;
 
       try {
         // Initialiser le service de notifications
         await notificationService.initialize();
-        
+
         // Vérifier la permission actuelle
         const permission = notificationService.isPermissionGranted() ? 'granted' : Notification.permission;
 
@@ -154,28 +156,28 @@ const DashboardPage = () => {
           // by notificationService.initialize() -> startPeriodicChecks(). Keep both for now to avoid
           // regression risk, then consolidate into a single scheduler source of truth.
           // Vérifier les budgets toutes les heures
-          setInterval(() => {
+          intervals.push(setInterval(() => {
             if (user?.id) {
               notificationService.scheduleBudgetCheck(user.id);
             }
-          }, 60 * 60 * 1000); // 1 heure
+          }, 60 * 60 * 1000)); // 1 heure
 
           // Vérifier les objectifs quotidiennement à 9h
-          setInterval(() => {
+          intervals.push(setInterval(() => {
             const now = new Date();
             if (now.getHours() === 9 && user?.id) {
               notificationService.scheduleGoalCheck(user.id);
               notificationService.scheduleLoanCheck(user.id);
             }
-          }, 60 * 60 * 1000); // 1 heure
+          }, 60 * 60 * 1000)); // 1 heure
 
           // Résumé quotidien à 20h
-          setInterval(() => {
+          intervals.push(setInterval(() => {
             const now = new Date();
             if (now.getHours() === 20 && user?.id) {
               notificationService.scheduleDailySummary(user.id);
             }
-          }, 60 * 60 * 1000); // 1 heure
+          }, 60 * 60 * 1000)); // 1 heure
         }
       } catch (error) {
         console.error('❌ Erreur lors de l\'initialisation des notifications:', error);
@@ -183,6 +185,9 @@ const DashboardPage = () => {
     };
 
     initializeNotifications();
+    return () => {
+      intervals.forEach(clearInterval);
+    };
   }, [user]);
 
   // Charger les données réelles
@@ -382,24 +387,28 @@ const DashboardPage = () => {
             </div>
           </div>
           <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-white whitespace-nowrap">
-            <CurrencyDisplay
-              amount={stats.totalBalance}
-              originalCurrency="MGA"
-              displayCurrency={displayCurrency}
-              showConversion={true}
-              size="xl"
-              className="text-white"
-            />
+            {isLoading ? (
+              <div className="h-8 bg-white/30 rounded animate-pulse w-3/4" />
+            ) : (
+              <CurrencyDisplay
+                amount={stats.totalBalance}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="xl"
+                className="text-white"
+              />
+            )}
           </div>
         </div>
 
-        <div 
+        <div
           onClick={() => navigate('/transactions?filter=income')}
           className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl md:shadow-xl md:hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-green-100">Revenus</h3>
-            <div 
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/add-transaction?type=income');
@@ -410,24 +419,28 @@ const DashboardPage = () => {
             </div>
           </div>
           <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-white whitespace-nowrap">
-            <CurrencyDisplay
-              amount={stats.monthlyIncome}
-              originalCurrency="MGA"
-              displayCurrency={displayCurrency}
-              showConversion={true}
-              size="xl"
-              className="text-white"
-            />
+            {isLoading ? (
+              <div className="h-8 bg-white/30 rounded animate-pulse w-3/4" />
+            ) : (
+              <CurrencyDisplay
+                amount={stats.monthlyIncome}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="xl"
+                className="text-white"
+              />
+            )}
           </div>
         </div>
 
-        <div 
+        <div
           onClick={() => navigate('/transactions?filter=expense')}
           className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl md:shadow-xl md:hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-red-100">Dépenses</h3>
-            <div 
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/add-transaction');
@@ -438,24 +451,28 @@ const DashboardPage = () => {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-bold text-white whitespace-nowrap">
-            <CurrencyDisplay
-              amount={stats.monthlyExpenses}
-              originalCurrency="MGA"
-              displayCurrency={displayCurrency}
-              showConversion={true}
-              size="xl"
-              className="text-white"
-            />
+            {isLoading ? (
+              <div className="h-8 bg-white/30 rounded animate-pulse w-3/4" />
+            ) : (
+              <CurrencyDisplay
+                amount={stats.monthlyExpenses}
+                originalCurrency="MGA"
+                displayCurrency={displayCurrency}
+                showConversion={true}
+                size="xl"
+                className="text-white"
+              />
+            )}
           </div>
         </div>
 
-        <div 
+        <div
           onClick={() => navigate('/budgets')}
           className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-4 md:p-6 lg:p-8 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-yellow-100">Budget</h3>
-            <div 
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 navigate('/add-budget');
@@ -466,7 +483,11 @@ const DashboardPage = () => {
             </div>
           </div>
           <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-white">
-            {stats.budgetUtilization}%
+            {isLoading ? (
+              <span className="block h-8 bg-white/30 rounded animate-pulse w-16" />
+            ) : (
+              `${stats.budgetUtilization}%`
+            )}
           </p>
         </div>
           </div>

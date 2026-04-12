@@ -848,8 +848,9 @@ const Header = () => {
               />
 
               {/* Menu utilisateur */}
-              <div 
-                className="user-menu-container flex items-center space-x-3 bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg cursor-pointer hover:bg-purple-500/50 transition-all duration-200 relative"
+              <div className="relative">
+              <div
+                className="user-menu-container flex items-center space-x-3 bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg cursor-pointer hover:bg-purple-500/50 transition-all duration-200"
                 onClick={handleMenuToggle}
               >
                 <div className="w-10 h-10 bg-white/50 rounded-full flex items-center justify-center border border-white/60">
@@ -966,6 +967,7 @@ const Header = () => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
           </div>
