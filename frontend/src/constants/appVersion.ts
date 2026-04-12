@@ -1,8 +1,32 @@
-export const APP_VERSION = '3.5.1';
-export const APP_VERSION_NAME = 'Loans Transaction View S54';
-export const LAST_UPDATED = '2026-03-07';
-export const APP_BUILD_DATE = '2026-03-07';
+export const APP_VERSION = '3.5.2';
+export const APP_VERSION_NAME = 'Bug fixes Dashboard & Menu';
+export const LAST_UPDATED = '2026-04-12';
+export const APP_BUILD_DATE = '2026-04-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.2',
+    date: '2026-04-12',
+    description: 'Correction du dashboard bloqué sur "Chargement..." et du bouton Déconnexion inaccessible',
+    changes: [
+      'Fix: Dashboard - Race condition sur les setInterval de notifications empêchant le chargement des données (ajout clearInterval dans le cleanup)',
+      'Fix: Dashboard - setIsLoading(false) manquant quand aucun utilisateur connecté → blocage infini résolu',
+      'Fix: Dashboard - Cartes Solde/Revenus/Dépenses/Budget affichaient 0 pendant le chargement → skeleton animé ajouté',
+      'Fix: Header - Bouton Déconnexion inaccessible car dropdown positionné hors zone cliquable → wrapper relative corrigé'
+    ],
+    type: 'patch' as const
+  },
+  {
+    version: '3.5.1',
+    date: '2026-03-07',
+    description: 'Loans Transaction View S54',
+    changes: [
+      'Feature: Loan acknowledgment system - WhatsApp confirmation link',
+      'Feature: Public /loan-confirm/:token page',
+      'Feature: borrowerPhone in AddTransactionPage',
+      'Refactor: Remove CreateLoanModal'
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.0',
     date: '2026-03-09',

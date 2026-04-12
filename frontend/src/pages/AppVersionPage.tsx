@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   APP_VERSION,
+  APP_VERSION_NAME,
   APP_BUILD_DATE,
   VERSION_HISTORY,
   type VersionEntry
@@ -149,6 +150,11 @@ const AppVersionPage: React.FC = () => {
                   (Build {APP_BUILD_DATE})
                 </span>
               </div>
+              {APP_VERSION_NAME && (
+                <p className="text-base font-medium text-gray-700 mb-1">
+                  {APP_VERSION_NAME}
+                </p>
+              )}
               <p className="text-sm text-gray-600">
                 Compilé le {formatDate(APP_BUILD_DATE)}
               </p>
@@ -250,21 +256,28 @@ const AppVersionPage: React.FC = () => {
                     "
                   >
                     <div className="flex items-center gap-4 flex-1 text-left">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                        <span className="text-lg font-semibold text-gray-900">
-                          v{entry.version}
-                        </span>
-                        <span
-                          className={`
-                            px-2 py-1 rounded text-xs font-medium border
-                            ${getVersionTypeColor(entry.type)}
-                          `}
-                        >
-                          {getVersionTypeLabel(entry.type)}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(entry.date)}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                          <span className="text-lg font-semibold text-gray-900">
+                            v{entry.version}
+                          </span>
+                          <span
+                            className={`
+                              px-2 py-1 rounded text-xs font-medium border w-fit
+                              ${getVersionTypeColor(entry.type)}
+                            `}
+                          >
+                            {getVersionTypeLabel(entry.type)}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(entry.date)}
+                          </span>
+                        </div>
+                        {entry.description && (
+                          <p className="text-sm text-gray-500 italic">
+                            {entry.description}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {isExpanded ? (
