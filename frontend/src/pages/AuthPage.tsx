@@ -131,32 +131,37 @@ const AuthPage = () => {
           
           if (data.session) {
             console.log('✅ Session established:', data.session.user.id);
-            
-            // Use authService to handle the OAuth callback properly
-            const result = await authService.handleOAuthCallback();
-            
-            if (result.success && result.user) {
-              console.log('✅ User profile created/retrieved:', result.user.username);
-              
-              // Set user state and wait for state update
-              localStorage.setItem('bazarkely-user', JSON.stringify(result.user));
-              setUser(result.user);
-              setAuthenticated(true);
-              trackDailyLogin();
-              
-              // Clear hash if still present
-              if (hash) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-              }
-              
-              // Small delay to ensure state is updated before navigation
-              setTimeout(() => {
-                navigate('/dashboard');
-              }, 100);
-            } else {
-              console.error('❌ Error handling OAuth callback:', result.error);
-              setError(`Erreur de profil: ${result.error}`);
+
+            // Build basic user from session metadata — full profile loaded lazily by App.tsx SIGNED_IN handler
+            const sessionUser = data.session.user;
+            const basicUser = {
+              id: sessionUser.id,
+              username: sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || 'Utilisateur',
+              email: sessionUser.email || '',
+              phone: sessionUser.user_metadata?.phone || '',
+              role: 'user' as const,
+              preferences: {
+                theme: 'system' as const,
+                language: 'fr' as const,
+                currency: 'MGA' as const
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              last_sync: new Date().toISOString()
+            };
+
+            localStorage.setItem('bazarkely-user', JSON.stringify(basicUser));
+            setUser(basicUser as any);
+            setAuthenticated(true);
+            trackDailyLogin();
+
+            // Clear hash if still present
+            if (hash) {
+              window.history.replaceState({}, document.title, window.location.pathname);
             }
+
+            console.log('✅ Navigation vers dashboard (profil complet chargé par App.tsx SIGNED_IN)');
+            navigate('/dashboard');
           } else {
             console.error('❌ No session established after setSession');
             setError('Aucune session établie');

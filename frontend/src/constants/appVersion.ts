@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.8';
-export const APP_VERSION_NAME = 'Fix connexion Google — setAuthenticated après erreur réseau';
+export const APP_VERSION = '3.5.9';
+export const APP_VERSION_NAME = 'Fix connexion Google — bypass waitForUserProfile';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.9',
+    date: '2026-04-13',
+    description: 'Fix connexion Google — bypass waitForUserProfile bloquant',
+    changes: [
+      'Fix (AuthPage.tsx): authService.handleOAuthCallback() appelait waitForUserProfile() qui pollait la table users sans timeout — si la connexion DB traînait, le flux OAuth restait bloqué indéfiniment sur Chargement...',
+      'Fix (AuthPage.tsx): remplacé par navigation directe après setSession() — profil complet chargé par App.tsx SIGNED_IN handler de manière asynchrone',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.8',
     date: '2026-04-13',
