@@ -33,6 +33,8 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const updateCheckIntervalRef = useRef<number | null>(null)
   const waitingWorkerRef = useRef<ServiceWorker | null>(null)
+  // Guard: only auto-reload if user explicitly clicked update
+  const userRequestedUpdateRef = useRef(false)
 
   /**
    * Vérifie si une mise à jour est disponible
@@ -111,7 +113,8 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
 
     try {
       console.log('🔄 Application de la mise à jour...')
-      
+      userRequestedUpdateRef.current = true
+
       // Envoyer le message skipWaiting au worker en attente
       waitingWorker.postMessage({ type: 'SKIP_WAITING' })
 
@@ -183,8 +186,13 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
     }
 
     const handleControllerChange = () => {
+      // Only auto-reload if user explicitly clicked the update button
+      // Prevents infinite reload loop when DevTools "Update on reload" is checked
+      if (!userRequestedUpdateRef.current) {
+        console.log('🔄 Nouveau Service Worker a pris le contrôle (rechargement ignoré — pas déclenché par l\'utilisateur)')
+        return
+      }
       console.log('🔄 Nouveau Service Worker a pris le contrôle, rechargement...')
-      // Recharger la page pour utiliser la nouvelle version
       window.location.reload()
     }
 

@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.5.13';
-export const APP_VERSION_NAME = 'Update prompt uniquement en mode PWA installée';
+export const APP_VERSION = '3.5.14';
+export const APP_VERSION_NAME = 'Fix boucle rechargement SW + update prompt PWA only';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.14',
+    date: '2026-04-13',
+    description: 'Fix boucle infinie rechargement Service Worker',
+    changes: [
+      'Fix (useServiceWorkerUpdate.ts): le rechargement auto sur controllerchange ne se déclenche que si l\'utilisateur a cliqué "Mettre à jour" — évite la boucle infinie avec DevTools "Update on reload"',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.13',
     date: '2026-04-13',
