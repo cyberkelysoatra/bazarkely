@@ -23,6 +23,7 @@ import Input from '../UI/Input';
 import Button from '../UI/Button';
 import { CurrencyDisplay } from '../Currency';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useFormatBalance } from '../../hooks/useFormatBalance';
 import { useAppStore } from '../../stores/appStore';
 import { 
   recordReimbursementPayment, 
@@ -104,6 +105,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
   onPaymentRecorded
 }) => {
   const { displayCurrency } = useCurrency();
+  const { formatBalance } = useFormatBalance();
   const { user } = useAppStore();
   
   // State for creditor member ID (current user's memberId)
@@ -507,7 +509,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
                         <span className="text-sm font-semibold text-gray-900">
-                          {allocation.allocatedAmount.toLocaleString('fr-FR')} Ar
+                          {formatBalance(allocation.allocatedAmount)}
                         </span>
                       </div>
                     </div>
@@ -535,7 +537,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                       </span>
                       {!isFullyPaid && allocation.remainingBefore > 0 && (
                         <span className="text-gray-500 font-medium">
-                          Reste: {allocation.remainingBefore.toLocaleString('fr-FR')} Ar
+                          Reste: {formatBalance(allocation.remainingBefore)}
                         </span>
                       )}
                     </div>
@@ -557,10 +559,10 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                 </p>
                 <p className="text-sm text-green-700">
                   Le montant reçu ({paymentAmount.replace(/\s/g, '').replace(/,/g, '.')} Ar) dépasse
-                  le total des dettes ({totalDebtAmount.toLocaleString('fr-FR')} Ar).
+                  le total des dettes ({formatBalance(totalDebtAmount)}).
                 </p>
                 <p className="text-sm font-medium text-green-800 mt-2">
-                  Acompte: {surplusAmount.toLocaleString('fr-FR')} Ar
+                  Acompte: {formatBalance(surplusAmount)}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
                   Cet acompte sera enregistré et pourra être utilisé pour de futures dettes.
@@ -661,7 +663,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                             <p className="text-xs text-gray-600 mb-1 font-medium">Allocations:</p>
                             {payment.allocations.map((alloc, idx) => (
                               <div key={idx} className="text-xs text-gray-500">
-                                • {alloc.description}: {alloc.amount.toLocaleString('fr-FR')} Ar
+                                • {alloc.description}: {formatBalance(alloc.amount)}
                               </div>
                             ))}
                           </div>
@@ -669,7 +671,7 @@ const ReimbursementPaymentModal: React.FC<ReimbursementPaymentModalProps> = ({
                         {payment.surplusAmount > 0 && (
                           <div className="pt-2 border-t border-gray-100">
                             <p className="text-xs text-green-600 font-medium">
-                              Acompte: {payment.surplusAmount.toLocaleString('fr-FR')} Ar
+                              Acompte: {formatBalance(payment.surplusAmount)}
                             </p>
                           </div>
                         )}

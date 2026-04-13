@@ -9,7 +9,7 @@ import feeService from '../services/feeService';
 import recurringTransactionService from '../services/recurringTransactionService';
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
-import { getExchangeRate } from '../services/exchangeRateService';
+import { useFormatBalance } from '../hooks/useFormatBalance';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { validateRecurringData } from '../utils/recurringUtils';
 import { ACCOUNT_TYPES } from '../constants';
@@ -33,6 +33,7 @@ const TransferPage = () => {
   const location = useLocation();
   const { user } = useAppStore();
   const { displayCurrency, setDisplayCurrency } = useCurrency();
+  const { formatBalance } = useFormatBalance();
   
   // Get navigation state from GoalsPage
   const transferState = location.state as TransferNavigationState | null;
@@ -69,28 +70,6 @@ const TransferPage = () => {
     linkedBudgetId: null as string | null
   });
   const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
-
-  // Exchange rate for display conversion (MGA balances → EUR)
-  const [exchangeRate, setExchangeRate] = useState<number>(4950);
-
-  useEffect(() => {
-    if (displayCurrency === 'EUR') {
-      getExchangeRate('EUR', 'MGA')
-        .then(rate => setExchangeRate(rate.rate))
-        .catch(() => setExchangeRate(4950));
-    }
-  }, [displayCurrency]);
-
-  /**
-   * Format account balance for display, converting if needed
-   */
-  const formatAccountBalance = (balance: number): string => {
-    if (displayCurrency === 'EUR') {
-      const converted = balance / exchangeRate;
-      return `${converted.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
-    }
-    return `${balance.toLocaleString('fr-FR')} Ar`;
-  };
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -287,7 +266,7 @@ const TransferPage = () => {
       const allowNegative = accountTypeConfig?.allowNegative ?? false;
       
       if (!allowNegative && fromAccount.balance < totalAmount) {
-        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${formatAccountBalance(fromAccount.balance)}`;
+        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${formatBalance(fromAccount.balance)}`;
         console.error(`❌ ${errorMessage}`);
         console.groupEnd();
         setError(errorMessage);
@@ -804,7 +783,7 @@ const TransferPage = () => {
               <option value="">Sélectionner le compte source</option>
               {availableSourceAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name} - {formatAccountBalance(account.balance)}
+                  {account.name} - {formatBalance(account.balance)}
                 </option>
               ))}
             </select>
@@ -828,7 +807,7 @@ const TransferPage = () => {
                 .filter(account => account.id !== formData.fromAccountId)
                 .map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} - {formatAccountBalance(account.balance)}
+                    {account.name} - {formatBalance(account.balance)}
                   </option>
                 ))}
             </select>

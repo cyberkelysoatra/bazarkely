@@ -16,6 +16,7 @@ import NotificationPermissionRequest from '../components/NotificationPermissionR
 import RecurringTransactionsWidget from '../components/Dashboard/RecurringTransactionsWidget';
 import useNotifications from '../hooks/useNotifications';
 import { CurrencyDisplay } from '../components/Currency';
+import { useFormatBalance } from '../hooks/useFormatBalance';
 import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
 import DashboardContainer from '../components/Layout/DashboardContainer';
 import ResponsiveGrid from '../components/Layout/ResponsiveGrid';
@@ -26,6 +27,7 @@ const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
+  const { formatBalance } = useFormatBalance();
   // Utiliser l'ID comme dépendance stable — évite les re-runs quand Supabase
   // appelle setUser() plusieurs fois avec le même utilisateur (objets différents, données identiques)
   const userId = user?.id ?? null;
@@ -783,7 +785,7 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between text-sm mt-1">
                 <span className="text-gray-600">Total dû:</span>
                 <span className="font-semibold text-gray-900">
-                  {activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0).toLocaleString('fr-FR')} Ar
+                  {formatBalance(activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0))}
                 </span>
               </div>
             </div>

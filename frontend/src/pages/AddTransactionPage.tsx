@@ -11,6 +11,7 @@ import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import { validateRecurringData } from '../utils/recurringUtils';
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
+import { useFormatBalance } from '../hooks/useFormatBalance';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account, TransactionCategory } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
@@ -48,6 +49,7 @@ const AddTransactionPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const { displayCurrency: transactionCurrency, setDisplayCurrency: setTransactionCurrency } = useCurrency();
+  const { formatBalance } = useFormatBalance();
   const [categories, setCategories] = useState<CategoryFromDB[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -354,7 +356,7 @@ const AddTransactionPage = () => {
         const newBalance = selectedAccount.balance - amount;
         
         if (!allowNegative && newBalance < 0) {
-          const errorMessage = `Solde insuffisant. Le compte "${selectedAccount.name}" ne permet pas le découvert. Solde disponible: ${selectedAccount.balance.toLocaleString('fr-FR')} Ar`;
+          const errorMessage = `Solde insuffisant. Le compte "${selectedAccount.name}" ne permet pas le découvert. Solde disponible: ${formatBalance(selectedAccount.balance)}`;
           console.error(`❌ ${errorMessage}`);
           setError(errorMessage);
           return;
@@ -958,7 +960,7 @@ const AddTransactionPage = () => {
               <option value="">Sélectionner un compte</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name} ({account.balance.toLocaleString('fr-FR')} MGA)
+                  {account.name} ({formatBalance(account.balance)})
                 </option>
               ))}
             </select>

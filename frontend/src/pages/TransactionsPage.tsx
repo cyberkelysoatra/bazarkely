@@ -10,6 +10,7 @@ import RecurringBadge from '../components/RecurringTransactions/RecurringBadge';
 import { CurrencyDisplay } from '../components/Currency';
 import type { Transaction, Account, TransactionCategory } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
+import { useFormatBalance } from '../hooks/useFormatBalance';
 import { getTransactionDisplayAmount } from '../utils/currencyConversion';
 import Modal from '../components/UI/Modal';
 import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
@@ -54,6 +55,7 @@ const TransactionsPage = () => {
   
   // Currency display preference
   const { displayCurrency } = useCurrency();
+  const { formatBalance } = useFormatBalance();
   
   // Family group for sharing (loaded directly, no context required)
   const [activeFamilyGroup, setActiveFamilyGroup] = useState<FamilyGroup | null>(null);
@@ -1596,8 +1598,8 @@ const TransactionsPage = () => {
                         ) : (
                           <div className="mt-1">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
-                              <span>Remboursé: {loanProgress.totalRepaid.toLocaleString('fr-FR')} Ar</span>
-                              <span>Restant: {loanProgress.remaining.toLocaleString('fr-FR')} Ar</span>
+                              <span>Remboursé: {formatBalance(loanProgress.totalRepaid)}</span>
+                              <span>Restant: {formatBalance(loanProgress.remaining)}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div
@@ -1632,7 +1634,7 @@ const TransactionsPage = () => {
                             >
                               <p className="text-xs text-gray-500">Dette initiale 🔗</p>
                               <div className="text-right">
-                                <p className="font-semibold text-gray-900 text-xs">{parentLoanInfo.amountInitial.toLocaleString('fr-FR')} Ar</p>
+                                <p className="font-semibold text-gray-900 text-xs">{formatBalance(parentLoanInfo.amountInitial)}</p>
                                 <p className="text-xs text-gray-400">{new Date(parentLoanInfo.createdAt).toLocaleDateString('fr-FR')}</p>
                               </div>
                             </div>
@@ -1646,8 +1648,8 @@ const TransactionsPage = () => {
                                   <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${loanProgress?.percentage ? Math.round(loanProgress.percentage) : 0}%` }} />
                                 </div>
                                 <div className="flex justify-between text-xs mt-1 mb-2">
-                                  <span className="text-gray-600">Remboursé : <span className="font-semibold text-green-700">{(loanProgress?.totalRepaid || 0).toLocaleString('fr-FR')} Ar</span></span>
-                                  <span className="text-gray-600">Restant : <span className="font-semibold text-red-600">{(loanProgress?.remaining || 0).toLocaleString('fr-FR')} Ar</span></span>
+                                  <span className="text-gray-600">Remboursé : <span className="font-semibold text-green-700">{formatBalance(loanProgress?.totalRepaid || 0)}</span></span>
+                                  <span className="text-gray-600">Restant : <span className="font-semibold text-red-600">{formatBalance(loanProgress?.remaining || 0)}</span></span>
                                 </div>
                                 <p className="text-xs font-medium text-gray-600 mb-1">Historique des versements</p>
                                 {repaymentHistory.map((r: any, i: number) => (
@@ -1675,7 +1677,7 @@ const TransactionsPage = () => {
                                     className={`flex justify-between text-xs py-1 border-b border-gray-100 last:border-0 ${r.transactionId ? 'cursor-pointer hover:bg-gray-50 rounded' : ''}`}
                                   >
                                     <span className="text-gray-500">{new Date(r.payment_date).toLocaleDateString('fr-FR')}</span>
-                                    <span className="font-semibold text-green-700">+{r.amount_paid.toLocaleString('fr-FR')} Ar</span>
+                                    <span className="font-semibold text-green-700">+{formatBalance(r.amount_paid)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1748,7 +1750,7 @@ const TransactionsPage = () => {
                             className={`flex justify-between items-center px-3 py-1.5 bg-gray-50 rounded-lg text-xs ${r.transactionId ? 'cursor-pointer hover:bg-gray-100' : ''}`}
                           >
                             <span className="text-gray-500">{new Date(r.payment_date).toLocaleDateString('fr-FR')}</span>
-                            <span className="font-semibold text-green-700">+{r.amount_paid.toLocaleString('fr-FR')} Ar</span>
+                            <span className="font-semibold text-green-700">+{formatBalance(r.amount_paid)}</span>
                           </div>
                         ))}
                       </div>

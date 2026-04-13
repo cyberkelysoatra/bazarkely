@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.5.15';
-export const APP_VERSION_NAME = 'Fix conversion devise dans transferts';
+export const APP_VERSION = '3.6.0';
+export const APP_VERSION_NAME = 'Fix conversion devise globale — hook useFormatBalance';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.6.0',
+    date: '2026-04-13',
+    description: 'Fix conversion devise globale — tous les montants MGA respectent la devise d\'affichage',
+    changes: [
+      'Nouveau hook useFormatBalance : convertit les montants MGA au taux du jour quand displayCurrency=EUR, réutilisable dans toute l\'app',
+      'Fix (AccountDetailPage.tsx): solde du compte converti correctement en EUR',
+      'Fix (AddTransactionPage.tsx): dropdown comptes et message "solde insuffisant" — montants convertis',
+      'Fix (DashboardPage.tsx): total prêts actifs converti en EUR',
+      'Fix (TransactionsPage.tsx): 7 montants de prêts/remboursements convertis en EUR',
+      'Fix (ReimbursementPaymentModal.tsx): 6 montants allocations/acomptes convertis en EUR',
+      'Refactoring (TransferPage.tsx): logique locale remplacée par le hook partagé useFormatBalance',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.5.15',
     date: '2026-04-13',
