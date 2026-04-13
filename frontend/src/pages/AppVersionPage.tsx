@@ -24,6 +24,7 @@ import {
   type VersionEntry
 } from '../constants/appVersion';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
+import { isStandalone } from '../utils/browserDetection';
 
 /**
  * Get badge color based on version type
@@ -170,59 +171,77 @@ const AppVersionPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Statut de mise à jour
           </h2>
-          {isChecking ? (
-            <div className="flex items-center gap-3 text-gray-600">
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>Vérification des mises à jour...</span>
-            </div>
-          ) : updateAvailable ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-semibold text-green-900">
-                    Nouvelle version disponible
-                  </p>
-                  <p className="text-sm text-green-700">
-                    Une mise à jour de l'application est disponible. Cliquez sur le bouton ci-dessous pour l'installer.
-                  </p>
+          {isStandalone() ? (
+            // PWA installed mode — show update controls
+            <>
+              {isChecking ? (
+                <div className="flex items-center gap-3 text-gray-600">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span>Vérification des mises à jour...</span>
                 </div>
-              </div>
-              <button
-                onClick={handleUpdate}
-                disabled={isUpdating}
-                className="
-                  w-full sm:w-auto px-6 py-3
-                  bg-purple-600 hover:bg-purple-700
-                  text-white font-semibold rounded-xl
-                  transition-colors duration-200
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2
-                  touch-manipulation
-                "
-              >
-                {isUpdating ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                    <span>Mise à jour en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-5 h-5" />
-                    <span>Mettre à jour maintenant</span>
-                  </>
-                )}
-              </button>
-            </div>
+              ) : updateAvailable ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-green-900">
+                        Nouvelle version disponible
+                      </p>
+                      <p className="text-sm text-green-700">
+                        Une mise à jour de l'application est disponible. Cliquez sur le bouton ci-dessous pour l'installer.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleUpdate}
+                    disabled={isUpdating}
+                    className="
+                      w-full sm:w-auto px-6 py-3
+                      bg-purple-600 hover:bg-purple-700
+                      text-white font-semibold rounded-xl
+                      transition-colors duration-200
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                      flex items-center justify-center gap-2
+                      touch-manipulation
+                    "
+                  >
+                    {isUpdating ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Mise à jour en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-5 h-5" />
+                        <span>Mettre à jour maintenant</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-blue-900">
+                      Vous êtes à jour
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Vous utilisez la dernière version de l'application.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
+            // Regular browser mode — no update mechanism needed
             <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-blue-900">
-                  Vous êtes à jour
+                  Mode navigateur
                 </p>
                 <p className="text-sm text-blue-700">
-                  Vous utilisez la dernière version de l'application.
+                  L'application se met à jour automatiquement dans votre navigateur. Rechargez la page pour obtenir la dernière version.
                 </p>
               </div>
             </div>

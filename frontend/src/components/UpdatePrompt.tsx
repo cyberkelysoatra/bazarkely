@@ -6,11 +6,14 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
+import { isStandalone } from '../utils/browserDetection';
 
 const UpdatePrompt: React.FC = () => {
   const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
 
-  if (!updateAvailable) {
+  // Only show update banner in PWA standalone mode (installed on device)
+  // In a regular browser, users can simply reload the page
+  if (!updateAvailable || !isStandalone()) {
     return null;
   }
 

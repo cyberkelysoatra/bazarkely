@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.12';
-export const APP_VERSION_NAME = 'Hardening auth — timeout DB sur toutes les requêtes users';
+export const APP_VERSION = '3.5.13';
+export const APP_VERSION_NAME = 'Update prompt uniquement en mode PWA installée';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.13',
+    date: '2026-04-13',
+    description: 'Bandeau mise à jour affiché uniquement en mode PWA standalone',
+    changes: [
+      'Fix (UpdatePrompt.tsx): le bandeau "Nouvelle version disponible" ne s\'affiche plus en navigateur desktop — uniquement quand l\'app est installée en PWA',
+      'Fix (AppVersionPage.tsx): la section "Statut de mise à jour" affiche "Mode navigateur" avec instruction de recharger la page au lieu du bouton de mise à jour SW',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.12',
     date: '2026-04-13',
