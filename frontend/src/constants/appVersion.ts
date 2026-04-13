@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.5.14';
-export const APP_VERSION_NAME = 'Fix boucle rechargement SW + update prompt PWA only';
+export const APP_VERSION = '3.5.15';
+export const APP_VERSION_NAME = 'Fix conversion devise dans transferts';
 export const LAST_UPDATED = '2026-04-13';
 export const APP_BUILD_DATE = '2026-04-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.5.15',
+    date: '2026-04-13',
+    description: 'Fix conversion devise dans page transfert entre comptes',
+    changes: [
+      'Fix (TransferPage.tsx): les soldes des comptes dans les dropdowns source/destination sont maintenant convertis au taux du jour quand la devise d\'affichage est EUR — auparavant seul le symbole € était affiché sans conversion',
+      'Fix (TransferPage.tsx): le message d\'erreur "solde insuffisant" affiche aussi le montant converti correctement',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.5.14',
     date: '2026-04-13',

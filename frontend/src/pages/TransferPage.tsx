@@ -9,6 +9,7 @@ import feeService from '../services/feeService';
 import recurringTransactionService from '../services/recurringTransactionService';
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
+import { getExchangeRate } from '../services/exchangeRateService';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { validateRecurringData } from '../utils/recurringUtils';
 import { ACCOUNT_TYPES } from '../constants';
@@ -68,6 +69,28 @@ const TransferPage = () => {
     linkedBudgetId: null as string | null
   });
   const [recurringErrors, setRecurringErrors] = useState<Record<string, string>>({});
+
+  // Exchange rate for display conversion (MGA balances → EUR)
+  const [exchangeRate, setExchangeRate] = useState<number>(4950);
+
+  useEffect(() => {
+    if (displayCurrency === 'EUR') {
+      getExchangeRate('EUR', 'MGA')
+        .then(rate => setExchangeRate(rate.rate))
+        .catch(() => setExchangeRate(4950));
+    }
+  }, [displayCurrency]);
+
+  /**
+   * Format account balance for display, converting if needed
+   */
+  const formatAccountBalance = (balance: number): string => {
+    if (displayCurrency === 'EUR') {
+      const converted = balance / exchangeRate;
+      return `${converted.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+    }
+    return `${balance.toLocaleString('fr-FR')} Ar`;
+  };
 
   // Charger les comptes de l'utilisateur
   useEffect(() => {
@@ -264,8 +287,7 @@ const TransferPage = () => {
       const allowNegative = accountTypeConfig?.allowNegative ?? false;
       
       if (!allowNegative && fromAccount.balance < totalAmount) {
-        const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
-        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${fromAccount.balance.toLocaleString('fr-FR')} ${currencySymbol}`;
+        const errorMessage = `Solde insuffisant. Le compte "${fromAccount.name}" ne permet pas le découvert. Solde disponible: ${formatAccountBalance(fromAccount.balance)}`;
         console.error(`❌ ${errorMessage}`);
         console.groupEnd();
         setError(errorMessage);
@@ -780,14 +802,11 @@ const TransferPage = () => {
               required
             >
               <option value="">Sélectionner le compte source</option>
-              {availableSourceAccounts.map((account) => {
-                const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
-                return (
-                  <option key={account.id} value={account.id}>
-                    {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
-                  </option>
-                );
-              })}
+              {availableSourceAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} - {formatAccountBalance(account.balance)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -807,14 +826,11 @@ const TransferPage = () => {
               <option value="">Sélectionner le compte de destination</option>
               {accounts
                 .filter(account => account.id !== formData.fromAccountId)
-                .map((account) => {
-                  const currencySymbol = displayCurrency === 'EUR' ? '€' : 'Ar';
-                  return (
-                    <option key={account.id} value={account.id}>
-                      {account.name} - {account.balance.toLocaleString('fr-FR')} {currencySymbol}
-                    </option>
-                  );
-                })}
+                .map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} - {formatAccountBalance(account.balance)}
+                  </option>
+                ))}
             </select>
           </div>
 
