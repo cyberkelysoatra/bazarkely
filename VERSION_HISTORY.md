@@ -4,6 +4,61 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.5.12 - 2026-04-13 (Session S62)
+
+### 🔒 Auth Hardening — withTimeout sur toutes les requêtes DB
+
+- **authService.ts — timeout global DB** — Ajout `withTimeout(5000)` sur 4 fonctions critiques
+  - `login()` : requête `users` protégée par timeout 5s
+  - `handleOAuthCallback()` : requête `users` protégée par timeout 5s
+  - `waitForUserProfile()` : 10 tentatives → 5, chaque requête protégée par timeout 5s
+  - `getCurrentUser()` : requête `users` protégée par timeout 5s
+  - Import de `withTimeout` depuis `supabase.ts` + constante `DB_TIMEOUT_MS = 5000`
+
+---
+
+## Version 3.5.11 - 2026-04-13 (Session S62)
+
+### 🔒 Fix Auth — Promise.race timeout sur loadUserFromSupabase
+
+- **App.tsx — loadUserFromSupabase** — `supabase.from('users')` hangait silencieusement (ni erreur, ni timeout natif)
+  - Remplacement de la requête directe par `Promise.race([queryPromise, timeoutPromise])` avec timeout 5s
+  - Après timeout : catch s'exécute → `setAuthenticated(true)` appelé → utilisateur accède au dashboard
+  - Confirmé fonctionnel en production : logs `DB timeout after 5s` → `✅ Navigation vers dashboard`
+
+---
+
+## Version 3.5.10 - 2026-04-13 (Session S62)
+
+### 🔒 Fix Auth — detectSessionInUrl: false
+
+- **supabase.ts** — `detectSessionInUrl: true` → `detectSessionInUrl: false`
+  - Avec `true` : Supabase traitait le hash URL au `createClient()`, en conflit avec `captureOAuthTokens()` dans `main.tsx` → `setSession()` dans AuthPage hangait indéfiniment
+  - Avec `false` : `captureOAuthTokens()` gère les tokens manuellement, `setSession()` fonctionne seul
+
+---
+
+## Version 3.5.9 - 2026-04-13 (Session S62)
+
+### 🔒 Fix Auth — Bypass waitForUserProfile dans AuthPage
+
+- **AuthPage.tsx — handleOAuthCallback** — Suppression de l'appel à `authService.handleOAuthCallback()`
+  - `authService.handleOAuthCallback()` contenait `waitForUserProfile()` qui polait la DB 10×1s sans timeout individuel
+  - Remplacement : navigation directe vers `/dashboard` après `setSession()` réussi
+  - Le chargement du profil complet est délégué à `App.tsx → onAuthStateChange SIGNED_IN → loadUserFromSupabase()`
+
+---
+
+## Version 3.5.8 - 2026-04-13 (Session S62)
+
+### 🔒 Fix Auth — catch block setAuthenticated dans App.tsx
+
+- **App.tsx — loadUserFromSupabase** — Le catch block n'appelait pas `setAuthenticated(true)`
+  - Si la DB retournait une erreur, l'utilisateur était bloqué sur la page auth après connexion
+  - Fix : ajout de `setAuthenticated(true)` dans tous les chemins catch
+
+---
+
 ## Version 3.3.0 - 2026-03-04 (Session S56)
 
 ### ✨ Nouvelles Fonctionnalités

@@ -3,25 +3,59 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit, Trash2, Star, StarOff, Wallet, CreditCard, PiggyBank, Smartphone } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
+import { getExchangeRate } from '../services/exchangeRateService';
+import { withTimeout } from '../lib/supabase';
 import { ACCOUNT_TYPES } from '../constants';
 import { useFormatBalance } from '../hooks/useFormatBalance';
+import { useCurrency } from '../hooks/useCurrency';
 import type { Account } from '../types';
+
+const FALLBACK_EUR_TO_MGA_RATE = 4950;
 
 const AccountDetailPage = () => {
   const navigate = useNavigate();
   const { accountId } = useParams<{ accountId: string }>();
   const { user } = useAppStore();
   const { formatBalance } = useFormatBalance();
-  
+  const { displayCurrency } = useCurrency();
+
   const [account, setAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(FALLBACK_EUR_TO_MGA_RATE);
   const [editData, setEditData] = useState({
     name: '',
     type: 'especes' as 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money',
     balance: 0
   });
+
+  useEffect(() => {
+    if (displayCurrency !== 'EUR') return;
+    let cancelled = false;
+    withTimeout(getExchangeRate('EUR', 'MGA'), 5000, 'account-detail-rate')
+      .then(result => {
+        if (!cancelled) setExchangeRate(result.rate);
+      })
+      .catch(() => {
+        // garde le fallback déjà initialisé
+      });
+    return () => { cancelled = true; };
+  }, [displayCurrency]);
+
+  const mgaToDisplay = (mga: number): number => {
+    if (displayCurrency === 'EUR') {
+      return Math.round((mga / exchangeRate) * 100) / 100;
+    }
+    return mga;
+  };
+
+  const displayToMga = (value: number): number => {
+    if (displayCurrency === 'EUR') {
+      return Math.round(value * exchangeRate);
+    }
+    return value;
+  };
 
   // Charger le compte
   useEffect(() => {
@@ -64,6 +98,13 @@ const AccountDetailPage = () => {
   };
 
   const handleEdit = () => {
+    if (account) {
+      setEditData({
+        name: account.name,
+        type: account.type,
+        balance: mgaToDisplay(account.balance)
+      });
+    }
     setIsEditing(true);
   };
 
@@ -73,7 +114,7 @@ const AccountDetailPage = () => {
       setEditData({
         name: account.name,
         type: account.type,
-        balance: account.balance
+        balance: mgaToDisplay(account.balance)
       });
     }
   };
@@ -82,12 +123,16 @@ const AccountDetailPage = () => {
     if (!user || !account) return;
 
     try {
+      const balanceMGA = displayToMga(editData.balance);
+      if (displayCurrency === 'EUR') {
+        console.log(`💱 Conversion EUR→MGA: ${editData.balance} € × ${exchangeRate} = ${balanceMGA} Ar`);
+      }
       const updatedAccount = await accountService.updateAccount(account.id, user.id, {
         name: editData.name,
         type: editData.type,
-        balance: editData.balance
+        balance: balanceMGA
       });
-      
+
       setAccount(updatedAccount);
       setIsEditing(false);
       console.log('✅ Compte mis à jour avec succès !');
@@ -255,12 +300,15 @@ const AccountDetailPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Solde initial
+                  Solde initial ({displayCurrency === 'EUR' ? 'EUR' : 'MGA'})
                 </label>
                 <input
                   type="number"
                   value={editData.balance}
                   onChange={(e) => setEditData({ ...editData, balance: parseFloat(e.target.value) || 0 })}
+                  min="0"
+                  step={displayCurrency === 'EUR' ? '0.01' : '1'}
+                  inputMode={displayCurrency === 'EUR' ? 'decimal' : 'numeric'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>

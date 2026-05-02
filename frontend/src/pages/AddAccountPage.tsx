@@ -4,7 +4,11 @@ import { ArrowLeft, Save, X, Wallet, CreditCard, PiggyBank, Smartphone } from 'l
 import { useAppStore } from '../stores/appStore';
 import { useCurrency } from '../hooks/useCurrency';
 import accountService from '../services/accountService';
+import { getExchangeRate } from '../services/exchangeRateService';
+import { withTimeout } from '../lib/supabase';
 import { ACCOUNT_TYPES } from '../constants';
+
+const FALLBACK_EUR_TO_MGA_RATE = 4950;
 
 const AddAccountPage = () => {
   const navigate = useNavigate();
@@ -49,10 +53,28 @@ const AddAccountPage = () => {
     setIsLoading(true);
 
     try {
+      // Convertir EUR -> MGA si l'utilisateur a saisi en mode EUR.
+      // Les soldes de compte sont toujours stockés en MGA (cf. useFormatBalance).
+      let balanceMGA = formData.balance;
+      if (displayCurrency === 'EUR' && formData.balance > 0) {
+        try {
+          const rateResult = await withTimeout(
+            getExchangeRate('EUR', 'MGA'),
+            5000,
+            'add-account-rate'
+          );
+          balanceMGA = Math.round(formData.balance * rateResult.rate);
+          console.log(`💱 Conversion EUR→MGA: ${formData.balance} € × ${rateResult.rate} = ${balanceMGA} Ar`);
+        } catch (rateError) {
+          balanceMGA = Math.round(formData.balance * FALLBACK_EUR_TO_MGA_RATE);
+          console.warn(`⚠️ Échec récupération du taux, fallback ${FALLBACK_EUR_TO_MGA_RATE}: ${formData.balance} € → ${balanceMGA} Ar`, rateError);
+        }
+      }
+
       await accountService.createAccount(user.id, {
         name: formData.name.trim(),
         type: formData.type,
-        balance: formData.balance,
+        balance: balanceMGA,
         isDefault: false, // Les nouveaux comptes ne sont pas par défaut
         // currency is optional - NULL means multi-currency support (no preferred currency)
         // Accounts can contain both EUR and MGA transactions
@@ -185,7 +207,8 @@ const AddAccountPage = () => {
               onChange={handleInputChange}
               placeholder="0"
               min="0"
-              step="1"
+              step={displayCurrency === 'EUR' ? '0.01' : '1'}
+              inputMode={displayCurrency === 'EUR' ? 'decimal' : 'numeric'}
               className="input-field"
             />
             <p className="text-xs text-gray-500 mt-1">

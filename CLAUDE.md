@@ -195,6 +195,26 @@ Avant tout déploiement, vérifier :
 
 ---
 
+## PROTOCOLE DE CLÔTURE DE SESSION
+
+Claude Code déclenche **proactivement** la clôture de session quand les 3 conditions sont réunies :
+
+1. **Problème résolu** — logs production confirmés par JOEL, ou objectif intermédiaire clairement atteint
+2. **Capitalisation complète** — mémoire persistante à jour, CLAUDE.md mis à jour si nouveaux pièges
+3. **Version déployée** — push sur `main`, Netlify a déployé
+
+### Processus de clôture (dans l'ordre)
+
+1. **Résumé de session** → créer `RESUME-SESSION-YYYY-MM-DD-SXX.md` dans `C:\bazarkely-2\`
+2. **Capitalisation** → memory persistante (`C:\Users\ACER\.claude\projects\C--bazarkely-2\memory\`) + CLAUDE.md si nouveaux pièges
+3. **MAJ architecture** → `VERSION_HISTORY.md` + `ETAT-TECHNIQUE-COMPLET.md` + `FEATURE-MATRIX.md`
+4. **Annonce** → informer JOEL que la session peut être clôturée, résumé concis des accomplissements
+
+**Format d'annonce :**
+> Session S[XX] clôturée — [Problème résolu]. [N fichiers modifiés]. Prêt pour une nouvelle session.
+
+---
+
 ## DOCUMENTATION PROJET
 
 Fichiers de référence dans `C:\bazarkely-2\` :
@@ -203,3 +223,4 @@ Fichiers de référence dans `C:\bazarkely-2\` :
 - `FEATURE-MATRIX.md` — Fonctionnalités implémentées
 - `VERSION_HISTORY.md` — Historique des versions
 - `CONFIG-PROJET.md` — Configuration plateforme
+- `RESUME-SESSION-*.md` — Résumés de sessions (1 par session)

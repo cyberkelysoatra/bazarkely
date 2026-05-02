@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.6.0';
-export const APP_VERSION_NAME = 'Fix conversion devise globale — hook useFormatBalance';
-export const LAST_UPDATED = '2026-04-13';
-export const APP_BUILD_DATE = '2026-04-13';
+export const APP_VERSION = '3.6.1';
+export const APP_VERSION_NAME = 'Fix saisie/édition solde de compte — décimales EUR + conversion EUR→MGA';
+export const LAST_UPDATED = '2026-04-26';
+export const APP_BUILD_DATE = '2026-04-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.6.1',
+    date: '2026-04-26',
+    description: 'Fix saisie et édition du solde de compte en mode EUR — décimales autorisées et conversion EUR→MGA au stockage',
+    changes: [
+      'Fix (AddAccountPage.tsx): le champ "Solde initial" autorise désormais les décimales (step="0.01") quand la devise d\'affichage est EUR — auparavant step="1" rejetait toute valeur décimale ("018,50" invalide)',
+      'Fix (AddAccountPage.tsx): conversion EUR→MGA via getExchangeRate (fallback 4950) avant appel à createAccount — les soldes restent stockés en MGA conformément à la convention de useFormatBalance',
+      'Fix (AccountDetailPage.tsx): édition du solde — pré-remplit le champ avec la valeur convertie dans la devise d\'affichage et reconvertit en MGA à la sauvegarde, label dynamique (EUR/MGA), step="0.01" en EUR',
+      'Robustesse: timeout 5s sur la récupération du taux via withTimeout, fallback DEFAULT_RATE 4950 cohérent avec useFormatBalance',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.6.0',
     date: '2026-04-13',
