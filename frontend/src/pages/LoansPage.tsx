@@ -109,6 +109,7 @@ const LoansPage = () => {
   const [selectedTargetKey, setSelectedTargetKey] = useState<string | null>(null);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef<boolean>(false);
 
   useEffect(() => {
     loadLoans();
@@ -464,7 +465,9 @@ const LoansPage = () => {
                               // Need at least 2 groups to merge
                               if (loanGroups.length < 2) return;
                               if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                              longPressFiredRef.current = false;
                               longPressTimerRef.current = setTimeout(() => {
+                                longPressFiredRef.current = true;
                                 setAnchorKey(group.key);
                                 setSelectedTargetKey(null);
                                 setExpandedGroupKey(null);
@@ -476,7 +479,13 @@ const LoansPage = () => {
                                 clearTimeout(longPressTimerRef.current);
                                 longPressTimerRef.current = null;
                               }
-                              // Tap on anchor avatar exits anchor mode
+                              // If this release follows a long-press that just fired,
+                              // keep anchor mode on (the press itself was the activation)
+                              if (longPressFiredRef.current) {
+                                longPressFiredRef.current = false;
+                                return;
+                              }
+                              // Otherwise: a short tap on the anchor avatar exits anchor mode
                               if (isAnchor) {
                                 setAnchorKey(null);
                                 setSelectedTargetKey(null);

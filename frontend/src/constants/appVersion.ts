@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.8.0';
-export const APP_VERSION_NAME = 'Fusion manuelle de bénéficiaires (long-press) + autocomplete création prêt';
-export const LAST_UPDATED = '2026-05-03';
-export const APP_BUILD_DATE = '2026-05-03';
+export const APP_VERSION = '3.8.1';
+export const APP_VERSION_NAME = 'Fix sortie immédiate du mode ancre au relâchement du long-press';
+export const LAST_UPDATED = '2026-05-04';
+export const APP_BUILD_DATE = '2026-05-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.8.1',
+    date: '2026-05-04',
+    description: 'Fix sortie immédiate du mode ancre au relâchement du doigt',
+    changes: [
+      'Fix (LoansPage.tsx): le mode ancre se désactivait dès `onPointerUp` parce que `isAnchor` venait juste de devenir `true` (long-press timer venait de tirer). Le relâchement était traité comme un tap-sur-ancre → exit immédiat',
+      'Fix (LoansPage.tsx): ajout d\'un useRef `longPressFiredRef` qui marque quand le timer a tiré pendant la pression en cours — `onPointerUp` ne sort du mode que si c\'est un VRAI tap court (pas la fin du long-press lui-même)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.8.0',
     date: '2026-05-03',
