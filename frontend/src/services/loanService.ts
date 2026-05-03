@@ -720,3 +720,75 @@ export function isPendingBorrowerConfirmation(loan: PersonalLoan): boolean {
 export function isPendingLenderRepaymentConfirmation(repayment: LoanRepayment): boolean {
   return repayment.confirmedAt === null;
 }
+
+/**
+ * Merges target loans' beneficiary identity into a canonical one (anchor wins).
+ * Rewrites borrower_name (always) + borrower_user_id + borrower_phone on target loans
+ * (when user is the lender). When the current user is the borrower, rewrites lender_name
+ * + lender_user_id (the lender_phone column doesn't exist).
+ * @param targetLoanIds - IDs of loans whose beneficiary will be rewritten
+ * @param canonical - The anchor's identity fields (which become canonical)
+ * @param userIsBorrower - true if current user is the borrower across these loans (rewrites lender side)
+ */
+export async function mergeBeneficiaryGroups(
+  targetLoanIds: string[],
+  canonical: { name: string; userId: string | null; phone: string },
+  userIsBorrower: boolean
+): Promise<void> {
+  if (targetLoanIds.length === 0) return;
+  try {
+    const update: Record<string, string | null> = userIsBorrower
+      ? {
+          lender_name: canonical.name,
+          lender_user_id: canonical.userId,
+        }
+      : {
+          borrower_name: canonical.name,
+          borrower_user_id: canonical.userId,
+          borrower_phone: canonical.phone,
+        };
+    update.updated_at = new Date().toISOString();
+    const { error } = await supabase
+      .from('personal_loans')
+      .update(update)
+      .in('id', targetLoanIds);
+    if (error) throw new Error(`Erreur fusion bénéficiaires: ${error.message}`);
+  } catch (error) {
+    console.error('Erreur dans mergeBeneficiaryGroups:', error);
+    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la fusion des bénéficiaires');
+  }
+}
+
+/**
+ * Returns the distinct beneficiary names (borrower or lender) used across the
+ * current user's loans, deduplicated case-insensitively.
+ * Used to power the autocomplete datalist when creating a new loan.
+ */
+export async function getDistinctBeneficiaryNames(): Promise<string[]> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('personal_loans')
+      .select('borrower_name, lender_name')
+      .or(`lender_user_id.eq.${user.id},borrower_user_id.eq.${user.id}`);
+    if (error) {
+      console.error('Erreur dans getDistinctBeneficiaryNames:', error);
+      return [];
+    }
+    const seen = new Map<string, string>();
+    (data || []).forEach((row: any) => {
+      const candidates = [row?.borrower_name, row?.lender_name];
+      for (const raw of candidates) {
+        if (typeof raw === 'string' && raw.trim().length > 0) {
+          const key = raw.trim().toLowerCase();
+          if (!seen.has(key)) seen.set(key, raw.trim());
+        }
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+  } catch (error) {
+    console.error('Erreur dans getDistinctBeneficiaryNames:', error);
+    return [];
+  }
+}

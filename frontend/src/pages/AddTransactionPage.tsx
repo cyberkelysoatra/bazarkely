@@ -23,7 +23,7 @@ import * as familySharingService from '../services/familySharingService';
 import type { FamilyGroup, FamilySharingRule } from '../types/family';
 import { useBudgetGauge } from '../hooks/useBudgetGauge';
 import BudgetGauge from '../components/BudgetGauge';
-import { getActiveLoansForDropdown } from '../services/loanService';
+import { getActiveLoansForDropdown, getDistinctBeneficiaryNames } from '../services/loanService';
 import { createAcknowledgment, getWhatsAppLink } from '../services/loanAcknowledgmentService';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -87,6 +87,7 @@ const AddTransactionPage = () => {
   const [loanSuccessStep, setLoanSuccessStep] = useState<boolean>(false);
   const [loanWhatsappUrl, setLoanWhatsappUrl] = useState<string>('');
   const [loanSuccessData, setLoanSuccessData] = useState<{ borrowerName: string; amountInitial: number; currency: string } | null>(null);
+  const [knownBeneficiaryNames, setKnownBeneficiaryNames] = useState<string[]>([]);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -122,6 +123,13 @@ const AddTransactionPage = () => {
       }
     };
     loadAccounts();
+  }, []);
+
+  // Charger les noms de bénéficiaires déjà utilisés pour autocomplete
+  useEffect(() => {
+    getDistinctBeneficiaryNames()
+      .then(setKnownBeneficiaryNames)
+      .catch(() => setKnownBeneficiaryNames([]));
   }, []);
 
   // Charger les catégories depuis Supabase
@@ -995,14 +1003,16 @@ const AddTransactionPage = () => {
                 <input
                   type="text"
                   id="beneficiaryName"
+                  list="known-beneficiaries"
+                  autoComplete="off"
                   value={beneficiaryName}
                   onChange={(e) => {
                     const value = e.target.value;
                     setBeneficiaryName(value);
                     // Auto-populate description if empty
                     if (!formData.description.trim() && value.trim()) {
-                      const autoDescription = formData.category === 'loan' 
-                        ? `Prêt à ${value}` 
+                      const autoDescription = formData.category === 'loan'
+                        ? `Prêt à ${value}`
                         : `Prêt de ${value}`;
                       setFormData(prev => ({ ...prev, description: autoDescription }));
                     }
@@ -1011,6 +1021,16 @@ const AddTransactionPage = () => {
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
+                <datalist id="known-beneficiaries">
+                  {knownBeneficiaryNames.map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                {knownBeneficiaryNames.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Astuce&nbsp;: une liste de bénéficiaires déjà utilisés s'affine au fil de la saisie — sélectionnez un nom existant pour éviter les doublons.
+                  </p>
+                )}
               </div>
 
               {/* Libellé (optionnel) */}

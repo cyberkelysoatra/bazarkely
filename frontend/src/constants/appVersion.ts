@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.7.0';
-export const APP_VERSION_NAME = 'Refonte LoansPage — regroupement par bénéficiaire + détail aligné sur TransactionsPage';
+export const APP_VERSION = '3.8.0';
+export const APP_VERSION_NAME = 'Fusion manuelle de bénéficiaires (long-press) + autocomplete création prêt';
 export const LAST_UPDATED = '2026-05-03';
 export const APP_BUILD_DATE = '2026-05-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.8.0',
+    date: '2026-05-03',
+    description: 'Fusion manuelle de bénéficiaires (anchor + cible) sur LoansPage + autocomplete HTML5 sur création de prêt',
+    changes: [
+      'Feature (LoansPage.tsx): mode "ancre" via appui long sur l\'avatar d\'un groupe — les autres avatars deviennent des cases à cocher (sélection unique, anti-erreur)',
+      'Feature (LoansPage.tsx): bouton "Fusionner" apparaît à droite du groupe coché — ouvre un dialog de confirmation listant le nombre de prêts renommés et la transition de nom',
+      'Feature (MergeBeneficiariesDialog.tsx): warnings explicites quand les téléphones diffèrent ou quand il s\'agit de deux utilisateurs distincts de l\'app',
+      'Feature (loanService.ts): mergeBeneficiaryGroups — réécrit borrower_name + borrower_user_id + borrower_phone sur les prêts cibles (anchor wins) ; gère aussi le cas userIsBorrower (lender_name + lender_user_id)',
+      'Feature (AddTransactionPage.tsx): datalist HTML5 sur le champ "Nom du bénéficiaire" — la liste se filtre au fil de la saisie pour éviter de recréer un nom légèrement différent',
+      'Feature (loanService.ts): getDistinctBeneficiaryNames — alimente le datalist avec les noms uniques (borrower + lender) déjà utilisés par l\'utilisateur',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.7.0',
     date: '2026-05-03',

@@ -4,11 +4,11 @@
  * Prêts regroupés par bénéficiaire avec présentation de détail alignée sur TransactionsPage
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle,
-  Users, ChevronDown, Trash2, X, Edit
+  Users, ChevronDown, Trash2, X, Edit, Link2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCurrency } from '../hooks/useCurrency';
@@ -19,7 +19,8 @@ import {
   deleteLoan,
   getTotalUnpaidInterestByLoan,
   isPendingBorrowerConfirmation,
-  confirmLoanAsBorrower
+  confirmLoanAsBorrower,
+  mergeBeneficiaryGroups
 } from '../services/loanService';
 import type {
   LoanWithDetails as Loan,
@@ -32,6 +33,7 @@ import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import PaymentModal from '../components/Loans/PaymentModal';
 import RepaymentHistorySection from '../components/Loans/RepaymentHistorySection';
+import MergeBeneficiariesDialog from '../components/Loans/MergeBeneficiariesDialog';
 
 interface LoanGroup {
   key: string;
@@ -103,6 +105,10 @@ const LoansPage = () => {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [loanToDelete, setLoanToDelete] = useState<string | null>(null);
   const [eurToMgaRate, setEurToMgaRate] = useState<number>(4950);
+  const [anchorKey, setAnchorKey] = useState<string | null>(null);
+  const [selectedTargetKey, setSelectedTargetKey] = useState<string | null>(null);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadLoans();
@@ -165,6 +171,44 @@ const LoansPage = () => {
       navigate(`/transaction/${loan.transactionId}`, { state: { autoEdit: true } });
     } else {
       toast('Cette opération de prêt n\'a pas de transaction liée à éditer', { icon: 'ℹ️' });
+    }
+  };
+
+  const exitAnchorMode = () => {
+    setAnchorKey(null);
+    setSelectedTargetKey(null);
+  };
+
+  const handleConfirmMerge = async () => {
+    const anchorGroup = loanGroups.find(g => g.key === anchorKey);
+    const targetGroup = loanGroups.find(g => g.key === selectedTargetKey);
+    if (!anchorGroup || !targetGroup) return;
+
+    const anchorLoan = anchorGroup.loans[0];
+    const targetLoanIds = targetGroup.loans.map(l => l.id);
+    const userIsBorrower = anchorGroup.isITheBorrower;
+
+    const canonical = userIsBorrower
+      ? {
+          name: anchorLoan.lenderName || anchorGroup.beneficiaryName,
+          userId: anchorLoan.lenderUserId || null,
+          phone: '',
+        }
+      : {
+          name: anchorLoan.borrowerName || anchorGroup.beneficiaryName,
+          userId: anchorLoan.borrowerUserId || null,
+          phone: anchorLoan.borrowerPhone || '',
+        };
+
+    try {
+      await mergeBeneficiaryGroups(targetLoanIds, canonical, userIsBorrower);
+      toast.success('Prêts fusionnés');
+      exitAnchorMode();
+      setShowMergeDialog(false);
+      await loadLoans();
+    } catch (error) {
+      console.error('[LoansPage] Erreur fusion:', error);
+      toast.error('Erreur lors de la fusion');
     }
   };
 
@@ -320,6 +364,33 @@ const LoansPage = () => {
           </div>
         )}
 
+        {/* Anchor mode instructions banner */}
+        {anchorKey !== null && (
+          <div className="p-3 bg-purple-50 border border-purple-300 rounded-lg flex items-start gap-2">
+            <Link2 className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 text-sm text-purple-900">
+              {selectedTargetKey === null
+                ? "Cochez le bénéficiaire à fusionner avec l'ancre, ou retoquez sur l'ancre pour annuler."
+                : "Cliquez sur « Fusionner » pour confirmer."
+              }
+            </div>
+            <button
+              type="button"
+              onClick={exitAnchorMode}
+              className="text-xs px-2 py-1 rounded bg-white border border-purple-300 text-purple-700 hover:bg-purple-100 transition-colors flex-shrink-0"
+            >
+              Annuler
+            </button>
+          </div>
+        )}
+
+        {/* Discoverability hint when 2+ groups (only when not in anchor mode) */}
+        {anchorKey === null && loanGroups.length >= 2 && (
+          <p className="text-xs text-gray-500 italic">
+            Astuce&nbsp;: appui long sur l'avatar d'un bénéficiaire pour fusionner deux groupes.
+          </p>
+        )}
+
         {/* Grouped Loans List */}
         {loanGroups.length === 0 ? (
           <div className="text-center py-12">
@@ -339,28 +410,101 @@ const LoansPage = () => {
         ) : (
           <div className="space-y-3">
             {loanGroups.map(group => {
-              const isExpanded = expandedGroupKey === group.key;
+              const isExpanded = expandedGroupKey === group.key && anchorKey === null;
               const groupLabel = group.isITheBorrower
                 ? `Emprunté à ${group.beneficiaryName}`
                 : `Prêté à ${group.beneficiaryName}`;
               const loanCountSuffix = group.loans.length > 1 ? ` (${group.loans.length})` : '';
+              const isAnchor = anchorKey === group.key;
+              const isInAnchorMode = anchorKey !== null;
+              const isCheckable = isInAnchorMode && !isAnchor;
+              const isSelectedTarget = selectedTargetKey === group.key;
+              // Disable other checkboxes once one is selected (single-select)
+              const checkboxDisabled = isCheckable && selectedTargetKey !== null && !isSelectedTarget;
 
               return (
                 <div key={group.key}>
                   {/* Group Header */}
                   <div
-                    onClick={() => setExpandedGroupKey(isExpanded ? null : group.key)}
-                    className="card hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => {
+                      // In anchor mode, body click does nothing
+                      if (isInAnchorMode) return;
+                      setExpandedGroupKey(isExpanded ? null : group.key);
+                    }}
+                    className={`card transition-shadow ${
+                      isInAnchorMode ? '' : 'hover:shadow-lg cursor-pointer'
+                    } ${isAnchor ? 'ring-2 ring-purple-500' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          group.isITheBorrower ? 'bg-orange-100' : 'bg-green-100'
-                        }`}>
-                          <Users className={`w-5 h-5 ${
-                            group.isITheBorrower ? 'text-orange-600' : 'text-green-600'
-                          }`} />
-                        </div>
+                        {isCheckable ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (checkboxDisabled) return;
+                              setSelectedTargetKey(isSelectedTarget ? null : group.key);
+                            }}
+                            disabled={checkboxDisabled}
+                            className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              isSelectedTarget
+                                ? 'bg-purple-600 border-purple-600'
+                                : checkboxDisabled
+                                  ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50'
+                                  : 'bg-white border-purple-400 hover:bg-purple-50'
+                            }`}
+                            aria-label={isSelectedTarget ? 'Décocher' : 'Cocher pour fusionner'}
+                          >
+                            {isSelectedTarget && <CheckCircle className="w-5 h-5 text-white" />}
+                          </button>
+                        ) : (
+                          <div
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              // Need at least 2 groups to merge
+                              if (loanGroups.length < 2) return;
+                              if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+                              longPressTimerRef.current = setTimeout(() => {
+                                setAnchorKey(group.key);
+                                setSelectedTargetKey(null);
+                                setExpandedGroupKey(null);
+                              }, 500);
+                            }}
+                            onPointerUp={(e) => {
+                              e.stopPropagation();
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                              // Tap on anchor avatar exits anchor mode
+                              if (isAnchor) {
+                                setAnchorKey(null);
+                                setSelectedTargetKey(null);
+                              }
+                            }}
+                            onPointerCancel={() => {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                            }}
+                            onPointerLeave={() => {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                            }}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center select-none ${
+                              group.isITheBorrower ? 'bg-orange-100' : 'bg-green-100'
+                            } ${isAnchor ? 'ring-2 ring-purple-500 ring-offset-2 animate-pulse' : ''}`}
+                            style={{ touchAction: 'none' }}
+                          >
+                            <Users className={`w-5 h-5 ${
+                              group.isITheBorrower ? 'text-orange-600' : 'text-green-600'
+                            }`} />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {groupLabel}{loanCountSuffix}
@@ -368,29 +512,53 @@ const LoansPage = () => {
                           <div className="flex items-center space-x-2 mt-0.5">
                             {getStatusIcon(group.worstStatus)}
                             <span className="text-xs text-gray-500">{getStatusLabel(group.worstStatus)}</span>
+                            {isAnchor && (
+                              <>
+                                <span className="text-xs text-gray-400">•</span>
+                                <span className="text-xs text-purple-600 font-medium">Ancre</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 flex-shrink-0">
-                        <div className="text-right">
-                          <p className={`text-sm font-semibold ${
-                            group.worstStatus === 'late' ? 'text-red-600' : 'text-gray-900'
-                          }`}>
-                            <CurrencyDisplay
-                              amount={group.totalRemainingMGA}
-                              originalCurrency="MGA"
-                              displayCurrency={displayCurrency}
-                              showConversion={false}
-                              size="sm"
-                            />
-                          </p>
-                          <p className="text-xs text-gray-400">restant</p>
-                        </div>
-                        <ChevronDown
-                          className={`w-4 h-4 text-gray-400 transition-transform ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        />
+                        {isSelectedTarget ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMergeDialog(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                            Fusionner
+                          </button>
+                        ) : (
+                          <>
+                            <div className="text-right">
+                              <p className={`text-sm font-semibold ${
+                                group.worstStatus === 'late' ? 'text-red-600' : 'text-gray-900'
+                              }`}>
+                                <CurrencyDisplay
+                                  amount={group.totalRemainingMGA}
+                                  originalCurrency="MGA"
+                                  displayCurrency={displayCurrency}
+                                  showConversion={false}
+                                  size="sm"
+                                />
+                              </p>
+                              <p className="text-xs text-gray-400">restant</p>
+                            </div>
+                            {!isInAnchorMode && (
+                              <ChevronDown
+                                className={`w-4 h-4 text-gray-400 transition-transform ${
+                                  isExpanded ? 'rotate-180' : ''
+                                }`}
+                              />
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -631,6 +799,49 @@ const LoansPage = () => {
         cancelText="Annuler"
         variant="danger"
       />
+
+      {/* Merge dialog */}
+      {showMergeDialog && anchorKey && selectedTargetKey && (() => {
+        const anchorGroup = loanGroups.find(g => g.key === anchorKey);
+        const targetGroup = loanGroups.find(g => g.key === selectedTargetKey);
+        if (!anchorGroup || !targetGroup) return null;
+        const anchorLoan = anchorGroup.loans[0];
+        const targetLoan = targetGroup.loans[0];
+        const userIsBorrower = anchorGroup.isITheBorrower;
+        const anchorIdentity = userIsBorrower
+          ? {
+              name: anchorLoan.lenderName || anchorGroup.beneficiaryName,
+              userId: anchorLoan.lenderUserId || null,
+              phone: '',
+            }
+          : {
+              name: anchorLoan.borrowerName || anchorGroup.beneficiaryName,
+              userId: anchorLoan.borrowerUserId || null,
+              phone: anchorLoan.borrowerPhone || '',
+            };
+        const targetIdentity = userIsBorrower
+          ? {
+              name: targetLoan.lenderName || targetGroup.beneficiaryName,
+              userId: targetLoan.lenderUserId || null,
+              phone: '',
+              loanCount: targetGroup.loans.length,
+            }
+          : {
+              name: targetLoan.borrowerName || targetGroup.beneficiaryName,
+              userId: targetLoan.borrowerUserId || null,
+              phone: targetLoan.borrowerPhone || '',
+              loanCount: targetGroup.loans.length,
+            };
+        return (
+          <MergeBeneficiariesDialog
+            isOpen={showMergeDialog}
+            anchor={anchorIdentity}
+            target={targetIdentity}
+            onClose={() => setShowMergeDialog(false)}
+            onConfirm={handleConfirmMerge}
+          />
+        );
+      })()}
     </div>
   );
 };
