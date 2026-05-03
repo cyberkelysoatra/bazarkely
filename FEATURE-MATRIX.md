@@ -241,6 +241,21 @@ Cette matrice présente l'état d'avancement réel de toutes les fonctionnalité
 
 **Total Session S52:** 11/11 implémentés (100%)
 
+### **Module Prets Familiaux — Refonte UX S64 (2026-05-03/04)** ✅ IMPLÉMENTÉ (v3.7.0 → v3.8.1)
+| Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
+|----------------|--------|----------|-------------------|-------|
+| **Regroupement par bénéficiaire** | ✅ DONE | P0 | LoansPage.tsx | Clé borrowerUserId ou fallback name+phone+direction, total restant agrégé en MGA via getExchangeRate, statut `late > pending > active > closed` - S64 v3.7.0 |
+| **Détail aligné sur TransactionsPage** | ✅ DONE | P0 | LoansPage.tsx | Carte gradient violet, barre Remboursé/Restant + %, Notes, Informations prêt + Intérêts dus, boutons Rembourser/Modifier/Supprimer - S64 v3.7.0 |
+| **Bouton Modifier prêt** | ✅ DONE | P1 | LoansPage.tsx | Navigue vers /transaction/:transactionId?autoEdit (édite la transaction d'origine) - S64 v3.7.0 |
+| **Mapping lenderName** | ✅ DONE | P1 | loanService.ts | Ajout `lenderName: string` dans PersonalLoan + mapLoanRow lit `row.lender_name` (la colonne existait, n'était pas mappée) - S64 v3.7.0 |
+| **Fusion manuelle bénéficiaires (long-press)** | ✅ DONE | P0 | LoansPage.tsx | Appui long sur avatar = ancre, autres avatars deviennent cases à cocher (single-select), bouton "Fusionner" rouge à droite du conteneur coché - S64 v3.8.0 |
+| **MergeBeneficiariesDialog confirmation** | ✅ DONE | P0 | MergeBeneficiariesDialog.tsx | Modal listant N prêts à renommer + warnings explicites si phones diffèrent ou utilisateurs distincts - S64 v3.8.0 |
+| **Service mergeBeneficiaryGroups** | ✅ DONE | P0 | loanService.ts | Anchor wins sur borrower_name + borrower_user_id + borrower_phone (ou lender_name + lender_user_id si userIsBorrower) - S64 v3.8.0 |
+| **Datalist autocomplete bénéficiaire** | ✅ DONE | P0 | AddTransactionPage.tsx | `<datalist>` HTML5 sur champ Nom du bénéficiaire, alimenté par getDistinctBeneficiaryNames (borrower_name ∪ lender_name dédupliqués) - S64 v3.8.0 |
+| **Fix sortie immédiate mode ancre** | ✅ DONE | P0 | LoansPage.tsx | useRef longPressFiredRef pour distinguer fin-de-long-press d'un vrai tap court sur l'ancre dans onPointerUp - S64 v3.8.1 |
+
+**Total Session S64:** 9/9 implémentés (100%)
+
 ### **Module Prets Familiaux - Refactoring S54 (PLANNED)** ⏳ PLANNÉ (Session S54)
 | Fonctionnalité | Statut | Priorité | Composant/Service | Notes |
 |----------------|--------|----------|-------------------|-------|

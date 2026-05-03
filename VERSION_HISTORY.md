@@ -4,6 +4,38 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.8.1 - 2026-05-04 (Session S64)
+
+### 🐛 Fix sortie immédiate du mode ancre au relâchement du long-press
+
+- **LoansPage.tsx — useRef longPressFiredRef** — Le mode ancre se désactivait dès `onPointerUp` parce que `isAnchor` venait juste de devenir `true` (timer du long-press venait de tirer). Le relâchement était traité comme un tap-sur-ancre → exit immédiat.
+- Fix : `longPressFiredRef` marque quand le timer a tiré pendant la pression en cours. `onPointerUp` ignore le branchement "exit" si le ref est `true` (le press lui-même était l'activation, pas un toggle).
+
+---
+
+## Version 3.8.0 - 2026-05-03 (Session S64)
+
+### 🔗 Fusion manuelle de bénéficiaires (long-press) + autocomplete création prêt
+
+- **LoansPage.tsx — mode ancre** — Appui long sur l'avatar d'un groupe = ancre (ring violet pulsant), les autres avatars deviennent des cases à cocher (sélection unique anti-erreur). Bouton "Fusionner" rouge remplace le montant à droite du conteneur coché.
+- **MergeBeneficiariesDialog.tsx — confirmation** — Modal listant `« N prêts de "X" seront renommés en "Y" »`. Warnings explicites (bandeau orange) si téléphones diffèrent ou si ce sont deux utilisateurs distincts de l'app.
+- **loanService.ts — mergeBeneficiaryGroups** — Réécrit en bulk `borrower_name` + `borrower_user_id` + `borrower_phone` sur les prêts cibles (anchor wins). Gère aussi le cas userIsBorrower (`lender_name` + `lender_user_id`, pas de colonne `lender_phone`).
+- **AddTransactionPage.tsx — datalist autocomplete** — `<datalist>` HTML5 sur le champ "Nom du bénéficiaire" alimenté par `getDistinctBeneficiaryNames()` (borrower_name ∪ lender_name dédupliqués case-insensitive). Empêche la création de doublons par variation de saisie.
+- **Décision design** : pas de détection automatique (Levenshtein, etc.) → zéro faux positif, contrôle 100 % utilisateur.
+
+---
+
+## Version 3.7.0 - 2026-05-03 (Session S64)
+
+### 🎨 Refonte LoansPage — regroupement par bénéficiaire + détail aligné sur TransactionsPage
+
+- **LoansPage.tsx — regroupement** — Les prêts d'un même bénéficiaire sont regroupés dans un seul conteneur. Clé : `borrowerUserId` (avec fallback `name+phone+direction`). Total restant agrégé en MGA via `getExchangeRate` (fallback 4950) puis affiché selon `displayCurrency`. Statut consolidé : `late > pending > active > closed`.
+- **LoansPage.tsx — détail aligné** — Panneau de détail par prêt reproduit la carte gradient violet de TransactionsPage : header `Details transaction` + X, carte Montant avec barre Remboursé/Restant + %, carte Notes, carte Informations prêt + Intérêts dus à droite.
+- **LoansPage.tsx — bouton Modifier** — Navigue vers `/transaction/:transactionId?autoEdit` (édite la transaction d'origine du prêt).
+- **loanService.ts — fix mapping** — Ajout du champ `lenderName: string` dans `PersonalLoan` + `mapLoanRow` lit `row.lender_name` (la colonne existait en DB mais n'était pas mappée → champ `undefined` au runtime auparavant).
+
+---
+
 ## Version 3.5.12 - 2026-04-13 (Session S62)
 
 ### 🔒 Auth Hardening — withTimeout sur toutes les requêtes DB
