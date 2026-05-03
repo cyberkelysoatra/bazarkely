@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.6.1';
-export const APP_VERSION_NAME = 'Fix saisie/édition solde de compte — décimales EUR + conversion EUR→MGA';
-export const LAST_UPDATED = '2026-04-26';
-export const APP_BUILD_DATE = '2026-04-26';
+export const APP_VERSION = '3.7.0';
+export const APP_VERSION_NAME = 'Refonte LoansPage — regroupement par bénéficiaire + détail aligné sur TransactionsPage';
+export const LAST_UPDATED = '2026-05-03';
+export const APP_BUILD_DATE = '2026-05-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.7.0',
+    date: '2026-05-03',
+    description: 'Refonte page Prêts Familiaux — regroupement par bénéficiaire + panneau de détail aligné sur TransactionsPage',
+    changes: [
+      'Feature (LoansPage.tsx): les prêts à un même bénéficiaire sont désormais regroupés dans un seul conteneur avec montant total restant et statut consolidé (pire statut: late > pending > active > closed)',
+      'Feature (LoansPage.tsx): panneau de détail aligné sur TransactionsPage — carte gradient violet, header "Details transaction" + X, carte Montant avec barre de progression Remboursé/Restant + %, carte Notes, carte Informations prêt + Intérêts dus',
+      'Feature (LoansPage.tsx): bouton Modifier ajouté — navigue vers /transaction/:transactionId avec autoEdit (édite la transaction d\'origine du prêt)',
+      'Feature (LoansPage.tsx): conversion devise dans le total agrégé — prêts EUR convertis en MGA via getExchangeRate (fallback 4950) puis affichés selon displayCurrency',
+      'Refactor (loanService.ts): ajout du champ lenderName dans PersonalLoan + mapLoanRow lit row.lender_name (la colonne existe en DB mais n\'était pas mappée)',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.6.1',
     date: '2026-04-26',

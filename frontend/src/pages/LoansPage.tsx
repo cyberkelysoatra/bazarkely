@@ -1,49 +1,117 @@
 /**
  * Page de gestion des prêts familiaux
  * Affiche les prêts actifs (prêteur et emprunteur) avec actions CRUD
+ * Prêts regroupés par bénéficiaire avec présentation de détail alignée sur TransactionsPage
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle, 
-  Users, Wallet, ChevronDown, Trash2
+import {
+  HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle,
+  Users, ChevronDown, Trash2, X, Edit
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCurrency } from '../hooks/useCurrency';
+import { useFormatBalance } from '../hooks/useFormatBalance';
 import { useAppStore } from '../stores/appStore';
-import { 
-  getMyLoans, 
+import {
+  getMyLoans,
   deleteLoan,
   getTotalUnpaidInterestByLoan,
   isPendingBorrowerConfirmation,
   confirmLoanAsBorrower
 } from '../services/loanService';
-import type { 
-  Loan, 
-  UnpaidInterestSummary
+import type {
+  LoanWithDetails as Loan,
+  UnpaidInterestSummary,
+  LoanStatus
 } from '../services/loanService';
+import { getExchangeRate } from '../services/exchangeRateService';
 import { CurrencyDisplay } from '../components/Currency';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import PaymentModal from '../components/Loans/PaymentModal';
 import RepaymentHistorySection from '../components/Loans/RepaymentHistorySection';
 
+interface LoanGroup {
+  key: string;
+  beneficiaryName: string;
+  isITheBorrower: boolean;
+  worstStatus: LoanStatus;
+  totalRemainingMGA: number;
+  loans: Loan[];
+}
+
+const STATUS_PRIORITY: Record<LoanStatus, number> = {
+  late: 4,
+  pending: 3,
+  active: 2,
+  closed: 1
+};
+
+function groupLoansByBeneficiary(loans: Loan[], eurToMgaRate: number): LoanGroup[] {
+  const groups = new Map<string, LoanGroup>();
+
+  for (const loan of loans) {
+    const otherUserId = loan.isITheBorrower ? loan.lenderUserId : loan.borrowerUserId;
+    const otherName = loan.isITheBorrower
+      ? (loan.lenderName || 'Prêteur')
+      : loan.borrowerName;
+    const otherPhone = loan.isITheBorrower ? '' : (loan.borrowerPhone || '');
+    const direction = loan.isITheBorrower ? 'b' : 'l';
+    const key = otherUserId
+      ? `${direction}|uid|${otherUserId}`
+      : `${direction}|name|${otherName}|${otherPhone}`;
+
+    const remainingInMGA = loan.currency === 'EUR'
+      ? loan.remainingBalance * eurToMgaRate
+      : loan.remainingBalance;
+
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        key,
+        beneficiaryName: otherName,
+        isITheBorrower: loan.isITheBorrower,
+        worstStatus: loan.status,
+        totalRemainingMGA: remainingInMGA,
+        loans: [loan]
+      });
+    } else {
+      existing.loans.push(loan);
+      existing.totalRemainingMGA += remainingInMGA;
+      if (STATUS_PRIORITY[loan.status] > STATUS_PRIORITY[existing.worstStatus]) {
+        existing.worstStatus = loan.status;
+      }
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
 const LoansPage = () => {
   const navigate = useNavigate();
   const { user } = useAppStore();
   const { displayCurrency } = useCurrency();
+  const { formatBalance } = useFormatBalance();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [unpaidInterestSummaries, setUnpaidInterestSummaries] = useState<UnpaidInterestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'lender' | 'borrower'>('all');
-  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+  const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [loanToDelete, setLoanToDelete] = useState<string | null>(null);
+  const [eurToMgaRate, setEurToMgaRate] = useState<number>(4950);
 
   useEffect(() => {
     loadLoans();
+  }, []);
+
+  useEffect(() => {
+    getExchangeRate('EUR', 'MGA')
+      .then(r => setEurToMgaRate(r.rate))
+      .catch(() => setEurToMgaRate(4950));
   }, []);
 
   useEffect(() => {
@@ -92,19 +160,32 @@ const LoansPage = () => {
     }
   };
 
+  const handleEditLoan = (loan: Loan) => {
+    if (loan.transactionId) {
+      navigate(`/transaction/${loan.transactionId}`, { state: { autoEdit: true } });
+    } else {
+      toast('Cette opération de prêt n\'a pas de transaction liée à éditer', { icon: 'ℹ️' });
+    }
+  };
+
   const filteredLoans = loans.filter(loan => {
     if (filter === 'lender') return !loan.isITheBorrower;
     if (filter === 'borrower') return loan.isITheBorrower;
     return true;
   });
 
+  const loanGroups = useMemo(
+    () => groupLoansByBeneficiary(filteredLoans, eurToMgaRate),
+    [filteredLoans, eurToMgaRate]
+  );
+
   const activeLoans = loans.filter(l => l.status !== 'closed');
   const totalLent = loans
     .filter(l => !l.isITheBorrower && l.status !== 'closed')
-    .reduce((sum, l) => sum + l.remainingBalance, 0);
+    .reduce((sum, l) => sum + (l.currency === 'EUR' ? l.remainingBalance * eurToMgaRate : l.remainingBalance), 0);
   const totalBorrowed = loans
     .filter(l => l.isITheBorrower && l.status !== 'closed')
-    .reduce((sum, l) => sum + l.remainingBalance, 0);
+    .reduce((sum, l) => sum + (l.currency === 'EUR' ? l.remainingBalance * eurToMgaRate : l.remainingBalance), 0);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -213,8 +294,8 @@ const LoansPage = () => {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === f 
-                  ? 'bg-orange-600 text-white' 
+                filter === f
+                  ? 'bg-orange-600 text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
@@ -239,17 +320,17 @@ const LoansPage = () => {
           </div>
         )}
 
-        {/* Loans List */}
-        {filteredLoans.length === 0 ? (
+        {/* Grouped Loans List */}
+        {loanGroups.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <HandCoins className="w-8 h-8 text-orange-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun prêt</h3>
             <p className="text-gray-600 mb-6">
-              {filter === 'all' 
-                ? "Vous n'avez pas encore de prêts enregistrés." 
-                : filter === 'lender' 
+              {filter === 'all'
+                ? "Vous n'avez pas encore de prêts enregistrés."
+                : filter === 'lender'
                   ? "Vous n'avez pas de prêts en cours."
                   : "Vous n'avez pas d'emprunts en cours."
               }
@@ -257,92 +338,47 @@ const LoansPage = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredLoans.map(loan => {
-              const isExpanded = selectedLoanId === loan.id;
-              const loanName = loan.isITheBorrower 
-                ? `Emprunté à ${loan.lenderName}` 
-                : `Prêté à ${loan.borrowerName}`;
-              const unpaidInterestSummary = unpaidInterestSummaries.find(summary => summary.loanId === loan.id);
+            {loanGroups.map(group => {
+              const isExpanded = expandedGroupKey === group.key;
+              const groupLabel = group.isITheBorrower
+                ? `Emprunté à ${group.beneficiaryName}`
+                : `Prêté à ${group.beneficiaryName}`;
+              const loanCountSuffix = group.loans.length > 1 ? ` (${group.loans.length})` : '';
 
               return (
-                <div key={loan.id}>
+                <div key={group.key}>
+                  {/* Group Header */}
                   <div
-                    onClick={() => setSelectedLoanId(isExpanded ? null : loan.id)}
+                    onClick={() => setExpandedGroupKey(isExpanded ? null : group.key)}
                     className="card hover:shadow-lg transition-shadow cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1 min-w-0">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          loan.isITheBorrower ? 'bg-orange-100' : 'bg-green-100'
+                          group.isITheBorrower ? 'bg-orange-100' : 'bg-green-100'
                         }`}>
                           <Users className={`w-5 h-5 ${
-                            loan.isITheBorrower ? 'text-orange-600' : 'text-green-600'
+                            group.isITheBorrower ? 'text-orange-600' : 'text-green-600'
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {loanName}
+                            {groupLabel}{loanCountSuffix}
                           </p>
                           <div className="flex items-center space-x-2 mt-0.5">
-                            {getStatusIcon(loan.status)}
-                            <span className="text-xs text-gray-500">{getStatusLabel(loan.status)}</span>
-                            {isPendingBorrowerConfirmation(loan) && user?.id === loan.borrowerUserId && (
-                              <>
-                                <span className="text-xs text-gray-400">•</span>
-                                <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-medium animate-pulse">
-                                  ATTENTE CONFIRMATION
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    try {
-                                      await confirmLoanAsBorrower(loan.id);
-                                      toast.success('Prêt confirmé');
-                                      loadLoans();
-                                    } catch {
-                                      toast.error('Erreur lors de la confirmation');
-                                    }
-                                  }}
-                                  className="bg-green-600 text-white text-xs px-3 py-1 rounded-full font-medium mt-1"
-                                >
-                                  Confirmer ce prêt
-                                </button>
-                              </>
-                            )}
-                            {isPendingBorrowerConfirmation(loan) && user?.id !== loan.borrowerUserId && (
-                              <>
-                                <span className="text-xs text-gray-400">•</span>
-                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-medium">
-                                  En attente de confirmation emprunteur
-                                </span>
-                              </>
-                            )}
-                            {unpaidInterestSummary && (
-                              <>
-                                <span className="text-xs text-gray-400">•</span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium whitespace-nowrap">
-                                  ⚠️ Intérêts dus: {unpaidInterestSummary.totalUnpaid.toLocaleString('fr-FR')} {unpaidInterestSummary.currency === 'EUR' ? '€' : 'Ar'}
-                                </span>
-                              </>
-                            )}
-                            {loan.description && (
-                              <>
-                                <span className="text-xs text-gray-400">•</span>
-                                <span className="text-xs text-gray-500 truncate">{loan.description}</span>
-                              </>
-                            )}
+                            {getStatusIcon(group.worstStatus)}
+                            <span className="text-xs text-gray-500">{getStatusLabel(group.worstStatus)}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 flex-shrink-0">
                         <div className="text-right">
                           <p className={`text-sm font-semibold ${
-                            loan.status === 'late' ? 'text-red-600' : 'text-gray-900'
+                            group.worstStatus === 'late' ? 'text-red-600' : 'text-gray-900'
                           }`}>
                             <CurrencyDisplay
-                              amount={loan.remainingBalance}
-                              originalCurrency={loan.currency || 'MGA'}
+                              amount={group.totalRemainingMGA}
+                              originalCurrency="MGA"
                               displayCurrency={displayCurrency}
                               showConversion={false}
                               size="sm"
@@ -359,34 +395,201 @@ const LoansPage = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Section */}
+                  {/* Expanded Section: detail panel per loan */}
                   {isExpanded && (
-                    <div className="mt-2 card bg-gray-50">
-                      <div className="p-4 space-y-3">
-                        <Button
-                          onClick={() => {
-                            setSelectedLoan(loan);
-                            setShowPaymentModal(true);
-                          }}
-                          variant="primary"
-                          className="w-full bg-green-600 hover:bg-green-700"
-                        >
-                          <Wallet className="w-4 h-4 mr-2" />
-                          Enregistrer un paiement
-                        </Button>
-                        <RepaymentHistorySection
-                          loanId={loan.id}
-                          currency={loan.currency || 'MGA'}
-                          lenderUserId={loan.lenderUserId}
-                        />
-                        <button
-                          onClick={() => setLoanToDelete(loan.id)}
-                          className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors text-sm font-medium"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Supprimer ce prêt
-                        </button>
-                      </div>
+                    <div className="mt-2 space-y-2">
+                      {group.loans.map(loan => {
+                        const loanLabel = loan.isITheBorrower
+                          ? `Emprunté à ${loan.lenderName || 'Prêteur'}`
+                          : `Prêté à ${loan.borrowerName}`;
+                        const unpaidInterestSummary = unpaidInterestSummaries.find(s => s.loanId === loan.id);
+                        const totalRepaidInLoanCurrency = loan.totalRepaid;
+                        const remainingInLoanCurrency = loan.remainingBalance;
+                        const initialAmount = loan.amountInitial;
+                        const repaidPct = initialAmount > 0
+                          ? Math.min((totalRepaidInLoanCurrency / initialAmount) * 100, 100)
+                          : 0;
+                        const formatLoanAmount = (amount: number) => {
+                          if (loan.currency === 'EUR') {
+                            return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+                          }
+                          return formatBalance(amount);
+                        };
+
+                        return (
+                          <div
+                            key={loan.id}
+                            className="card bg-gradient-to-br from-purple-50/80 to-white border-purple-100 backdrop-blur-sm"
+                          >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <h5 className="text-sm font-semibold text-purple-700 truncate">
+                                  {loanLabel}
+                                </h5>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {getStatusIcon(loan.status)}
+                                  <span className="text-xs text-gray-500">{getStatusLabel(loan.status)}</span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedGroupKey(null);
+                                }}
+                                className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                                title="Fermer"
+                              >
+                                <X className="w-4 h-4 text-purple-600" />
+                              </button>
+                            </div>
+
+                            {/* Pending borrower confirmation actions */}
+                            {isPendingBorrowerConfirmation(loan) && user?.id === loan.borrowerUserId && (
+                              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-medium animate-pulse">
+                                    ATTENTE CONFIRMATION
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        await confirmLoanAsBorrower(loan.id);
+                                        toast.success('Prêt confirmé');
+                                        loadLoans();
+                                      } catch {
+                                        toast.error('Erreur lors de la confirmation');
+                                      }
+                                    }}
+                                    className="bg-green-600 text-white text-xs px-3 py-1 rounded-full font-medium"
+                                  >
+                                    Confirmer ce prêt
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {isPendingBorrowerConfirmation(loan) && user?.id !== loan.borrowerUserId && (
+                              <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                                <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-medium">
+                                  En attente de confirmation emprunteur
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Montant card with progress bar */}
+                            <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                              <div className="bg-white/80 rounded-lg p-2 col-span-2">
+                                <p className="text-gray-500 text-xs">Montant</p>
+                                <div className="mt-1">
+                                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Remboursé: {formatLoanAmount(totalRepaidInLoanCurrency)}</span>
+                                    <span>Restant: {formatLoanAmount(remainingInLoanCurrency)}</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-3">
+                                    <div
+                                      className="bg-green-500 h-3 rounded-full transition-all duration-500"
+                                      style={{ width: `${repaidPct}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-center text-xs font-semibold text-green-700 mt-1">
+                                    {repaidPct.toFixed(1)}% remboursé
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Notes card */}
+                            <div className="space-y-2 text-sm">
+                              <div className="bg-white/80 rounded-lg p-2">
+                                <p className="text-gray-500 text-xs">Notes</p>
+                                <p className="text-gray-800">{loan.description || 'Aucune note'}</p>
+                              </div>
+
+                              {/* Informations prêt + Intérêts dus */}
+                              <div className="bg-purple-100/70 rounded-lg p-2 border border-purple-200">
+                                <div className="flex justify-between items-start gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-purple-700 text-xs font-medium">Informations prêt</p>
+                                    <p className="text-purple-800 text-xs">
+                                      Catégorie: {loan.isITheBorrower ? 'emprunt' : 'prêt'}
+                                    </p>
+                                    <p className="text-purple-800 text-xs">
+                                      Devise: {loan.currency}
+                                    </p>
+                                    {loan.dueDate && (
+                                      <p className="text-purple-800 text-xs">
+                                        Échéance: {new Date(loan.dueDate).toLocaleDateString('fr-FR')}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 text-right">
+                                    {unpaidInterestSummary ? (
+                                      <>
+                                        <p className="text-amber-700 text-xs font-medium">Intérêts dus</p>
+                                        <p className="text-amber-800 text-xs font-semibold">
+                                          ⚠️ {unpaidInterestSummary.totalUnpaid.toLocaleString('fr-FR')} {unpaidInterestSummary.currency === 'EUR' ? '€' : 'Ar'}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <p className="text-purple-700 text-xs font-medium">Taux</p>
+                                        <p className="text-purple-800 text-xs">
+                                          {loan.interestRate}% / {loan.interestFrequency === 'monthly' ? 'mois' : loan.interestFrequency === 'weekly' ? 'sem.' : 'jour'}
+                                        </p>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Repayment history (collapsible) */}
+                            <RepaymentHistorySection
+                              loanId={loan.id}
+                              currency={loan.currency || 'MGA'}
+                              lenderUserId={loan.lenderUserId}
+                            />
+
+                            {/* Actions row */}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-100 gap-2 flex-wrap">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLoan(loan);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                              >
+                                💸 Rembourser
+                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditLoan(loan);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                  Modifier
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLoanToDelete(loan.id);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Supprimer
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -400,8 +603,8 @@ const LoansPage = () => {
       {showPaymentModal && selectedLoan && (
         <PaymentModal
           loanId={selectedLoan.id}
-          loanName={selectedLoan.isITheBorrower 
-            ? `Emprunté à ${selectedLoan.lenderName}` 
+          loanName={selectedLoan.isITheBorrower
+            ? `Emprunté à ${selectedLoan.lenderName || 'Prêteur'}`
             : `Prêté à ${selectedLoan.borrowerName}`
           }
           remainingBalance={selectedLoan.remainingBalance}
@@ -421,7 +624,7 @@ const LoansPage = () => {
       <ConfirmDialog
         isOpen={loanToDelete !== null}
         onClose={() => setLoanToDelete(null)}
-        onConfirm={() => loanToDelete && handleDeleteLoan(loanToDelete)}
+        onConfirm={() => { if (loanToDelete) handleDeleteLoan(loanToDelete); }}
         title="Supprimer ce prêt ?"
         message="Cette action est irréversible. Le prêt et tout son historique de remboursements seront définitivement supprimés."
         confirmText="Supprimer"

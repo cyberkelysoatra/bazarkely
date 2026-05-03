@@ -7,6 +7,7 @@ export type InterestFrequency = 'daily' | 'weekly' | 'monthly';
 export interface PersonalLoan {
   id: string;
   lenderUserId: string;
+  lenderName: string;
   borrowerUserId: string | null;
   borrowerName: string;
   borrowerPhone: string;
@@ -77,7 +78,8 @@ export interface CreateLoanInput {
 
 function mapLoanRow(row: any): PersonalLoan {
   return {
-    id: row.id, lenderUserId: row.lender_user_id, borrowerUserId: row.borrower_user_id,
+    id: row.id, lenderUserId: row.lender_user_id, lenderName: row.lender_name || '',
+    borrowerUserId: row.borrower_user_id,
     borrowerName: row.borrower_name, borrowerPhone: row.borrower_phone,
     isITheBorrower: row.is_i_the_borrower, amountInitial: row.amount_initial,
     currency: row.currency, interestRate: row.interest_rate,
