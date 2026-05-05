@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.8.1';
-export const APP_VERSION_NAME = 'Fix sortie immédiate du mode ancre au relâchement du long-press';
-export const LAST_UPDATED = '2026-05-04';
-export const APP_BUILD_DATE = '2026-05-04';
+export const APP_VERSION = '3.9.0';
+export const APP_VERSION_NAME = 'Modal de ravitaillement de compte au solde insuffisant (dépense, prêt, remboursement)';
+export const LAST_UPDATED = '2026-05-05';
+export const APP_BUILD_DATE = '2026-05-05';
 export const VERSION_HISTORY = [
+  {
+    version: '3.9.0',
+    date: '2026-05-05',
+    description: 'Modal QuickTopUp — ravitaillement de compte au solde insuffisant',
+    changes: [
+      'Feature (QuickTopUpModal.tsx): nouvelle modal proposée quand le solde est insuffisant lors d\'une dépense, prêt accordé ou remboursement de dette — l\'utilisateur peut transférer depuis un autre de ses comptes sans quitter le formulaire',
+      'Feature (AddTransactionPage.tsx): bouton "Ravitailler le compte X" apparaît dans le bandeau d\'erreur "Solde insuffisant" — ouvre la modal avec destination verrouillée et montant pré-rempli au shortfall',
+      'Feature (QuickTopUpModal.tsx): destination verrouillée, montant minimum = shortfall, calcul auto des frais, résumé débit/nouveau solde, garde-fou "solde source insuffisant"',
+      'Architecture: réutilisation de transactionService.createTransfer + feeService.calculateFees — aucune duplication de logique métier, logique transfert canonique préservée dans /transfer',
+      'UX: pas de navigation cross-page — le formulaire de dépense reste monté, ses champs (montant, catégorie, bénéficiaire, prêt lié) sont préservés automatiquement, accountService.getAccounts() rafraîchit les soldes après succès',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.8.1',
     date: '2026-05-04',

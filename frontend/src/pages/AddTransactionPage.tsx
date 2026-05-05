@@ -6,6 +6,7 @@ import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
 import accountService from '../services/accountService';
 import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
+import QuickTopUpModal from '../components/Transaction/QuickTopUpModal';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import { validateRecurringData } from '../utils/recurringUtils';
@@ -53,7 +54,14 @@ const AddTransactionPage = () => {
   const [categories, setCategories] = useState<CategoryFromDB[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // État pour le ravitaillement de compte (solde insuffisant)
+  const [insufficientBalanceContext, setInsufficientBalanceContext] = useState<{
+    account: Account;
+    shortfall: number;
+  } | null>(null);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+
   // État pour les transactions récurrentes
   const [isRecurring, setIsRecurring] = useState(isRecurringParam);
   const [recurringConfig, setRecurringConfig] = useState({
@@ -310,7 +318,9 @@ const AddTransactionPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    setInsufficientBalanceContext(null);
+
     if (!user) {
       console.error('❌ Utilisateur non connecté');
       return;
@@ -367,6 +377,10 @@ const AddTransactionPage = () => {
           const errorMessage = `Solde insuffisant. Le compte "${selectedAccount.name}" ne permet pas le découvert. Solde disponible: ${formatBalance(selectedAccount.balance)}`;
           console.error(`❌ ${errorMessage}`);
           setError(errorMessage);
+          setInsufficientBalanceContext({
+            account: selectedAccount,
+            shortfall: amount - selectedAccount.balance
+          });
           return;
         }
       }
@@ -769,8 +783,17 @@ const AddTransactionPage = () => {
         <form onSubmit={handleSubmit} className="space-y-6" translate="no">
           {/* Message d'erreur */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
               <p className="text-sm text-red-800">{error}</p>
+              {insufficientBalanceContext && (
+                <button
+                  type="button"
+                  onClick={() => setShowTopUpModal(true)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Ravitailler le compte « {insufficientBalanceContext.account.name} »
+                </button>
+              )}
             </div>
           )}
           
@@ -1210,10 +1233,27 @@ const AddTransactionPage = () => {
       </div>
 
       {/* Modal d'aide pour la catégorisation */}
-      <CategoryHelpModal 
-        isOpen={showHelpModal} 
-        onClose={() => setShowHelpModal(false)} 
+      <CategoryHelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
+
+      {/* Modal de ravitaillement quand solde insuffisant */}
+      {insufficientBalanceContext && (
+        <QuickTopUpModal
+          isOpen={showTopUpModal}
+          onClose={() => setShowTopUpModal(false)}
+          destinationAccount={insufficientBalanceContext.account}
+          shortfall={insufficientBalanceContext.shortfall}
+          accounts={accounts}
+          onSuccess={(refreshedAccounts) => {
+            setAccounts(refreshedAccounts);
+            setShowTopUpModal(false);
+            setInsufficientBalanceContext(null);
+            setError(null);
+          }}
+        />
+      )}
     </div>
   );
 };
