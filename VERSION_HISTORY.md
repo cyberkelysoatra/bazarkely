@@ -4,6 +4,31 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.10.0 - 2026-05-10 (Session S66)
+
+### 🌐 Offline-first robuste — SWR transactions + timeouts services métier
+
+- **transactionService.ts — stale-while-revalidate** — `getTransactions()` lit IndexedDB en premier (retour immédiat), puis déclenche un refresh Supabase en arrière-plan (fire-and-forget) qui met à jour IndexedDB pour la prochaine lecture. Plus de spinner infini quand Supabase rame mais Wi-Fi est OK. Si IndexedDB est vide au premier usage, fetch Supabase synchrone avec timeout 5s, fallback gracieux vers tableau vide en cas d'échec.
+- **transactionService + accountService + budgetService + goalService — withTimeout(5000)** — Tous les appels `apiService.*` dans les services métier sont désormais wrappés avec `withTimeout(5000)`. Élimine le risque de hang quand Supabase répond lentement. Constante `SUPABASE_TIMEOUT_MS = 5000` ajoutée dans chaque service (cohérent avec authService et App.tsx).
+- **ETAT-TECHNIQUE-COMPLET.md — section SYNCHRONISATION ET OFFLINE réécrite** — Audit complet daté du 2026-05-10 : 5 services audités (account, transaction, budget, goal, loan), 7 écrans avec verdict offline, 8 problèmes priorisés (P1/P2/P3), plan de remédiation avec effort/impact. Statut "Mode hors ligne complet" du résumé exécutif corrigé en cohérence.
+- **CLAUDE.md — RÈGLE #0bis (skill projet)** — Ajout du protocole "Questions fermées par séries" comme skill du projet. Dès qu'un doute non trivial subsiste sur le périmètre/comportement attendu, Claude pose des questions OUI-NON ou A/B/C en séries successives ajustées selon les réponses précédentes (pas tout d'un coup). Permet d'arriver à des questions plus pertinentes que si on essayait de tout couvrir en un bloc.
+- **Architecture** — Aucun breaking change : les composants UI consomment les services exactement comme avant. La fiabilité offline est améliorée de manière transparente. Le pattern offline-first existant (queue sync, last-write-wins, refresh au retour online) est préservé.
+- **Hors scope (sessions ultérieures)** — P1 #1 `loanService` 100% Supabase-only (régression S64+, ~1 session prévue) ; race condition session sur `familyGroupService` (follow-up créé).
+
+---
+
+## Version 3.9.0 - 2026-05-05 (Session S65)
+
+### 💰 Modal de ravitaillement de compte au solde insuffisant
+
+- **QuickTopUpModal.tsx (nouveau)** — Quand l'utilisateur soumet une dépense, un prêt accordé ou un remboursement de dette et que le compte source n'a pas assez de solde, un bouton "Ravitailler le compte X" apparaît dans le bandeau d'erreur. Clic → modal de transfert rapide depuis un autre compte (espèces, banque, épargne, mobile money, etc.).
+- **AddTransactionPage.tsx — détection + intégration** — Nouveaux states `insufficientBalanceContext` et `showTopUpModal`. La validation de solde existante set maintenant aussi le contexte. Le bandeau d'erreur rouge inclut le bouton d'action. Au callback `onSuccess` de la modal : reload accounts + reset error/context. Le formulaire reste monté → tous les champs (montant, catégorie, description, bénéficiaire, prêt lié, intérêts, durée) sont préservés automatiquement.
+- **Architecture** — Modal réutilise `transactionService.createTransfer` + `feeService.calculateFees` directement. Zéro duplication de logique métier. Aucune modification de `TransferPage.tsx` (zéro régression sur `/transfer`, GoalsPage, transferts récurrents).
+- **UX** — Destination verrouillée, montant pré-rempli au shortfall (modifiable mais ≥ shortfall), libellé auto "Ravitaillement vers [compte]", calcul auto des frais, résumé débit/nouveau solde, garde-fou "solde source insuffisant" (sauf compte courant via `ACCOUNT_TYPES[type].allowNegative`).
+- **Décision design** : modal intégrée préférée à navigation cross-page vers `/transfer` car (1) préservation auto du form state sans sessionStorage, (2) pas de race condition sur le refresh des soldes, (3) contexte spécial "Prêt accordé"/"Remboursement de dette" préservé sans code de sérialisation.
+
+---
+
 ## Version 3.8.1 - 2026-05-04 (Session S64)
 
 ### 🐛 Fix sortie immédiate du mode ancre au relâchement du long-press
