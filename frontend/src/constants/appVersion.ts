@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.12.0';
-export const APP_VERSION_NAME = 'Prêts Familiaux offline-first — Dexie v13 + SWR + queue de sync + indicateur visuel CloudOff';
+export const APP_VERSION = '3.12.1';
+export const APP_VERSION_NAME = 'Hotfix offline — getCurrentUser ne plante plus en mode hors-ligne (lecture session locale)';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.12.1',
+    date: '2026-05-11',
+    description: 'Hotfix offline — getCurrentUser ne plante plus en mode hors-ligne sur la page Prêts',
+    changes: [
+      'Fix (services/loanService.ts): remplacement de tous les `getCurrentUser()` (qui appelle `supabase.auth.getUser()` → fetch réseau → `AuthRetryableFetchError` en offline) par un helper local `getCurrentUserSafe()` qui résout dans l\'ordre : 1) `useAppStore.user` (Zustand, sync, instantané) 2) `supabase.auth.getSession()` (lecture localStorage, pas de réseau) 3) null',
+      'Régression S68 : au tout premier chargement offline, `getMyLoans()` plantait dans le catch global et retournait un tableau vide pendant 1-2 secondes avant que la session Supabase soit restaurée. La page affichait brièvement "Aucun prêt" alors que 11 prêts étaient présents dans Dexie',
+      'Impact : la page Prêts retourne désormais ses données IndexedDB immédiatement même hors-ligne, sans flash de "Aucun prêt" et sans tracer d\'erreur dans la console',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.12.0',
     date: '2026-05-11',

@@ -6,7 +6,7 @@
  * Pattern aligné sur transactionService (S66) et goalService (S67).
  */
 
-import { supabase, getCurrentUser, withTimeout } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
 import { db } from '../lib/database';
 import { useAppStore } from '../stores/appStore';
 import type { SyncOperation, SyncPriority } from '../types';
@@ -50,6 +50,34 @@ function isOnline(): boolean {
   } catch {
     return navigator.onLine;
   }
+}
+
+/**
+ * Récupère l'utilisateur courant SANS faire de requête réseau.
+ *
+ * `getCurrentUser()` (lib/supabase) appelle `supabase.auth.getUser()` qui tape
+ * `/auth/v1/user` → throw `AuthRetryableFetchError` en mode offline, ce qui
+ * cassait la lecture IndexedDB de getMyLoans (S68 hotfix).
+ *
+ * Ordre de résolution :
+ * 1. `useAppStore.user` (Zustand, sync, instantané) — alimenté par App.tsx au login
+ * 2. `supabase.auth.getSession()` (lecture localStorage, pas de réseau)
+ * 3. null
+ */
+async function getCurrentUserSafe(): Promise<{ id: string } | null> {
+  try {
+    const storeUser = useAppStore.getState().user;
+    if (storeUser?.id) return { id: storeUser.id };
+  } catch {
+    /* store pas encore initialisé */
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user?.id) return { id: data.session.user.id };
+  } catch {
+    /* getSession ne devrait jamais throw, mais on est défensif */
+  }
+  return null;
 }
 
 // ============================================================================
@@ -310,7 +338,7 @@ async function getLocalLoansForUser(userId: string): Promise<PersonalLoan[]> {
 
 export async function getMyLoans(): Promise<LoanWithDetails[]> {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) throw new Error('Utilisateur non authentifié');
     const userId = user.id;
 
@@ -428,7 +456,7 @@ export async function getMyLoans(): Promise<LoanWithDetails[]> {
 
 export async function getLoanById(id: string): Promise<LoanWithDetails | null> {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) throw new Error('Utilisateur non authentifié');
 
     // STEP 1: IndexedDB en premier
@@ -594,7 +622,7 @@ export async function getLastUsedInterestSettings(): Promise<{
   frequency: InterestFrequency;
 } | null> {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) return null;
     const lent = await db.personalLoans.where('lenderUserId').equals(user.id).toArray();
     if (lent.length === 0) return null;
@@ -609,7 +637,7 @@ export async function getActiveLoansForDropdown(): Promise<
   { id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }[]
 > {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) return [];
     const localLoans = await getLocalLoansForUser(user.id);
     const active = localLoans.filter((l) => l.status === 'active');
@@ -639,7 +667,7 @@ export async function getUnlinkedRevenueTransactions(): Promise<
   { id: string; description: string; amount: number; date: string; currency: string }[]
 > {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) return [];
     // IDs déjà liés à un remboursement
     const allRepayments = await db.loanRepayments.toArray();
@@ -752,7 +780,7 @@ export async function getTotalUnpaidInterestByLoan(userId: string): Promise<Unpa
 
 export async function getDistinctBeneficiaryNames(): Promise<string[]> {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserSafe();
     if (!user) return [];
     const local = await getLocalLoansForUser(user.id);
     const seen = new Map<string, string>();
@@ -779,7 +807,7 @@ export async function getDistinctBeneficiaryNames(): Promise<string[]> {
 // ============================================================================
 
 export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   if (!input.borrowerName && !input.borrowerUserId) {
     throw new Error("Le nom de l'emprunteur ou l'ID utilisateur est requis");
@@ -852,7 +880,7 @@ export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> 
 }
 
 export async function updateLoanStatus(id: string, status: LoanStatus): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const existing = await db.personalLoans.get(id);
   if (existing) {
@@ -882,7 +910,7 @@ export async function updateLoanStatus(id: string, status: LoanStatus): Promise<
 }
 
 export async function deleteLoan(id: string): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const existing = await db.personalLoans.get(id);
   if (existing && existing.lenderUserId !== user.id) {
@@ -917,7 +945,7 @@ export async function deleteLoan(id: string): Promise<void> {
 }
 
 export async function confirmLoanAsBorrower(loanId: string): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const updatedAt = new Date().toISOString();
   const borrowerConfirmedAt = updatedAt;
@@ -948,7 +976,7 @@ export async function confirmLoanAsBorrower(loanId: string): Promise<void> {
 }
 
 export async function confirmRepaymentAsLender(repaymentId: string): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const confirmedAt = new Date().toISOString();
   await db.loanRepayments.update(repaymentId, {
@@ -995,7 +1023,7 @@ export async function recordPayment(
   transactionId?: string | null,
   receiptFileOrUrl: File | string | null = null
 ): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
 
   const loan = await db.personalLoans.get(loanId);
@@ -1170,7 +1198,7 @@ export async function recordPayment(
 }
 
 export async function generateInterestPeriod(loanId: string): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const loan = await db.personalLoans.get(loanId);
   if (!loan) throw new Error('Prêt introuvable');
@@ -1211,7 +1239,7 @@ export async function generateInterestPeriod(loanId: string): Promise<void> {
 }
 
 export async function capitalizeOverdueInterests(loanId: string): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const loan = await db.personalLoans.get(loanId);
   if (!loan) throw new Error('Prêt introuvable');
@@ -1263,7 +1291,7 @@ export async function mergeBeneficiaryGroups(
   userIsBorrower: boolean
 ): Promise<void> {
   if (targetLoanIds.length === 0) return;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const updatedAt = new Date().toISOString();
   const partialUpdate: Partial<PersonalLoan> = userIsBorrower
