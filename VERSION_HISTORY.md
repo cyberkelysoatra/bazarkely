@@ -4,6 +4,40 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.13.1 - 2026-05-11 (Session S69 hotfix)
+
+### 🩹 Hotfix offline familyGroupService — getCurrentUserSafe + cache localStorage des familyGroups
+
+- **services/familyGroupService.ts — getCurrentUserSafe** — Remplacement des **9 occurrences** `supabase.auth.getUser()` (createFamilyGroup, getUserFamilyGroups, joinFamilyGroup, leaveFamilyGroup, getFamilyMembers, updateMember, getFamilyGroupById, getFamilyGroupByCode, getFamilyGroupBySettings) par un helper local `getCurrentUserSafe()` exporté pour réutilisation. Pattern S68 répliqué.
+- **contexts/FamilyContext.tsx — refonte fetchFamilyGroups** — Substitution `supabase.auth.getUser()` → `getCurrentUserSafe()`. Auparavant, le seul fait de visiter une page Famille en offline déclenchait `setError("Utilisateur non authentifié")` + clear de localStorage → `activeFamilyGroup` restait null → toute la chaîne offline famille (reimbursements S69) inutilisable.
+- **contexts/FamilyContext.tsx — nouveau cache localStorage** (`bazarkely_family_groups_cache`) — Lu en premier au mount (retour SWR rapide), écrit après chaque fetch online réussi, **conservé en cas d'échec réseau** au lieu de wiper l'état. Helpers `readFamilyGroupsCache` / `writeFamilyGroupsCache` / `clearFamilyGroupsCache` (clear seulement sur SIGNED_OUT, jamais sur erreur réseau). Permet la persistance des groupes entre reloads en offline.
+- **Régression débloquée** — La chaîne offline du module Famille (S69) fonctionne désormais comme prévu — premier chargement online peuple le cache groupes + reimbursements, les visites suivantes en offline restaurent `activeFamilyGroup` et chargent les reimbursements depuis Dexie. Validation prod : 73 800 Ar de soldes affichés en offline avec 2 reimbursements (Ivana Internet 14 200 + LEADERPRICE 59 600).
+- **Limitation conservée** — Les mutations sur `familyGroups` (createFamilyGroup, joinFamilyGroup, leaveFamilyGroup) restent online-only. Refonte offline-first complète prévue en S70.
+- **CLAUDE.md + memory** — 3 nouveaux pièges capitalisés : (1) snapshots dénormalisés Dexie pour tables sans FK directe, (2) chaîne complète offline-first à auditer (page → context → service), (3) procédure stricte de bypass SW Workbox (Unregister + Update on reload + nouvelle fenêtre incognito).
+
+---
+
+## Version 3.13.0 - 2026-05-11 (Session S69)
+
+### 💸 Refonte offline-first des Remboursements Familiaux — phase 1 (lectures SWR + markAsReimbursed + getCurrentUserSafe sur 12 fonctions)
+
+- **lib/database.ts — Dexie v14 (2 nouvelles tables)** — `reimbursementRequests` (index `id, sharedTransactionId, fromMemberId, toMemberId, status, familyGroupId, transactionId, createdAt, [familyGroupId+status]`) avec snapshots dénormalisés `familyGroupId`, `fromMemberName`, `toMemberName`, `fromMemberUserId`, `toMemberUserId`, `transactionId/Description/Amount/Date/Category`, `reimbursementRate`, `hasReimbursementRequest`. Et `memberCreditBalances` (index composite `[familyGroupId+fromMemberId+toMemberId]`). Migration `upgrade()` vide.
+- **types/reimbursement.ts (nouveau)** — `ReimbursementRequestLocal` + `MemberCreditBalanceLocal`, sources uniques des interfaces Dexie. Stockage des snapshots dénormalisés permet le filtrage offline + la vérification d'autorisation locale (`markAsReimbursed` exige `to_member.user_id === user.id`).
+- **services/reimbursementService.ts — refactor complet (1162 insertions / 1025 suppressions)** — 4 lectures critiques passent en stale-while-revalidate (IndexedDB en premier, refresh Supabase fire-and-forget) :
+  - `getMemberBalances` : online → vue `family_member_balances` Supabase + recalcul des pending depuis cache local ; offline → `deriveMemberBalancesLocal` retourne pendingToPay/pendingToReceive (totalPaid/totalOwed restent à 0 sans la vue, prévu S70)
+  - `getPendingReimbursements` : index `[familyGroupId+status='pending']` Dexie + filtre `hasReimbursementRequest=true`
+  - `getReimbursementStatusByTransactionIds` : scan local par transactionId + agrégation des statuts (none/pending/settled)
+  - `getMemberCreditBalance` : index composite `[familyGroupId+fromMemberId+toMemberId]`
+- **services/reimbursementService.ts — markAsReimbursed offline-first** — Vérification autorisation via `target.toMemberUserId === user.id` locale, update Dexie immédiat, push Supabase ou queue. Inclut le **transfert de propriété de la transaction** (`currentOwnerId`=débiteur, `originalOwnerId`=créancier, `transferredAt`) géré séparément avec sa propre queue sur table=`transactions`.
+- **services/reimbursementService.ts — getCurrentUserSafe sur 12 fonctions** — Toutes les fonctions du service (y compris celles qui restent online-only en S69 comme `createReimbursementRequest`, `recordReimbursementPayment`, `getPaymentHistory`, `getAllocationDetails`) utilisent désormais `getCurrentUserSafe()` au lieu de `supabase.auth.getUser()`. Élimine définitivement le bug "Utilisateur non authentifié" en mode offline ou pendant le warm-up de session OAuth.
+- **services/syncManager.ts — case reimbursement_requests** — Nouveau `processReimbursementRequestOperation` (CREATE/UPDATE/DELETE classiques, data déjà en snake_case). Le syncManager traite automatiquement les mutations `markAsReimbursed` au retour de connexion.
+- **types/index.ts — SyncOperation.table_name étendu** — Accepte désormais `reimbursement_requests` (10 tables au total).
+- **Architecture** — La vue Supabase `family_member_balances` reste source de vérité online pour totalPaid/totalOwed/netBalance, dérivation locale (pendingToPay/pendingToReceive uniquement) en fallback offline. Les tables `reimbursement_payments` / `reimbursement_payment_allocations` restent online-only en S69 — refonte FIFO + credit balance + allocations prévue en S70.
+- **Régression S64+ résolue** — La page Espace Famille affiche ses soldes et reimbursements en attente depuis Dexie après un premier chargement online, sans flash "Chargement..." même hors ligne. Marquer comme réglé fonctionne offline (mise à jour locale + queue de sync). Premier chargement nécessite une connexion (peuple Dexie).
+- **Reste à faire (S70)** — Refonte `recordReimbursementPayment` (FIFO, allocations, credit balance, ~4 tables Dexie additionnelles), `getPaymentHistory`, `getAllocationDetails`, `getReimbursementsByMember`, propagation `CloudOff` sur `FamilyReimbursementsPage`, fix `recurringTransactionService`, `App.tsx loadUserFromSupabase` et `Header.tsx getBudgets` (3 derniers : même pattern bug `supabase.auth.getUser()` ou requête online-only). Cleanup `loanStorageService.ts` dead code. Unifier `syncManager + onlineStatusService`.
+
+---
+
 ## Version 3.12.1 - 2026-05-11 (Session S68 hotfix)
 
 ### 🩹 Hotfix offline — getCurrentUser ne plante plus en mode hors-ligne sur la page Prêts
