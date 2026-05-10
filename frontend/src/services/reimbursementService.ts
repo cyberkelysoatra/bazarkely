@@ -1,21 +1,80 @@
 /**
- * Service de gestion des remboursements familiaux
- * Gère les demandes de remboursement et les soldes entre membres
+ * Service de gestion des remboursements familiaux — refonte offline-first phase 1 (S69).
+ *
+ * Pattern aligné sur loanService (S68) :
+ * - Lectures critiques en SWR : IndexedDB d'abord, refresh background fire-and-forget
+ *   - getMemberBalances (dérivé localement depuis reimbursementRequests cachés)
+ *   - getPendingReimbursements (lecture directe table locale + snapshots dénormalisés)
+ *   - getReimbursementStatusByTransactionIds (calcul local depuis snapshots)
+ *   - getMemberCreditBalance (lecture locale memberCreditBalances)
+ * - Mutation portée en offline-first : markAsReimbursed (statut + transfert de propriété)
+ * - Mutations restantes (createReimbursementRequest, recordReimbursementPayment,
+ *   getPaymentHistory, getAllocationDetails, etc.) restent online-only en S69.
+ *   Toutes ont été migrées vers getCurrentUserSafe() pour éliminer le bug
+ *   "Utilisateur non authentifié" du race supabase.auth.getUser() offline.
+ *
+ * À venir (S70) : refonte complète des paiements FIFO + credit balance + allocations.
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
+import { db } from '../lib/database';
+import { useAppStore } from '../stores/appStore';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
+import type {
+  ReimbursementRequestLocal,
+  MemberCreditBalanceLocal,
+} from '../types/reimbursement';
 import type {
   ReimbursementRequest,
   ReimbursementRequestRow,
   ReimbursementStatus as ReimbursementRequestStatus,
 } from '../types/family';
-// Import the row format type (snake_case) as FamilyMemberBalanceRow
 import type { FamilyMemberBalance as FamilyMemberBalanceRowType } from '../types/family';
 
+const SUPABASE_TIMEOUT_MS = 5000;
+const LOG_TAG = '💸 [ReimbursementService]';
+
+// ============================================================================
+// HELPERS — STATUT ONLINE / IDS (pattern S68 — getCurrentUserSafe)
+// ============================================================================
+
+function isOnline(): boolean {
+  try {
+    return useAppStore.getState().isOnline ?? navigator.onLine;
+  } catch {
+    return navigator.onLine;
+  }
+}
+
 /**
- * Structure de la table reimbursement_requests (nouvelle version)
- * Compatible avec la structure Supabase actuelle
+ * Récupère l'utilisateur courant SANS faire de requête réseau.
+ * Pattern S68 : useAppStore → supabase.auth.getSession() → null.
+ *
+ * `supabase.auth.getUser()` fait un fetch HTTP vers /auth/v1/user → throw
+ * `AuthRetryableFetchError` en offline. À ne JAMAIS utiliser dans un chemin
+ * de lecture/écriture offline-first.
  */
+async function getCurrentUserSafe(): Promise<{ id: string } | null> {
+  try {
+    const storeUser = useAppStore.getState().user;
+    if (storeUser?.id) return { id: storeUser.id };
+  } catch {
+    /* store pas encore initialisé */
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user?.id) return { id: data.session.user.id };
+  } catch {
+    /* getSession ne devrait jamais throw */
+  }
+  return null;
+}
+
+// ============================================================================
+// STRUCTURE DE TABLE SUPABASE (compat avec ancienne version)
+// ============================================================================
+
 interface ReimbursementRequestTableRow {
   id: string;
   shared_transaction_id: string;
@@ -29,24 +88,16 @@ interface ReimbursementRequestTableRow {
   settled_at?: string | null;
   settled_by?: string | null;
   note?: string | null;
-  family_group_id?: string; // Optionnel selon la structure
+  family_group_id?: string;
+  percentage?: number | null;
 }
 
 // ============================================================================
-// TYPES LOCAUX
+// TYPES PUBLICS (préservés à l'identique pour backward compat)
 // ============================================================================
 
-/**
- * Statut de remboursement pour une transaction
- * 'none' = pas de demande de remboursement
- * 'pending' = au moins une demande en attente
- * 'settled' = toutes les demandes sont réglées (pas de pending)
- */
 export type ReimbursementStatus = 'none' | 'pending' | 'settled';
 
-/**
- * Solde d'un membre dans un groupe familial
- */
 export interface FamilyMemberBalance {
   familyGroupId: string;
   memberId: string;
@@ -59,49 +110,33 @@ export interface FamilyMemberBalance {
   netBalance: number;
 }
 
-/**
- * Demande de remboursement avec détails complets (noms des membres et transaction)
- */
 export interface ReimbursementWithDetails extends ReimbursementRequest {
   fromMemberName: string;
   toMemberName: string;
   transactionDescription: string | null;
   transactionAmount: number | null;
   transactionDate: Date | null;
-  transactionCategory?: string | null; // Catégorie de la transaction pour le breakdown chart
-  reimbursementRate: number | null; // Taux de remboursement (25, 50, 75, 100 ou null)
+  transactionCategory?: string | null;
+  reimbursementRate: number | null;
 }
 
-/**
- * Détails de remboursement pour l'affichage dans l'UI
- */
 export interface ReimbursementDetailForDisplay {
   status: ReimbursementStatus;
   amount: number;
-  rate: number; // Calculé comme (amount / transactionAmount) * 100
+  rate: number;
   fromMemberName: string;
   toMemberName: string;
 }
 
-/**
- * Données pour créer une demande de remboursement
- */
 export interface CreateReimbursementData {
   sharedTransactionId: string;
-  fromMemberId: string; // Membre qui doit rembourser (débiteur)
-  toMemberId: string; // Membre qui doit recevoir (créancier)
+  fromMemberId: string;
+  toMemberId: string;
   amount: number;
   currency: string;
   note?: string;
 }
 
-// ============================================================================
-// TYPES POUR PAYMENT ALLOCATION (Phase 1)
-// ============================================================================
-
-/**
- * Résultat de l'allocation d'un paiement
- */
 export interface PaymentAllocationResult {
   paymentId: string;
   totalAmount: number;
@@ -113,9 +148,6 @@ export interface PaymentAllocationResult {
   creditBalanceId?: string;
 }
 
-/**
- * Allocation d'un paiement à une demande de remboursement
- */
 export interface PaymentAllocation {
   reimbursementRequestId: string;
   allocatedAmount: number;
@@ -124,18 +156,12 @@ export interface PaymentAllocation {
   isFullyPaid: boolean;
 }
 
-/**
- * Solde restant après allocation
- */
 export interface RemainingBalance {
   reimbursementRequestId: string;
   remainingAmount: number;
   status: 'pending' | 'settled';
 }
 
-/**
- * Entrée dans l'historique des paiements
- */
 export interface PaymentHistoryEntry {
   paymentId: string;
   fromMemberId: string;
@@ -150,9 +176,6 @@ export interface PaymentHistoryEntry {
   allocations: PaymentAllocationDetail[];
 }
 
-/**
- * Détail d'allocation dans l'historique
- */
 export interface PaymentAllocationDetail {
   reimbursementRequestId: string;
   requestDescription: string;
@@ -162,9 +185,6 @@ export interface PaymentAllocationDetail {
   isFullyPaid: boolean;
 }
 
-/**
- * Solde de crédit entre deux membres
- */
 export interface MemberCreditBalance {
   id: string;
   fromMemberId: string;
@@ -177,9 +197,6 @@ export interface MemberCreditBalance {
   lastPaymentDate?: Date;
 }
 
-/**
- * Détails complets d'une allocation de paiement
- */
 export interface PaymentAllocationDetails {
   payment: PaymentHistoryEntry;
   allocations: PaymentAllocationDetail[];
@@ -188,12 +205,9 @@ export interface PaymentAllocationDetails {
 }
 
 // ============================================================================
-// FONCTIONS DE CONVERSION
+// MAPPERS — Supabase ↔ Local Dexie ↔ types publics
 // ============================================================================
 
-/**
- * Convertit une ligne Supabase (snake_case) vers FamilyMemberBalance (camelCase)
- */
 function mapRowToFamilyMemberBalance(
   row: FamilyMemberBalanceRowType
 ): FamilyMemberBalance {
@@ -210,14 +224,9 @@ function mapRowToFamilyMemberBalance(
   };
 }
 
-/**
- * Convertit une ligne Supabase (snake_case) vers ReimbursementRequest (camelCase)
- * Gère les deux structures possibles (ancienne et nouvelle)
- */
 function mapRowToReimbursementRequest(
   row: ReimbursementRequestRow | ReimbursementRequestTableRow
 ): ReimbursementRequest {
-  // Détecter la structure (nouvelle si from_member_id existe)
   const isNewStructure = 'from_member_id' in row;
 
   if (isNewStructure) {
@@ -225,8 +234,8 @@ function mapRowToReimbursementRequest(
     return {
       id: newRow.id,
       familyGroupId: newRow.family_group_id || '',
-      requestedBy: newRow.to_member_id, // Le créancier est celui qui a payé
-      requestedFrom: newRow.from_member_id, // Le débiteur doit rembourser
+      requestedBy: newRow.to_member_id,
+      requestedFrom: newRow.from_member_id,
       familySharedTransactionId: newRow.shared_transaction_id,
       amount: newRow.amount,
       description: newRow.note || '',
@@ -237,447 +246,607 @@ function mapRowToReimbursementRequest(
       createdAt: new Date(newRow.created_at),
       updatedAt: new Date(newRow.updated_at),
     };
-  } else {
-    // Ancienne structure
-    const oldRow = row as ReimbursementRequestRow;
-    return {
-      id: oldRow.id,
-      familyGroupId: oldRow.family_group_id || '',
-      requestedBy: oldRow.requested_by || '',
-      requestedFrom: oldRow.requested_from || '',
-      familySharedTransactionId: oldRow.family_shared_transaction_id || '',
-      amount: oldRow.amount,
-      description: oldRow.description || '',
-      status: oldRow.status as ReimbursementRequestStatus,
-      statusChangedAt: new Date(oldRow.status_changed_at || oldRow.updated_at),
-      statusChangedBy: oldRow.status_changed_by || undefined,
-      notes: oldRow.notes || undefined,
-      createdAt: new Date(oldRow.created_at),
-      updatedAt: new Date(oldRow.updated_at),
+  }
+
+  const oldRow = row as ReimbursementRequestRow;
+  return {
+    id: oldRow.id,
+    familyGroupId: oldRow.family_group_id || '',
+    requestedBy: oldRow.requested_by || '',
+    requestedFrom: oldRow.requested_from || '',
+    familySharedTransactionId: oldRow.family_shared_transaction_id || '',
+    amount: oldRow.amount,
+    description: oldRow.description || '',
+    status: oldRow.status as ReimbursementRequestStatus,
+    statusChangedAt: new Date(oldRow.status_changed_at || oldRow.updated_at),
+    statusChangedBy: oldRow.status_changed_by || undefined,
+    notes: oldRow.notes || undefined,
+    createdAt: new Date(oldRow.created_at),
+    updatedAt: new Date(oldRow.updated_at),
+  };
+}
+
+/**
+ * Mappe une ligne Supabase enrichie de jointures vers la version Dexie locale
+ * (avec les snapshots dénormalisés requis pour le offline).
+ *
+ * Attend dans `row` :
+ * - les colonnes natives de reimbursement_requests
+ * - shared_transaction: { family_group_id, transaction_id, has_reimbursement_request,
+ *     transactions: { description, amount, date, category } | [...] }
+ * - from_member: { display_name, user_id } | [...]
+ * - to_member: { display_name, user_id } | [...]
+ */
+function mapRowWithJoinsToLocal(row: any): ReimbursementRequestLocal | null {
+  if (!row?.id) return null;
+
+  const sharedTx = row.shared_transaction;
+  const familyGroupId =
+    sharedTx?.family_group_id || row.family_group_id || '';
+  if (!familyGroupId) return null;
+
+  const transaction = Array.isArray(sharedTx?.transactions)
+    ? sharedTx.transactions[0]
+    : sharedTx?.transactions;
+
+  const fromMember = Array.isArray(row.from_member)
+    ? row.from_member[0]
+    : row.from_member;
+  const toMember = Array.isArray(row.to_member)
+    ? row.to_member[0]
+    : row.to_member;
+
+  return {
+    id: row.id,
+    sharedTransactionId: row.shared_transaction_id,
+    fromMemberId: row.from_member_id,
+    toMemberId: row.to_member_id,
+    amount: row.amount ?? 0,
+    currency: row.currency || 'MGA',
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    settledAt: row.settled_at ?? null,
+    settledBy: row.settled_by ?? null,
+    note: row.note ?? null,
+    familyGroupId,
+    fromMemberName: fromMember?.display_name || 'Membre inconnu',
+    toMemberName: toMember?.display_name || 'Membre inconnu',
+    fromMemberUserId: fromMember?.user_id ?? null,
+    toMemberUserId: toMember?.user_id ?? null,
+    transactionId: sharedTx?.transaction_id ?? null,
+    transactionDescription: transaction?.description ?? null,
+    transactionAmount: typeof transaction?.amount === 'number' ? transaction.amount : null,
+    transactionDate: transaction?.date ?? null,
+    transactionCategory: transaction?.category ?? null,
+    reimbursementRate:
+      typeof row.percentage === 'number' ? row.percentage : null,
+    hasReimbursementRequest:
+      sharedTx?.has_reimbursement_request !== false,
+  };
+}
+
+function localToReimbursementWithDetails(
+  local: ReimbursementRequestLocal
+): ReimbursementWithDetails {
+  return {
+    id: local.id,
+    familyGroupId: local.familyGroupId,
+    requestedBy: local.toMemberId,
+    requestedFrom: local.fromMemberId,
+    familySharedTransactionId: local.sharedTransactionId,
+    amount: local.amount,
+    description: local.note || '',
+    status: local.status as ReimbursementRequestStatus,
+    statusChangedAt: new Date(local.updatedAt),
+    statusChangedBy: local.settledBy || undefined,
+    notes: local.note || undefined,
+    createdAt: new Date(local.createdAt),
+    updatedAt: new Date(local.updatedAt),
+    fromMemberName: local.fromMemberName,
+    toMemberName: local.toMemberName,
+    transactionDescription: local.transactionDescription,
+    transactionAmount: local.transactionAmount,
+    transactionDate: local.transactionDate ? new Date(local.transactionDate) : null,
+    transactionCategory: local.transactionCategory,
+    reimbursementRate: local.reimbursementRate ?? 100,
+  };
+}
+
+function mapCreditBalanceRowToLocal(row: any): MemberCreditBalanceLocal | null {
+  if (!row?.id) return null;
+  const fromMember = Array.isArray(row.from_member)
+    ? row.from_member[0]
+    : row.from_member;
+  const toMember = Array.isArray(row.to_member)
+    ? row.to_member[0]
+    : row.to_member;
+  return {
+    id: row.id,
+    familyGroupId: row.family_group_id,
+    fromMemberId: row.from_member_id,
+    toMemberId: row.to_member_id,
+    creditAmount: row.credit_amount ?? 0,
+    currency: row.currency || 'MGA',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastPaymentDate: row.last_payment_date ?? null,
+    fromMemberName: fromMember?.display_name || 'Membre inconnu',
+    toMemberName: toMember?.display_name || 'Membre inconnu',
+  };
+}
+
+function localCreditBalanceToPublic(
+  local: MemberCreditBalanceLocal
+): MemberCreditBalance {
+  return {
+    id: local.id,
+    fromMemberId: local.fromMemberId,
+    fromMemberName: local.fromMemberName,
+    toMemberId: local.toMemberId,
+    toMemberName: local.toMemberName,
+    creditAmount: local.creditAmount,
+    createdAt: new Date(local.createdAt),
+    updatedAt: new Date(local.updatedAt),
+    lastPaymentDate: local.lastPaymentDate
+      ? new Date(local.lastPaymentDate)
+      : undefined,
+  };
+}
+
+// ============================================================================
+// HELPERS — QUEUE DE SYNCHRONISATION (offline-first)
+// ============================================================================
+
+type ReimbursementTable = 'reimbursement_requests';
+
+async function queueReimbursementSyncOperation(
+  userId: string,
+  operation: 'CREATE' | 'UPDATE' | 'DELETE',
+  tableName: ReimbursementTable,
+  recordId: string,
+  data: Record<string, any>,
+  priority: SyncPriority = SYNC_PRIORITY.NORMAL
+): Promise<void> {
+  try {
+    const syncOp: SyncOperation = {
+      id: crypto.randomUUID(),
+      userId,
+      operation,
+      table_name: tableName,
+      data: { id: recordId, ...data },
+      timestamp: new Date(),
+      retryCount: 0,
+      status: 'pending',
+      priority,
+      syncTag: 'bazarkely-sync',
+      expiresAt: null,
     };
+    await db.syncQueue.add(syncOp);
+    console.log(
+      `${LOG_TAG} 📦 ${operation} ${tableName}/${recordId} ajouté à la queue (priorité ${priority})`
+    );
+  } catch (error) {
+    console.error(`${LOG_TAG} ❌ Erreur push queue ${tableName}:`, error);
   }
 }
 
 // ============================================================================
-// FONCTIONS PUBLIQUES
+// HELPERS — REFRESH BACKGROUND (Supabase → IndexedDB)
+// ============================================================================
+
+const REIMBURSEMENT_JOIN_SELECT = `
+  *,
+  from_member:family_members!reimbursement_requests_from_member_id_fkey(
+    display_name,
+    user_id,
+    family_group_id
+  ),
+  to_member:family_members!reimbursement_requests_to_member_id_fkey(
+    display_name,
+    user_id,
+    family_group_id
+  ),
+  shared_transaction:family_shared_transactions(
+    transaction_id,
+    family_group_id,
+    has_reimbursement_request,
+    transactions(
+      description,
+      amount,
+      date,
+      category
+    )
+  )
+`;
+
+/**
+ * Refresh background des reimbursementRequests pour un groupe familial donné.
+ * Récupère TOUS les requests (pending + settled + cancelled) du groupe et
+ * met à jour Dexie (bulkPut). Ne throw jamais — silencieux en cas d'échec.
+ */
+async function refreshReimbursementsForGroup(groupId: string): Promise<void> {
+  if (!groupId) return;
+  try {
+    const { data, error } = (await withTimeout(
+      supabase
+        .from('reimbursement_requests')
+        .select(REIMBURSEMENT_JOIN_SELECT),
+      SUPABASE_TIMEOUT_MS,
+      'reimbursementService.refreshReimbursementsForGroup'
+    )) as any;
+
+    if (error || !data) {
+      console.warn(`${LOG_TAG} ⚠️ Refresh reimbursements échoué:`, error);
+      return;
+    }
+
+    // Filtrage strict par groupId (la table n'a pas de family_group_id direct)
+    const localsForGroup = (data as any[])
+      .map(mapRowWithJoinsToLocal)
+      .filter((l): l is ReimbursementRequestLocal => l !== null && l.familyGroupId === groupId);
+
+    if (localsForGroup.length > 0) {
+      await db.reimbursementRequests.bulkPut(localsForGroup);
+    }
+
+    // Nettoyage : supprimer les locaux qui n'existent plus côté serveur pour ce groupe
+    const localIds = new Set(localsForGroup.map((l) => l.id));
+    const existingLocals = await db.reimbursementRequests
+      .where('familyGroupId')
+      .equals(groupId)
+      .toArray();
+    const toDelete = existingLocals
+      .filter((l) => !localIds.has(l.id))
+      .map((l) => l.id);
+    if (toDelete.length > 0) {
+      await db.reimbursementRequests.bulkDelete(toDelete);
+    }
+
+    console.log(
+      `${LOG_TAG} 🔄 IndexedDB rafraîchi : ${localsForGroup.length} reimbursement(s) pour groupe ${groupId} (background)`
+    );
+  } catch (error) {
+    console.warn(`${LOG_TAG} ⚠️ Refresh background échoué (non bloquant):`, error);
+  }
+}
+
+/**
+ * Refresh background du solde de crédit entre deux membres.
+ * Cible précise (pas un refresh par groupe complet) : utilisé par
+ * getMemberCreditBalance qui retourne null si pas de solde.
+ */
+async function refreshCreditBalanceForPair(
+  groupId: string,
+  fromMemberId: string,
+  toMemberId: string
+): Promise<void> {
+  try {
+    const { data, error } = (await withTimeout(
+      supabase
+        .from('member_credit_balance')
+        .select(`
+          *,
+          from_member:family_members!member_credit_balance_from_member_id_fkey(display_name),
+          to_member:family_members!member_credit_balance_to_member_id_fkey(display_name)
+        `)
+        .eq('family_group_id', groupId)
+        .eq('from_member_id', fromMemberId)
+        .eq('to_member_id', toMemberId)
+        .maybeSingle(),
+      SUPABASE_TIMEOUT_MS,
+      'reimbursementService.refreshCreditBalanceForPair'
+    )) as any;
+
+    if (error) {
+      console.warn(`${LOG_TAG} ⚠️ Refresh credit balance échoué:`, error);
+      return;
+    }
+
+    if (!data) {
+      // Pas de solde côté serveur → supprimer un éventuel cache local
+      const local = await db.memberCreditBalances
+        .where('[familyGroupId+fromMemberId+toMemberId]')
+        .equals([groupId, fromMemberId, toMemberId])
+        .first();
+      if (local) await db.memberCreditBalances.delete(local.id);
+      return;
+    }
+
+    const mapped = mapCreditBalanceRowToLocal(data);
+    if (mapped) await db.memberCreditBalances.put(mapped);
+  } catch (error) {
+    console.warn(`${LOG_TAG} ⚠️ Refresh credit balance échoué (non bloquant):`, error);
+  }
+}
+
+// ============================================================================
+// LECTURES SWR (offline-first)
 // ============================================================================
 
 /**
- * Récupère les soldes de tous les membres d'un groupe familial
- * @param groupId - ID du groupe familial
- * @returns Tableau des soldes des membres
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Récupère les soldes des membres d'un groupe familial.
+ *
+ * Stratégie SWR : on tente d'abord la lecture depuis la vue Supabase si online
+ * (la vue agrège totalPaid/totalOwed qu'on ne peut pas dériver localement sans
+ * cacher reimbursement_payments). Si offline, on dérive ce qu'on peut depuis
+ * reimbursementRequests cachés (pendingToPay, pendingToReceive) — totalPaid
+ * et totalOwed retombent à 0 mais l'UI principale n'utilise que les pendings.
+ *
+ * Refresh background = appelé en parallèle pour mettre à jour le cache des requests.
  */
 export async function getMemberBalances(
   groupId: string
 ): Promise<FamilyMemberBalance[]> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
+    const user = await getCurrentUserSafe();
+    if (!user) throw new Error('Utilisateur non authentifié');
+
+    // Si online : lecture depuis la vue Supabase (avec fallback dérivation locale en cas d'échec)
+    if (isOnline()) {
+      try {
+        const { data: viewData, error: viewError } = (await withTimeout(
+          supabase
+            .from('family_member_balances')
+            .select('*')
+            .eq('family_group_id', groupId),
+          SUPABASE_TIMEOUT_MS,
+          'reimbursementService.getMemberBalances/view'
+        )) as any;
+
+        if (viewError) throw viewError;
+        if (!viewData) return [];
+
+        // Refresh background pour la prochaine lecture offline
+        refreshReimbursementsForGroup(groupId).catch(() => {});
+
+        // Recalcul des pending depuis les requests (logique préservée de l'ancienne version)
+        const balancesMap = await derivePendingBalancesFromCache(groupId);
+
+        return (viewData as any[]).map((row: any) => {
+          const balance = mapRowToFamilyMemberBalance(row);
+          const recalculated = balancesMap.get(row.member_id);
+          return {
+            ...balance,
+            pendingToReceive: recalculated?.pendingToReceive ?? 0,
+            pendingToPay: recalculated?.pendingToPay ?? 0,
+          };
+        });
+      } catch (error) {
+        console.warn(
+          `${LOG_TAG} ⚠️ Vue family_member_balances inaccessible, fallback dérivation locale:`,
+          error
+        );
+        // Fallthrough vers dérivation locale
+      }
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
-    const { data: membership, error: membershipError } = await supabase
-      .from('family_members')
-      .select('id')
-      .eq('family_group_id', groupId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
-
-    if (membershipError || !membership) {
-      throw new Error(
-        "Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas"
-      );
-    }
-
-    // Récupérer les soldes depuis la vue
-    const { data, error } = await supabase
-      .from('family_member_balances')
-      .select('*')
-      .eq('family_group_id', groupId);
-
-    if (error) {
-      console.error(
-        'Erreur lors de la récupération des soldes:',
-        error
-      );
-      throw new Error(
-        `Erreur lors de la récupération des soldes: ${error.message}`
-      );
-    }
-
-    if (!data) {
-      return [];
-    }
-
-    // CRITICAL FIX: Recalculate pending_to_receive and pending_to_pay
-    // by filtering reimbursement_requests where has_reimbursement_request = true
-    // This matches the fix applied to getPendingReimbursements
-    const { data: reimbursementRequests, error: reimbError } = await supabase
-      .from('reimbursement_requests')
-      .select(`
-        *,
-        shared_transaction:family_shared_transactions(
-          has_reimbursement_request,
-          family_group_id
-        )
-      `)
-      .eq('status', 'pending');
-
-    if (reimbError) {
-      console.error('Erreur lors de la récupération des remboursements pour recalcul:', reimbError);
-      // Fallback to view data if reimbursement query fails
-      return data.map(mapRowToFamilyMemberBalance);
-    }
-
-    // Filter reimbursement requests where has_reimbursement_request = true
-    const validReimbursements = (reimbursementRequests || []).filter((rr: any) => {
-      if (!rr.shared_transaction) {
-        return false;
-      }
-      
-      // Check that has_reimbursement_request is true
-      const hasReimbursementRequest = rr.shared_transaction?.has_reimbursement_request;
-      if (hasReimbursementRequest === false) {
-        return false;
-      }
-      
-      // Check that the shared transaction belongs to this group
-      const transactionGroupId = rr.shared_transaction?.family_group_id;
-      if (transactionGroupId !== groupId) {
-        return false;
-      }
-      
-      return true;
-    });
-
-    // Recalculate pending amounts for each member
-    const balancesMap = new Map<string, { pendingToReceive: number; pendingToPay: number }>();
-    
-    validReimbursements.forEach((rr: any) => {
-      const toMemberId = rr.to_member_id; // Creditor (should receive)
-      const fromMemberId = rr.from_member_id; // Debtor (should pay)
-      const amount = rr.amount || 0;
-      
-      // Add to pendingToReceive for creditor
-      if (toMemberId) {
-        const creditorBalance = balancesMap.get(toMemberId) || { pendingToReceive: 0, pendingToPay: 0 };
-        creditorBalance.pendingToReceive += amount;
-        balancesMap.set(toMemberId, creditorBalance);
-      }
-      
-      // Add to pendingToPay for debtor
-      if (fromMemberId) {
-        const debtorBalance = balancesMap.get(fromMemberId) || { pendingToReceive: 0, pendingToPay: 0 };
-        debtorBalance.pendingToPay += amount;
-        balancesMap.set(fromMemberId, debtorBalance);
-      }
-    });
-
-    // Map the view data and override pending amounts with recalculated values
-    return data.map((row: any) => {
-      const balance = mapRowToFamilyMemberBalance(row);
-      const recalculated = balancesMap.get(row.member_id);
-      
-      if (recalculated) {
-        // Override with recalculated values
-        return {
-          ...balance,
-          pendingToReceive: recalculated.pendingToReceive,
-          pendingToPay: recalculated.pendingToPay,
-        };
-      } else {
-        // If no valid reimbursements for this member, set pending amounts to 0
-        return {
-          ...balance,
-          pendingToReceive: 0,
-          pendingToPay: 0,
-        };
-      }
-    });
+    // Offline ou échec online : dérivation locale (totalPaid/totalOwed à 0,
+    // pendingToPay/pendingToReceive calculés depuis reimbursementRequests cachés)
+    return await deriveMemberBalancesLocal(groupId);
   } catch (error) {
-    console.error('Erreur dans getMemberBalances:', error);
+    console.error(`${LOG_TAG} ❌ getMemberBalances:`, error);
     throw error;
   }
 }
 
 /**
- * Récupère toutes les demandes de remboursement en attente pour un groupe
- * @param groupId - ID du groupe familial
- * @returns Tableau des demandes de remboursement avec détails complets
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Calcule pendingToReceive/pendingToPay par memberId depuis les requests Dexie.
+ * Filtre : status='pending' ET hasReimbursementRequest=true ET familyGroupId match.
+ */
+async function derivePendingBalancesFromCache(
+  groupId: string
+): Promise<Map<string, { pendingToReceive: number; pendingToPay: number }>> {
+  const balancesMap = new Map<string, { pendingToReceive: number; pendingToPay: number }>();
+  const locals = await db.reimbursementRequests
+    .where('[familyGroupId+status]')
+    .equals([groupId, 'pending'])
+    .toArray();
+
+  for (const r of locals) {
+    if (!r.hasReimbursementRequest) continue;
+    const credit = balancesMap.get(r.toMemberId) || {
+      pendingToReceive: 0,
+      pendingToPay: 0,
+    };
+    credit.pendingToReceive += r.amount;
+    balancesMap.set(r.toMemberId, credit);
+
+    const debit = balancesMap.get(r.fromMemberId) || {
+      pendingToReceive: 0,
+      pendingToPay: 0,
+    };
+    debit.pendingToPay += r.amount;
+    balancesMap.set(r.fromMemberId, debit);
+  }
+  return balancesMap;
+}
+
+/**
+ * Dérive un FamilyMemberBalance[] complet uniquement depuis le cache local.
+ * Utilisé en dernier recours offline. totalPaid/totalOwed/netBalance restent
+ * à 0 (ces agrégats viennent de la vue qu'on ne peut pas reproduire sans
+ * cacher reimbursement_payments — prévu S70).
+ */
+async function deriveMemberBalancesLocal(
+  groupId: string
+): Promise<FamilyMemberBalance[]> {
+  const pendingMap = await derivePendingBalancesFromCache(groupId);
+  const allLocals = await db.reimbursementRequests
+    .where('familyGroupId')
+    .equals(groupId)
+    .toArray();
+
+  // Construire un dictionnaire memberId → {displayName, userId}
+  const memberInfo = new Map<string, { displayName: string; userId: string | null }>();
+  for (const r of allLocals) {
+    if (!memberInfo.has(r.fromMemberId)) {
+      memberInfo.set(r.fromMemberId, {
+        displayName: r.fromMemberName,
+        userId: r.fromMemberUserId,
+      });
+    }
+    if (!memberInfo.has(r.toMemberId)) {
+      memberInfo.set(r.toMemberId, {
+        displayName: r.toMemberName,
+        userId: r.toMemberUserId,
+      });
+    }
+  }
+
+  // Inclure aussi les membres avec uniquement des pendings
+  for (const memberId of pendingMap.keys()) {
+    if (!memberInfo.has(memberId)) {
+      memberInfo.set(memberId, { displayName: 'Membre', userId: null });
+    }
+  }
+
+  const result: FamilyMemberBalance[] = [];
+  for (const [memberId, info] of memberInfo.entries()) {
+    const pending = pendingMap.get(memberId) || {
+      pendingToReceive: 0,
+      pendingToPay: 0,
+    };
+    result.push({
+      familyGroupId: groupId,
+      memberId,
+      userId: info.userId,
+      displayName: info.displayName,
+      totalPaid: 0,
+      totalOwed: 0,
+      pendingToReceive: pending.pendingToReceive,
+      pendingToPay: pending.pendingToPay,
+      netBalance: pending.pendingToReceive - pending.pendingToPay,
+    });
+  }
+  console.log(
+    `${LOG_TAG} ✅ ${result.length} solde(s) dérivé(s) localement (offline ou vue inaccessible)`
+  );
+  return result;
+}
+
+/**
+ * Récupère les demandes de remboursement en attente pour un groupe.
+ * SWR : IndexedDB d'abord, refresh background fire-and-forget.
  */
 export async function getPendingReimbursements(
   groupId: string
 ): Promise<ReimbursementWithDetails[]> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
+    const user = await getCurrentUserSafe();
+    if (!user) throw new Error('Utilisateur non authentifié');
+
+    const localPending = await db.reimbursementRequests
+      .where('[familyGroupId+status]')
+      .equals([groupId, 'pending'])
+      .toArray();
+
+    const visible = localPending.filter((r) => r.hasReimbursementRequest);
+
+    if (visible.length > 0) {
+      console.log(
+        `${LOG_TAG} ✅ ${visible.length} reimbursement(s) en attente depuis IndexedDB (retour immédiat)`
+      );
+      if (isOnline()) {
+        refreshReimbursementsForGroup(groupId).catch(() => {});
+      }
+      return visible.map(localToReimbursementWithDetails);
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
-    const { data: membership, error: membershipError } = await supabase
-      .from('family_members')
-      .select('id')
-      .eq('family_group_id', groupId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
-
-    if (membershipError || !membership) {
-      throw new Error(
-        "Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas"
-      );
-    }
-
-    // Récupérer les demandes en attente avec les jointures
-    // Note: La description, amount et date sont dans la table transactions, pas family_shared_transactions
-    const { data, error } = await supabase
-      .from('reimbursement_requests')
-      .select(
-        `
-        *,
-        from_member:family_members!reimbursement_requests_from_member_id_fkey(
-          display_name,
-          family_group_id
-        ),
-        to_member:family_members!reimbursement_requests_to_member_id_fkey(
-          display_name,
-          family_group_id
-        ),
-        shared_transaction:family_shared_transactions(
-          transaction_id,
-          family_group_id,
-          has_reimbursement_request,
-          transactions(
-            description,
-            amount,
-            date,
-            category
-          )
-        )
-      `
-      )
-      .eq('status', 'pending');
-
-    if (error) {
-      console.error(
-        'Erreur lors de la récupération des remboursements:',
-        error
-      );
-      throw new Error(
-        `Erreur lors de la récupération des remboursements: ${error.message}`
-      );
-    }
-
-    if (!data) {
+    // Cache vide ET offline → retour vide
+    if (!isOnline()) {
+      console.warn(`${LOG_TAG} ⚠️ Cache vide et offline → tableau vide`);
       return [];
     }
 
-    // Filtrer par groupe - utiliser shared_transaction.family_group_id comme source de vérité
-    // car c'est la transaction partagée qui détermine le groupe, pas les membres individuels
-    // IMPORTANT: Ne retourner que les remboursements où has_reimbursement_request = true
-    const filteredData = data.filter((item: any) => {
-      // Exclure les remboursements sans transaction partagée valide
-      if (!item.shared_transaction) {
-        return false;
-      }
-      
-      // CRITICAL FIX: Exclure les remboursements où has_reimbursement_request = false
-      // Si le flag est false, cela signifie que l'utilisateur a désactivé le toggle
-      // et ces remboursements ne doivent plus apparaître dans la liste
-      const hasReimbursementRequest = item.shared_transaction?.has_reimbursement_request;
-      if (hasReimbursementRequest === false) {
-        return false;
-      }
-      
-      // Source principale: la transaction partagée doit appartenir au groupe
-      const transactionGroupId = item.shared_transaction?.family_group_id;
-      
-      // Le remboursement doit appartenir au groupe cible via la transaction partagée
-      // C'est la source de vérité car chaque transaction partagée appartient à un seul groupe
-      if (transactionGroupId === groupId) {
-        return true;
-      }
-      
-      // Fallback: vérifier via family_group_id direct si présent dans reimbursement_requests
-      const directGroupId = item.family_group_id;
-      if (directGroupId === groupId) {
-        return true;
-      }
-      
-      // Si aucune correspondance, exclure
-      return false;
-    });
-
-    // Mapper les résultats avec les détails
-    return filteredData.map((item: any) => {
-      const baseRequest = mapRowToReimbursementRequest(item);
-      
-      // Accéder aux données de transaction via le JOIN avec transactions
-      // transactions peut être un objet ou un tableau selon la structure Supabase
-      const transaction = item.shared_transaction?.transactions;
-      const transactionData = Array.isArray(transaction) ? transaction[0] : transaction;
-      
-      return {
-        ...baseRequest,
-        fromMemberName:
-          item.from_member?.display_name || 'Membre inconnu',
-        toMemberName: item.to_member?.display_name || 'Membre inconnu',
-        transactionDescription:
-          transactionData?.description || null,
-        transactionAmount: transactionData?.amount || null,
-        transactionDate: transactionData?.date
-          ? new Date(transactionData.date)
-          : null,
-        transactionCategory: transactionData?.category || null,
-        reimbursementRate: item.percentage ?? 100,
-      };
-    });
+    // Cache vide ET online → fetch synchrone
+    console.log(`${LOG_TAG} 🌐 Cache vide → fetch Supabase synchrone...`);
+    await refreshReimbursementsForGroup(groupId);
+    const fresh = await db.reimbursementRequests
+      .where('[familyGroupId+status]')
+      .equals([groupId, 'pending'])
+      .toArray();
+    return fresh
+      .filter((r) => r.hasReimbursementRequest)
+      .map(localToReimbursementWithDetails);
   } catch (error) {
-    console.error('Erreur dans getPendingReimbursements:', error);
+    console.error(`${LOG_TAG} ❌ getPendingReimbursements:`, error);
     throw error;
   }
 }
 
 /**
- * Get reimbursement status for multiple transactions (OLD VERSION - kept for backward compatibility)
- * @param transactionIds - Array of transaction IDs to check
- * @param groupId - Family group ID
- * @returns Map of transactionId to status ('none' | 'pending' | 'settled')
- */
-export async function getReimbursementStatusByTransactionIds_OLD(
-  transactionIds: string[],
-  groupId: string
-): Promise<Map<string, ReimbursementStatus>> {
-  const result = new Map<string, ReimbursementStatus>();
-
-  if (transactionIds.length === 0) {
-    return result;
-  }
-
-  try {
-    // Step 1: Get family_shared_transactions for these transaction IDs
-    const { data: sharedTransactions, error: sharedError } = await supabase
-      .from('family_shared_transactions')
-      .select('id, transaction_id, paid_by, has_reimbursement_request')
-      .eq('family_group_id', groupId)
-      .in('transaction_id', transactionIds);
-
-    if (sharedError) {
-      console.error('Error fetching shared transactions:', sharedError);
-      return result;
-    }
-
-    if (!sharedTransactions || sharedTransactions.length === 0) {
-      // No shared transactions found, all are 'none'
-      transactionIds.forEach(id => result.set(id, 'none'));
-      return result;
-    }
-
-    // Create a map of shared_transaction_id to transaction_id
-    const sharedToTransactionMap = new Map<string, string>();
-    sharedTransactions.forEach(st => {
-      if (st.transaction_id) {
-        sharedToTransactionMap.set(st.id, st.transaction_id);
-      }
-    });
-
-    const sharedTransactionIds = Array.from(sharedToTransactionMap.keys());
-
-    // Step 2: Get reimbursement_requests for these shared transactions
-    const { data: reimbursementRequests, error: reimbError } = await supabase
-      .from('reimbursement_requests')
-      .select('shared_transaction_id, status, from_member_id')
-      .in('shared_transaction_id', sharedTransactionIds);
-
-    if (reimbError) {
-      console.error('Error fetching reimbursement requests:', reimbError);
-      // Return 'none' for all transactions if query fails
-      transactionIds.forEach(id => result.set(id, 'none'));
-      return result;
-    }
-
-    // Group reimbursement requests by shared_transaction_id
-    const requestsBySharedTransaction = new Map<string, string[]>();
-    reimbursementRequests?.forEach(rr => {
-      const existing = requestsBySharedTransaction.get(rr.shared_transaction_id) || [];
-      existing.push(rr.status);
-      requestsBySharedTransaction.set(rr.shared_transaction_id, existing);
-    });
-
-    // Determine status for each transaction
-    transactionIds.forEach(transactionId => {
-      // Find the shared_transaction_id for this transaction
-      const sharedTx = sharedTransactions.find(st => st.transaction_id === transactionId);
-      
-      if (!sharedTx) {
-        result.set(transactionId, 'none');
-        return;
-      }
-
-      const statuses = requestsBySharedTransaction.get(sharedTx.id) || [];
-      const reimbursementRequest = reimbursementRequests?.find(rr => rr.shared_transaction_id === sharedTx.id);
-      
-      let finalStatus: ReimbursementStatus;
-      
-      // Nouvelle logique basée sur has_reimbursement_request comme indicateur principal
-      if (!sharedTx.has_reimbursement_request) {
-        // Si has_reimbursement_request est FALSE → pas de demande de remboursement
-        finalStatus = 'none';
-      } else {
-        // Si has_reimbursement_request est TRUE
-        if (reimbursementRequest && reimbursementRequest.status === 'settled') {
-          // Si reimbursement_request existe ET status = 'settled' → remboursé
-          finalStatus = 'settled';
-        } else {
-          // Sinon → en attente (pending)
-          // Cela inclut les cas où:
-          // - has_reimbursement_request = true mais pas encore de reimbursement_request créé
-          // - has_reimbursement_request = true et reimbursement_request.status = 'pending'
-          finalStatus = 'pending';
-        }
-      }
-
-      result.set(transactionId, finalStatus);
-    });
-
-    return result;
-  } catch (err) {
-    console.error('Error in getReimbursementStatusByTransactionIds_OLD:', err);
-    return result;
-  }
-}
-
-/**
- * Get reimbursement status for multiple transactions (backward compatibility wrapper)
- * @param transactionIds - Array of transaction IDs to check
- * @param groupId - Family group ID
- * @returns Map of transactionId to status ('none' | 'pending' | 'settled')
+ * Calcule le statut de remboursement pour une liste de transactionIds.
+ *
+ * Lecture SWR depuis le cache local. Logique :
+ * - Pas de reimbursement_request en cache pour ce transactionId → 'none'
+ * - hasReimbursementRequest=false → 'none'
+ * - hasReimbursementRequest=true ET status='settled' → 'settled'
+ * - sinon → 'pending'
  */
 export async function getReimbursementStatusByTransactionIds(
   transactionIds: string[],
   groupId: string
 ): Promise<Map<string, ReimbursementStatus>> {
-  return getReimbursementStatusByTransactionIds_OLD(transactionIds, groupId);
+  const result = new Map<string, ReimbursementStatus>();
+
+  if (transactionIds.length === 0) return result;
+
+  try {
+    const user = await getCurrentUserSafe();
+    if (!user) {
+      transactionIds.forEach((id) => result.set(id, 'none'));
+      return result;
+    }
+
+    // Lecture locale par transactionId
+    const idsSet = new Set(transactionIds);
+    const localMatches = (
+      await db.reimbursementRequests.where('familyGroupId').equals(groupId).toArray()
+    ).filter((r) => r.transactionId && idsSet.has(r.transactionId));
+
+    // Initialisation tous à 'none'
+    for (const txId of transactionIds) result.set(txId, 'none');
+
+    // Group by transactionId pour agréger les statuts
+    const byTransaction = new Map<string, ReimbursementRequestLocal[]>();
+    for (const r of localMatches) {
+      if (!r.transactionId) continue;
+      const arr = byTransaction.get(r.transactionId) || [];
+      arr.push(r);
+      byTransaction.set(r.transactionId, arr);
+    }
+
+    for (const [txId, requests] of byTransaction.entries()) {
+      // Si AU MOINS un request a hasReimbursementRequest=true
+      const visibleRequests = requests.filter((r) => r.hasReimbursementRequest);
+      if (visibleRequests.length === 0) {
+        result.set(txId, 'none');
+        continue;
+      }
+      // Si TOUS les visibles sont settled → 'settled'
+      const anyPending = visibleRequests.some((r) => r.status === 'pending');
+      result.set(txId, anyPending ? 'pending' : 'settled');
+    }
+
+    // Refresh background si online
+    if (isOnline()) {
+      refreshReimbursementsForGroup(groupId).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    console.error(`${LOG_TAG} ❌ getReimbursementStatusByTransactionIds:`, error);
+    transactionIds.forEach((id) => result.set(id, 'none'));
+    return result;
+  }
 }
 
 /**
- * Get reimbursement details (status, amount, rate, member names) for multiple transactions
- * @param transactionIds - Array of transaction IDs to check
- * @param groupId - Family group ID
- * @returns Map of transactionId to ReimbursementDetailForDisplay
+ * Détails de remboursement (status + amount + rate + names) par transactionId.
+ *
+ * Resté online-only en S69 (utilisée seulement par TransactionsPage en context
+ * spécifique, pas critique pour le mode offline). getCurrentUserSafe substitué.
  */
 export async function getReimbursementDetailsByTransactionIds(
   transactionIds: string[],
@@ -685,12 +854,12 @@ export async function getReimbursementDetailsByTransactionIds(
 ): Promise<Map<string, ReimbursementDetailForDisplay>> {
   const result = new Map<string, ReimbursementDetailForDisplay>();
 
-  if (!transactionIds.length || !groupId) {
-    return result;
-  }
+  if (!transactionIds.length || !groupId) return result;
 
   try {
-    // Step 1: Get family_shared_transactions for these transaction IDs with transaction amount
+    const user = await getCurrentUserSafe();
+    if (!user) return result;
+
     const { data: sharedTxs, error: sharedError } = await supabase
       .from('family_shared_transactions')
       .select(`
@@ -703,70 +872,51 @@ export async function getReimbursementDetailsByTransactionIds(
       .eq('family_group_id', groupId)
       .in('transaction_id', transactionIds);
 
-    if (sharedError) {
-      console.error('Error fetching shared transactions:', sharedError);
-      return result;
-    }
+    if (sharedError || !sharedTxs || sharedTxs.length === 0) return result;
 
-    if (!sharedTxs || sharedTxs.length === 0) {
-      // No shared transactions found
-      return result;
-    }
+    const sharedTxIds = sharedTxs.map((st) => st.id);
 
-    const sharedTxIds = sharedTxs.map(st => st.id);
-
-    // Step 2: Get reimbursement requests with member names
     const { data: reimbursements, error: reimbError } = await supabase
       .from('reimbursement_requests')
       .select(`
         shared_transaction_id,
         amount,
         status,
-        from_member:family_members!reimbursement_requests_from_member_id_fkey(
-          display_name
-        ),
-        to_member:family_members!reimbursement_requests_to_member_id_fkey(
-          display_name
-        )
+        from_member:family_members!reimbursement_requests_from_member_id_fkey(display_name),
+        to_member:family_members!reimbursement_requests_to_member_id_fkey(display_name)
       `)
       .in('shared_transaction_id', sharedTxIds);
 
-    if (reimbError) {
-      console.error('Error fetching reimbursement requests:', reimbError);
-      return result;
-    }
+    if (reimbError || !reimbursements || reimbursements.length === 0) return result;
 
-    if (!reimbursements || reimbursements.length === 0) {
-      return result;
-    }
-
-    // Step 3: Map shared_transaction_id to transaction_id and transaction amount
     const sharedTxMap = new Map<string, { transactionId: string; transactionAmount: number }>();
-    sharedTxs.forEach(st => {
+    sharedTxs.forEach((st) => {
       if (st.transaction_id) {
         const transaction = (st as any).transactions;
-        const transactionAmount = transaction 
-          ? Math.abs(Array.isArray(transaction) ? transaction[0]?.amount || 0 : transaction?.amount || 0)
+        const transactionAmount = transaction
+          ? Math.abs(
+              Array.isArray(transaction)
+                ? transaction[0]?.amount || 0
+                : transaction?.amount || 0
+            )
           : 0;
         sharedTxMap.set(st.id, {
           transactionId: st.transaction_id,
-          transactionAmount: transactionAmount,
+          transactionAmount,
         });
       }
     });
 
-    // Step 4: Build result map
     for (const reimb of reimbursements) {
       const sharedInfo = sharedTxMap.get((reimb as any).shared_transaction_id);
-      if (!sharedInfo?.transactionId) {
-        continue;
-      }
+      if (!sharedInfo?.transactionId) continue;
 
       const transactionAmount = sharedInfo.transactionAmount;
       const reimbAmount = (reimb as any).amount || 0;
-      const rate = transactionAmount > 0
-        ? Math.round((reimbAmount / transactionAmount) * 100)
-        : 100;
+      const rate =
+        transactionAmount > 0
+          ? Math.round((reimbAmount / transactionAmount) * 100)
+          : 100;
 
       const fromMember = (reimb as any).from_member;
       const toMember = (reimb as any).to_member;
@@ -774,268 +924,225 @@ export async function getReimbursementDetailsByTransactionIds(
       result.set(sharedInfo.transactionId, {
         status: (reimb as any).status as ReimbursementStatus,
         amount: reimbAmount,
-        rate: rate,
+        rate,
         fromMemberName: Array.isArray(fromMember)
-          ? (fromMember[0]?.display_name || 'Membre')
-          : (fromMember?.display_name || 'Membre'),
+          ? fromMember[0]?.display_name || 'Membre'
+          : fromMember?.display_name || 'Membre',
         toMemberName: Array.isArray(toMember)
-          ? (toMember[0]?.display_name || 'Membre')
-          : (toMember?.display_name || 'Membre'),
+          ? toMember[0]?.display_name || 'Membre'
+          : toMember?.display_name || 'Membre',
       });
     }
 
     return result;
   } catch (error) {
-    console.error('Error in getReimbursementDetailsByTransactionIds:', error);
+    console.error(`${LOG_TAG} ❌ getReimbursementDetailsByTransactionIds:`, error);
     return result;
   }
 }
 
 /**
- * Marque une demande de remboursement comme réglée
- * Seul le créancier (to_member) peut marquer comme réglé
- * @param reimbursementId - ID de la demande de remboursement
- * @param userId - ID de l'utilisateur qui effectue l'action
- * @throws Error si l'utilisateur n'est pas autorisé ou en cas d'erreur
+ * Marque une demande comme réglée — OFFLINE-FIRST (S69).
+ *
+ * Étapes :
+ * 1. Vérification autorisation locale (toMember.user_id === user.id)
+ * 2. Update local du reimbursement (status, settledAt, settledBy, updatedAt)
+ * 3. Update local de la transaction (transfer of ownership : currentOwnerId,
+ *    originalOwnerId, transferredAt) — déjà cachée dans db.transactions
+ * 4. Push Supabase si online, sinon queue
+ *
+ * Le transfert de propriété transfère la transaction du créancier vers le débiteur.
  */
 export async function markAsReimbursed(
   reimbursementId: string,
   userId: string
 ): Promise<void> {
-  try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  if (user.id !== userId) {
+    throw new Error("L'ID utilisateur ne correspond pas à l'utilisateur authentifié");
+  }
 
-    if (user.id !== userId) {
-      throw new Error(
-        "L'ID utilisateur ne correspond pas à l'utilisateur authentifié"
+  // STEP 1: Lecture locale + vérifications
+  const local = await db.reimbursementRequests.get(reimbursementId);
+  if (!local) {
+    // Tentative de re-fetch online si possible (cache vide pour ce request)
+    if (isOnline()) {
+      const { data: remote, error: fetchError } = (await withTimeout(
+        supabase
+          .from('reimbursement_requests')
+          .select(REIMBURSEMENT_JOIN_SELECT)
+          .eq('id', reimbursementId)
+          .single(),
+        SUPABASE_TIMEOUT_MS,
+        'reimbursementService.markAsReimbursed/fetch'
+      )) as any;
+      if (fetchError || !remote) {
+        throw new Error('Demande de remboursement introuvable');
+      }
+      const mapped = mapRowWithJoinsToLocal(remote);
+      if (!mapped) throw new Error('Demande de remboursement introuvable');
+      await db.reimbursementRequests.put(mapped);
+    } else {
+      throw new Error('Demande de remboursement introuvable en local');
+    }
+  }
+
+  const target = (await db.reimbursementRequests.get(reimbursementId)) as ReimbursementRequestLocal;
+
+  if (target.status !== 'pending') {
+    throw new Error('Seules les demandes en attente peuvent être marquées comme réglées');
+  }
+
+  if (target.toMemberUserId && target.toMemberUserId !== user.id) {
+    throw new Error(
+      'Seul le créancier peut marquer une demande de remboursement comme réglée'
+    );
+  }
+
+  // STEP 2: Update local du reimbursement
+  const nowIso = new Date().toISOString();
+  await db.reimbursementRequests.update(reimbursementId, {
+    status: 'settled',
+    settledAt: nowIso,
+    settledBy: user.id,
+    updatedAt: nowIso,
+  });
+
+  const reimbursementPayload: Record<string, any> = {
+    status: 'settled',
+    settled_at: nowIso,
+    settled_by: user.id,
+    updated_at: nowIso,
+  };
+
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from('reimbursement_requests')
+          .update(reimbursementPayload as any)
+          .eq('id', reimbursementId),
+        SUPABASE_TIMEOUT_MS,
+        'reimbursementService.markAsReimbursed/update'
+      );
+      if (error) throw error;
+    } catch (error) {
+      console.warn(
+        `${LOG_TAG} ⚠️ markAsReimbursed Supabase échoué, queue:`,
+        error
+      );
+      await queueReimbursementSyncOperation(
+        user.id,
+        'UPDATE',
+        'reimbursement_requests',
+        reimbursementId,
+        reimbursementPayload
+      );
+    }
+  } else {
+    await queueReimbursementSyncOperation(
+      user.id,
+      'UPDATE',
+      'reimbursement_requests',
+      reimbursementId,
+      reimbursementPayload
+    );
+  }
+
+  // STEP 3: Transfert de propriété de la transaction (si on a tx_id + debtor user_id)
+  if (target.transactionId && target.fromMemberUserId) {
+    const debtorUserId = target.fromMemberUserId;
+    const creditorUserId = user.id;
+
+    // Update local de la transaction (déjà cachée — voir db.transactions)
+    try {
+      await db.transactions.update(target.transactionId, {
+        currentOwnerId: debtorUserId,
+        originalOwnerId: creditorUserId,
+        transferredAt: nowIso,
+      } as any);
+    } catch (err) {
+      console.warn(
+        `${LOG_TAG} ⚠️ Update local transaction (transfert propriété) échoué:`,
+        err
       );
     }
 
-    // Récupérer la demande de remboursement
-    const { data: reimbursement, error: fetchError } = await supabase
-      .from('reimbursement_requests')
-      .select('*, to_member:family_members!reimbursement_requests_to_member_id_fkey(user_id)')
-      .eq('id', reimbursementId)
-      .single();
-
-    if (fetchError || !reimbursement) {
-      throw new Error('Demande de remboursement introuvable');
-    }
-
-    // Récupérer le to_member_id (créancier)
-    const toMemberId = (reimbursement as any).to_member_id;
-    
-    if (!toMemberId) {
-      throw new Error('Impossible de déterminer le créancier de cette demande');
-    }
-
-    // Récupérer le user_id du membre créancier
-    const { data: toMember, error: memberError } = await supabase
-      .from('family_members')
-      .select('user_id')
-      .eq('id', toMemberId)
-      .single();
-
-    if (memberError || !toMember) {
-      throw new Error('Membre créancier introuvable');
-    }
-
-    // Vérifier que l'utilisateur est le créancier (to_member)
-    if (toMember.user_id !== user.id) {
-      throw new Error(
-        'Seul le créancier peut marquer une demande de remboursement comme réglée'
-      );
-    }
-
-    // Vérifier que le statut est 'pending'
-    if (reimbursement.status !== 'pending') {
-      throw new Error(
-        'Seules les demandes en attente peuvent être marquées comme réglées'
-      );
-    }
-
-    // Mettre à jour le statut
-    const updateData: any = {
-      status: 'settled',
-      updated_at: new Date().toISOString(),
+    const transactionPayload = {
+      current_owner_id: debtorUserId,
+      original_owner_id: creditorUserId,
+      transferred_at: nowIso,
     };
 
-    // Ajouter settled_at et settled_by si les colonnes existent
-    if ('settled_at' in reimbursement || reimbursement.settled_at !== undefined) {
-      updateData.settled_at = new Date().toISOString();
+    const queueTransactionUpdate = async () => {
+      await db.syncQueue.add({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        operation: 'UPDATE',
+        table_name: 'transactions',
+        data: { id: target.transactionId, ...transactionPayload },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending',
+        priority: SYNC_PRIORITY.NORMAL,
+        syncTag: 'bazarkely-sync',
+        expiresAt: null,
+      });
+    };
+
+    if (isOnline()) {
+      try {
+        const { error } = await withTimeout(
+          supabase
+            .from('transactions')
+            .update(transactionPayload as any)
+            .eq('id', target.transactionId),
+          SUPABASE_TIMEOUT_MS,
+          'reimbursementService.markAsReimbursed/transferOwnership'
+        );
+        if (error) throw error;
+      } catch (error) {
+        console.warn(
+          `${LOG_TAG} ⚠️ Transfert propriété Supabase échoué, queue:`,
+          error
+        );
+        await queueTransactionUpdate();
+      }
+    } else {
+      await queueTransactionUpdate();
     }
-    if ('settled_by' in reimbursement || reimbursement.settled_by !== undefined) {
-      updateData.settled_by = user.id;
-    }
-
-    const { error: updateError } = await supabase
-      .from('reimbursement_requests')
-      .update(updateData)
-      .eq('id', reimbursementId);
-
-    if (updateError) {
-      console.error(
-        'Erreur lors de la mise à jour du remboursement:',
-        updateError
-      );
-      throw new Error(
-        `Erreur lors de la mise à jour: ${updateError.message}`
-      );
-    }
-
-    // ========================================================================
-    // TRANSFERT AUTOMATIQUE DE PROPRIÉTÉ DE TRANSACTION APRÈS SETTLEMENT
-    // ========================================================================
-    // Après qu'un remboursement soit marqué comme "settled", transférer
-    // automatiquement la propriété de la transaction du créancier (paiement
-    // original) vers le débiteur (qui rembourse).
-    try {
-      // 1. Récupérer le transaction_id depuis family_shared_transactions
-      //    en utilisant shared_transaction_id de la demande de remboursement
-      const sharedTransactionId = (reimbursement as any).shared_transaction_id;
-      
-      if (!sharedTransactionId) {
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] shared_transaction_id manquant dans la demande de remboursement'
-        );
-        return; // Sortir silencieusement si pas de transaction partagée
-      }
-
-      const { data: sharedTransaction, error: sharedTxError } = await supabase
-        .from('family_shared_transactions')
-        .select('transaction_id')
-        .eq('id', sharedTransactionId)
-        .single();
-
-      if (sharedTxError || !sharedTransaction) {
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] Impossible de récupérer la transaction partagée:',
-          sharedTxError?.message || 'Transaction introuvable'
-        );
-        return; // Ne pas faire échouer le settlement
-      }
-
-      const transactionId = sharedTransaction.transaction_id;
-      
-      if (!transactionId) {
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] transaction_id manquant dans la transaction partagée'
-        );
-        return; // Ne pas faire échouer le settlement
-      }
-
-      // 2. Récupérer le user_id du débiteur (from_member_id) depuis family_members
-      const fromMemberId = (reimbursement as any).from_member_id;
-      
-      if (!fromMemberId) {
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] from_member_id manquant dans la demande de remboursement'
-        );
-        return; // Ne pas faire échouer le settlement
-      }
-
-      const { data: debtorMember, error: debtorError } = await supabase
-        .from('family_members')
-        .select('user_id')
-        .eq('id', fromMemberId)
-        .single();
-
-      if (debtorError || !debtorMember || !debtorMember.user_id) {
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] Impossible de récupérer le user_id du débiteur:',
-          debtorError?.message || 'Membre débiteur introuvable'
-        );
-        return; // Ne pas faire échouer le settlement
-      }
-
-      const debtorUserId = debtorMember.user_id;
-      const creditorUserId = user.id; // Le créancier est l'utilisateur actuel qui marque comme réglé
-
-      // 3. Mettre à jour la table transactions avec le transfert de propriété
-      //    - current_owner_id = user_id du débiteur (nouveau propriétaire)
-      //    - original_owner_id = user_id du créancier (propriétaire original)
-      //    - transferred_at = NOW()
-      const { error: transferError } = await supabase
-        .from('transactions')
-        .update({
-          current_owner_id: debtorUserId,
-          original_owner_id: creditorUserId,
-          transferred_at: new Date().toISOString(),
-        })
-        .eq('id', transactionId);
-
-      if (transferError) {
-        // Logger l'erreur mais ne pas faire échouer le settlement
-        console.warn(
-          '[TRANSFERT PROPRIÉTÉ] Erreur lors du transfert de propriété:',
-          transferError.message,
-          'Transaction ID:',
-          transactionId
-        );
-        // Ne pas throw - le settlement a réussi, le transfert est secondaire
-      } else {
-        console.log(
-          '[TRANSFERT PROPRIÉTÉ] Propriété transférée avec succès:',
-          {
-            transactionId,
-            fromOwner: creditorUserId,
-            toOwner: debtorUserId,
-          }
-        );
-      }
-    } catch (transferException) {
-      // Capturer toute exception inattendue et logger sans faire échouer le settlement
-      console.warn(
-        '[TRANSFERT PROPRIÉTÉ] Exception lors du transfert de propriété:',
-        transferException
-      );
-      // Ne pas throw - le settlement a réussi
-    }
-  } catch (error) {
-    console.error('Erreur dans markAsReimbursed:', error);
-    throw error;
   }
 }
 
 /**
- * Crée une nouvelle demande de remboursement
- * @param data - Données pour créer la demande
- * @returns La demande de remboursement créée
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Crée une nouvelle demande de remboursement.
+ * Reste online-only en S69 (mutation complexe : insert + update has_reimbursement_request).
+ * getCurrentUserSafe substitué pour éliminer le bug auth offline.
  */
 export async function createReimbursementRequest(
   data: CreateReimbursementData
 ): Promise<ReimbursementRequest> {
-  try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
 
-    // Récupérer le groupe familial depuis la transaction partagée
-    const { data: sharedTransaction, error: transactionError } =
-      await supabase
-        .from('family_shared_transactions')
-        .select('family_group_id')
-        .eq('id', data.sharedTransactionId)
-        .single();
+  if (!isOnline()) {
+    throw new Error(
+      'La création de remboursement nécessite une connexion (refonte offline prévue en S70)'
+    );
+  }
+
+  try {
+    const { data: sharedTransaction, error: transactionError } = await supabase
+      .from('family_shared_transactions')
+      .select('family_group_id')
+      .eq('id', data.sharedTransactionId)
+      .single();
 
     if (transactionError || !sharedTransaction) {
       throw new Error('Transaction partagée introuvable');
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
       .select('id')
@@ -1045,12 +1152,9 @@ export async function createReimbursementRequest(
       .single();
 
     if (membershipError || !membership) {
-      throw new Error(
-        "Vous n'êtes pas membre du groupe de cette transaction"
-      );
+      throw new Error("Vous n'êtes pas membre du groupe de cette transaction");
     }
 
-    // Vérifier que from_member_id et to_member_id sont des membres du groupe
     const { data: fromMember, error: fromMemberError } = await supabase
       .from('family_members')
       .select('id, family_group_id')
@@ -1073,7 +1177,6 @@ export async function createReimbursementRequest(
       throw new Error('Le membre créancier est introuvable ou ne fait pas partie du groupe');
     }
 
-    // Créer la demande de remboursement
     const { data: created, error: createError } = await supabase
       .from('reimbursement_requests')
       .insert({
@@ -1088,23 +1191,12 @@ export async function createReimbursementRequest(
       .select()
       .single();
 
-    if (createError) {
-      console.error(
-        'Erreur lors de la création de la demande:',
-        createError
-      );
+    if (createError || !created) {
       throw new Error(
-        `Erreur lors de la création: ${createError.message}`
+        `Erreur lors de la création: ${createError?.message || 'aucune donnée retournée'}`
       );
     }
 
-    if (!created) {
-      throw new Error(
-        'Erreur lors de la création: aucune donnée retournée'
-      );
-    }
-
-    // Update family_shared_transactions to set has_reimbursement_request = true
     const { error: updateError } = await supabase
       .from('family_shared_transactions')
       .update({ has_reimbursement_request: true })
@@ -1115,55 +1207,68 @@ export async function createReimbursementRequest(
         'Erreur lors de la mise à jour de has_reimbursement_request:',
         updateError
       );
-      // Don't throw - the request was created successfully
     }
+
+    // Refresh cache local pour ce groupe (background, non bloquant)
+    refreshReimbursementsForGroup(sharedTransaction.family_group_id).catch(() => {});
 
     return mapRowToReimbursementRequest(created);
   } catch (error) {
-    console.error('Erreur dans createReimbursementRequest:', error);
+    console.error(`${LOG_TAG} ❌ createReimbursementRequest:`, error);
     throw error;
   }
 }
 
 /**
- * Récupère toutes les demandes de remboursement pour un membre
- * (en tant que débiteur ou créancier)
- * @param memberId - ID du membre (family_members.id)
- * @returns Tableau des demandes de remboursement
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Récupère toutes les demandes pour un membre (en tant que débiteur OU créancier).
+ * Reste online-only en S69. getCurrentUserSafe substitué.
  */
 export async function getReimbursementsByMember(
   memberId: string
 ): Promise<ReimbursementRequest[]> {
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
+
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
+    if (!isOnline()) {
+      // Lecture best-effort depuis le cache (sans vérification stricte d'autorisation)
+      const local = await db.reimbursementRequests
+        .filter((r) => r.fromMemberId === memberId || r.toMemberId === memberId)
+        .toArray();
+      const sorted = [...local].sort((a, b) =>
+        (b.createdAt || '').localeCompare(a.createdAt || '')
+      );
+      return sorted.map((r) => ({
+        id: r.id,
+        familyGroupId: r.familyGroupId,
+        requestedBy: r.toMemberId,
+        requestedFrom: r.fromMemberId,
+        familySharedTransactionId: r.sharedTransactionId,
+        amount: r.amount,
+        description: r.note || '',
+        status: r.status as ReimbursementRequestStatus,
+        statusChangedAt: new Date(r.updatedAt),
+        statusChangedBy: r.settledBy || undefined,
+        notes: r.note || undefined,
+        createdAt: new Date(r.createdAt),
+        updatedAt: new Date(r.updatedAt),
+      }));
     }
 
-    // Vérifier que le membre existe et appartient à l'utilisateur
     const { data: member, error: memberError } = await supabase
       .from('family_members')
       .select('id, user_id')
       .eq('id', memberId)
       .single();
 
-    if (memberError || !member) {
-      throw new Error('Membre introuvable');
-    }
+    if (memberError || !member) throw new Error('Membre introuvable');
 
-    // Vérifier que l'utilisateur est bien le propriétaire du membre
     if (member.user_id !== user.id) {
       throw new Error(
         "Vous n'êtes pas autorisé à consulter les remboursements de ce membre"
       );
     }
 
-    // Récupérer les demandes où le membre est débiteur ou créancier
     const { data, error } = await supabase
       .from('reimbursement_requests')
       .select('*')
@@ -1171,46 +1276,24 @@ export async function getReimbursementsByMember(
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error(
-        'Erreur lors de la récupération des remboursements:',
-        error
-      );
-      throw new Error(
-        `Erreur lors de la récupération: ${error.message}`
-      );
+      throw new Error(`Erreur lors de la récupération: ${error.message}`);
     }
-
-    if (!data) {
-      return [];
-    }
+    if (!data) return [];
 
     return data.map(mapRowToReimbursementRequest);
   } catch (error) {
-    console.error('Erreur dans getReimbursementsByMember:', error);
+    console.error(`${LOG_TAG} ❌ getReimbursementsByMember:`, error);
     throw error;
   }
 }
 
 // ============================================================================
-// PAYMENT ALLOCATION FUNCTIONS (Phase 1)
+// PAYMENT ALLOCATION (Phase 1) — reste online-only en S69, refonte FIFO en S70
 // ============================================================================
 
 /**
- * Enregistre un paiement de remboursement avec allocation FIFO automatique
- * 
- * Algorithme FIFO (First In First Out):
- * - Trie les demandes en attente par date de création (plus ancienne en premier)
- * - Alloue le paiement séquentiellement jusqu'à épuisement
- * - Met à jour le statut des demandes (settled si complètement payée, pending avec montant réduit si partielle)
- * - Détecte le surplus et crée/met à jour un solde de crédit (acompte)
- * 
- * @param fromMemberId - ID du membre débiteur (qui paie)
- * @param toMemberId - ID du membre créancier (qui reçoit)
- * @param amount - Montant total du paiement
- * @param notes - Notes optionnelles sur le paiement
- * @param groupId - ID du groupe familial (optionnel, peut être inféré)
- * @returns Résultat de l'allocation avec détails
- * @throws Error si l'utilisateur n'est pas authentifié, montant invalide, ou erreur de base de données
+ * Enregistre un paiement de remboursement avec allocation FIFO automatique.
+ * Reste online-only en S69. getCurrentUserSafe substitué.
  */
 export async function recordReimbursementPayment(
   fromMemberId: string,
@@ -1219,54 +1302,44 @@ export async function recordReimbursementPayment(
   notes?: string,
   groupId?: string
 ): Promise<PaymentAllocationResult> {
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
+
+  if (!isOnline()) {
+    throw new Error(
+      "L'enregistrement d'un paiement nécessite une connexion (refonte offline prévue en S70)"
+    );
+  }
+
+  if (amount <= 0) {
+    throw new Error('Le montant du paiement doit être supérieur à zéro');
+  }
+
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
-
-    // Validation du montant
-    if (amount <= 0) {
-      throw new Error('Le montant du paiement doit être supérieur à zéro');
-    }
-
-    // Récupérer les informations des membres et valider qu'ils appartiennent au même groupe
     const { data: fromMember, error: fromMemberError } = await supabase
       .from('family_members')
       .select('id, family_group_id, user_id, display_name')
       .eq('id', fromMemberId)
       .single();
-
-    if (fromMemberError || !fromMember) {
-      throw new Error('Membre débiteur introuvable');
-    }
+    if (fromMemberError || !fromMember) throw new Error('Membre débiteur introuvable');
 
     const { data: toMember, error: toMemberError } = await supabase
       .from('family_members')
       .select('id, family_group_id, user_id, display_name')
       .eq('id', toMemberId)
       .single();
+    if (toMemberError || !toMember) throw new Error('Membre créancier introuvable');
 
-    if (toMemberError || !toMember) {
-      throw new Error('Membre créancier introuvable');
-    }
-
-    // Déterminer le groupId si non fourni
     const finalGroupId = groupId || fromMember.family_group_id;
-    if (!finalGroupId) {
-      throw new Error('Impossible de déterminer le groupe familial');
-    }
+    if (!finalGroupId) throw new Error('Impossible de déterminer le groupe familial');
 
-    // Vérifier que les deux membres appartiennent au même groupe
-    if (fromMember.family_group_id !== toMember.family_group_id || fromMember.family_group_id !== finalGroupId) {
+    if (
+      fromMember.family_group_id !== toMember.family_group_id ||
+      fromMember.family_group_id !== finalGroupId
+    ) {
       throw new Error('Les membres doivent appartenir au même groupe familial');
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
       .select('id')
@@ -1279,31 +1352,26 @@ export async function recordReimbursementPayment(
       throw new Error("Vous n'êtes pas membre de ce groupe familial");
     }
 
-    // Récupérer les demandes de remboursement en attente (FIFO: triées par date de création ASC)
     const { data: pendingRequests, error: requestsError } = await supabase
       .from('reimbursement_requests')
       .select('*')
       .eq('from_member_id', fromMemberId)
       .eq('to_member_id', toMemberId)
       .eq('status', 'pending')
-      .order('created_at', { ascending: true }); // FIFO: plus ancienne en premier
+      .order('created_at', { ascending: true });
 
     if (requestsError) {
-      console.error('Erreur lors de la récupération des demandes en attente:', requestsError);
       throw new Error(`Erreur lors de la récupération des demandes: ${requestsError.message}`);
     }
 
     const requests = pendingRequests || [];
 
-    // ALGORITHME FIFO: Allouer le paiement aux demandes les plus anciennes en premier
     let remainingPayment = amount;
     const allocations: PaymentAllocation[] = [];
     const remainingBalances: RemainingBalance[] = [];
 
     for (const request of requests) {
-      if (remainingPayment <= 0) {
-        break; // Plus de paiement à allouer
-      }
+      if (remainingPayment <= 0) break;
 
       const requestAmount = request.amount || 0;
       const allocatedToThisRequest = Math.min(remainingPayment, requestAmount);
@@ -1313,9 +1381,9 @@ export async function recordReimbursementPayment(
       allocations.push({
         reimbursementRequestId: request.id,
         allocatedAmount: allocatedToThisRequest,
-        requestAmount: requestAmount,
+        requestAmount,
         remainingAmount: remainingInRequest,
-        isFullyPaid: isFullyPaid,
+        isFullyPaid,
       });
 
       remainingBalances.push({
@@ -1328,9 +1396,8 @@ export async function recordReimbursementPayment(
     }
 
     const allocatedAmount = amount - remainingPayment;
-    const surplusAmount = remainingPayment; // Le reste après allocation
+    const surplusAmount = remainingPayment;
 
-    // Créer l'enregistrement de paiement
     const { data: payment, error: paymentError } = await supabase
       .from('reimbursement_payments')
       .insert({
@@ -1340,7 +1407,7 @@ export async function recordReimbursementPayment(
         total_amount: amount,
         allocated_amount: allocatedAmount,
         surplus_amount: surplusAmount,
-        currency: 'MGA', // TODO: Récupérer depuis la première demande ou paramètre
+        currency: 'MGA',
         notes: notes || null,
         created_by: user.id,
       } as any)
@@ -1348,15 +1415,15 @@ export async function recordReimbursementPayment(
       .single();
 
     if (paymentError || !payment) {
-      console.error('Erreur lors de la création du paiement:', paymentError);
-      throw new Error(`Erreur lors de la création du paiement: ${paymentError?.message || 'Aucune donnée retournée'}`);
+      throw new Error(
+        `Erreur lors de la création du paiement: ${paymentError?.message || 'aucune donnée retournée'}`
+      );
     }
 
     const paymentId = payment.id;
 
-    // Créer les allocations de paiement
     if (allocations.length > 0) {
-      const allocationInserts = allocations.map(allocation => ({
+      const allocationInserts = allocations.map((allocation) => ({
         payment_id: paymentId,
         reimbursement_request_id: allocation.reimbursementRequestId,
         allocated_amount: allocation.allocatedAmount,
@@ -1370,25 +1437,17 @@ export async function recordReimbursementPayment(
         .insert(allocationInserts as any);
 
       if (allocationsError) {
-        console.error('Erreur lors de la création des allocations:', allocationsError);
-        // Rollback: supprimer le paiement créé
         await supabase.from('reimbursement_payments').delete().eq('id', paymentId);
         throw new Error(`Erreur lors de la création des allocations: ${allocationsError.message}`);
       }
 
-      // Mettre à jour les statuts des demandes de remboursement
       for (const allocation of allocations) {
-        const updateData: any = {
-          updated_at: new Date().toISOString(),
-        };
-
+        const updateData: any = { updated_at: new Date().toISOString() };
         if (allocation.isFullyPaid) {
-          // Demande complètement payée: marquer comme settled
           updateData.status = 'settled';
           updateData.settled_at = new Date().toISOString();
           updateData.settled_by = user.id;
         } else {
-          // Demande partiellement payée: réduire le montant et garder pending
           updateData.amount = allocation.remainingAmount;
         }
 
@@ -1398,18 +1457,18 @@ export async function recordReimbursementPayment(
           .eq('id', allocation.reimbursementRequestId);
 
         if (updateError) {
-          console.error(`Erreur lors de la mise à jour de la demande ${allocation.reimbursementRequestId}:`, updateError);
-          // Continuer avec les autres demandes même en cas d'erreur
+          console.error(
+            `Erreur lors de la mise à jour de la demande ${allocation.reimbursementRequestId}:`,
+            updateError
+          );
         }
       }
     }
 
-    // Gérer le surplus: créer ou mettre à jour le solde de crédit
     let creditBalanceId: string | undefined;
     let creditBalanceCreated = false;
 
     if (surplusAmount > 0) {
-      // Vérifier si un solde de crédit existe déjà
       const { data: existingCredit, error: creditCheckError } = await supabase
         .from('member_credit_balance')
         .select('id, credit_amount')
@@ -1419,13 +1478,10 @@ export async function recordReimbursementPayment(
         .single();
 
       if (creditCheckError && creditCheckError.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, ce qui est normal si le solde n'existe pas encore
         console.error('Erreur lors de la vérification du solde de crédit:', creditCheckError);
-        // Ne pas faire échouer le paiement si la vérification échoue
       }
 
       if (existingCredit) {
-        // Mettre à jour le solde existant
         const { data: updatedCredit, error: updateCreditError } = await supabase
           .from('member_credit_balance')
           .update({
@@ -1438,14 +1494,15 @@ export async function recordReimbursementPayment(
           .single();
 
         if (updateCreditError) {
-          console.error('Erreur lors de la mise à jour du solde de crédit:', updateCreditError);
-          // Ne pas faire échouer le paiement si la mise à jour du crédit échoue
+          console.error(
+            'Erreur lors de la mise à jour du solde de crédit:',
+            updateCreditError
+          );
         } else {
           creditBalanceId = updatedCredit?.id;
           creditBalanceCreated = true;
         }
       } else {
-        // Créer un nouveau solde de crédit
         const { data: newCredit, error: createCreditError } = await supabase
           .from('member_credit_balance')
           .insert({
@@ -1461,13 +1518,16 @@ export async function recordReimbursementPayment(
 
         if (createCreditError) {
           console.error('Erreur lors de la création du solde de crédit:', createCreditError);
-          // Ne pas faire échouer le paiement si la création du crédit échoue
         } else {
           creditBalanceId = newCredit?.id;
           creditBalanceCreated = true;
         }
       }
     }
+
+    // Refresh cache pour ce groupe et ce couple débiteur/créancier
+    refreshReimbursementsForGroup(finalGroupId).catch(() => {});
+    refreshCreditBalanceForPair(finalGroupId, fromMemberId, toMemberId).catch(() => {});
 
     return {
       paymentId,
@@ -1480,19 +1540,11 @@ export async function recordReimbursementPayment(
       creditBalanceId,
     };
   } catch (error) {
-    console.error('Erreur dans recordReimbursementPayment:', error);
+    console.error(`${LOG_TAG} ❌ recordReimbursementPayment:`, error);
     throw error;
   }
 }
 
-/**
- * Récupère l'historique des paiements de remboursement avec filtres et pagination
- * 
- * @param groupId - ID du groupe familial
- * @param options - Options de filtrage et pagination
- * @returns Tableau des entrées d'historique de paiement
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
- */
 export async function getPaymentHistory(
   groupId: string,
   options?: {
@@ -1504,17 +1556,16 @@ export async function getPaymentHistory(
     offset?: number;
   }
 ): Promise<PaymentHistoryEntry[]> {
-  try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
 
-    // Vérifier que l'utilisateur est membre du groupe
+  if (!isOnline()) {
+    throw new Error(
+      "L'historique des paiements nécessite une connexion (refonte offline prévue en S70)"
+    );
+  }
+
+  try {
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
       .select('id')
@@ -1527,41 +1578,23 @@ export async function getPaymentHistory(
       throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas");
     }
 
-    // Construire la requête avec filtres
     let query = supabase
       .from('reimbursement_payments')
       .select(`
         *,
-        from_member:family_members!reimbursement_payments_from_member_id_fkey(
-          display_name
-        ),
-        to_member:family_members!reimbursement_payments_to_member_id_fkey(
-          display_name
-        )
+        from_member:family_members!reimbursement_payments_from_member_id_fkey(display_name),
+        to_member:family_members!reimbursement_payments_to_member_id_fkey(display_name)
       `)
       .eq('family_group_id', groupId);
 
-    // Appliquer les filtres
-    if (options?.fromMemberId) {
-      query = query.eq('from_member_id', options.fromMemberId);
-    }
-    if (options?.toMemberId) {
-      query = query.eq('to_member_id', options.toMemberId);
-    }
-    if (options?.startDate) {
-      query = query.gte('created_at', options.startDate.toISOString());
-    }
-    if (options?.endDate) {
-      query = query.lte('created_at', options.endDate.toISOString());
-    }
+    if (options?.fromMemberId) query = query.eq('from_member_id', options.fromMemberId);
+    if (options?.toMemberId) query = query.eq('to_member_id', options.toMemberId);
+    if (options?.startDate) query = query.gte('created_at', options.startDate.toISOString());
+    if (options?.endDate) query = query.lte('created_at', options.endDate.toISOString());
 
-    // Trier par date de création (plus récent en premier)
     query = query.order('created_at', { ascending: false });
 
-    // Pagination
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
+    if (options?.limit) query = query.limit(options.limit);
     if (options?.offset) {
       query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
     }
@@ -1569,59 +1602,41 @@ export async function getPaymentHistory(
     const { data: payments, error: paymentsError } = await query;
 
     if (paymentsError) {
-      console.error('Erreur lors de la récupération de l\'historique des paiements:', paymentsError);
       throw new Error(`Erreur lors de la récupération: ${paymentsError.message}`);
     }
+    if (!payments || payments.length === 0) return [];
 
-    if (!payments || payments.length === 0) {
-      return [];
-    }
-
-    // Récupérer les allocations pour chaque paiement
     const paymentIds = payments.map((p: any) => p.id);
-    const { data: allocations, error: allocationsError } = await supabase
+    const { data: allocations } = await supabase
       .from('reimbursement_payment_allocations')
       .select(`
         *,
         reimbursement_request:reimbursement_requests(
           shared_transaction:family_shared_transactions(
-            transactions(
-              description
-            )
+            transactions(description)
           )
         )
       `)
       .in('payment_id', paymentIds);
 
-    if (allocationsError) {
-      console.error('Erreur lors de la récupération des allocations:', allocationsError);
-      // Continuer sans allocations plutôt que de faire échouer
-    }
-
-    // Grouper les allocations par payment_id
     const allocationsByPayment = new Map<string, any[]>();
     (allocations || []).forEach((alloc: any) => {
-      const paymentId = alloc.payment_id;
-      const existing = allocationsByPayment.get(paymentId) || [];
-      existing.push(alloc);
-      allocationsByPayment.set(paymentId, existing);
+      const arr = allocationsByPayment.get(alloc.payment_id) || [];
+      arr.push(alloc);
+      allocationsByPayment.set(alloc.payment_id, arr);
     });
 
-    // Mapper les résultats
     return payments.map((payment: any) => {
       const paymentAllocations = allocationsByPayment.get(payment.id) || [];
-      
+
       const allocationDetails: PaymentAllocationDetail[] = paymentAllocations.map((alloc: any) => {
-        // Extraire la description de la transaction
         const sharedTransaction = alloc.reimbursement_request?.shared_transaction;
         const transaction = Array.isArray(sharedTransaction?.transactions)
           ? sharedTransaction.transactions[0]
           : sharedTransaction?.transactions;
-        const description = transaction?.description || 'Transaction sans description';
-
         return {
           reimbursementRequestId: alloc.reimbursement_request_id,
-          requestDescription: description,
+          requestDescription: transaction?.description || 'Transaction sans description',
           allocatedAmount: alloc.allocated_amount || 0,
           requestAmount: alloc.request_amount || 0,
           remainingAmount: alloc.remaining_amount || 0,
@@ -1629,8 +1644,12 @@ export async function getPaymentHistory(
         };
       });
 
-      const fromMember = Array.isArray(payment.from_member) ? payment.from_member[0] : payment.from_member;
-      const toMember = Array.isArray(payment.to_member) ? payment.to_member[0] : payment.to_member;
+      const fromMember = Array.isArray(payment.from_member)
+        ? payment.from_member[0]
+        : payment.from_member;
+      const toMember = Array.isArray(payment.to_member)
+        ? payment.to_member[0]
+        : payment.to_member;
 
       return {
         paymentId: payment.id,
@@ -1647,19 +1666,13 @@ export async function getPaymentHistory(
       };
     });
   } catch (error) {
-    console.error('Erreur dans getPaymentHistory:', error);
+    console.error(`${LOG_TAG} ❌ getPaymentHistory:`, error);
     throw error;
   }
 }
 
 /**
- * Récupère le solde de crédit (acompte) entre deux membres
- * 
- * @param fromMemberId - ID du membre débiteur
- * @param toMemberId - ID du membre créancier
- * @param groupId - ID du groupe familial
- * @returns Solde de crédit ou null si aucun solde n'existe
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Récupère le solde de crédit (acompte) entre deux membres — SWR.
  */
 export async function getMemberCreditBalance(
   fromMemberId: string,
@@ -1667,126 +1680,72 @@ export async function getMemberCreditBalance(
   groupId: string
 ): Promise<MemberCreditBalance | null> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+    const user = await getCurrentUserSafe();
+    if (!user) throw new Error('Utilisateur non authentifié');
 
-    // Vérifier que l'utilisateur est membre du groupe
-    const { data: membership, error: membershipError } = await supabase
-      .from('family_members')
-      .select('id')
-      .eq('family_group_id', groupId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+    // Lecture locale d'abord
+    const local = await db.memberCreditBalances
+      .where('[familyGroupId+fromMemberId+toMemberId]')
+      .equals([groupId, fromMemberId, toMemberId])
+      .first();
 
-    if (membershipError || !membership) {
-      throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas");
-    }
-
-    // Récupérer le solde de crédit avec les noms des membres
-    const { data: creditBalance, error: creditError } = await supabase
-      .from('member_credit_balance')
-      .select(`
-        *,
-        from_member:family_members!member_credit_balance_from_member_id_fkey(
-          display_name
-        ),
-        to_member:family_members!member_credit_balance_to_member_id_fkey(
-          display_name
-        )
-      `)
-      .eq('family_group_id', groupId)
-      .eq('from_member_id', fromMemberId)
-      .eq('to_member_id', toMemberId)
-      .single();
-
-    if (creditError) {
-      if (creditError.code === 'PGRST116') {
-        // Aucune ligne trouvée, ce qui est normal
-        return null;
+    if (local) {
+      // Refresh background si online
+      if (isOnline()) {
+        refreshCreditBalanceForPair(groupId, fromMemberId, toMemberId).catch(() => {});
       }
-      console.error('Erreur lors de la récupération du solde de crédit:', creditError);
-      throw new Error(`Erreur lors de la récupération: ${creditError.message}`);
+      return localCreditBalanceToPublic(local);
     }
 
-    if (!creditBalance) {
-      return null;
-    }
+    // Cache vide ET offline → null
+    if (!isOnline()) return null;
 
-    const fromMember = Array.isArray(creditBalance.from_member) ? creditBalance.from_member[0] : creditBalance.from_member;
-    const toMember = Array.isArray(creditBalance.to_member) ? creditBalance.to_member[0] : creditBalance.to_member;
-
-    return {
-      id: creditBalance.id,
-      fromMemberId: creditBalance.from_member_id,
-      fromMemberName: fromMember?.display_name || 'Membre inconnu',
-      toMemberId: creditBalance.to_member_id,
-      toMemberName: toMember?.display_name || 'Membre inconnu',
-      creditAmount: creditBalance.credit_amount || 0,
-      createdAt: new Date(creditBalance.created_at),
-      updatedAt: new Date(creditBalance.updated_at),
-      lastPaymentDate: creditBalance.last_payment_date ? new Date(creditBalance.last_payment_date) : undefined,
-    };
+    // Cache vide ET online → fetch synchrone
+    await refreshCreditBalanceForPair(groupId, fromMemberId, toMemberId);
+    const fresh = await db.memberCreditBalances
+      .where('[familyGroupId+fromMemberId+toMemberId]')
+      .equals([groupId, fromMemberId, toMemberId])
+      .first();
+    return fresh ? localCreditBalanceToPublic(fresh) : null;
   } catch (error) {
-    console.error('Erreur dans getMemberCreditBalance:', error);
+    console.error(`${LOG_TAG} ❌ getMemberCreditBalance:`, error);
     throw error;
   }
 }
 
 /**
- * Récupère les détails complets d'une allocation de paiement spécifique
- * 
- * @param paymentId - ID du paiement
- * @returns Détails complets du paiement ou null si non trouvé
- * @throws Error si l'utilisateur n'est pas authentifié ou en cas d'erreur
+ * Détails complets d'une allocation de paiement.
+ * Reste online-only en S69.
  */
 export async function getAllocationDetails(
   paymentId: string
 ): Promise<PaymentAllocationDetails | null> {
-  try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
 
-    // Récupérer le paiement avec les informations des membres
+  if (!isOnline()) {
+    throw new Error(
+      "Les détails d'allocation nécessitent une connexion (refonte offline prévue en S70)"
+    );
+  }
+
+  try {
     const { data: payment, error: paymentError } = await supabase
       .from('reimbursement_payments')
       .select(`
         *,
-        from_member:family_members!reimbursement_payments_from_member_id_fkey(
-          display_name
-        ),
-        to_member:family_members!reimbursement_payments_to_member_id_fkey(
-          display_name
-        )
+        from_member:family_members!reimbursement_payments_from_member_id_fkey(display_name),
+        to_member:family_members!reimbursement_payments_to_member_id_fkey(display_name)
       `)
       .eq('id', paymentId)
       .single();
 
     if (paymentError) {
-      if (paymentError.code === 'PGRST116') {
-        return null; // Paiement non trouvé
-      }
-      console.error('Erreur lors de la récupération du paiement:', paymentError);
+      if (paymentError.code === 'PGRST116') return null;
       throw new Error(`Erreur lors de la récupération: ${paymentError.message}`);
     }
+    if (!payment) return null;
 
-    if (!payment) {
-      return null;
-    }
-
-    // Vérifier que l'utilisateur est membre du groupe
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
       .select('id')
@@ -1799,7 +1758,6 @@ export async function getAllocationDetails(
       throw new Error("Vous n'êtes pas autorisé à consulter ce paiement");
     }
 
-    // Récupérer les allocations avec les détails des demandes
     const { data: allocations, error: allocationsError } = await supabase
       .from('reimbursement_payment_allocations')
       .select(`
@@ -1807,47 +1765,41 @@ export async function getAllocationDetails(
         reimbursement_request:reimbursement_requests(
           *,
           shared_transaction:family_shared_transactions(
-            transactions(
-              description
-            )
+            transactions(description)
           )
         )
       `)
       .eq('payment_id', paymentId);
 
     if (allocationsError) {
-      console.error('Erreur lors de la récupération des allocations:', allocationsError);
       throw new Error(`Erreur lors de la récupération des allocations: ${allocationsError.message}`);
     }
 
-    // Mapper les allocations avec les détails
-    const allocationDetails: PaymentAllocationDetail[] = (allocations || []).map((alloc: any) => {
-      const sharedTransaction = alloc.reimbursement_request?.shared_transaction;
-      const transaction = Array.isArray(sharedTransaction?.transactions)
-        ? sharedTransaction.transactions[0]
-        : sharedTransaction?.transactions;
-      const description = transaction?.description || 'Transaction sans description';
+    const allocationDetails: PaymentAllocationDetail[] = (allocations || []).map(
+      (alloc: any) => {
+        const sharedTransaction = alloc.reimbursement_request?.shared_transaction;
+        const transaction = Array.isArray(sharedTransaction?.transactions)
+          ? sharedTransaction.transactions[0]
+          : sharedTransaction?.transactions;
+        return {
+          reimbursementRequestId: alloc.reimbursement_request_id,
+          requestDescription: transaction?.description || 'Transaction sans description',
+          allocatedAmount: alloc.allocated_amount || 0,
+          requestAmount: alloc.request_amount || 0,
+          remainingAmount: alloc.remaining_amount || 0,
+          isFullyPaid: alloc.is_fully_paid || false,
+        };
+      }
+    );
 
-      return {
-        reimbursementRequestId: alloc.reimbursement_request_id,
-        requestDescription: description,
-        allocatedAmount: alloc.allocated_amount || 0,
-        requestAmount: alloc.request_amount || 0,
-        remainingAmount: alloc.remaining_amount || 0,
-        isFullyPaid: alloc.is_fully_paid || false,
-      };
-    });
-
-    // Récupérer les demandes de remboursement liées
-    const requestIds = allocationDetails.map(a => a.reimbursementRequestId);
-    const { data: requests, error: requestsError } = await supabase
+    const requestIds = allocationDetails.map((a) => a.reimbursementRequestId);
+    const { data: requests } = await supabase
       .from('reimbursement_requests')
       .select('*')
       .in('id', requestIds);
 
     const relatedRequests = requests ? requests.map(mapRowToReimbursementRequest) : [];
 
-    // Récupérer le solde de crédit si un surplus existe
     let creditBalance: MemberCreditBalance | undefined;
     if (payment.surplus_amount > 0) {
       const credit = await getMemberCreditBalance(
@@ -1858,8 +1810,12 @@ export async function getAllocationDetails(
       creditBalance = credit || undefined;
     }
 
-    const fromMember = Array.isArray(payment.from_member) ? payment.from_member[0] : payment.from_member;
-    const toMember = Array.isArray(payment.to_member) ? payment.to_member[0] : payment.to_member;
+    const fromMember = Array.isArray(payment.from_member)
+      ? payment.from_member[0]
+      : payment.from_member;
+    const toMember = Array.isArray(payment.to_member)
+      ? payment.to_member[0]
+      : payment.to_member;
 
     const paymentEntry: PaymentHistoryEntry = {
       paymentId: payment.id,
@@ -1882,7 +1838,21 @@ export async function getAllocationDetails(
       relatedRequests,
     };
   } catch (error) {
-    console.error('Erreur dans getAllocationDetails:', error);
+    console.error(`${LOG_TAG} ❌ getAllocationDetails:`, error);
     throw error;
   }
+}
+
+// ============================================================================
+// BACKWARD COMPAT (export ancien wrapper)
+// ============================================================================
+
+/**
+ * Ancien wrapper conservé pour rétrocompat. Délègue au nouveau pattern SWR.
+ */
+export async function getReimbursementStatusByTransactionIds_OLD(
+  transactionIds: string[],
+  groupId: string
+): Promise<Map<string, ReimbursementStatus>> {
+  return getReimbursementStatusByTransactionIds(transactionIds, groupId);
 }
