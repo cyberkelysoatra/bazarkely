@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { useAppStore } from '../stores/appStore';
 import type {
   FamilyGroup,
   FamilyMember,
@@ -13,6 +14,31 @@ import type {
   FamilyGroupSettings,
   FamilyRole,
 } from '../types/family';
+
+/**
+ * Récupère l'utilisateur courant SANS faire de requête réseau (pattern S68).
+ *
+ * `supabase.auth.getUser()` fait un fetch HTTP vers /auth/v1/user → throw
+ * `AuthRetryableFetchError` en mode offline. Ce helper résout dans l'ordre :
+ * 1. `useAppStore.user` (Zustand, sync, instantané)
+ * 2. `supabase.auth.getSession()` (lecture localStorage, pas de réseau)
+ * 3. null
+ */
+export async function getCurrentUserSafe(): Promise<{ id: string } | null> {
+  try {
+    const storeUser = useAppStore.getState().user;
+    if (storeUser?.id) return { id: storeUser.id };
+  } catch {
+    /* store pas encore initialisé */
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user?.id) return { id: data.session.user.id };
+  } catch {
+    /* getSession ne devrait jamais throw */
+  }
+  return null;
+}
 
 /**
  * Settings par défaut pour un nouveau groupe familial
@@ -38,11 +64,8 @@ export async function createFamilyGroup(
 ): Promise<FamilyGroup & { inviteCode: string }> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -110,11 +133,8 @@ export async function getUserFamilyGroups(): Promise<
 > {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -297,11 +317,8 @@ export async function joinFamilyGroup(
 ): Promise<FamilyMember> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -396,11 +413,8 @@ export async function getFamilyGroupMembers(
 ): Promise<FamilyMember[]> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -476,11 +490,8 @@ export async function updateMemberSettings(
 ): Promise<FamilyMember> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -575,11 +586,8 @@ export async function updateMemberSettings(
 export async function leaveFamilyGroup(groupId: string): Promise<void> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -638,11 +646,8 @@ export async function leaveFamilyGroup(groupId: string): Promise<void> {
 export async function removeMember(groupId: string, userId: string): Promise<void> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -720,11 +725,8 @@ export async function removeMember(groupId: string, userId: string): Promise<voi
 export async function regenerateInviteCode(groupId: string): Promise<string> {
   try {
     // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 

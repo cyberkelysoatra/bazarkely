@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.13.0';
-export const APP_VERSION_NAME = 'Refonte offline-first des Remboursements Familiaux — phase 1 (SWR + markAsReimbursed + getCurrentUserSafe)';
+export const APP_VERSION = '3.13.1';
+export const APP_VERSION_NAME = 'Hotfix offline familyGroupService — getCurrentUserSafe + cache localStorage des groupes familiaux';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.13.1',
+    date: '2026-05-11',
+    description: 'Hotfix offline — familyGroupService et FamilyContext débloqués (getCurrentUserSafe + cache localStorage des familyGroups)',
+    changes: [
+      'Fix (services/familyGroupService.ts): remplacement des 9 occurrences `supabase.auth.getUser()` (qui throw `AuthRetryableFetchError` en offline) par un helper local `getCurrentUserSafe()` exporté pour réutilisation. Pattern S68 répliqué sur familyGroupService',
+      'Fix (contexts/FamilyContext.tsx): même substitution `supabase.auth.getUser()` → `getCurrentUserSafe()` dans `fetchFamilyGroups()`. Auparavant, le seul fait de visiter une page Famille en offline déclenchait `setError("Utilisateur non authentifié")` + clear de localStorage → activeFamilyGroup restait null → toute la chaîne offline famille (reimbursements S69) inutilisable',
+      'Feature (contexts/FamilyContext.tsx): nouveau cache localStorage des familyGroups (`bazarkely_family_groups_cache`). Lu en premier au mount (retour SWR rapide), écrit après chaque fetch online réussi, conservé en cas d\'échec réseau au lieu de wiper l\'état. Permet la persistance des groupes entre reloads en offline',
+      'Régression débloquée : la chaîne offline du module Famille (S69) fonctionne désormais comme prévu — premier chargement online peuple le cache groupes + reimbursements, les visites suivantes en offline restaurent activeFamilyGroup et chargent les reimbursements depuis Dexie',
+      'Limitation conservée : les mutations sur familyGroups (createFamilyGroup, joinFamilyGroup, leaveFamilyGroup) restent online-only — refonte offline-first complète prévue en S70',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.13.0',
     date: '2026-05-11',
