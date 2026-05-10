@@ -12,7 +12,9 @@ import {
   joinFamilyGroup as joinFamilyGroupService,
   leaveFamilyGroup as leaveFamilyGroupService,
   getFamilyGroupByCode,
+  getCurrentUserSafe,
 } from '../services/familyGroupService';
+import { useAppStore } from '../stores/appStore';
 import type { CreateFamilyGroupInput, JoinFamilyGroupInput } from '../types/family';
 import { useFamilyRealtime } from '../hooks/useFamilyRealtime';
 
@@ -53,6 +55,56 @@ const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
 const ACTIVE_FAMILY_GROUP_KEY = 'bazarkely_active_family_group';
 
 /**
+ * Cl├® localStorage pour persister le cache des familyGroups (S69 hotfix v3.13.1).
+ *
+ * Permet de restaurer la liste des groupes au reload offline sans devoir
+ * appeler Supabase. Sans ce cache, activeFamilyGroup restait null en offline
+ * et toute la cha├«ne offline famille (reimbursements) ├®tait bloqu├®e.
+ */
+const FAMILY_GROUPS_CACHE_KEY = 'bazarkely_family_groups_cache';
+
+function readFamilyGroupsCache(): FamilyGroupWithMetadata[] {
+  try {
+    const raw = localStorage.getItem(FAMILY_GROUPS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<
+      Omit<FamilyGroupWithMetadata, 'createdAt' | 'updatedAt'> & {
+        createdAt: string;
+        updatedAt: string;
+      }
+    >;
+    return parsed.map((g) => ({
+      ...g,
+      createdAt: new Date(g.createdAt),
+      updatedAt: new Date(g.updatedAt),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function writeFamilyGroupsCache(groups: FamilyGroupWithMetadata[]): void {
+  try {
+    const serializable = groups.map((g) => ({
+      ...g,
+      createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
+      updatedAt: g.updatedAt instanceof Date ? g.updatedAt.toISOString() : g.updatedAt,
+    }));
+    localStorage.setItem(FAMILY_GROUPS_CACHE_KEY, JSON.stringify(serializable));
+  } catch {
+    /* localStorage plein ou indispo, on tolère */
+  }
+}
+
+function clearFamilyGroupsCache(): void {
+  try {
+    localStorage.removeItem(FAMILY_GROUPS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Props du Provider
  */
 interface FamilyProviderProps {
@@ -72,83 +124,136 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
   const { subscribeToFamilyGroup, subscribeToFamilyMembers } = useFamilyRealtime();
 
   /**
-   * R├®cup├¿re les groupes familiaux de l'utilisateur depuis Supabase
+   * Applique une liste de groupes au state + restaure l'activeFamilyGroup.
+   * Extracted pour ├¬tre r├®utilis├® entre lecture cache locale et fetch r├®seau.
+   */
+  const applyGroupsToState = useCallback(
+    (groupsWithMetadata: FamilyGroupWithMetadata[]) => {
+      setFamilyGroups(groupsWithMetadata);
+
+      const savedActiveGroupId = localStorage.getItem(ACTIVE_FAMILY_GROUP_KEY);
+
+      if (savedActiveGroupId && groupsWithMetadata.length > 0) {
+        const savedGroup = groupsWithMetadata.find((g) => g.id === savedActiveGroupId);
+        if (savedGroup) {
+          setActiveFamilyGroupState(savedGroup);
+        } else if (groupsWithMetadata.length > 0) {
+          const firstGroup = groupsWithMetadata[0];
+          setActiveFamilyGroupState(firstGroup);
+          localStorage.setItem(ACTIVE_FAMILY_GROUP_KEY, firstGroup.id);
+        } else {
+          setActiveFamilyGroupState(null);
+          localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
+        }
+      } else if (groupsWithMetadata.length > 0) {
+        const firstGroup = groupsWithMetadata[0];
+        setActiveFamilyGroupState(firstGroup);
+        localStorage.setItem(ACTIVE_FAMILY_GROUP_KEY, firstGroup.id);
+      } else {
+        setActiveFamilyGroupState(null);
+        localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
+      }
+    },
+    []
+  );
+
+  /**
+   * R├®cup├¿re les groupes familiaux de l'utilisateur — offline-first hotfix v3.13.1.
+   *
+   * 1. Tente d'identifier l'utilisateur via getCurrentUserSafe (pas de r├®seau)
+   * 2. Charge imm├®diatement depuis localStorage si cache pr├®sent (retour rapide offline)
+   * 3. Si online, lance le fetch Supabase en arri├¿re-plan et actualise le cache + state
+   * 4. Pr├®serve le cache en cas d'├®chec r├®seau (ne wipe pas l'├®tat famille)
    */
   const fetchFamilyGroups = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // V├®rifier l'authentification
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
+      const user = await getCurrentUserSafe();
+      if (!user) {
         setError('Utilisateur non authentifi├®');
         setFamilyGroups([]);
         setActiveFamilyGroupState(null);
         setLoading(false);
-        // Nettoyer localStorage si non authentifi├®
         localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
+        clearFamilyGroupsCache();
         return;
       }
 
-      // R├®cup├®rer les groupes familiaux
-      const groups = await getUserFamilyGroups();
+      // STEP 1: Lecture imm├®diate du cache si disponible (retour SWR rapide, surtout offline)
+      const cached = readFamilyGroupsCache();
+      if (cached.length > 0) {
+        applyGroupsToState(cached);
+        setLoading(false);
+      }
 
-      // Convertir en format FamilyGroupWithMetadata
-      const groupsWithMetadata: FamilyGroupWithMetadata[] = groups.map((group) => ({
-        id: group.id,
-        name: group.name,
-        description: group.description,
-        createdBy: group.createdBy,
-        settings: group.settings,
-        createdAt: group.createdAt,
-        updatedAt: group.updatedAt,
-        memberCount: group.memberCount,
-        inviteCode: group.inviteCode,
-      }));
-
-      setFamilyGroups(groupsWithMetadata);
-
-      // Restaurer le groupe actif depuis localStorage ou s├®lectionner le premier
-      const savedActiveGroupId = localStorage.getItem(ACTIVE_FAMILY_GROUP_KEY);
-      
-      if (savedActiveGroupId && groupsWithMetadata.length > 0) {
-        const savedGroup = groupsWithMetadata.find((g) => g.id === savedActiveGroupId);
-        if (savedGroup) {
-          setActiveFamilyGroupState(savedGroup);
-        } else {
-          // Le groupe sauvegard├® n'existe plus, s├®lectionner le premier
-          if (groupsWithMetadata.length > 0) {
-            const firstGroup = groupsWithMetadata[0];
-            setActiveFamilyGroupState(firstGroup);
-            localStorage.setItem(ACTIVE_FAMILY_GROUP_KEY, firstGroup.id);
-          } else {
-            setActiveFamilyGroupState(null);
-            localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
-          }
+      // STEP 2: Si offline, on s'arr├¬te ici — le cache fait foi
+      const isOnline = (() => {
+        try {
+          return useAppStore.getState().isOnline ?? navigator.onLine;
+        } catch {
+          return navigator.onLine;
         }
-      } else if (groupsWithMetadata.length > 0) {
-        // Pas de groupe sauvegard├®, s├®lectionner le premier
-        const firstGroup = groupsWithMetadata[0];
-        setActiveFamilyGroupState(firstGroup);
-        localStorage.setItem(ACTIVE_FAMILY_GROUP_KEY, firstGroup.id);
-      } else {
-        // Aucun groupe
+      })();
+
+      if (!isOnline) {
+        if (cached.length === 0) {
+          // Pas de cache + offline : on a au moins identifi├® l'utilisateur, mais aucune donn├®e
+          setFamilyGroups([]);
+          setActiveFamilyGroupState(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // STEP 3: Online — fetch Supabase et mise ├á jour du cache
+      try {
+        const groups = await getUserFamilyGroups();
+        const groupsWithMetadata: FamilyGroupWithMetadata[] = groups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          description: group.description,
+          createdBy: group.createdBy,
+          settings: group.settings,
+          createdAt: group.createdAt,
+          updatedAt: group.updatedAt,
+          memberCount: group.memberCount,
+          inviteCode: group.inviteCode,
+        }));
+
+        applyGroupsToState(groupsWithMetadata);
+        writeFamilyGroupsCache(groupsWithMetadata);
+        setLoading(false);
+      } catch (fetchErr: any) {
+        // ├ëchec r├®seau : conserver le cache au lieu de wiper l'├®tat famille
+        console.warn(
+          '[FamilyContext] Fetch Supabase ├®chou├®, conservation du cache local:',
+          fetchErr
+        );
+        if (cached.length === 0) {
+          // Pas de cache + ├®chec : on remonte l'erreur ├á l'UI
+          setError(
+            fetchErr?.message ||
+              'Une erreur s\'est produite lors de la r├®cup├®ration des groupes familiaux'
+          );
+          setFamilyGroups([]);
+          setActiveFamilyGroupState(null);
+        }
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error('Erreur r├®cup├®ration groupes familiaux:', err);
+      const cached = readFamilyGroupsCache();
+      if (cached.length === 0) {
+        setError(err.message || 'Une erreur s\'est produite lors de la r├®cup├®ration des groupes familiaux');
+        setFamilyGroups([]);
         setActiveFamilyGroupState(null);
         localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
       }
-
-      setLoading(false);
-    } catch (err: any) {
-      console.error('Erreur r├®cup├®ration groupes familiaux:', err);
-      setError(err.message || 'Une erreur s\'est produite lors de la r├®cup├®ration des groupes familiaux');
-      setFamilyGroups([]);
-      setActiveFamilyGroupState(null);
-      localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
       setLoading(false);
     }
-  }, []);
+  }, [applyGroupsToState]);
 
   /**
    * D├®finit le groupe familial actif
@@ -276,6 +381,7 @@ export const FamilyProvider: React.FC<FamilyProviderProps> = ({ children }) => {
         setFamilyGroups([]);
         setActiveFamilyGroupState(null);
         localStorage.removeItem(ACTIVE_FAMILY_GROUP_KEY);
+        clearFamilyGroupsCache();
       }
     });
 
