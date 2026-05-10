@@ -1,46 +1,14 @@
-import { useState, useEffect } from 'react';
-import apiService from '../services/apiService';
+import { useAppStore } from '../stores/appStore';
 
 /**
- * Hook to monitor server connection status
- * Polls server every 30 seconds to check if online
- * @returns boolean - true if server is reachable
+ * Hook to read the current online status.
+ * Source de vérité : useAppStore.isOnline, alimenté par onlineStatusService
+ * (initialisé dans App.tsx au démarrage). Combine événements navigator
+ * online/offline (instantané) + ping serveur backup (2 min) avec pause
+ * automatique quand l'onglet est caché.
  */
 export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const status = await apiService.getServerStatus();
-        setIsOnline(status.online);
-      } catch (error) {
-        console.error('Error checking server status:', error);
-        setIsOnline(false);
-      }
-    };
-
-    // Check immediately on mount
-    checkConnection();
-
-    // Set up polling interval (30 seconds)
-    const interval = setInterval(checkConnection, 30000);
-
-    // Cleanup on unmount
-    return () => clearInterval(interval);
-  }, []);
-
-  return isOnline;
+  return useAppStore((state) => state.isOnline);
 }
 
 export default useOnlineStatus;
-
-
-
-
-
-
-
-
-
-

@@ -132,86 +132,70 @@ class GoalService {
   }
 
   /**
-   * Récupérer tous les goals (OFFLINE-FIRST PATTERN avec priorité Supabase si en ligne)
-   * 1. Si online ET authentifié, fetch depuis Supabase d'abord (force sync)
-   * 2. Met à jour IndexedDB avec les données fraîches de Supabase
-   * 3. Fallback vers IndexedDB si offline ou erreur Supabase
-   * 4. Si IndexedDB vide et offline, retourne tableau vide
+   * Récupérer tous les goals (OFFLINE-FIRST avec STALE-WHILE-REVALIDATE)
+   * 1. Lecture IndexedDB en premier — retour immédiat si données présentes
+   * 2. En arrière-plan (fire-and-forget) si online : refresh depuis Supabase pour la prochaine lecture
+   * 3. Si IndexedDB vide ET online : tenter Supabase synchrone avec timeout 5s (premier usage)
+   * 4. Si IndexedDB vide ET offline (ou Supabase échoue) : retour tableau vide
    */
   async getGoals(userId: string): Promise<Goal[]> {
     try {
-      const isOnline = navigator.onLine;
-      
-      // STEP 1: Si online avec session valide, prioriser Supabase pour forcer la sync
-      if (isOnline) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session) {
-            console.log('🎯 [GoalService] 🌐 En ligne - récupération depuis Supabase...');
-            
-            const response = await withTimeout(
-              apiService.getGoals(),
-              SUPABASE_TIMEOUT_MS,
-              'goalService.getGoals'
-            );
-            if (response.success && !response.error) {
-              // STEP 2: Mapper les données Supabase (inclut required_monthly_contribution)
-              const supabaseGoals = (response.data as any[]) || [];
-              const goals: Goal[] = supabaseGoals
-                .filter((g: any) => g.user_id === userId)
-                .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
-
-              // STEP 3: Mettre à jour IndexedDB avec les données fraîches
-              if (goals.length > 0) {
-                try {
-                  await db.goals.bulkPut(goals);
-                  console.log('🎯 [GoalService] 💾 Mise à jour du cache IndexedDB...');
-                  console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) récupéré(s) avec required_monthly_contribution`);
-                } catch (idbError) {
-                  console.error('🎯 [GoalService] ❌ Erreur lors de la mise à jour IndexedDB:', idbError);
-                  // Continuer même si la sauvegarde échoue
-                }
-              } else {
-                console.log('🎯 [GoalService] ℹ️ Aucun goal trouvé dans Supabase');
-              }
-
-              return goals;
-            } else {
-              console.error('🎯 [GoalService] ❌ Erreur Supabase, fallback IndexedDB:', response.error);
-              // Fallback vers IndexedDB en cas d'erreur Supabase
-            }
-          } else {
-            console.log('🎯 [GoalService] ⚠️ Pas de session valide, utilisation IndexedDB');
-            // Pas de session, utiliser IndexedDB
-          }
-        } catch (supabaseError) {
-          console.error('🎯 [GoalService] ❌ Erreur lors de la vérification de session, fallback IndexedDB:', supabaseError);
-          // Fallback vers IndexedDB en cas d'erreur
-        }
-      }
-
-      // STEP 4: Fallback - Récupérer depuis IndexedDB (offline-first)
-      console.log('🎯 [GoalService] 💾 Récupération des goals depuis IndexedDB...');
+      // STEP 1: Lecture IndexedDB en premier (offline-first)
+      console.log('🎯 [GoalService] 💾 Lecture des goals depuis IndexedDB...');
       const localGoals = await db.goals
         .where('userId')
         .equals(userId)
         .toArray();
 
+      // STEP 2: Si IndexedDB a des données → retour immédiat + refresh background (SWR)
       if (localGoals.length > 0) {
-        console.log(`🎯 [GoalService] ✅ ${localGoals.length} goal(s) récupéré(s) depuis IndexedDB`);
+        console.log(`🎯 [GoalService] ✅ ${localGoals.length} goal(s) depuis IndexedDB (retour immédiat)`);
+
+        // Refresh Supabase en arrière-plan (fire-and-forget) si online
+        if (navigator.onLine) {
+          this.refreshGoalsFromSupabase(userId).catch(err => {
+            console.warn('🎯 [GoalService] ⚠️ Refresh background échoué (non bloquant):', err);
+          });
+        }
+
         return localGoals;
       }
 
-      // STEP 5: IndexedDB vide et offline
-      if (!isOnline) {
-        console.warn('🎯 [GoalService] ⚠️ Mode offline et IndexedDB vide, retour d\'un tableau vide');
+      // STEP 3: IndexedDB vide → tenter Supabase synchrone avec timeout (premier usage)
+      if (!navigator.onLine) {
+        console.warn('🎯 [GoalService] ⚠️ IndexedDB vide et offline → retour tableau vide');
         return [];
       }
 
-      // Si on arrive ici, c'est qu'on est online mais Supabase a échoué et IndexedDB est vide
-      console.warn('🎯 [GoalService] ⚠️ IndexedDB vide et Supabase indisponible, retour d\'un tableau vide');
-      return [];
+      console.log('🎯 [GoalService] 🌐 IndexedDB vide → fetch Supabase synchrone (timeout 5s)...');
+      try {
+        const response = await withTimeout(
+          apiService.getGoals(),
+          SUPABASE_TIMEOUT_MS,
+          'goalService.getGoals/initial'
+        );
+        if (response.success && !response.error) {
+          const supabaseGoals = (response.data as any[]) || [];
+          const goals: Goal[] = supabaseGoals
+            .filter((g: any) => g.user_id === userId)
+            .map((supabaseGoal: any) => this.mapSupabaseToGoal(supabaseGoal));
+          if (goals.length > 0) {
+            try {
+              await db.goals.bulkPut(goals);
+              console.log(`🎯 [GoalService] 💾 ${goals.length} goal(s) cachés dans IndexedDB`);
+            } catch (idbError) {
+              console.error('🎯 [GoalService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
+            }
+          }
+          console.log(`🎯 [GoalService] ✅ ${goals.length} goal(s) depuis Supabase (premier fetch)`);
+          return goals;
+        }
+        console.warn('🎯 [GoalService] ⚠️ Réponse Supabase invalide:', response.error);
+        return [];
+      } catch (error) {
+        console.warn('🎯 [GoalService] ⚠️ Échec Supabase (timeout ou erreur) → retour tableau vide:', error);
+        return [];
+      }
     } catch (error) {
       console.error('🎯 [GoalService] ❌ Erreur lors de la récupération des goals:', error);
       // En cas d'erreur, essayer de retourner IndexedDB
@@ -228,6 +212,34 @@ class GoalService {
         console.error('🎯 [GoalService] ❌ Erreur lors du fallback IndexedDB:', fallbackError);
       }
       return [];
+    }
+  }
+
+  /**
+   * Refresh IndexedDB depuis Supabase en arrière-plan (fire-and-forget)
+   * Appelé après un retour immédiat depuis IndexedDB pour garder le cache à jour.
+   * Erreurs silencieuses (timeout/network) — l'UI a déjà affiché les données locales.
+   */
+  private async refreshGoalsFromSupabase(userId: string): Promise<void> {
+    try {
+      const response = await withTimeout(
+        apiService.getGoals(),
+        SUPABASE_TIMEOUT_MS,
+        'goalService.refreshGoalsFromSupabase'
+      );
+      if (response.success && !response.error) {
+        const supabaseGoals = (response.data as any[]) || [];
+        const goals: Goal[] = supabaseGoals
+          .filter((g: any) => g.user_id === userId)
+          .map((g: any) => this.mapSupabaseToGoal(g));
+        if (goals.length > 0) {
+          await db.goals.bulkPut(goals);
+          console.log(`🎯 [GoalService] 🔄 IndexedDB rafraîchi avec ${goals.length} goal(s) depuis Supabase (background)`);
+        }
+      }
+    } catch (error) {
+      // Erreur silencieuse — l'utilisateur a déjà ses données locales
+      console.warn('🎯 [GoalService] ⚠️ Refresh background échoué:', error);
     }
   }
 

@@ -1,8 +1,25 @@
-export const APP_VERSION = '3.10.0';
-export const APP_VERSION_NAME = 'Offline-first robuste — transactions en stale-while-revalidate + timeouts 5s sur tous les services métier';
+export const APP_VERSION = '3.11.0';
+export const APP_VERSION_NAME = 'Détection online unifiée (events + ping 2min) + objectifs en stale-while-revalidate + timeout getServerStatus';
 export const LAST_UPDATED = '2026-05-10';
 export const APP_BUILD_DATE = '2026-05-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.11.0',
+    date: '2026-05-10',
+    description: 'Détection online unifiée (events navigator + Page Visibility + ping 2min) + page Objectifs en SWR + timeout sur getServerStatus',
+    changes: [
+      'Refactor (goalService.ts): getGoals() passe en stale-while-revalidate — IndexedDB lu en premier (retour immédiat), Supabase rafraîchit IndexedDB en arrière-plan (fire-and-forget) pour la prochaine lecture. Cohérent avec transactionService S66',
+      'Fix (goalService.ts): si IndexedDB est vide au premier usage, fetch Supabase synchrone avec timeout 5s — fallback gracieux vers tableau vide en cas d\'échec',
+      'Fix (apiService.ts): getServerStatus() wrappé avec withTimeout(5000) — élimine le risque de hang du polling de statut online',
+      'Refactor (services/onlineStatusService.ts): nouveau service centralisé — événements navigator online/offline (réaction instantanée), Page Visibility API (pause polling onglet caché), ping serveur backup toutes les 2 min (au lieu de 30s)',
+      'Refactor (hooks/useOnlineStatus.ts): devient un simple lecteur de useAppStore.isOnline — plus de polling local',
+      'Refactor (Header.tsx): suppression du state local isOnline + useEffect dupliqué → utilise useOnlineStatus() comme HeaderUserBanner',
+      'Refactor (App.tsx): remplacement du useEffect basique online/offline par initOnlineStatusService() — un seul point d\'init pour toute l\'app',
+      'Architecture: source unique de vérité = useAppStore.isOnline (alimenté par onlineStatusService) ; useSyncStore.isOnline mis à jour en parallèle pour rétrocompat',
+      'Économie data : ping pause auto quand onglet caché + intervalle passé de 30s à 120s ; ~95% de la détection online est désormais event-based (instantanée) au lieu de polling',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.10.0',
     date: '2026-05-10',

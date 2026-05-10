@@ -6,6 +6,7 @@ import apiService from '../../services/apiService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
 import { useServiceWorkerUpdate } from '../../hooks/useServiceWorkerUpdate';
+import useOnlineStatus from '../../hooks/useOnlineStatus';
 import { APP_VERSION } from '../../constants/appVersion';
 import QuizQuestionPopup, { questions } from '../Quiz/QuizQuestionPopup';
 import { useCertificationStore } from '../../store/certificationStore';
@@ -76,9 +77,9 @@ const Header = () => {
   const practiceScore = practiceTracking.practiceScore;
   const profileScore = detailedProfile.firstName ? 15 : 0; // Simplified profile completion score
   const navigate = useNavigate();
+  const isOnline = useOnlineStatus();
   const [currentMessage, setCurrentMessage] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-  const [isOnline, setIsOnline] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -447,19 +448,6 @@ const Header = () => {
 
     return () => clearInterval(interval);
   }, [messages.length]);
-
-  // Vérifier le statut de connexion API
-  useEffect(() => {
-    const checkConnection = async () => {
-      const status = await apiService.getServerStatus();
-      setIsOnline(status.online);
-    };
-
-    checkConnection();
-    const interval = setInterval(checkConnection, 30000); // Vérifier toutes les 30 secondes
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Vérifier les privilèges admin
   useEffect(() => {

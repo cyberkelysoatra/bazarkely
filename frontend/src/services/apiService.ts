@@ -4,7 +4,7 @@
  * Remplacement de l'API PHP par Supabase
  */
 
-import { supabase, db, handleSupabaseError } from '../lib/supabase';
+import { supabase, db, handleSupabaseError, withTimeout } from '../lib/supabase';
 import type { 
   User, Account, SupabaseTransaction, Budget, Goal, 
   UserInsert, AccountInsert, SupabaseTransactionInsert, BudgetInsert, GoalInsert,
@@ -523,8 +523,12 @@ class ApiService {
 
   async getServerStatus() {
     try {
-      const { data, error } = await supabase.from('users').select('count').limit(1);
-      
+      const { data, error } = await withTimeout(
+        supabase.from('users').select('count').limit(1),
+        5000,
+        'apiService.getServerStatus'
+      ) as any;
+
       return {
         online: !error,
         status: error ? 500 : 200,

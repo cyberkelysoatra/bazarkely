@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { I18nextProvider } from 'react-i18next';
 // Build test - force new hash generation
-import { useAppStore, useSyncStore, useErrorStore } from './stores/appStore';
+import { useAppStore, useErrorStore } from './stores/appStore';
 import { usePreventTranslation } from './hooks/usePreventTranslation';
 import feeService from './services/feeService';
 import apiService from './services/apiService';
@@ -12,6 +12,7 @@ import dialogService from './services/dialogService';
 // import ApiDebugPanel from './components/ApiDebugPanel'; // Removed - no longer needed with Supabase
 import safariServiceWorkerManager from './services/safariServiceWorkerManager';
 import { initSyncManager } from './services/syncManager';
+import { initOnlineStatusService } from './services/onlineStatusService';
 import { supabase } from './lib/supabase';
 import './i18n'; // Initialize i18n system (side effect import)
 import i18n from './i18n';
@@ -42,25 +43,15 @@ function App() {
   usePreventTranslation();
   
   const { setUser, setAuthenticated } = useAppStore();
-  const { setOnline } = useSyncStore();
   const { error, clearError } = useErrorStore();
   // const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false); // Removed - no longer needed with Supabase
-  
 
-
-  // Gestion de l'état en ligne/hors ligne
+  // Détection statut online/offline (events navigator + Page Visibility + ping serveur 2min)
+  // Source de vérité : useAppStore.isOnline (+ useSyncStore.isOnline pour rétrocompat)
   useEffect(() => {
-    const handleOnline = () => setOnline(true);
-    const handleOffline = () => setOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [setOnline]);
+    const cleanup = initOnlineStatusService();
+    return cleanup;
+  }, []);
 
   // Initialisation de l'application + écoute session Supabase
   useEffect(() => {
