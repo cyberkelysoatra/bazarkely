@@ -1,16 +1,22 @@
 import Dexie, { type Table, type Transaction } from 'dexie';
-import type { 
-  User, 
-  Account, 
-  Transaction as TransactionType, 
-  Budget, 
-  Goal, 
-  MobileMoneyRate, 
+import type {
+  User,
+  Account,
+  Transaction as TransactionType,
+  Budget,
+  Goal,
+  MobileMoneyRate,
   SyncOperation,
   FeeConfiguration,
   RecurringTransaction,
   GoalMilestone
 } from '../types';
+import type {
+  PersonalLoan,
+  LoanRepayment,
+  LoanInterestPeriod,
+  PendingReceipt
+} from '../types/loans';
 
 // Types pour les notifications
 interface NotificationData {
@@ -129,6 +135,12 @@ export class BazarKELYDB extends Dexie {
   
   // Table pour les célébrations de jalons d'objectifs
   goalCelebrations!: Table<GoalCelebration>;
+
+  // Tables pour le module Prêts Familiaux (offline-first — v13)
+  personalLoans!: Table<PersonalLoan>;
+  loanRepayments!: Table<LoanRepayment>;
+  loanInterestPeriods!: Table<LoanInterestPeriod>;
+  pendingReceipts!: Table<PendingReceipt>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -570,6 +582,39 @@ export class BazarKELYDB extends Dexie {
       // Pas de transformation de données nécessaire
       
       console.log('✅ [Database] Migration to v12 complete - requiredMonthlyContribution field support added');
+    });
+
+    // Version 13 - Offline-first Prêts Familiaux : tables personalLoans, loanRepayments,
+    // loanInterestPeriods + pendingReceipts (blobs des justificatifs en attente d'upload)
+    this.version(13).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]',
+      goalCelebrations: 'goalId, goalName, lastCelebratedAt, [goalId+lastCelebratedAt]',
+      personalLoans: 'id, lenderUserId, borrowerUserId, status, transactionId, createdAt, [lenderUserId+status], [borrowerUserId+status]',
+      loanRepayments: 'id, loanId, transactionId, paymentDate, confirmedAt, createdAt, [loanId+paymentDate]',
+      loanInterestPeriods: 'id, loanId, status, periodStart, [loanId+status]',
+      pendingReceipts: 'id, userId, repaymentId, createdAt'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v13 - Adding offline-first tables for Personal Loans module');
+      // Nouvelles tables vides : aucune transformation de données nécessaire.
+      // Le premier chargement online de getMyLoans() peuplera personalLoans / loanRepayments /
+      // loanInterestPeriods depuis Supabase. pendingReceipts ne reçoit des entrées qu'à
+      // la première tentative d'upload offline d'un justificatif.
+      console.log('✅ [Database] Migration to v13 complete - Personal loans tables ready');
     });
 
     // Initialiser le pool de connexions

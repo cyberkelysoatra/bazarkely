@@ -212,7 +212,16 @@ export interface SyncOperation {
   id: string;
   userId: string;
   operation: 'CREATE' | 'UPDATE' | 'DELETE';
-  table_name: 'accounts' | 'transactions' | 'budgets' | 'goals' | 'fee_configurations';
+  table_name:
+    | 'accounts'
+    | 'transactions'
+    | 'budgets'
+    | 'goals'
+    | 'fee_configurations'
+    | 'personal_loans'
+    | 'loan_repayments'
+    | 'loan_interest_periods'
+    | 'pending_receipts';
   data: any;
   timestamp: Date;
   retryCount: number;

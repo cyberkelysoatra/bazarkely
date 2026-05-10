@@ -468,6 +468,18 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'fee_configurations':
         result = await processFeeConfigurationOperation(operation);
         break;
+      case 'personal_loans':
+        result = await processPersonalLoanOperation(operation);
+        break;
+      case 'loan_repayments':
+        result = await processLoanRepaymentOperation(operation);
+        break;
+      case 'loan_interest_periods':
+        result = await processLoanInterestPeriodOperation(operation);
+        break;
+      case 'pending_receipts':
+        result = await processPendingReceiptOperation(operation);
+        break;
       default:
         console.error(`🔄 [SyncManager] ❌ Table non supportée: ${operation.table_name}`);
         await db.syncQueue.update(operation.id, {
@@ -723,6 +735,173 @@ async function processFeeConfigurationOperation(operation: SyncOperation): Promi
       default:
         return { error: new Error(`Opération non supportée: ${opType}`) };
     }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur la table personal_loans (module Prêts Familiaux)
+ *
+ * Note : le data poussé par loanService.ts est déjà en snake_case (via loanToRow()),
+ * donc convertKeysToSnakeCase serait un no-op ici. On insère/update tel quel.
+ */
+async function processPersonalLoanOperation(operation: SyncOperation): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        // Cast `as any` requis : personal_loans n'est pas dans le schema TS Supabase généré
+        const { error } = await supabase.from('personal_loans').insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('personal_loans')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase.from('personal_loans').delete().eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur la table loan_repayments (data déjà en snake_case)
+ */
+async function processLoanRepaymentOperation(operation: SyncOperation): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase.from('loan_repayments').insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('loan_repayments')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase.from('loan_repayments').delete().eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur la table loan_interest_periods (data déjà en snake_case)
+ */
+async function processLoanInterestPeriodOperation(operation: SyncOperation): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase.from('loan_interest_periods').insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('loan_interest_periods')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase.from('loan_interest_periods').delete().eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur pending_receipts (cas spécial : upload différé vers Supabase Storage)
+ *
+ * Flux :
+ * 1. Récupère le PendingReceipt local (avec File blob) depuis IndexedDB
+ * 2. Upload le blob vers le bucket 'loan-receipts'
+ * 3. Génère une URL signée 1 an
+ * 4. UPDATE le loan_repayments.receipt_url correspondant
+ * 5. Supprime le PendingReceipt local
+ *
+ * Important : seul CREATE est traité ici (l'opération signale "à uploader").
+ */
+async function processPendingReceiptOperation(operation: SyncOperation): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    if (opType !== 'CREATE') {
+      return { error: new Error(`pending_receipts ne supporte que CREATE, reçu ${opType}`) };
+    }
+    const pendingId = data.id;
+    const pending = await db.pendingReceipts.get(pendingId);
+    if (!pending) {
+      // Déjà traité ou nettoyé — pas d'erreur
+      return null;
+    }
+
+    const sanitizedName = pending.fileName
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    const filePath = `${pending.userId}/${Date.now()}_${sanitizedName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('loan-receipts')
+      .upload(filePath, pending.fileBlob, { upsert: false });
+    if (uploadError) {
+      return { error: uploadError };
+    }
+
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('loan-receipts')
+      .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+    if (signedUrlError || !signedUrlData) {
+      return { error: signedUrlError || new Error('Erreur création URL signée') };
+    }
+
+    // Lier l'URL au loan_repayments si l'ID est renseigné
+    if (pending.repaymentId) {
+      const { error: updErr } = await supabase
+        .from('loan_repayments')
+        .update({ receipt_url: signedUrlData.signedUrl } as any)
+        .eq('id', pending.repaymentId);
+      if (updErr) {
+        return { error: updErr };
+      }
+    }
+
+    // Nettoyage local
+    await db.pendingReceipts.delete(pendingId);
+    console.log(`🔄 [SyncManager] 📎 Receipt uploadé et lié au repayment ${pending.repaymentId}`);
+    return null;
   } catch (error) {
     return { error };
   }

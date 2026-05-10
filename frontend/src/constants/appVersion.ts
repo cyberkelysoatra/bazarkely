@@ -1,8 +1,28 @@
-export const APP_VERSION = '3.11.0';
-export const APP_VERSION_NAME = 'Détection online unifiée (events + ping 2min) + objectifs en stale-while-revalidate + timeout getServerStatus';
-export const LAST_UPDATED = '2026-05-10';
-export const APP_BUILD_DATE = '2026-05-10';
+export const APP_VERSION = '3.12.0';
+export const APP_VERSION_NAME = 'Prêts Familiaux offline-first — Dexie v13 + SWR + queue de sync + indicateur visuel CloudOff';
+export const LAST_UPDATED = '2026-05-11';
+export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.12.0',
+    date: '2026-05-11',
+    description: 'Refonte offline-first du module Prêts Familiaux — Dexie v13 + SWR + queue de sync + indicateur CloudOff',
+    changes: [
+      'Dexie v13 (lib/database.ts): 4 nouvelles tables locales — personalLoans, loanRepayments, loanInterestPeriods, pendingReceipts (blobs de justificatifs en attente d\'upload). Migration upgrade vide (premier chargement online peuple les tables)',
+      'Refactor complet (services/loanService.ts): toutes les lectures passent en stale-while-revalidate (IndexedDB en premier, refresh Supabase fire-and-forget). getMyLoans, getLoanById, getUnpaidInterestPeriods, getRepaymentHistory, getActiveLoansForDropdown, getLastUsedInterestSettings, getDistinctBeneficiaryNames, getUnlinkedRevenueTransactions, getTotalUnpaidInterestByLoan, getLoanIdByTransactionId, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction — toutes locales si Dexie peuplée',
+      'Refactor complet (services/loanService.ts): toutes les mutations en offline-first — createLoan, updateLoanStatus, deleteLoan, recordPayment (multi-step), generateInterestPeriod, capitalizeOverdueInterests, confirmLoanAsBorrower, confirmRepaymentAsLender, mergeBeneficiaryGroups écrivent Dexie d\'abord puis tentent Supabase via withTimeout(5000), fallback queue de sync si offline ou échec',
+      'recordPayment (services/loanService.ts): nouvelle signature accepte File | string | null pour le reçu. Si online → upload direct vers Supabase Storage. Si offline → stocke le blob dans pendingReceipts + queue l\'upload différé (priorité LOW)',
+      'Adapt (components/Loans/PaymentModal.tsx): passe le File directement à recordPayment au lieu de pré-uploader — évite la régression "reçu perdu en offline"',
+      'Extend (services/syncManager.ts): switch table_name étendu avec 4 nouveaux cases — personal_loans, loan_repayments, loan_interest_periods (INSERT/UPDATE/DELETE classiques) + pending_receipts (cas spécial : récupère le blob depuis Dexie, upload vers Supabase Storage, génère URL signée 1 an, UPDATE loan_repayments.receipt_url, supprime le pendingReceipt local)',
+      'Type extension (types/index.ts): SyncOperation.table_name accepte désormais personal_loans, loan_repayments, loan_interest_periods, pending_receipts',
+      'Nouveau fichier (types/loans.ts): source unique de vérité des interfaces PersonalLoan, LoanRepayment, LoanInterestPeriod, LoanWithDetails, CreateLoanInput, UnpaidInterestSummary, PendingReceipt. Réexportés depuis loanService pour rétrocompatibilité des imports',
+      'Feature (pages/LoansPage.tsx): icône CloudOff (amber-500) à côté du nom du bénéficiaire pour les groupes contenant au moins un prêt avec opération en attente de synchro. Re-fetch toutes les 5s pour rafraîchir l\'indicateur quand le syncManager vide la queue au retour online',
+      'Architecture: la source de vérité online est désormais useAppStore.isOnline (cohérent S67), avec fallback navigator.onLine. Le syncManager existant traite automatiquement les nouvelles tables au retour de connexion',
+      'Régression S64+ résolue : la page Prêts fonctionne complètement hors ligne (consultation + création + modification + remboursement + suppression + fusion bénéficiaires). Premier chargement nécessite une connexion (peuple Dexie)',
+      'Reste à faire : reimbursementService (paiements remboursements familiaux, FIFO, credit balance) — prévu en session suivante. Indicateur sync sur la page Famille à propager en même temps',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.11.0',
     date: '2026-05-10',
