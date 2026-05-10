@@ -480,6 +480,9 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'pending_receipts':
         result = await processPendingReceiptOperation(operation);
         break;
+      case 'reimbursement_requests':
+        result = await processReimbursementRequestOperation(operation);
+        break;
       default:
         console.error(`🔄 [SyncManager] ❌ Table non supportée: ${operation.table_name}`);
         await db.syncQueue.update(operation.id, {
@@ -902,6 +905,46 @@ async function processPendingReceiptOperation(operation: SyncOperation): Promise
     await db.pendingReceipts.delete(pendingId);
     console.log(`🔄 [SyncManager] 📎 Receipt uploadé et lié au repayment ${pending.repaymentId}`);
     return null;
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur la table reimbursement_requests (module Remboursements
+ * Familiaux — S69 phase 1). Data déjà en snake_case poussé par reimbursementService.
+ */
+async function processReimbursementRequestOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase
+          .from('reimbursement_requests')
+          .insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('reimbursement_requests')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase
+          .from('reimbursement_requests')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
   } catch (error) {
     return { error };
   }

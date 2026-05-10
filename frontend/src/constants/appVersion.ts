@@ -1,8 +1,26 @@
-export const APP_VERSION = '3.12.1';
-export const APP_VERSION_NAME = 'Hotfix offline — getCurrentUser ne plante plus en mode hors-ligne (lecture session locale)';
+export const APP_VERSION = '3.13.0';
+export const APP_VERSION_NAME = 'Refonte offline-first des Remboursements Familiaux — phase 1 (SWR + markAsReimbursed + getCurrentUserSafe)';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.13.0',
+    date: '2026-05-11',
+    description: 'Refonte offline-first des Remboursements Familiaux — phase 1 (lectures SWR + markAsReimbursed + getCurrentUserSafe sur 12 fonctions)',
+    changes: [
+      'Dexie v14 (lib/database.ts): 2 nouvelles tables locales — reimbursementRequests (avec snapshots dénormalisés familyGroupId, fromMemberName, toMemberName, fromMemberUserId, toMemberUserId, transactionId/Description/Amount/Date/Category, reimbursementRate, hasReimbursementRequest) et memberCreditBalances. Migration upgrade vide',
+      'Nouveau fichier (types/reimbursement.ts): ReimbursementRequestLocal + MemberCreditBalanceLocal — sources uniques des interfaces Dexie',
+      'Refactor (services/reimbursementService.ts): 4 lectures critiques passent en stale-while-revalidate (IndexedDB en premier, refresh Supabase fire-and-forget). getMemberBalances (dérivé localement depuis cache), getPendingReimbursements (filtre [familyGroupId+status] indexé), getReimbursementStatusByTransactionIds (calcul local depuis snapshots), getMemberCreditBalance (lecture locale par [familyGroupId+fromMemberId+toMemberId])',
+      'Refactor (services/reimbursementService.ts): markAsReimbursed passe en offline-first — vérification toMemberUserId locale, update Dexie immédiat, push Supabase ou queue, transfert de propriété de la transaction (currentOwnerId, originalOwnerId, transferredAt) géré séparément avec sa propre queue sur table=transactions',
+      'Refactor (services/reimbursementService.ts): TOUTES les fonctions du service (12 au total, y compris celles qui restent online-only comme createReimbursementRequest, recordReimbursementPayment, getPaymentHistory, getAllocationDetails) utilisent désormais getCurrentUserSafe() au lieu de supabase.auth.getUser() — élimine le bug "Utilisateur non authentifié" en mode offline ou pendant le warm-up de session OAuth',
+      'Extend (services/syncManager.ts): nouveau case reimbursement_requests (INSERT/UPDATE/DELETE) — le syncManager traite automatiquement les mutations en attente au retour de connexion',
+      'Type extension (types/index.ts): SyncOperation.table_name accepte désormais reimbursement_requests',
+      'Architecture: la vue Supabase family_member_balances reste source de vérité online pour totalPaid/totalOwed/netBalance, dérivation locale (pendingToPay/pendingToReceive uniquement) en fallback offline. Les tables reimbursement_payments / reimbursement_payment_allocations restent online-only en S69 — refonte FIFO + credit balance + allocations prévue en S70',
+      'Régression S64+ résolue : la page Espace Famille affiche ses soldes et reimbursements en attente depuis Dexie après un premier chargement online, sans flash "Chargement..." même hors ligne. Marquer comme réglé fonctionne offline (mise à jour locale + queue de sync). Premier chargement nécessite une connexion (peuple Dexie)',
+      'Reste à faire (S70) : refonte recordReimbursementPayment (FIFO, allocations, credit balance), getPaymentHistory, getAllocationDetails, getReimbursementsByMember, propagation CloudOff sur FamilyReimbursementsPage, fix familyGroupService race "Utilisateur non authentifié"',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.12.1',
     date: '2026-05-11',

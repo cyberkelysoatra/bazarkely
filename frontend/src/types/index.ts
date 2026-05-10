@@ -221,7 +221,8 @@ export interface SyncOperation {
     | 'personal_loans'
     | 'loan_repayments'
     | 'loan_interest_periods'
-    | 'pending_receipts';
+    | 'pending_receipts'
+    | 'reimbursement_requests';
   data: any;
   timestamp: Date;
   retryCount: number;
