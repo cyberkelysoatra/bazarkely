@@ -176,13 +176,46 @@ const { data, error } = await withTimeout(
 
 ---
 
-### Service Worker et tests en production
+### Service Worker et tests en production (renforcé v3.13.1)
 
-**Problème :** `Ctrl+Shift+R` ne bypass pas le Service Worker. La nouvelle version peut être déployée sur Netlify mais le browser sert toujours l'ancienne version en cache.
+**Problème :** `Ctrl+Shift+R` ne bypass PAS le Service Worker Workbox. Une fenêtre incognito existante peut aussi avoir enregistré le SW. La nouvelle version peut être déployée sur Netlify et un nouveau SW peut être détecté (`🔄 Service Worker en attente détecté`) mais l'ancien continue de servir les chunks cached.
 
-**Pour tester la vraie nouvelle version :** Ouvrir une fenêtre incognito (aucun SW enregistré).
+**Procédure stricte de bypass (S69) :**
+1. F12 → onglet **Application**
+2. Menu gauche → **Service Workers**
+3. Cliquer **Unregister** sur l'entrée du domaine
+4. Cocher **Update on reload** (en haut de la page)
+5. Fermer/ouvrir une **NOUVELLE** fenêtre incognito (l'ancienne peut avoir un SW persistant)
+6. Vérifier dans Settings → Version que la nouvelle `APP_VERSION` est affichée
 
-**Pour identifier la version active :** Regarder le nom du fichier JS principal dans les logs Workbox : `index-[hash].js`. Un hash différent = nouvelle version chargée.
+**Pour identifier la version active sans Settings :** F12 → Network → recharger → trouver `index-[hash].js` ou `FamilyReimbursementsPage-[hash].js`. Un hash **différent** d'un build précédent = nouvelle version chargée. Comparer avec le hash généré par `npm run build` local.
+
+**Important :** ne pas confondre "fenêtre incognito" et "nouvelle session" — Chrome conserve les SW entre fenêtres incognito d'une même session. Fermer TOUS les onglets incognito puis rouvrir.
+
+---
+
+### Chaîne complète offline-first à auditer (résolu v3.13.1)
+
+**Problème :** Un service offline-first peut sembler correct en isolation mais rester totalement **inerte** si ses dépendances React (Context, hooks parents) plantent en offline. Exemple S69 : `reimbursementService` v3.13.0 SWR fonctionnait mais `FamilyContext.fetchFamilyGroups()` faisait un `supabase.auth.getUser()` → `setError("Utilisateur non authentifié")` + clear `localStorage` → `activeFamilyGroup` null → `FamilyReimbursementsPage.loadData()` jamais appelée → page "Aucun groupe familial".
+
+**Règle :** Avant de livrer un service offline-first, tracer le chemin **complet depuis le callsite UI** :
+1. Composant page → quels `useContext`, `useFamily`, etc. consomme-t-il ?
+2. Context parent → son `useEffect` initial fait-il un appel réseau bloquant ?
+3. Hook auth/session → `getUser()` (plante offline) ou `getSession()` (lit localStorage) ?
+4. Service consommé → `getCurrentUserSafe()` au lieu de `getUser()` ?
+5. Cache localStorage/Dexie → l'état nécessaire est-il persisté entre reloads ?
+
+À chaque étape, vérifier qu'il n'y a pas de "porte fermée" qui empêche la chaîne descendante. Si un Context React perd son state au reload offline, **persister localStorage le minimum nécessaire** (ID + metadata légères) et le restaurer avant le fetch online. Pattern utilisé en v3.13.1 : `bazarkely_family_groups_cache` lu en premier au mount, écrit après chaque fetch online réussi, **conservé en cas d'échec réseau** (jamais wipé sauf SIGNED_OUT).
+
+---
+
+### Snapshots dénormalisés Dexie (résolu v3.13.0)
+
+**Problème :** Quand une table Supabase à cacher offline n'a pas de FK directe vers le critère de filtrage local (ex: `reimbursement_requests` n'a pas `family_group_id`, il vient de `shared_transaction.family_group_id`), faire des jointures live entre 2-3 tables Dexie est lent et fragile.
+
+**Règle :** Créer un type `XxxLocal` séparé (ex: `ReimbursementRequestLocal` dans `types/reimbursement.ts`) qui inclut **les snapshots dénormalisés**. Au moment du `refresh*FromSupabase()`, faire un `.select('*, fk:...(...)')` enrichi puis dans le mapper extraire les champs de la jointure et les inscrire en plat dans le Local. Lecture offline = lecture directe table locale + index composite ultra-rapide (ex: `[familyGroupId+status]`).
+
+**Limite :** snapshot accepte un léger décalage post-renommage (à rafraîchir online). Pour vérifications strictes (ex: `markAsReimbursed` exige `to_member.user_id === user.id`), inclure les `*UserId` dans le snapshot.
 
 ---
 
