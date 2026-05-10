@@ -2214,9 +2214,10 @@ Helper timeout       : withTimeout() dans lib/supabase.ts
 |---|---|---|---|---|---|
 | **accountService** | ✅ IndexedDB-first | ✅ IndexedDB-first + queue | ❌ | ✅ | **OK** |
 | **budgetService** | ✅ IndexedDB-first | ✅ IndexedDB-first + queue | ❌ | ✅ | **OK** |
-| **transactionService** | ❌ Supabase-first si online | ✅ IndexedDB-first + queue | ❌ | ✅ | **Lectures cassées** |
-| **goalService** | ⚠️ Supabase-first si online | ✅ IndexedDB-first + queue | ❌ | ✅ | **Lectures dégradées** |
-| **loanService** | ❌❌ Supabase-only | ❌❌ Supabase-only | ❌ | ❌ | **Totalement cassé hors ligne** |
+| **transactionService** | ✅ SWR IndexedDB-first | ✅ IndexedDB-first + queue | ✅ withTimeout 5s | ✅ | **OK (S66)** |
+| **goalService** | ✅ SWR IndexedDB-first | ✅ IndexedDB-first + queue | ✅ withTimeout 5s | ✅ | **OK (S67)** |
+| **loanService** | ✅ SWR IndexedDB-first | ✅ IndexedDB-first + queue | ✅ withTimeout 5s | ✅ | **OK (S68)** |
+| **reimbursementService** | ❌❌ Supabase-only | ❌❌ Supabase-only | ❌ | ❌ | **Totalement cassé hors ligne (prévu S69)** |
 
 ### **Verdict par écran**
 
@@ -2225,37 +2226,45 @@ Helper timeout       : withTimeout() dans lib/supabase.ts
 | **Login (session déjà établie)** | ✅ OK (timeout 5s) | N/A | Q10=A satisfait |
 | **Comptes** | ✅ OK | ✅ OK + sync queue | **Fonctionne** |
 | **Budgets** | ✅ OK | ✅ OK + sync queue | **Fonctionne** |
-| **Transactions** | ❌ Spinner infini si Supabase rame | ✅ OK + sync queue | **Cassé en lecture** |
-| **Objectifs** | ⚠️ Lent si Supabase rame | ✅ OK + sync queue | **Dégradé** |
-| **Prêts (LoansPage)** | ❌❌ Aucun fallback | ❌❌ Aucun fallback | **Totalement cassé** |
-| **Dashboard** | ⚠️ Mixte (selon les widgets) | N/A | **Partiellement cassé** |
+| **Transactions** | ✅ OK (SWR S66) | ✅ OK + sync queue | **Fonctionne** |
+| **Objectifs** | ✅ OK (SWR S67) | ✅ OK + sync queue | **Fonctionne** |
+| **Prêts (LoansPage)** | ✅ OK (SWR S68 + CloudOff indicator) | ✅ OK + sync queue (reçus blob différé) | **Fonctionne** |
+| **Famille — Remboursements** | ❌❌ Aucun fallback | ❌❌ Aucun fallback | **Totalement cassé (prévu S69)** |
+| **Dashboard** | ✅ Mixte (widgets services offline-first) | N/A | **Fonctionne** |
 
-### **Problèmes identifiés — par priorité**
+### **Problèmes identifiés — par priorité (mise à jour 2026-05-11)**
 
 #### 🔴 P1 — CRITIQUES (bloquent l'usage offline)
-1. **`loanService` 100% Supabase-only** (`loanService.ts` — 7 appels `supabase.from(...)` directs, aucune table `loans` dans Dexie). LoansPage, fusion bénéficiaires, ajout/modif prêts, remboursements → tous inutilisables hors ligne ou si Supabase rame. *Régression S64+.*
-2. **`transactionService.getTransactions()` Supabase-first SANS timeout** (`transactionService.ts:117-198`). Cas Wi-Fi up + Supabase down/lent → écran Transactions bloqué sur spinner. Pattern opposé de `accountService`.
+1. ~~**`loanService` 100% Supabase-only**~~ ✅ **RÉSOLU S68 v3.12.0** — Dexie v13 + 4 tables loans (`personalLoans`, `loanRepayments`, `loanInterestPeriods`, `pendingReceipts`) + SWR + queue + indicateur visuel CloudOff.
+2. **`reimbursementService` 100% Supabase-only** (`reimbursementService.ts` — paiements remboursements familiaux, FIFO allocation, credit balance, transfer of ownership). FamilyReimbursementsPage totalement cassée hors ligne. *Prévu S69.*
 
-#### 🟡 P2 — IMPORTANTS (dégradent l'expérience, cas Supabase qui rame)
-3. **Aucun timeout sur les appels Supabase** dans les services métier (`accountService`, `transactionService`, `budgetService`, `goalService`). Toute opération de sync peut hanger.
-4. **Détection online basée sur `navigator.onLine`** uniquement dans les services. Ne couvre PAS le cas "Wi-Fi up mais Supabase down/lent".
-5. **`goalService.getGoals()` Supabase-first si online** (sans timeout) — même problème que transactionService.
-6. **Indicateur Wi-Fi : ping Supabase sans timeout + polling 30s** → réaction lente quand Supabase rame.
+#### 🟡 P2 — IMPORTANTS (dégradent l'expérience)
+3. ~~**Aucun timeout sur les appels Supabase**~~ ✅ **RÉSOLU S66** — withTimeout(5000) sur tous les services métier.
+4. ~~**Détection online basée sur `navigator.onLine`**~~ ✅ **RÉSOLU S67** — `onlineStatusService` centralisé events + Page Visibility + ping 2 min.
+5. ~~**`goalService.getGoals()` Supabase-first**~~ ✅ **RÉSOLU S67** — SWR fire-and-forget.
+6. ~~**Indicateur Wi-Fi : ping Supabase sans timeout + polling 30s**~~ ✅ **RÉSOLU S67** — ping 2 min avec withTimeout + pause si onglet caché.
+7. **`familyGroupService` race condition session "Utilisateur non authentifié"** en dev mode. Cause racine identifiée : `supabase.auth.getUser()` plante en offline (même bug que loanService S68). À corriger en remplaçant par `getSession()` ou `useAppStore.user`.
+8. **`recurringTransactionService` pas offline-first** — Erreurs `Failed to fetch /recurring_transactions` en offline observées dans les logs.
 
 #### 🟢 P3 — MINEURS
-7. **Login email/password fresh sans fallback IndexedDB** (acceptable car Q10=A — session-restore — couvert).
-8. **Doublon de l'indicateur online** : `Header.tsx` + `useOnlineStatus.ts` font la même chose deux fois.
+9. **Login email/password fresh sans fallback IndexedDB** (acceptable car Q10=A — session-restore — couvert).
+10. **Unification `syncManager` + `onlineStatusService`** : redondance non bloquante (syncManager écoute encore ses propres events online/offline). Centralisation possible mais pas urgente.
+11. **Dead code** : `loanStorageService.ts` n'est plus importé nulle part (la fonction `uploadLoanReceipt` a été déplacée dans loanService.ts en S68).
 
-### **Plan de remédiation (par ordre suggéré)**
+### **Plan de remédiation (par ordre suggéré, mise à jour 2026-05-11)**
 
-| # | Action | Effort | Impact |
-|---|---|---|---|
-| 1 | Ajouter table `loans` dans Dexie + refondre `loanService` en offline-first (~1 session) | 🔴 Élevé | 🔴 Élevé |
-| 2 | Inverser `transactionService.getTransactions()` : IndexedDB-first | 🟡 Moyen | 🔴 Élevé |
-| 3 | Wrapper tous les `apiService.xxx()` avec `withTimeout(5000)` dans les services métier | 🟢 Faible | 🟡 Moyen |
-| 4 | Inverser `goalService.getGoals()` : IndexedDB-first | 🟢 Faible | 🟡 Moyen |
-| 5 | Ajouter timeout sur `apiService.getServerStatus()` + raccourcir polling à ~10s | 🟢 Faible | 🟢 Faible |
-| 6 | Unifier les 2 implémentations de l'indicateur online | 🟢 Faible | 🟢 Faible |
+| # | Action | Effort | Impact | Statut |
+|---|---|---|---|---|
+| 1 | ~~Ajouter table `loans` dans Dexie + refondre `loanService` en offline-first~~ | 🔴 Élevé | 🔴 Élevé | ✅ S68 v3.12.0 |
+| 2 | ~~Inverser `transactionService.getTransactions()` : IndexedDB-first~~ | 🟡 Moyen | 🔴 Élevé | ✅ S66 v3.10.0 |
+| 3 | ~~Wrapper tous les `apiService.xxx()` avec `withTimeout(5000)`~~ | 🟢 Faible | 🟡 Moyen | ✅ S66 v3.10.0 |
+| 4 | ~~Inverser `goalService.getGoals()` : IndexedDB-first~~ | 🟢 Faible | 🟡 Moyen | ✅ S67 v3.11.0 |
+| 5 | ~~Ajouter timeout sur `apiService.getServerStatus()` + raccourcir polling~~ | 🟢 Faible | 🟢 Faible | ✅ S67 v3.11.0 |
+| 6 | ~~Unifier les 2 implémentations de l'indicateur online~~ | 🟢 Faible | 🟢 Faible | ✅ S67 v3.11.0 |
+| 7 | Refondre `reimbursementService` en offline-first (FIFO + credit balance + transfer ownership) | 🔴 Élevé | 🟡 Moyen | 📅 S69 prévu |
+| 8 | Fix `familyGroupService` : remplacer `supabase.auth.getUser()` par `getSession()` | 🟢 Faible | 🟡 Moyen | 📅 S69+ |
+| 9 | Aligner `recurringTransactionService` sur le pattern offline-first | 🟡 Moyen | 🟢 Faible | 📅 S69+ |
+| 10 | Cleanup `loanStorageService.ts` dead code | 🟢 Faible | 🟢 Faible | 📅 S69+ |
 
 ### **États de synchronisation**
 - **Synced** — opération confirmée sur Supabase ✅

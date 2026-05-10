@@ -4,6 +4,35 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.12.1 - 2026-05-11 (Session S68 hotfix)
+
+### 🩹 Hotfix offline — getCurrentUser ne plante plus en mode hors-ligne sur la page Prêts
+
+- **services/loanService.ts — getCurrentUserSafe** — Remplacement de tous les `getCurrentUser()` (qui appelle `supabase.auth.getUser()` → fetch réseau → `AuthRetryableFetchError` en offline) par un helper local `getCurrentUserSafe()` qui résout dans l'ordre : 1) `useAppStore.user` (Zustand, sync, instantané) 2) `supabase.auth.getSession()` (lecture localStorage, pas de réseau) 3) null. Les 15 occurrences ont été remplacées.
+- **Régression S68 résolue** — Au tout premier chargement offline, `getMyLoans()` plantait dans le catch global et retournait un tableau vide pendant 1-2 secondes avant que la session Supabase soit restaurée. La page affichait brièvement "Aucun prêt" alors que les prêts étaient présents dans Dexie.
+- **Impact** — La page Prêts retourne désormais ses données IndexedDB immédiatement même hors-ligne, sans flash de "Aucun prêt" et sans tracer d'erreur dans la console.
+- **CLAUDE.md + memory** — Nouveau piège capitalisé : `supabase.auth.getUser()` fait un fetch HTTP, ne jamais l'utiliser dans un chemin offline-first. Utiliser `getSession()` (localStorage) à la place.
+
+---
+
+## Version 3.12.0 - 2026-05-11 (Session S68)
+
+### 💰 Refonte offline-first du module Prêts Familiaux
+
+- **lib/database.ts — Dexie v13 (4 nouvelles tables)** — `personalLoans` (index lender/borrower/status/createdAt), `loanRepayments` (index loanId/transactionId/paymentDate), `loanInterestPeriods` (index loanId/status), `pendingReceipts` (stocke les `File` blobs des justificatifs en attente d'upload Supabase Storage). Migration `upgrade()` vide (les tables sont créées vides, peuplement au premier `getMyLoans()` online).
+- **services/loanService.ts — refactor complet en SWR + offline-first** — Toutes les lectures (12 fonctions) passent en stale-while-revalidate identique à `transactionService` (S66) et `goalService` (S67) : lecture Dexie en premier (retour immédiat), refresh Supabase fire-and-forget en arrière-plan, fallback fetch synchrone si Dexie vide. Toutes les mutations (9 fonctions, dont `recordPayment` multi-step) écrivent Dexie d'abord puis tentent Supabase avec `withTimeout(5000)`, fallback queue de sync si offline ou échec.
+- **services/loanService.ts — recordPayment(File | string | null)** — Nouvelle signature accepte le `File` directement. Si online → upload direct vers `loan-receipts` bucket via helper interne. Si offline → stocke le `File` blob dans `db.pendingReceipts` avec `repaymentId` lié, push une opération CREATE `pending_receipts` priorité LOW dans la queue.
+- **services/syncManager.ts — 4 nouveaux cases** — Switch sur `table_name` étendu avec `personal_loans`, `loan_repayments`, `loan_interest_periods` (CRUD direct, data déjà en snake_case via `loanToRow()`) + `pending_receipts` cas spécial : récupère le blob depuis Dexie, upload vers Supabase Storage, génère URL signée 1 an, UPDATE `loan_repayments.receipt_url`, supprime le pendingReceipt local.
+- **types/index.ts — SyncOperation.table_name étendu** — Accepte désormais `personal_loans`, `loan_repayments`, `loan_interest_periods`, `pending_receipts` en plus des 5 tables existantes.
+- **types/loans.ts (nouveau)** — Source unique de vérité des interfaces `PersonalLoan`, `LoanRepayment`, `LoanInterestPeriod`, `LoanWithDetails`, `CreateLoanInput`, `UnpaidInterestSummary`, `PendingReceipt`. Réexportés depuis `loanService` pour rétrocompatibilité des 10+ fichiers consommateurs.
+- **components/Loans/PaymentModal.tsx — adaptation reçu offline-safe** — Passe le `File` directement à `recordPayment` au lieu de pré-uploader. Évite la régression "reçu perdu en offline".
+- **pages/LoansPage.tsx — indicateur CloudOff** — Nouvelle icône `CloudOff` (amber-500) à côté du nom du bénéficiaire pour les groupes contenant au moins un prêt avec opération en attente de synchro. Re-fetch toutes les 5 s pour rafraîchir l'indicateur quand le syncManager vide la queue au retour online.
+- **Architecture** — Source de vérité online est désormais `useAppStore.isOnline` (cohérent S67), avec fallback `navigator.onLine`. Le syncManager existant traite automatiquement les nouvelles tables au retour de connexion.
+- **Régression S64+ résolue** — La page Prêts fonctionne complètement hors ligne (consultation + création + modification + remboursement + suppression + fusion bénéficiaires). Premier chargement nécessite une connexion (peuple Dexie).
+- **Hors scope (sessions ultérieures)** — `reimbursementService` (paiements remboursements familiaux, FIFO, credit balance) — prévu en session S69. Indicateur sync sur la page Famille à propager en même temps. `familyGroupService` race condition même bug `supabase.auth.getUser()`. `recurringTransactionService` pas encore offline-first.
+
+---
+
 ## Version 3.11.0 - 2026-05-10 (Session S67)
 
 ### 🌐 Détection online unifiée (events + ping 2min) + objectifs en SWR + timeout getServerStatus

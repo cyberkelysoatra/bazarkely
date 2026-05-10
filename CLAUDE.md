@@ -118,6 +118,30 @@ git push origin main    # → Netlify déploie automatiquement
 
 ## PIÈGES CONNUS — NE JAMAIS REPRODUIRE
 
+### supabase.auth.getUser() plante en offline (résolu v3.12.1)
+
+**Problème :** `supabase.auth.getUser()` n'est PAS une lecture locale — c'est un fetch HTTP vers `/auth/v1/user`. En offline → throw `AuthRetryableFetchError: Failed to fetch`. Le helper `getCurrentUser()` de `lib/supabase.ts` (qui wrap `getUser()`) plantait l'entrée de `getMyLoans()` AVANT la lecture IndexedDB → page Prêts affichait "Aucun prêt" alors que des prêts existaient en local.
+
+**Règle :** Dans tout chemin offline-first (lectures SWR, mutations queue-able), NE JAMAIS utiliser `supabase.auth.getUser()` ni `getCurrentUser()`. Toujours préférer dans l'ordre :
+1. `useAppStore.getState().user.id` (Zustand, sync, instantané)
+2. `supabase.auth.getSession()` (lecture localStorage Supabase, PAS de réseau)
+3. fallback `null`
+
+Pattern à répliquer (voir `loanService.getCurrentUserSafe()` ou `transactionService.getCurrentUserId()`) :
+```typescript
+async function getCurrentUserSafe(): Promise<{ id: string } | null> {
+  const storeUser = useAppStore.getState().user;
+  if (storeUser?.id) return { id: storeUser.id };
+  const { data } = await supabase.auth.getSession();
+  if (data?.session?.user?.id) return { id: data.session.user.id };
+  return null;
+}
+```
+
+`getCurrentUser()` historique reste utilisable dans les chemins **strictement online** (auth, OAuth callback, vérification d'identité avant action sensible). Mais pour tout ce qui touche à la lecture/écriture de données métier, c'est interdit.
+
+---
+
 ### Supabase DB queries sans timeout (résolu v3.5.11)
 
 **Problème :** Les requêtes `supabase.from('table').select()` peuvent hanger silencieusement — ni succès, ni erreur, ni timeout. Le bloc `catch` ne s'exécute jamais.
@@ -132,7 +156,7 @@ const { data, error } = await withTimeout(
 ) as any;
 ```
 
-**Ne jamais oublier :** `supabase.auth.*` (signIn, setSession, getSession) = fiable. `supabase.from()` = peut hanger → toujours timeout.
+**Ne jamais oublier :** `supabase.auth.signIn/setSession/getSession` = fiable (lecture locale ou single request). `supabase.from()` = peut hanger → toujours timeout. `supabase.auth.getUser()` = fait du réseau → utiliser `getSession()` à la place pour offline-first (voir piège ci-dessus).
 
 ---
 
