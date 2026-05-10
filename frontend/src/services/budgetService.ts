@@ -8,8 +8,12 @@ import type { BudgetInsert, BudgetUpdate } from '../types/supabase';
 import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
 import apiService from './apiService';
+
+// Timeout par défaut pour les appels Supabase dans les services métier
+// Cohérent avec authService et App.tsx (5s)
+const SUPABASE_TIMEOUT_MS = 5000;
 
 class BudgetService {
   /**
@@ -135,7 +139,17 @@ class BudgetService {
       }
 
       console.log('💰 [BudgetService] 🌐 IndexedDB vide, récupération depuis Supabase...');
-      const response = await apiService.getBudgets();
+      let response;
+      try {
+        response = await withTimeout(
+          apiService.getBudgets(),
+          SUPABASE_TIMEOUT_MS,
+          'budgetService.getBudgets'
+        );
+      } catch (timeoutError) {
+        console.warn('💰 [BudgetService] ⚠️ Timeout/erreur Supabase, retour tableau vide:', timeoutError);
+        return [];
+      }
       if (!response.success || response.error) {
         console.error('💰 [BudgetService] ❌ Erreur lors de la récupération des budgets depuis Supabase:', response.error);
         return [];
@@ -206,7 +220,17 @@ class BudgetService {
       }
 
       console.log('💰 [BudgetService] 🌐 IndexedDB vide, récupération depuis Supabase...');
-      const response = await apiService.getBudgets();
+      let response;
+      try {
+        response = await withTimeout(
+          apiService.getBudgets(),
+          SUPABASE_TIMEOUT_MS,
+          'budgetService.getUserBudgets'
+        );
+      } catch (timeoutError) {
+        console.warn('💰 [BudgetService] ⚠️ Timeout/erreur Supabase, retour tableau vide:', timeoutError);
+        return [];
+      }
       if (!response.success || response.error) {
         console.error('💰 [BudgetService] ❌ Erreur lors de la récupération des budgets depuis Supabase:', response.error);
         return [];
@@ -337,7 +361,11 @@ class BudgetService {
         try {
           console.log('💰 [BudgetService] 🌐 Synchronisation du budget vers Supabase...');
           const supabaseData = this.mapBudgetToSupabase(budget);
-          const response = await apiService.createBudget(supabaseData as BudgetInsert);
+          const response = await withTimeout(
+            apiService.createBudget(supabaseData as BudgetInsert),
+            SUPABASE_TIMEOUT_MS,
+            'budgetService.createBudget'
+          );
           
           if (response.success && response.data) {
             // Mettre à jour avec l'ID Supabase si différent

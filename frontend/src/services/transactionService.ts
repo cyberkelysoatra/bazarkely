@@ -10,7 +10,11 @@ import type { Transaction } from '../types/index.js';
 import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
+
+// Timeout par défaut pour les appels Supabase dans les services métier
+// Cohérent avec authService et App.tsx (5s)
+const SUPABASE_TIMEOUT_MS = 5000;
 // TEMPORARY FIX: Comment out problematic import to unblock the app
 // import notificationService from './notificationService';
 
@@ -109,10 +113,11 @@ class TransactionService {
   }
 
   /**
-   * Récupérer toutes les transactions (OFFLINE-FIRST PATTERN avec refresh automatique)
-   * 1. Si online : fetch depuis Supabase (toujours vérifier pour les nouvelles transactions)
-   * 2. Mettre à jour IndexedDB avec les données Supabase
-   * 3. Si offline ou erreur Supabase : utiliser IndexedDB comme fallback
+   * Récupérer toutes les transactions (OFFLINE-FIRST avec STALE-WHILE-REVALIDATE)
+   * 1. Lecture IndexedDB en premier — retour immédiat si données présentes
+   * 2. En arrière-plan (fire-and-forget) si online : refresh depuis Supabase pour la prochaine lecture
+   * 3. Si IndexedDB vide ET online : tenter Supabase synchrone avec timeout 5s (premier usage)
+   * 4. Si IndexedDB vide ET offline (ou Supabase échoue) : retour tableau vide
    */
   async getTransactions(): Promise<Transaction[]> {
     try {
@@ -124,57 +129,62 @@ class TransactionService {
         return localTransactions;
       }
 
-      // Check if online
-      const isOnline = navigator.onLine;
-      
-      if (isOnline) {
-        // ONLINE: Fetch from Supabase and update cache
-        console.log('📱 [TransactionService] 🌐 En ligne - récupération depuis Supabase...');
-        try {
-          const response = await apiService.getTransactions();
-          if (response.success && response.data) {
-            // Transform Supabase data to Transaction format
-            const supabaseTransactions = (response.data as any[]) || [];
-            const transactions: Transaction[] = supabaseTransactions.map((t: any) =>
-              this.mapSupabaseToTransaction(t)
-            );
-            
-            // Update IndexedDB cache with new data (bulkPut handles upsert)
-            if (transactions.length > 0) {
-              try {
-                await db.transactions.bulkPut(transactions);
-                console.log(`📱 [TransactionService] 💾 Mise à jour du cache IndexedDB avec ${transactions.length} transaction(s)`);
-              } catch (idbError) {
-                console.error('📱 [TransactionService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
-                // Continuer même si la sauvegarde échoue
-              }
-            }
-            
-            console.log(`📱 [TransactionService] ✅ ${transactions.length} transaction(s) récupérée(s) depuis Supabase`);
-            return transactions;
-          } else {
-            console.warn('📱 [TransactionService] ⚠️ Réponse Supabase invalide, fallback sur IndexedDB:', response.error);
-            // Fall through to IndexedDB
-          }
-        } catch (error) {
-          console.warn('📱 [TransactionService] ⚠️ Erreur Supabase, fallback sur IndexedDB:', error);
-          // Fall through to IndexedDB
-        }
-      }
-
-      // OFFLINE or Supabase error: Use IndexedDB
-      console.log('📱 [TransactionService] 💾 Récupération des transactions depuis IndexedDB...');
+      // STEP 1: Lecture IndexedDB en premier (offline-first)
+      console.log('📱 [TransactionService] 💾 Lecture des transactions depuis IndexedDB...');
       const localTransactions = await db.transactions
         .where('userId')
         .equals(userId)
         .toArray();
 
+      // STEP 2: Si IndexedDB a des données → retour immédiat + refresh background (SWR)
       if (localTransactions.length > 0) {
-        console.log(`📱 [TransactionService] ✅ ${localTransactions.length} transaction(s) récupérée(s) depuis IndexedDB`);
-      } else {
-        console.log('📱 [TransactionService] ⚠️ Aucune transaction dans IndexedDB');
+        console.log(`📱 [TransactionService] ✅ ${localTransactions.length} transaction(s) depuis IndexedDB (retour immédiat)`);
+
+        // Refresh Supabase en arrière-plan (fire-and-forget) si online
+        if (navigator.onLine) {
+          this.refreshTransactionsFromSupabase(userId).catch(err => {
+            console.warn('📱 [TransactionService] ⚠️ Refresh background échoué (non bloquant):', err);
+          });
+        }
+
+        return localTransactions;
       }
-      return localTransactions;
+
+      // STEP 3: IndexedDB vide → tenter Supabase synchrone avec timeout (premier usage)
+      if (!navigator.onLine) {
+        console.warn('📱 [TransactionService] ⚠️ IndexedDB vide et offline → retour tableau vide');
+        return [];
+      }
+
+      console.log('📱 [TransactionService] 🌐 IndexedDB vide → fetch Supabase synchrone (timeout 5s)...');
+      try {
+        const response = await withTimeout(
+          apiService.getTransactions(),
+          SUPABASE_TIMEOUT_MS,
+          'transactionService.getTransactions/initial'
+        );
+        if (response.success && response.data) {
+          const supabaseTransactions = (response.data as any[]) || [];
+          const transactions: Transaction[] = supabaseTransactions.map((t: any) =>
+            this.mapSupabaseToTransaction(t)
+          );
+          if (transactions.length > 0) {
+            try {
+              await db.transactions.bulkPut(transactions);
+              console.log(`📱 [TransactionService] 💾 ${transactions.length} transaction(s) cachée(s) dans IndexedDB`);
+            } catch (idbError) {
+              console.error('📱 [TransactionService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
+            }
+          }
+          console.log(`📱 [TransactionService] ✅ ${transactions.length} transaction(s) depuis Supabase (premier fetch)`);
+          return transactions;
+        }
+        console.warn('📱 [TransactionService] ⚠️ Réponse Supabase invalide:', response.error);
+        return [];
+      } catch (error) {
+        console.warn('📱 [TransactionService] ⚠️ Échec Supabase (timeout ou erreur) → retour tableau vide:', error);
+        return [];
+      }
     } catch (error) {
       console.error('📱 [TransactionService] ❌ Erreur lors de la récupération des transactions:', error);
       // En cas d'erreur, essayer de retourner IndexedDB
@@ -197,6 +207,34 @@ class TransactionService {
     }
   }
 
+  /**
+   * Refresh IndexedDB depuis Supabase en arrière-plan (fire-and-forget)
+   * Appelé après un retour immédiat depuis IndexedDB pour garder le cache à jour.
+   * Erreurs silencieuses (timeout/network) — l'UI a déjà affiché les données locales.
+   */
+  private async refreshTransactionsFromSupabase(userId: string): Promise<void> {
+    try {
+      const response = await withTimeout(
+        apiService.getTransactions(),
+        SUPABASE_TIMEOUT_MS,
+        'transactionService.refreshTransactionsFromSupabase'
+      );
+      if (response.success && response.data) {
+        const supabaseTransactions = (response.data as any[]) || [];
+        const transactions: Transaction[] = supabaseTransactions
+          .filter((t: any) => t.user_id === userId)
+          .map((t: any) => this.mapSupabaseToTransaction(t));
+        if (transactions.length > 0) {
+          await db.transactions.bulkPut(transactions);
+          console.log(`📱 [TransactionService] 🔄 IndexedDB rafraîchi avec ${transactions.length} transaction(s) depuis Supabase (background)`);
+        }
+      }
+    } catch (error) {
+      // Erreur silencieuse — l'utilisateur a déjà ses données locales
+      console.warn('📱 [TransactionService] ⚠️ Refresh background échoué:', error);
+    }
+  }
+
   async getUserTransactions(_userId: string): Promise<Transaction[]> {
     return this.getTransactions();
   }
@@ -210,7 +248,11 @@ class TransactionService {
    */
   async getUserTransferredTransactions(userId: string): Promise<Transaction[]> {
     try {
-      const response = await apiService.getTransferredTransactions(userId);
+      const response = await withTimeout(
+        apiService.getTransferredTransactions(userId),
+        SUPABASE_TIMEOUT_MS,
+        'transactionService.getUserTransferredTransactions'
+      );
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la récupération des transactions transférées:', response.error);
         return [];
@@ -432,7 +474,11 @@ class TransactionService {
             transferred_at: transactionData.transferredAt || null,
           };
 
-          const response = await apiService.createTransaction(supabaseData);
+          const response = await withTimeout(
+            apiService.createTransaction(supabaseData),
+            SUPABASE_TIMEOUT_MS,
+            'transactionService.createTransaction'
+          );
           if (response.success && response.data) {
             // Mettre à jour IndexedDB avec l'ID du serveur si différent
             const supabaseTransaction = response.data as any;
@@ -578,7 +624,11 @@ class TransactionService {
           if (transactionData.originalOwnerId !== undefined) supabaseData.original_owner_id = transactionData.originalOwnerId;
           if (transactionData.transferredAt !== undefined) supabaseData.transferred_at = transactionData.transferredAt;
 
-          const response = await apiService.updateTransaction(id, supabaseData);
+          const response = await withTimeout(
+            apiService.updateTransaction(id, supabaseData),
+            SUPABASE_TIMEOUT_MS,
+            'transactionService.updateTransaction'
+          );
           if (response.success && response.data) {
             // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
             const supabaseTransaction = this.mapSupabaseToTransaction(response.data as any);
@@ -628,8 +678,17 @@ class TransactionService {
         console.warn(`📱 [TransactionService] ⚠️ Transaction ${id} non trouvée dans IndexedDB`);
         // Essayer quand même de supprimer depuis Supabase si online
         if (navigator.onLine) {
-          const response = await apiService.deleteTransaction(id);
-          return response.success;
+          try {
+            const response = await withTimeout(
+              apiService.deleteTransaction(id),
+              SUPABASE_TIMEOUT_MS,
+              'transactionService.deleteTransaction/orphan'
+            );
+            return response.success;
+          } catch (error) {
+            console.warn('📱 [TransactionService] ⚠️ Échec/timeout suppression Supabase (orphan):', error);
+            return false;
+          }
         }
         return false;
       }
@@ -643,7 +702,11 @@ class TransactionService {
       if (navigator.onLine) {
         try {
           console.log('📱 [TransactionService] 🌐 Synchronisation de la suppression vers Supabase...');
-          const response = await apiService.deleteTransaction(id);
+          const response = await withTimeout(
+            apiService.deleteTransaction(id),
+            SUPABASE_TIMEOUT_MS,
+            'transactionService.deleteTransaction'
+          );
           if (response.success) {
             console.log('📱 [TransactionService] ✅ Suppression synchronisée avec Supabase');
             return true;
@@ -827,18 +890,22 @@ class TransactionService {
 
       // Appeler l'API de transfert avec les paramètres directs
       // Note: L'API backend doit gérer la conversion, mais on envoie aussi le montant converti
-      const response = await apiService.createTransfer({
-        fromAccountId: transferData.fromAccountId,
-        toAccountId: transferData.toAccountId,
-        amount: transferData.amount, // Montant original dans la devise du formulaire
-        description: transferData.description,
-        transferFee: 0,
-        date: transferData.date,
-        // Multi-currency fields
-        originalCurrency: originalCurrency,
-        originalAmount: transferData.amount,
-        exchangeRateUsed: exchangeRateUsed || undefined
-      });
+      const response = await withTimeout(
+        apiService.createTransfer({
+          fromAccountId: transferData.fromAccountId,
+          toAccountId: transferData.toAccountId,
+          amount: transferData.amount, // Montant original dans la devise du formulaire
+          description: transferData.description,
+          transferFee: 0,
+          date: transferData.date,
+          // Multi-currency fields
+          originalCurrency: originalCurrency,
+          originalAmount: transferData.amount,
+          exchangeRateUsed: exchangeRateUsed || undefined
+        }),
+        SUPABASE_TIMEOUT_MS,
+        'transactionService.createTransfer'
+      );
 
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la création du transfert:', response.error);

@@ -17,6 +17,31 @@
 
 ---
 
+## RÈGLE #0bis — QUESTIONS FERMÉES PAR SÉRIES (cadrage avant action)
+
+**Dès qu'il subsiste un doute non trivial sur le périmètre, le comportement attendu, les priorités ou les edge cases d'une demande de JOEL, NE PAS partir directement en code ou en analyse. Poser des questions fermées en séries successives.**
+
+### Protocole
+
+1. **Série 1** — 2 à 4 questions fermées (OUI/NON ou choix multiples A/B/C/D) sur les **fondamentaux** (cadrage du périmètre)
+2. **Attendre** les réponses de JOEL au format ultra-court (ex : `1A, 2OUI, 3OUI, 4D`)
+3. **Série 2** — questions plus précises **ajustées en fonction des réponses** de la série 1 (élimine les branches déjà tranchées)
+4. Continuer en séries jusqu'à avoir un cadrage net
+5. **Seulement ensuite** : faire l'état des lieux / la proposition / le code
+
+### Règles de formulation
+
+- **Toujours fermées** : OUI/NON ou A/B/C/D — JAMAIS de question ouverte type "que veux-tu exactement ?"
+- **Annoncer la série** ("Questions série 1", "Questions série 2") pour que JOEL sache qu'il y en aura d'autres
+- **Format de réponse court** demandé explicitement (numéro + lettre)
+- **Pas de procédure pour le trivial** : un fix simple, une lecture de fichier, une question factuelle = répondre directement
+
+### Pourquoi
+
+Cette approche progressive permet d'arriver à des questions plus pertinentes que si on essayait de tout couvrir en un seul bloc. Les réponses aux premières questions éliminent des branches entières et permettent de cibler ce qui reste flou. Évite aussi de partir sur de fausses pistes.
+
+---
+
 ## RÈGLE #1 — DIAGNOSTIC AVANT TOUTE ACTION
 
 **Avant de modifier quoi que ce soit, lire les fichiers concernés et tracer le chemin complet d'exécution.**

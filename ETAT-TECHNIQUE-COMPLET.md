@@ -1,8 +1,8 @@
 # 🔧 ÉTAT TECHNIQUE - BazarKELY (VERSION CORRIGÉE)
 ## Application de Gestion Budget Familial pour Madagascar
 
-**Version:** 3.5.12 (Auth DB Hardening — Session S62 2026-04-13)  
-**Date de mise à jour:** 2026-04-13  
+**Version:** 3.9.0 (QuickTopUp Modal — Session S65 2026-05-05)  
+**Date de mise à jour:** 2026-05-05  
 **Statut:** ✅ PRODUCTION - OAuth Fonctionnel + PWA Install + Installation Native + Notifications Push + UI Optimisée + Système Recommandations + Gamification + Système Certification + Suivi Pratiques + Certificats PDF + Classement Supabase + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Transactions Récurrentes Complètes + Construction POC Workflow State Machine + Construction POC UI Components + Context Switcher Opérationnel + Phase 2 Organigramme Complète + Phase 3 Sécurité Complète + Système Numérotation BC Éditable + Fix Navigation Settings + Espace Famille Production Ready + Statistiques Budgétaires Multi-Années + Barres Progression Bicolores + Améliorations UI Budget + Phase B Goals Deadline Sync (v2.5.0) + EUR Transfer Bug Fix (v2.4.5) + Multi-Currency Accounts (v2.4.6) + CurrencyDisplay HTML Nesting Fix (v2.4.8) + Système i18n Multi-Langues FR/EN/MG (v2.4.10) + Protection Traduction Automatique (v2.4.10) + Fix Dashboard EUR Display Bug (v2.4.10) + Desktop Enhancement Layout Components (v2.6.0) + Budget Gauge Feature (v2.7.0) + Reimbursement Payment Modal UI Enhancements (v2.8.0) + Phase 1 Production Validated + Debug Cleanup (v2.8.2) + Reimbursement Dashboard Phase 2 (v2.9.0) + Module Prêts Familiaux Phase 1+2 (v3.0.0) + Transactions Inline Loan Drawer (v3.1.0)  
 **Audit:** ✅ COMPLET - Documentation mise à jour selon l'audit du codebase + Optimisations UI + Recommandations IA + Corrections Techniques + Certification Infrastructure + Suivi Comportements + Génération PDF + Classement Supabase Direct + Interface Admin Enrichie + Navigation Intelligente + Identification Utilisateur + Filtrage Catégories + Phase B Goals Deadline Sync + EUR Transfer Bug Fix + Multi-Currency Accounts + CurrencyDisplay HTML Nesting Fix + Système i18n Multi-Langues FR/EN/MG (Session S41) + Protection Traduction Automatique (Session S41) + Fix Dashboard EUR Display Bug (Session S41) + Desktop Enhancement Layout Components (Session S42) + Budget Gauge Feature (Session S43) + Reimbursement Payment Modal UI Enhancements (Session S47) + Phase 1 Production Validated + Debug Cleanup (Session S48) + Reimbursement Dashboard Phase 2 (Session S49) + Documentation Cleanup (Session S51) + Module Prêts Familiaux Phase 1+2 (Session S52)
 
@@ -15,7 +15,7 @@ BazarKELY est une application PWA (Progressive Web App) de gestion budget famili
 ### **🎯 Objectifs Atteints (Réel)**
 - ✅ **Authentification OAuth Google** - 100% fonctionnel
 - ⚠️ **Synchronisation multi-appareils** - 70% fonctionnel (partiellement testé)
-- ⚠️ **Mode hors ligne complet** - 60% fonctionnel (IndexedDB implémenté, sync non testée)
+- ⚠️ **Mode hors ligne complet** - 55% fonctionnel — voir audit détaillé section "🔄 SYNCHRONISATION ET OFFLINE" (2026-05-10) : Comptes/Budgets ✅, Transactions/Objectifs ⚠️ (Supabase-first sans timeout), Prêts ❌ (100% Supabase-only — aucune table `loans` dans IndexedDB)
 - ✅ **Interface PWA responsive** - 100% fonctionnel (installation native opérationnelle)
 - ✅ **Notifications push** - 100% fonctionnel (système complet opérationnel)
 - ✅ **Système de recommandations IA** - 100% fonctionnel (moteur intelligent opérationnel)
@@ -2167,21 +2167,105 @@ const filteredTransactions = transactions.filter(transaction => {
 
 ## 🔄 SYNCHRONISATION ET OFFLINE
 
-### **Architecture Offline-First** ⚠️ PARTIELLEMENT FONCTIONNELLE
+### **Audit complet — 2026-05-10 (v3.9.0)** ⚠️ PARTIELLEMENT OFFLINE-FIRST
+
+> Cible : l'application doit fonctionner **normalement** quand la BD Supabase est inaccessible **OU lente** (cas Wi-Fi OK mais Supabase qui rame). Source de vérité = IndexedDB local. Supabase = miroir distant. Sync auto silencieuse au retour. Conflits = last-write-wins.
+
+### **Architecture data**
 ```
-Action utilisateur → IndexedDB (pending) → Service Worker → Supabase (sync)
+Stockage local       : IndexedDB (Dexie 4.2 — 12 versions de schéma)
+Tables locales       : users, accounts, transactions, budgets, goals,
+                       syncQueue (priority/syncTag/expiresAt — PWA Phase 3),
+                       feeConfigurations, recurringTransactions,
+                       goalMilestones, goalCelebrations, notifications, etc.
+                       ⚠️ AUCUNE table 'loans' (régression S64+)
+Persistence session  : Zustand persist (clé bazarkely-app-store) → user en localStorage
+Stockage distant     : Supabase PostgreSQL + Auth (autoRefreshToken + persistSession)
+Helper timeout       : withTimeout() dans lib/supabase.ts
+                       ⚠️ Utilisé UNIQUEMENT dans authService et App.tsx
+                       ❌ Absent de tous les services métier (apiService.*)
 ```
 
-### **États de Synchronisation** ⚠️ PARTIELLEMENT GÉRÉS
-- **Synced** - Action confirmée sur serveur ✅
-- **Pending** - En attente de synchronisation ✅
-- **Failed** - Échec, retry programmé ⚠️ (non testé)
-- **Offline** - Mode hors ligne détecté ⚠️ (non testé)
+### **Indicateur Wi-Fi (badge en-tête)** ✅ FONCTIONNEL ⚠️ AVEC LIMITES
+- Source : `apiService.getServerStatus()` — fait un **vrai ping Supabase** (`SELECT count FROM users LIMIT 1`), pas juste `navigator.onLine`
+- ✅ Détecte effectivement l'indisponibilité de Supabase (pas juste l'absence d'Internet)
+- ❌ **Pas de timeout** sur le ping → si Supabase rame, l'indicateur ne réagit pas vite
+- ❌ Polling 30s → délai de réaction lent
+- ❌ **Doublon** : `Header.tsx:452-462` ET `useOnlineStatus.ts` font la même chose en parallèle
 
-### **Résolution de Conflits** ⚠️ PARTIELLEMENT AUTOMATIQUE
-- **Dernière modification gagne** (simple et efficace)
-- **Merge intelligent** pour les données compatibles (non testé)
-- **Alertes utilisateur** pour les conflits majeurs (non testé)
+### **Auth offline (session persistante)** ✅ FONCTIONNEL
+- Session Supabase Auth stockée dans localStorage par le SDK (autoRefreshToken)
+- Au démarrage : `App.tsx → loadUserFromSupabase()` avec timeout 5s explicite
+- ✅ En cas de timeout DB : `setAuthenticated(true)` mais `setUser` non écrasé → user persisté Zustand survit → app utilisable
+- ✅ Logout offline : timeout 4s + nettoyage localStorage prioritaire (`authService.ts:362-389`)
+- ⚠️ Login email/password fresh sans Supabase : retourne erreur, pas de fallback IndexedDB users (acceptable car cas marginal)
+
+### **Mécanisme de sync au retour online** ✅ SOLIDE
+- Trigger automatique sur `window.addEventListener('online')`
+- Trigger sur `SIGNED_IN` / `TOKEN_REFRESHED` / `INITIAL_SESSION`
+- Background Sync API + fallback polling adaptatif si non supporté
+- Queue ordonnée par priorité (PWA Phase 3 — champs `priority`, `syncTag`, `expiresAt`)
+- **Last-write-wins** implémenté (cohérent avec stratégie de conflit cible)
+- Fichiers : `syncManager.ts`, `OptimizedSyncService.ts`, `syncService.ts` (legacy wrapper)
+
+### **Stratégie offline par service métier**
+
+| Service | Lecture | Écriture | Timeout Supabase | Queue sync | Verdict |
+|---|---|---|---|---|---|
+| **accountService** | ✅ IndexedDB-first | ✅ IndexedDB-first + queue | ❌ | ✅ | **OK** |
+| **budgetService** | ✅ IndexedDB-first | ✅ IndexedDB-first + queue | ❌ | ✅ | **OK** |
+| **transactionService** | ❌ Supabase-first si online | ✅ IndexedDB-first + queue | ❌ | ✅ | **Lectures cassées** |
+| **goalService** | ⚠️ Supabase-first si online | ✅ IndexedDB-first + queue | ❌ | ✅ | **Lectures dégradées** |
+| **loanService** | ❌❌ Supabase-only | ❌❌ Supabase-only | ❌ | ❌ | **Totalement cassé hors ligne** |
+
+### **Verdict par écran**
+
+| Écran | Lecture offline | Écriture offline | Note |
+|---|---|---|---|
+| **Login (session déjà établie)** | ✅ OK (timeout 5s) | N/A | Q10=A satisfait |
+| **Comptes** | ✅ OK | ✅ OK + sync queue | **Fonctionne** |
+| **Budgets** | ✅ OK | ✅ OK + sync queue | **Fonctionne** |
+| **Transactions** | ❌ Spinner infini si Supabase rame | ✅ OK + sync queue | **Cassé en lecture** |
+| **Objectifs** | ⚠️ Lent si Supabase rame | ✅ OK + sync queue | **Dégradé** |
+| **Prêts (LoansPage)** | ❌❌ Aucun fallback | ❌❌ Aucun fallback | **Totalement cassé** |
+| **Dashboard** | ⚠️ Mixte (selon les widgets) | N/A | **Partiellement cassé** |
+
+### **Problèmes identifiés — par priorité**
+
+#### 🔴 P1 — CRITIQUES (bloquent l'usage offline)
+1. **`loanService` 100% Supabase-only** (`loanService.ts` — 7 appels `supabase.from(...)` directs, aucune table `loans` dans Dexie). LoansPage, fusion bénéficiaires, ajout/modif prêts, remboursements → tous inutilisables hors ligne ou si Supabase rame. *Régression S64+.*
+2. **`transactionService.getTransactions()` Supabase-first SANS timeout** (`transactionService.ts:117-198`). Cas Wi-Fi up + Supabase down/lent → écran Transactions bloqué sur spinner. Pattern opposé de `accountService`.
+
+#### 🟡 P2 — IMPORTANTS (dégradent l'expérience, cas Supabase qui rame)
+3. **Aucun timeout sur les appels Supabase** dans les services métier (`accountService`, `transactionService`, `budgetService`, `goalService`). Toute opération de sync peut hanger.
+4. **Détection online basée sur `navigator.onLine`** uniquement dans les services. Ne couvre PAS le cas "Wi-Fi up mais Supabase down/lent".
+5. **`goalService.getGoals()` Supabase-first si online** (sans timeout) — même problème que transactionService.
+6. **Indicateur Wi-Fi : ping Supabase sans timeout + polling 30s** → réaction lente quand Supabase rame.
+
+#### 🟢 P3 — MINEURS
+7. **Login email/password fresh sans fallback IndexedDB** (acceptable car Q10=A — session-restore — couvert).
+8. **Doublon de l'indicateur online** : `Header.tsx` + `useOnlineStatus.ts` font la même chose deux fois.
+
+### **Plan de remédiation (par ordre suggéré)**
+
+| # | Action | Effort | Impact |
+|---|---|---|---|
+| 1 | Ajouter table `loans` dans Dexie + refondre `loanService` en offline-first (~1 session) | 🔴 Élevé | 🔴 Élevé |
+| 2 | Inverser `transactionService.getTransactions()` : IndexedDB-first | 🟡 Moyen | 🔴 Élevé |
+| 3 | Wrapper tous les `apiService.xxx()` avec `withTimeout(5000)` dans les services métier | 🟢 Faible | 🟡 Moyen |
+| 4 | Inverser `goalService.getGoals()` : IndexedDB-first | 🟢 Faible | 🟡 Moyen |
+| 5 | Ajouter timeout sur `apiService.getServerStatus()` + raccourcir polling à ~10s | 🟢 Faible | 🟢 Faible |
+| 6 | Unifier les 2 implémentations de l'indicateur online | 🟢 Faible | 🟢 Faible |
+
+### **États de synchronisation**
+- **Synced** — opération confirmée sur Supabase ✅
+- **Pending** — dans `syncQueue`, en attente du retour online ✅
+- **Failed** — `retryCount` incrémenté, retry exponentiel ✅
+- **Expired** — `expiresAt` dépassé, opération abandonnée (PWA Phase 3) ✅
+
+### **Résolution de conflits** ✅ LAST-WRITE-WINS
+- Last-write-wins implémenté (`OptimizedSyncService.ts`)
+- Cohérent avec la stratégie cible. Pas de merge intelligent ni d'alertes utilisateur (et c'est OK pour le scope actuel).
 
 ---
 

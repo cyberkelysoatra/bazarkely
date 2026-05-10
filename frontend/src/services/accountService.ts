@@ -8,8 +8,12 @@ import type { Account as SupabaseAccount, AccountInsert, AccountUpdate } from '.
 import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
 import apiService from './apiService';
+
+// Timeout par défaut pour les appels Supabase dans les services métier
+// Cohérent avec authService et App.tsx (5s)
+const SUPABASE_TIMEOUT_MS = 5000;
 import { convertAmount } from './exchangeRateService';
 
 class AccountService {
@@ -120,7 +124,11 @@ class AccountService {
       }
 
       console.log('🌐 IndexedDB vide, récupération depuis Supabase...');
-      const response = await apiService.getAccounts();
+      const response = await withTimeout(
+        apiService.getAccounts(),
+        SUPABASE_TIMEOUT_MS,
+        'accountService.getAccounts'
+      );
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la récupération des comptes depuis Supabase:', response.error);
         return [];
@@ -248,7 +256,11 @@ class AccountService {
             (supabaseData as any).display_order = accountData.displayOrder;
           }
 
-          const response = await apiService.createAccount(supabaseData);
+          const response = await withTimeout(
+            apiService.createAccount(supabaseData),
+            SUPABASE_TIMEOUT_MS,
+            'accountService.createAccount'
+          );
           if (response.success && response.data) {
             // Mettre à jour IndexedDB avec l'ID du serveur si différent
             const supabaseAccount = response.data as any;
@@ -338,7 +350,11 @@ class AccountService {
           if ((accountData as any).isActive !== undefined) supabaseData.is_active = (accountData as any).isActive;
           if (accountData.displayOrder !== undefined) supabaseData.display_order = accountData.displayOrder;
 
-          const response = await apiService.updateAccount(id, supabaseData);
+          const response = await withTimeout(
+            apiService.updateAccount(id, supabaseData),
+            SUPABASE_TIMEOUT_MS,
+            'accountService.updateAccount'
+          );
           if (response.success && response.data) {
             // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
             const supabaseAccount = this.mapSupabaseToAccount(response.data as any);
@@ -433,8 +449,17 @@ class AccountService {
         console.warn(`⚠️ Compte ${id} non trouvé dans IndexedDB`);
         // Essayer quand même de supprimer depuis Supabase si online
         if (navigator.onLine) {
-          const response = await apiService.deleteAccount(id);
-          return response.success;
+          try {
+            const response = await withTimeout(
+              apiService.deleteAccount(id),
+              SUPABASE_TIMEOUT_MS,
+              'accountService.deleteAccount/orphan'
+            );
+            return response.success;
+          } catch (error) {
+            console.warn('⚠️ Échec/timeout suppression Supabase (orphan):', error);
+            return false;
+          }
         }
         return false;
       }
@@ -448,7 +473,11 @@ class AccountService {
       if (navigator.onLine) {
         try {
           console.log('🌐 Synchronisation de la suppression vers Supabase...');
-          const response = await apiService.deleteAccount(id);
+          const response = await withTimeout(
+            apiService.deleteAccount(id),
+            SUPABASE_TIMEOUT_MS,
+            'accountService.deleteAccount'
+          );
           if (response.success) {
             console.log('✅ Suppression synchronisée avec Supabase');
             return true;

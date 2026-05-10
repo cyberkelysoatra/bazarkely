@@ -1,8 +1,24 @@
-export const APP_VERSION = '3.9.0';
-export const APP_VERSION_NAME = 'Modal de ravitaillement de compte au solde insuffisant (dépense, prêt, remboursement)';
-export const LAST_UPDATED = '2026-05-05';
-export const APP_BUILD_DATE = '2026-05-05';
+export const APP_VERSION = '3.10.0';
+export const APP_VERSION_NAME = 'Offline-first robuste — transactions en stale-while-revalidate + timeouts 5s sur tous les services métier';
+export const LAST_UPDATED = '2026-05-10';
+export const APP_BUILD_DATE = '2026-05-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.10.0',
+    date: '2026-05-10',
+    description: 'Offline-first robuste — transactions en stale-while-revalidate + timeouts 5s sur tous les services métier',
+    changes: [
+      'Refactor (transactionService.ts): getTransactions() passe en stale-while-revalidate — IndexedDB lu en premier (retour immédiat), Supabase rafraîchit IndexedDB en arrière-plan (fire-and-forget) pour la prochaine lecture. Fini les spinners infinis quand Supabase rame',
+      'Fix (transactionService.ts): si IndexedDB est vide au premier usage, fetch Supabase synchrone avec timeout 5s — fallback gracieux vers tableau vide en cas d\'échec',
+      'Hardening (transactionService.ts, accountService.ts, budgetService.ts, goalService.ts): tous les appels apiService.* sont désormais wrappés avec withTimeout(5000) — élimine le risque de hang quand Supabase rame mais Wi-Fi est OK',
+      'Pattern: SUPABASE_TIMEOUT_MS = 5000 (cohérent avec authService et App.tsx) ajouté dans chaque service métier',
+      'Architecture: les composants UI ne voient aucune différence de signature — la fiabilité offline est améliorée de manière transparente',
+      'Documentation: ETAT-TECHNIQUE-COMPLET.md section "🔄 SYNCHRONISATION ET OFFLINE" entièrement réécrite avec audit daté du 2026-05-10 (5 services, 7 écrans, 8 problèmes priorisés, plan de remédiation)',
+      'CLAUDE.md: ajout RÈGLE #0bis "Questions fermées par séries" comme skill projet — protocole de cadrage avant toute action',
+      'Note: P1 #1 (loanService 100% Supabase-only) reste à faire dans une session ultérieure — voir audit',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.9.0',
     date: '2026-05-05',

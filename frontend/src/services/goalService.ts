@@ -8,9 +8,13 @@ import type { GoalInsert, GoalUpdate } from '../types/supabase';
 import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
 import apiService from './apiService';
 import transactionService from './transactionService';
+
+// Timeout par défaut pour les appels Supabase dans les services métier
+// Cohérent avec authService et App.tsx (5s)
+const SUPABASE_TIMEOUT_MS = 5000;
 
 class GoalService {
   /**
@@ -146,7 +150,11 @@ class GoalService {
           if (session) {
             console.log('🎯 [GoalService] 🌐 En ligne - récupération depuis Supabase...');
             
-            const response = await apiService.getGoals();
+            const response = await withTimeout(
+              apiService.getGoals(),
+              SUPABASE_TIMEOUT_MS,
+              'goalService.getGoals'
+            );
             if (response.success && !response.error) {
               // STEP 2: Mapper les données Supabase (inclut required_monthly_contribution)
               const supabaseGoals = (response.data as any[]) || [];
@@ -308,7 +316,11 @@ class GoalService {
         try {
           console.log('🎯 [GoalService] 🌐 Synchronisation du goal vers Supabase...');
           const supabaseData = this.mapGoalToSupabase({ ...goal, userId });
-          const response = await apiService.createGoal(supabaseData as GoalInsert);
+          const response = await withTimeout(
+            apiService.createGoal(supabaseData as GoalInsert),
+            SUPABASE_TIMEOUT_MS,
+            'goalService.createGoal'
+          );
           
           if (response.success && response.data) {
             // Mettre à jour IndexedDB avec l'ID du serveur si différent
@@ -626,7 +638,11 @@ class GoalService {
       }
 
       console.log('🎯 [GoalService] 🔄 Synchronisation forcée depuis Supabase...');
-      const response = await apiService.getGoals();
+      const response = await withTimeout(
+        apiService.getGoals(),
+        SUPABASE_TIMEOUT_MS,
+        'goalService.syncGoalsFromSupabase'
+      );
       
       if (!response.success || response.error) {
         throw new Error(response.error || 'Erreur lors de la récupération depuis Supabase');
