@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Paperclip } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAppStore } from '../../stores/appStore';
 import {
   getUnpaidInterestPeriods,
   getUnlinkedRevenueTransactions,
-  recordPayment,
-  uploadLoanReceipt
+  recordPayment
 } from '../../services/loanService';
 import type { LoanInterestPeriod } from '../../services/loanService';
 import { CurrencyDisplay } from '../Currency';
@@ -24,7 +22,6 @@ export interface PaymentModalProps {
 }
 
 const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, onSuccess }: PaymentModalProps) => {
-  const { user } = useAppStore();
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -92,17 +89,16 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
 
     try {
       setSubmitting(true);
-      let receiptUrl: string | null = null;
-      if (receiptFile && user?.id) {
-        receiptUrl = await uploadLoanReceipt(user.id, receiptFile);
-      }
+      // Passer le File directement à recordPayment : il gère l'upload online
+      // ou le stockage différé (pendingReceipts) si offline. Évite la régression
+      // pré-S68 où uploadLoanReceipt en amont retournait null offline et perdait le reçu.
       await recordPayment(
         loanId,
         parseFloat(amountPaid),
         paymentDate,
         notes.trim() || undefined,
         mode === 'link' ? selectedTransactionId : undefined,
-        receiptUrl
+        receiptFile
       );
       toast.success('Paiement enregistré avec succès');
       onSuccess();

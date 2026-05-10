@@ -1,452 +1,607 @@
-import { supabase, getCurrentUser } from '../lib/supabase';
+/**
+ * Service de gestion des Prêts Familiaux — pattern offline-first
+ * IndexedDB est la source primaire ; Supabase synchronisé en SWR (lectures)
+ * ou via la queue de syncManager (mutations).
+ *
+ * Pattern aligné sur transactionService (S66) et goalService (S67).
+ */
 
-export { uploadLoanReceipt } from './loanStorageService';
+import { supabase, getCurrentUser, withTimeout } from '../lib/supabase';
+import { db } from '../lib/database';
+import { useAppStore } from '../stores/appStore';
+import type { SyncOperation, SyncPriority } from '../types';
+import { SYNC_PRIORITY } from '../types';
+import type {
+  PersonalLoan,
+  LoanRepayment,
+  LoanInterestPeriod,
+  LoanWithDetails,
+  CreateLoanInput,
+  InterestFrequency,
+  LoanStatus,
+  UnpaidInterestSummary,
+  PendingReceipt,
+} from '../types/loans';
 
-export type LoanStatus = 'pending' | 'active' | 'late' | 'closed';
-export type InterestFrequency = 'daily' | 'weekly' | 'monthly';
-export interface PersonalLoan {
-  id: string;
-  lenderUserId: string;
-  lenderName: string;
-  borrowerUserId: string | null;
-  borrowerName: string;
-  borrowerPhone: string;
-  isITheBorrower: boolean;
-  amountInitial: number;
-  currency: 'MGA' | 'EUR';
-  interestRate: number;
-  interestFrequency: InterestFrequency;
-  currentCapital: number;
-  dueDate: string | null;
-  description: string | null;
-  photoUrl: string | null;
-  transactionId?: string | null; // Transaction ID that created this loan
-  status: LoanStatus;
-  lenderConfirmedAt: string | null;
-  borrowerConfirmedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+// Réexport des types pour rétrocompatibilité (10+ fichiers importent ces types depuis ce module)
+export type {
+  PersonalLoan,
+  LoanRepayment,
+  LoanInterestPeriod,
+  LoanWithDetails,
+  CreateLoanInput,
+  InterestFrequency,
+  LoanStatus,
+  UnpaidInterestSummary,
+} from '../types/loans';
+
+const SUPABASE_TIMEOUT_MS = 5000;
+const LOG_TAG = '💰 [LoanService]';
+
+// ============================================================================
+// HELPERS — STATUT ONLINE / IDS
+// ============================================================================
+
+function isOnline(): boolean {
+  // Source de vérité S67 : useAppStore.isOnline (alimenté par onlineStatusService)
+  // Fallback navigator.onLine si le store n'est pas encore initialisé
+  try {
+    return useAppStore.getState().isOnline ?? navigator.onLine;
+  } catch {
+    return navigator.onLine;
+  }
 }
 
-export interface LoanRepayment {
-  id: string;
-  loanId: string;
-  transactionId: string | null;
-  amountPaid: number;
-  interestPortion: number;
-  capitalPortion: number;
-  paymentDate: string;
-  notes: string | null;
-  confirmedAt: string | null;
-  confirmedByUserId: string | null;
-  createdAt: string;
-}
-
-export interface LoanInterestPeriod {
-  id: string;
-  loanId: string;
-  periodStart: string;
-  periodEnd: string;
-  capitalAtStart: number;
-  interestAmount: number;
-  status: 'paid' | 'unpaid' | 'capitalized';
-  createdAt: string;
-}
-
-export interface LoanWithDetails extends PersonalLoan {
-  repayments: LoanRepayment[];
-  interestPeriods: LoanInterestPeriod[];
-  totalRepaid: number;
-  totalInterestPaid: number;
-  remainingBalance: number;
-  isOverdue: boolean;
-}
-export interface CreateLoanInput {
-  borrowerUserId?: string | null;
-  borrowerName?: string;
-  borrowerPhone?: string;
-  isITheBorrower: boolean;
-  amountInitial: number;
-  currency: 'MGA' | 'EUR';
-  interestRate: number;
-  interestFrequency: InterestFrequency;
-  dueDate?: string | null;
-  description?: string | null;
-  photoUrl?: string | null;
-  transactionId?: string; // Optional transaction ID to link loan creation to a transaction
-}
+// ============================================================================
+// HELPERS — MAPPING snake_case ↔ camelCase
+// ============================================================================
 
 function mapLoanRow(row: any): PersonalLoan {
   return {
-    id: row.id, lenderUserId: row.lender_user_id, lenderName: row.lender_name || '',
+    id: row.id,
+    lenderUserId: row.lender_user_id,
+    lenderName: row.lender_name || '',
     borrowerUserId: row.borrower_user_id,
-    borrowerName: row.borrower_name, borrowerPhone: row.borrower_phone,
-    isITheBorrower: row.is_i_the_borrower, amountInitial: row.amount_initial,
-    currency: row.currency, interestRate: row.interest_rate,
-    interestFrequency: row.interest_frequency, currentCapital: row.current_capital,
-    dueDate: row.due_date, description: row.description, photoUrl: row.photo_url,
+    borrowerName: row.borrower_name,
+    borrowerPhone: row.borrower_phone,
+    isITheBorrower: row.is_i_the_borrower,
+    amountInitial: row.amount_initial,
+    currency: row.currency,
+    interestRate: row.interest_rate,
+    interestFrequency: row.interest_frequency,
+    currentCapital: row.current_capital,
+    dueDate: row.due_date,
+    description: row.description,
+    photoUrl: row.photo_url,
     transactionId: row.transaction_id || null,
-    status: row.status, lenderConfirmedAt: row.lender_confirmed_at ?? null, borrowerConfirmedAt: row.borrower_confirmed_at ?? null,
-    createdAt: row.created_at, updatedAt: row.updated_at,
+    status: row.status,
+    lenderConfirmedAt: row.lender_confirmed_at ?? null,
+    borrowerConfirmedAt: row.borrower_confirmed_at ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
+}
+
+function loanToRow(loan: Partial<PersonalLoan>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (loan.id !== undefined) row.id = loan.id;
+  if (loan.lenderUserId !== undefined) row.lender_user_id = loan.lenderUserId;
+  if (loan.lenderName !== undefined) row.lender_name = loan.lenderName;
+  if (loan.borrowerUserId !== undefined) row.borrower_user_id = loan.borrowerUserId;
+  if (loan.borrowerName !== undefined) row.borrower_name = loan.borrowerName;
+  if (loan.borrowerPhone !== undefined) row.borrower_phone = loan.borrowerPhone;
+  if (loan.isITheBorrower !== undefined) row.is_i_the_borrower = loan.isITheBorrower;
+  if (loan.amountInitial !== undefined) row.amount_initial = loan.amountInitial;
+  if (loan.currency !== undefined) row.currency = loan.currency;
+  if (loan.interestRate !== undefined) row.interest_rate = loan.interestRate;
+  if (loan.interestFrequency !== undefined) row.interest_frequency = loan.interestFrequency;
+  if (loan.currentCapital !== undefined) row.current_capital = loan.currentCapital;
+  if (loan.dueDate !== undefined) row.due_date = loan.dueDate;
+  if (loan.description !== undefined) row.description = loan.description;
+  if (loan.photoUrl !== undefined) row.photo_url = loan.photoUrl;
+  if (loan.transactionId !== undefined) row.transaction_id = loan.transactionId;
+  if (loan.status !== undefined) row.status = loan.status;
+  if (loan.lenderConfirmedAt !== undefined) row.lender_confirmed_at = loan.lenderConfirmedAt;
+  if (loan.borrowerConfirmedAt !== undefined) row.borrower_confirmed_at = loan.borrowerConfirmedAt;
+  if (loan.createdAt !== undefined) row.created_at = loan.createdAt;
+  if (loan.updatedAt !== undefined) row.updated_at = loan.updatedAt;
+  return row;
 }
 
 function mapRepaymentRow(row: any): LoanRepayment {
   return {
-    id: row.id, loanId: row.loan_id, transactionId: row.transaction_id,
-    amountPaid: row.amount_paid, interestPortion: row.interest_portion,
-    capitalPortion: row.capital_portion, paymentDate: row.payment_date,
-    notes: row.notes, confirmedAt: row.confirmed_at ?? null, confirmedByUserId: row.confirmed_by_user_id ?? null,
+    id: row.id,
+    loanId: row.loan_id,
+    transactionId: row.transaction_id,
+    amountPaid: row.amount_paid,
+    interestPortion: row.interest_portion,
+    capitalPortion: row.capital_portion,
+    paymentDate: row.payment_date,
+    notes: row.notes,
+    confirmedAt: row.confirmed_at ?? null,
+    confirmedByUserId: row.confirmed_by_user_id ?? null,
     createdAt: row.created_at,
   };
 }
+
+function repaymentToRow(rep: Partial<LoanRepayment> & { receiptUrl?: string | null }): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (rep.id !== undefined) row.id = rep.id;
+  if (rep.loanId !== undefined) row.loan_id = rep.loanId;
+  if (rep.transactionId !== undefined) row.transaction_id = rep.transactionId;
+  if (rep.amountPaid !== undefined) row.amount_paid = rep.amountPaid;
+  if (rep.interestPortion !== undefined) row.interest_portion = rep.interestPortion;
+  if (rep.capitalPortion !== undefined) row.capital_portion = rep.capitalPortion;
+  if (rep.paymentDate !== undefined) row.payment_date = rep.paymentDate;
+  if (rep.notes !== undefined) row.notes = rep.notes;
+  if (rep.confirmedAt !== undefined) row.confirmed_at = rep.confirmedAt;
+  if (rep.confirmedByUserId !== undefined) row.confirmed_by_user_id = rep.confirmedByUserId;
+  if (rep.createdAt !== undefined) row.created_at = rep.createdAt;
+  if (rep.receiptUrl !== undefined) row.receipt_url = rep.receiptUrl;
+  return row;
+}
+
 function mapInterestPeriodRow(row: any): LoanInterestPeriod {
   return {
-    id: row.id, loanId: row.loan_id, periodStart: row.period_start,
-    periodEnd: row.period_end, capitalAtStart: row.capital_at_start,
-    interestAmount: row.interest_amount, status: row.status,
+    id: row.id,
+    loanId: row.loan_id,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    capitalAtStart: row.capital_at_start,
+    interestAmount: row.interest_amount,
+    status: row.status,
     createdAt: row.created_at,
   };
 }
-function computeLoanDetails(loan: PersonalLoan, repayments: LoanRepayment[], interestPeriods: LoanInterestPeriod[]): LoanWithDetails {
+
+function interestPeriodToRow(p: Partial<LoanInterestPeriod>): Record<string, any> {
+  const row: Record<string, any> = {};
+  if (p.id !== undefined) row.id = p.id;
+  if (p.loanId !== undefined) row.loan_id = p.loanId;
+  if (p.periodStart !== undefined) row.period_start = p.periodStart;
+  if (p.periodEnd !== undefined) row.period_end = p.periodEnd;
+  if (p.capitalAtStart !== undefined) row.capital_at_start = p.capitalAtStart;
+  if (p.interestAmount !== undefined) row.interest_amount = p.interestAmount;
+  if (p.status !== undefined) row.status = p.status;
+  if (p.createdAt !== undefined) row.created_at = p.createdAt;
+  return row;
+}
+
+function computeLoanDetails(
+  loan: PersonalLoan,
+  repayments: LoanRepayment[],
+  interestPeriods: LoanInterestPeriod[]
+): LoanWithDetails {
   const totalRepaid = repayments.reduce((sum, r) => sum + r.amountPaid, 0);
   const totalInterestPaid = repayments.reduce((sum, r) => sum + r.interestPortion, 0);
   const today = new Date().toISOString().split('T')[0];
-  const isOverdue = loan.status === 'late' || (loan.dueDate !== null && loan.dueDate < today && loan.status !== 'closed');
-  return { ...loan, repayments, interestPeriods, totalRepaid, totalInterestPaid, remainingBalance: loan.currentCapital, isOverdue };
+  const isOverdue =
+    loan.status === 'late' ||
+    (loan.dueDate !== null && loan.dueDate < today && loan.status !== 'closed');
+  return {
+    ...loan,
+    repayments,
+    interestPeriods,
+    totalRepaid,
+    totalInterestPaid,
+    remainingBalance: loan.currentCapital,
+    isOverdue,
+  };
 }
+
+// ============================================================================
+// HELPERS — QUEUE DE SYNCHRONISATION
+// ============================================================================
+
+type LoanTable =
+  | 'personal_loans'
+  | 'loan_repayments'
+  | 'loan_interest_periods'
+  | 'pending_receipts';
+
+async function queueLoanSyncOperation(
+  userId: string,
+  operation: 'CREATE' | 'UPDATE' | 'DELETE',
+  tableName: LoanTable,
+  recordId: string,
+  data: Record<string, any>,
+  priority: SyncPriority = SYNC_PRIORITY.NORMAL
+): Promise<void> {
+  try {
+    const syncOp: SyncOperation = {
+      id: crypto.randomUUID(),
+      userId,
+      operation,
+      table_name: tableName,
+      data: { id: recordId, ...data },
+      timestamp: new Date(),
+      retryCount: 0,
+      status: 'pending',
+      priority,
+      syncTag: 'bazarkely-sync',
+      expiresAt: null,
+    };
+    await db.syncQueue.add(syncOp);
+    console.log(`${LOG_TAG} 📦 ${operation} ${tableName}/${recordId} ajouté à la queue (priorité ${priority})`);
+  } catch (error) {
+    console.error(`${LOG_TAG} ❌ Erreur push queue ${tableName}:`, error);
+  }
+}
+
+// ============================================================================
+// HELPERS — REFRESH BACKGROUND (Supabase → IndexedDB)
+// ============================================================================
+
+async function refreshLoansFromSupabase(userId: string): Promise<void> {
+  try {
+    const { data: loansData, error } = (await withTimeout(
+      supabase
+        .from('personal_loans')
+        .select('*')
+        .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`)
+        .order('created_at', { ascending: false }),
+      SUPABASE_TIMEOUT_MS,
+      'loanService.refreshLoansFromSupabase'
+    )) as any;
+
+    if (error || !loansData) {
+      console.warn(`${LOG_TAG} ⚠️ Refresh prêts échoué:`, error);
+      return;
+    }
+
+    const loans = (loansData as any[]).map(mapLoanRow);
+    if (loans.length > 0) {
+      await db.personalLoans.bulkPut(loans);
+    }
+
+    const loanIds = loans.map((l) => l.id);
+
+    if (loanIds.length > 0) {
+      const [{ data: repData }, { data: ipData }] = await Promise.all([
+        withTimeout(
+          supabase.from('loan_repayments').select('*').in('loan_id', loanIds),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.refreshRepayments'
+        ) as Promise<any>,
+        withTimeout(
+          supabase.from('loan_interest_periods').select('*').in('loan_id', loanIds),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.refreshInterestPeriods'
+        ) as Promise<any>,
+      ]);
+
+      if (repData) {
+        const repayments = (repData as any[]).map(mapRepaymentRow);
+        if (repayments.length > 0) {
+          await db.loanRepayments.bulkPut(repayments);
+        }
+      }
+      if (ipData) {
+        const periods = (ipData as any[]).map(mapInterestPeriodRow);
+        if (periods.length > 0) {
+          await db.loanInterestPeriods.bulkPut(periods);
+        }
+      }
+    }
+
+    console.log(`${LOG_TAG} 🔄 IndexedDB rafraîchi avec ${loans.length} prêt(s) (background)`);
+  } catch (error) {
+    console.warn(`${LOG_TAG} ⚠️ Refresh background échoué (non bloquant):`, error);
+  }
+}
+
+async function getLocalLoansForUser(userId: string): Promise<PersonalLoan[]> {
+  // Dexie ne gère pas un OR multi-index proprement ; on combine deux queries + dedupe par id
+  const [lent, borrowed] = await Promise.all([
+    db.personalLoans.where('lenderUserId').equals(userId).toArray(),
+    db.personalLoans.where('borrowerUserId').equals(userId).toArray(),
+  ]);
+  const dedup = new Map<string, PersonalLoan>();
+  for (const l of lent) dedup.set(l.id, l);
+  for (const l of borrowed) dedup.set(l.id, l);
+  return Array.from(dedup.values()).sort((a, b) =>
+    (b.createdAt || '').localeCompare(a.createdAt || '')
+  );
+}
+
+// ============================================================================
+// READS — OFFLINE-FIRST STALE-WHILE-REVALIDATE
+// ============================================================================
 
 export async function getMyLoans(): Promise<LoanWithDetails[]> {
   try {
     const user = await getCurrentUser();
     if (!user) throw new Error('Utilisateur non authentifié');
-    const { data: loansData, error: loansError } = await supabase
-      .from('personal_loans')
-      .select('*')
-      .or(`lender_user_id.eq.${user.id},borrower_user_id.eq.${user.id}`)
-      .order('created_at', { ascending: false });
-    if (loansError) throw new Error(`Erreur récupération prêts: ${loansError.message}`);
-    if (!loansData || loansData.length === 0) return [];
-    const loanIds = loansData.map((l) => l.id);
-    const { data: repaymentsData, error: repaymentsError } = await supabase
-      .from('loan_repayments')
-      .select('*')
-      .in('loan_id', loanIds);
-    if (repaymentsError) throw new Error(`Erreur récupération remboursements: ${repaymentsError.message}`);
-    const { data: interestPeriodsData, error: interestPeriodsError } = await supabase
-      .from('loan_interest_periods')
-      .select('*')
-      .in('loan_id', loanIds);
-    if (interestPeriodsError) throw new Error(`Erreur récupération périodes: ${interestPeriodsError.message}`);
-    const repaymentsByLoan = new Map<string, LoanRepayment[]>();
-    (repaymentsData || []).forEach((r) => {
-      const repayment = mapRepaymentRow(r);
-      if (!repaymentsByLoan.has(repayment.loanId)) repaymentsByLoan.set(repayment.loanId, []);
-      repaymentsByLoan.get(repayment.loanId)!.push(repayment);
-    });
-    const interestPeriodsByLoan = new Map<string, LoanInterestPeriod[]>();
-    (interestPeriodsData || []).forEach((ip) => {
-      const period = mapInterestPeriodRow(ip);
-      const arr = interestPeriodsByLoan.get(period.loanId) || [];
-      if (arr.length === 0) interestPeriodsByLoan.set(period.loanId, arr);
-      arr.push(period);
-    });
-    return loansData.map((loanRow) => computeLoanDetails(mapLoanRow(loanRow), repaymentsByLoan.get(loanRow.id) || [], interestPeriodsByLoan.get(loanRow.id) || []));
+    const userId = user.id;
+
+    // STEP 1: Lecture IndexedDB en premier
+    const localLoans = await getLocalLoansForUser(userId);
+
+    // STEP 2: Si données locales → retour immédiat + refresh background SWR
+    if (localLoans.length > 0) {
+      const loanIds = localLoans.map((l) => l.id);
+      const [localRepayments, localPeriods] = await Promise.all([
+        db.loanRepayments.where('loanId').anyOf(loanIds).toArray(),
+        db.loanInterestPeriods.where('loanId').anyOf(loanIds).toArray(),
+      ]);
+
+      const repByLoan = new Map<string, LoanRepayment[]>();
+      for (const r of localRepayments) {
+        const arr = repByLoan.get(r.loanId) || [];
+        arr.push(r);
+        repByLoan.set(r.loanId, arr);
+      }
+      const periodsByLoan = new Map<string, LoanInterestPeriod[]>();
+      for (const p of localPeriods) {
+        const arr = periodsByLoan.get(p.loanId) || [];
+        arr.push(p);
+        periodsByLoan.set(p.loanId, arr);
+      }
+
+      const result = localLoans.map((l) =>
+        computeLoanDetails(l, repByLoan.get(l.id) || [], periodsByLoan.get(l.id) || [])
+      );
+
+      console.log(`${LOG_TAG} ✅ ${result.length} prêt(s) depuis IndexedDB (retour immédiat)`);
+
+      if (isOnline()) {
+        refreshLoansFromSupabase(userId).catch(() => {
+          /* silencieux : l'UI a déjà les données locales */
+        });
+      }
+
+      return result;
+    }
+
+    // STEP 3: IndexedDB vide ET offline → tableau vide
+    if (!isOnline()) {
+      console.warn(`${LOG_TAG} ⚠️ IndexedDB vide et offline → tableau vide`);
+      return [];
+    }
+
+    // STEP 4: IndexedDB vide ET online → fetch Supabase synchrone (premier usage)
+    console.log(`${LOG_TAG} 🌐 IndexedDB vide → fetch Supabase synchrone...`);
+    try {
+      const { data: loansData, error: loansError } = (await withTimeout(
+        supabase
+          .from('personal_loans')
+          .select('*')
+          .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`)
+          .order('created_at', { ascending: false }),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.getMyLoans/initial'
+      )) as any;
+      if (loansError) throw new Error(loansError.message);
+      if (!loansData || loansData.length === 0) return [];
+
+      const loans = (loansData as any[]).map(mapLoanRow);
+      const loanIds = loans.map((l) => l.id);
+
+      const [{ data: repaymentsData }, { data: interestPeriodsData }] = await Promise.all([
+        withTimeout(
+          supabase.from('loan_repayments').select('*').in('loan_id', loanIds),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.getMyLoans/repayments'
+        ) as Promise<any>,
+        withTimeout(
+          supabase.from('loan_interest_periods').select('*').in('loan_id', loanIds),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.getMyLoans/periods'
+        ) as Promise<any>,
+      ]);
+
+      const repayments = ((repaymentsData as any[]) || []).map(mapRepaymentRow);
+      const periods = ((interestPeriodsData as any[]) || []).map(mapInterestPeriodRow);
+
+      // Caching IndexedDB
+      await db.personalLoans.bulkPut(loans);
+      if (repayments.length > 0) await db.loanRepayments.bulkPut(repayments);
+      if (periods.length > 0) await db.loanInterestPeriods.bulkPut(periods);
+
+      const repByLoan = new Map<string, LoanRepayment[]>();
+      for (const r of repayments) {
+        const arr = repByLoan.get(r.loanId) || [];
+        arr.push(r);
+        repByLoan.set(r.loanId, arr);
+      }
+      const periodsByLoan = new Map<string, LoanInterestPeriod[]>();
+      for (const p of periods) {
+        const arr = periodsByLoan.get(p.loanId) || [];
+        arr.push(p);
+        periodsByLoan.set(p.loanId, arr);
+      }
+
+      console.log(`${LOG_TAG} ✅ ${loans.length} prêt(s) depuis Supabase (premier fetch)`);
+
+      return loans.map((l) =>
+        computeLoanDetails(l, repByLoan.get(l.id) || [], periodsByLoan.get(l.id) || [])
+      );
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ Échec Supabase → tableau vide:`, error);
+      return [];
+    }
   } catch (error) {
-    console.error('Erreur dans getMyLoans:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la récupération des prêts');
+    console.error(`${LOG_TAG} ❌ getMyLoans:`, error);
+    return [];
   }
 }
+
 export async function getLoanById(id: string): Promise<LoanWithDetails | null> {
   try {
     const user = await getCurrentUser();
     if (!user) throw new Error('Utilisateur non authentifié');
-    const { data: loanData, error: loanError } = await supabase
-      .from('personal_loans')
-      .select('*')
-      .eq('id', id)
-      .single();
+
+    // STEP 1: IndexedDB en premier
+    const localLoan = await db.personalLoans.get(id);
+    if (localLoan) {
+      if (localLoan.lenderUserId !== user.id && localLoan.borrowerUserId !== user.id) {
+        throw new Error('Accès non autorisé à ce prêt');
+      }
+      const [reps, periods] = await Promise.all([
+        db.loanRepayments.where('loanId').equals(id).toArray(),
+        db.loanInterestPeriods.where('loanId').equals(id).toArray(),
+      ]);
+      const sortedReps = [...reps].sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
+      const sortedPeriods = [...periods].sort((a, b) =>
+        (b.periodStart || '').localeCompare(a.periodStart || '')
+      );
+
+      // Refresh background si online
+      if (isOnline()) {
+        refreshLoansFromSupabase(user.id).catch(() => {});
+      }
+
+      return computeLoanDetails(localLoan, sortedReps, sortedPeriods);
+    }
+
+    // STEP 2: Pas trouvé localement ET offline → null
+    if (!isOnline()) return null;
+
+    // STEP 3: Online → fetch Supabase synchrone
+    const { data: loanData, error: loanError } = (await withTimeout(
+      supabase.from('personal_loans').select('*').eq('id', id).single(),
+      SUPABASE_TIMEOUT_MS,
+      'loanService.getLoanById'
+    )) as any;
     if (loanError) {
       if (loanError.code === 'PGRST116') return null;
-      throw new Error(`Erreur récupération prêt: ${loanError.message}`);
+      throw new Error(loanError.message);
     }
     const loan = mapLoanRow(loanData);
     if (loan.lenderUserId !== user.id && loan.borrowerUserId !== user.id) {
       throw new Error('Accès non autorisé à ce prêt');
     }
-    const { data: repaymentsData, error: repaymentsError } = await supabase
-      .from('loan_repayments')
-      .select('*')
-      .eq('loan_id', id)
-      .order('payment_date', { ascending: false });
-    if (repaymentsError) throw new Error(`Erreur récupération remboursements: ${repaymentsError.message}`);
-    const { data: interestPeriodsData, error: interestPeriodsError } = await supabase
-      .from('loan_interest_periods')
-      .select('*')
-      .eq('loan_id', id)
-      .order('period_start', { ascending: false });
-    if (interestPeriodsError) throw new Error(`Erreur récupération périodes: ${interestPeriodsError.message}`);
-    return computeLoanDetails(loan, (repaymentsData || []).map(mapRepaymentRow), (interestPeriodsData || []).map(mapInterestPeriodRow));
+
+    const [{ data: repaymentsData }, { data: interestPeriodsData }] = await Promise.all([
+      withTimeout(
+        supabase
+          .from('loan_repayments')
+          .select('*')
+          .eq('loan_id', id)
+          .order('payment_date', { ascending: false }),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.getLoanById/repayments'
+      ) as Promise<any>,
+      withTimeout(
+        supabase
+          .from('loan_interest_periods')
+          .select('*')
+          .eq('loan_id', id)
+          .order('period_start', { ascending: false }),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.getLoanById/periods'
+      ) as Promise<any>,
+    ]);
+
+    const repayments = ((repaymentsData as any[]) || []).map(mapRepaymentRow);
+    const periods = ((interestPeriodsData as any[]) || []).map(mapInterestPeriodRow);
+
+    await db.personalLoans.put(loan);
+    if (repayments.length > 0) await db.loanRepayments.bulkPut(repayments);
+    if (periods.length > 0) await db.loanInterestPeriods.bulkPut(periods);
+
+    return computeLoanDetails(loan, repayments, periods);
   } catch (error) {
-    console.error('Erreur dans getLoanById:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la récupération du prêt');
-  }
-}
-export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-    if (!input.borrowerName && !input.borrowerUserId) {
-      throw new Error('Le nom de l\'emprunteur ou l\'ID utilisateur est requis');
-    }
-    const { data, error } = await supabase
-      .from('personal_loans')
-      .insert({
-        lender_user_id: user.id,
-        borrower_user_id: input.borrowerUserId || null,
-        borrower_name: input.borrowerName || '',
-        borrower_phone: input.borrowerPhone || '',
-        is_i_the_borrower: input.isITheBorrower,
-        amount_initial: input.amountInitial,
-        currency: input.currency,
-        interest_rate: input.interestRate,
-        interest_frequency: input.interestFrequency,
-        current_capital: input.amountInitial,
-        due_date: input.dueDate || null,
-        description: input.description || null,
-        photo_url: input.photoUrl || null,
-        transaction_id: input.transactionId || null,
-        status: 'pending' as LoanStatus,
-      })
-      .select()
-      .single();
-    if (error) throw new Error(`Erreur création prêt: ${error.message}`);
-    return mapLoanRow(data);
-  } catch (error) {
-    console.error('Erreur dans createLoan:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la création du prêt');
-  }
-}
-export async function updateLoanStatus(id: string, status: LoanStatus): Promise<void> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-    const { data: loanData, error: checkError } = await supabase
-      .from('personal_loans')
-      .select('lender_user_id, borrower_user_id')
-      .eq('id', id)
-      .single();
-    if (checkError) throw new Error(`Erreur vérification prêt: ${checkError.message}`);
-    if (loanData.lender_user_id !== user.id && loanData.borrower_user_id !== user.id) {
-      throw new Error('Accès non autorisé à ce prêt');
-    }
-    const { error } = await supabase
-      .from('personal_loans')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    if (error) throw new Error(`Erreur mise à jour statut: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans updateLoanStatus:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la mise à jour du statut');
-  }
-}
-export async function deleteLoan(id: string): Promise<void> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-    const { data: loanData, error: checkError } = await supabase
-      .from('personal_loans')
-      .select('lender_user_id')
-      .eq('id', id)
-      .single();
-    if (checkError) throw new Error(`Erreur vérification prêt: ${checkError.message}`);
-    if (loanData.lender_user_id !== user.id) throw new Error('Seul le prêteur peut supprimer ce prêt');
-    const { error } = await supabase.from('personal_loans').delete().eq('id', id);
-    if (error) throw new Error(`Erreur suppression prêt: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans deleteLoan:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la suppression du prêt');
-  }
-}
-export async function getLastUsedInterestSettings(): Promise<{ rate: number; frequency: InterestFrequency } | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('personal_loans')
-      .select('interest_rate, interest_frequency')
-      .eq('lender_user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error || !data) return null;
-    return {
-      rate: data.interest_rate,
-      frequency: data.interest_frequency as InterestFrequency
-    };
-  } catch {
+    console.error(`${LOG_TAG} ❌ getLoanById:`, error);
     return null;
-  }
-}
-
-// ============================================================================
-// PAYMENT ENGINE — Phase 2
-// ============================================================================
-
-export async function recordPayment(
-  loanId: string, amountPaid: number, paymentDate: string, notes?: string, transactionId?: string, receiptUrl: string | null = null
-): Promise<void> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-    const { data: loan, error: loanErr } = await supabase
-      .from('personal_loans').select('current_capital, status').eq('id', loanId).single();
-    if (loanErr || !loan) throw new Error('Prêt introuvable');
-
-    // Fetch unpaid interest periods, sum accrued interest
-    const { data: unpaidPeriods } = await supabase
-      .from('loan_interest_periods').select('id, interest_amount')
-      .eq('loan_id', loanId).eq('status', 'unpaid').order('period_start', { ascending: true });
-    const accrued = (unpaidPeriods || []).reduce((s, p) => s + (p.interest_amount || 0), 0);
-
-    let interestPortion = 0;
-    let capitalPortion = amountPaid;
-    if (accrued > 0) {
-      interestPortion = Math.min(amountPaid, accrued);
-      capitalPortion = Math.max(0, amountPaid - accrued);
-      // Mark periods as paid up to interestPortion amount
-      let remaining = interestPortion;
-      for (const p of (unpaidPeriods || [])) {
-        if (remaining <= 0) break;
-        const covered = Math.min(remaining, p.interest_amount);
-        if (covered >= p.interest_amount) {
-          await supabase.from('loan_interest_periods').update({ status: 'paid' }).eq('id', p.id);
-        }
-        remaining -= covered;
-      }
-    }
-
-    // Insert repayment row
-    const { error: repErr } = await supabase.from('loan_repayments').insert({
-      loan_id: loanId, transaction_id: transactionId || null,
-      amount_paid: amountPaid, interest_portion: interestPortion,
-      capital_portion: capitalPortion, payment_date: paymentDate, notes: notes || null,
-      ...(receiptUrl && { receipt_url: receiptUrl }),
-    });
-    if (repErr) throw new Error(`Erreur enregistrement paiement: ${repErr.message}`);
-
-    // Update loan capital and status
-    const newCapital = Math.max(0, loan.current_capital - capitalPortion);
-    const newStatus = newCapital <= 0 ? 'closed' : loan.status === 'pending' ? 'active' : loan.status;
-    const { error: updErr } = await supabase.from('personal_loans')
-      .update({ current_capital: newCapital, status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', loanId);
-    if (updErr) throw new Error(`Erreur mise à jour prêt: ${updErr.message}`);
-  } catch (error) {
-    console.error('Erreur dans recordPayment:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de l\'enregistrement du paiement');
   }
 }
 
 export async function getUnpaidInterestPeriods(loanId: string): Promise<LoanInterestPeriod[]> {
   try {
-    const { data, error } = await supabase
-      .from('loan_interest_periods').select('*')
-      .eq('loan_id', loanId).eq('status', 'unpaid').order('period_start', { ascending: true });
-    if (error) throw new Error(`Erreur récupération périodes impayées: ${error.message}`);
-    return (data || []).map(mapInterestPeriodRow);
+    // IndexedDB d'abord
+    const local = await db.loanInterestPeriods
+      .where('[loanId+status]')
+      .equals([loanId, 'unpaid'])
+      .toArray();
+    if (local.length > 0) {
+      return [...local].sort((a, b) => (a.periodStart || '').localeCompare(b.periodStart || ''));
+    }
+    if (!isOnline()) return [];
+    const { data, error } = (await withTimeout(
+      supabase
+        .from('loan_interest_periods')
+        .select('*')
+        .eq('loan_id', loanId)
+        .eq('status', 'unpaid')
+        .order('period_start', { ascending: true }),
+      SUPABASE_TIMEOUT_MS,
+      'loanService.getUnpaidInterestPeriods'
+    )) as any;
+    if (error) throw new Error(error.message);
+    const periods = ((data as any[]) || []).map(mapInterestPeriodRow);
+    if (periods.length > 0) await db.loanInterestPeriods.bulkPut(periods);
+    return periods;
   } catch (error) {
-    console.error('Erreur dans getUnpaidInterestPeriods:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue');
-  }
-}
-
-export async function generateInterestPeriod(loanId: string): Promise<void> {
-  try {
-    const { data: loan, error: loanErr } = await supabase
-      .from('personal_loans').select('current_capital, interest_rate, interest_frequency')
-      .eq('id', loanId).single();
-    if (loanErr || !loan) throw new Error('Prêt introuvable');
-    const interestAmount = loan.current_capital * (loan.interest_rate / 100);
-    const today = new Date();
-    const end = new Date(today);
-    if (loan.interest_frequency === 'daily') end.setDate(end.getDate() + 1);
-    else if (loan.interest_frequency === 'weekly') end.setDate(end.getDate() + 7);
-    else end.setMonth(end.getMonth() + 1);
-    const { error } = await supabase.from('loan_interest_periods').insert({
-      loan_id: loanId, period_start: today.toISOString().split('T')[0],
-      period_end: end.toISOString().split('T')[0], capital_at_start: loan.current_capital,
-      interest_amount: interestAmount, status: 'unpaid',
-    });
-    if (error) throw new Error(`Erreur génération période: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans generateInterestPeriod:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue');
-  }
-}
-
-export async function capitalizeOverdueInterests(loanId: string): Promise<void> {
-  try {
-    const { data: unpaid } = await supabase
-      .from('loan_interest_periods').select('id, interest_amount')
-      .eq('loan_id', loanId).eq('status', 'unpaid');
-    const totalOverdue = (unpaid || []).reduce((s, p) => s + (p.interest_amount || 0), 0);
-    if (totalOverdue <= 0) return;
-    const { data: loan } = await supabase
-      .from('personal_loans').select('current_capital').eq('id', loanId).single();
-    if (!loan) throw new Error('Prêt introuvable');
-    const { error: updErr } = await supabase.from('personal_loans')
-      .update({ current_capital: loan.current_capital + totalOverdue, updated_at: new Date().toISOString() })
-      .eq('id', loanId);
-    if (updErr) throw new Error(`Erreur capitalisation: ${updErr.message}`);
-    const ids = (unpaid || []).map((p) => p.id);
-    const { error: periodErr } = await supabase
-      .from('loan_interest_periods').update({ status: 'capitalized' }).in('id', ids);
-    if (periodErr) throw new Error(`Erreur mise à jour périodes: ${periodErr.message}`);
-  } catch (error) {
-    console.error('Erreur dans capitalizeOverdueInterests:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue');
+    console.error(`${LOG_TAG} ❌ getUnpaidInterestPeriods:`, error);
+    return [];
   }
 }
 
 export async function getRepaymentHistory(loanId: string): Promise<LoanRepayment[]> {
   try {
-    const { data, error } = await supabase
-      .from('loan_repayments').select('*')
-      .eq('loan_id', loanId).order('payment_date', { ascending: false });
-    if (error) throw new Error(`Erreur récupération historique: ${error.message}`);
-    return (data || []).map(mapRepaymentRow);
+    const local = await db.loanRepayments.where('loanId').equals(loanId).toArray();
+    if (local.length > 0) {
+      const sorted = [...local].sort((a, b) =>
+        (b.paymentDate || '').localeCompare(a.paymentDate || '')
+      );
+      if (isOnline()) {
+        // Refresh background
+        (async () => {
+          try {
+            const { data } = (await withTimeout(
+              supabase
+                .from('loan_repayments')
+                .select('*')
+                .eq('loan_id', loanId)
+                .order('payment_date', { ascending: false }),
+              SUPABASE_TIMEOUT_MS,
+              'loanService.getRepaymentHistory/refresh'
+            )) as any;
+            if (data) {
+              const fresh = (data as any[]).map(mapRepaymentRow);
+              if (fresh.length > 0) await db.loanRepayments.bulkPut(fresh);
+            }
+          } catch {
+            /* silencieux */
+          }
+        })();
+      }
+      return sorted;
+    }
+    if (!isOnline()) return [];
+    const { data, error } = (await withTimeout(
+      supabase
+        .from('loan_repayments')
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('payment_date', { ascending: false }),
+      SUPABASE_TIMEOUT_MS,
+      'loanService.getRepaymentHistory'
+    )) as any;
+    if (error) throw new Error(error.message);
+    const repayments = ((data as any[]) || []).map(mapRepaymentRow);
+    if (repayments.length > 0) await db.loanRepayments.bulkPut(repayments);
+    return repayments;
   } catch (error) {
-    console.error('Erreur dans getRepaymentHistory:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue');
+    console.error(`${LOG_TAG} ❌ getRepaymentHistory:`, error);
+    return [];
   }
 }
 
-export async function getUnlinkedRevenueTransactions(): Promise<
-  { id: string; description: string; amount: number; date: string; currency: string }[]
-> {
+export async function getLastUsedInterestSettings(): Promise<{
+  rate: number;
+  frequency: InterestFrequency;
+} | null> {
   try {
     const user = await getCurrentUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-    // Fetch transaction IDs already linked to repayments
-    const { data: linked } = await supabase
-      .from('loan_repayments').select('transaction_id').not('transaction_id', 'is', null);
-    const linkedIds = (linked || []).map((r) => r.transaction_id).filter(Boolean) as string[];
-    // Fetch income transactions not yet linked
-    // Note: Use original_currency column (not currency) - column renamed in migration 20260118134130
-    let query = supabase.from('transactions').select('id, description, amount, date, original_currency')
-      .eq('user_id', user.id).eq('type', 'income').order('date', { ascending: false }).limit(50);
-    if (linkedIds.length > 0) {
-      query = query.not('id', 'in', `(${linkedIds.join(',')})`);
-    }
-    const { data, error } = await query;
-    if (error) throw new Error(`Erreur récupération transactions: ${error.message}`);
-    return (data || []).map((t) => ({
-      id: t.id, description: t.description || '', amount: t.amount, date: t.date, currency: (t.original_currency || 'MGA') as string,
-    }));
-  } catch (error) {
-    console.error('Erreur dans getUnlinkedRevenueTransactions:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue');
+    if (!user) return null;
+    const lent = await db.personalLoans.where('lenderUserId').equals(user.id).toArray();
+    if (lent.length === 0) return null;
+    const last = [...lent].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+    return { rate: last.interestRate, frequency: last.interestFrequency };
+  } catch {
+    return null;
   }
 }
 
@@ -456,24 +611,14 @@ export async function getActiveLoansForDropdown(): Promise<
   try {
     const user = await getCurrentUser();
     if (!user) return [];
-    const { data, error } = await supabase
-      .from('personal_loans')
-      .select('id, is_i_the_borrower, lender_name, borrower_name, current_capital, currency')
-      .eq('status', 'active')
-      .or(`lender_user_id.eq.${user.id},borrower_user_id.eq.${user.id}`)
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Erreur dans getActiveLoansForDropdown:', error);
-      return [];
-    }
-    if (!data || data.length === 0) return [];
-    return data.map((loan) => {
-      const isITheBorrower = loan.is_i_the_borrower === true;
-      const lenderName = loan.lender_name || 'Prêteur inconnu';
-      const borrowerName = loan.borrower_name || 'Emprunteur inconnu';
-      const amount = loan.current_capital;
+    const localLoans = await getLocalLoansForUser(user.id);
+    const active = localLoans.filter((l) => l.status === 'active');
+    return active.map((loan) => {
+      const lenderName = loan.lenderName || 'Prêteur inconnu';
+      const borrowerName = loan.borrowerName || 'Emprunteur inconnu';
+      const amount = loan.currentCapital;
       const formattedAmount = amount.toLocaleString('fr-FR');
-      const label = isITheBorrower
+      const label = loan.isITheBorrower
         ? `Dette envers ${lenderName} ${formattedAmount}`
         : `Prêt à ${borrowerName} ${formattedAmount}`;
       return {
@@ -481,65 +626,76 @@ export async function getActiveLoansForDropdown(): Promise<
         label,
         remainingBalance: amount,
         currency: loan.currency,
-        isITheBorrower,
+        isITheBorrower: loan.isITheBorrower,
       };
     });
   } catch (error) {
-    console.error('Erreur dans getActiveLoansForDropdown:', error);
+    console.error(`${LOG_TAG} ❌ getActiveLoansForDropdown:`, error);
     return [];
   }
 }
 
-/**
- * Récupère l'ID d'un prêt à partir de l'ID de transaction associé
- * @param transactionId - ID de la transaction
- * @returns ID du prêt ou null si aucun prêt n'est associé à cette transaction
- */
+export async function getUnlinkedRevenueTransactions(): Promise<
+  { id: string; description: string; amount: number; date: string; currency: string }[]
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
+    // IDs déjà liés à un remboursement
+    const allRepayments = await db.loanRepayments.toArray();
+    const linkedIds = new Set(
+      allRepayments
+        .map((r) => r.transactionId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    );
+    // Transactions revenus locales
+    const localIncome = await db.transactions.where('userId').equals(user.id).toArray();
+    return localIncome
+      .filter((t) => t.type === 'income' && !linkedIds.has(t.id))
+      .sort((a, b) => {
+        const da = a.date instanceof Date ? a.date.getTime() : new Date(a.date as any).getTime();
+        const db_ = b.date instanceof Date ? b.date.getTime() : new Date(b.date as any).getTime();
+        return db_ - da;
+      })
+      .slice(0, 50)
+      .map((t) => ({
+        id: t.id,
+        description: t.description || '',
+        amount: t.amount,
+        date: t.date instanceof Date ? t.date.toISOString() : (t.date as any),
+        currency: (t.originalCurrency || 'MGA') as string,
+      }));
+  } catch (error) {
+    console.error(`${LOG_TAG} ❌ getUnlinkedRevenueTransactions:`, error);
+    return [];
+  }
+}
+
 export async function getLoanIdByTransactionId(transactionId: string): Promise<string | null> {
   try {
-    const { data, error } = await supabase
-      .from('personal_loans')
-      .select('id')
-      .eq('transaction_id', transactionId)
-      .maybeSingle();
-    if (error || !data) return null;
-    return data.id;
-  } catch (error) {
-    console.error('Erreur dans getLoanIdByTransactionId:', error);
+    const all = await db.personalLoans.toArray();
+    const match = all.find((l) => l.transactionId === transactionId);
+    return match ? match.id : null;
+  } catch {
     return null;
   }
 }
 
-/**
- * Récupère un prêt à partir de l'ID de transaction d'un remboursement
- * @param repaymentTransactionId - ID de la transaction de remboursement
- * @returns Objet contenant loanId et loan (LoanWithDetails) ou null si non trouvé
- */
 export async function getLoanByRepaymentTransactionId(
   repaymentTransactionId: string
 ): Promise<{ loanId: string; loan: LoanWithDetails | null } | null> {
   try {
-    const { data, error } = await supabase
-      .from('loan_repayments')
-      .select('loan_id, payment_date, created_at')
-      .eq('transaction_id', repaymentTransactionId)
-      .maybeSingle();
-    if (error || !data) return null;
-    const loan = await getLoanById(data.loan_id);
-    return { loanId: data.loan_id, loan };
+    const allReps = await db.loanRepayments.toArray();
+    const rep = allReps.find((r) => r.transactionId === repaymentTransactionId);
+    if (!rep) return null;
+    const loan = await getLoanById(rep.loanId);
+    return { loanId: rep.loanId, loan };
   } catch (error) {
-    console.error('Erreur dans getLoanByRepaymentTransactionId:', error);
+    console.error(`${LOG_TAG} ❌ getLoanByRepaymentTransactionId:`, error);
     return null;
   }
 }
 
-/**
- * Récupère l'index (numéro) d'un remboursement dans l'historique d'un prêt
- * Utile pour afficher "2e remboursement" par exemple
- * @param loanId - ID du prêt
- * @param repaymentTransactionId - ID de la transaction de remboursement
- * @returns Index du remboursement (1-based) ou 1 si non trouvé
- */
 export async function getRepaymentIndexForTransaction(
   loanId: string,
   repaymentTransactionId: string
@@ -549,246 +705,691 @@ export async function getRepaymentIndexForTransaction(
     const sorted = [...repayments].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-    const index = sorted.findIndex(r => r.transactionId === repaymentTransactionId);
+    const index = sorted.findIndex((r) => r.transactionId === repaymentTransactionId);
     return index >= 0 ? index + 1 : sorted.length + 1;
   } catch {
     return 1;
   }
 }
 
-/**
- * Résumé des intérêts impayés par prêt pour un utilisateur
- */
-export interface UnpaidInterestSummary {
-  loanId: string;
-  borrowerName: string;
-  totalUnpaid: number;
-  periodCount: number;
-  currency: string;
-}
-
-/**
- * Récupère le total des intérêts impayés groupés par prêt pour un utilisateur
- * @param userId - ID de l'utilisateur (lender ou borrower)
- * @returns Tableau des résumés d'intérêts impayés par prêt
- */
 export async function getTotalUnpaidInterestByLoan(userId: string): Promise<UnpaidInterestSummary[]> {
   try {
-    if (!userId) {
-      return [];
-    }
-
-    // Step 1: Get loan IDs where user is lender or borrower
-    const { data: loansData, error: loansError } = await supabase
-      .from('personal_loans')
-      .select('id, borrower_name, currency')
-      .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`);
-
-    if (loansError) {
-      console.error('Erreur dans getTotalUnpaidInterestByLoan (loans):', loansError);
-      return [];
-    }
-
-    if (!loansData || loansData.length === 0) {
-      return [];
-    }
-
-    const loanIds = loansData.map((l) => l.id);
+    if (!userId) return [];
+    const localLoans = await getLocalLoansForUser(userId);
+    if (localLoans.length === 0) return [];
+    const loanIds = localLoans.map((l) => l.id);
     const loansMap = new Map<string, { borrowerName: string; currency: string }>();
-    loansData.forEach((loan) => {
-      loansMap.set(loan.id, {
-        borrowerName: loan.borrower_name || 'Inconnu',
-        currency: loan.currency || 'MGA',
-      });
-    });
-
-    // Step 2: Query unpaid interest periods for these loans
-    const { data: periodsData, error: periodsError } = await supabase
-      .from('loan_interest_periods')
-      .select('loan_id, interest_amount')
-      .in('loan_id', loanIds)
-      .eq('status', 'unpaid');
-
-    if (periodsError) {
-      console.error('Erreur dans getTotalUnpaidInterestByLoan (periods):', periodsError);
-      return [];
-    }
-
-    if (!periodsData || periodsData.length === 0) {
-      return [];
-    }
-
-    // Step 3: Group by loan_id and calculate totals
-    const summaryMap = new Map<string, UnpaidInterestSummary>();
-
-    periodsData.forEach((period: any) => {
-      const loanId = period.loan_id;
-      const interestAmount = period.interest_amount || 0;
-      const loanInfo = loansMap.get(loanId);
-
-      if (!loanInfo) {
-        return; // Skip if loan info missing
-      }
-
-      if (!summaryMap.has(loanId)) {
-        summaryMap.set(loanId, {
-          loanId: loanId,
-          borrowerName: loanInfo.borrowerName,
-          totalUnpaid: 0,
-          periodCount: 0,
-          currency: loanInfo.currency,
-        });
-      }
-
-      const summary = summaryMap.get(loanId)!;
-      summary.totalUnpaid += interestAmount;
+    localLoans.forEach((l) =>
+      loansMap.set(l.id, {
+        borrowerName: l.borrowerName || 'Inconnu',
+        currency: l.currency || 'MGA',
+      })
+    );
+    const allPeriods = await db.loanInterestPeriods.where('loanId').anyOf(loanIds).toArray();
+    const unpaid = allPeriods.filter((p) => p.status === 'unpaid');
+    if (unpaid.length === 0) return [];
+    const map = new Map<string, UnpaidInterestSummary>();
+    for (const p of unpaid) {
+      const info = loansMap.get(p.loanId);
+      if (!info) continue;
+      const summary = map.get(p.loanId) || {
+        loanId: p.loanId,
+        borrowerName: info.borrowerName,
+        totalUnpaid: 0,
+        periodCount: 0,
+        currency: info.currency,
+      };
+      summary.totalUnpaid += p.interestAmount || 0;
       summary.periodCount += 1;
-    });
-
-    return Array.from(summaryMap.values());
+      map.set(p.loanId, summary);
+    }
+    return Array.from(map.values());
   } catch (error) {
-    console.error('Erreur dans getTotalUnpaidInterestByLoan:', error);
+    console.error(`${LOG_TAG} ❌ getTotalUnpaidInterestByLoan:`, error);
     return [];
   }
 }
 
-/**
- * Confirms a loan as the borrower, setting borrower_confirmed_at and activating the loan
- * @param loanId - ID of the loan to confirm
- */
-export async function confirmLoanAsBorrower(loanId: string): Promise<void> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-
-    const { error } = await supabase
-      .from('personal_loans')
-      .update({
-        borrower_confirmed_at: new Date().toISOString(),
-        status: 'active',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', loanId);
-
-    if (error) throw new Error(`Erreur confirmation prêt: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans confirmLoanAsBorrower:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la confirmation du prêt');
-  }
-}
-
-/**
- * Confirms a repayment as the lender, setting confirmed_at and confirmed_by_user_id
- * @param repaymentId - ID of the repayment to confirm
- */
-export async function confirmRepaymentAsLender(repaymentId: string): Promise<void> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Utilisateur non authentifié');
-
-    const { error } = await supabase
-      .from('loan_repayments')
-      .update({
-        confirmed_at: new Date().toISOString(),
-        confirmed_by_user_id: user.id
-      })
-      .eq('id', repaymentId);
-
-    if (error) throw new Error(`Erreur confirmation remboursement: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans confirmRepaymentAsLender:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la confirmation du remboursement');
-  }
-}
-
-/**
- * Checks if a loan is pending borrower confirmation
- * Lender created this loan, borrower has not confirmed yet.
- * @param loan - The loan to check
- * @returns true if loan is pending borrower confirmation
- */
-export function isPendingBorrowerConfirmation(loan: PersonalLoan): boolean {
-  return loan.status === 'pending' && loan.borrowerConfirmedAt === null && loan.isITheBorrower === false;
-}
-
-/**
- * Checks if a repayment is pending lender confirmation
- * Borrower declared this repayment, lender has not confirmed receipt yet.
- * @param repayment - The repayment to check
- * @returns true if repayment is pending lender confirmation
- */
-export function isPendingLenderRepaymentConfirmation(repayment: LoanRepayment): boolean {
-  return repayment.confirmedAt === null;
-}
-
-/**
- * Merges target loans' beneficiary identity into a canonical one (anchor wins).
- * Rewrites borrower_name (always) + borrower_user_id + borrower_phone on target loans
- * (when user is the lender). When the current user is the borrower, rewrites lender_name
- * + lender_user_id (the lender_phone column doesn't exist).
- * @param targetLoanIds - IDs of loans whose beneficiary will be rewritten
- * @param canonical - The anchor's identity fields (which become canonical)
- * @param userIsBorrower - true if current user is the borrower across these loans (rewrites lender side)
- */
-export async function mergeBeneficiaryGroups(
-  targetLoanIds: string[],
-  canonical: { name: string; userId: string | null; phone: string },
-  userIsBorrower: boolean
-): Promise<void> {
-  if (targetLoanIds.length === 0) return;
-  try {
-    const update: Record<string, string | null> = userIsBorrower
-      ? {
-          lender_name: canonical.name,
-          lender_user_id: canonical.userId,
-        }
-      : {
-          borrower_name: canonical.name,
-          borrower_user_id: canonical.userId,
-          borrower_phone: canonical.phone,
-        };
-    update.updated_at = new Date().toISOString();
-    const { error } = await supabase
-      .from('personal_loans')
-      .update(update)
-      .in('id', targetLoanIds);
-    if (error) throw new Error(`Erreur fusion bénéficiaires: ${error.message}`);
-  } catch (error) {
-    console.error('Erreur dans mergeBeneficiaryGroups:', error);
-    throw error instanceof Error ? error : new Error('Erreur inconnue lors de la fusion des bénéficiaires');
-  }
-}
-
-/**
- * Returns the distinct beneficiary names (borrower or lender) used across the
- * current user's loans, deduplicated case-insensitively.
- * Used to power the autocomplete datalist when creating a new loan.
- */
 export async function getDistinctBeneficiaryNames(): Promise<string[]> {
   try {
     const user = await getCurrentUser();
     if (!user) return [];
-    const { data, error } = await supabase
-      .from('personal_loans')
-      .select('borrower_name, lender_name')
-      .or(`lender_user_id.eq.${user.id},borrower_user_id.eq.${user.id}`);
-    if (error) {
-      console.error('Erreur dans getDistinctBeneficiaryNames:', error);
-      return [];
-    }
+    const local = await getLocalLoansForUser(user.id);
     const seen = new Map<string, string>();
-    (data || []).forEach((row: any) => {
-      const candidates = [row?.borrower_name, row?.lender_name];
+    for (const loan of local) {
+      const candidates = [loan.borrowerName, loan.lenderName];
       for (const raw of candidates) {
         if (typeof raw === 'string' && raw.trim().length > 0) {
           const key = raw.trim().toLowerCase();
           if (!seen.has(key)) seen.set(key, raw.trim());
         }
       }
-    });
-    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+    }
+    return Array.from(seen.values()).sort((a, b) =>
+      a.localeCompare(b, 'fr', { sensitivity: 'base' })
+    );
   } catch (error) {
-    console.error('Erreur dans getDistinctBeneficiaryNames:', error);
+    console.error(`${LOG_TAG} ❌ getDistinctBeneficiaryNames:`, error);
     return [];
   }
 }
+
+// ============================================================================
+// MUTATIONS — OFFLINE-FIRST (Dexie write → Supabase sync ou queue)
+// ============================================================================
+
+export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  if (!input.borrowerName && !input.borrowerUserId) {
+    throw new Error("Le nom de l'emprunteur ou l'ID utilisateur est requis");
+  }
+
+  const loanId = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  const loan: PersonalLoan = {
+    id: loanId,
+    lenderUserId: user.id,
+    lenderName: '', // sera rempli côté serveur via trigger ; vide en local au début
+    borrowerUserId: input.borrowerUserId || null,
+    borrowerName: input.borrowerName || '',
+    borrowerPhone: input.borrowerPhone || '',
+    isITheBorrower: input.isITheBorrower,
+    amountInitial: input.amountInitial,
+    currency: input.currency,
+    interestRate: input.interestRate,
+    interestFrequency: input.interestFrequency,
+    currentCapital: input.amountInitial,
+    dueDate: input.dueDate || null,
+    description: input.description || null,
+    photoUrl: input.photoUrl || null,
+    transactionId: input.transactionId || null,
+    status: 'pending',
+    lenderConfirmedAt: null,
+    borrowerConfirmedAt: null,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  // STEP 1: IndexedDB immédiat
+  await db.personalLoans.add(loan);
+  console.log(`${LOG_TAG} ✅ Prêt créé en IndexedDB: ${loanId}`);
+
+  // STEP 2: Tentative Supabase si online
+  if (isOnline()) {
+    try {
+      const { data, error } = (await withTimeout(
+        supabase
+          .from('personal_loans')
+          .insert(loanToRow(loan))
+          .select()
+          .single(),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.createLoan'
+      )) as any;
+      if (error) throw new Error(error.message);
+      const synced = mapLoanRow(data);
+      if (synced.id !== loanId) {
+        await db.personalLoans.delete(loanId);
+        await db.personalLoans.add(synced);
+      } else {
+        await db.personalLoans.put(synced);
+      }
+      console.log(`${LOG_TAG} 🌐 Prêt synchronisé Supabase: ${synced.id}`);
+      return synced;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ Sync Supabase échouée, push dans queue:`, error);
+      await queueLoanSyncOperation(user.id, 'CREATE', 'personal_loans', loanId, loanToRow(loan));
+      return loan;
+    }
+  }
+
+  // STEP 3: Offline → queue
+  console.log(`${LOG_TAG} 📦 Mode offline, prêt poussé dans queue`);
+  await queueLoanSyncOperation(user.id, 'CREATE', 'personal_loans', loanId, loanToRow(loan));
+  return loan;
+}
+
+export async function updateLoanStatus(id: string, status: LoanStatus): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const existing = await db.personalLoans.get(id);
+  if (existing) {
+    if (existing.lenderUserId !== user.id && existing.borrowerUserId !== user.id) {
+      throw new Error('Accès non autorisé à ce prêt');
+    }
+  }
+  const updatedAt = new Date().toISOString();
+  await db.personalLoans.update(id, { status, updatedAt });
+
+  const payload = { status, updated_at: updatedAt };
+
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(payload).eq('id', id),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.updateLoanStatus'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ updateLoanStatus Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', id, payload);
+}
+
+export async function deleteLoan(id: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const existing = await db.personalLoans.get(id);
+  if (existing && existing.lenderUserId !== user.id) {
+    throw new Error('Seul le prêteur peut supprimer ce prêt');
+  }
+
+  // Supprimer aussi les sous-entités locales
+  await db.personalLoans.delete(id);
+  const reps = await db.loanRepayments.where('loanId').equals(id).toArray();
+  if (reps.length > 0) {
+    await db.loanRepayments.bulkDelete(reps.map((r) => r.id));
+  }
+  const periods = await db.loanInterestPeriods.where('loanId').equals(id).toArray();
+  if (periods.length > 0) {
+    await db.loanInterestPeriods.bulkDelete(periods.map((p) => p.id));
+  }
+
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').delete().eq('id', id),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.deleteLoan'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ deleteLoan Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'DELETE', 'personal_loans', id, {});
+}
+
+export async function confirmLoanAsBorrower(loanId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const updatedAt = new Date().toISOString();
+  const borrowerConfirmedAt = updatedAt;
+  await db.personalLoans.update(loanId, {
+    borrowerConfirmedAt,
+    status: 'active' as LoanStatus,
+    updatedAt,
+  });
+  const payload = {
+    borrower_confirmed_at: borrowerConfirmedAt,
+    status: 'active',
+    updated_at: updatedAt,
+  };
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(payload).eq('id', loanId),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.confirmLoanAsBorrower'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ confirmLoanAsBorrower Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', loanId, payload);
+}
+
+export async function confirmRepaymentAsLender(repaymentId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const confirmedAt = new Date().toISOString();
+  await db.loanRepayments.update(repaymentId, {
+    confirmedAt,
+    confirmedByUserId: user.id,
+  });
+  const payload = {
+    confirmed_at: confirmedAt,
+    confirmed_by_user_id: user.id,
+  };
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('loan_repayments').update(payload).eq('id', repaymentId),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.confirmRepaymentAsLender'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ confirmRepaymentAsLender Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'UPDATE', 'loan_repayments', repaymentId, payload);
+}
+
+/**
+ * Enregistre un paiement de prêt (Phase 2 — engine intérêts/capital).
+ *
+ * Offline-first :
+ * - Read loan, unpaid periods depuis IndexedDB
+ * - Calcule interestPortion / capitalPortion / nouveau capital
+ * - Update Dexie : périodes payées, nouveau repayment, prêt mis à jour
+ * - Pour chaque mutation, tente Supabase si online, sinon queue
+ *
+ * @param receiptFileOrUrl — Soit l'URL déjà uploadée (cas online où PaymentModal a pré-uploadé),
+ *                            soit un File à uploader/différer côté service, soit null
+ */
+export async function recordPayment(
+  loanId: string,
+  amountPaid: number,
+  paymentDate: string,
+  notes?: string,
+  transactionId?: string | null,
+  receiptFileOrUrl: File | string | null = null
+): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+
+  const loan = await db.personalLoans.get(loanId);
+  if (!loan) {
+    if (isOnline()) {
+      // Fallback : recharger ce prêt depuis Supabase
+      const remote = await getLoanById(loanId);
+      if (!remote) throw new Error('Prêt introuvable');
+    } else {
+      throw new Error('Prêt introuvable en local — connexion requise pour le premier chargement');
+    }
+  }
+  const currentLoan = (await db.personalLoans.get(loanId)) as PersonalLoan;
+
+  // Récupérer les périodes impayées (locales) triées
+  const unpaidPeriods = (
+    await db.loanInterestPeriods.where('[loanId+status]').equals([loanId, 'unpaid']).toArray()
+  ).sort((a, b) => (a.periodStart || '').localeCompare(b.periodStart || ''));
+  const accrued = unpaidPeriods.reduce((s, p) => s + (p.interestAmount || 0), 0);
+
+  let interestPortion = 0;
+  let capitalPortion = amountPaid;
+  const periodsToMarkPaid: string[] = [];
+
+  if (accrued > 0) {
+    interestPortion = Math.min(amountPaid, accrued);
+    capitalPortion = Math.max(0, amountPaid - accrued);
+    let remaining = interestPortion;
+    for (const p of unpaidPeriods) {
+      if (remaining <= 0) break;
+      const covered = Math.min(remaining, p.interestAmount);
+      if (covered >= p.interestAmount) {
+        periodsToMarkPaid.push(p.id);
+      }
+      remaining -= covered;
+    }
+  }
+
+  // STEP 1: Mark periods paid in Dexie + queue
+  const updatedAt = new Date().toISOString();
+  for (const periodId of periodsToMarkPaid) {
+    await db.loanInterestPeriods.update(periodId, { status: 'paid' });
+    if (isOnline()) {
+      try {
+        const { error } = await withTimeout(
+          supabase
+            .from('loan_interest_periods')
+            .update({ status: 'paid' })
+            .eq('id', periodId),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.recordPayment/markPeriodPaid'
+        );
+        if (error) throw error;
+      } catch {
+        await queueLoanSyncOperation(user.id, 'UPDATE', 'loan_interest_periods', periodId, {
+          status: 'paid',
+        });
+      }
+    } else {
+      await queueLoanSyncOperation(user.id, 'UPDATE', 'loan_interest_periods', periodId, {
+        status: 'paid',
+      });
+    }
+  }
+
+  // STEP 2: Gérer le receipt (online upload OU stockage local différé)
+  let receiptUrlToStore: string | null = null;
+  let pendingReceiptId: string | null = null;
+  if (receiptFileOrUrl instanceof File) {
+    // Tentative upload synchrone si online
+    if (isOnline()) {
+      try {
+        const uploaded = await uploadLoanReceiptDirect(user.id, receiptFileOrUrl);
+        receiptUrlToStore = uploaded;
+      } catch (err) {
+        console.warn(`${LOG_TAG} ⚠️ Upload receipt online échoué, stockage local:`, err);
+      }
+    }
+    if (!receiptUrlToStore) {
+      // Offline ou échec → stocker le blob
+      pendingReceiptId = crypto.randomUUID();
+      const pending: PendingReceipt = {
+        id: pendingReceiptId,
+        userId: user.id,
+        repaymentId: '', // rempli juste après la création du repayment
+        fileName: receiptFileOrUrl.name,
+        fileBlob: receiptFileOrUrl,
+        createdAt: updatedAt,
+      };
+      await db.pendingReceipts.add(pending);
+    }
+  } else if (typeof receiptFileOrUrl === 'string') {
+    receiptUrlToStore = receiptFileOrUrl;
+  }
+
+  // STEP 3: Insert repayment in Dexie + queue
+  const repaymentId = crypto.randomUUID();
+  const repayment: LoanRepayment = {
+    id: repaymentId,
+    loanId,
+    transactionId: transactionId || null,
+    amountPaid,
+    interestPortion,
+    capitalPortion,
+    paymentDate,
+    notes: notes || null,
+    confirmedAt: null,
+    confirmedByUserId: null,
+    createdAt: updatedAt,
+  };
+  await db.loanRepayments.add(repayment);
+
+  // Si on a un pendingReceipt, on lie maintenant
+  if (pendingReceiptId) {
+    await db.pendingReceipts.update(pendingReceiptId, { repaymentId });
+    // Queue l'upload différé (sera traité par syncManager)
+    await queueLoanSyncOperation(
+      user.id,
+      'CREATE',
+      'pending_receipts',
+      pendingReceiptId,
+      { repaymentId },
+      SYNC_PRIORITY.LOW
+    );
+  }
+
+  // Push le repayment vers Supabase (ou queue)
+  const repaymentPayload = repaymentToRow({ ...repayment, receiptUrl: receiptUrlToStore });
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('loan_repayments').insert(repaymentPayload),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.recordPayment/insertRepayment'
+      );
+      if (error) throw error;
+    } catch {
+      await queueLoanSyncOperation(user.id, 'CREATE', 'loan_repayments', repaymentId, repaymentPayload);
+    }
+  } else {
+    await queueLoanSyncOperation(user.id, 'CREATE', 'loan_repayments', repaymentId, repaymentPayload);
+  }
+
+  // STEP 4: Update loan capital + status in Dexie + queue
+  const newCapital = Math.max(0, currentLoan.currentCapital - capitalPortion);
+  const newStatus: LoanStatus =
+    newCapital <= 0 ? 'closed' : currentLoan.status === 'pending' ? 'active' : currentLoan.status;
+  await db.personalLoans.update(loanId, {
+    currentCapital: newCapital,
+    status: newStatus,
+    updatedAt,
+  });
+  const loanPayload = {
+    current_capital: newCapital,
+    status: newStatus,
+    updated_at: updatedAt,
+  };
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(loanPayload).eq('id', loanId),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.recordPayment/updateLoan'
+      );
+      if (error) throw error;
+    } catch {
+      await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', loanId, loanPayload);
+    }
+  } else {
+    await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', loanId, loanPayload);
+  }
+}
+
+export async function generateInterestPeriod(loanId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const loan = await db.personalLoans.get(loanId);
+  if (!loan) throw new Error('Prêt introuvable');
+  const interestAmount = loan.currentCapital * (loan.interestRate / 100);
+  const today = new Date();
+  const end = new Date(today);
+  if (loan.interestFrequency === 'daily') end.setDate(end.getDate() + 1);
+  else if (loan.interestFrequency === 'weekly') end.setDate(end.getDate() + 7);
+  else end.setMonth(end.getMonth() + 1);
+
+  const periodId = crypto.randomUUID();
+  const period: LoanInterestPeriod = {
+    id: periodId,
+    loanId,
+    periodStart: today.toISOString().split('T')[0],
+    periodEnd: end.toISOString().split('T')[0],
+    capitalAtStart: loan.currentCapital,
+    interestAmount,
+    status: 'unpaid',
+    createdAt: new Date().toISOString(),
+  };
+  await db.loanInterestPeriods.add(period);
+  const payload = interestPeriodToRow(period);
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('loan_interest_periods').insert(payload),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.generateInterestPeriod'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ generateInterestPeriod Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'CREATE', 'loan_interest_periods', periodId, payload);
+}
+
+export async function capitalizeOverdueInterests(loanId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const loan = await db.personalLoans.get(loanId);
+  if (!loan) throw new Error('Prêt introuvable');
+  const unpaid = await db.loanInterestPeriods.where('[loanId+status]').equals([loanId, 'unpaid']).toArray();
+  const totalOverdue = unpaid.reduce((s, p) => s + (p.interestAmount || 0), 0);
+  if (totalOverdue <= 0) return;
+  const updatedAt = new Date().toISOString();
+  const newCapital = loan.currentCapital + totalOverdue;
+  await db.personalLoans.update(loanId, { currentCapital: newCapital, updatedAt });
+  const loanPayload = { current_capital: newCapital, updated_at: updatedAt };
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(loanPayload).eq('id', loanId),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.capitalizeOverdueInterests/loan'
+      );
+      if (error) throw error;
+    } catch {
+      await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', loanId, loanPayload);
+    }
+  } else {
+    await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', loanId, loanPayload);
+  }
+
+  for (const p of unpaid) {
+    await db.loanInterestPeriods.update(p.id, { status: 'capitalized' });
+    const periodPayload = { status: 'capitalized' };
+    if (isOnline()) {
+      try {
+        const { error } = await withTimeout(
+          supabase.from('loan_interest_periods').update(periodPayload).eq('id', p.id),
+          SUPABASE_TIMEOUT_MS,
+          'loanService.capitalizeOverdueInterests/period'
+        );
+        if (error) throw error;
+      } catch {
+        await queueLoanSyncOperation(user.id, 'UPDATE', 'loan_interest_periods', p.id, periodPayload);
+      }
+    } else {
+      await queueLoanSyncOperation(user.id, 'UPDATE', 'loan_interest_periods', p.id, periodPayload);
+    }
+  }
+}
+
+export async function mergeBeneficiaryGroups(
+  targetLoanIds: string[],
+  canonical: { name: string; userId: string | null; phone: string },
+  userIsBorrower: boolean
+): Promise<void> {
+  if (targetLoanIds.length === 0) return;
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const updatedAt = new Date().toISOString();
+  const partialUpdate: Partial<PersonalLoan> = userIsBorrower
+    ? {
+        lenderName: canonical.name,
+        lenderUserId: canonical.userId || '',
+        updatedAt,
+      }
+    : {
+        borrowerName: canonical.name,
+        borrowerUserId: canonical.userId,
+        borrowerPhone: canonical.phone,
+        updatedAt,
+      };
+  const supabasePayload: Record<string, any> = userIsBorrower
+    ? {
+        lender_name: canonical.name,
+        lender_user_id: canonical.userId,
+        updated_at: updatedAt,
+      }
+    : {
+        borrower_name: canonical.name,
+        borrower_user_id: canonical.userId,
+        borrower_phone: canonical.phone,
+        updated_at: updatedAt,
+      };
+
+  // Update Dexie pour chaque prêt
+  for (const id of targetLoanIds) {
+    await db.personalLoans.update(id, partialUpdate);
+  }
+
+  // Tentative bulk Supabase si online
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(supabasePayload).in('id', targetLoanIds),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.mergeBeneficiaryGroups'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ mergeBeneficiaryGroups Supabase échoué, queue par prêt:`, error);
+    }
+  }
+  // Offline ou bulk échoué : queue un UPDATE par prêt
+  for (const id of targetLoanIds) {
+    await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', id, supabasePayload);
+  }
+}
+
+// ============================================================================
+// HELPERS DE STATUT
+// ============================================================================
+
+export function isPendingBorrowerConfirmation(loan: PersonalLoan): boolean {
+  return loan.status === 'pending' && loan.borrowerConfirmedAt === null && loan.isITheBorrower === false;
+}
+
+export function isPendingLenderRepaymentConfirmation(repayment: LoanRepayment): boolean {
+  return repayment.confirmedAt === null;
+}
+
+// ============================================================================
+// UPLOAD RECEIPTS — wrapper offline-friendly
+// ============================================================================
+
+/**
+ * Upload direct vers Supabase Storage. Échoue (throw) si offline ou erreur.
+ * Helper interne utilisé par recordPayment et par le syncManager (pending_receipts).
+ */
+async function uploadLoanReceiptDirect(userId: string, file: File): Promise<string | null> {
+  const sanitizedName = file.name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  const filePath = `${userId}/${Date.now()}_${sanitizedName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('loan-receipts')
+    .upload(filePath, file, { upsert: false });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from('loan-receipts')
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+
+  if (signedUrlError || !signedUrlData) {
+    throw signedUrlError || new Error('Erreur création URL signée');
+  }
+
+  return signedUrlData.signedUrl;
+}
+
+/**
+ * Wrapper public — rétrocompatibilité avec l'ancienne API (PaymentModal pre-S68).
+ *
+ * Comportement :
+ * - Online : upload direct, retourne l'URL signée
+ * - Offline : retourne null + log un avertissement
+ *
+ * Note : PaymentModal (S68+) ne devrait plus appeler cette fonction directement.
+ * Il devrait passer le File à recordPayment qui gère l'upload différé proprement
+ * (avec stockage du blob dans db.pendingReceipts si offline).
+ * Cette API publique est conservée pour ne pas casser d'éventuels autres callers.
+ */
+export async function uploadLoanReceipt(userId: string, file: File): Promise<string | null> {
+  if (!isOnline()) {
+    console.warn(
+      `${LOG_TAG} ⚠️ uploadLoanReceipt appelé en mode offline — utilisez recordPayment avec le File en paramètre pour le différé`
+    );
+    return null;
+  }
+  try {
+    return await uploadLoanReceiptDirect(userId, file);
+  } catch (error) {
+    console.error(`${LOG_TAG} ❌ uploadLoanReceipt:`, error);
+    return null;
+  }
+}
+
+// Export interne pour le syncManager
+export { uploadLoanReceiptDirect as _uploadLoanReceiptDirect };

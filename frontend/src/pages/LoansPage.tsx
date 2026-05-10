@@ -8,12 +8,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HandCoins, ArrowLeft, Plus, Clock, CheckCircle, AlertTriangle,
-  Users, ChevronDown, Trash2, X, Edit, Link2
+  Users, ChevronDown, Trash2, X, Edit, Link2, CloudOff
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCurrency } from '../hooks/useCurrency';
 import { useFormatBalance } from '../hooks/useFormatBalance';
 import { useAppStore } from '../stores/appStore';
+import { db } from '../lib/database';
 import {
   getMyLoans,
   deleteLoan,
@@ -42,6 +43,7 @@ interface LoanGroup {
   worstStatus: LoanStatus;
   totalRemainingMGA: number;
   loans: Loan[];
+  hasPendingSync: boolean;
 }
 
 const STATUS_PRIORITY: Record<LoanStatus, number> = {
@@ -51,7 +53,11 @@ const STATUS_PRIORITY: Record<LoanStatus, number> = {
   closed: 1
 };
 
-function groupLoansByBeneficiary(loans: Loan[], eurToMgaRate: number): LoanGroup[] {
+function groupLoansByBeneficiary(
+  loans: Loan[],
+  eurToMgaRate: number,
+  pendingLoanIds: Set<string>
+): LoanGroup[] {
   const groups = new Map<string, LoanGroup>();
 
   for (const loan of loans) {
@@ -69,6 +75,8 @@ function groupLoansByBeneficiary(loans: Loan[], eurToMgaRate: number): LoanGroup
       ? loan.remainingBalance * eurToMgaRate
       : loan.remainingBalance;
 
+    const loanHasPending = pendingLoanIds.has(loan.id);
+
     const existing = groups.get(key);
     if (!existing) {
       groups.set(key, {
@@ -77,7 +85,8 @@ function groupLoansByBeneficiary(loans: Loan[], eurToMgaRate: number): LoanGroup
         isITheBorrower: loan.isITheBorrower,
         worstStatus: loan.status,
         totalRemainingMGA: remainingInMGA,
-        loans: [loan]
+        loans: [loan],
+        hasPendingSync: loanHasPending
       });
     } else {
       existing.loans.push(loan);
@@ -85,6 +94,7 @@ function groupLoansByBeneficiary(loans: Loan[], eurToMgaRate: number): LoanGroup
       if (STATUS_PRIORITY[loan.status] > STATUS_PRIORITY[existing.worstStatus]) {
         existing.worstStatus = loan.status;
       }
+      if (loanHasPending) existing.hasPendingSync = true;
     }
   }
 
@@ -108,12 +118,45 @@ const LoansPage = () => {
   const [anchorKey, setAnchorKey] = useState<string | null>(null);
   const [selectedTargetKey, setSelectedTargetKey] = useState<string | null>(null);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [pendingLoanIds, setPendingLoanIds] = useState<Set<string>>(new Set());
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef<boolean>(false);
 
   useEffect(() => {
     loadLoans();
   }, []);
+
+  // Indicateur "sync en attente" : interroge la queue toutes les 5s pour rafraîchir
+  // l'icône CloudOff quand le syncManager vide la queue au retour online
+  useEffect(() => {
+    loadPendingSyncIds();
+    const interval = setInterval(loadPendingSyncIds, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadPendingSyncIds = async () => {
+    try {
+      const ops = await db.syncQueue
+        .where('table_name')
+        .anyOf(['personal_loans', 'loan_repayments', 'loan_interest_periods'])
+        .filter((op) => op.status === 'pending' || op.status === 'failed')
+        .toArray();
+      const ids = new Set<string>();
+      for (const op of ops) {
+        if (op.table_name === 'personal_loans' && op.data?.id) {
+          ids.add(op.data.id);
+        } else if (
+          (op.table_name === 'loan_repayments' || op.table_name === 'loan_interest_periods') &&
+          op.data?.loan_id
+        ) {
+          ids.add(op.data.loan_id);
+        }
+      }
+      setPendingLoanIds(ids);
+    } catch (error) {
+      console.error('[LoansPage] Error loading pending sync IDs:', error);
+    }
+  };
 
   useEffect(() => {
     getExchangeRate('EUR', 'MGA')
@@ -220,8 +263,8 @@ const LoansPage = () => {
   });
 
   const loanGroups = useMemo(
-    () => groupLoansByBeneficiary(filteredLoans, eurToMgaRate),
-    [filteredLoans, eurToMgaRate]
+    () => groupLoansByBeneficiary(filteredLoans, eurToMgaRate, pendingLoanIds),
+    [filteredLoans, eurToMgaRate, pendingLoanIds]
   );
 
   const activeLoans = loans.filter(l => l.status !== 'closed');
@@ -515,8 +558,17 @@ const LoansPage = () => {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {groupLabel}{loanCountSuffix}
+                          <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                            <span className="truncate">{groupLabel}{loanCountSuffix}</span>
+                            {group.hasPendingSync && (
+                              <span
+                                title="Synchronisation en attente"
+                                aria-label="Synchronisation en attente"
+                                className="inline-flex flex-shrink-0"
+                              >
+                                <CloudOff className="w-3.5 h-3.5 text-amber-500" />
+                              </span>
+                            )}
                           </p>
                           <div className="flex items-center space-x-2 mt-0.5">
                             {getStatusIcon(group.worstStatus)}
