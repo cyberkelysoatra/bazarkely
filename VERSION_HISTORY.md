@@ -4,6 +4,22 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.11.0 - 2026-05-10 (Session S67)
+
+### 🌐 Détection online unifiée (events + ping 2min) + objectifs en SWR + timeout getServerStatus
+
+- **services/onlineStatusService.ts (nouveau)** — Service centralisé singleton initialisé une fois au démarrage (App.tsx). Combine événements navigator `online`/`offline` (réaction quasi-instantanée), Page Visibility API (pause polling automatique quand l'onglet est caché → économie batterie/data), et ping serveur backup toutes les 2 min (au lieu de 30s) pour détecter le cas "wifi OK mais Supabase planté". Met à jour `useAppStore.isOnline` ET `useSyncStore.isOnline` en parallèle pour rétrocompat.
+- **hooks/useOnlineStatus.ts — refonte** — Devient un simple lecteur de `useAppStore.isOnline`. Plus de polling local. Source unique de vérité pour toute l'app.
+- **App.tsx — initOnlineStatusService()** — L'ancien `useEffect` basique qui n'écoutait que les events online/offline pour mettre à jour `useSyncStore` est remplacé par un appel unique à `initOnlineStatusService()`. Toute la logique de détection est centralisée dans le service.
+- **Header.tsx — nettoyage** — Suppression du state local `isOnline` + `useEffect` dupliqué (re-implémentation manuelle d'un polling 30s sur `apiService.getServerStatus()`). Utilise désormais `useOnlineStatus()` comme `HeaderUserBanner` le faisait déjà.
+- **goalService.ts — stale-while-revalidate** — `getGoals()` lit IndexedDB en premier (retour immédiat si données présentes), puis déclenche un refresh Supabase en arrière-plan (fire-and-forget) avec timeout 5s qui met à jour IndexedDB pour la prochaine lecture. Si IndexedDB est vide au premier usage, fetch Supabase synchrone avec timeout 5s, fallback gracieux vers tableau vide. Pattern identique à `transactionService` (S66). Nouvelle méthode privée `refreshGoalsFromSupabase(userId)`.
+- **apiService.ts — getServerStatus avec withTimeout** — La requête `supabase.from('users').select('count').limit(1)` pouvait hanger silencieusement, paralysant le polling de statut online toutes les 30s. Wrappage avec `withTimeout(5000)`. Fixe le piège connu documenté dans CLAUDE.md.
+- **Architecture — source unique de vérité** — `useAppStore.isOnline` alimenté par `onlineStatusService`. ~95% de la détection est désormais event-based (instantanée) au lieu de polling toutes les 30s. Le ping serveur 2 min ne sert que de filet de sécurité.
+- **Économie data** — Le polling se met automatiquement en pause quand l'onglet est caché. Combiné avec l'intervalle passé de 30s à 120s, la consommation réseau pour la détection online est réduite d'environ 75% en usage actif et 100% quand l'onglet est en arrière-plan.
+- **Hors scope (sessions ultérieures)** — P1 #1 `loanService` 100% Supabase-only à corriger (régression S64+) ; race condition `familyGroupService` (follow-up S66) ; unification `syncManager` + `onlineStatusService` (redondance non bloquante) ; `reimbursementService` à aligner sur le pattern offline-first.
+
+---
+
 ## Version 3.10.0 - 2026-05-10 (Session S66)
 
 ### 🌐 Offline-first robuste — SWR transactions + timeouts services métier
