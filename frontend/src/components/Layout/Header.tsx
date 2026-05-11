@@ -3,6 +3,7 @@ import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, 
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import apiService from '../../services/apiService';
+import budgetService from '../../services/budgetService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
 import { useServiceWorkerUpdate } from '../../hooks/useServiceWorkerUpdate';
@@ -321,12 +322,8 @@ const Header = () => {
       }
       
       try {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth() + 1;
-        
-        const budgets = await apiService.getBudgets();
-        setHasBudgets(Boolean(budgets.success && budgets.data && budgets.data.length > 0));
+        const budgets = await budgetService.getBudgets();
+        setHasBudgets(budgets.length > 0);
       } catch (error) {
         console.error('Error checking user budgets:', error);
         setHasBudgets(false);

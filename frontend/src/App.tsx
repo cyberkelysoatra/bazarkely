@@ -57,6 +57,15 @@ function App() {
   useEffect(() => {
     // ✅ Chargement du profil utilisateur depuis la table users
     const loadUserFromSupabase = async (userId: string) => {
+      // Court-circuit offline : évite le timeout 5s inutile au démarrage.
+      // Le profil reste celui persisté dans useAppStore (Zustand persist).
+      // Quand la connexion revient, onAuthStateChange (TOKEN_REFRESHED/SIGNED_IN) rappellera
+      // cette fonction avec réseau pour rafraîchir le profil.
+      if (!navigator.onLine) {
+        console.log('📡 Démarrage offline — profil chargé depuis le store local (pas d\'appel Supabase)');
+        setAuthenticated(true);
+        return;
+      }
       try {
         // Timeout 5s : si la table users ne répond pas, on laisse quand même l'utilisateur accéder
         const queryPromise = supabase
