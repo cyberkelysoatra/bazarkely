@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.13.1';
-export const APP_VERSION_NAME = 'Hotfix offline familyGroupService — getCurrentUserSafe + cache localStorage des groupes familiaux';
+export const APP_VERSION = '3.14.0';
+export const APP_VERSION_NAME = 'Démarrage offline instantané + Header offline-first + recurringTransactionService unifié';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.0',
+    date: '2026-05-11',
+    description: 'Expérience offline globale — démarrage instantané, Header SWR, recurringTransactionService aligné sur getCurrentUserSafe',
+    changes: [
+      'Fix (App.tsx): loadUserFromSupabase court-circuite désormais immédiatement si `!navigator.onLine` au démarrage. Plus d\'attente de 5s sur `supabase.from(users).select()` qui ne répondra jamais en offline. Le profil utilisateur reste celui persisté par Zustand (useAppStore). Quand la connexion revient, onAuthStateChange (TOKEN_REFRESHED ou SIGNED_IN) rappelle la fonction avec réseau pour rafraîchir le profil',
+      'Fix (components/Layout/Header.tsx): la détection `hasBudgets` (pour le bandeau "questionnaire priorités") utilise désormais `budgetService.getBudgets()` (SWR offline-first, retour IndexedDB) au lieu de `apiService.getBudgets()` (online-only, échouait en offline et masquait le bandeau questionnaire à tort en bloquant l\'effet). Limitation acceptée : au tout premier chargement offline avec IndexedDB vide, le bandeau peut s\'afficher à tort — dismissible par l\'utilisateur',
+      'Fix (services/recurringTransactionService.ts): unification du pattern auth — la méthode privée `getCurrentUserId()` délègue maintenant à `getCurrentUserSafe()` importé depuis familyGroupService (Zustand store → session Supabase → null) au lieu de son ancienne implémentation `getSession() + localStorage("bazarkely-user")`. Cohérent avec loanService, familyGroupService, reimbursementService',
+      'Architecture: les 3 services métier critiques (loans, family, recurring) + leurs Context React parents utilisent désormais le même helper offline-safe `getCurrentUserSafe()`. Le démarrage de l\'app en mode offline est désormais quasi-instantané (0ms d\'attente auth) au lieu de 5s',
+      'Reste à faire (S70+) : P1#1 phase 2 reimbursementService (recordReimbursementPayment FIFO + credit balance + allocations offline-first, 2 nouvelles tables Dexie). P3 cleanup : loanStorageService dead code, unification syncManager + onlineStatusService',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.13.1',
     date: '2026-05-11',

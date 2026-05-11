@@ -5,6 +5,7 @@
 
 import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
+import { getCurrentUserSafe } from './familyGroupService';
 import transactionService from './transactionService';
 import type {
   RecurringTransaction,
@@ -162,28 +163,13 @@ class RecurringTransactionService {
   }
 
   /**
-   * Obtient l'utilisateur actuel depuis localStorage ou Supabase
+   * Obtient l'utilisateur actuel via le helper offline-safe partagé.
+   * Délègue à getCurrentUserSafe() (Zustand store → session Supabase → null)
+   * pour éviter tout appel réseau qui planterait en offline.
    */
   private async getCurrentUserId(): Promise<string | null> {
-    try {
-      // Essayer Supabase Auth d'abord
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        return session.user.id;
-      }
-
-      // Fallback: localStorage
-      const userData = localStorage.getItem('bazarkely-user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.id;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error);
-      return null;
-    }
+    const user = await getCurrentUserSafe();
+    return user?.id ?? null;
   }
 
   /**
