@@ -55,54 +55,18 @@ const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
 const ACTIVE_FAMILY_GROUP_KEY = 'bazarkely_active_family_group';
 
 /**
- * Cl├® localStorage pour persister le cache des familyGroups (S69 hotfix v3.13.1).
+ * Cache localStorage des familyGroups (S69 v3.13.1, extrait vers lib/ en v3.14.1).
  *
- * Permet de restaurer la liste des groupes au reload offline sans devoir
- * appeler Supabase. Sans ce cache, activeFamilyGroup restait null en offline
- * et toute la cha├«ne offline famille (reimbursements) ├®tait bloqu├®e.
+ * Les helpers (read/write/clear + cle localStorage) sont desormais dans
+ * lib/familyGroupsCache.ts pour permettre a familyGroupService.getUserFamilyGroups()
+ * de lire/ecrire le meme cache et rester offline-first pour TransactionsPage,
+ * TransactionDetailPage et FamilyDashboardPage qui n'utilisent pas FamilyContext.
  */
-const FAMILY_GROUPS_CACHE_KEY = 'bazarkely_family_groups_cache';
-
-function readFamilyGroupsCache(): FamilyGroupWithMetadata[] {
-  try {
-    const raw = localStorage.getItem(FAMILY_GROUPS_CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Array<
-      Omit<FamilyGroupWithMetadata, 'createdAt' | 'updatedAt'> & {
-        createdAt: string;
-        updatedAt: string;
-      }
-    >;
-    return parsed.map((g) => ({
-      ...g,
-      createdAt: new Date(g.createdAt),
-      updatedAt: new Date(g.updatedAt),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function writeFamilyGroupsCache(groups: FamilyGroupWithMetadata[]): void {
-  try {
-    const serializable = groups.map((g) => ({
-      ...g,
-      createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
-      updatedAt: g.updatedAt instanceof Date ? g.updatedAt.toISOString() : g.updatedAt,
-    }));
-    localStorage.setItem(FAMILY_GROUPS_CACHE_KEY, JSON.stringify(serializable));
-  } catch {
-    /* localStorage plein ou indispo, on tolère */
-  }
-}
-
-function clearFamilyGroupsCache(): void {
-  try {
-    localStorage.removeItem(FAMILY_GROUPS_CACHE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
+import {
+  readFamilyGroupsCache,
+  writeFamilyGroupsCache,
+  clearFamilyGroupsCache,
+} from '../lib/familyGroupsCache';
 
 /**
  * Props du Provider
