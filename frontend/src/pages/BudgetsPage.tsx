@@ -10,6 +10,8 @@ import { useAppStore } from '../stores/appStore';
 import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
 import apiService from '../services/apiService';
+import budgetService from '../services/budgetService';
+import transactionService from '../services/transactionService';
 import { toast } from 'react-hot-toast';
 import type { Budget, TransactionCategory } from '../types';
 import { CurrencyDisplay } from '../components/Currency';
@@ -140,14 +142,9 @@ const BudgetsPage = () => {
         year: b.year
       })));
       
-      // Charger les transactions du mois sélectionné
-      const transactionsResponse = await apiService.getTransactions();
-      if (!transactionsResponse.success || !transactionsResponse.data) {
-        console.warn('⚠️ DEBUG: Could not load transactions for spent calculation');
-        return budgets;
-      }
-
-      const transactions = transactionsResponse.data;
+      // Charger les transactions du mois sélectionné (v3.14.2 : offline-first via transactionService au lieu d'apiService)
+      // transactionService.getTransactions() retourne directement Transaction[] depuis IndexedDB (SWR pattern)
+      const transactions = await transactionService.getTransactions();
       console.log('🔍 DEBUG: Loaded transactions for spent calculation:', transactions.length);
 
       // Filtrer les transactions du mois sélectionné et de type expense
@@ -284,57 +281,34 @@ const BudgetsPage = () => {
 
     try {
       setIsLoading(true);
-      console.log('🔍 DEBUG: Loading budgets from Supabase...');
-      const response = await apiService.getBudgets();
-      console.log('🔍 DEBUG: Supabase getBudgets response:', response);
-      
-      if (response.success && response.data) {
-        // Filtrer les budgets par mois et année et convertir le format
-        const filteredBudgets = response.data
-          .filter(budget => budget.month === selectedMonth && budget.year === selectedYear)
-          .map(budget => ({
-            id: budget.id,
-            userId: budget.user_id,
-            category: budget.category as any, // Convert to TransactionCategory
-            amount: budget.amount,
-            spent: budget.spent,
-            period: budget.period as 'monthly',
-            year: budget.year,
-            month: budget.month,
-            alertThreshold: budget.alert_threshold
-          }));
-        console.log('🔍 DEBUG: Filtered budgets for current month/year:', filteredBudgets);
-        
-        // Calculer les montants dépensés à partir des transactions
-        const budgetsWithSpent = await calculateSpentAmounts(filteredBudgets);
-        console.log('🔄 DEBUG STEP 4 - budgetsWithSpent before setBudgets:', budgetsWithSpent.map(b => ({
-          id: b.id,
-          category: b.category,
-          amount: b.amount,
-          spent: b.spent,
-          spentFormatted: `${b.spent.toLocaleString('fr-FR')} Ar`
-        })));
-        
-        console.log('🎯 DEBUG - About to call setBudgets with:', {
-          budgetsCount: budgetsWithSpent.length,
-          budgetsWithSpent: budgetsWithSpent.length > 0,
-          currentBudgetsState: budgets.length
-        });
-        
-        // Log what we're passing to setBudgets immediately
-        console.log('🎯 DEBUG - setBudgets parameter (budgetsWithSpent):', budgetsWithSpent.map(b => ({
-          id: b.id,
-          category: b.category,
-          amount: b.amount,
-          spent: b.spent,
-          spentFormatted: `${b.spent.toLocaleString('fr-FR')} Ar`
-        })));
-        
-        setBudgets(budgetsWithSpent);
-      } else {
-        console.error('❌ DEBUG: Failed to load budgets:', response.error);
-        setBudgets([]);
-      }
+      // v3.14.2 : offline-first via budgetService (SWR IndexedDB en premier) au lieu d'apiService.getBudgets() qui plantait en offline
+      console.log('🔍 DEBUG: Loading budgets via budgetService (offline-first)...');
+      const allBudgets = await budgetService.getBudgets();
+      console.log(`🔍 DEBUG: ${allBudgets.length} budget(s) total chargé(s) depuis budgetService`);
+
+      // Filtrer les budgets par mois et année (déjà en format camelCase, pas de conversion nécessaire)
+      const filteredBudgets = allBudgets.filter(
+        (budget) => budget.month === selectedMonth && budget.year === selectedYear
+      );
+      console.log('🔍 DEBUG: Filtered budgets for current month/year:', filteredBudgets);
+
+      // Calculer les montants dépensés à partir des transactions
+      const budgetsWithSpent = await calculateSpentAmounts(filteredBudgets);
+      console.log('🔄 DEBUG STEP 4 - budgetsWithSpent before setBudgets:', budgetsWithSpent.map(b => ({
+        id: b.id,
+        category: b.category,
+        amount: b.amount,
+        spent: b.spent,
+        spentFormatted: `${b.spent.toLocaleString('fr-FR')} Ar`
+      })));
+
+      console.log('🎯 DEBUG - About to call setBudgets with:', {
+        budgetsCount: budgetsWithSpent.length,
+        budgetsWithSpent: budgetsWithSpent.length > 0,
+        currentBudgetsState: budgets.length
+      });
+
+      setBudgets(budgetsWithSpent);
     } catch (error) {
       console.error('❌ DEBUG: Error loading budgets:', error);
       setBudgets([]);
