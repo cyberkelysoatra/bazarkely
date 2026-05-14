@@ -5,6 +5,10 @@
 
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../stores/appStore';
+import {
+  readFamilyGroupsCache,
+  writeFamilyGroupsCache,
+} from '../lib/familyGroupsCache';
 import type {
   FamilyGroup,
   FamilyMember,
@@ -131,14 +135,31 @@ export async function createFamilyGroup(
 export async function getUserFamilyGroups(): Promise<
   Array<FamilyGroup & { memberCount: number; inviteCode: string }>
 > {
+  // SWR offline-first (v3.14.1 S70):
+  // 1. Lecture immédiate du cache localStorage (instantané, partagé avec FamilyContext via lib/familyGroupsCache).
+  // 2. Si offline → retour direct du cache (ne throw plus, ne casse pas TransactionsPage/TransactionDetailPage/FamilyDashboardPage).
+  // 3. Si online → tentative Supabase, fallback cache en cas d'échec, écriture du cache après succès.
+  const cached: Array<FamilyGroup & { memberCount: number; inviteCode: string }> =
+    readFamilyGroupsCache().map((g) => ({
+      ...g,
+      memberCount: g.memberCount ?? 0,
+      inviteCode: g.inviteCode ?? '',
+    }));
+
+  // STEP 1: Offline → retour direct du cache
+  if (!navigator.onLine) {
+    return cached;
+  }
+
+  // STEP 2: Online → fetch Supabase avec fallback cache en cas d'échec
   try {
-    // Vérifier l'authentification
     const user = await getCurrentUserSafe();
     if (!user) {
-      throw new Error('Utilisateur non authentifié');
+      // Pas d'utilisateur identifiable → on retourne le cache (peut être vide) au lieu de throw
+      return cached;
     }
 
-    // Récupérer les groupes où l'utilisateur est membre avec la date de jointure
+    // Récupérer les liens user → groupes (memberships)
     const { data: memberships, error: membersError } = await supabase
       .from('family_members')
       .select('family_group_id, joined_at')
@@ -147,10 +168,13 @@ export async function getUserFamilyGroups(): Promise<
       .order('joined_at', { ascending: false }) as any;
 
     if (membersError) {
-      throw new Error(`Erreur lors de la récupération des membres: ${membersError.message}`);
+      console.warn('getUserFamilyGroups: erreur récupération membres, fallback cache:', membersError);
+      return cached;
     }
 
     if (!memberships || memberships.length === 0) {
+      // L'utilisateur n'appartient à aucun groupe (online confirmé) → vide le cache pour cohérence
+      writeFamilyGroupsCache([]);
       return [];
     }
 
@@ -159,17 +183,19 @@ export async function getUserFamilyGroups(): Promise<
       (memberships || []).map((m: any) => [m.family_group_id, m.joined_at])
     );
 
-    // Récupérer les groupes avec le nombre de membres
+    // Récupérer les groupes
     const { data: groups, error: groupsError } = await supabase
       .from('family_groups')
       .select('*, invite_code')
       .in('id', groupIds) as any;
 
     if (groupsError) {
-      throw new Error(`Erreur lors de la récupération des groupes: ${groupsError.message}`);
+      console.warn('getUserFamilyGroups: erreur récupération groupes, fallback cache:', groupsError);
+      return cached;
     }
 
     if (!groups || groups.length === 0) {
+      writeFamilyGroupsCache([]);
       return [];
     }
 
@@ -180,14 +206,6 @@ export async function getUserFamilyGroups(): Promise<
       if (!joinedAtA || !joinedAtB) return 0;
       return new Date(joinedAtB).getTime() - new Date(joinedAtA).getTime();
     });
-
-    if (groupsError) {
-      throw new Error(`Erreur lors de la récupération des groupes: ${groupsError.message}`);
-    }
-
-    if (!sortedGroups || sortedGroups.length === 0) {
-      return [];
-    }
 
     // Compter les membres pour chaque groupe
     const groupsWithCounts = await Promise.all(
@@ -215,10 +233,14 @@ export async function getUserFamilyGroups(): Promise<
       })
     );
 
+    // Persiste le résultat frais dans le cache pour les prochaines lectures offline
+    writeFamilyGroupsCache(groupsWithCounts);
+
     return groupsWithCounts;
   } catch (error) {
-    console.error('Erreur dans getUserFamilyGroups:', error);
-    throw error;
+    // Échec réseau / fetch failed → fallback cache (ne propage plus pour ne pas casser les pages appelantes)
+    console.warn('getUserFamilyGroups: échec réseau, fallback cache:', error);
+    return cached;
   }
 }
 

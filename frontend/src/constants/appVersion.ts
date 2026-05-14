@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.14.0';
-export const APP_VERSION_NAME = 'Démarrage offline instantané + Header offline-first + recurringTransactionService unifié';
+export const APP_VERSION = '3.14.1';
+export const APP_VERSION_NAME = 'Hotfix offline familyGroupService.getUserFamilyGroups — SWR via cache localStorage partagé';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.1',
+    date: '2026-05-11',
+    description: 'Hotfix offline — getUserFamilyGroups offline-first via cache localStorage partagé entre Context et Service',
+    changes: [
+      'Nouveau fichier (lib/familyGroupsCache.ts): extraction des helpers `readFamilyGroupsCache` / `writeFamilyGroupsCache` / `clearFamilyGroupsCache` (auparavant définis dans FamilyContext.tsx). Source unique partagée entre FamilyContext et familyGroupService',
+      'Refactor (contexts/FamilyContext.tsx): import des helpers depuis lib/familyGroupsCache au lieu des définitions locales (zéro régression comportementale)',
+      'Fix (services/familyGroupService.ts): getUserFamilyGroups passe en SWR offline-first. Lecture immédiate du cache localStorage, retour direct si offline (`!navigator.onLine`), fallback sur cache en cas d\'échec Supabase, mise à jour du cache après chaque fetch online réussi. Ne throw plus en cas d\'échec — retourne le cache (potentiellement vide)',
+      'Régression S69 v3.14.0 résolue : la page Transactions (et TransactionDetailPage, FamilyDashboardPage) qui appelle directement `familyGroupService.getUserFamilyGroups()` sans passer par FamilyContext peut désormais lire le groupe familial actif en offline. Les erreurs console `TypeError: Failed to fetch` sur `family_members` disparaissent quand offline + cache présent',
+      'Limitation conservée : le premier accès aux groupes familiaux requiert une connexion (peuple le cache localStorage). Les lectures de membres détaillés (getFamilyGroupMembers) restent online-only — refonte offline-first via tables Dexie prévue ultérieurement',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.0',
     date: '2026-05-11',
