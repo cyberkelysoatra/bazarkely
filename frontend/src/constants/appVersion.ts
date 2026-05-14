@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.14.1';
-export const APP_VERSION_NAME = 'Hotfix offline familyGroupService.getUserFamilyGroups — SWR via cache localStorage partagé';
+export const APP_VERSION = '3.14.2';
+export const APP_VERSION_NAME = 'Hotfix offline BudgetsPage — lecture budgets et transactions depuis services offline-first';
 export const LAST_UPDATED = '2026-05-11';
 export const APP_BUILD_DATE = '2026-05-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.2',
+    date: '2026-05-11',
+    description: 'Hotfix offline — page Budgets affiche désormais les budgets et les montants dépensés en offline (lecture IndexedDB au lieu d\'apiService)',
+    changes: [
+      'Fix (pages/BudgetsPage.tsx loadBudgets): remplacement de `apiService.getBudgets()` (online-only, échouait en offline avec "Failed to fetch") par `budgetService.getBudgets()` (SWR offline-first, retour direct depuis IndexedDB). Plus de mapping snake_case → camelCase manuel — le service le fait déjà',
+      'Fix (pages/BudgetsPage.tsx calculateSpentAmounts): remplacement de `apiService.getTransactions()` par `transactionService.getTransactions()` (déjà offline-first SWR depuis v3.10.0). Permet le calcul des montants dépensés (`spent`) à partir des 308+ transactions présentes en IndexedDB',
+      'Régression S70 visible résolue : la page Budgets affichait "0 budget" et "0 Ar dépensé" en offline alors que 33 budgets et 308 transactions étaient présents dans la mémoire locale. La page affiche désormais les budgets du mois sélectionné avec leurs montants dépensés calculés depuis les transactions locales',
+      'Reste à faire (S71 — grand nettoyage offline) : ~22 autres endroits utilisent encore `supabase.auth.getUser()` ou des appels apiService directs en chemin critique (familySharingService 12x, getFamilyGroupMembers, accountService, goalService, useMultiYearBudgetData, useYearlyBudgetData, useBudgetIntelligence.autoCreateBudgets, mutations createBudget de BudgetsPage). Les WebSockets temps réel (useFamilyRealtime) génèrent aussi du bruit console en offline',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.1',
     date: '2026-05-11',
