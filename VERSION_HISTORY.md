@@ -4,6 +4,41 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.14.2 - 2026-05-15 (Session S70 hotfix 2)
+
+### 🩹 Hotfix offline page Budgets — lecture des budgets et transactions depuis services offline-first
+
+- **pages/BudgetsPage.tsx — `loadBudgets`** — Remplacement de `apiService.getBudgets()` (online-only, échouait en offline avec `TypeError: Failed to fetch`) par `budgetService.getBudgets()` (SWR offline-first, retour direct depuis IndexedDB). Plus de mapping `snake_case → camelCase` manuel — le service le fait déjà.
+- **pages/BudgetsPage.tsx — `calculateSpentAmounts`** — Remplacement de `apiService.getTransactions()` par `transactionService.getTransactions()` (déjà offline-first SWR depuis v3.10.0). Permet le calcul des montants dépensés (`spent`) à partir des 308+ transactions présentes en IndexedDB.
+- **Régression S70 visible résolue** — La page Budgets affichait "0 budget" et "0 Ar dépensé" en offline alors que 33 budgets et 308 transactions étaient présents dans la mémoire locale. Logs prod confirmés : `📊 DEBUG TOTALS - Budget calculations: {totalBudget: '2 125 000 Ar', totalSpent: '65 000 Ar', totalRemaining: '2 060 000 Ar', budgetsCount: 11, budgetsWithSpent: 3}`.
+- **Reste à faire (S71 — grand nettoyage offline)** — ~22 autres endroits utilisent encore `supabase.auth.getUser()` ou des appels `apiService` directs en chemin critique (familySharingService 12x, getFamilyGroupMembers, accountService, goalService, useMultiYearBudgetData, useYearlyBudgetData, useBudgetIntelligence.autoCreateBudgets, mutations createBudget de BudgetsPage). Les WebSockets temps réel (useFamilyRealtime) génèrent aussi du bruit console en offline.
+
+---
+
+## Version 3.14.1 - 2026-05-15 (Session S70 hotfix 1)
+
+### 🩹 Hotfix offline `getUserFamilyGroups` — SWR via cache localStorage partagé entre Context et Service
+
+- **lib/familyGroupsCache.ts (nouveau)** — Extraction des helpers `readFamilyGroupsCache` / `writeFamilyGroupsCache` / `clearFamilyGroupsCache` et de la clé `FAMILY_GROUPS_CACHE_KEY` (auparavant définis dans `FamilyContext.tsx` en S69 v3.13.1). Source unique partagée entre `FamilyContext` et `familyGroupService.getUserFamilyGroups()`. Type `CachedFamilyGroup = FamilyGroup & { memberCount?: number; inviteCode?: string }`.
+- **contexts/FamilyContext.tsx** — Import des helpers depuis `lib/familyGroupsCache.ts` au lieu de définitions locales (zéro régression comportementale).
+- **services/familyGroupService.ts — `getUserFamilyGroups` en SWR offline-first** — (1) Lecture immédiate du cache localStorage (instantané), (2) si offline → retour direct du cache (ne throw plus), (3) si online → tentative Supabase avec fallback cache à chaque échec (membres, groupes, count), mise à jour du cache après succès complet. Plus de propagation d'erreur "Utilisateur non authentifié".
+- **Régression S69 v3.14.0 résolue** — La page Transactions (et TransactionDetailPage, FamilyDashboardPage) qui appelle directement `familyGroupService.getUserFamilyGroups()` sans passer par `FamilyContext` peut désormais lire le groupe familial actif en offline. Les erreurs console `TypeError: Failed to fetch` sur `family_members` disparaissent en offline + cache présent.
+- **Limitation conservée** — Le premier accès aux groupes familiaux requiert une connexion (peuple le cache localStorage). Les lectures de membres détaillés (`getFamilyGroupMembers`) restent online-only — refonte offline-first via tables Dexie ou snapshot prévue en S71.
+
+---
+
+## Version 3.14.0 - 2026-05-15 (Session S70)
+
+### 🌐 Expérience offline globale — démarrage instantané + Header offline-first + recurringTransactionService aligné
+
+- **App.tsx — `loadUserFromSupabase` court-circuit offline** — Ajout en tête de la fonction : `if (!navigator.onLine) { setAuthenticated(true); return; }`. Plus d'attente de 5s sur `supabase.from(users).select()` qui ne répondra jamais en offline. Le profil utilisateur reste celui persisté par Zustand (`useAppStore`). Quand la connexion revient, `onAuthStateChange` (TOKEN_REFRESHED ou SIGNED_IN) rappelle la fonction avec réseau pour rafraîchir le profil. Effet : démarrage offline passe de **5000ms → 0ms**.
+- **components/Layout/Header.tsx — `hasBudgets` détection** — La détection `hasBudgets` (pour le bandeau "questionnaire priorités") utilise désormais `budgetService.getBudgets()` (SWR offline-first, retour IndexedDB) au lieu de `apiService.getBudgets()` (online-only, échouait en offline et masquait le bandeau questionnaire à tort en bloquant l'effet). Limitation acceptée : au tout premier chargement offline avec IndexedDB vide, le bandeau peut s'afficher à tort — dismissible par l'utilisateur.
+- **services/recurringTransactionService.ts — pattern auth unifié** — La méthode privée `getCurrentUserId()` délègue maintenant à `getCurrentUserSafe()` importé depuis `familyGroupService` (Zustand store → session Supabase → null) au lieu de son ancienne implémentation `getSession() + localStorage("bazarkely-user")`. Cohérent avec loanService, familyGroupService, reimbursementService, recurringService — 4 services métier critiques utilisent désormais le même helper offline-safe.
+- **Architecture** — Les 3 services métier critiques (loans, family, recurring) + leurs Context React parents utilisent désormais le même helper offline-safe `getCurrentUserSafe()`. Le démarrage de l'app en mode offline est désormais quasi-instantané (0ms d'attente auth) au lieu de 5s.
+- **Reste à faire (S70+)** — P1#1 phase 2 reimbursementService (`recordReimbursementPayment` FIFO + credit balance + allocations offline-first, 2 nouvelles tables Dexie). P3 cleanup : `loanStorageService` dead code, unification `syncManager` + `onlineStatusService`.
+
+---
+
 ## Version 3.13.1 - 2026-05-11 (Session S69 hotfix)
 
 ### 🩹 Hotfix offline familyGroupService — getCurrentUserSafe + cache localStorage des familyGroups
