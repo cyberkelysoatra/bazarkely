@@ -289,6 +289,12 @@ class RecurringTransactionService {
         .equals(userId)
         .toArray();
 
+      // Skip Supabase si offline : évite GET recurring_transactions ERR_INTERNET_DISCONNECTED
+      // au démarrage offline (logué x3 par RecurringTransactionsWidget).
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return localRecurring;
+      }
+
       // Essayer de synchroniser avec Supabase si en ligne
       try {
         const { data: supabaseRecurring, error } = await supabase

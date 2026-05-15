@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.14.3';
-export const APP_VERSION_NAME = 'Pattern auth offline-safe unifié sur account/goal/transaction Service';
+export const APP_VERSION = '3.14.4';
+export const APP_VERSION_NAME = 'Bruit console offline éliminé — WebSocket, autoCreateBudgets, recurringTransactions';
 export const LAST_UPDATED = '2026-05-15';
 export const APP_BUILD_DATE = '2026-05-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.4',
+    date: '2026-05-15',
+    description: 'Bruit console offline éliminé — useFamilyRealtime skip WebSocket, useBudgetIntelligence skip autoCreateBudgets + loadTransactions via transactionService, recurringTransactionService.getAll skip Supabase si offline',
+    changes: [
+      'Fix (hooks/useFamilyRealtime.ts): les 4 fonctions subscribeToXxx (familyGroup, familyMembers, sharedTransactions, reimbursements) retournent un no-op si `useAppStore.isOnline === false`. Plus de 6 `WebSocket connection failed` au démarrage offline. isOnline mis dans les deps de useCallback → les composants qui passent les callbacks en deps de useEffect recréent la subscription au retour online (re-render naturel sur changement isOnline)',
+      'Fix (hooks/useBudgetIntelligence.ts loadTransactions): remplacement de `apiService.getTransactions()` (online-only, retournait `{success: false, error: "Failed to fetch"}` en offline) par `transactionService.getTransactions()` (offline-first SWR depuis v3.10.0, retour direct IndexedDB). Plus de mapping snake_case → camelCase manuel — le service le fait déjà',
+      'Fix (hooks/useBudgetIntelligence.ts autoCreateBudgets): early return si `!navigator.onLine`. Auparavant en offline, la création automatique des budgets via `apiService.createBudget()` (online-only) tentait 11 POST Supabase qui échouaient tous avec `Failed to fetch`, polluant la console. hasAutoCreated reste à false → retentative au prochain mount online',
+      'Fix (services/recurringTransactionService.ts getAll): skip Supabase si `!navigator.onLine`. Auparavant la lecture de recurring_transactions (utilisée par RecurringTransactionsWidget au dashboard) tentait toujours le `supabase.from().select()` même offline, loguant `ERR_INTERNET_DISCONNECTED` x3',
+      'Impact attendu (offline) : console quasi-vide — disparition d\'environ 23 erreurs au démarrage (14 useBudgetIntelligence + 6 WebSocket + 3 recurring). Tous les services métier critiques affichent désormais leurs données IndexedDB en silence',
+      'Reste à faire (S71 P1) : familySharingService 12x getUser → getCurrentUserSafe (erreur "Utilisateur non authentifié" dans getFamilySharedTransactions), familyGroupService.getFamilyGroupMembers offline-first via nouvelle table Dexie family_group_members',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.3',
     date: '2026-05-15',

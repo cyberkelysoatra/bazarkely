@@ -25,6 +25,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../stores/appStore';
 import apiService from '../services/apiService';
+import transactionService from '../services/transactionService';
 import type {
   CategoryBudgets,
   BudgetAnalysis,
@@ -78,57 +79,23 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
   const lastDailyCheckRef = useRef<Date | null>(null);
 
   /**
-   * Charge les transactions de l'utilisateur depuis la base de données
+   * Charge les transactions de l'utilisateur via transactionService (offline-first SWR).
+   * Lit IndexedDB en premier (retour immédiat), refresh Supabase en arrière-plan si online.
+   * Plus de `apiService.getTransactions()` (online-only, échouait avec "Failed to fetch" en offline).
    */
   const loadTransactions = useCallback(async (): Promise<void> => {
     if (!user) {
-      console.log('❌ DEBUG loadTransactions - Pas d\'utilisateur connecté');
       setTransactions([]);
       setIsLoadingTransactions(false);
       return;
     }
 
-    console.log('🔄 DEBUG loadTransactions - Début du chargement des transactions depuis Supabase pour utilisateur:', user.id);
     setIsLoadingTransactions(true);
-    
     try {
-      // Utiliser apiService.getTransactions() comme DashboardPage
-      const response = await apiService.getTransactions();
-      
-      if (!response.success || response.error) {
-        console.error('❌ DEBUG loadTransactions - Erreur API:', response.error);
-        setTransactions([]);
-        setIsLoadingTransactions(false);
-        return;
-      }
-      
-      // Transformer les données Supabase vers le format Transaction
-      const supabaseTransactions = response.data as any[];
-      const userTransactions: Transaction[] = supabaseTransactions.map((t: any) => ({
-        id: t.id,
-        userId: t.user_id,
-        accountId: t.account_id,
-        type: t.type,
-        amount: t.amount,
-        description: t.description,
-        category: t.category,
-        date: new Date(t.date),
-        targetAccountId: t.target_account_id,
-        notes: t.notes || undefined,
-        createdAt: new Date(t.created_at)
-      }));
-      
-      console.log('📊 DEBUG loadTransactions - Transactions chargées depuis Supabase:', userTransactions.length);
-      console.log('💰 DEBUG loadTransactions - Types de transactions:', userTransactions.map(t => t.type));
-      console.log('📅 DEBUG loadTransactions - Période des transactions:', {
-        plus_ancienne: userTransactions.length > 0 ? new Date(Math.min(...userTransactions.map(t => new Date(t.date).getTime()))).toISOString() : 'Aucune',
-        plus_recente: userTransactions.length > 0 ? new Date(Math.max(...userTransactions.map(t => new Date(t.date).getTime()))).toISOString() : 'Aucune'
-      });
-      
+      const userTransactions = await transactionService.getTransactions();
       setTransactions(userTransactions);
-      console.log('✅ DEBUG loadTransactions - Chargement terminé, transactions mises à jour');
     } catch (error) {
-      console.error('❌ DEBUG loadTransactions - Erreur lors du chargement des transactions:', error);
+      console.error('❌ [useBudgetIntelligence] loadTransactions error:', error);
       setTransactions([]);
     } finally {
       setIsLoadingTransactions(false);
@@ -431,13 +398,15 @@ export default function useBudgetIntelligence(): UseBudgetIntelligenceReturn {
    * Crée automatiquement les budgets en base de données
    */
   const autoCreateBudgets = useCallback(async (): Promise<void> => {
-    console.log('🔍 DEBUG autoCreateBudgets - Function called');
-    console.log('🔍 DEBUG autoCreateBudgets - intelligentBudgets:', !!intelligentBudgets);
-    console.log('🔍 DEBUG autoCreateBudgets - user:', !!user);
-    console.log('🔍 DEBUG autoCreateBudgets - hasAutoCreated:', hasAutoCreated);
-    
     if (!intelligentBudgets || !user || hasAutoCreated) {
-      console.log('❌ DEBUG autoCreateBudgets - Early return due to conditions');
+      return;
+    }
+
+    // Skip si offline : autoCreateBudgets utilise apiService.createBudget (online-only).
+    // Sans ce skip, l'app log 11 erreurs `Failed to fetch` au démarrage offline.
+    // La création sera retentée au prochain mount si online (hasAutoCreated reste false).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.log('⏸️ [useBudgetIntelligence] autoCreateBudgets skipped — offline');
       return;
     }
 
