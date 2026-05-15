@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.14.4';
-export const APP_VERSION_NAME = 'Bruit console offline éliminé — WebSocket, autoCreateBudgets, recurringTransactions';
+export const APP_VERSION = '3.14.5';
+export const APP_VERSION_NAME = 'familySharingService lectures offline-safe + favicon precache';
 export const LAST_UPDATED = '2026-05-15';
 export const APP_BUILD_DATE = '2026-05-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.5',
+    date: '2026-05-15',
+    description: 'familySharingService lectures offline-safe (5 fonctions) + favicon dans le precache PWA',
+    changes: [
+      'Fix (services/familySharingService.ts): helper local `getCurrentUserSafe()` ajouté (pattern S68 répliqué cf. loanService, familyGroupService, reimbursementService). Import `useAppStore` ajouté',
+      'Fix (services/familySharingService.ts): 5 fonctions de lecture migrées de `supabase.auth.getUser()` (fetch réseau, throw `AuthRetryableFetchError` en offline) vers `getCurrentUserSafe()` (Zustand → getSession localStorage). Fonctions concernées : `getFamilySharedTransactions` (ligne ~795), `getUserSharingRules` (~935), `shouldAutoShare` (~1153), `getSharedTransactionByTransactionId` (~1354), `getSharedRecurringTransactions` (~1436)',
+      'Régression S64+ résolue : `getFamilySharedTransactions` (appelée par TransactionsPage line 251) ne throw plus "Utilisateur non authentifié" en offline. Visible dans les logs prod v3.14.3 : `familySharingService.ts:894 Erreur dans getFamilySharedTransactions` éliminé',
+      'Fix (index.html): remplacement de `<link rel="icon" type="image/svg+xml" href="/vite.svg" />` (asset non précaché → `vite.svg net::ERR_INTERNET_DISCONNECTED` x2 au démarrage offline) par `<link rel="icon" type="image/png" href="/icon-192x192.png" />` (déjà dans le precache Workbox + déjà référencé comme apple-touch-icon)',
+      '7 mutations de familySharingService conservées intactes (`shareTransaction`, `unshareTransaction`, `updateSharedTransaction`, `upsertSharingRule`, `deleteSharingRule`, `shareRecurringTransaction`, `unshareRecurringTransaction`) — migration prévue en P3 (offline-first mutations queue-able)',
+      'Reste à faire (S71 P1#2) : familyGroupService.getFamilyGroupMembers offline-first via nouvelle table Dexie `family_group_members` (élimine erreur "Vous n\'êtes pas membre de ce groupe" en offline sur FamilyDashboardPage)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.4',
     date: '2026-05-15',

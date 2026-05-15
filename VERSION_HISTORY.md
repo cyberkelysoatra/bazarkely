@@ -4,6 +4,24 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.14.5 - 2026-05-15 (Session S71 — P1#1 familySharingService lectures)
+
+### 🔐 familySharingService lectures offline-safe (5 fonctions) + favicon dans le precache
+
+- **services/familySharingService.ts — helper local `getCurrentUserSafe()`** — Ajout du helper module-local (pattern S68 répliqué : Zustand `useAppStore.user` → `supabase.auth.getSession()` → null). Cohérent avec `loanService`, `familyGroupService`, `reimbursementService`. Pattern dupliqué localement (pas d'import croisé) conformément à la décision prise en série 2 de S71.
+- **services/familySharingService.ts — 5 lectures migrées** — Substitution de `supabase.auth.getUser()` (fetch réseau `/auth/v1/user`, throw `AuthRetryableFetchError: Failed to fetch` en offline) par `getCurrentUserSafe()` dans :
+  - `getFamilySharedTransactions` (appelée par `TransactionsPage` line 251 — c'est cette fonction qui crashait dans les logs prod v3.14.3+ avec `familySharingService.ts:894 Erreur dans getFamilySharedTransactions`)
+  - `getUserSharingRules`
+  - `shouldAutoShare`
+  - `getSharedTransactionByTransactionId`
+  - `getSharedRecurringTransactions`
+- **services/familySharingService.ts — 7 mutations conservées** — `shareTransaction`, `unshareTransaction`, `updateSharedTransaction`, `upsertSharingRule`, `deleteSharingRule`, `shareRecurringTransaction`, `unshareRecurringTransaction` gardent le pattern `getUser()` historique. Migration prévue en P3 (offline-first mutations queue-able via syncManager).
+- **index.html — favicon dans le precache** — Remplacement de `<link rel="icon" type="image/svg+xml" href="/vite.svg" />` (asset Vite par défaut non présent dans le precache Workbox → `GET /vite.svg net::ERR_INTERNET_DISCONNECTED` x2 au démarrage offline) par `<link rel="icon" type="image/png" href="/icon-192x192.png" />`. Cet icône est déjà précaché par Workbox et déjà référencé comme `apple-touch-icon` ligne 15. Console offline désormais 100% propre pour un démarrage standard.
+- **Impact attendu (offline)** — Console **totalement propre** au démarrage offline (login + navigation Dashboard + Comptes + Transactions). Reste uniquement les logs informatifs `✅` des services métier.
+- **Reste à faire (S71 P1#2)** — `familyGroupService.getFamilyGroupMembers` offline-first via nouvelle table Dexie `family_group_members` (élimine l'erreur "Vous n'êtes pas membre de ce groupe" sur `FamilyDashboardPage` en offline). Plus les 7 mutations P3 sur `familySharingService`.
+
+---
+
 ## Version 3.14.4 - 2026-05-15 (Session S71 — P2 bruit console offline)
 
 ### 🔇 Bruit console offline éliminé — WebSocket, autoCreateBudgets, recurringTransactions
