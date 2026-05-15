@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAppStore } from '../stores/appStore';
 
 /**
  * Type d'événement pour les changements en temps réel
@@ -67,6 +68,11 @@ export type UnsubscribeFunction = () => void;
  * ```
  */
 export function useFamilyRealtime() {
+  // Skip WebSocket subscriptions si offline (évite "WebSocket connection failed").
+  // Les composants qui passent `subscribeToXxx` en deps de leur useEffect verront les callbacks
+  // re-créés au retour online (changement de isOnline → re-render → useEffect re-trigger).
+  const isOnline = useAppStore((state) => state.isOnline);
+
   /**
    * S'abonner aux changements d'un groupe familial spécifique
    * @param groupId - ID du groupe familial (peut être null/undefined)
@@ -78,8 +84,8 @@ export function useFamilyRealtime() {
       groupId: string | null | undefined,
       onUpdate: (payload: RealtimeCallback) => void
     ): UnsubscribeFunction => {
-      // Si groupId est null/undefined, retourner une fonction no-op
-      if (!groupId) {
+      // Si groupId est null/undefined OU offline, retourner une fonction no-op
+      if (!groupId || !isOnline) {
         return () => {
           // No-op cleanup function
         };
@@ -111,7 +117,7 @@ export function useFamilyRealtime() {
         supabase.removeChannel(channel);
       };
     },
-    []
+    [isOnline]
   );
 
   /**
@@ -125,8 +131,8 @@ export function useFamilyRealtime() {
       groupId: string | null | undefined,
       onUpdate: (payload: RealtimeCallback) => void
     ): UnsubscribeFunction => {
-      // Si groupId est null/undefined, retourner une fonction no-op
-      if (!groupId) {
+      // Si groupId est null/undefined OU offline, retourner une fonction no-op
+      if (!groupId || !isOnline) {
         return () => {
           // No-op cleanup function
         };
@@ -158,7 +164,7 @@ export function useFamilyRealtime() {
         supabase.removeChannel(channel);
       };
     },
-    []
+    [isOnline]
   );
 
   /**
@@ -172,8 +178,8 @@ export function useFamilyRealtime() {
       groupId: string | null | undefined,
       onUpdate: (payload: RealtimeCallback) => void
     ): UnsubscribeFunction => {
-      // Si groupId est null/undefined, retourner une fonction no-op
-      if (!groupId) {
+      // Si groupId est null/undefined OU offline, retourner une fonction no-op
+      if (!groupId || !isOnline) {
         return () => {
           // No-op cleanup function
         };
@@ -205,7 +211,7 @@ export function useFamilyRealtime() {
         supabase.removeChannel(channel);
       };
     },
-    []
+    [isOnline]
   );
 
   /**
@@ -224,8 +230,8 @@ export function useFamilyRealtime() {
       groupId: string | null | undefined,
       onUpdate: (payload: RealtimeCallback) => void
     ): UnsubscribeFunction => {
-      // Si groupId est null/undefined, retourner une fonction no-op
-      if (!groupId) {
+      // Si groupId est null/undefined OU offline, retourner une fonction no-op
+      if (!groupId || !isOnline) {
         return () => {
           // No-op cleanup function
         };
@@ -260,7 +266,7 @@ export function useFamilyRealtime() {
         supabase.removeChannel(channel);
       };
     },
-    []
+    [isOnline]
   );
 
   return {
