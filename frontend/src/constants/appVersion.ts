@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.14.2';
-export const APP_VERSION_NAME = 'Hotfix offline BudgetsPage — lecture budgets et transactions depuis services offline-first';
-export const LAST_UPDATED = '2026-05-11';
-export const APP_BUILD_DATE = '2026-05-11';
+export const APP_VERSION = '3.14.3';
+export const APP_VERSION_NAME = 'Pattern auth offline-safe unifié sur account/goal/transaction Service';
+export const LAST_UPDATED = '2026-05-15';
+export const APP_BUILD_DATE = '2026-05-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.3',
+    date: '2026-05-15',
+    description: 'Pattern auth offline-safe unifié — accountService, goalService, transactionService alignés sur loanService',
+    changes: [
+      'Fix (services/accountService.ts): getCurrentUserId() utilise désormais le pattern offline-safe (Zustand store → getSession() → null) au lieu de tomber en fallback sur supabase.auth.getUser() qui fait un fetch réseau et throw `AuthRetryableFetchError` en offline. Import ajouté: useAppStore depuis ../stores/appStore',
+      'Fix (services/goalService.ts): même refonte de getCurrentUserId() — élimination du fallback supabase.auth.getUser(). Cohérent avec loanService.getCurrentUserSafe()',
+      'Fix (services/transactionService.ts): même refonte de getCurrentUserId() — élimination du fallback supabase.auth.getUser(). Cohérent avec loanService.getCurrentUserSafe()',
+      'Architecture: les 6 services métier (loans, family, recurring, reimbursement, account, goal, transaction) utilisent désormais le même pattern offline-safe. Plus aucun service métier ne fait `supabase.auth.getUser()` dans ses lectures/écritures offline-first',
+      'Régression S70+ silencieuse résolue: les méthodes du service (getAccounts, getGoals, getTransactions, etc.) qui tombaient sur le fallback réseau en cas de Zustand non hydraté retournent désormais directement l\'ID via getSession() (lecture localStorage Supabase, instantanée)',
+      'Reste à faire (S71): familySharingService 12x getUser (lectures), familyGroupService.getFamilyGroupMembers (nouvelle table Dexie family_group_members pattern S69), useBudgetIntelligence.autoCreateBudgets (skip si offline), useFamilyRealtime (pas de WebSocket en offline), mutations BudgetsPage createBudget x3',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.2',
     date: '2026-05-11',

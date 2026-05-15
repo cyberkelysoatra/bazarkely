@@ -4,6 +4,20 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.14.3 - 2026-05-15 (Session S71 — début grand nettoyage offline)
+
+### 🔧 Pattern auth offline-safe unifié sur account/goal/transaction Service
+
+- **services/accountService.ts — `getCurrentUserId` offline-safe** — La méthode privée utilise désormais le pattern à 2 étages : (1) `useAppStore.getState().user.id` (Zustand, instantané, jamais réseau), (2) `supabase.auth.getSession()` (lecture localStorage Supabase). Le fallback historique `supabase.auth.getUser()` qui faisait un fetch HTTP `/auth/v1/user` (et donc throwait `AuthRetryableFetchError: Failed to fetch` en offline) est supprimé. Import ajouté : `useAppStore` depuis `../stores/appStore`.
+- **services/goalService.ts — `getCurrentUserId` offline-safe** — Même refonte. 2 callers internes (`getGoals` SWR + autres mutations).
+- **services/transactionService.ts — `getCurrentUserId` offline-safe** — Même refonte. 4 callers internes (`getTransactions` SWR + 3 mutations queue-able). Note : `transactionService` était cité comme exemple dans CLAUDE.md mais avait encore le fallback `getUser()` — corrigé.
+- **Architecture** — Les **6 services métier critiques** (loans, family, recurring, reimbursement, account, goal, transaction) utilisent désormais le **même pattern offline-safe**. Plus aucun service métier ne fait `supabase.auth.getUser()` dans ses chemins offline-first. La méthode reste `private` dans chaque service (pas de helper centralisé — pattern dupliqué autonome, cf. réponse 1B des questions série 2).
+- **Régression S70+ silencieuse résolue** — Avant le fix : si Zustand n'était pas encore hydraté au moment où une méthode du service était appelée, le code tombait sur `getSession()` puis `getUser()` réseau qui throwait en offline → la méthode retournait `null` → toutes les lectures/écritures du service échouaient sans message clair. Après : `getSession()` est la seule branche réseau-touchante (lecture localStorage instantanée, ne throw jamais).
+- **Anti-régression vérifiée** — Signature publique inchangée (`Promise<string | null>`), méthode reste `private` → aucun import externe à mettre à jour. Comportement online : équivalent (Zustand et getSession lisent tous deux du localStorage, instant). Comportement offline : amélioré (plus de fetch réseau).
+- **Reste à faire (S71+)** — familySharingService 12 occurrences `getUser()` (lectures), `familyGroupService.getFamilyGroupMembers` (nouvelle table Dexie `family_group_members` pattern S69), `useBudgetIntelligence.autoCreateBudgets` (skip si offline — pollue console avec 11 tentatives), `useFamilyRealtime` (ne pas tenter WebSocket en offline), mutations `BudgetsPage` createBudget x3, mutations `familyGroupService` (createFamilyGroup, joinFamilyGroup, leaveFamilyGroup).
+
+---
+
 ## Version 3.14.2 - 2026-05-15 (Session S70 hotfix 2)
 
 ### 🩹 Hotfix offline page Budgets — lecture des budgets et transactions depuis services offline-first
