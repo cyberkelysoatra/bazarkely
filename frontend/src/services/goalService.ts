@@ -9,6 +9,7 @@ import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
+import { useAppStore } from '../stores/appStore';
 import apiService from './apiService';
 import transactionService from './transactionService';
 
@@ -18,20 +19,26 @@ const SUPABASE_TIMEOUT_MS = 5000;
 
 class GoalService {
   /**
-   * Récupérer l'ID de l'utilisateur actuel
+   * Récupérer l'ID de l'utilisateur actuel — offline-safe.
+   * Ordre : 1) useAppStore.user (Zustand, instantané, jamais réseau)
+   *        2) supabase.auth.getSession() (lecture localStorage Supabase)
+   *        3) null
+   * Ne fait JAMAIS supabase.auth.getUser() (fetch réseau, throw en offline).
    */
   private async getCurrentUserId(): Promise<string | null> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        return session.user.id;
-      }
-      const { data: { user } } = await supabase.auth.getUser();
-      return user?.id || null;
+      const storeUser = useAppStore.getState().user;
+      if (storeUser?.id) return storeUser.id;
+    } catch {
+      /* store pas encore initialisé */
+    }
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.id) return data.session.user.id;
     } catch (error) {
       console.error('🎯 [GoalService] ❌ Erreur lors de la récupération de l\'utilisateur:', error);
-      return null;
     }
+    return null;
   }
 
   /**
