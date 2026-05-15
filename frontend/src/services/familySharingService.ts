@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { useAppStore } from '../stores/appStore';
 import type {
   FamilySharedTransaction,
   FamilySharedTransactionRow,
@@ -14,6 +15,30 @@ import type {
   SplitType,
   SplitDetail,
 } from '../types/family';
+
+/**
+ * Récupère l'utilisateur courant — offline-safe.
+ * Ordre : 1) useAppStore.user (Zustand, instantané, jamais réseau)
+ *        2) supabase.auth.getSession() (lecture localStorage Supabase)
+ *        3) null
+ * Ne fait JAMAIS supabase.auth.getUser() (fetch réseau, throw en offline).
+ * Pattern aligné sur loanService, familyGroupService, reimbursementService.
+ */
+async function getCurrentUserSafe(): Promise<{ id: string } | null> {
+  try {
+    const storeUser = useAppStore.getState().user;
+    if (storeUser?.id) return { id: storeUser.id };
+  } catch {
+    /* store pas encore initialisé */
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user?.id) return { id: data.session.user.id };
+  } catch {
+    /* getSession ne devrait jamais throw, mais on est défensif */
+  }
+  return null;
+}
 
 /**
  * Interface locale pour les transactions récurrentes partagées
@@ -767,12 +792,9 @@ export async function getFamilySharedTransactions(
   options?: GetSharedTransactionsOptions
 ): Promise<FamilySharedTransaction[]> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Vérifier l'authentification (offline-safe — Zustand store puis getSession)
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -904,12 +926,9 @@ export async function getFamilySharedTransactions(
  */
 export async function getUserSharingRules(groupId: string): Promise<FamilySharingRule[]> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Vérifier l'authentification (offline-safe — Zustand store puis getSession)
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -1122,12 +1141,9 @@ export async function deleteSharingRule(ruleId: string): Promise<void> {
  */
 export async function shouldAutoShare(groupId: string, category: string): Promise<boolean> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Vérifier l'authentification (offline-safe — Zustand store puis getSession)
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -1326,12 +1342,9 @@ export async function getSharedTransactionByTransactionId(
   familyGroupId?: string
 ): Promise<FamilySharedTransaction | null> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Vérifier l'authentification (offline-safe — Zustand store puis getSession)
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
@@ -1407,12 +1420,9 @@ export async function getSharedRecurringTransactions(
   groupId: string
 ): Promise<FamilySharedRecurring[]> {
   try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Vérifier l'authentification (offline-safe — Zustand store puis getSession)
+    const user = await getCurrentUserSafe();
+    if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
