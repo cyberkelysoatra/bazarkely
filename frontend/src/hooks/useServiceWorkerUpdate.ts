@@ -84,12 +84,17 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
         return
       }
 
-      // Forcer une vérification de mise à jour
-      try {
-        await registration.update()
-        console.log('🔍 Vérification de mise à jour effectuée')
-      } catch (error) {
-        console.warn('⚠️ Erreur lors de la vérification de mise à jour:', error)
+      // Forcer une vérification de mise à jour (skip si offline — éviter le bruit console
+      // `Failed to update a ServiceWorker` qui pollue chaque cycle de polling en mode hors-ligne)
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        try {
+          await registration.update()
+          console.log('🔍 Vérification de mise à jour effectuée')
+        } catch (error) {
+          console.warn('⚠️ Erreur lors de la vérification de mise à jour:', error)
+        }
+      } else {
+        console.log('⏸️ [SW] Vérification de mise à jour skipped — offline')
       }
 
       setIsChecking(false)

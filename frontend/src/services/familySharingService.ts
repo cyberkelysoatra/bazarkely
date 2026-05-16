@@ -798,6 +798,13 @@ export async function getFamilySharedTransactions(
       throw new Error('Utilisateur non authentifié');
     }
 
+    // Offline-safe : pas de cache local pour family_shared_transactions (P3 — refonte
+    // offline-first à venir). Retour [] silencieux pour éviter le crash sur le check
+    // membership et la requête principale, tous deux online-only.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return [];
+    }
+
     // Vérifier que l'utilisateur est membre du groupe
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
@@ -930,6 +937,11 @@ export async function getUserSharingRules(groupId: string): Promise<FamilySharin
     const user = await getCurrentUserSafe();
     if (!user) {
       throw new Error('Utilisateur non authentifié');
+    }
+
+    // Offline-safe : pas de cache local pour family_sharing_rules (P3). Retour [] silencieux.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return [];
     }
 
     // Vérifier que l'utilisateur est membre du groupe
@@ -1147,6 +1159,12 @@ export async function shouldAutoShare(groupId: string, category: string): Promis
       throw new Error('Utilisateur non authentifié');
     }
 
+    // Offline-safe : pas de cache local pour family_sharing_rules. Retour false silencieux
+    // (équivalent : pas de règle d'auto-partage détectée → comportement par défaut = pas de partage auto).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return false;
+    }
+
     // Vérifier que l'utilisateur est membre du groupe
     const { data: membership, error: membershipError } = await supabase
       .from('family_members')
@@ -1348,6 +1366,11 @@ export async function getSharedTransactionByTransactionId(
       throw new Error('Utilisateur non authentifié');
     }
 
+    // Offline-safe : pas de cache local pour family_shared_transactions. Retour null silencieux.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return null;
+    }
+
     // Construire la requête avec JOIN sur transactions
     // car family_shared_transactions ne contient que les colonnes de référence
     let query = supabase
@@ -1424,6 +1447,11 @@ export async function getSharedRecurringTransactions(
     const user = await getCurrentUserSafe();
     if (!user) {
       throw new Error('Utilisateur non authentifié');
+    }
+
+    // Offline-safe : pas de cache local pour family_shared_recurring. Retour [] silencieux.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return [];
     }
 
     // Vérifier que l'utilisateur est membre du groupe

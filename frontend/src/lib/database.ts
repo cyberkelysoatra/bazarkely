@@ -21,6 +21,7 @@ import type {
   ReimbursementRequestLocal,
   MemberCreditBalanceLocal
 } from '../types/reimbursement';
+import type { FamilyMember } from '../types/family';
 
 // Types pour les notifications
 interface NotificationData {
@@ -149,6 +150,11 @@ export class BazarKELYDB extends Dexie {
   // Tables pour le module Remboursements Familiaux (offline-first — v14, S69 phase 1)
   reimbursementRequests!: Table<ReimbursementRequestLocal>;
   memberCreditBalances!: Table<MemberCreditBalanceLocal>;
+
+  // Table pour les membres de groupes familiaux (offline-first — v15, S71)
+  // Permet vérification membership offline (utilisée par familySharingService lectures
+  // et FamilyDashboardPage.getFamilyGroupMembers)
+  familyMembers!: Table<FamilyMember>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -662,6 +668,41 @@ export class BazarKELYDB extends Dexie {
       // names, transaction details). memberCreditBalances reçoit des entrées à la première
       // lecture en ligne ou à la création de surplus (mutations en S70).
       console.log('✅ [Database] Migration to v14 complete - Reimbursement tables ready');
+    });
+
+    // Version 15 - Offline-first Family Members (S71 P1#2)
+    // Table familyMembers : cache local des memberships permettant la vérification
+    // offline de "Vous n'êtes pas membre de ce groupe" sans tape Supabase.
+    // Peuplé par familyGroupService.getFamilyGroupMembers() et helper verifyMembership.
+    this.version(15).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSavingsAccount, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]',
+      goalCelebrations: 'goalId, goalName, lastCelebratedAt, [goalId+lastCelebratedAt]',
+      personalLoans: 'id, lenderUserId, borrowerUserId, status, transactionId, createdAt, [lenderUserId+status], [borrowerUserId+status]',
+      loanRepayments: 'id, loanId, transactionId, paymentDate, confirmedAt, createdAt, [loanId+paymentDate]',
+      loanInterestPeriods: 'id, loanId, status, periodStart, [loanId+status]',
+      pendingReceipts: 'id, userId, repaymentId, createdAt',
+      reimbursementRequests: 'id, sharedTransactionId, fromMemberId, toMemberId, status, familyGroupId, transactionId, createdAt, [familyGroupId+status]',
+      memberCreditBalances: 'id, familyGroupId, fromMemberId, toMemberId, [familyGroupId+fromMemberId+toMemberId]',
+      familyMembers: 'id, familyGroupId, userId, isActive, role, joinedAt, [familyGroupId+userId], [familyGroupId+isActive]'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v15 - Adding familyMembers table for offline membership verification');
+      // Table vide : premier appel online de getFamilyGroupMembers() peuplera Dexie
+      console.log('✅ [Database] Migration to v15 complete');
     });
 
     // Initialiser le pool de connexions
