@@ -2167,7 +2167,32 @@ const filteredTransactions = transactions.filter(transaction => {
 
 ## 🔄 SYNCHRONISATION ET OFFLINE
 
+### **État post-S71 — 2026-05-16 (v3.14.6)** ✅ OFFLINE-FIRST COMPLET (lectures)
+
+**Versions S70-S71 :** v3.14.0 → v3.14.6 (7 versions cumulées).
+
+**Statut console offline au démarrage :** **0 erreur** (Dashboard + Comptes + Transactions + Budgets + Objectifs + Prêts + Famille). Validation production 2026-05-16.
+
+**Services métier offline-first complets (lectures) :**
+- accountService, budgetService, transactionService, goalService, loanService, recurringTransactionService, reimbursementService (phase 1), familyGroupService (groupes + membres), familySharingService (5 lectures avec early-return offline)
+- Les **6 services** utilisent le même helper `getCurrentUserSafe` (Zustand → getSession localStorage → null) — plus aucun appel `supabase.auth.getUser()` dans les chemins offline
+
+**Dexie v15 (S71) :**
+- v13 (S68) : personalLoans, loanRepayments, loanInterestPeriods, pendingReceipts
+- v14 (S69) : reimbursementRequests, memberCreditBalances
+- **v15 (S71) : familyMembers** — cache des memberships pour vérification offline (`verifyMembership` helper)
+
+**Reste à faire :**
+- **Mutations offline-first (P3)** : 7 familySharingService, 3 familyGroupService, BudgetsPage.createBudget — à queue via syncManager
+- **Phase 2 reimbursementService (P4)** : recordReimbursementPayment FIFO + credit balance + allocations + 2 nouvelles tables Dexie
+
+Détail complet : voir `RESUME-SESSION-2026-05-16-S71.md`.
+
+---
+
 ### **Audit complet — 2026-05-10 (v3.9.0)** ⚠️ PARTIELLEMENT OFFLINE-FIRST
+
+*(Audit historique conservé pour traçabilité — l'état post-S71 ci-dessus est la référence courante.)*
 
 > Cible : l'application doit fonctionner **normalement** quand la BD Supabase est inaccessible **OU lente** (cas Wi-Fi OK mais Supabase qui rame). Source de vérité = IndexedDB local. Supabase = miroir distant. Sync auto silencieuse au retour. Conflits = last-write-wins.
 
