@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../stores/appStore';
+import { db } from '../lib/database';
 import {
   readFamilyGroupsCache,
   writeFamilyGroupsCache,
@@ -430,30 +431,144 @@ export async function joinFamilyGroup(
  * @returns Liste des membres avec leurs profils utilisateur
  * @throws Error si l'utilisateur n'est pas authentifié ou n'est pas membre
  */
+/**
+ * Mappe une ligne Supabase `family_members` vers le type local FamilyMember.
+ */
+function mapMemberRow(member: any): FamilyMember {
+  return {
+    id: member.id,
+    familyGroupId: member.family_group_id,
+    userId: member.user_id,
+    email: member.email || undefined,
+    phone: member.phone || undefined,
+    displayName: member.display_name,
+    role: member.role as FamilyRole,
+    isActive: member.is_active,
+    joinedAt: new Date(member.joined_at),
+    invitedBy: member.invited_by || undefined,
+    user: undefined,
+  };
+}
+
+/**
+ * Trie : admin first, puis par joined_at.
+ */
+function sortMembers(members: FamilyMember[]): FamilyMember[] {
+  return [...members].sort((a, b) => {
+    if (a.role === 'admin' && b.role !== 'admin') return -1;
+    if (a.role !== 'admin' && b.role === 'admin') return 1;
+    return a.joinedAt.getTime() - b.joinedAt.getTime();
+  });
+}
+
+/**
+ * Vérifie offline-safe qu'un utilisateur est membre actif d'un groupe familial.
+ * Pattern SWR : 1) lecture Dexie (familyMembers cache) 2) si offline + cache absent
+ * → assume true (l'erreur "pas membre" ne doit être levée qu'avec une info fiable,
+ * pas par une absence de cache). 3) si online + cache absent → tenter Supabase et
+ * peupler le cache.
+ *
+ * Utilisé par familySharingService 5 lectures (getFamilySharedTransactions, etc.)
+ * pour remplacer le check inline `supabase.from('family_members').select(...).single()`
+ * qui plantait avec `ERR_INTERNET_DISCONNECTED` en offline.
+ */
+export async function verifyMembership(
+  familyGroupId: string,
+  userId: string
+): Promise<boolean> {
+  // 1. Lecture Dexie d'abord
+  try {
+    const cached = await db.familyMembers
+      .where('[familyGroupId+userId]')
+      .equals([familyGroupId, userId])
+      .first();
+    if (cached?.isActive) return true;
+  } catch {
+    /* Dexie indisponible, on continue */
+  }
+
+  // 2. Cache miss : si offline, assume true (faire confiance plutôt que bloquer
+  // l'utilisateur sur la base d'une vérification impossible)
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return true;
+  }
+
+  // 3. Online : tenter Supabase et peupler le cache
+  try {
+    const { data, error } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('family_group_id', familyGroupId)
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .single();
+
+    if (data && !error) {
+      try {
+        await db.familyMembers.put(mapMemberRow(data));
+      } catch {
+        /* erreur Dexie put non bloquante */
+      }
+      return true;
+    }
+  } catch {
+    /* erreur réseau */
+  }
+
+  return false;
+}
+
 export async function getFamilyGroupMembers(
   groupId: string
 ): Promise<FamilyMember[]> {
   try {
-    // Vérifier l'authentification
+    // Vérifier l'authentification (offline-safe)
     const user = await getCurrentUserSafe();
     if (!user) {
       throw new Error('Utilisateur non authentifié');
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
-    const { data: membership, error: membershipError } = await supabase
-      .from('family_members')
-      .select('id')
-      .eq('family_group_id', groupId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+    // SWR : lecture Dexie d'abord (retour immédiat si peuplé)
+    let cachedMembers: FamilyMember[] = [];
+    try {
+      cachedMembers = await db.familyMembers
+        .where('[familyGroupId+isActive]')
+        .equals([groupId, 1 as any])
+        .toArray();
+    } catch {
+      // Dexie indisponible → fallback réseau plus bas
+    }
 
-    if (membershipError || !membership) {
+    // Filtrer en mémoire car Dexie boolean indexing peut être tricky
+    if (cachedMembers.length === 0) {
+      try {
+        cachedMembers = (await db.familyMembers
+          .where('familyGroupId')
+          .equals(groupId)
+          .toArray())
+          .filter((m) => m.isActive);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Si offline → retour direct du cache (vide acceptable, sans throw)
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Vérifier membership depuis cache : si vide, on suppose membre (cf. verifyMembership)
+      // Si cache présent et user n'y est pas, throw fait sens
+      if (cachedMembers.length > 0 && !cachedMembers.some((m) => m.userId === user.id)) {
+        throw new Error('Vous n\'êtes pas membre de ce groupe');
+      }
+      return sortMembers(cachedMembers);
+    }
+
+    // Online : vérifier membership puis refresh
+    const isMember = await verifyMembership(groupId, user.id);
+    if (!isMember) {
       throw new Error('Vous n\'êtes pas membre de ce groupe');
     }
 
-    // Récupérer tous les membres actifs
+    // Refresh Supabase
     const { data: members, error: membersError } = await supabase
       .from('family_members')
       .select('*')
@@ -462,39 +577,30 @@ export async function getFamilyGroupMembers(
       .order('joined_at', { ascending: true });
 
     if (membersError) {
+      // Si fetch échoue mais cache présent, retourner le cache
+      if (cachedMembers.length > 0) {
+        console.warn('[familyGroupService] Refresh membres échoué, retour cache:', membersError.message);
+        return sortMembers(cachedMembers);
+      }
       throw new Error(`Erreur lors de la récupération des membres: ${membersError.message}`);
     }
 
     if (!members) {
-      return [];
+      return sortMembers(cachedMembers);
     }
 
-    // Convertir le format Supabase vers le format local
-    const familyMembers: FamilyMember[] = members.map((member: any) => ({
-      id: member.id,
-      familyGroupId: member.family_group_id,
-      userId: member.user_id,
-      email: member.email || undefined,
-      phone: member.phone || undefined,
-      displayName: member.display_name,
-      role: member.role as FamilyRole,
-      isActive: member.is_active,
-      joinedAt: new Date(member.joined_at),
-      invitedBy: member.invited_by || undefined,
-      // user field is optional and not available without join - using display_name instead
-      user: undefined,
-    }));
+    // Convertir et peupler Dexie
+    const familyMembers: FamilyMember[] = members.map(mapMemberRow);
+    try {
+      // Supprimer les membres locaux du groupe (au cas où des membres sont devenus inactifs)
+      // puis put tous les nouveaux
+      await db.familyMembers.where('familyGroupId').equals(groupId).delete();
+      await db.familyMembers.bulkPut(familyMembers);
+    } catch (dexieError) {
+      console.warn('[familyGroupService] Erreur peuplement cache familyMembers:', dexieError);
+    }
 
-    // Trier : admin first, puis par joined_at
-    familyMembers.sort((a, b) => {
-      // Admin first
-      if (a.role === 'admin' && b.role !== 'admin') return -1;
-      if (a.role !== 'admin' && b.role === 'admin') return 1;
-      // Then by joined_at
-      return a.joinedAt.getTime() - b.joinedAt.getTime();
-    });
-
-    return familyMembers;
+    return sortMembers(familyMembers);
   } catch (error) {
     console.error('Erreur dans getFamilyGroupMembers:', error);
     throw error;

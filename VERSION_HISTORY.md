@@ -4,6 +4,26 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.14.6 - 2026-05-16 (Session S71 — P1#2 family_members Dexie + finitions offline)
+
+### 🗄️ Table Dexie family_members + lectures familySharing skip-offline + SW update skip-offline
+
+- **Dexie v15 (lib/database.ts)** — Nouvelle table `familyMembers` (`Table<FamilyMember>`) avec index composite `[familyGroupId+userId]` (vérification membership rapide) et `[familyGroupId+isActive]` (filtrage membres actifs). Migration `upgrade()` vide — la table est peuplée au premier appel online de `getFamilyGroupMembers`. Reste cohérent avec le pattern v14 reimbursementRequests (S69) et v13 personalLoans (S68).
+- **Helper `verifyMembership` (services/familyGroupService.ts)** — Exporté pour usage par d'autres services. Stratégie : (1) lecture Dexie en premier (index `[familyGroupId+userId]`), retour `true` si membre actif trouvé en cache, (2) si cache absent + offline → retour `true` (faire confiance plutôt que bloquer l'utilisateur sur une vérification impossible), (3) si online → tenter Supabase, peupler le cache Dexie sur succès, retour résultat. Plus aucun throw pour absence de cache offline.
+- **Refactor `getFamilyGroupMembers` (services/familyGroupService.ts)** — Passage en SWR offline-first complet. Lecture Dexie d'abord (filtre `familyGroupId` puis `isActive` en mémoire pour contourner les limitations Dexie sur boolean indexing). Si offline → retour direct du cache (vide acceptable, plus de throw "Vous n'êtes pas membre"). Si online → `verifyMembership` d'abord, puis `supabase.from('family_members').select(...)` avec fallback cache si fetch échoue, puis `db.familyMembers.where('familyGroupId').delete()` + `bulkPut` pour remplacer le cache. Tri admin-first conservé.
+- **Fix 5 lectures familySharingService (services/familySharingService.ts)** — Early return offline ajouté entre le check `getCurrentUserSafe` et le check membership Supabase, dans les 5 fonctions :
+  - `getFamilySharedTransactions` → return `[]`
+  - `getUserSharingRules` → return `[]`
+  - `shouldAutoShare` → return `false` (équivalent : pas d'auto-partage détecté offline → comportement par défaut)
+  - `getSharedTransactionByTransactionId` → return `null`
+  - `getSharedRecurringTransactions` → return `[]`
+- **Régression v3.14.5 résolue** — Le crash observé en prod (`Erreur dans getFamilySharedTransactions: Error: Vous n'êtes pas membre de ce groupe` quand l'utilisateur EST membre) éliminé. Cause racine : `getCurrentUserSafe` (v3.14.5) éliminait le premier fetch `getUser`, mais le second fetch `supabase.from('family_members').single()` continuait à planter avec `ERR_INTERNET_DISCONNECTED` → `membershipError truthy` → throw du message erroné. Le early return offline contourne complètement les 2 fetches.
+- **Fix hooks/useServiceWorkerUpdate.ts** — `registration.update()` (vérification périodique de mise à jour du SW, exécutée toutes les X minutes) skip si `!navigator.onLine`. Élimine le `⚠️ Failed to update a ServiceWorker for scope ('https://1sakely.org/') with script ('https://1sakely.org/sw-custom.js'): An unknown error occurred when fetching the script` qui polluait la console à chaque cycle hors-ligne.
+- **Impact attendu (offline)** — Page Transactions ne crashe plus avec "Vous n'êtes pas membre de ce groupe". FamilyDashboardPage affiche la liste des membres depuis Dexie cache (vide au premier accès offline, peuplé après un passage online). Console totalement propre y compris pour les polling périodiques.
+- **Reste à faire (S71 P3 ou session ultérieure)** — 7 mutations familySharingService (`shareTransaction`, `unshareTransaction`, `updateSharedTransaction`, `upsertSharingRule`, `deleteSharingRule`, `shareRecurringTransaction`, `unshareRecurringTransaction`) à transformer en offline-first queue-able via syncManager. 3 mutations familyGroupService (`createFamilyGroup`, `joinFamilyGroup`, `leaveFamilyGroup`) idem. Phase 2 reimbursementService (`recordReimbursementPayment` FIFO + credit balance + allocations offline-first, 2 nouvelles tables Dexie).
+
+---
+
 ## Version 3.14.5 - 2026-05-15 (Session S71 — P1#1 familySharingService lectures)
 
 ### 🔐 familySharingService lectures offline-safe (5 fonctions) + favicon dans le precache

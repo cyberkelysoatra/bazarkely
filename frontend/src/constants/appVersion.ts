@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.14.5';
-export const APP_VERSION_NAME = 'familySharingService lectures offline-safe + favicon precache';
-export const LAST_UPDATED = '2026-05-15';
-export const APP_BUILD_DATE = '2026-05-15';
+export const APP_VERSION = '3.14.6';
+export const APP_VERSION_NAME = 'family_members Dexie v15 + lectures familySharing skip-offline + SW update skip-offline';
+export const LAST_UPDATED = '2026-05-16';
+export const APP_BUILD_DATE = '2026-05-16';
 export const VERSION_HISTORY = [
+  {
+    version: '3.14.6',
+    date: '2026-05-16',
+    description: 'P1#2 — table Dexie family_members + helper verifyMembership + getFamilyGroupMembers SWR offline-first + 5 lectures familySharingService early-return offline + SW update skip-offline',
+    changes: [
+      'Dexie v15 (lib/database.ts): nouvelle table `familyMembers` avec index composite `[familyGroupId+userId]` et `[familyGroupId+isActive]`. Migration upgrade vide — peuplée au premier appel online de getFamilyGroupMembers',
+      'Helper (services/familyGroupService.ts): `verifyMembership(familyGroupId, userId)` exporté — lecture Dexie d\'abord, assume true en offline si cache absent (faire confiance plutôt que bloquer), tente Supabase + peuple cache si online',
+      'Refactor (services/familyGroupService.ts getFamilyGroupMembers): SWR offline-first complet — lecture Dexie d\'abord (filtre familyGroupId + isActive en mémoire), skip Supabase si offline (retour cache, ne throw plus), refresh + bulkPut Dexie après succès Supabase, fallback cache si erreur fetch online',
+      'Fix (services/familySharingService.ts): early return offline-safe ajouté dans les 5 lectures AVANT le check membership et la requête principale (tous deux online-only). Retours : `getFamilySharedTransactions` → [], `getUserSharingRules` → [], `shouldAutoShare` → false (pas d\'auto-partage offline), `getSharedTransactionByTransactionId` → null, `getSharedRecurringTransactions` → []',
+      'Régression v3.14.5 résolue : `getFamilySharedTransactions` ne throw plus `Vous n\'êtes pas membre de ce groupe` en offline (le check membership Supabase plantait avec `ERR_INTERNET_DISCONNECTED` même quand l\'utilisateur ETAIT membre)',
+      'Fix (hooks/useServiceWorkerUpdate.ts): skip `registration.update()` si `!navigator.onLine` — élimine le bruit console `Failed to update a ServiceWorker for scope` qui apparaissait à chaque cycle de polling en mode hors-ligne',
+      'Reste à faire (S71 P3 ou plus tard) : 7 mutations familySharingService (shareTransaction, unshareTransaction, updateSharedTransaction, upsertSharingRule, deleteSharingRule, shareRecurringTransaction, unshareRecurringTransaction) en offline-first queue-able. Mutations familyGroupService (createFamilyGroup, joinFamilyGroup, leaveFamilyGroup) idem',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.14.5',
     date: '2026-05-15',
