@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users, Repeat } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Save, X, TrendingUp, TrendingDown, ArrowRightLeft, AlertTriangle, Users, Repeat, CloudOff } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import accountService from '../services/accountService';
@@ -47,6 +47,10 @@ const TransactionDetailPage = () => {
   
   // Custom reimbursement rate
   const [customReimbursementRate, setCustomReimbursementRate] = useState<number>(100);
+
+  // Indicateur "sync en attente" pour la dépense partagée et ses demandes de remboursement (S73 v3.16.0)
+  // Met à jour l'icône CloudOff quand la queue syncManager est vidée au retour online.
+  const [isFamilySharePending, setIsFamilySharePending] = useState(false);
   
   // Recurring transaction state
   const [isRecurring, setIsRecurring] = useState(false);
@@ -92,6 +96,48 @@ const TransactionDetailPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // S73 v3.16.0 — Indicateur "sync en attente" pour la dépense partagée.
+  // Interroge db.syncQueue toutes les 5s : si une opération pending/failed cible
+  // family_shared_transactions(id=sharedTransaction.id) ou reimbursement_requests
+  // (shared_transaction_id=sharedTransaction.id), on affiche l'icône CloudOff.
+  useEffect(() => {
+    if (!sharedTransaction?.id) {
+      setIsFamilySharePending(false);
+      return;
+    }
+    let cancelled = false;
+    const fstId = sharedTransaction.id;
+
+    const checkPending = async () => {
+      try {
+        const ops = await db.syncQueue
+          .where('table_name')
+          .anyOf(['family_shared_transactions', 'reimbursement_requests'])
+          .filter((op) => op.status === 'pending' || op.status === 'failed')
+          .toArray();
+        const pending = ops.some((op) => {
+          if (op.table_name === 'family_shared_transactions') {
+            return op.data?.id === fstId;
+          }
+          if (op.table_name === 'reimbursement_requests') {
+            return op.data?.shared_transaction_id === fstId;
+          }
+          return false;
+        });
+        if (!cancelled) setIsFamilySharePending(pending);
+      } catch (error) {
+        console.error('[TransactionDetailPage] check sync queue:', error);
+      }
+    };
+
+    checkPending();
+    const interval = setInterval(checkPending, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [sharedTransaction?.id]);
 
   // Charger la transaction
   useEffect(() => {
@@ -523,36 +569,29 @@ const TransactionDetailPage = () => {
             };
             const newSharedTransaction = await shareTransaction(shareInput);
             toast.success('Transaction partagée avec votre famille !');
-            
+
             // Update local state with new shared transaction
             setSharedTransaction(newSharedTransaction);
-            
-            // If reimbursement is requested, update the amount with custom rate
+
+            // S73 v3.16.0 — Si l'utilisateur a coché remboursement au moment du
+            // partage initial, basculer le flag via updateSharedTransaction qui
+            // applique la cascade offline-first complète (création de la demande
+            // de remboursement avec le bon montant et le bon taux).
             if (hasReimbursementRequest && newSharedTransaction) {
               try {
-                const { supabase } = await import('../lib/supabase');
-                const transactionAmount = Math.abs(updatedTransaction.amount);
-                const customAmount = transactionAmount * (customReimbursementRate / 100);
-                
-                // Wait a bit for the reimbursement request to be created by the trigger
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Find and update the reimbursement request
-                const { data: reimbursementRequest } = await supabase
-                  .from('reimbursement_requests')
-                  .select('id')
-                  .eq('shared_transaction_id', newSharedTransaction.id)
-                  .eq('status', 'pending')
-                  .maybeSingle();
-                
-                if (reimbursementRequest) {
-                  await supabase
-                    .from('reimbursement_requests')
-                    .update({ amount: customAmount })
-                    .eq('id', reimbursementRequest.id);
+                await updateSharedTransaction(newSharedTransaction.id, {
+                  hasReimbursementRequest: true,
+                  customReimbursementRate: customReimbursementRate,
+                } as any);
+                if (!navigator.onLine) {
+                  toast('Remboursement sera créé à la prochaine connexion', {
+                    icon: '☁️',
+                    style: { background: '#FEF3C7', color: '#92400E' },
+                    duration: 4000,
+                  });
                 }
               } catch (error) {
-                console.error('Error updating reimbursement amount:', error);
+                console.error('Error setting reimbursement on initial share:', error);
               }
             }
           }
@@ -563,59 +602,29 @@ const TransactionDetailPage = () => {
           }
           // If shared and reimbursement request changed
           else if (isShared && sharedTransaction) {
-            // Update reimbursement request status if changed from initial value OR rate changed
+            // S73 v3.16.0 — Cascade offline-first complète dans updateSharedTransaction :
+            // le service applique le bon montant (rate + splitType + splitDetails) directement.
+            // Plus de workaround setTimeout + UPDATE direct supabase.
             const shouldUpdate = hasReimbursementRequest !== initialHasReimbursementRequest;
-            
+
             if (shouldUpdate || hasReimbursementRequest) {
-              // Pass custom reimbursement rate to updateSharedTransaction
               await updateSharedTransaction(sharedTransaction.id, {
                 hasReimbursementRequest: hasReimbursementRequest,
-                customReimbursementRate: customReimbursementRate
+                customReimbursementRate: customReimbursementRate,
               } as any);
-              
-              // Also update amount directly if reimbursement is enabled (in case updateSharedTransaction doesn't handle it)
-              if (hasReimbursementRequest && updatedTransaction) {
-                try {
-                  const { supabase } = await import('../lib/supabase');
-                  const transactionAmount = Math.abs(updatedTransaction.amount);
-                  const customAmount = transactionAmount * (customReimbursementRate / 100);
-                  
-                  // Wait a bit for the reimbursement request to be created/updated by updateSharedTransaction
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                  
-                  // Find existing reimbursement request
-                  const { data: existingReimbursement } = await supabase
-                    .from('reimbursement_requests')
-                    .select('id')
-                    .eq('shared_transaction_id', sharedTransaction.id)
-                    .eq('status', 'pending')
-                    .maybeSingle();
-                  
-                  if (existingReimbursement) {
-                    // Update existing reimbursement amount with custom rate
-                    const { error: updateError } = await supabase
-                      .from('reimbursement_requests')
-                      .update({ amount: customAmount })
-                      .eq('id', existingReimbursement.id);
-                    
-                    if (updateError) {
-                      console.error('Error updating reimbursement amount:', updateError);
-                    } else {
-                      console.log('✅ Reimbursement amount updated to:', customAmount, 'with rate:', customReimbursementRate + '%');
-                    }
-                  }
-                } catch (error) {
-                  console.error('Error updating reimbursement amount:', error);
-                }
-              }
-              
-              if (shouldUpdate) {
-              toast.success('Demande de remboursement mise à jour');
-              // Update initial value to current value
-              setInitialHasReimbursementRequest(hasReimbursementRequest);
+
+              if (!navigator.onLine && hasReimbursementRequest) {
+                toast('Remboursement sera créé à la prochaine connexion', {
+                  icon: '☁️',
+                  style: { background: '#FEF3C7', color: '#92400E' },
+                  duration: 4000,
+                });
+              } else if (shouldUpdate) {
+                toast.success('Demande de remboursement mise à jour');
               } else {
                 toast.success('Taux de remboursement mis à jour');
               }
+              setInitialHasReimbursementRequest(hasReimbursementRequest);
             }
           }
         } catch (error: any) {
@@ -1324,8 +1333,17 @@ const TransactionDetailPage = () => {
                 {!isLoanCategory && isShared && (
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                         Demander remboursement
+                        {isFamilySharePending && (
+                          <span
+                            title="Synchronisation en attente"
+                            aria-label="Synchronisation en attente"
+                            className="inline-flex flex-shrink-0"
+                          >
+                            <CloudOff className="w-4 h-4 text-amber-500" />
+                          </span>
+                        )}
                       </label>
                       <p className="text-xs text-gray-500">
                         Créez une demande de remboursement pour cette transaction partagée

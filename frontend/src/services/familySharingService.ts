@@ -24,6 +24,7 @@ import type {
   FamilySharingRuleLocal,
   FamilySharedRecurringLocal,
 } from '../types/familyLocal';
+import type { ReimbursementRequestLocal } from '../types/reimbursement';
 import type {
   FamilySharedTransaction,
   FamilySharedTransactionRow,
@@ -704,452 +705,538 @@ export async function unshareTransaction(sharedTransactionId: string): Promise<v
 }
 
 /**
- * Met à jour une transaction partagée
- * @param id - ID de la transaction partagée
- * @param updates - Données de mise à jour
- * @returns La transaction partagée mise à jour
- * @throws Error si l'utilisateur n'est pas le propriétaire ou en cas d'erreur
+ * Met à jour une transaction partagée — offline-first complet (S73 Bloc 3, v3.16.0).
+ *
+ * Refonte complète de la cascade hasReimbursementRequest. Toutes les lectures
+ * (ownership, family_members créancier/débiteur, reimbursement_request existante)
+ * passent par Dexie d'abord. Toutes les écritures (UPDATE family_shared_transactions,
+ * INSERT/UPDATE/DELETE/CANCEL reimbursement_requests) sont appliquées en local
+ * immédiatement, puis poussées Supabase si online, sinon mises en queue syncManager.
+ *
+ * Périmètre cascade (Q5/Q6 OUI) :
+ *  - hasReimbursementRequest true → create/update reimbursement_request (montant
+ *    calculé selon rate + splitType + splitDetails)
+ *  - hasReimbursementRequest false → DELETE reimbursement_request s'il n'y a pas
+ *    de paiement lié, sinon UPDATE status='cancelled' (Q7 C). Correction de bug
+ *    en ligne aussi (Q2 NON).
+ *  - Changement de rate, splitType, splitDetails sur dépense avec remboursement
+ *    actif → recalcul montant reimbursement_request existante.
+ *
+ * Périmètre champs (Q3 A) : isPrivate, splitType, splitDetails sont aussi
+ * en offline-first dans la même refonte.
+ *
+ * Cas dégradés (Q1 C) : si cache familyMembers vide ou aucun débiteur actif
+ * trouvé → on bascule juste le flag local + queue, et on log un warning. Le
+ * toast + l'icône CloudOff sont gérés côté TransactionDetailPage.
  */
 export async function updateSharedTransaction(
   id: string,
   updates: Partial<FamilySharedTransactionUpdate>
 ): Promise<FamilySharedTransaction> {
-  try {
-    // Vérifier l'authentification
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Utilisateur non authentifié');
-    }
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
 
-    // Vérifier que l'utilisateur est le propriétaire
-    const { data: sharedTransaction, error: fetchError } = await supabase
-      .from('family_shared_transactions')
-      .select('shared_by')
-      .eq('id', id)
-      .maybeSingle();
+  const updatesAny = updates as any;
 
-    if (fetchError) {
-      throw new Error(`Erreur lors de la vérification: ${fetchError.message}`);
-    }
-
-    if (!sharedTransaction) {
-      throw new Error('Transaction partagée non trouvée');
-    }
-
-    if ((sharedTransaction as any).shared_by !== user.id) {
-      throw new Error('Vous n\'êtes pas autorisé à modifier ce partage');
-    }
-
-    // Préparer les données de mise à jour
-    // Seules les colonnes existantes dans family_shared_transactions peuvent être mises à jour:
-    // id, family_group_id, transaction_id, shared_by, is_private, split_type, split_details, has_reimbursement_request, shared_at
-    const updateData: any = {};
-    const updatesAny = updates as any; // Permet d'accéder aux propriétés qui peuvent être passées
-    
-    // Colonnes valides à mettre à jour
-    if (updatesAny.isPrivate !== undefined) {
-      updateData.is_private = updatesAny.isPrivate;
-    }
-    if (updates.splitType !== undefined) {
-      updateData.split_type = updates.splitType;
-    }
-    if (updates.splitDetails !== undefined) {
-      updateData.split_details = updates.splitDetails as any; // JSONB
-    }
-    if (updatesAny.hasReimbursementRequest !== undefined) {
-      updateData.has_reimbursement_request = updatesAny.hasReimbursementRequest;
-    }
-    
-    // DO NOT include: notes, amount, description, category, paid_by, is_settled
-    // Ces colonnes n'existent pas dans family_shared_transactions
-
-    // If updating hasReimbursementRequest, use the RPC function (bypasses RLS)
-    // Use RPC whenever hasReimbursementRequest is being updated, not just when it's the only field
-    if (updatesAny.hasReimbursementRequest !== undefined) {
-      
-      const { error: rpcError } = await (supabase.rpc as any)('update_reimbursement_request', {
-        p_shared_transaction_id: id,
-        p_has_reimbursement_request: updatesAny.hasReimbursementRequest
-      });
-
-      if (rpcError) {
-        throw new Error(`Erreur lors de la mise à jour: ${rpcError.message}`);
-      }
-
-      // Si on active la demande de remboursement, créer la ligne dans reimbursement_requests
-      if (updatesAny.hasReimbursementRequest === true) {
-        // Vérifier si une demande existe déjà
-        const { data: existingRequest, error: checkError } = await supabase
-          .from('reimbursement_requests')
-          .select('id')
-          .eq('shared_transaction_id', id)
-          .maybeSingle();
-
-        if (checkError) {
-          console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la vérification de l\'existence:', checkError.message);
-        } else if (!existingRequest) {
-          // Récupérer les détails de la transaction partagée
-          const { data: sharedTx, error: sharedTxError } = await supabase
-            .from('family_shared_transactions')
-            .select(`
-              id,
-              transaction_id,
-              paid_by,
-              family_group_id,
-              split_type,
-              split_details,
-              transactions(amount, user_id)
-            `)
-            .eq('id', id)
-            .maybeSingle();
-
-          if (sharedTxError || !sharedTx) {
-            console.warn('[TOGGLE REMBOURSEMENT] Impossible de récupérer la transaction partagée:', sharedTxError?.message);
-          } else {
-            // Récupérer le member_id du payeur (créancier = to_member)
-            const paidByUserId = (sharedTx as any).paid_by || (sharedTx as any).shared_by;
-            if (!paidByUserId) {
-              console.warn('[TOGGLE REMBOURSEMENT] paid_by manquant dans la transaction partagée');
-            } else {
-              const { data: creditorMember, error: creditorError } = await supabase
-                .from('family_members')
-                .select('id')
-                .eq('family_group_id', (sharedTx as any).family_group_id)
-                .eq('user_id', paidByUserId)
-                .eq('is_active', true)
-                .maybeSingle();
-
-              if (creditorError) {
-                console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la récupération du créancier:', creditorError.message);
-              } else if (!creditorMember) {
-                console.warn('[TOGGLE REMBOURSEMENT] Créancier (payeur) non trouvé dans les membres actifs');
-              } else {
-                // Récupérer le member_id du débiteur (celui qui doit rembourser = from_member)
-                // C'est l'autre membre actif du groupe qui n'est pas le payeur
-                const { data: debtorMembers, error: debtorError } = await supabase
-                  .from('family_members')
-                  .select('id')
-                  .eq('family_group_id', (sharedTx as any).family_group_id)
-                  .neq('user_id', paidByUserId)
-                  .eq('is_active', true)
-                  .limit(1);
-
-                if (debtorError) {
-                  console.warn('[TOGGLE REMBOURSEMENT] Erreur lors de la récupération du débiteur:', debtorError.message);
-                } else if (!debtorMembers || debtorMembers.length === 0) {
-                  console.warn('[TOGGLE REMBOURSEMENT] Débiteur non trouvé (pas d\'autre membre actif dans le groupe)');
-                } else {
-                  const debtorMember = debtorMembers[0];
-
-                  // Calculer le montant à rembourser (utilise le taux personnalisé, le taux configuré, ou 100% par défaut, ou selon split_details)
-                  const transactionAmount = Math.abs(((sharedTx as any).transactions as any)?.amount || 0);
-                  
-                  // Priority: customReimbursementRate > localStorage setting > default 100%
-                  let rate = 1.0; // Default 100%
-                  
-                  if (updatesAny.customReimbursementRate !== undefined && updatesAny.customReimbursementRate !== null) {
-                    // Use custom rate passed from TransactionDetailPage
-                    rate = Math.min(100, Math.max(1, updatesAny.customReimbursementRate)) / 100;
-                    console.log('[TOGGLE REMBOURSEMENT] Using custom reimbursement rate:', updatesAny.customReimbursementRate + '%');
-                  } else {
-                    // Get configured reimbursement rate from localStorage (default to 100%)
-                    const groupId = (sharedTx as any).family_group_id;
-                    const defaultRate = groupId ? localStorage.getItem(`bazarkely_family_${groupId}_reimbursement_rate`) : null;
-                    rate = defaultRate ? parseInt(defaultRate, 10) / 100 : 1.0; // Default 100%
-                    console.log('[TOGGLE REMBOURSEMENT] Using family default rate:', (rate * 100) + '%');
-                  }
-                  
-                  let reimbursementAmount = transactionAmount * rate; // Use configured rate
-
-                  // Pour 'paid_by_one', toujours utiliser le montant complet de la transaction avec le taux
-                  // Pour les autres types de split, utiliser split_details si disponible
-                  const splitType = (sharedTx as any).split_type;
-                  if (splitType !== 'paid_by_one') {
-                    if ((sharedTx as any).split_details && Array.isArray((sharedTx as any).split_details)) {
-                      const debtorSplit = ((sharedTx as any).split_details as any[]).find(
-                        (s: any) => s.memberId === debtorMember.id || s.member_id === debtorMember.id
-                      );
-                      if (debtorSplit && (debtorSplit.amount !== undefined && debtorSplit.amount !== null)) {
-                        // Pour split_custom, appliquer le taux au montant du split
-                        reimbursementAmount = Math.abs(debtorSplit.amount) * rate;
-                      }
-                    }
-                  }
-
-                  // Créer ou mettre à jour la demande de remboursement
-                  const { data: existingRequest, error: checkRequestError } = await supabase
-                    .from('reimbursement_requests')
-                    .select('id')
-                    .eq('shared_transaction_id', id)
-                    .eq('status', 'pending')
-                    .maybeSingle();
-
-                  if (checkRequestError && checkRequestError.code !== 'PGRST116') {
-                    console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la vérification:', checkRequestError.message);
-                  } else if (existingRequest) {
-                    // Update existing reimbursement request with new amount
-                    const { error: updateError } = await supabase
-                      .from('reimbursement_requests')
-                      .update({ amount: reimbursementAmount })
-                      .eq('id', existingRequest.id);
-
-                    if (updateError) {
-                      console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la mise à jour de la demande:', updateError.message);
-                    } else {
-                      console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement mise à jour avec montant:', reimbursementAmount);
-                    }
-                  } else {
-                    // Create new reimbursement request
-                    const { error: insertError } = await supabase
-                      .from('reimbursement_requests')
-                      .insert({
-                        shared_transaction_id: id,
-                        from_member_id: debtorMember.id,
-                        to_member_id: creditorMember.id,
-                        amount: reimbursementAmount,
-                        status: 'pending'
-                      } as any);
-
-                    if (insertError) {
-                      console.error('[TOGGLE REMBOURSEMENT] Erreur lors de la création de la demande:', insertError.message);
-                    } else {
-                      console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement créée avec succès, montant:', reimbursementAmount);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          // If hasReimbursementRequest is false, we don't need to update amount
-          console.log('[TOGGLE REMBOURSEMENT] Demande de remboursement désactivée');
-        }
-      }
-
-      // If other fields are also being updated, update them separately
-      const otherUpdateData: any = {};
-      if (updatesAny.isPrivate !== undefined) {
-        otherUpdateData.is_private = updatesAny.isPrivate;
-      }
-      if (updates.splitType !== undefined) {
-        otherUpdateData.split_type = updates.splitType;
-      }
-      if (updates.splitDetails !== undefined) {
-        otherUpdateData.split_details = updates.splitDetails as any;
-      }
-
-      // Update other fields if any
-      if (Object.keys(otherUpdateData).length > 0) {
-        const { error: otherUpdateError } = await (supabase
-          .from('family_shared_transactions') as any)
-          .update(otherUpdateData)
-          .eq('id', id);
-
-        if (otherUpdateError) {
-          console.warn('Error updating other fields:', otherUpdateError);
-          // Don't throw - the RPC update succeeded, other fields can be updated later
-        }
-      }
-
-      // Fetch the updated transaction with JOIN to get transaction details
-      const { data: updated, error: fetchError } = await supabase
-        .from('family_shared_transactions')
-        .select(`
-          *,
-          transactions (
-            id,
-            description,
-            amount,
-            category,
-            date,
-            type
-          )
-        `)
-        .eq('id', id)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Erreur lors de la récupération: ${fetchError.message}`);
-      }
-
-      if (!updated) {
-        throw new Error('Impossible de récupérer la transaction mise à jour');
-      }
-
-      // Map the result with joined transaction data
-      const row = updated as any;
-      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
-
-      // Extract joined transaction data if available
-      if (row.transactions) {
-        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
-        if (transactionData) {
-          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
-          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
-            ? transactionData.amount 
-            : (baseTransaction.amount ?? 0);
-          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
-          if (transactionData.date) {
-            baseTransaction.date = new Date(transactionData.date);
-          }
-        }
-      }
-
-      return baseTransaction;
-    }
-
-    // Mettre à jour (pour les autres colonnes, sans hasReimbursementRequest)
-    // Remove has_reimbursement_request from updateData if it was there (shouldn't be, but just in case)
-    const updateDataWithoutReimbursement = { ...updateData };
-    delete updateDataWithoutReimbursement.has_reimbursement_request;
-
-    // Only proceed with UPDATE if there are other fields to update
-    if (Object.keys(updateDataWithoutReimbursement).length === 0) {
-      // No other fields to update, just fetch the current transaction
-      const { data: currentTransaction, error: fetchError } = await supabase
-        .from('family_shared_transactions')
-        .select(`
-          *,
-          transactions (
-            id,
-            description,
-            amount,
-            category,
-            date,
-            type
-          )
-        `)
-        .eq('id', id)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Erreur lors de la récupération: ${fetchError.message}`);
-      }
-
-      if (!currentTransaction) {
-        throw new Error('Transaction partagée non trouvée');
-      }
-
-      const row = currentTransaction as any;
-      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
-
-      if (row.transactions) {
-        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
-        if (transactionData) {
-          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
-          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
-            ? transactionData.amount 
-            : (baseTransaction.amount ?? 0);
-          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
-          if (transactionData.date) {
-            baseTransaction.date = new Date(transactionData.date);
-          }
-        }
-      }
-
-      return baseTransaction;
-    }
-
-    const { data: updatedTransaction, error: updateError } = await (supabase
-      .from('family_shared_transactions') as any)
-      .update(updateDataWithoutReimbursement)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (updateError) {
-      throw new Error(`Erreur lors de la mise à jour: ${updateError.message}`);
-    }
-
-    if (!updatedTransaction) {
-      // No row updated - might be RLS issue or wrong ID
-      console.warn('No row updated - checking if transaction exists...');
-      // Vérifier si la transaction existe toujours
-      const { data: checkTransaction, error: checkError } = await supabase
-        .from('family_shared_transactions')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (checkError) {
-        throw new Error(`Erreur lors de la vérification: ${checkError.message}`);
-      }
-      
-      if (!checkTransaction) {
-        throw new Error('Transaction partagée non trouvée après mise à jour');
-      }
-      
-      // La transaction existe mais RLS bloque peut-être le SELECT après UPDATE
-      // Récupérer la transaction avec JOIN pour avoir les données complètes
-      const { data: fetchedTransaction, error: fetchError } = await supabase
-        .from('family_shared_transactions')
-        .select(`
-          *,
-          transactions (
-            id,
-            description,
-            amount,
-            category,
-            date,
-            type
-          )
-        `)
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (fetchError || !fetchedTransaction) {
-        throw new Error('Impossible de récupérer la transaction mise à jour (problème RLS possible)');
-      }
-      
-      // Utiliser les données récupérées avec JOIN
-      const row = fetchedTransaction as any;
-      const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
-      
-      // Extraire les données de transaction jointes si disponibles
-      if (row.transactions) {
-        const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
-        if (transactionData) {
-          baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
-          baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
-            ? transactionData.amount 
-            : (baseTransaction.amount ?? 0);
-          baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
-          if (transactionData.date) {
-            baseTransaction.date = new Date(transactionData.date);
-          }
-        }
-      }
-      
-      return baseTransaction;
-    }
-
-    // Transaction mise à jour avec succès, mapper les données
-    const row = updatedTransaction as any;
-    const baseTransaction = mapRowToFamilySharedTransaction(row as unknown as FamilySharedTransactionRow);
-    
-    // Si une transaction est jointe, extraire ses données
-    if (row.transactions) {
-      const transactionData = Array.isArray(row.transactions) ? row.transactions[0] : row.transactions;
-      if (transactionData) {
-        baseTransaction.description = transactionData.description || baseTransaction.description || 'Sans description';
-        baseTransaction.amount = transactionData.amount !== null && transactionData.amount !== undefined 
-          ? transactionData.amount 
-          : (baseTransaction.amount ?? 0);
-        baseTransaction.category = transactionData.category || baseTransaction.category || 'autre';
-        if (transactionData.date) {
-          baseTransaction.date = new Date(transactionData.date);
-        }
-      }
-    }
-    
-    return baseTransaction;
-  } catch (error) {
-    console.error('Erreur dans updateSharedTransaction:', error);
-    throw error;
+  // STEP 0 — Lecture Dexie locale (ownership + snapshots)
+  const local = await db.familySharedTransactions.get(id);
+  if (!local) {
+    throw new Error('Transaction partagée non trouvée');
   }
+  if (local.sharedBy !== user.id) {
+    throw new Error("Vous n'êtes pas autorisé à modifier ce partage");
+  }
+
+  // Construire le patch des champs simples de family_shared_transactions
+  const nowIso = new Date().toISOString();
+  const fstPatch: Partial<FamilySharedTransactionLocal> = { updatedAt: nowIso };
+  const fstSupabasePayload: Record<string, any> = {};
+
+  if (updatesAny.isPrivate !== undefined) {
+    fstPatch.isPrivate = !!updatesAny.isPrivate;
+    fstSupabasePayload.is_private = !!updatesAny.isPrivate;
+  }
+  if (updates.splitType !== undefined) {
+    fstPatch.splitType = updates.splitType as SplitType;
+    fstSupabasePayload.split_type = updates.splitType;
+  }
+  if (updates.splitDetails !== undefined) {
+    fstPatch.splitDetails = (updates.splitDetails as SplitDetail[]) || [];
+    fstSupabasePayload.split_details =
+      (updates.splitDetails as SplitDetail[])?.length ? updates.splitDetails : null;
+  }
+  const reimbursementToggleRequested = updatesAny.hasReimbursementRequest !== undefined;
+  const newReimbursementFlag = reimbursementToggleRequested
+    ? !!updatesAny.hasReimbursementRequest
+    : local.hasReimbursementRequest;
+  if (reimbursementToggleRequested) {
+    fstPatch.hasReimbursementRequest = newReimbursementFlag;
+    fstSupabasePayload.has_reimbursement_request = newReimbursementFlag;
+  }
+
+  // STEP 1 — UPDATE Dexie family_shared_transactions immédiat
+  await db.familySharedTransactions.update(id, fstPatch);
+  const updatedLocal: FamilySharedTransactionLocal = {
+    ...local,
+    ...fstPatch,
+  } as FamilySharedTransactionLocal;
+
+  // STEP 2 — Cascade reimbursement_requests (Dexie + push/queue)
+  // Décide si on doit (re)calculer le montant : flag activé, ou flag déjà actif
+  // et un paramètre de calcul a changé (rate / splitType / splitDetails)
+  const calcParamsChanged =
+    updatesAny.customReimbursementRate !== undefined ||
+    updates.splitType !== undefined ||
+    updates.splitDetails !== undefined;
+  const shouldRecomputeAmount =
+    newReimbursementFlag && (reimbursementToggleRequested || calcParamsChanged);
+  const shouldRemoveOrCancel = reimbursementToggleRequested && !newReimbursementFlag;
+
+  if (shouldRecomputeAmount) {
+    await applyReimbursementUpsertCascade({
+      userId: user.id,
+      sharedTx: updatedLocal,
+      customRate: updatesAny.customReimbursementRate,
+    });
+  } else if (shouldRemoveOrCancel) {
+    await applyReimbursementRemovalCascade({
+      userId: user.id,
+      sharedTransactionId: id,
+    });
+  }
+
+  // STEP 3 — Push Supabase family_shared_transactions (ou queue)
+  if (Object.keys(fstSupabasePayload).length > 0) {
+    await pushFstUpdate(user.id, id, fstSupabasePayload);
+  }
+
+  return localToFamilySharedTransaction(updatedLocal);
+}
+
+// ============================================================================
+// CASCADE REIMBURSEMENT — helpers internes pour updateSharedTransaction
+// ============================================================================
+
+interface ReimbursementUpsertParams {
+  userId: string;
+  sharedTx: FamilySharedTransactionLocal;
+  customRate: number | undefined;
+}
+
+/**
+ * Calcule le rate effectif : custom > localStorage groupe > 100% par défaut.
+ * Retourne une fraction (0-1).
+ */
+function resolveReimbursementRate(
+  familyGroupId: string,
+  customRate: number | undefined
+): number {
+  if (customRate !== undefined && customRate !== null) {
+    const clamped = Math.min(100, Math.max(1, customRate));
+    return clamped / 100;
+  }
+  try {
+    const stored = localStorage.getItem(
+      `bazarkely_family_${familyGroupId}_reimbursement_rate`
+    );
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed)) return parsed / 100;
+    }
+  } catch {
+    /* localStorage indisponible : fallback */
+  }
+  return 1.0;
+}
+
+/**
+ * Calcule le montant à rembourser pour un débiteur donné selon le splitType.
+ * - paid_by_one : montant total × rate
+ * - autres : montant du split du débiteur × rate (fallback total × rate si pas trouvé)
+ */
+function computeReimbursementAmount(
+  sharedTx: FamilySharedTransactionLocal,
+  debtorMemberId: string,
+  rate: number
+): number {
+  const totalAmount = Math.abs(sharedTx.transactionAmount ?? 0);
+  if (sharedTx.splitType === 'paid_by_one') {
+    return totalAmount * rate;
+  }
+  if (Array.isArray(sharedTx.splitDetails)) {
+    const debtorSplit = sharedTx.splitDetails.find(
+      (s: any) => s.memberId === debtorMemberId || s.member_id === debtorMemberId
+    );
+    if (
+      debtorSplit &&
+      (debtorSplit as any).amount !== undefined &&
+      (debtorSplit as any).amount !== null
+    ) {
+      return Math.abs((debtorSplit as any).amount) * rate;
+    }
+  }
+  return totalAmount * rate;
+}
+
+/**
+ * Cascade INSERT/UPDATE reimbursement_request. Lecture familyMembers depuis
+ * Dexie (cache S71). Si le cache est incomplet (pas de débiteur trouvé), on
+ * log un warning et on n'écrit pas — le flag reste à true sur la transaction
+ * partagée, la cascade complète sera retentée à la prochaine synchro online
+ * (Q1 C : dégradation acceptable).
+ */
+async function applyReimbursementUpsertCascade(
+  params: ReimbursementUpsertParams
+): Promise<void> {
+  const { userId, sharedTx, customRate } = params;
+  const familyGroupId = sharedTx.familyGroupId;
+  const paidByUserId = sharedTx.paidBy || sharedTx.sharedBy;
+  if (!paidByUserId) {
+    console.warn(`${LOG_TAG} ⚠️ cascade reimbursement: paidBy manquant`);
+    return;
+  }
+
+  // Lookup créancier (payeur) dans le cache local familyMembers
+  const creditorMember = await db.familyMembers
+    .where('[familyGroupId+userId]')
+    .equals([familyGroupId, paidByUserId])
+    .filter((m: any) => m.isActive === true)
+    .first();
+  if (!creditorMember) {
+    console.warn(
+      `${LOG_TAG} ⚠️ cascade reimbursement: créancier non trouvé en cache (paidBy=${paidByUserId})`
+    );
+    return;
+  }
+
+  // Lookup débiteur (autre membre actif du groupe). On lit tous les actifs et
+  // on exclut le payeur en mémoire (l'index Dexie sur isActive boolean est
+  // fragile selon les drivers).
+  const allMembers = await db.familyMembers
+    .where('familyGroupId')
+    .equals(familyGroupId)
+    .toArray();
+  const debtorMember = allMembers
+    .filter((m: any) => m.isActive === true)
+    .find((m: any) => m.userId && m.userId !== paidByUserId);
+  if (!debtorMember) {
+    console.warn(
+      `${LOG_TAG} ⚠️ cascade reimbursement: aucun autre membre actif trouvé en cache`
+    );
+    return;
+  }
+
+  const rate = resolveReimbursementRate(familyGroupId, customRate);
+  const amount = computeReimbursementAmount(sharedTx, debtorMember.id, rate);
+  const ratePercent = Math.round(rate * 100);
+  const nowIso = new Date().toISOString();
+
+  // Vérifier si une demande pending existe déjà
+  const existingPending = await db.reimbursementRequests
+    .where('sharedTransactionId')
+    .equals(sharedTx.id)
+    .filter((r) => r.status === 'pending')
+    .first();
+
+  if (existingPending) {
+    // UPDATE Dexie + push/queue
+    const patch = {
+      amount,
+      reimbursementRate: ratePercent,
+      updatedAt: nowIso,
+    };
+    await db.reimbursementRequests.update(existingPending.id, patch);
+
+    const supabasePatch = {
+      amount,
+      percentage: ratePercent,
+    };
+    await pushReimbursementUpdate(userId, existingPending.id, supabasePatch);
+    console.log(
+      `${LOG_TAG} 💰 reimbursement_request ${existingPending.id} mise à jour (montant=${amount}, taux=${ratePercent}%)`
+    );
+    return;
+  }
+
+  // INSERT — créer une nouvelle demande
+  const newReqId = crypto.randomUUID();
+  const reqLocal: ReimbursementRequestLocal = {
+    id: newReqId,
+    sharedTransactionId: sharedTx.id,
+    fromMemberId: debtorMember.id,
+    toMemberId: creditorMember.id,
+    amount,
+    currency: 'MGA',
+    status: 'pending',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    settledAt: null,
+    settledBy: null,
+    note: null,
+    familyGroupId,
+    fromMemberName: (debtorMember as any).displayName || '',
+    toMemberName: (creditorMember as any).displayName || '',
+    fromMemberUserId: (debtorMember as any).userId ?? null,
+    toMemberUserId: (creditorMember as any).userId ?? null,
+    transactionId: sharedTx.transactionId,
+    transactionDescription: sharedTx.transactionDescription,
+    transactionAmount: sharedTx.transactionAmount,
+    transactionDate: sharedTx.transactionDate,
+    transactionCategory: sharedTx.transactionCategory,
+    reimbursementRate: ratePercent,
+    hasReimbursementRequest: true,
+  };
+  await db.reimbursementRequests.put(reqLocal);
+
+  const supabasePayload = {
+    id: newReqId,
+    shared_transaction_id: sharedTx.id,
+    from_member_id: debtorMember.id,
+    to_member_id: creditorMember.id,
+    amount,
+    currency: 'MGA',
+    status: 'pending',
+    percentage: ratePercent,
+  };
+  await pushReimbursementInsert(userId, newReqId, supabasePayload);
+  console.log(
+    `${LOG_TAG} 💰 reimbursement_request ${newReqId} créée (montant=${amount}, taux=${ratePercent}%)`
+  );
+}
+
+/**
+ * Cascade DELETE (ou UPDATE status='cancelled') reimbursement_request quand
+ * hasReimbursementRequest passe à false. Q7 C : si paiements liés détectables
+ * en ligne, on cancel au lieu de delete. En offline, on ne peut pas vérifier
+ * la présence de paiements (pas de cache reimbursement_payments en S73) →
+ * choix safe = cancel pour ne jamais effacer un éventuel historique.
+ */
+async function applyReimbursementRemovalCascade(params: {
+  userId: string;
+  sharedTransactionId: string;
+}): Promise<void> {
+  const { userId, sharedTransactionId } = params;
+
+  const pendings = await db.reimbursementRequests
+    .where('sharedTransactionId')
+    .equals(sharedTransactionId)
+    .filter((r) => r.status === 'pending')
+    .toArray();
+  if (pendings.length === 0) {
+    console.log(
+      `${LOG_TAG} ℹ️ Pas de reimbursement_request pending pour ${sharedTransactionId}`
+    );
+    return;
+  }
+
+  for (const req of pendings) {
+    let hasPayments = false;
+    if (isOnline()) {
+      try {
+        const { data, error } = (await withTimeout(
+          supabase
+            .from('reimbursement_payments')
+            .select('id')
+            .eq('reimbursement_request_id', req.id)
+            .limit(1),
+          SUPABASE_TIMEOUT_MS,
+          'familySharingService.applyReimbursementRemovalCascade.checkPayments'
+        )) as any;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          hasPayments = true;
+        }
+      } catch {
+        // Si la vérification échoue, choix safe = cancel
+        hasPayments = true;
+      }
+    } else {
+      // Offline : on ne peut pas vérifier → safe = cancel
+      hasPayments = true;
+    }
+
+    const nowIso = new Date().toISOString();
+    if (hasPayments) {
+      await db.reimbursementRequests.update(req.id, {
+        status: 'cancelled',
+        updatedAt: nowIso,
+      });
+      await pushReimbursementUpdate(userId, req.id, { status: 'cancelled' });
+      console.log(
+        `${LOG_TAG} 🚫 reimbursement_request ${req.id} annulée (paiements existants ou offline)`
+      );
+    } else {
+      await db.reimbursementRequests.delete(req.id);
+      await pushReimbursementDelete(userId, req.id);
+      console.log(`${LOG_TAG} 🗑️ reimbursement_request ${req.id} supprimée`);
+    }
+  }
+}
+
+/**
+ * Push UPDATE family_shared_transactions (Supabase si online, queue sinon).
+ * Bascule de hasReimbursementRequest : RPC update_reimbursement_request en
+ * ligne (bypass RLS), sinon UPDATE direct rejoué par le syncManager au retour.
+ */
+async function pushFstUpdate(
+  userId: string,
+  id: string,
+  payload: Record<string, any>
+): Promise<void> {
+  if (isOnline()) {
+    try {
+      const hasFlagToggle = payload.has_reimbursement_request !== undefined;
+      const otherPayload = { ...payload };
+      delete otherPayload.has_reimbursement_request;
+
+      if (hasFlagToggle) {
+        const { error: rpcError } = (await withTimeout(
+          (supabase.rpc as any)('update_reimbursement_request', {
+            p_shared_transaction_id: id,
+            p_has_reimbursement_request: payload.has_reimbursement_request,
+          }),
+          SUPABASE_TIMEOUT_MS,
+          'familySharingService.pushFstUpdate.rpc'
+        )) as any;
+        if (rpcError) throw rpcError;
+      }
+
+      if (Object.keys(otherPayload).length > 0) {
+        const { error: updateError } = (await withTimeout(
+          (supabase.from('family_shared_transactions') as any)
+            .update(otherPayload)
+            .eq('id', id),
+          SUPABASE_TIMEOUT_MS,
+          'familySharingService.pushFstUpdate.update'
+        )) as any;
+        if (updateError) throw updateError;
+      }
+      return;
+    } catch (error) {
+      console.warn(
+        `${LOG_TAG} ⚠️ pushFstUpdate Supabase échoué, queue:`,
+        error
+      );
+    }
+  }
+  await queueFamilySharingSyncOperation(
+    userId,
+    'UPDATE',
+    'family_shared_transactions',
+    id,
+    payload
+  );
+}
+
+async function pushReimbursementInsert(
+  userId: string,
+  _recordId: string,
+  payload: Record<string, any>
+): Promise<void> {
+  if (isOnline()) {
+    try {
+      const { error } = (await withTimeout(
+        supabase.from('reimbursement_requests').insert(payload as any),
+        SUPABASE_TIMEOUT_MS,
+        'familySharingService.pushReimbursementInsert'
+      )) as any;
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(
+        `${LOG_TAG} ⚠️ INSERT reimbursement_request Supabase échoué, queue:`,
+        error
+      );
+    }
+  }
+  await db.syncQueue.add({
+    id: crypto.randomUUID(),
+    userId,
+    operation: 'CREATE',
+    table_name: 'reimbursement_requests',
+    data: payload,
+    timestamp: new Date(),
+    retryCount: 0,
+    status: 'pending',
+    priority: SYNC_PRIORITY.NORMAL,
+    syncTag: 'bazarkely-sync',
+    expiresAt: null,
+  });
+}
+
+async function pushReimbursementUpdate(
+  userId: string,
+  recordId: string,
+  payload: Record<string, any>
+): Promise<void> {
+  if (isOnline()) {
+    try {
+      const { error } = (await withTimeout(
+        (supabase.from('reimbursement_requests') as any)
+          .update(payload)
+          .eq('id', recordId),
+        SUPABASE_TIMEOUT_MS,
+        'familySharingService.pushReimbursementUpdate'
+      )) as any;
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(
+        `${LOG_TAG} ⚠️ UPDATE reimbursement_request ${recordId} Supabase échoué, queue:`,
+        error
+      );
+    }
+  }
+  await db.syncQueue.add({
+    id: crypto.randomUUID(),
+    userId,
+    operation: 'UPDATE',
+    table_name: 'reimbursement_requests',
+    data: { id: recordId, ...payload },
+    timestamp: new Date(),
+    retryCount: 0,
+    status: 'pending',
+    priority: SYNC_PRIORITY.NORMAL,
+    syncTag: 'bazarkely-sync',
+    expiresAt: null,
+  });
+}
+
+async function pushReimbursementDelete(
+  userId: string,
+  recordId: string
+): Promise<void> {
+  if (isOnline()) {
+    try {
+      const { error } = (await withTimeout(
+        supabase
+          .from('reimbursement_requests')
+          .delete()
+          .eq('id', recordId),
+        SUPABASE_TIMEOUT_MS,
+        'familySharingService.pushReimbursementDelete'
+      )) as any;
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(
+        `${LOG_TAG} ⚠️ DELETE reimbursement_request ${recordId} Supabase échoué, queue:`,
+        error
+      );
+    }
+  }
+  await db.syncQueue.add({
+    id: crypto.randomUUID(),
+    userId,
+    operation: 'DELETE',
+    table_name: 'reimbursement_requests',
+    data: { id: recordId },
+    timestamp: new Date(),
+    retryCount: 0,
+    status: 'pending',
+    priority: SYNC_PRIORITY.NORMAL,
+    syncTag: 'bazarkely-sync',
+    expiresAt: null,
+  });
 }
 
 /**
