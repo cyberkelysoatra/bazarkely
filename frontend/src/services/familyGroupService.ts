@@ -3,13 +3,15 @@
  * Gère les opérations CRUD sur les groupes familiaux et leurs membres
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
 import { useAppStore } from '../stores/appStore';
 import { db } from '../lib/database';
 import {
   readFamilyGroupsCache,
   writeFamilyGroupsCache,
 } from '../lib/familyGroupsCache';
+import type { SyncOperation } from '../types';
+import { SYNC_PRIORITY } from '../types';
 import type {
   FamilyGroup,
   FamilyMember,
@@ -19,6 +21,20 @@ import type {
   FamilyGroupSettings,
   FamilyRole,
 } from '../types/family';
+
+const SUPABASE_TIMEOUT_MS = 5000;
+const LOG_TAG = '👨‍👩‍👧 [FamilyGroupService]';
+
+/**
+ * Lecture isOnline avec fallback navigator.onLine.
+ */
+function isOnline(): boolean {
+  try {
+    return useAppStore.getState().isOnline ?? navigator.onLine;
+  } catch {
+    return navigator.onLine;
+  }
+}
 
 /**
  * Récupère l'utilisateur courant SANS faire de requête réseau (pattern S68).
@@ -72,6 +88,14 @@ export async function createFamilyGroup(
     const user = await getCurrentUserSafe();
     if (!user) {
       throw new Error('Utilisateur non authentifié');
+    }
+
+    // S72 — La création de groupe nécessite Internet : le code d'invitation est
+    // généré par un trigger Supabase et ne peut pas être connu côté client offline.
+    if (!isOnline()) {
+      throw new Error(
+        'La création d\'un groupe familial nécessite une connexion Internet (pour générer le code d\'invitation)'
+      );
     }
 
     // Préparer les données pour l'insertion
@@ -343,6 +367,14 @@ export async function joinFamilyGroup(
     const user = await getCurrentUserSafe();
     if (!user) {
       throw new Error('Utilisateur non authentifié');
+    }
+
+    // S72 — Rejoindre un groupe nécessite Internet : la validation du code
+    // d'invitation et l'unicité de la membership sont vérifiées côté serveur.
+    if (!isOnline()) {
+      throw new Error(
+        'Rejoindre un groupe familial nécessite une connexion Internet (validation du code d\'invitation)'
+      );
     }
 
     // Vérifier que le groupe existe et que le code est valide
@@ -712,56 +744,83 @@ export async function updateMemberSettings(
  * @throws Error si l'utilisateur est le dernier admin ou en cas d'erreur
  */
 export async function leaveFamilyGroup(groupId: string): Promise<void> {
-  try {
-    // Vérifier l'authentification
-    const user = await getCurrentUserSafe();
-    if (!user) {
-      throw new Error('Utilisateur non authentifié');
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
+
+  // Lecture locale : trouver la membership actuelle de l'utilisateur dans ce groupe
+  const localMemberships = await db.familyMembers
+    .where('[familyGroupId+userId]')
+    .equals([groupId, user.id])
+    .toArray();
+  const currentMember = localMemberships.find((m) => m.isActive);
+
+  if (!currentMember) {
+    throw new Error("Vous n'êtes pas membre de ce groupe");
+  }
+
+  // Vérifier qu'il n'est pas le dernier admin (lecture locale)
+  if (currentMember.role === 'admin') {
+    const allMembers = await db.familyMembers
+      .where('familyGroupId')
+      .equals(groupId)
+      .toArray();
+    const activeAdmins = allMembers.filter((m) => m.isActive && m.role === 'admin');
+    if (activeAdmins.length <= 1) {
+      throw new Error(
+        'Vous ne pouvez pas quitter le groupe car vous êtes le dernier administrateur'
+      );
     }
+  }
 
-    // Récupérer le membre actuel
-    const { data: currentMember, error: fetchError } = await supabase
-      .from('family_members')
-      .select('id, role')
-      .eq('family_group_id', groupId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+  // STEP 1: Soft delete local (is_active → false)
+  await db.familyMembers.update(currentMember.id, { isActive: false });
 
-    if (fetchError || !currentMember) {
-      throw new Error('Vous n\'êtes pas membre de ce groupe');
+  // STEP 2: Push Supabase ou queue
+  const supabasePayload = { is_active: false };
+
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from('family_members')
+          .update(supabasePayload as any)
+          .eq('id', currentMember.id),
+        SUPABASE_TIMEOUT_MS,
+        'familyGroupService.leaveFamilyGroup'
+      );
+      if (error) throw error;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ leaveFamilyGroup Supabase échoué, queue:`, error);
+      const syncOp: SyncOperation = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        operation: 'UPDATE',
+        table_name: 'family_members',
+        data: { id: currentMember.id, ...supabasePayload },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending',
+        priority: SYNC_PRIORITY.NORMAL,
+        syncTag: 'bazarkely-sync',
+        expiresAt: null,
+      };
+      await db.syncQueue.add(syncOp);
     }
-
-    // Vérifier qu'il n'est pas le dernier admin
-    if (currentMember.role === 'admin') {
-      const { count, error: countError } = await supabase
-        .from('family_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('family_group_id', groupId)
-        .eq('role', 'admin')
-        .eq('is_active', true);
-
-      if (countError) {
-        throw new Error(`Erreur lors de la vérification: ${countError.message}`);
-      }
-
-      if (count === 1) {
-        throw new Error('Vous ne pouvez pas quitter le groupe car vous êtes le dernier administrateur');
-      }
-    }
-
-    // Supprimer le membre (soft delete en mettant is_active à false)
-    const { error: deleteError } = await supabase
-      .from('family_members')
-      .update({ is_active: false })
-      .eq('id', currentMember.id);
-
-    if (deleteError) {
-      throw new Error(`Erreur lors de la sortie du groupe: ${deleteError.message}`);
-    }
-  } catch (error) {
-    console.error('Erreur dans leaveFamilyGroup:', error);
-    throw error;
+  } else {
+    const syncOp: SyncOperation = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      operation: 'UPDATE',
+      table_name: 'family_members',
+      data: { id: currentMember.id, ...supabasePayload },
+      timestamp: new Date(),
+      retryCount: 0,
+      status: 'pending',
+      priority: SYNC_PRIORITY.NORMAL,
+      syncTag: 'bazarkely-sync',
+      expiresAt: null,
+    };
+    await db.syncQueue.add(syncOp);
   }
 }
 

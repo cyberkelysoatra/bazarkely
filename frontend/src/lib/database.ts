@@ -22,6 +22,11 @@ import type {
   MemberCreditBalanceLocal
 } from '../types/reimbursement';
 import type { FamilyMember } from '../types/family';
+import type {
+  FamilySharedTransactionLocal,
+  FamilySharingRuleLocal,
+  FamilySharedRecurringLocal
+} from '../types/familyLocal';
 
 // Types pour les notifications
 interface NotificationData {
@@ -155,6 +160,13 @@ export class BazarKELYDB extends Dexie {
   // Permet vérification membership offline (utilisée par familySharingService lectures
   // et FamilyDashboardPage.getFamilyGroupMembers)
   familyMembers!: Table<FamilyMember>;
+
+  // Tables pour le module Family Sharing offline-first (v16, S72)
+  // Caches locaux des dépenses partagées, règles de partage automatique et
+  // récurrentes partagées. Snapshots dénormalisés pour lecture offline directe.
+  familySharedTransactions!: Table<FamilySharedTransactionLocal>;
+  familySharingRules!: Table<FamilySharingRuleLocal>;
+  familySharedRecurring!: Table<FamilySharedRecurringLocal>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -703,6 +715,50 @@ export class BazarKELYDB extends Dexie {
       console.log('🔄 [Database] Migrating to v15 - Adding familyMembers table for offline membership verification');
       // Table vide : premier appel online de getFamilyGroupMembers() peuplera Dexie
       console.log('✅ [Database] Migration to v15 complete');
+    });
+
+    // Version 16 - Offline-first Family Sharing (S72)
+    // 3 nouvelles tables : familySharedTransactions (avec snapshots dénormalisés
+    // transactionDescription/Amount/Category/Date/Type), familySharingRules,
+    // familySharedRecurring. Index composites pour les filtres usuels :
+    // - familySharedTransactions par groupe + tri date partage
+    // - familySharingRules par groupe + user + catégorie (unicité métier)
+    // - familySharedRecurring par groupe + recurring source
+    // Migration upgrade vide — premier appel online des lectures peuplera Dexie.
+    this.version(16).stores({
+      users: 'id, username, email, phone, passwordHash, lastSync, createdAt, updatedAt',
+      accounts: 'id, userId, name, type, balance, currency, createdAt, updatedAt, linkedGoalId, isSavingsAccount, [userId+linkedGoalId], [userId+isSavingsAccount]',
+      transactions: 'id, userId, accountId, type, amount, category, date, createdAt, updatedAt, [userId+date], [accountId+date], isRecurring, recurringTransactionId',
+      budgets: 'id, userId, category, amount, period, year, month, spent, createdAt, updatedAt, [userId+year+month]',
+      goals: 'id, userId, name, targetAmount, currentAmount, deadline, createdAt, updatedAt, linkedAccountId, isSavingsAccount, isSuggested, suggestionType, [userId+deadline], [userId+linkedAccountId], [userId+isSuggested], [userId+suggestionType]',
+      mobileMoneyRates: 'id, service, minAmount, maxAmount, fee, lastUpdated, updatedBy, [service+minAmount]',
+      syncQueue: '++id, userId, operation, table_name, data, timestamp, status, retryCount, priority, syncTag, expiresAt, [userId+status], [status+timestamp], [priority+timestamp], [syncTag+status]',
+      feeConfigurations: '++id, operator, feeType, targetOperator, amountRanges, isActive, createdAt, updatedAt',
+      connectionPool: '++id, isActive, lastUsed, transactionCount',
+      databaseLocks: '++id, table, recordId, userId, acquiredAt, expiresAt, [table+recordId], [userId+acquiredAt]',
+      performanceMetrics: '++id, operationCount, averageResponseTime, concurrentUsers, memoryUsage, lastUpdated',
+      notifications: 'id, type, userId, timestamp, read, sent, scheduled, [userId+type], [userId+timestamp], [type+timestamp]',
+      notificationSettings: 'id, userId, [userId]',
+      notificationHistory: 'id, userId, notificationId, sentAt, [userId+sentAt], [notificationId]',
+      recurringTransactions: 'id, userId, accountId, frequency, isActive, nextGenerationDate, linkedBudgetId, [userId+isActive], [userId+nextGenerationDate]',
+      goalMilestones: 'id, goalId, orderId, milestoneType, achievedAt, [goalId+orderId], [goalId+milestoneType], [goalId+achievedAt]',
+      goalCelebrations: 'goalId, goalName, lastCelebratedAt, [goalId+lastCelebratedAt]',
+      personalLoans: 'id, lenderUserId, borrowerUserId, status, transactionId, createdAt, [lenderUserId+status], [borrowerUserId+status]',
+      loanRepayments: 'id, loanId, transactionId, paymentDate, confirmedAt, createdAt, [loanId+paymentDate]',
+      loanInterestPeriods: 'id, loanId, status, periodStart, [loanId+status]',
+      pendingReceipts: 'id, userId, repaymentId, createdAt',
+      reimbursementRequests: 'id, sharedTransactionId, fromMemberId, toMemberId, status, familyGroupId, transactionId, createdAt, [familyGroupId+status]',
+      memberCreditBalances: 'id, familyGroupId, fromMemberId, toMemberId, [familyGroupId+fromMemberId+toMemberId]',
+      familyMembers: 'id, familyGroupId, userId, isActive, role, joinedAt, [familyGroupId+userId], [familyGroupId+isActive]',
+      familySharedTransactions: 'id, familyGroupId, transactionId, sharedBy, paidBy, sharedAt, [familyGroupId+sharedAt], [familyGroupId+transactionId]',
+      familySharingRules: 'id, familyGroupId, userId, category, isActive, [familyGroupId+userId], [familyGroupId+userId+isActive], [familyGroupId+userId+category]',
+      familySharedRecurring: 'id, familyGroupId, recurringTransactionId, sharedBy, [familyGroupId+recurringTransactionId]'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v16 - Adding family sharing tables (S72 offline-first phase)');
+      // Tables vides : premier appel online des lectures (getFamilySharedTransactions,
+      // getUserSharingRules, getSharedRecurringTransactions) peuplera Dexie depuis Supabase
+      // avec les snapshots dénormalisés des transactions sources.
+      console.log('✅ [Database] Migration to v16 complete - Family sharing tables ready');
     });
 
     // Initialiser le pool de connexions

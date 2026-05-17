@@ -483,6 +483,18 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'reimbursement_requests':
         result = await processReimbursementRequestOperation(operation);
         break;
+      case 'family_shared_transactions':
+        result = await processFamilySharedTransactionOperation(operation);
+        break;
+      case 'family_sharing_rules':
+        result = await processFamilySharingRuleOperation(operation);
+        break;
+      case 'family_shared_recurring_transactions':
+        result = await processFamilySharedRecurringOperation(operation);
+        break;
+      case 'family_members':
+        result = await processFamilyMemberOperation(operation);
+        break;
       default:
         console.error(`🔄 [SyncManager] ❌ Table non supportée: ${operation.table_name}`);
         await db.syncQueue.update(operation.id, {
@@ -938,6 +950,167 @@ async function processReimbursementRequestOperation(
         const { id } = data;
         const { error } = await supabase
           .from('reimbursement_requests')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur la table family_shared_transactions (S72 — module Family
+ * Sharing offline-first). Data poussé par familySharingService est déjà en snake_case.
+ */
+async function processFamilySharedTransactionOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase
+          .from('family_shared_transactions')
+          .insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('family_shared_transactions')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase
+          .from('family_shared_transactions')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur family_sharing_rules (data déjà en snake_case).
+ */
+async function processFamilySharingRuleOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase
+          .from('family_sharing_rules')
+          .insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('family_sharing_rules')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase
+          .from('family_sharing_rules')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur family_shared_recurring_transactions (data déjà en snake_case).
+ */
+async function processFamilySharedRecurringOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase
+          .from('family_shared_recurring_transactions')
+          .insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('family_shared_recurring_transactions')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase
+          .from('family_shared_recurring_transactions')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur family_members (data déjà en snake_case).
+ *
+ * Utilisé principalement par leaveFamilyGroup (soft delete : update is_active=false).
+ * CREATE est aussi supporté pour cohérence (joinFamilyGroup reste online-only mais
+ * pourrait passer offline-first à l'avenir).
+ */
+async function processFamilyMemberOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await supabase
+          .from('family_members')
+          .insert(data as any);
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from('family_members')
+          .update(updateData as any)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await supabase
+          .from('family_members')
           .delete()
           .eq('id', id);
         return error ? { error } : null;

@@ -222,7 +222,11 @@ export interface SyncOperation {
     | 'loan_repayments'
     | 'loan_interest_periods'
     | 'pending_receipts'
-    | 'reimbursement_requests';
+    | 'reimbursement_requests'
+    | 'family_shared_transactions'
+    | 'family_sharing_rules'
+    | 'family_shared_recurring_transactions'
+    | 'family_members';
   data: any;
   timestamp: Date;
   retryCount: number;

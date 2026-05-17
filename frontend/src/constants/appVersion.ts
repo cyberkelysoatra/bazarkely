@@ -1,8 +1,26 @@
-export const APP_VERSION = '3.14.6';
-export const APP_VERSION_NAME = 'family_members Dexie v15 + lectures familySharing skip-offline + SW update skip-offline';
-export const LAST_UPDATED = '2026-05-16';
-export const APP_BUILD_DATE = '2026-05-16';
+export const APP_VERSION = '3.15.0';
+export const APP_VERSION_NAME = 'Family Sharing offline-first phase 1 — Dexie v16 + 5 lectures SWR + 6 mutations queue-able + leaveFamilyGroup + BudgetsPage 3 createBudget';
+export const LAST_UPDATED = '2026-05-17';
+export const APP_BUILD_DATE = '2026-05-17';
 export const VERSION_HISTORY = [
+  {
+    version: '3.15.0',
+    date: '2026-05-17',
+    description: 'S72 — Module Family Sharing offline-first phase 1 (lectures SWR + mutations queue-able + leaveFamilyGroup) + BudgetsPage createBudget via budgetService',
+    changes: [
+      'Dexie v16 (lib/database.ts): 3 nouvelles tables locales — familySharedTransactions (avec snapshots dénormalisés transactionDescription/Amount/Category/Date/Type), familySharingRules, familySharedRecurring. Index composites pour les filtres usuels ([familyGroupId+sharedAt], [familyGroupId+userId+category], [familyGroupId+recurringTransactionId]). Migration upgrade vide',
+      'Nouveau fichier (types/familyLocal.ts): FamilySharedTransactionLocal + FamilySharingRuleLocal + FamilySharedRecurringLocal — sources uniques des interfaces Dexie',
+      'Refactor (services/familySharingService.ts): 5 lectures critiques passent en stale-while-revalidate (IndexedDB d\'abord, refresh Supabase fire-and-forget). getFamilySharedTransactions (filter par familyGroupId + options en mémoire), getUserSharingRules ([familyGroupId+userId]), getSharedTransactionByTransactionId (par transactionId), getSharedRecurringTransactions, shouldAutoShare ([familyGroupId+userId+category])',
+      'Refactor (services/familySharingService.ts): 6 mutations offline-first — shareTransaction (UUID client + INSERT Dexie + snapshots de transaction lus depuis Dexie + queue ou Supabase), unshareTransaction (cascade DELETE des reimbursement_requests liés via queue + DELETE shared_transaction), upsertSharingRule (UPDATE local si règle existe sinon INSERT), deleteSharingRule, shareRecurringTransaction (vérif ownership Dexie + INSERT local), unshareRecurringTransaction',
+      'Refactor (services/familyGroupService.ts): leaveFamilyGroup offline-first — vérification "dernier admin" depuis cache local familyMembers, soft delete local (is_active=false) + queue UPDATE family_members. createFamilyGroup et joinFamilyGroup conservent un message clair "nécessite connexion Internet" (génération de code d\'invitation + validation côté serveur)',
+      'Extend (services/syncManager.ts): switch table_name étendu avec 4 nouveaux cases — family_shared_transactions, family_sharing_rules, family_shared_recurring_transactions, family_members (INSERT/UPDATE/DELETE classiques)',
+      'Type extension (types/index.ts): SyncOperation.table_name accepte désormais les 4 nouvelles tables famille',
+      'Fix (pages/BudgetsPage.tsx): les 3 emplacements qui créaient des budgets directement via apiService.createBudget (online-only) passent maintenant par budgetService.createBudget (offline-first avec queue). Concerne handleCreateIntelligentBudgets (suggestions auto), handleSaveCustomizedBudgets (suggestions personnalisées) et handleSaveNewBudget (création manuelle). En offline, le budget est créé en local et envoyé au serveur dès le retour de connexion sans saisie utilisateur',
+      'Architecture: tous les services métier (loans, family sharing, family group, reimbursement, account, goal, transaction, budget, recurring) utilisent désormais le même pattern offline-first SWR + queue. Le module Famille est désormais utilisable hors connexion (consultation des dépenses partagées, règles automatiques, partages récurrents) sauf création/jointure de groupe (code d\'invitation serveur) et activation de demande de remboursement complexe (cascade reportée S73 Bloc 3)',
+      'Reste à faire (S73 Bloc 3) : updateSharedTransaction cascade hasReimbursementRequest offline-first complète (logique RPC reproduite côté client) — reporté pour gérer la complexité dans une session dédiée',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.14.6',
     date: '2026-05-16',

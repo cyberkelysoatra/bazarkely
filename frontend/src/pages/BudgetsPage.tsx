@@ -9,7 +9,6 @@ import { TRANSACTION_CATEGORIES } from '../constants';
 import { useAppStore } from '../stores/appStore';
 import useBudgetIntelligence from '../hooks/useBudgetIntelligence';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
-import apiService from '../services/apiService';
 import budgetService from '../services/budgetService';
 import transactionService from '../services/transactionService';
 import { toast } from 'react-hot-toast';
@@ -384,35 +383,36 @@ const BudgetsPage = () => {
       const existingCategories = new Set(budgets.map(b => b.category));
       console.log('🔍 DEBUG: Existing budget categories:', Array.from(existingCategories));
       
-      // Convertir les intelligentBudgets en budgets Supabase
+      // Convertir les intelligentBudgets en budgets via budgetService (offline-first)
       const budgetPromises = Object.entries(intelligentBudgets).map(async ([category, amount]) => {
         // Vérifier si un budget existe déjà pour cette catégorie
         if (existingCategories.has(category as TransactionCategory)) {
           console.warn('⚠️ DEBUG: Budget already exists for category:', category, 'Skipping creation');
-          return { success: true, data: null, message: 'Budget already exists' };
+          return { success: true };
         }
-        
-        const budgetData = {
-          name: `Budget ${category}`,
-          category: category,
-          amount: amount,
-          spent: 0,
-          period: 'monthly' as const,
-          year: selectedYear,
-          month: selectedMonth,
-          alert_threshold: 80, // 80%
-          is_active: true,
-          user_id: user.id
-        };
 
-        console.log('🔍 DEBUG: Creating budget for category:', category, 'with data:', budgetData);
-        return apiService.createBudget(budgetData);
+        console.log('🔍 DEBUG: Creating budget for category:', category, 'amount:', amount);
+        try {
+          const budget = await budgetService.createBudget(user.id, {
+            category: category as TransactionCategory,
+            amount,
+            spent: 0,
+            period: 'monthly',
+            year: selectedYear,
+            month: selectedMonth,
+            alertThreshold: 80,
+          });
+          return { success: budget !== null };
+        } catch (err) {
+          console.error('❌ DEBUG: budgetService.createBudget threw for category:', category, err);
+          return { success: false };
+        }
       });
 
       console.log('🔍 DEBUG: Waiting for all budget creation promises...');
       const results = await Promise.all(budgetPromises);
       console.log('🔍 DEBUG: Budget creation results:', results);
-      
+
       // Vérifier que tous les budgets ont été créés avec succès
       const failedBudgets = results.filter(result => !result.success);
       console.log('🔍 DEBUG: Failed budgets count:', failedBudgets.length);
@@ -458,25 +458,28 @@ const BudgetsPage = () => {
       const budgetsToCreate = Object.entries(intelligentBudgets).map(([category, originalAmount]) => {
         const customAmount = customAmounts[category] || originalAmount;
         return {
-          name: `Budget ${category}`,
-          category: category,
+          category: category as TransactionCategory,
           amount: customAmount,
           spent: 0,
           period: 'monthly' as const,
           year: selectedYear,
           month: selectedMonth,
-          alert_threshold: 80,
-          is_active: true,
-          user_id: user.id
+          alertThreshold: 80,
         };
       });
 
-      const budgetPromises = budgetsToCreate.map(budgetData => 
-        apiService.createBudget(budgetData)
-      );
+      const budgetPromises = budgetsToCreate.map(async (budgetData) => {
+        try {
+          const budget = await budgetService.createBudget(user.id, budgetData);
+          return { success: budget !== null };
+        } catch (err) {
+          console.error('❌ budgetService.createBudget threw:', err);
+          return { success: false };
+        }
+      });
 
       const results = await Promise.all(budgetPromises);
-      
+
       const failedBudgets = results.filter(result => !result.success);
       if (failedBudgets.length > 0) {
         throw new Error(`${failedBudgets.length} budget(s) n'ont pas pu être créés`);
@@ -561,27 +564,19 @@ const BudgetsPage = () => {
     try {
       setIsLoadingBudgets(true);
 
-      // Générer le nom si vide
-      const categoryDisplayName = TRANSACTION_CATEGORIES[newBudget.category as TransactionCategory]?.name || newBudget.category;
-      const budgetName = newBudget.name.trim() || `Budget ${categoryDisplayName}`;
-
-      // Créer le budget via apiService
-      const budgetData = {
-        name: budgetName,
-        category: newBudget.category.toLowerCase(),
+      // Créer le budget via budgetService (offline-first : IndexedDB d'abord, queue si offline)
+      const created = await budgetService.createBudget(user.id, {
+        category: newBudget.category.toLowerCase() as TransactionCategory,
         amount: newBudget.amount,
         spent: 0,
-        period: 'monthly' as const,
+        period: 'monthly',
         year: selectedYear,
         month: selectedMonth,
-        alert_threshold: 80,
-        is_active: true
-      };
+        alertThreshold: 80,
+      });
 
-      const response = await apiService.createBudget(budgetData);
-
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur lors de la création du budget');
+      if (!created) {
+        throw new Error('Erreur lors de la création du budget');
       }
 
       toast.success('Budget créé avec succès');
