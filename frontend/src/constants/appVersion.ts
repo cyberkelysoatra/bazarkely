@@ -1,8 +1,25 @@
-export const APP_VERSION = '3.15.0';
-export const APP_VERSION_NAME = 'Family Sharing offline-first phase 1 — Dexie v16 + 5 lectures SWR + 6 mutations queue-able + leaveFamilyGroup + BudgetsPage 3 createBudget';
-export const LAST_UPDATED = '2026-05-17';
-export const APP_BUILD_DATE = '2026-05-17';
+export const APP_VERSION = '3.16.0';
+export const APP_VERSION_NAME = 'Family Sharing offline-first phase 1 Bloc 3 — updateSharedTransaction cascade reimbursement_requests offline-first + correction bug décoche serveur';
+export const LAST_UPDATED = '2026-05-18';
+export const APP_BUILD_DATE = '2026-05-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.0',
+    date: '2026-05-18',
+    description: 'S73 Bloc 3 — updateSharedTransaction offline-first complet (cascade reimbursement_requests + tous champs) + correction bug décoche en ligne + icône CloudOff TransactionDetailPage',
+    changes: [
+      'Refonte (services/familySharingService.ts updateSharedTransaction) : ~440 lignes online-only (6 round-trips Supabase, supabase.auth.getUser() bloquant offline) remplacées par ~100 lignes offline-first SWR. Lecture ownership depuis Dexie (familySharedTransactions.get), UPDATE local immédiat, cascade complète reimbursement_requests via Dexie, push Supabase si online sinon queue syncManager (4 nouveaux helpers : applyReimbursementUpsertCascade, applyReimbursementRemovalCascade, pushFstUpdate, pushReimbursementInsert/Update/Delete)',
+      'Cascade reimbursement (Q5/Q6 OUI) : recalcul automatique du montant de la demande de remboursement à chaque changement de hasReimbursementRequest, customReimbursementRate, splitType ou splitDetails. Logique de calcul reproduite côté client : rate effectif (custom > localStorage groupe > 100%), montant selon splitType (paid_by_one = total × rate, autres = splitDetails[debtor].amount × rate)',
+      'Lookup créancier/débiteur depuis cache Dexie familyMembers (v15, S71) : index composite [familyGroupId+userId] pour le payeur (créancier), filter sur isActive pour exclure les membres partis. Snapshots dénormalisés (fromMemberName, toMemberName, fromMemberUserId, toMemberUserId) écrits directement dans ReimbursementRequestLocal pour les vérifications offline',
+      'Correction bug en ligne (Q2 NON) : décocher hasReimbursementRequest supprime maintenant la demande de remboursement partout (Dexie + Supabase). Avant, la demande restait orpheline en base avec seul l\'indicateur basculé. Q7 C : si la demande a déjà des paiements liés (reimbursement_payments), elle passe en status=cancelled au lieu de DELETE pour préserver l\'historique. Détection des paiements via SELECT online, dégradation safe = cancel en offline (pas de cache reimbursement_payments en S73)',
+      'Périmètre étendu Q3 A : isPrivate, splitType, splitDetails passent aussi en offline-first dans la même refonte. RPC update_reimbursement_request conservée en ligne (bypass RLS pour la bascule du flag), UPDATE direct via syncManager au retour online',
+      'Nettoyage (pages/TransactionDetailPage.tsx) : suppression de 2 workarounds setTimeout(500ms) + UPDATE direct supabase.reimbursement_requests.amount (lignes 530-557 après shareTransaction, lignes 576-610 après updateSharedTransaction). Le service S73 calcule et écrit le montant correct directement, plus besoin de patch',
+      'Ajout (pages/TransactionDetailPage.tsx) : icône CloudOff orange à côté du label "Demander remboursement" tant qu\'une opération sync (family_shared_transactions ou reimbursement_requests) reste en queue pending/failed pour cette transaction. useEffect polling 5s comme LoansPage. Toast jaune "Remboursement sera créé à la prochaine connexion" quand on coche hors ligne (Q1 C, Q8 C : toast + icône persistante)',
+      'Imports : ReimbursementRequestLocal depuis types/reimbursement.ts ajouté au service. CloudOff depuis lucide-react ajouté à la page',
+      'Risques acceptés Q10 S72 : si un membre quitte le groupe entre l\'enregistrement local et la synchro, le serveur peut rejeter (retry syncManager puis échec). Si la RLS Supabase bloque l\'UPDATE direct rejoué par le syncManager (sans la RPC), il faudra ajouter une policy SQL côté serveur — à valider en prod',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.15.0',
     date: '2026-05-17',
