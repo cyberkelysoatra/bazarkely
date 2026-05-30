@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.9';
-export const APP_VERSION_NAME = 'Défilement au clic sur une carte de transaction : mouvement fluide façon iOS (animation ease-in-out continue)';
+export const APP_VERSION = '3.16.10';
+export const APP_VERSION_NAME = 'Page Modifier/Détail transaction : bandeau titre calé juste sous l\'en-tête (suppression de l\'écart de 80px)';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.10',
+    date: '2026-05-31',
+    description: 'Page Détail/Modifier d\'une transaction (pages/TransactionDetailPage.tsx) : le bandeau titre blanc ("Modifier la transaction") était séparé de l\'en-tête par un grand espace vide. Cause : marge haute pt-20 (80px) héritée d\'une époque où l\'en-tête était fixed (hors flux) ; or l\'en-tête est désormais sticky (dans le flux, occupe déjà sa place), donc cette marge faisait double emploi. Réduite à pt-2 (8px) pour caler le bandeau juste sous l\'en-tête, écart cohérent avec l\'alignement des cartes',
+    changes: [
+      'Fix (TransactionDetailPage.tsx) : conteneur racine pt-20 → pt-2',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.9',
     date: '2026-05-31',
