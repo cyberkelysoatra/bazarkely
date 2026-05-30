@@ -333,7 +333,7 @@ Claude Code déclenche **proactivement** la clôture de session quand les 3 cond
 
 ## Paragraphe de lancement [SXX+1] (à copier-coller)
 
-> [paragraphe auto-suffisant : dernière session + date, version en prod, accompli condensé, points en suspens, référence RESUME-SESSION, recommandation claire de l'étape suivante]
+> [UNIQUEMENT l'état éphémère — appliquer le **test de pertinence** (mémoire `feedback_session_handoff.md`) : garder seulement (1) ancre de reprise (n° session + date + lien RESUME), (2) version prod validée, (3) état du chantier = « rien en attente → attendre la demande de JOEL » OU travail inachevé + reco concrète. **COUPER** tout ce qui est déjà auto-chargé : stack, chemins, URLs, ID Supabase, déploiement, langue, conventions, récit détaillé. Jamais de reco inventée.]
 
 ---
 
