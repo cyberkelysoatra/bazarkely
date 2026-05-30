@@ -553,12 +553,11 @@ async function processTransactionOperation(operation: SyncOperation): Promise<{ 
     switch (opType) {
       case 'CREATE': {
         // Pour CREATE, on enlève l'id du data car Supabase le génère
-        const { id, ...insertData } = data;
-        // Convertir camelCase → snake_case pour Supabase
-        const snakeCaseData = convertKeysToSnakeCase(insertData);
+        // Idempotent : garder l'id client + upsert (évite les doublons sur réessai/timeout)
+        const snakeCaseData = convertKeysToSnakeCase(data);
         const { error } = await supabase
           .from('transactions')
-          .insert(snakeCaseData);
+          .upsert(snakeCaseData, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -596,12 +595,11 @@ async function processAccountOperation(operation: SyncOperation): Promise<{ erro
   try {
     switch (opType) {
       case 'CREATE': {
-        const { id, ...insertData } = data;
-        // Convertir camelCase → snake_case pour Supabase
-        const snakeCaseData = convertKeysToSnakeCase(insertData);
+        // Idempotent : garder l'id client + upsert (évite les doublons sur réessai/timeout)
+        const snakeCaseData = convertKeysToSnakeCase(data);
         const { error } = await supabase
           .from('accounts')
-          .insert(snakeCaseData);
+          .upsert(snakeCaseData, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -639,12 +637,11 @@ async function processBudgetOperation(operation: SyncOperation): Promise<{ error
   try {
     switch (opType) {
       case 'CREATE': {
-        const { id, ...insertData } = data;
-        // Convertir camelCase → snake_case pour Supabase
-        const snakeCaseData = convertKeysToSnakeCase(insertData);
+        // Idempotent : garder l'id client + upsert (évite les doublons sur réessai/timeout)
+        const snakeCaseData = convertKeysToSnakeCase(data);
         const { error } = await supabase
           .from('budgets')
-          .insert(snakeCaseData);
+          .upsert(snakeCaseData, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -682,12 +679,11 @@ async function processGoalOperation(operation: SyncOperation): Promise<{ error: 
   try {
     switch (opType) {
       case 'CREATE': {
-        const { id, ...insertData } = data;
-        // Convertir camelCase → snake_case pour Supabase
-        const snakeCaseData = convertKeysToSnakeCase(insertData);
+        // Idempotent : garder l'id client + upsert (évite les doublons sur réessai/timeout)
+        const snakeCaseData = convertKeysToSnakeCase(data);
         const { error } = await supabase
           .from('goals')
-          .insert(snakeCaseData);
+          .upsert(snakeCaseData, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -725,10 +721,10 @@ async function processFeeConfigurationOperation(operation: SyncOperation): Promi
   try {
     switch (opType) {
       case 'CREATE': {
-        const { id, ...insertData } = data;
+        // Idempotent : garder l'id client + upsert (évite les doublons sur réessai/timeout)
         const { error } = await supabase
           .from('fee_configurations')
-          .insert(insertData);
+          .upsert(data, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -767,7 +763,7 @@ async function processPersonalLoanOperation(operation: SyncOperation): Promise<{
     switch (opType) {
       case 'CREATE': {
         // Cast `as any` requis : personal_loans n'est pas dans le schema TS Supabase généré
-        const { error } = await supabase.from('personal_loans').insert(data as any);
+        const { error } = await supabase.from('personal_loans').upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -799,7 +795,7 @@ async function processLoanRepaymentOperation(operation: SyncOperation): Promise<
   try {
     switch (opType) {
       case 'CREATE': {
-        const { error } = await supabase.from('loan_repayments').insert(data as any);
+        const { error } = await supabase.from('loan_repayments').upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -831,7 +827,7 @@ async function processLoanInterestPeriodOperation(operation: SyncOperation): Pro
   try {
     switch (opType) {
       case 'CREATE': {
-        const { error } = await supabase.from('loan_interest_periods').insert(data as any);
+        const { error } = await supabase.from('loan_interest_periods').upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -935,7 +931,7 @@ async function processReimbursementRequestOperation(
       case 'CREATE': {
         const { error } = await supabase
           .from('reimbursement_requests')
-          .insert(data as any);
+          .upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -975,7 +971,7 @@ async function processFamilySharedTransactionOperation(
       case 'CREATE': {
         const { error } = await supabase
           .from('family_shared_transactions')
-          .insert(data as any);
+          .upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -1014,7 +1010,7 @@ async function processFamilySharingRuleOperation(
       case 'CREATE': {
         const { error } = await supabase
           .from('family_sharing_rules')
-          .insert(data as any);
+          .upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -1053,7 +1049,7 @@ async function processFamilySharedRecurringOperation(
       case 'CREATE': {
         const { error } = await supabase
           .from('family_shared_recurring_transactions')
-          .insert(data as any);
+          .upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {
@@ -1096,7 +1092,7 @@ async function processFamilyMemberOperation(
       case 'CREATE': {
         const { error } = await supabase
           .from('family_members')
-          .insert(data as any);
+          .upsert(data as any, { onConflict: 'id', ignoreDuplicates: true });
         return error ? { error } : null;
       }
       case 'UPDATE': {

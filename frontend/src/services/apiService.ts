@@ -151,7 +151,7 @@ class ApiService {
       // Convertir camelCase → snake_case pour Supabase
       const snakeCaseData = convertKeysToSnakeCase(accountData);
       const { data, error } = await db.accounts()
-        .insert({ ...snakeCaseData, user_id: userId })
+        .upsert({ ...snakeCaseData, user_id: userId }, { onConflict: 'id' })
         .select()
         .single();
       
@@ -278,7 +278,7 @@ class ApiService {
       // Convertir camelCase → snake_case pour Supabase
       const snakeCaseData = convertKeysToSnakeCase(transactionData);
       const { data, error } = await db.transactions()
-        .insert({ ...snakeCaseData, user_id: userId })
+        .upsert({ ...snakeCaseData, user_id: userId }, { onConflict: 'id' })
         .select()
         .single();
       
@@ -456,7 +456,7 @@ class ApiService {
       // Convertir camelCase → snake_case pour Supabase
       const snakeCaseData = convertKeysToSnakeCase(budgetData);
       const { data, error } = await db.budgets()
-        .insert({ ...snakeCaseData, user_id: userId })
+        .upsert({ ...snakeCaseData, user_id: userId }, { onConflict: 'id' })
         .select()
         .single();
       
@@ -499,7 +499,7 @@ class ApiService {
       // Convertir camelCase → snake_case pour Supabase
       const snakeCaseData = convertKeysToSnakeCase(goalData);
       const { data, error } = await db.goals()
-        .insert({ ...snakeCaseData, user_id: userId })
+        .upsert({ ...snakeCaseData, user_id: userId }, { onConflict: 'id' })
         .select()
         .single();
       

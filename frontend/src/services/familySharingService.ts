@@ -560,7 +560,7 @@ export async function shareTransaction(
   if (isOnline()) {
     try {
       const { error } = await withTimeout(
-        supabase.from('family_shared_transactions').insert(supabasePayload as any),
+        supabase.from('family_shared_transactions').upsert(supabasePayload as any, { onConflict: 'id', ignoreDuplicates: true }),
         SUPABASE_TIMEOUT_MS,
         'familySharingService.shareTransaction'
       );
@@ -1135,7 +1135,7 @@ async function pushReimbursementInsert(
   if (isOnline()) {
     try {
       const { error } = (await withTimeout(
-        supabase.from('reimbursement_requests').insert(payload as any),
+        supabase.from('reimbursement_requests').upsert({ id: _recordId, ...payload } as any, { onConflict: 'id', ignoreDuplicates: true }),
         SUPABASE_TIMEOUT_MS,
         'familySharingService.pushReimbursementInsert'
       )) as any;
@@ -1461,7 +1461,7 @@ export async function upsertSharingRule(
     try {
       if (operation === 'CREATE') {
         const { error } = await withTimeout(
-          supabase.from('family_sharing_rules').insert(supabasePayload as any),
+          supabase.from('family_sharing_rules').upsert(supabasePayload as any, { onConflict: 'id', ignoreDuplicates: true }),
           SUPABASE_TIMEOUT_MS,
           'familySharingService.upsertSharingRule/insert'
         );
@@ -1684,7 +1684,7 @@ export async function shareRecurringTransaction(
       const { error } = await withTimeout(
         supabase
           .from('family_shared_recurring_transactions')
-          .insert(supabasePayload as any),
+          .upsert(supabasePayload as any, { onConflict: 'id', ignoreDuplicates: true }),
         SUPABASE_TIMEOUT_MS,
         'familySharingService.shareRecurringTransaction'
       );

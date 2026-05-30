@@ -850,7 +850,7 @@ export async function createLoan(input: CreateLoanInput): Promise<PersonalLoan> 
       const { data, error } = (await withTimeout(
         supabase
           .from('personal_loans')
-          .insert(loanToRow(loan))
+          .upsert(loanToRow(loan), { onConflict: 'id' })
           .select()
           .single(),
         SUPABASE_TIMEOUT_MS,
@@ -1155,7 +1155,7 @@ export async function recordPayment(
   if (isOnline()) {
     try {
       const { error } = await withTimeout(
-        supabase.from('loan_repayments').insert(repaymentPayload),
+        supabase.from('loan_repayments').upsert(repaymentPayload, { onConflict: 'id', ignoreDuplicates: true }),
         SUPABASE_TIMEOUT_MS,
         'loanService.recordPayment/insertRepayment'
       );
@@ -1225,7 +1225,7 @@ export async function generateInterestPeriod(loanId: string): Promise<void> {
   if (isOnline()) {
     try {
       const { error } = await withTimeout(
-        supabase.from('loan_interest_periods').insert(payload),
+        supabase.from('loan_interest_periods').upsert(payload, { onConflict: 'id', ignoreDuplicates: true }),
         SUPABASE_TIMEOUT_MS,
         'loanService.generateInterestPeriod'
       );

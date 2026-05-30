@@ -455,6 +455,7 @@ class TransactionService {
           console.log('📱 [TransactionService] 🌐 Synchronisation de la transaction vers Supabase...');
           // Transformer camelCase vers snake_case pour Supabase
           const supabaseData = {
+            id: transactionId, // Idempotence : même id que IndexedDB → upsert évite les doublons
             user_id: userId,
             account_id: transactionData.accountId,
             amount: amountToStore,

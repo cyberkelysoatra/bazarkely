@@ -93,6 +93,7 @@ class BudgetService {
    */
   private mapBudgetToSupabase(budget: Partial<Budget>): any {
     return {
+      ...(budget.id ? { id: budget.id } : {}), // Idempotence : conserver l'id pour upsert
       user_id: budget.userId,
       category: budget.category,
       amount: budget.amount,

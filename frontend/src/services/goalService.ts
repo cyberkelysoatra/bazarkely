@@ -111,7 +111,8 @@ class GoalService {
    */
   private mapGoalToSupabase(goal: Partial<Goal> | GoalFormData): any {
     const result: any = {};
-    
+
+    if ('id' in goal && goal.id) result.id = goal.id; // Idempotence : conserver l'id pour upsert
     if ('userId' in goal && goal.userId) result.user_id = goal.userId;
     if ('name' in goal && goal.name !== undefined) result.name = goal.name;
     if ('targetAmount' in goal && goal.targetAmount !== undefined) result.target_amount = goal.targetAmount;

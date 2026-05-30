@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.16.0';
-export const APP_VERSION_NAME = 'Family Sharing offline-first phase 1 Bloc 3 — updateSharedTransaction cascade reimbursement_requests offline-first + correction bug décoche serveur';
-export const LAST_UPDATED = '2026-05-18';
-export const APP_BUILD_DATE = '2026-05-18';
+export const APP_VERSION = '3.16.1';
+export const APP_VERSION_NAME = 'Correction des doublons de transactions/comptes/prêts/familial — synchronisation idempotente (upsert + id client conservé)';
+export const LAST_UPDATED = '2026-05-30';
+export const APP_BUILD_DATE = '2026-05-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.1',
+    date: '2026-05-30',
+    description: 'Fix doublons en synchronisation : un enregistrement créé sous mauvais réseau apparaissait 2-3 fois (RAISSA ×3). Cause = l\'envoi direct (timeout 5s mais commit serveur réel) puis le rejeu de la file ré-inséraient avec des id serveur différents. Correctif : conserver l\'id client des deux côtés + upsert idempotent (onConflict id) sur tous les chemins offline-first/mis en file',
+    changes: [
+      'Fix (services/syncManager.ts) : les 14 branches CREATE de processXxxOperation ne retirent plus l\'id client et passent de .insert() à .upsert(data, { onConflict: \'id\', ignoreDuplicates: true }). Tables : transactions, accounts, budgets, goals, fee_configurations, personal_loans, loan_repayments, loan_interest_periods, reimbursement_requests, family_shared_transactions, family_sharing_rules, family_shared_recurring_transactions, family_members. L\'id était déjà présent dans data (queueSyncOperation merge { id, ...data }) mais était jeté au rejeu',
+      'Fix (services/apiService.ts) : createTransaction/createAccount/createBudget/createGoal passent de .insert() à .upsert({...}, { onConflict: \'id\' }).select().single() — l\'envoi direct online devient idempotent',
+      'Fix (services/transactionService.ts, accountService.ts, budgetService.ts, goalService.ts) : le payload de l\'envoi direct online inclut désormais l\'id local (id transaction/compte ; mappers budget/goal enrichis). Avant, l\'id n\'était pas transmis → le serveur en générait un aléatoire → impossible de dédupliquer un envoi déjà passé',
+      'Fix (services/loanService.ts) : createLoan (personal_loans), recordPayment (loan_repayments), generateInterestPeriod (loan_interest_periods) passent en upsert onConflict id (les helpers loanToRow/repaymentToRow/interestPeriodToRow incluaient déjà l\'id)',
+      'Fix (services/familySharingService.ts) : shareTransaction (family_shared_transactions), pushReimbursementInsert (reimbursement_requests), upsertSharingRule CREATE (family_sharing_rules), shareRecurringTransaction (family_shared_recurring_transactions) passent en upsert onConflict id',
+      'Hors périmètre (chemins purement en ligne, sans file ni id client, non concernés par le double-envoi) : familyGroupService.createFamilyGroup + joinFamilyGroup (family_groups/family_members, id serveur), reimbursementService.createReimbursementRequest et reimbursement_payments/allocations/member_credit_balance (opérations synchrones online-only)',
+      'À FAIRE en session séparée (validé avec JOEL) : nettoyage des doublons déjà présents en base + IndexedDB (RAISSA ×3, Taxi ×2, etc.) et recalcul des soldes faussés. Le présent correctif empêche seulement la création de NOUVEAUX doublons',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.0',
     date: '2026-05-18',

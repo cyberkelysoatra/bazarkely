@@ -262,6 +262,7 @@ class AccountService {
           if (accountData.displayOrder !== undefined) {
             (supabaseData as any).display_order = accountData.displayOrder;
           }
+          (supabaseData as any).id = accountId; // Idempotence : même id que IndexedDB → upsert évite les doublons
 
           const response = await withTimeout(
             apiService.createAccount(supabaseData),
