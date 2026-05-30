@@ -480,21 +480,36 @@ const TransactionsPage = () => {
   };
 
   const toggleTransactionDrawer = (transactionId: string) => {
-    setSelectedTransactionId(prev => {
-      const nextId = prev === transactionId ? null : transactionId;
-      if (nextId) {
-        setTimeout(() => {
-          const el = document.getElementById(`transaction-${transactionId}`);
-          if (el) {
-            const header = document.querySelector('header');
-            const headerOffset = header ? header.getBoundingClientRect().height + 8 : 72;
-            const rect = el.getBoundingClientRect();
-            window.scrollBy({ top: rect.top - headerOffset, behavior: 'smooth' });
-          }
-        }, 50);
-      }
-      return nextId;
-    });
+    const willOpen = selectedTransactionId !== transactionId;
+    setSelectedTransactionId(willOpen ? transactionId : null);
+
+    if (willOpen) {
+      // Aligne le haut de la carte juste sous l'en-tête fixe.
+      // On mesure l'offset au dernier moment (l'en-tête peut changer de hauteur)
+      // et on refait une correction après l'animation : pendant le défilement,
+      // l'en-tête mobile (message qui tourne) ou la barre d'adresse du navigateur
+      // peut bouger et faire atterrir la carte trop haut. La passe finale rattrape
+      // ce décalage. Le seuil de 2px évite tout micro-rebond inutile.
+      const alignCardTop = (behavior: ScrollBehavior) => {
+        const el = document.getElementById(`transaction-${transactionId}`);
+        if (!el) return;
+        const header = document.querySelector('header');
+        const headerOffset = header ? header.getBoundingClientRect().height + 8 : 72;
+        const delta = el.getBoundingClientRect().top - headerOffset;
+        if (Math.abs(delta) > 2) {
+          window.scrollBy({ top: delta, behavior });
+        }
+      };
+
+      // Attendre que le détail soit déplié et la mise en page stabilisée avant de mesurer
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          alignCardTop('smooth');
+          // Correction finale une fois l'animation et la barre d'adresse stabilisées
+          setTimeout(() => alignCardTop('smooth'), 450);
+        });
+      });
+    }
   };
 
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {

@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.7';
-export const APP_VERSION_NAME = 'Détail de transaction : Partage famille et Remboursement affichés côte à côte sur une même ligne';
+export const APP_VERSION = '3.16.8';
+export const APP_VERSION_NAME = 'Défilement au clic sur une carte de transaction : recalage fiable sous l\'en-tête (plus de saut trop haut)';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.8',
+    date: '2026-05-31',
+    description: 'Au clic sur une carte de transaction (pages/TransactionsPage.tsx), le défilement qui amène le haut de la carte juste sous l\'en-tête partait parfois trop haut (la carte passait derrière l\'en-tête). Cause : la position cible était mesurée une seule fois 50ms après le clic, mais la hauteur du dessus de l\'écran pouvait encore changer pendant l\'animation (message de l\'en-tête mobile qui tourne, barre d\'adresse du navigateur mobile qui se replie, détail qui finit de se déplier) → cible figée invalidée. Correctif : mesure après stabilisation de la mise en page (double requestAnimationFrame) + correction finale après l\'animation pour rattraper tout décalage résiduel',
+    changes: [
+      'Fix (TransactionsPage.tsx toggleTransactionDrawer) : remplacement du setTimeout(50)+scrollBy unique par un double requestAnimationFrame puis alignCardTop, avec une passe de correction à 450ms (seuil 2px pour éviter tout micro-rebond). Effets de bord sortis du updater setSelectedTransactionId (willOpen calculé en amont)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.7',
     date: '2026-05-31',
