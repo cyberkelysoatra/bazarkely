@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.16.4';
-export const APP_VERSION_NAME = 'Détail transaction : retrait du montant redondant pour les opérations simples (bloc Montant réservé aux prêts/remboursements)';
+export const APP_VERSION = '3.16.5';
+export const APP_VERSION_NAME = 'Carte transaction : nom du compte affiché dans l\'en-tête (à côté de la catégorie) ; grille détail masquée pour les opérations simples';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.5',
+    date: '2026-05-31',
+    description: 'Carte de transaction (pages/TransactionsPage.tsx) : le nom du compte est déplacé dans l\'en-tête, à côté de la catégorie (place libérée par le retrait de la date en v3.16.4). Le champ "Compte" du détail est retiré (redondant). Pour une opération simple, la grille de détail n\'est plus affichée du tout (montant + catégorie + compte sont sur la carte) ; elle reste pour les prêts/remboursements (barre de progression / lien dette)',
+    changes: [
+      'UI (TransactionsPage.tsx en-tête) : ajout du nom du compte (accountName via repaymentAccounts) après la catégorie, masqué si introuvable (jamais d\'UUID brut)',
+      'UI (TransactionsPage.tsx grille détail) : grille entière conditionnée à isLoanCategory ; bloc Compte supprimé. Détail d\'une opération simple = Notes + Partage famille + Remboursement uniquement',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.4',
     date: '2026-05-31',
