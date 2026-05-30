@@ -1599,7 +1599,10 @@ const TransactionsPage = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                    <div className={`bg-white/80 rounded-lg p-2 ${isLoanCategory ? 'col-span-2' : ''}`}>
+                    {/* Bloc Montant : affiché uniquement pour prêts/remboursements (barre de progression / lien dette).
+                        Pour une opération simple, le montant est déjà sur la carte → on évite la redondance. */}
+                    {isLoanCategory && (
+                    <div className="bg-white/80 rounded-lg p-2 col-span-2">
                       <p className="text-gray-500 text-xs">Montant</p>
                       {['loan', 'loan_received'].includes(transaction.category) ? (
                         loanProgressLoading ? (
@@ -1719,8 +1722,9 @@ const TransactionsPage = () => {
                         </p>
                       )}
                     </div>
+                    )}
                     {!(showRepaymentModal === transaction.id) && !isLoanCategory && (
-                      <div className="bg-white/80 rounded-lg p-2">
+                      <div className="bg-white/80 rounded-lg p-2 col-span-2">
                         <p className="text-gray-500 text-xs">Compte</p>
                         <p className="font-semibold text-gray-900 truncate">
                           {repaymentAccounts.find(a => a.id === transaction.accountId)?.name || transaction.accountId}

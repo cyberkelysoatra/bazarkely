@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.3';
-export const APP_VERSION_NAME = 'Suppression de transaction : choix Supprimer / Restituer (restitution réelle du solde au compte) sur liste + détail';
-export const LAST_UPDATED = '2026-05-30';
-export const APP_BUILD_DATE = '2026-05-30';
+export const APP_VERSION = '3.16.4';
+export const APP_VERSION_NAME = 'Détail transaction : retrait du montant redondant pour les opérations simples (bloc Montant réservé aux prêts/remboursements)';
+export const LAST_UPDATED = '2026-05-31';
+export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.4',
+    date: '2026-05-31',
+    description: 'Détail de transaction déplié (pages/TransactionsPage.tsx) : le champ "Montant" répétait le montant déjà affiché sur la carte pour les opérations simples. Il est désormais réservé aux prêts/remboursements (où il porte la barre de progression / le lien dette). Pour une opération simple, le détail n\'affiche plus que le "Compte" (passé en pleine largeur). Montant et Compte étant mutuellement exclusifs (isLoanCategory), la grille reste équilibrée',
+    changes: [
+      'UI (TransactionsPage.tsx grille détail) : bloc Montant conditionné à isLoanCategory ; bloc Compte passé en col-span-2 (seul champ pour les opérations simples)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.3',
     date: '2026-05-30',
