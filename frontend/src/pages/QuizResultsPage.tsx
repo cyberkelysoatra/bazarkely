@@ -176,7 +176,7 @@ const QuizResultsPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 pb-8">
         {/* Results Summary */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
           <div className="text-center mb-8">

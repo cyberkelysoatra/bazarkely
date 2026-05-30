@@ -395,7 +395,7 @@ const RecommendationsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white -mt-2">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between">
             <div>

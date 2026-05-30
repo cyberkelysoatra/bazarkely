@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.16.11';
-export const APP_VERSION_NAME = 'Ouverture homogène de toutes les pages : remontée en haut + bandeau titre calé à 8px sous l\'en-tête';
+export const APP_VERSION = '3.16.12';
+export const APP_VERSION_NAME = 'Pages à carte titre (Paramètres, Version, etc.) : suppression de l\'écart excessif en haut + bandeaux colorés recollés sous l\'en-tête';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.12',
+    date: '2026-05-31',
+    description: 'Suite de v3.16.11. Les pages à structure "carte titre flottante" (Paramètres, Version de l\'app, Préférences notifications, Quiz, Résultats quiz, Instructions PWA, Profil) utilisaient py-8 (32px) en haut → ~40px d\'espace sous l\'en-tête une fois le pt-2 global ajouté, soit beaucoup plus que les 8px des autres pages. Marge haute retirée (py-8 → pb-8, ou root py-8 → pb-8), l\'écart de 8px venant désormais de <main>. Les pages à bandeau coloré pleine largeur (Recommandations, Révision budgets) gardaient un mince filet gris de 8px au-dessus de leur bandeau (à cause du pt-2 global) → recollées sous l\'en-tête via -mt-2',
+    changes: [
+      'pages (Settings, AppVersion, NotificationPreferences, Quiz, QuizResults, PWAInstructions) : conteneur max-w-4xl mx-auto px-4 py-8 → px-4 pb-8',
+      'ProfileCompletionPage.tsx : conteneur racine min-h-screen bg-gray-50 py-8 → pb-8',
+      'RecommendationsPage.tsx / BudgetReviewPage.tsx : bandeau d\'en-tête bg-gradient-to-r ... text-white → +(-mt-2) pour rester collé sous l\'en-tête malgré le pt-2 global',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.11',
     date: '2026-05-31',
