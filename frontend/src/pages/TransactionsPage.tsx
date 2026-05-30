@@ -18,6 +18,7 @@ import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
 import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction } from '../services/loanService';
 import { toast } from 'react-hot-toast';
+import { showConfirm } from '../utils/dialogUtils';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
 import type { FamilyGroup } from '../types/family';
 
@@ -498,7 +499,16 @@ const TransactionsPage = () => {
 
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
     e.stopPropagation();
-    if (!window.confirm('Supprimer cette transaction ?')) {
+    const confirmed = await showConfirm(
+      'Cette action est irréversible. Voulez-vous vraiment supprimer cette transaction ?',
+      'Supprimer cette transaction ?',
+      {
+        confirmText: 'Supprimer',
+        cancelText: 'Annuler',
+        variant: 'danger'
+      }
+    );
+    if (!confirmed) {
       return;
     }
 

@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.1';
-export const APP_VERSION_NAME = 'Correction des doublons de transactions/comptes/prêts/familial — synchronisation idempotente (upsert + id client conservé)';
+export const APP_VERSION = '3.16.2';
+export const APP_VERSION_NAME = 'Correction de la confirmation de suppression sur la page Transactions (window.confirm → boîte de dialogue maison)';
 export const LAST_UPDATED = '2026-05-30';
 export const APP_BUILD_DATE = '2026-05-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.2',
+    date: '2026-05-30',
+    description: 'Fix suppression impossible sur la page Transactions : le bouton "Supprimer" appelait window.confirm(), neutralisé par dialogService (override qui logue un warning et ne montre pas de dialogue cliquable) → la confirmation ne s\'affichait pas → aucune suppression possible. Bloquait le nettoyage manuel des doublons existants (RAISSA, Taxi, prêts, etc.)',
+    changes: [
+      'Fix (pages/TransactionsPage.tsx handleDeleteTransaction) : remplacement de window.confirm() par showConfirm() async de utils/dialogUtils (variant danger, boutons Supprimer/Annuler), même pattern que GoalsPage. Ajout de l\'import showConfirm',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.1',
     date: '2026-05-30',
