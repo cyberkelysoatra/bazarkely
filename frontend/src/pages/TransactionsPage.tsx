@@ -1775,26 +1775,28 @@ const TransactionsPage = () => {
                     </div>
 
                     {!isLoanCategory && (
-                      <div className="bg-white/80 rounded-lg p-2">
-                        <p className="text-gray-500 text-xs">Partage famille</p>
-                        <p className="text-gray-800">
-                          {isShared ? `Partagee (${activeFamilyGroup?.name || 'groupe actif'})` : 'Non partagee'}
-                        </p>
-                      </div>
-                    )}
+                      <div className="flex gap-2">
+                        <div className="bg-white/80 rounded-lg p-2 flex-1">
+                          <p className="text-gray-500 text-xs">Partage famille</p>
+                          <p className="text-gray-800">
+                            {isShared ? `Partagee (${activeFamilyGroup?.name || 'groupe actif'})` : 'Non partagee'}
+                          </p>
+                        </div>
 
-                    {isShared && !isLoanCategory && (
-                      <div className="bg-white/80 rounded-lg p-2">
-                        <p className="text-gray-500 text-xs">Remboursement</p>
-                        <p className="text-gray-800">
-                          {status === 'loading'
-                            ? 'Chargement...'
-                            : status === 'none'
-                            ? 'Aucune demande'
-                            : status === 'pending'
-                            ? 'En attente'
-                            : 'Effectue'}
-                        </p>
+                        {isShared && (
+                          <div className="bg-white/80 rounded-lg p-2 flex-1">
+                            <p className="text-gray-500 text-xs">Remboursement</p>
+                            <p className="text-gray-800">
+                              {status === 'loading'
+                                ? 'Chargement...'
+                                : status === 'none'
+                                ? 'Aucune demande'
+                                : status === 'pending'
+                                ? 'En attente'
+                                : 'Effectue'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 

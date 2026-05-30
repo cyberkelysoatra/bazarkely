@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.6';
-export const APP_VERSION_NAME = 'Page Version : correction du warning de clé React dupliquée (2 entrées historiques 2.5.0) — identité par index';
+export const APP_VERSION = '3.16.7';
+export const APP_VERSION_NAME = 'Détail de transaction : Partage famille et Remboursement affichés côte à côte sur une même ligne';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.7',
+    date: '2026-05-31',
+    description: 'Détail de transaction déplié (pages/TransactionsPage.tsx) : pour une opération simple (non prêt), les blocs "Partage famille" et "Remboursement" étaient empilés verticalement. Ils sont désormais sur une même ligne (flex, deux colonnes égales). Quand l\'opération n\'est pas partagée, le bloc "Partage famille" occupe seul la pleine largeur',
+    changes: [
+      'UI (TransactionsPage.tsx grille détail) : "Partage famille" et "Remboursement" regroupés dans un conteneur flex gap-2, chaque bloc en flex-1. Condition Remboursement passée de (isShared && !isLoanCategory) à (isShared) imbriqué dans le bloc !isLoanCategory parent',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.6',
     date: '2026-05-31',
