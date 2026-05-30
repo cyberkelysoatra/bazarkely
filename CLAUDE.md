@@ -142,6 +142,22 @@ async function getCurrentUserSafe(): Promise<{ id: string } | null> {
 
 ---
 
+### Méthodes de solde "coquilles vides" — no-op (découvert v3.16.3)
+
+**Problème :** `transactionService.updateAccountBalance(accountId, amount)` et son alias `updateAccountBalancePublic(accountId, amount)` **ne modifient PAS le solde**. Elles loguent « ℹ️ Mise à jour du solde gérée par l'API » et `return true` sans rien faire. La page détail « restaurait » le solde à la suppression via `updateAccountBalancePublic(accountId, -amount)` → en réalité **jamais** restauré. La suppression de transaction n'a donc historiquement **jamais** rendu l'argent au compte.
+
+**Règle :** Pour réellement modifier un solde, utiliser la méthode privée `updateAccountBalanceAfterTransaction(accountId, transactionAmount, userId)` (fait `accountService.getAccount` + `updateAccount({ balance: balance + transactionAmount })`, offline-first). Restituer une transaction supprimée = `updateAccountBalanceAfterTransaction(accountId, -transaction.amount, userId)` (inverse de la création). Le bouton « Restituer » et `deleteTransaction(id, { restoreBalance })` (v3.16.3) passent par là. **Ne jamais** router une correction de solde via `updateAccountBalance(Public)`.
+
+---
+
+### Suppression massive en SQL : préférer la suppression par identifiants (S75)
+
+**Problème :** Une requête de déduplication à fonction fenêtre (`ROW_NUMBER() OVER (PARTITION BY ...)` puis `DELETE ... WHERE id IN (SELECT ...)`) qui parcourt toute la table **expire** dans l'éditeur SQL Supabase (« délai de connexion dépassé ») même pour peu de lignes. Un timeout/erreur d'affichage ne dit PAS si la suppression a abouti.
+
+**Règle :** Pour un nettoyage ponctuel, faire d'abord un **aperçu lecture seule** (lister les `id` à supprimer), puis un `DELETE ... WHERE id IN ('uuid1', 'uuid2', ...)` **par identifiants explicites** — instantané et idempotent. Toujours **re-compter après** (un timeout ≠ échec : la suppression a pu passer malgré le message d'erreur).
+
+---
+
 ### Supabase DB queries sans timeout (résolu v3.5.11)
 
 **Problème :** Les requêtes `supabase.from('table').select()` peuvent hanger silencieusement — ni succès, ni erreur, ni timeout. Le bloc `catch` ne s'exécute jamais.
@@ -157,6 +173,23 @@ const { data, error } = await withTimeout(
 ```
 
 **Ne jamais oublier :** `supabase.auth.signIn/setSession/getSession` = fiable (lecture locale ou single request). `supabase.from()` = peut hanger → toujours timeout. `supabase.auth.getUser()` = fait du réseau → utiliser `getSession()` à la place pour offline-first (voir piège ci-dessus).
+
+---
+
+### Doublons en synchronisation — timeout ≠ échec (résolu v3.16.1)
+
+**Problème :** Un enregistrement saisi sous réseau dégradé apparaissait 2-3 fois (RAISSA ×3). Cause : l'envoi direct online `withTimeout(5000)` **commitait côté serveur** mais la réponse dépassait 5 s → l'app croyait à un échec → mettait en file → le SyncManager **rejouait un 2ᵉ INSERT**. Aggravant : l'INSERT **ne transmettait pas l'id client** (`apiService.createX` faisait `.insert()` sans id ; `syncManager` faisait `const { id, ...insertData } = data` puis `.insert(insertData)`), donc le serveur générait un **nouvel UUID à chaque envoi** → impossible de dédupliquer. Le refresh `bulkPut` ajoutait les lignes serveur sans supprimer l'orpheline locale → jusqu'à 3 copies.
+
+**Marqueur de l'ancien bug dans les logs :** `🔄 ID de la transaction mis à jour: <idLocal> → <idServeur>` pour une création = le serveur regénère l'id → bug actif.
+
+**Règle (tout CREATE offline-first / rejouable) :**
+1. **Transmettre l'id client** (le même que celui sauvé en IndexedDB) dans le payload d'écriture.
+2. **Écrire en `upsert` idempotent**, jamais `insert` brut :
+   - Envoi direct online : `.upsert({ ...payload, id }, { onConflict: 'id' }).select().single()`
+   - Rejeu de file (syncManager) : `.upsert(data, { onConflict: 'id', ignoreDuplicates: true })` (ne jamais écraser une ligne potentiellement plus récente)
+3. Ne **jamais** retirer l'id (`const { id, ...rest } = data`) avant un CREATE.
+
+Ainsi un envoi « expiré-mais-commité » et le rejeu de la file convergent sur la **même** ligne. **Un timeout n'est PAS un échec** — l'écriture a pu aboutir, donc toute écriture rejouable doit être idempotente. Chemins purement en ligne (sans file, id serveur) non concernés : `createFamilyGroup`, `joinFamilyGroup`, `reimbursementService.createReimbursementRequest`.
 
 ---
 
@@ -291,9 +324,16 @@ Claude Code déclenche **proactivement** la clôture de session quand les 3 cond
 2. **Capitalisation** → memory persistante (`C:\Users\ACER\.claude\projects\C--bazarkely-2\memory\`) + CLAUDE.md si nouveaux pièges
 3. **MAJ architecture** → `VERSION_HISTORY.md` + `ETAT-TECHNIQUE-COMPLET.md` + `FEATURE-MATRIX.md`
 4. **Annonce** → informer JOEL que la session peut être clôturée, résumé concis des accomplissements
+5. **Paragraphe de lancement (OBLIGATOIRE, DANS LE CHAT)** → terminer TOUJOURS le message de clôture par le paragraphe copier-coller pour la session suivante, **affiché directement dans le chat** (pas seulement dans le fichier RESUME). Bloc de citation `> …`, isolé par un séparateur `---` et un titre `## Paragraphe de lancement [SXX+1] (à copier-coller)`. Détails du contenu attendu : voir mémoire `feedback_session_handoff.md`. JOEL ne doit JAMAIS avoir à le redemander.
 
-**Format d'annonce :**
+**Format d'annonce (le paragraphe de lancement est la DERNIÈRE chose affichée) :**
 > Session S[XX] clôturée — [Problème résolu]. [N fichiers modifiés]. Prêt pour une nouvelle session.
+
+---
+
+## Paragraphe de lancement [SXX+1] (à copier-coller)
+
+> [paragraphe auto-suffisant : dernière session + date, version en prod, accompli condensé, points en suspens, référence RESUME-SESSION, recommandation claire de l'étape suivante]
 
 ---
 
