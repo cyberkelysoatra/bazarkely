@@ -483,33 +483,60 @@ const TransactionsPage = () => {
     const willOpen = selectedTransactionId !== transactionId;
     setSelectedTransactionId(willOpen ? transactionId : null);
 
-    if (willOpen) {
-      // Aligne le haut de la carte juste sous l'en-tête fixe.
-      // On mesure l'offset au dernier moment (l'en-tête peut changer de hauteur)
-      // et on refait une correction après l'animation : pendant le défilement,
-      // l'en-tête mobile (message qui tourne) ou la barre d'adresse du navigateur
-      // peut bouger et faire atterrir la carte trop haut. La passe finale rattrape
-      // ce décalage. Le seuil de 2px évite tout micro-rebond inutile.
-      const alignCardTop = (behavior: ScrollBehavior) => {
-        const el = document.getElementById(`transaction-${transactionId}`);
-        if (!el) return;
-        const header = document.querySelector('header');
-        const headerOffset = header ? header.getBoundingClientRect().height + 8 : 72;
-        const delta = el.getBoundingClientRect().top - headerOffset;
-        if (Math.abs(delta) > 2) {
-          window.scrollBy({ top: delta, behavior });
+    if (!willOpen) return;
+
+    // Aligne le haut de la carte juste sous l'en-tête fixe, avec un mouvement
+    // fluide façon iOS. On anime nous-mêmes (requestAnimationFrame + courbe
+    // ease-in-out) plutôt que d'enchaîner deux défilements natifs : un seul
+    // geste, qui accélère puis ralentit en douceur. La cible est recalculée à
+    // chaque image, donc si la hauteur du dessus de l'écran change pendant
+    // l'animation (message de l'en-tête, barre d'adresse mobile, détail qui se
+    // déplie), le défilement suit la cible en continu — sans saut ni recalage
+    // visible.
+    const getHeaderOffset = () => {
+      const header = document.querySelector('header');
+      return header ? header.getBoundingClientRect().height + 8 : 72;
+    };
+    const getTargetY = (el: HTMLElement) =>
+      window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
+
+    const startAnimation = () => {
+      const el = document.getElementById(`transaction-${transactionId}`);
+      if (!el) return;
+
+      // Respect de la préférence système "réduire les animations"
+      const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduced) {
+        window.scrollTo({ top: getTargetY(el), behavior: 'auto' });
+        return;
+      }
+
+      const startY = window.scrollY;
+      if (Math.abs(getTargetY(el) - startY) < 2) return; // déjà aligné
+
+      const DURATION = 500;
+      const GRACE = 250; // suit une éventuelle bascule tardive (barre d'adresse mobile)
+      const easeInOutCubic = (t: number) =>
+        t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const startTime = performance.now();
+
+      const frame = (now: number) => {
+        const elNow = document.getElementById(`transaction-${transactionId}`);
+        if (!elNow) return;
+        const elapsed = now - startTime;
+        const t = Math.min(1, elapsed / DURATION);
+        const targetY = getTargetY(elNow); // recalcul continu → auto-correction
+        window.scrollTo(0, startY + (targetY - startY) * easeInOutCubic(t));
+        const settled = Math.abs(targetY - window.scrollY) < 1;
+        if (t < 1 || (!settled && elapsed < DURATION + GRACE)) {
+          requestAnimationFrame(frame);
         }
       };
+      requestAnimationFrame(frame);
+    };
 
-      // Attendre que le détail soit déplié et la mise en page stabilisée avant de mesurer
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          alignCardTop('smooth');
-          // Correction finale une fois l'animation et la barre d'adresse stabilisées
-          setTimeout(() => alignCardTop('smooth'), 450);
-        });
-      });
-    }
+    // Attendre que le détail soit déplié et la mise en page stabilisée avant d'animer
+    requestAnimationFrame(() => requestAnimationFrame(startAnimation));
   };
 
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {

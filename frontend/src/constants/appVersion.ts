@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.8';
-export const APP_VERSION_NAME = 'Défilement au clic sur une carte de transaction : recalage fiable sous l\'en-tête (plus de saut trop haut)';
+export const APP_VERSION = '3.16.9';
+export const APP_VERSION_NAME = 'Défilement au clic sur une carte de transaction : mouvement fluide façon iOS (animation ease-in-out continue)';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.9',
+    date: '2026-05-31',
+    description: 'Au clic sur une carte de transaction (pages/TransactionsPage.tsx), le recalage du haut de la carte sous l\'en-tête se faisait en deux défilements natifs successifs (glissement + correction à 450ms) → mouvement saccadé. Remplacé par une seule animation maison (requestAnimationFrame + courbe ease-in-out cubic) qui accélère puis ralentit en douceur façon iOS. La cible est recalculée à chaque image → auto-correction continue si la hauteur du dessus de l\'écran change pendant l\'animation (message de l\'en-tête, barre d\'adresse mobile, détail qui se déplie), sans saut ni recalage visible. Respecte prefers-reduced-motion',
+    changes: [
+      'Refactor (TransactionsPage.tsx toggleTransactionDrawer) : double scrollBy natif (smooth + correction setTimeout 450ms) remplacé par une boucle requestAnimationFrame de 500ms (easeInOutCubic) recalculant getTargetY à chaque frame, avec fenêtre de grâce 250ms pour suivre une bascule tardive. Court-circuit si prefers-reduced-motion (scroll instantané) ou si déjà aligné (<2px)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.8',
     date: '2026-05-31',
