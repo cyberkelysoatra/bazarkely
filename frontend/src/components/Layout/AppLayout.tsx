@@ -67,6 +67,7 @@ const ConsumptionPlansPage = React.lazy(() => import('../../modules/construction
 // Components
 import BottomNav from '../Navigation/BottomNav'
 import Header from './Header'
+import ScrollToTop from './ScrollToTop'
 
 // Loading component for Suspense fallback
 const PageLoader = () => (
@@ -154,7 +155,10 @@ const AppLayout = () => {
   return (
     <div className="min-h-screen flex flex-col overscroll-none">
       <Header />
-      <main className="flex-1 pb-20 overscroll-y-auto touch-pan-y">
+      {/* Remonte chaque page en haut à l'ouverture (alignement homogène sous l'en-tête) */}
+      <ScrollToTop />
+      {/* pt-2 : écart de 8px sous l'en-tête, identique pour toutes les pages */}
+      <main className="flex-1 pb-20 pt-2 overscroll-y-auto touch-pan-y">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Critical route - no Suspense needed (static import) */}

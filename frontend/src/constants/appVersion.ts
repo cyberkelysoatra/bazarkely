@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.16.10';
-export const APP_VERSION_NAME = 'Page Modifier/Détail transaction : bandeau titre calé juste sous l\'en-tête (suppression de l\'écart de 80px)';
+export const APP_VERSION = '3.16.11';
+export const APP_VERSION_NAME = 'Ouverture homogène de toutes les pages : remontée en haut + bandeau titre calé à 8px sous l\'en-tête';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.11',
+    date: '2026-05-31',
+    description: 'Généralisation à toutes les pages du comportement validé en v3.16.10 sur la page Détail/Modifier transaction. Deux réglages centraux (components/Layout) plutôt que ~18 retouches dispersées : (1) nouveau composant ScrollToTop qui remonte la fenêtre en haut à chaque ouverture de page (navigation PUSH), pour qu\'aucune page ne s\'ouvre "au milieu" en venant d\'une liste défilée ; (2) marge pt-2 (8px) posée une seule fois sur <main> dans AppLayout → écart identique sous l\'en-tête pour toutes les pages. Le pt-2 local de TransactionDetailPage est retiré (l\'écart vient désormais de <main>, sinon doublon à 16px)',
+    changes: [
+      'Nouveau (components/Layout/ScrollToTop.tsx) : window.scrollTo(0,0) sur changement de pathname, ignoré en navigation POP (retour/avance) et quand location.state.scrollToTransactionId est présent (préserve le défilement-vers-carte au retour sur /transactions)',
+      'AppLayout.tsx : montage de <ScrollToTop /> + ajout de pt-2 sur <main> (flex-1 pb-20 pt-2 ...)',
+      'TransactionDetailPage.tsx : conteneur racine pt-2 → (rien), l\'écart de 8px étant désormais fourni par <main>',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.10',
     date: '2026-05-31',
