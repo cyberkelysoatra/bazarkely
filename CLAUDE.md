@@ -324,7 +324,7 @@ Claude Code déclenche **proactivement** la clôture de session quand les 3 cond
 2. **Capitalisation** → memory persistante (`C:\Users\ACER\.claude\projects\C--bazarkely-2\memory\`) + CLAUDE.md si nouveaux pièges
 3. **MAJ architecture** → `VERSION_HISTORY.md` + `ETAT-TECHNIQUE-COMPLET.md` + `FEATURE-MATRIX.md`
 4. **Annonce** → informer JOEL que la session peut être clôturée, résumé concis des accomplissements
-5. **Paragraphe de lancement (OBLIGATOIRE, DANS LE CHAT)** → terminer TOUJOURS le message de clôture par le paragraphe copier-coller pour la session suivante, **affiché directement dans le chat** (pas seulement dans le fichier RESUME). Bloc de citation `> …`, isolé par un séparateur `---` et un titre `## Paragraphe de lancement [SXX+1] (à copier-coller)`. Détails du contenu attendu : voir mémoire `feedback_session_handoff.md`. JOEL ne doit JAMAIS avoir à le redemander.
+5. **Paragraphe de lancement (OBLIGATOIRE, DANS LE CHAT + PRESSE-PAPIERS)** → terminer TOUJOURS le message de clôture par le paragraphe copier-coller pour la session suivante, **affiché directement dans le chat** (pas seulement dans le fichier RESUME) **ET déposé dans le presse-papiers Windows** (`Set-Clipboard`) pour que JOEL n'ait qu'à faire Ctrl+V. Bloc de citation `> …`, isolé par un séparateur `---` et un titre `## Paragraphe de lancement [SXX+1] (à copier-coller)`. Détails du contenu attendu + commande presse-papiers : voir mémoire `feedback_session_handoff.md`. JOEL ne doit JAMAIS avoir à le redemander.
 
 **Format d'annonce (le paragraphe de lancement est la DERNIÈRE chose affichée) :**
 > Session S[XX] clôturée — [Problème résolu]. [N fichiers modifiés]. Prêt pour une nouvelle session.
