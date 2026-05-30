@@ -65,18 +65,18 @@ const getVersionTypeLabel = (type: VersionEntry['type']): string => {
 const AppVersionPage: React.FC = () => {
   const navigate = useNavigate();
   const { updateAvailable, isChecking, applyUpdate } = useServiceWorkerUpdate();
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
+  const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
   const [isUpdating, setIsUpdating] = useState(false);
 
   /**
    * Toggle version history expansion
    */
-  const toggleVersionExpansion = (version: string) => {
+  const toggleVersionExpansion = (index: number) => {
     const newExpanded = new Set(expandedVersions);
-    if (newExpanded.has(version)) {
-      newExpanded.delete(version);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
     } else {
-      newExpanded.add(version);
+      newExpanded.add(index);
     }
     setExpandedVersions(newExpanded);
   };
@@ -257,16 +257,16 @@ const AppVersionPage: React.FC = () => {
             </h2>
           </div>
           <div className="space-y-3">
-            {VERSION_HISTORY.map((entry) => {
-              const isExpanded = expandedVersions.has(entry.version);
+            {VERSION_HISTORY.map((entry, index) => {
+              const isExpanded = expandedVersions.has(index);
               return (
                 <div
-                  key={entry.version}
+                  key={`${entry.version}-${index}`}
                   className="border border-gray-200 rounded-xl overflow-hidden"
                 >
                   {/* Version Header */}
                   <button
-                    onClick={() => toggleVersionExpansion(entry.version)}
+                    onClick={() => toggleVersionExpansion(index)}
                     className="
                       w-full px-4 py-4
                       flex items-center justify-between

@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.5';
-export const APP_VERSION_NAME = 'Carte transaction : nom du compte affiché dans l\'en-tête (à côté de la catégorie) ; grille détail masquée pour les opérations simples';
+export const APP_VERSION = '3.16.6';
+export const APP_VERSION_NAME = 'Page Version : correction du warning de clé React dupliquée (2 entrées historiques 2.5.0) — identité par index';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.6',
+    date: '2026-05-31',
+    description: 'Page Réglages › Version (pages/AppVersionPage.tsx) : deux entrées d\'historique portaient le même numéro 2.5.0 → warning React "two children with the same key" et les deux cartes s\'ouvraient/fermaient ensemble. Correctif : la clé React et l\'identité d\'expansion utilisent désormais l\'index dans la liste (Set<number>) au lieu du numéro de version. Aucune donnée d\'historique modifiée',
+    changes: [
+      'Fix (AppVersionPage.tsx) : expandedVersions Set<string> → Set<number> ; toggleVersionExpansion(index) ; key={`${version}-${index}`} ; isExpanded via index',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.5',
     date: '2026-05-31',
