@@ -11,6 +11,7 @@ import type { Transaction, Account, TransactionCategory } from '../types';
 import * as familyGroupService from '../services/familyGroupService';
 import { shareTransaction, unshareTransaction, getSharedTransactionByTransactionId, updateSharedTransaction } from '../services/familySharingService';
 import { toast } from 'react-hot-toast';
+import { showDeleteRestoreDialog } from '../utils/dialogUtils';
 import type { ShareTransactionInput, SplitType, FamilyGroup, FamilySharedTransaction } from '../types/family';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { validateRecurringData } from '../utils/recurringUtils';
@@ -32,8 +33,6 @@ const TransactionDetailPage = () => {
   const [originalAccountId, setOriginalAccountId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [showAccountChangeWarning, setShowAccountChangeWarning] = useState(false);
   const [isTransfer, setIsTransfer] = useState(false);
   
@@ -770,101 +769,38 @@ const TransactionDetailPage = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!transaction || !user) return;
-    
-    try {
-      setIsDeleting(true);
-      console.log('🗑️ Starting transaction deletion for ID:', transaction.id);
-      console.log('🔍 Transaction type:', transaction.type);
-      
-      // Check if this is a transfer transaction
-      if (transaction.type === 'transfer') {
-        console.log('💸 TRANSFER DELETION - Starting atomic deletion process');
-        
-        // 1. Find the paired transfer transaction
-        const pairedTransaction = await transactionService.getPairedTransferTransaction(transaction);
-        if (!pairedTransaction) {
-          console.warn('⚠️ Paired transfer transaction not found - proceeding with single transaction deletion');
-          // Fall back to single transaction deletion if paired transaction not found
-          await handleSingleTransactionDeletion(transaction);
-          return;
-        }
-        
-        console.log('🔍 Found paired transaction:', pairedTransaction.id);
-        console.log('💰 Source account (current):', transaction.accountId, 'Amount:', transaction.amount);
-        console.log('💰 Destination account (paired):', pairedTransaction.accountId, 'Amount:', pairedTransaction.amount);
-        
-        // 2. Delete BOTH transactions from Supabase atomically
-        console.log('🗑️ Deleting source transaction from Supabase:', transaction.id);
-        const sourceDeleteSuccess = await transactionService.deleteTransaction(transaction.id);
-        if (!sourceDeleteSuccess) {
-          throw new Error('Échec de la suppression de la transaction source dans Supabase');
-        }
-        
-        console.log('🗑️ Deleting paired transaction from Supabase:', pairedTransaction.id);
-        const pairedDeleteSuccess = await transactionService.deleteTransaction(pairedTransaction.id);
-        if (!pairedDeleteSuccess) {
-          throw new Error('Échec de la suppression de la transaction jumelle dans Supabase');
-        }
-        
-        console.log('✅ Both transactions deleted from Supabase');
-        
-        // 3. Restore balances for BOTH accounts
-        console.log('💰 Restoring source account balance:', transaction.accountId, 'Amount:', -transaction.amount);
-        await transactionService.updateAccountBalancePublic(transaction.accountId, -transaction.amount);
-        
-        console.log('💰 Restoring destination account balance:', pairedTransaction.accountId, 'Amount:', -pairedTransaction.amount);
-        await transactionService.updateAccountBalancePublic(pairedTransaction.accountId, -pairedTransaction.amount);
-        
-        console.log('✅ Both account balances restored');
-        
-        // 4. Delete BOTH transactions from IndexedDB
-        console.log('🗑️ Deleting source transaction from IndexedDB:', transaction.id);
-        await db.transactions.delete(transaction.id);
-        
-        console.log('🗑️ Deleting paired transaction from IndexedDB:', pairedTransaction.id);
-        await db.transactions.delete(pairedTransaction.id);
-        
-        console.log('✅ Both transactions deleted from IndexedDB');
-        console.log('✅ TRANSFER DELETION COMPLETE - Both transactions and balances restored');
-        
-      } else {
-        // Regular transaction deletion (non-transfer)
-        console.log('📝 REGULAR TRANSACTION DELETION');
-        await handleSingleTransactionDeletion(transaction);
-      }
-      
-      console.log('✅ Transaction deletion completed successfully !');
-      navigate('/transactions');
-      
-    } catch (error) {
-      console.error('❌ Erreur lors de la suppression:', error);
-      console.error('❌ Erreur lors de la suppression de la transaction');
-      // Ne pas naviguer si la suppression a échoué
-    } finally {
-      setIsDeleting(false);
-    }
+  // Ouvre la fenêtre à 3 boutons (Annuler / Supprimer / Restituer) puis exécute le choix.
+  // Toute la logique (ligne simple, paire de transfert, restitution du solde) est centralisée
+  // dans transactionService.deleteTransaction.
+  const openDeleteDialog = async () => {
+    if (!transaction) return;
+    const isTransfer = transaction.type === 'transfer';
+    const choice = await showDeleteRestoreDialog({
+      title: isTransfer ? 'Supprimer ce transfert ?' : 'Supprimer cette transaction ?',
+      message: isTransfer
+        ? `Cette action est irréversible et supprimera les deux lignes du transfert "${transaction.description}" (débit et crédit).`
+        : `Cette action est irréversible. Voulez-vous vraiment supprimer "${transaction.description}" ?`
+    });
+    if (choice === 'cancel') return;
+    await handleDelete(choice === 'restore');
   };
 
-  // Helper function for single transaction deletion (non-transfer)
-  const handleSingleTransactionDeletion = async (transactionToDelete: Transaction) => {
-    console.log('📝 Starting single transaction deletion for ID:', transactionToDelete.id);
-    
-    // 1. Supprimer de Supabase d'abord
-    const deleteSuccess = await transactionService.deleteTransaction(transactionToDelete.id);
-    if (!deleteSuccess) {
-      throw new Error('Échec de la suppression dans Supabase');
+  const handleDelete = async (restoreBalance: boolean) => {
+    if (!transaction || !user) return;
+
+    try {
+      const success = await transactionService.deleteTransaction(transaction.id, { restoreBalance });
+      if (!success) {
+        toast.error('Erreur lors de la suppression de la transaction');
+        return;
+      }
+      toast.success(restoreBalance ? 'Transaction supprimée, solde restitué' : 'Transaction supprimée');
+      navigate('/transactions');
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression:', error);
+      toast.error('Erreur lors de la suppression de la transaction');
+      // Ne pas naviguer si la suppression a échoué
     }
-    console.log('✅ Transaction supprimée de Supabase');
-    
-    // 2. Restaurer le solde du compte
-    await transactionService.updateAccountBalancePublic(transactionToDelete.accountId, -transactionToDelete.amount);
-    console.log('✅ Solde du compte restauré');
-    
-    // 3. Supprimer de l'IndexedDB local
-    await db.transactions.delete(transactionToDelete.id);
-    console.log('✅ Transaction supprimée de l\'IndexedDB local');
   };
 
   const handleCancel = () => {
@@ -982,7 +918,7 @@ const TransactionDetailPage = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={openDeleteDialog}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Supprimer"
                   >
@@ -1476,71 +1412,6 @@ const TransactionDetailPage = () => {
           </div>
         )}
       </div>
-
-      {/* Modal de confirmation de suppression */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {transaction?.type === 'transfer' ? 'Supprimer le transfert' : 'Supprimer la transaction'}
-                  </h3>
-                  <p className="text-sm text-gray-600">Cette action est irréversible</p>
-                </div>
-              </div>
-              
-              <p className="text-gray-700 mb-6">
-                {transaction?.type === 'transfer' ? (
-                  <>
-                    Êtes-vous sûr de vouloir supprimer le transfert "{transaction.description}" ?
-                    <br /><br />
-                    <span className="font-medium text-red-600">
-                      ⚠️ Cette action supprimera les deux transactions du transfert (débit et crédit) 
-                      et restaurera les soldes des deux comptes concernés.
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Êtes-vous sûr de vouloir supprimer la transaction "{transaction.description}" ?
-                    Le solde du compte sera mis à jour automatiquement.
-                  </>
-                )}
-              </p>
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 btn-secondary"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  {isDeleting ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                  <span>
-                    {isDeleting 
-                      ? (transaction?.type === 'transfer' ? 'Suppression du transfert...' : 'Suppression...') 
-                      : (transaction?.type === 'transfer' ? 'Supprimer le transfert' : 'Supprimer')
-                    }
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

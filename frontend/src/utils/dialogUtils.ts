@@ -1,6 +1,7 @@
 import { showToast } from '../services/toastService'
 import ConfirmDialog, { useConfirmDialog } from '../components/UI/ConfirmDialog'
 import PromptDialog from '../components/UI/PromptDialog'
+import DeleteRestoreDialog, { type DeleteRestoreChoice } from '../components/UI/DeleteRestoreDialog'
 
 /**
  * Utility functions to replace native browser dialogs with modern alternatives
@@ -108,6 +109,87 @@ export const showConfirm = (
         }
         
         root.render(React.createElement(ConfirmDialogWrapper))
+      })
+    })
+  })
+}
+
+/**
+ * Delete-transaction dialog offering TWO confirm actions.
+ * Resolves to:
+ *  - 'cancel'  : do nothing
+ *  - 'delete'  : remove the transaction WITHOUT touching the balance
+ *  - 'restore' : remove the transaction AND give its amount back to the account
+ */
+export const showDeleteRestoreDialog = (
+  options: {
+    title?: string
+    message?: string
+  } = {}
+): Promise<DeleteRestoreChoice> => {
+  return new Promise((resolve) => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+
+    let isCleanedUp = false
+    let root: any = null
+
+    const cleanup = () => {
+      if (isCleanedUp) return
+      isCleanedUp = true
+
+      if (root) {
+        try {
+          root.unmount()
+        } catch (error) {
+          console.warn('Error unmounting React root:', error)
+        }
+      }
+
+      if (container && container.parentNode) {
+        try {
+          container.remove()
+        } catch (error) {
+          try {
+            container.parentNode.removeChild(container)
+          } catch (fallbackError) {
+            console.warn('Error removing container:', fallbackError)
+          }
+        }
+      }
+    }
+
+    import('react').then((React) => {
+      import('react-dom/client').then(({ createRoot }) => {
+        root = createRoot(container)
+
+        const DeleteRestoreDialogWrapper = () => {
+          const [isOpen, setIsOpen] = React.useState(true)
+
+          React.useEffect(() => {
+            return () => {
+              if (!isCleanedUp) {
+                cleanup()
+              }
+            }
+          }, [])
+
+          const handleChoice = (choice: DeleteRestoreChoice) => {
+            if (isCleanedUp) return
+            setIsOpen(false)
+            cleanup()
+            resolve(choice)
+          }
+
+          return React.createElement(DeleteRestoreDialog, {
+            isOpen,
+            onChoice: handleChoice,
+            title: options.title,
+            message: options.message
+          })
+        }
+
+        root.render(React.createElement(DeleteRestoreDialogWrapper))
       })
     })
   })

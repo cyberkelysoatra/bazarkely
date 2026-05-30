@@ -18,7 +18,7 @@ import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
 import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction } from '../services/loanService';
 import { toast } from 'react-hot-toast';
-import { showConfirm } from '../utils/dialogUtils';
+import { showDeleteRestoreDialog } from '../utils/dialogUtils';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
 import type { FamilyGroup } from '../types/family';
 
@@ -499,21 +499,21 @@ const TransactionsPage = () => {
 
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
     e.stopPropagation();
-    const confirmed = await showConfirm(
-      'Cette action est irréversible. Voulez-vous vraiment supprimer cette transaction ?',
-      'Supprimer cette transaction ?',
-      {
-        confirmText: 'Supprimer',
-        cancelText: 'Annuler',
-        variant: 'danger'
-      }
-    );
-    if (!confirmed) {
+    const target = transactions.find(t => t.id === transactionId);
+    const isTransfer = target?.type === 'transfer';
+    const choice = await showDeleteRestoreDialog({
+      title: isTransfer ? 'Supprimer ce transfert ?' : 'Supprimer cette transaction ?',
+      message: isTransfer
+        ? 'Cette action est irréversible et supprimera les deux lignes du transfert (débit et crédit).'
+        : 'Cette action est irréversible. Voulez-vous vraiment supprimer cette transaction ?'
+    });
+    if (choice === 'cancel') {
       return;
     }
+    const restoreBalance = choice === 'restore';
 
     try {
-      const success = await transactionService.deleteTransaction(transactionId);
+      const success = await transactionService.deleteTransaction(transactionId, { restoreBalance });
       if (!success) {
         toast.error('Erreur lors de la suppression de la transaction');
         return;
@@ -537,7 +537,19 @@ const TransactionsPage = () => {
         return updated;
       });
       setSelectedTransactionId(prev => (prev === transactionId ? null : prev));
-      toast.success('Transaction supprimée');
+
+      // Pour un transfert, la ligne jumelle a aussi été supprimée côté service →
+      // recharger la liste pour refléter la disparition des deux lignes.
+      if (isTransfer && user) {
+        try {
+          const refreshed = await transactionService.getUserTransactions(user.id);
+          setTransactions(refreshed);
+        } catch {
+          // Rafraîchissement best-effort : le filtre optimiste ci-dessus suffit en cas d'échec
+        }
+      }
+
+      toast.success(restoreBalance ? 'Transaction supprimée, solde restitué' : 'Transaction supprimée');
     } catch (error) {
       toast.error('Erreur lors de la suppression de la transaction');
     }
@@ -1522,8 +1534,6 @@ const TransactionsPage = () => {
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <span>{category.name}</span>
-                      <span>•</span>
-                      <span>{new Date(transaction.date).toLocaleDateString('fr-FR')}</span>
                       {isTransfer && (
                         <>
                           <span>•</span>
@@ -1563,7 +1573,7 @@ const TransactionsPage = () => {
                     />
                   </div>
                   <p className="text-sm text-gray-500">
-                    {new Date(transaction.createdAt).toLocaleDateString('fr-FR')}
+                    {new Date(transaction.date).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
               </div>
@@ -1711,22 +1721,10 @@ const TransactionsPage = () => {
                     </div>
                     {!(showRepaymentModal === transaction.id) && !isLoanCategory && (
                       <div className="bg-white/80 rounded-lg p-2">
-                        <p className="text-gray-500 text-xs">Categorie</p>
-                        <p className="font-semibold text-gray-900">{category.name}</p>
-                      </div>
-                    )}
-                    {!isLoanCategory && (
-                      <div className="bg-white/80 rounded-lg p-2">
-                        <p className="text-gray-500 text-xs">Date</p>
-                        <p className="font-semibold text-gray-900">
-                          {new Date(transaction.date).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    )}
-                    {!(showRepaymentModal === transaction.id) && !isLoanCategory && (
-                      <div className="bg-white/80 rounded-lg p-2">
                         <p className="text-gray-500 text-xs">Compte</p>
-                        <p className="font-semibold text-gray-900 truncate">{transaction.accountId}</p>
+                        <p className="font-semibold text-gray-900 truncate">
+                          {repaymentAccounts.find(a => a.id === transaction.accountId)?.name || transaction.accountId}
+                        </p>
                       </div>
                     )}
                   </div>

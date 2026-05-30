@@ -671,7 +671,19 @@ class TransactionService {
    * 2. Si online, sync suppression vers Supabase
    * 3. Si offline, queue pour sync ultérieure
    */
-  async deleteTransaction(id: string): Promise<boolean> {
+  /**
+   * Supprimer une transaction (OFFLINE-FIRST).
+   * @param options.restoreBalance  Si true, rend le montant de l'opération au compte
+   *                                d'origine (corrige le solde). Pour un transfert, les
+   *                                deux comptes (débit + crédit) sont restitués.
+   * @param options._skipPairHandling  Usage interne : évite de re-chercher la ligne jumelle
+   *                                    lors de la suppression récursive du 2ᵉ côté du transfert.
+   */
+  async deleteTransaction(
+    id: string,
+    options: { restoreBalance?: boolean; _skipPairHandling?: boolean } = {}
+  ): Promise<boolean> {
+    const { restoreBalance = false, _skipPairHandling = false } = options;
     try {
       // STEP 1: Récupérer le userId
       const userId = await this.getCurrentUserId();
@@ -701,10 +713,30 @@ class TransactionService {
         return false;
       }
 
+      // STEP 2bis: Pour un transfert, retrouver la ligne jumelle AVANT suppression
+      // (uniquement depuis la ligne initiatrice, pas lors du rappel récursif)
+      let pairedTransaction: Transaction | null = null;
+      if (!_skipPairHandling && transaction.type === 'transfer') {
+        pairedTransaction = await this.getPairedTransferTransaction(transaction);
+      }
+
       // STEP 3: Supprimer de IndexedDB immédiatement
       console.log('📱 [TransactionService] 💾 Suppression de la transaction depuis IndexedDB...');
       await db.transactions.delete(id);
       console.log(`📱 [TransactionService] ✅ Transaction "${transaction.description}" supprimée de IndexedDB`);
+
+      // STEP 3bis: Restituer le solde du compte si demandé (vraie mise à jour, offline-first)
+      // L'inverse exact de la création : à la création on a fait balance += amount,
+      // donc restituer = balance -= amount.
+      if (restoreBalance) {
+        try {
+          await this.updateAccountBalanceAfterTransaction(transaction.accountId, -transaction.amount, userId);
+          console.log(`📱 [TransactionService] 💰 Solde restitué au compte ${transaction.accountId} (montant ${-transaction.amount})`);
+        } catch (balanceError) {
+          console.error('📱 [TransactionService] ❌ Erreur lors de la restitution du solde:', balanceError);
+          // Ne pas faire échouer la suppression pour une erreur de solde
+        }
+      }
 
       // STEP 4: Si online, essayer de sync vers Supabase
       if (navigator.onLine) {
@@ -717,23 +749,27 @@ class TransactionService {
           );
           if (response.success) {
             console.log('📱 [TransactionService] ✅ Suppression synchronisée avec Supabase');
-            return true;
           } else {
             console.warn('📱 [TransactionService] ⚠️ Échec de la synchronisation Supabase, ajout à la queue');
             await this.queueSyncOperation(userId, 'DELETE', id, {});
-            return true; // Retourner true car supprimé de IndexedDB
           }
         } catch (syncError) {
           console.error('📱 [TransactionService] ❌ Erreur lors de la synchronisation Supabase:', syncError);
           await this.queueSyncOperation(userId, 'DELETE', id, {});
-          return true; // Retourner true car supprimé de IndexedDB
         }
       } else {
         // Mode offline, queue pour sync ultérieure
         console.log('📱 [TransactionService] 📦 Mode offline, ajout à la queue de synchronisation');
         await this.queueSyncOperation(userId, 'DELETE', id, {});
-        return true; // Retourner true car supprimé de IndexedDB
       }
+
+      // STEP 5: Supprimer la ligne jumelle du transfert (même options : restitue le 2ᵉ compte)
+      if (pairedTransaction) {
+        console.log('📱 [TransactionService] 🔁 Suppression de la ligne jumelle du transfert:', pairedTransaction.id);
+        await this.deleteTransaction(pairedTransaction.id, { restoreBalance, _skipPairHandling: true });
+      }
+
+      return true; // Supprimé de IndexedDB (la sync rejouera si besoin)
     } catch (error) {
       console.error('📱 [TransactionService] ❌ Erreur lors de la suppression de la transaction:', error);
       return false;

@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.16.2';
-export const APP_VERSION_NAME = 'Correction de la confirmation de suppression sur la page Transactions (window.confirm → boîte de dialogue maison)';
+export const APP_VERSION = '3.16.3';
+export const APP_VERSION_NAME = 'Suppression de transaction : choix Supprimer / Restituer (restitution réelle du solde au compte) sur liste + détail';
 export const LAST_UPDATED = '2026-05-30';
 export const APP_BUILD_DATE = '2026-05-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.3',
+    date: '2026-05-30',
+    description: 'Suppression de transaction : la fenêtre de confirmation propose désormais 2 actions — "Supprimer" (retire l\'opération sans toucher au solde) et "Restituer" (retire l\'opération ET rend son montant au compte). Découverte au passage : updateAccountBalancePublic/updateAccountBalance était une coquille vide (no-op) → la page détail croyait restituer le solde mais ne le faisait pas. La restitution passe maintenant par la vraie mise à jour (updateAccountBalanceAfterTransaction)',
+    changes: [
+      'Nouveau composant (components/UI/DeleteRestoreDialog.tsx) + helper (utils/dialogUtils.ts showDeleteRestoreDialog) : fenêtre à 3 boutons Annuler / Supprimer / Restituer, avec texte explicatif des deux actions. "Restituer" mis en avant (vert)',
+      'Refonte (services/transactionService.ts deleteTransaction) : nouveau paramètre options { restoreBalance } ; quand true, restitue le solde via updateAccountBalanceAfterTransaction(accountId, -amount). Gestion centralisée de la paire de transfert (suppression + restitution des 2 comptes via rappel récursif _skipPairHandling). Comportement par défaut (restoreBalance=false) inchangé',
+      'pages/TransactionsPage.tsx : handleDeleteTransaction utilise showDeleteRestoreDialog ; rechargement de la liste après suppression d\'un transfert (la ligne jumelle disparaît aussi)',
+      'pages/TransactionDetailPage.tsx : ancienne fenêtre inline 2 boutons remplacée par showDeleteRestoreDialog ; handleDelete(restoreBalance) délègue à deleteTransaction ; suppression du code mort (handleSingleTransactionDeletion, logique de paire dupliquée, appels no-op updateAccountBalancePublic, états showDeleteConfirm/isDeleting)',
+      'UI (pages/TransactionsPage.tsx carte + détail déplié) : suppression des informations redondantes. La date n\'apparaît plus qu\'une fois (à droite) et affiche désormais la date de l\'OPÉRATION (transaction.date) au lieu de createdAt. Catégorie affichée une seule fois (en-tête). Champ "Compte" du détail : affiche le nom du compte (repaymentAccounts) au lieu de l\'UUID brut. Grille détail réduite à Montant + Compte',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.2',
     date: '2026-05-30',
