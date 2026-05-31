@@ -18,6 +18,7 @@ import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
 import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction, getLoanById } from '../services/loanService';
 import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
+import LoanDueCountdown from '../components/Loans/LoanDueCountdown';
 import { computeLoanLiveState } from '../services/loanInterest';
 import { toast } from 'react-hot-toast';
 import { showDeleteRestoreDialog } from '../utils/dialogUtils';
@@ -1726,9 +1727,10 @@ const TransactionsPage = () => {
                                     : `${Math.round(atDue).toLocaleString('fr-FR')} Ar`;
                                   const dueWord = drawerLoan.isITheBorrower ? 'À payer' : 'À percevoir';
                                   return (
-                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-1 px-1">
-                                      <span>Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
-                                      <span className="font-semibold text-gray-800">{dueWord} : {atDueLabel}</span>
+                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-2 px-1 gap-2">
+                                      <span className="flex-shrink-0">Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
+                                      <LoanDueCountdown createdAt={drawerLoan.createdAt} dueDate={drawerLoan.dueDate} />
+                                      <span className="font-semibold text-gray-800 flex-shrink-0">{dueWord} : {atDueLabel}</span>
                                     </div>
                                   );
                                 })()}

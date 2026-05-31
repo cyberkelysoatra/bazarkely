@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.16.20';
-export const APP_VERSION_NAME = 'Prêts : taux journalier intégré au libellé "Intérêts courus", légende supprimée, inter-ligne "Montant" réduit';
+export const APP_VERSION = '3.16.21';
+export const APP_VERSION_NAME = 'Prêts : jauge fine + compte à rebours en direct (12J, 3h22mn12s) du temps restant avant échéance';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.21',
+    date: '2026-05-31',
+    description: 'Détail prêt (page Transactions) : insertion entre la date d\'échéance et le montant "à percevoir" d\'une jauge horizontale fine et moderne du temps restant, avec compte à rebours "en direct" au format "12J, 3h22mn12s" (rafraîchi chaque seconde). La barre se remplit à l\'approche de l\'échéance et change de couleur selon l\'urgence (vert → ambre → rouge ; rouge plein + "Échéance dépassée" si dépassée). Marge supérieure de la ligne d\'échéance doublée (mt-1 → mt-2).',
+    changes: [
+      'Nouveau components/Loans/LoanDueCountdown.tsx : jauge + compte à rebours seconde par seconde, couleur selon urgence',
+      'TransactionsPage.tsx : jauge insérée dans la ligne d\'échéance + marge supérieure x2',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.20',
     date: '2026-05-31',
