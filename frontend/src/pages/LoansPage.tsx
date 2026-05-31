@@ -675,7 +675,7 @@ const LoansPage = () => {
                             <div className="grid grid-cols-2 gap-2 text-sm mb-2">
                               <div className="bg-white/80 rounded-lg p-2 col-span-2">
                                 <p className="text-gray-500 text-xs">Montant</p>
-                                <div className="mt-1">
+                                <div className="mt-0">
                                   <div className="flex justify-between text-xs text-gray-600 mb-1">
                                     <span>Remboursé: {formatLoanAmount(totalRepaidInLoanCurrency)}</span>
                                     <span className="font-semibold text-green-700">{repaidPct.toFixed(1)}% remboursé</span>

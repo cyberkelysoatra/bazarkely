@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.16.19';
-export const APP_VERSION_NAME = 'Prêts : modification du taux persistée sur la fiche + bloc Notes masqué si vide + icône ⏱️ sur "Intérêts courus" + montant à percevoir à l\'échéance';
+export const APP_VERSION = '3.16.20';
+export const APP_VERSION_NAME = 'Prêts : taux journalier intégré au libellé "Intérêts courus", légende supprimée, inter-ligne "Montant" réduit';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.20',
+    date: '2026-05-31',
+    description: 'Peaufinage mise en page du trio prêt. (1) Le taux journalier (ex: "0,017%/j") est désormais accolé au libellé "⏱️ Intérêts courus" du trio. (2) La ligne de légende séparée "Intérêts en temps réel · X% / jour" sous le trio est supprimée (info désormais dans le libellé). (3) Inter-ligne réduit (mt-1 → mt-0) entre le titre "Montant" et son contenu, sur les pages Prêts et Transactions.',
+    changes: [
+      'LoanLiveTrio.tsx : taux intégré au libellé "Intérêts courus", suppression de la légende sous le trio',
+      'TransactionsPage.tsx + LoansPage.tsx : bloc "Montant" resserré (mt-1 → mt-0)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.19',
     date: '2026-05-31',

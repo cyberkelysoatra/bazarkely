@@ -1684,7 +1684,7 @@ const TransactionsPage = () => {
                             />
                           </p>
                         ) : (
-                          <div className="mt-1">
+                          <div className="mt-0">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
                               <span>Remboursé: {formatBalance(loanProgress.totalRepaid)}</span>
                               <span className="font-semibold text-green-700">{loanProgress.percentage.toFixed(1)}% remboursé</span>

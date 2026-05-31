@@ -47,28 +47,25 @@ const LoanLiveTrio = ({
       ? `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
       : `${n.toLocaleString('fr-FR', { maximumFractionDigits: decimals })} Ar`;
 
+  const rateStr = live.dailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+
   return (
-    <>
-      <div className="grid grid-cols-3 gap-2 text-center mt-2">
-        <div>
-          <p className="text-[10px] text-gray-500 leading-tight">Capital</p>
-          <p className="text-xs font-semibold text-gray-800">{money(live.capitalOutstanding, 0)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-500 leading-tight">⏱️ Intérêts courus</p>
-          <p className="text-xs font-semibold text-amber-700">{money(live.accruedInterest, 3)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-500 leading-tight">Total dû</p>
-          <p className="text-xs font-bold text-gray-900">{money(live.totalOwed, 3)}</p>
-        </div>
+    <div className="grid grid-cols-3 gap-2 text-center mt-2">
+      <div>
+        <p className="text-[10px] text-gray-500 leading-tight">Capital</p>
+        <p className="text-xs font-semibold text-gray-800">{money(live.capitalOutstanding, 0)}</p>
       </div>
-      {hasInterest && (
-        <p className="text-[10px] text-gray-400 text-center mt-1">
-          Intérêts en temps réel · {live.dailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}% / jour
+      <div>
+        <p className="text-[10px] text-gray-500 leading-tight">
+          ⏱️ Intérêts courus{hasInterest ? ` · ${rateStr}%/j` : ''}
         </p>
-      )}
-    </>
+        <p className="text-xs font-semibold text-amber-700">{money(live.accruedInterest, 3)}</p>
+      </div>
+      <div>
+        <p className="text-[10px] text-gray-500 leading-tight">Total dû</p>
+        <p className="text-xs font-bold text-gray-900">{money(live.totalOwed, 3)}</p>
+      </div>
+    </div>
   );
 };
 
