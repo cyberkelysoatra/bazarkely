@@ -1476,7 +1476,7 @@ const TransactionsPage = () => {
           const accountName = repaymentAccounts.find(a => a.id === transaction.accountId)?.name;
 
           return (
-            <div key={transaction.id} className="space-y-2">
+            <div key={transaction.id}>
               <div
                 id={`transaction-${transaction.id}`}
                 onClick={() => toggleTransactionDrawer(transaction.id)}
@@ -1653,20 +1653,6 @@ const TransactionsPage = () => {
                 style={{ maxHeight: isDrawerOpen ? (showRepaymentModal === transaction.id ? '1800px' : '600px') : '0px' }}
               >
                 <div className="card bg-gradient-to-br from-purple-50/80 to-white border-purple-100 backdrop-blur-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="text-sm font-semibold text-purple-700">Details transaction</h5>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedTransactionId(null);
-                      }}
-                      className="p-1 rounded hover:bg-purple-100 transition-colors"
-                      title="Fermer"
-                    >
-                      <X className="w-4 h-4 text-purple-600" />
-                    </button>
-                  </div>
-
                   {/* Grille détail : uniquement pour prêts/remboursements (barre de progression / lien dette).
                       Pour une opération simple, montant + catégorie + compte sont déjà sur la carte. */}
                   {isLoanCategory && (
@@ -1730,14 +1716,14 @@ const TransactionsPage = () => {
                                     : `${Math.round(atDue).toLocaleString('fr-FR')} Ar`;
                                   const dueWord = drawerLoan.isITheBorrower ? 'À payer' : 'À percevoir';
                                   return (
-                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-3 px-1 gap-2">
+                                    <div className="flex justify-between items-end text-[11px] text-gray-600 mt-3 px-1 gap-2">
                                       <span className="flex-shrink-0 flex flex-col items-start leading-tight">
-                                        <span>Échéance :</span>
+                                        <span>Échéance</span>
                                         <span>{new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
                                       </span>
                                       <LoanDueCountdown createdAt={drawerLoan.createdAt} dueDate={drawerLoan.dueDate} />
                                       <span className="font-semibold text-gray-800 flex-shrink-0 flex flex-col items-end leading-tight">
-                                        <span>{dueWord} :</span>
+                                        <span>{dueWord}</span>
                                         <span>{atDueLabel}</span>
                                       </span>
                                     </div>

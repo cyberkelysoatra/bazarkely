@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.22';
-export const APP_VERSION_NAME = 'Transactions : fin du rechargement intempestif (carte ouverte garde sa position) + ligne échéance empilée (date sous "Échéance", montant sous "À percevoir")';
+export const APP_VERSION = '3.16.23';
+export const APP_VERSION_NAME = 'Détail transaction épuré : en-tête "Details transaction" retiré, tiroir collé à la carte, ligne échéance sans ":" et alignée en bas';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.23',
+    date: '2026-05-31',
+    description: 'Épuration du tiroir de détail (page Transactions). (1) Suppression de l\'en-tête "Details transaction" + bouton X (le clic sur la carte ouvre/ferme déjà le tiroir). (2) Suppression de la marge supérieure du tiroir (retrait de space-y-2 du wrapper de carte) → le tiroir est collé à la carte. (3) Retrait des ":" après "Échéance" et "À percevoir/À payer". (4) Ligne d\'échéance alignée par le bas (items-center → items-end) : la jauge, la date et le montant partagent la même ligne de base inférieure.',
+    changes: [
+      'TransactionsPage.tsx : en-tête du tiroir supprimé ; wrapper de carte sans space-y-2 ; ligne échéance sans ":" et items-end',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.22',
     date: '2026-05-31',
