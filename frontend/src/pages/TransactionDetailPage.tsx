@@ -434,7 +434,7 @@ const TransactionDetailPage = () => {
     if (!isLoanCategory) {
       setBeneficiaryName('');
       setInterestRate('');
-      setDurationMonths('');
+      setDueDateInput('');
       setSelectedLoanId('');
       setActiveLoans([]);
     }

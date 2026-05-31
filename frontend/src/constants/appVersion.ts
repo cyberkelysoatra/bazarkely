@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.16.24';
-export const APP_VERSION_NAME = 'Prêts : échéance en DATE (au lieu de mois) + saisie de l\'intérêt en montant (Ar) ou % avec toggles (par jour / sur la durée), converti en taux journalier';
+export const APP_VERSION = '3.16.25';
+export const APP_VERSION_NAME = 'Hotfix : crash page de modification de transaction (référence orpheline setDurationMonths)';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.25',
+    date: '2026-05-31',
+    description: 'HOTFIX v3.16.24 : la page de modification d\'une transaction (TransactionDetailPage) plantait (ReferenceError: setDurationMonths is not defined) à cause d\'un appel orphelin setDurationMonths(\'\') resté dans un useEffect de réinitialisation après le retrait de l\'état durationMonths. Remplacé par setDueDateInput(\'\'). À noter : `npm run build` (vite/esbuild) ne fait PAS de contrôle de types strict — le garde-fou est `npx tsc --noEmit`, désormais lancé avant déploiement.',
+    changes: [
+      'TransactionDetailPage.tsx : setDurationMonths → setDueDateInput dans le useEffect de reset des champs prêt',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.24',
     date: '2026-05-31',
