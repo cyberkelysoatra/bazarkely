@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.16.25';
-export const APP_VERSION_NAME = 'Hotfix : crash page de modification de transaction (référence orpheline setDurationMonths)';
+export const APP_VERSION = '3.16.26';
+export const APP_VERSION_NAME = 'Tiroir de détail d\'un prêt UNIFIÉ : même panneau (Montant · trio · jauge échéance · Notes · Infos · Historique) sur les pages Prêts et Transactions';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.26',
+    date: '2026-05-31',
+    description: 'POINT 1 : unification du tiroir de détail d\'un prêt entre la page Prêts (Famille) et la page Transactions. Nouveau composant partagé components/Loans/LoanDetailPanel.tsx qui affiche EXACTEMENT le même contenu des deux côtés : bloc Montant (Remboursé + barre de progression + trio "en direct" Capital · Intérêts courus · Total dû), ligne d\'échéance (jauge + compte à rebours + montant à percevoir/à payer), Notes (si présentes), Informations (Catégorie + Devise) et Historique des remboursements. Les boutons d\'action restent propres à chaque page. La page Transactions n\'affiche le panneau que pour un prêt origine (loan/loan_received) ; les remboursements gardent leur affichage spécifique. NB : la ligne "Partage famille" du détail prêt côté Transactions est retirée (non présente côté Famille) pour un rendu identique.',
+    changes: [
+      'Nouveau components/Loans/LoanDetailPanel.tsx (panneau de détail commun)',
+      'LoansPage.tsx : corps du détail remplacé par <LoanDetailPanel> ; imports LoanLiveTrio/RepaymentHistorySection retirés',
+      'TransactionsPage.tsx : <LoanDetailPanel> pour les prêts origine ; anciens blocs Montant/Notes/Informations masqués pour ces prêts',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.25',
     date: '2026-05-31',

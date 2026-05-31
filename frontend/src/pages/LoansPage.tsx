@@ -27,12 +27,11 @@ import type {
   LoanStatus
 } from '../services/loanService';
 import { getExchangeRate } from '../services/exchangeRateService';
-import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
+import LoanDetailPanel from '../components/Loans/LoanDetailPanel';
 import { CurrencyDisplay } from '../components/Currency';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
 import PaymentModal from '../components/Loans/PaymentModal';
-import RepaymentHistorySection from '../components/Loans/RepaymentHistorySection';
 import MergeBeneficiariesDialog from '../components/Loans/MergeBeneficiariesDialog';
 
 interface LoanGroup {
@@ -597,17 +596,6 @@ const LoansPage = () => {
                         const loanLabel = loan.isITheBorrower
                           ? `Emprunté à ${loan.lenderName || 'Prêteur'}`
                           : `Prêté à ${loan.borrowerName}`;
-                        const totalRepaidInLoanCurrency = loan.totalRepaid;
-                        const initialAmount = loan.amountInitial;
-                        const repaidPct = initialAmount > 0
-                          ? Math.min((totalRepaidInLoanCurrency / initialAmount) * 100, 100)
-                          : 0;
-                        const formatLoanAmount = (amount: number) => {
-                          if (loan.currency === 'EUR') {
-                            return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
-                          }
-                          return formatBalance(amount);
-                        };
 
                         return (
                           <div
@@ -671,80 +659,8 @@ const LoansPage = () => {
                               </div>
                             )}
 
-                            {/* Montant card with progress bar */}
-                            <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                              <div className="bg-white/80 rounded-lg p-2 col-span-2">
-                                <p className="text-gray-500 text-xs">Montant</p>
-                                <div className="mt-0">
-                                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                    <span>Remboursé: {formatLoanAmount(totalRepaidInLoanCurrency)}</span>
-                                    <span className="font-semibold text-green-700">{repaidPct.toFixed(1)}% remboursé</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-3">
-                                    <div
-                                      className="bg-green-500 h-3 rounded-full transition-all duration-500"
-                                      style={{ width: `${repaidPct}%` }}
-                                    />
-                                  </div>
-                                  {/* Trio "en direct" : Capital · Intérêts courus · Total dû (monte chaque seconde) */}
-                                  <LoanLiveTrio
-                                    amountInitial={loan.amountInitial}
-                                    interestRate={loan.interestRate}
-                                    interestFrequency={loan.interestFrequency}
-                                    dueDate={loan.dueDate}
-                                    createdAt={loan.createdAt}
-                                    currency={loan.currency || 'MGA'}
-                                    repayments={(loan.repayments || []).map(r => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Notes card */}
-                            <div className="space-y-2 text-sm">
-                              <div className="bg-white/80 rounded-lg p-2">
-                                <p className="text-gray-500 text-xs">Notes</p>
-                                <p className="text-gray-800">{loan.description || 'Aucune note'}</p>
-                              </div>
-
-                              {/* Informations prêt + Intérêts dus */}
-                              <div className="bg-purple-100/70 rounded-lg p-2 border border-purple-200">
-                                <div className="flex justify-between items-start gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-purple-700 text-xs font-medium">Informations prêt</p>
-                                    <p className="text-purple-800 text-xs">
-                                      Catégorie: {loan.isITheBorrower ? 'emprunt' : 'prêt'}
-                                    </p>
-                                    <p className="text-purple-800 text-xs">
-                                      Devise: {loan.currency}
-                                    </p>
-                                    {loan.dueDate && (
-                                      <p className="text-purple-800 text-xs">
-                                        Échéance: {new Date(loan.dueDate).toLocaleDateString('fr-FR')}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 text-right">
-                                    <p className="text-purple-700 text-xs font-medium">Taux</p>
-                                    <p className="text-purple-800 text-xs">
-                                      {loan.liveDailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}% / jour
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Repayment history (collapsible) */}
-                            <RepaymentHistorySection
-                              loanId={loan.id}
-                              currency={loan.currency || 'MGA'}
-                              lenderUserId={loan.lenderUserId}
-                              amountInitial={loan.amountInitial}
-                              interestRate={loan.interestRate}
-                              interestFrequency={loan.interestFrequency}
-                              dueDate={loan.dueDate}
-                              createdAt={loan.createdAt}
-                            />
+                            {/* Détail du prêt — panneau partagé identique à la page Transactions */}
+                            <LoanDetailPanel loan={loan} notes={loan.description || ''} />
 
                             {/* Actions row */}
                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-100 gap-2 flex-wrap">

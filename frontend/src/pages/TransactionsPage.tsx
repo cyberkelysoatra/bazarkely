@@ -19,6 +19,7 @@ import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbu
 import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction, getLoanById } from '../services/loanService';
 import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
 import LoanDueCountdown from '../components/Loans/LoanDueCountdown';
+import LoanDetailPanel from '../components/Loans/LoanDetailPanel';
 import { computeLoanLiveState } from '../services/loanInterest';
 import { toast } from 'react-hot-toast';
 import { showDeleteRestoreDialog } from '../utils/dialogUtils';
@@ -1473,6 +1474,8 @@ const TransactionsPage = () => {
             : (reimbursementStatuses.get(transaction.id) || 'none');
           const isLoanCategory = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(transaction.category);
           const isRepaymentCat = ['loan_repayment', 'loan_repayment_received'].includes(transaction.category);
+          // Prêt "origine" (accordé/reçu) : détail rendu par le panneau partagé identique à la page Prêts
+          const isLoanOrigination = ['loan', 'loan_received'].includes(transaction.category);
           const accountName = repaymentAccounts.find(a => a.id === transaction.accountId)?.name;
 
           return (
@@ -1653,9 +1656,14 @@ const TransactionsPage = () => {
                 style={{ maxHeight: isDrawerOpen ? (showRepaymentModal === transaction.id ? '1800px' : '600px') : '0px' }}
               >
                 <div className="card bg-gradient-to-br from-purple-50/80 to-white border-purple-100 backdrop-blur-sm">
-                  {/* Grille détail : uniquement pour prêts/remboursements (barre de progression / lien dette).
+                  {/* Prêt accordé/reçu : panneau de détail partagé (identique à la page Prêts) */}
+                  {isLoanOrigination && drawerLoan && (
+                    <LoanDetailPanel loan={drawerLoan} notes={transaction.notes} />
+                  )}
+
+                  {/* Grille détail : uniquement pour remboursements (lien dette).
                       Pour une opération simple, montant + catégorie + compte sont déjà sur la carte. */}
-                  {isLoanCategory && (
+                  {isLoanCategory && !isLoanOrigination && (
                   <div className="grid grid-cols-2 gap-2 text-sm mb-2">
                     <div className="bg-white/80 rounded-lg p-2 col-span-2">
                       <p className="text-gray-500 text-xs">Montant</p>
@@ -1867,7 +1875,8 @@ const TransactionsPage = () => {
                         .map(s => s.trim())
                         .filter(s => s && !/^Taux\s*:/i.test(s))
                         .join(' | ');
-                      if (!cleanedNotes) return null;
+                      // Pour un prêt origine, les notes sont déjà dans le panneau partagé
+                      if (!cleanedNotes || isLoanOrigination) return null;
                       return (
                         <div className="bg-white/80 rounded-lg p-2">
                           <p className="text-gray-500 text-xs">Notes</p>
@@ -1902,7 +1911,7 @@ const TransactionsPage = () => {
                       </div>
                     )}
 
-                    {isLoanCategory && (
+                    {isLoanCategory && !isLoanOrigination && (
                       <div className="bg-purple-100/70 rounded-lg p-2 border border-purple-200">
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
