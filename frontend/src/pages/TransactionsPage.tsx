@@ -179,7 +179,10 @@ const TransactionsPage = () => {
       }
     };
     loadTransactions();
-  }, [user, location.pathname]); // Refresh when returning from detail page
+    // Dépendre de l'ID stable (et non de l'objet user) : évite un rechargement
+    // intempestif quand l'app re-set l'utilisateur (même ID, nouvel objet) après
+    // rafraîchissement de session → la carte ouverte garde sa position. (S78)
+  }, [user?.id, location.pathname]); // Refresh when returning from detail page
 
   // Scroll to transaction after navigation from edit page
   useEffect(() => {
@@ -1727,10 +1730,16 @@ const TransactionsPage = () => {
                                     : `${Math.round(atDue).toLocaleString('fr-FR')} Ar`;
                                   const dueWord = drawerLoan.isITheBorrower ? 'À payer' : 'À percevoir';
                                   return (
-                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-2 px-1 gap-2">
-                                      <span className="flex-shrink-0">Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
+                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-3 px-1 gap-2">
+                                      <span className="flex-shrink-0 flex flex-col items-start leading-tight">
+                                        <span>Échéance :</span>
+                                        <span>{new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
+                                      </span>
                                       <LoanDueCountdown createdAt={drawerLoan.createdAt} dueDate={drawerLoan.dueDate} />
-                                      <span className="font-semibold text-gray-800 flex-shrink-0">{dueWord} : {atDueLabel}</span>
+                                      <span className="font-semibold text-gray-800 flex-shrink-0 flex flex-col items-end leading-tight">
+                                        <span>{dueWord} :</span>
+                                        <span>{atDueLabel}</span>
+                                      </span>
                                     </div>
                                   );
                                 })()}

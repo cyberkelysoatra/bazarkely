@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.16.21';
-export const APP_VERSION_NAME = 'Prêts : jauge fine + compte à rebours en direct (12J, 3h22mn12s) du temps restant avant échéance';
+export const APP_VERSION = '3.16.22';
+export const APP_VERSION_NAME = 'Transactions : fin du rechargement intempestif (carte ouverte garde sa position) + ligne échéance empilée (date sous "Échéance", montant sous "À percevoir")';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.22',
+    date: '2026-05-31',
+    description: 'Correctif important + mise en page. (1) BUG : la page Transactions se rechargeait une 2e fois quelques secondes après l\'ouverture (l\'effet de chargement dépendait de l\'OBJET user ; après rafraîchissement de session, setUser renvoie un nouvel objet de même ID → relance + setIsLoading → la carte dépliée perdait sa position). Corrigé en dépendant de user?.id (ID stable), comme le Dashboard. La carte ouverte conserve désormais sa position. (2) Ligne d\'échéance du détail prêt : marge supérieure x1,5 (mt-2 → mt-3) ; "Échéance :" et la date empilés verticalement à gauche ; "À percevoir/À payer :" et le montant empilés à droite (justifiés à droite).',
+    changes: [
+      'TransactionsPage.tsx : dépendance de l\'effet de chargement passée de [user, pathname] à [user?.id, pathname] (anti rechargement intempestif)',
+      'TransactionsPage.tsx : ligne échéance empilée (label au-dessus de la valeur, gauche/droite) + marge supérieure mt-3',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.21',
     date: '2026-05-31',
