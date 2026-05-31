@@ -17,7 +17,9 @@ import RecurringConfigSection from '../components/RecurringConfig/RecurringConfi
 import { validateRecurringData } from '../utils/recurringUtils';
 import recurringTransactionService from '../services/recurringTransactionService';
 import type { RecurrenceFrequency } from '../types/recurring';
-import { getActiveLoansForDropdown, getLoanIdByTransactionId, getLoanById, updateLoanInterestRate } from '../services/loanService';
+import { getActiveLoansForDropdown, getLoanIdByTransactionId, getLoanById, updateLoanTerms } from '../services/loanService';
+import LoanTermsFields from '../components/Loans/LoanTermsFields';
+import { computeDailyRatePct, daysBetweenDates, type InterestMode, type InterestPeriod } from '../services/loanTerms';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -75,8 +77,11 @@ const TransactionDetailPage = () => {
     accountId: ''
   });
   const [beneficiaryName, setBeneficiaryName] = useState<string>('');
-  const [interestRate, setInterestRate] = useState<string>('');
-  const [durationMonths, setDurationMonths] = useState<string>('');
+  const [interestRate, setInterestRate] = useState<string>(''); // valeur brute (% ou Ar selon le mode)
+  const [dueDateInput, setDueDateInput] = useState<string>(''); // date d'échéance 'YYYY-MM-DD'
+  // En modification, on charge le taux journalier effectif → toggles % · par jour par défaut
+  const [interestMode, setInterestMode] = useState<InterestMode>('percent');
+  const [interestPeriod, setInterestPeriod] = useState<InterestPeriod>('day');
   const [selectedLoanId, setSelectedLoanId] = useState<string>('');
   const [activeLoans, setActiveLoans] = useState<Array<{ id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }>>([]);
   const [activeLoansLoading, setActiveLoansLoading] = useState<boolean>(false);
@@ -191,15 +196,16 @@ const TransactionDetailPage = () => {
                 const effective = loanRec?.liveDailyRatePct ?? loanRec?.interestRate;
                 if (effective != null) {
                   setInterestRate(String(effective));
+                  setInterestMode('percent');
+                  setInterestPeriod('day');
                   rateSet = true;
                 }
+                if (loanRec?.dueDate) setDueDateInput(loanRec.dueDate);
               }
             } catch { /* ignore, fallback note ci-dessous */ }
           }
           const interestMatch = notes.match(/Taux:\s*([\d.,]+)\s*%/i);
           if (!rateSet && interestMatch?.[1]) setInterestRate(interestMatch[1].replace(',', '.'));
-          const durationMatch = notes.match(/Durée:\s*(\d+)\s*mois/i);
-          if (durationMatch?.[1]) setDurationMonths(durationMatch[1]);
           const loanIdMatch = notes.match(/loan_id:\s*([a-fA-F0-9-]{36})/i);
           if (loanIdMatch?.[1]) setSelectedLoanId(loanIdMatch[1]);
         }
@@ -454,11 +460,8 @@ const TransactionDetailPage = () => {
           nextDescription = editData.category === 'loan'
             ? `Prêt à ${beneficiaryName.trim()}`
             : `Prêt de ${beneficiaryName.trim()}`;
-          // Le taux n'est plus stocké en note (source de vérité = fiche du prêt,
-          // affichée "en direct" en % / jour). On conserve seulement la durée.
-          const loanDetails: string[] = [];
-          if (durationMonths.trim()) loanDetails.push(`Durée: ${durationMonths.trim()} mois`);
-          if (loanDetails.length > 0) nextNotes = loanDetails.join(' | ');
+          // Ni le taux ni la durée ne sont stockés en note : tout est sur la fiche
+          // du prêt (taux journalier + date d'échéance). On laisse les notes libres.
         } else if (isRepaymentCategory && selectedLoanId) {
           nextNotes = `loan_id: ${selectedLoanId}`;
         }
@@ -555,14 +558,16 @@ const TransactionDetailPage = () => {
         throw new Error('Échec de la mise à jour de la transaction');
       }
 
-      // Persister le taux d'intérêt sur le VRAI prêt (le taux saisi est journalier).
-      // Avant, ce taux n'allait que dans une note texte : il ne modifiait pas le calcul.
+      // Persister les termes (taux journalier + date d'échéance) sur le VRAI prêt.
+      // Le taux est déduit des toggles (% / Ar) × (par jour / sur la durée).
       if (isLoanCreation && ['loan', 'loan_received'].includes(editData.category)) {
         try {
           const loanId = await getLoanIdByTransactionId(transaction.id);
           if (loanId) {
-            const parsedRate = parseFloat((interestRate || '').replace(',', '.'));
-            await updateLoanInterestRate(loanId, isNaN(parsedRate) ? 0 : parsedRate);
+            const capital = Math.abs(parseFloat(editData.amount) || 0);
+            const durationDays = dueDateInput ? daysBetweenDates(editData.date, dueDateInput) : 0;
+            const dailyRatePct = computeDailyRatePct(interestRate, interestMode, interestPeriod, capital, durationDays);
+            await updateLoanTerms(loanId, dailyRatePct, dueDateInput || null);
           }
         } catch (e) {
           console.warn('Mise à jour du taux du prêt échouée (non bloquant):', e);
@@ -1099,35 +1104,19 @@ const TransactionDetailPage = () => {
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div>
-                  <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-2">
-                    Taux d'intérêt % / jour (optionnel)
-                  </label>
-                  <input
-                    id="interestRate"
-                    type="number"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(e.target.value)}
-                    placeholder="Ex: 2.5"
-                    min="0"
-                    step="0.1"
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="durationMonths" className="block text-sm font-medium text-gray-700 mb-2">
-                    Échéance (mois) (optionnel)
-                  </label>
-                  <input
-                    id="durationMonths"
-                    type="number"
-                    value={durationMonths}
-                    onChange={(e) => setDurationMonths(e.target.value)}
-                    placeholder="Ex: 12"
-                    min="1"
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <LoanTermsFields
+                  loanDate={editData.date}
+                  amount={parseFloat(editData.amount) || 0}
+                  currency={(transaction as any)?.currency || 'MGA'}
+                  dueDate={dueDateInput}
+                  onDueDateChange={setDueDateInput}
+                  interestValue={interestRate}
+                  onInterestValueChange={setInterestRate}
+                  interestMode={interestMode}
+                  onInterestModeChange={setInterestMode}
+                  interestPeriod={interestPeriod}
+                  onInterestPeriodChange={setInterestPeriod}
+                />
               </div>
             )}
 

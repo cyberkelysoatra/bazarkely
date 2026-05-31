@@ -946,10 +946,16 @@ export async function updateLoanStatus(id: string, status: LoanStatus): Promise<
 }
 
 /**
- * Met à jour le taux d'intérêt d'un prêt. Le taux saisi est JOURNALIER (modèle S78),
- * donc on force interest_frequency = 'daily'. Offline-first (Dexie + Supabase + queue).
+ * Met à jour les "termes" d'un prêt : taux d'intérêt JOURNALIER (modèle S78,
+ * interest_frequency forcé à 'daily') et, optionnellement, la date d'échéance.
+ * Offline-first (Dexie + Supabase + queue). Passer dueDate=undefined pour ne pas
+ * toucher l'échéance ; null pour l'effacer ; 'YYYY-MM-DD' pour la définir.
  */
-export async function updateLoanInterestRate(id: string, dailyRate: number): Promise<void> {
+export async function updateLoanTerms(
+  id: string,
+  dailyRate: number,
+  dueDate?: string | null
+): Promise<void> {
   const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');
   const existing = await db.personalLoans.get(id);
@@ -960,21 +966,27 @@ export async function updateLoanInterestRate(id: string, dailyRate: number): Pro
   }
   const updatedAt = new Date().toISOString();
   const rate = Number.isFinite(dailyRate) && dailyRate >= 0 ? dailyRate : 0;
-  await db.personalLoans.update(id, { interestRate: rate, interestFrequency: 'daily', updatedAt });
 
-  const payload = { interest_rate: rate, interest_frequency: 'daily', updated_at: updatedAt };
+  const localUpdate: Record<string, any> = { interestRate: rate, interestFrequency: 'daily', updatedAt };
+  const payload: Record<string, any> = { interest_rate: rate, interest_frequency: 'daily', updated_at: updatedAt };
+  if (dueDate !== undefined) {
+    localUpdate.dueDate = dueDate;
+    payload.due_date = dueDate;
+  }
+
+  await db.personalLoans.update(id, localUpdate);
 
   if (isOnline()) {
     try {
       const { error } = await withTimeout(
         supabase.from('personal_loans').update(payload).eq('id', id),
         SUPABASE_TIMEOUT_MS,
-        'loanService.updateLoanInterestRate'
+        'loanService.updateLoanTerms'
       );
       if (error) throw error;
       return;
     } catch (error) {
-      console.warn(`${LOG_TAG} ⚠️ updateLoanInterestRate Supabase échoué, queue:`, error);
+      console.warn(`${LOG_TAG} ⚠️ updateLoanTerms Supabase échoué, queue:`, error);
     }
   }
   await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', id, payload);

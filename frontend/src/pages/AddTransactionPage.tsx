@@ -26,6 +26,8 @@ import { useBudgetGauge } from '../hooks/useBudgetGauge';
 import BudgetGauge from '../components/BudgetGauge';
 import { getActiveLoansForDropdown, getDistinctBeneficiaryNames } from '../services/loanService';
 import { createAcknowledgment, getWhatsAppLink } from '../services/loanAcknowledgmentService';
+import LoanTermsFields from '../components/Loans/LoanTermsFields';
+import { computeDailyRatePct, daysBetweenDates, type InterestMode, type InterestPeriod } from '../services/loanTerms';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -98,8 +100,10 @@ const AddTransactionPage = () => {
   // État pour les prêts
   const [selectedLoanId, setSelectedLoanId] = useState<string>('');
   const [beneficiaryName, setBeneficiaryName] = useState<string>('');
-  const [interestRate, setInterestRate] = useState<string>('');
-  const [durationMonths, setDurationMonths] = useState<string>('');
+  const [interestRate, setInterestRate] = useState<string>(''); // valeur brute saisie (% ou Ar selon le mode)
+  const [dueDateInput, setDueDateInput] = useState<string>(''); // date d'échéance 'YYYY-MM-DD'
+  const [interestMode, setInterestMode] = useState<InterestMode>('amount'); // défaut : Ariary
+  const [interestPeriod, setInterestPeriod] = useState<InterestPeriod>('duration'); // défaut : sur la durée
   const [activeLoans, setActiveLoans] = useState<Array<{ id: string; label: string; remainingBalance: number; currency: string; isITheBorrower: boolean }>>([]);
   const [activeLoansLoading, setActiveLoansLoading] = useState<boolean>(false);
   const [borrowerPhone, setBorrowerPhone] = useState<string>('');
@@ -305,7 +309,9 @@ const AddTransactionPage = () => {
       setSelectedLoanId('');
       setBeneficiaryName('');
       setInterestRate('');
-      setDurationMonths('');
+      setDueDateInput('');
+      setInterestMode('amount');
+      setInterestPeriod('duration');
     }
   }, [formData.category]);
 
@@ -565,21 +571,16 @@ const AddTransactionPage = () => {
           
           if (isLoanCategory) {
             try {
+              // Termes du prêt : date d'échéance directe + taux JOURNALIER déduit
+              // des toggles (% / Ar) × (par jour / sur la durée).
+              const loanDueDate = dueDateInput || null;
+              const loanDurationDays = dueDateInput ? daysBetweenDates(formData.date, dueDateInput) : 0;
+              const loanDailyRatePct = computeDailyRatePct(interestRate, interestMode, interestPeriod, Math.abs(amount), loanDurationDays);
+
               // Catégorie "loan" (expense - prêt accordé)
               if (formData.category === 'loan') {
                 if (!beneficiaryName.trim()) {
                   throw new Error('Le nom du bénéficiaire est requis');
-                }
-                
-                // Calculer due_date si durationMonths fourni
-                let dueDate = null;
-                if (durationMonths) {
-                  const months = parseInt(durationMonths);
-                  if (!isNaN(months) && months > 0) {
-                    const dueDateObj = new Date(formData.date);
-                    dueDateObj.setMonth(dueDateObj.getMonth() + months);
-                    dueDate = dueDateObj.toISOString().split('T')[0];
-                  }
                 }
                 
                 const { data: loanData, error: loanError } = await supabase
@@ -592,10 +593,10 @@ const AddTransactionPage = () => {
                     is_i_the_borrower: false,
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
-                    interest_rate: parseFloat(interestRate) || 0,
+                    interest_rate: loanDailyRatePct,
                     interest_frequency: 'daily',
                     current_capital: Math.abs(amount),
-                    due_date: dueDate,
+                    due_date: loanDueDate,
                     description: formData.description,
                     status: 'active',
                     transaction_id: transaction.id,
@@ -627,17 +628,6 @@ const AddTransactionPage = () => {
                   throw new Error('Le nom du prêteur est requis');
                 }
                 
-                // Calculer due_date si durationMonths fourni
-                let dueDate = null;
-                if (durationMonths) {
-                  const months = parseInt(durationMonths);
-                  if (!isNaN(months) && months > 0) {
-                    const dueDateObj = new Date(formData.date);
-                    dueDateObj.setMonth(dueDateObj.getMonth() + months);
-                    dueDate = dueDateObj.toISOString().split('T')[0];
-                  }
-                }
-                
                 const { data: loanData, error: loanError } = await supabase
                   .from('personal_loans')
                   .insert({
@@ -651,10 +641,10 @@ const AddTransactionPage = () => {
                     is_i_the_borrower: true,
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
-                    interest_rate: parseFloat(interestRate) || 0,
+                    interest_rate: loanDailyRatePct,
                     interest_frequency: 'daily',
                     current_capital: Math.abs(amount),
-                    due_date: dueDate,
+                    due_date: loanDueDate,
                     description: formData.description,
                     status: 'active',
                     transaction_id: transaction.id,
@@ -717,7 +707,9 @@ const AddTransactionPage = () => {
               setSelectedLoanId('');
               setBeneficiaryName('');
               setInterestRate('');
-              setDurationMonths('');
+              setDueDateInput('');
+              setInterestMode('amount');
+              setInterestPeriod('duration');
               setBorrowerPhone('');
               setPhoneChoices([]);
               setShowPhoneChoice(false);
@@ -1171,39 +1163,20 @@ const AddTransactionPage = () => {
                 />
               </div>
 
-              {/* Taux d'intérêt */}
-              <div>
-                <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Taux d'intérêt % / jour (optionnel)
-                </label>
-                <input
-                  type="number"
-                  id="interestRate"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(e.target.value)}
-                  placeholder="Ex: 1"
-                  min="0"
-                  step="0.1"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Taux journalier — les intérêts grimpent en continu.</p>
-              </div>
-
-              {/* Échéance */}
-              <div>
-                <label htmlFor="durationMonths" className="block text-sm font-medium text-gray-700 mb-2">
-                  Échéance (mois) (optionnel)
-                </label>
-                <input
-                  type="number"
-                  id="durationMonths"
-                  value={durationMonths}
-                  onChange={(e) => setDurationMonths(e.target.value)}
-                  placeholder="Ex: 12"
-                  min="1"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {/* Date d'échéance + Intérêt (date directe + toggles % / Ar et jour / durée) */}
+              <LoanTermsFields
+                loanDate={formData.date}
+                amount={parseFloat(formData.amount) || 0}
+                currency={transactionCurrency}
+                dueDate={dueDateInput}
+                onDueDateChange={setDueDateInput}
+                interestValue={interestRate}
+                onInterestValueChange={setInterestRate}
+                interestMode={interestMode}
+                onInterestModeChange={setInterestMode}
+                interestPeriod={interestPeriod}
+                onInterestPeriodChange={setInterestPeriod}
+              />
               {/* Téléphone (emprunteur → confirmation WhatsApp / prêteur → à retrouver) */}
               {(formData.category === 'loan' || formData.category === 'loan_received') && (
                 <div>

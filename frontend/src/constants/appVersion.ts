@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.16.23';
-export const APP_VERSION_NAME = 'Détail transaction épuré : en-tête "Details transaction" retiré, tiroir collé à la carte, ligne échéance sans ":" et alignée en bas';
+export const APP_VERSION = '3.16.24';
+export const APP_VERSION_NAME = 'Prêts : échéance en DATE (au lieu de mois) + saisie de l\'intérêt en montant (Ar) ou % avec toggles (par jour / sur la durée), converti en taux journalier';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.24',
+    date: '2026-05-31',
+    description: 'Refonte de la saisie des termes d\'un prêt (création + modification). (POINT 2) L\'échéance se saisit désormais en DATE directe (sélecteur de date) au lieu d\'un nombre de mois — plus naturel entre proches ; la durée équivalente (an/mois/jour) s\'affiche sous le champ. (POINT 3) L\'intérêt se saisit au choix en MONTANT (Ar) ou en %, et "par jour" ou "sur toute la durée", via 2 toggles (défaut : Ar · sur la durée à la création) ; la valeur est convertie en taux JOURNALIER stocké (le moteur ne change pas), avec affichage en direct de l\'équivalent "% / jour". Briques partagées : services/loanTerms.ts (conversion, 10 tests) + components/Loans/LoanTermsFields.tsx (UI commune aux 2 pages). loanService : updateLoanInterestRate → updateLoanTerms (taux + date d\'échéance). En modification, le champ est pré-rempli avec le taux journalier effectif (toggles % · par jour) et la date d\'échéance du prêt.',
+    changes: [
+      'Nouveau services/loanTerms.ts (computeDailyRatePct/daysBetweenDates/formatDurationLabel) + 10 tests',
+      'Nouveau components/Loans/LoanTermsFields.tsx (date d\'échéance + intérêt avec 2 toggles + équivalent %/jour)',
+      'AddTransactionPage.tsx + TransactionDetailPage.tsx : remplacement des champs taux+durée par LoanTermsFields ; conversion au submit',
+      'loanService.ts : updateLoanTerms(id, dailyRate, dueDate?) remplace updateLoanInterestRate',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.23',
     date: '2026-05-31',
