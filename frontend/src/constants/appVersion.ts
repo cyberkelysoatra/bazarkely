@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.16.14';
-export const APP_VERSION_NAME = 'Sélection de contact : confirmation claire du contact retenu (✓ nom · numéro) + consigne sur la fenêtre Chrome';
+export const APP_VERSION = '3.16.15';
+export const APP_VERSION_NAME = 'Intérêts de prêt "en direct" (Étape A) : taux journalier, intérêts qui grimpent à la minute, carte Dashboard gains/coûts';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.15',
+    date: '2026-05-31',
+    description: 'Nouveau modèle d\'intérêts de prêt — ÉTAPE A (moteur + affichage Dashboard, sans toucher au reste de l\'app). Le taux saisi devient JOURNALIER (% / jour). Intérêt simple qui s\'accumule en continu (recalcul à la seconde) sur le capital restant, à partir de la date du prêt. Un remboursement paie d\'abord les intérêts dus, le reste réduit le capital. À la date d\'échéance, les intérêts accumulés sont capitalisés UNE FOIS (ajoutés au capital), puis l\'intérêt repart simple sur la nouvelle base ; sans échéance, pas de capitalisation. Tout est recalculé à la volée depuis le capital initial + les remboursements (aucune écriture en base, les anciennes répartitions sont ignorées). La carte "Prêts actifs" du Dashboard affiche en direct : GAINS (prêts accordés) et COÛTS (prêts reçus) séparés, avec intérêts courus + gain par minute/heure/jour/mois (mois = nb réel de jours du mois courant). ÉTAPE B à venir : propager ce calcul partout (détail du prêt, total dû, listes) + remboursements "intérêts d\'abord" persistés.',
+    changes: [
+      'Nouveau (services/loanInterest.ts) : moteur pur computeLoanLiveState() + sumLoanLiveStates() — couvert par 7 tests (services/__tests__/loanInterest.test.ts)',
+      'DashboardPage.tsx : chargement des prêts reçus (borrowedLoans), tick 1s, carte "Prêts actifs" enrichie (gains verts / coûts rouges, lignes par minute/heure/jour/mois)',
+      'AddTransactionPage.tsx : libellé "Taux d\'intérêt % / jour" + interest_frequency stocké en "daily" (prêt accordé et reçu)',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.14',
     date: '2026-05-31',

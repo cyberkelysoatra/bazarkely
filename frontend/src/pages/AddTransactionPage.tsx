@@ -593,7 +593,7 @@ const AddTransactionPage = () => {
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
                     interest_rate: parseFloat(interestRate) || 0,
-                    interest_frequency: 'monthly',
+                    interest_frequency: 'daily',
                     current_capital: Math.abs(amount),
                     due_date: dueDate,
                     description: formData.description,
@@ -652,7 +652,7 @@ const AddTransactionPage = () => {
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
                     interest_rate: parseFloat(interestRate) || 0,
-                    interest_frequency: 'monthly',
+                    interest_frequency: 'daily',
                     current_capital: Math.abs(amount),
                     due_date: dueDate,
                     description: formData.description,
@@ -1174,18 +1174,19 @@ const AddTransactionPage = () => {
               {/* Taux d'intérêt */}
               <div>
                 <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Taux d'intérêt % / mois (optionnel)
+                  Taux d'intérêt % / jour (optionnel)
                 </label>
                 <input
                   type="number"
                   id="interestRate"
                   value={interestRate}
                   onChange={(e) => setInterestRate(e.target.value)}
-                  placeholder="Ex: 2.5"
+                  placeholder="Ex: 1"
                   min="0"
                   step="0.1"
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+                <p className="text-xs text-gray-500 mt-1">Taux journalier — les intérêts grimpent en continu.</p>
               </div>
 
               {/* Échéance */}

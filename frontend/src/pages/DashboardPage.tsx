@@ -3,6 +3,8 @@ import { Wallet, TrendingUp, TrendingDown, Target, PieChart, HandCoins, AlertTri
 import { useNavigate } from 'react-router-dom';
 import { getMyLoans } from '../services/loanService';
 import type { Loan } from '../services/loanService';
+import { sumLoanLiveStates } from '../services/loanInterest';
+import type { LoanLiveAggregate } from '../services/loanInterest';
 import { useAppStore } from '../stores/appStore';
 import accountService, { getTotalBalanceInCurrency } from '../services/accountService';
 import transactionService from '../services/transactionService';
@@ -84,6 +86,9 @@ const DashboardPage = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
+  const [borrowedLoans, setBorrowedLoans] = useState<Loan[]>([]);
+  // Tick : force le recalcul "en direct" des intérêts (chiffres qui grimpent)
+  const [, setInterestTick] = useState(0);
   const [isNotificationBannerDismissed, setIsNotificationBannerDismissed] = useState(false);
 
   // Create account map for efficient account name lookup
@@ -338,13 +343,71 @@ const DashboardPage = () => {
       try {
         const allLoans = await getMyLoans();
         const active = allLoans.filter(l => !l.isITheBorrower && l.status !== 'closed');
+        const borrowed = allLoans.filter(l => l.isITheBorrower && l.status !== 'closed');
         setActiveLoans(active);
+        setBorrowedLoans(borrowed);
       } catch (err) {
         console.error('[Dashboard] Error fetching loans:', err);
       }
     };
     fetchLoans();
   }, [user]);
+
+  // Compteur "en direct" des intérêts : recalcul chaque seconde tant qu'il existe
+  // un prêt avec intérêts (taux > 0). Stoppé sinon pour ne pas tourner inutilement.
+  const hasInterestBearingLoan = useMemo(
+    () => [...activeLoans, ...borrowedLoans].some(l => (l.interestRate || 0) > 0),
+    [activeLoans, borrowedLoans]
+  );
+  useEffect(() => {
+    if (!hasInterestBearingLoan) return;
+    const id = window.setInterval(() => setInterestTick(t => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [hasInterestBearingLoan]);
+
+  // Agrégats "en direct" — recalculés à chaque rendu (donc à chaque tick d'une seconde)
+  const now = new Date();
+  const loanGains = sumLoanLiveStates(activeLoans as any, now);
+  const loanCosts = sumLoanLiveStates(borrowedLoans as any, now);
+
+  // Rendu d'une ligne "par minute/heure/jour/mois"
+  const renderGainRow = (label: string, value: number, colorClass: string) => (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-medium ${colorClass}`}>{formatBalance(value)}</span>
+    </div>
+  );
+
+  // Bloc d'intérêts "en direct" : gains (prêts accordés) ou coûts (prêts reçus)
+  const renderLiveInterest = (
+    title: string,
+    count: number,
+    agg: LoanLiveAggregate,
+    positive: boolean
+  ) => {
+    const accentText = positive ? 'text-green-700' : 'text-red-700';
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="text-xs font-semibold text-gray-700 mb-1.5">
+          {title} ({count})
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">{positive ? 'Total dû' : 'Total à payer'}:</span>
+          <span className="font-semibold text-gray-900">{formatBalance(agg.totalOwed)}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm mt-1">
+          <span className="text-gray-600">Intérêts courus:</span>
+          <span className={`font-bold ${accentText}`}>{formatBalance(agg.accruedInterest)}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2">
+          {renderGainRow('par minute', agg.gainPerMinute, accentText)}
+          {renderGainRow('par heure', agg.gainPerHour, accentText)}
+          {renderGainRow('par jour', agg.gainPerDay, accentText)}
+          {renderGainRow('par mois', agg.gainPerMonth, accentText)}
+        </div>
+      </div>
+    );
+  };
 
   // Gestionnaires d'événements pour les boutons
   const handleAddIncome = () => {
@@ -760,34 +823,30 @@ const DashboardPage = () => {
           {/* Widget Transactions récurrentes */}
           {user && <RecurringTransactionsWidget userId={user.id} />}
 
-          {/* Widget Prêts actifs — visible uniquement si prêts actifs > 0 */}
-          {activeLoans.length > 0 && (
+          {/* Widget Prêts actifs — intérêts "en direct" (gains / coûts) */}
+          {(activeLoans.length > 0 || borrowedLoans.length > 0) && (
             <div
               onClick={() => navigate('/family/loans')}
               className="card cursor-pointer hover:shadow-lg transition-all duration-300"
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
                   <HandCoins className="w-4 h-4 text-orange-600" />
                   <span>Prêts actifs</span>
                 </h3>
-                {activeLoans.some(l => l.status === 'late') && (
+                {[...activeLoans, ...borrowedLoans].some(l => l.status === 'late') && (
                   <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                     <AlertTriangle className="w-3 h-3" />
                     <span>En retard</span>
                   </span>
                 )}
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Prêts actifs:</span>
-                <span className="font-semibold text-gray-900">{activeLoans.length}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-gray-600">Total dû:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatBalance(activeLoans.reduce((sum, l) => sum + l.remainingBalance, 0))}
-                </span>
-              </div>
+
+              {activeLoans.length > 0 &&
+                renderLiveInterest('Vous prêtez', activeLoans.length, loanGains, true)}
+
+              {borrowedLoans.length > 0 &&
+                renderLiveInterest('Vous empruntez', borrowedLoans.length, loanCosts, false)}
             </div>
           )}
           
