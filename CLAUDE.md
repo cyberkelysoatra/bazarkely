@@ -118,6 +118,17 @@ git push origin main    # → Netlify déploie automatiquement
 
 ## PIÈGES CONNUS — NE JAMAIS REPRODUIRE
 
+### `npm run build` ne contrôle PAS les types (révélé S78, v3.16.25)
+
+**Problème :** `npm run build` (vite + esbuild) **transpile** mais ne fait **aucun contrôle de types strict**. Une référence à une variable/fonction supprimée (ex. `setDurationMonths('')` orphelin laissé dans un `useEffect` de reset après retrait de l'état) **passe le build sans erreur** puis **plante en production** (`ReferenceError` → ErrorBoundary, page cassée).
+
+**Règle :** **AVANT tout commit/déploiement**, lancer le vrai garde-fou :
+```bash
+cd C:\bazarkely-2\frontend
+npx tsc --noEmit   # exit 0 = propre
+```
+C'est `tsc --noEmit` (pas `npm run build`) qui attrape les références orphelines après refactor, les imports/variables inutilisés et les erreurs de types. Quand on supprime un `useState`, grep TOUTES les occurrences (`x` ET `setX`, y compris resets/cleanups) puis `tsc --noEmit`.
+
 ### supabase.auth.getUser() plante en offline (résolu v3.12.1)
 
 **Problème :** `supabase.auth.getUser()` n'est PAS une lecture locale — c'est un fetch HTTP vers `/auth/v1/user`. En offline → throw `AuthRetryableFetchError: Failed to fetch`. Le helper `getCurrentUser()` de `lib/supabase.ts` (qui wrap `getUser()`) plantait l'entrée de `getMyLoans()` AVANT la lecture IndexedDB → page Prêts affichait "Aucun prêt" alors que des prêts existaient en local.
