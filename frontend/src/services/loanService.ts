@@ -945,6 +945,41 @@ export async function updateLoanStatus(id: string, status: LoanStatus): Promise<
   await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', id, payload);
 }
 
+/**
+ * Met à jour le taux d'intérêt d'un prêt. Le taux saisi est JOURNALIER (modèle S78),
+ * donc on force interest_frequency = 'daily'. Offline-first (Dexie + Supabase + queue).
+ */
+export async function updateLoanInterestRate(id: string, dailyRate: number): Promise<void> {
+  const user = await getCurrentUserSafe();
+  if (!user) throw new Error('Utilisateur non authentifié');
+  const existing = await db.personalLoans.get(id);
+  if (existing) {
+    if (existing.lenderUserId !== user.id && existing.borrowerUserId !== user.id) {
+      throw new Error('Accès non autorisé à ce prêt');
+    }
+  }
+  const updatedAt = new Date().toISOString();
+  const rate = Number.isFinite(dailyRate) && dailyRate >= 0 ? dailyRate : 0;
+  await db.personalLoans.update(id, { interestRate: rate, interestFrequency: 'daily', updatedAt });
+
+  const payload = { interest_rate: rate, interest_frequency: 'daily', updated_at: updatedAt };
+
+  if (isOnline()) {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('personal_loans').update(payload).eq('id', id),
+        SUPABASE_TIMEOUT_MS,
+        'loanService.updateLoanInterestRate'
+      );
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.warn(`${LOG_TAG} ⚠️ updateLoanInterestRate Supabase échoué, queue:`, error);
+    }
+  }
+  await queueLoanSyncOperation(user.id, 'UPDATE', 'personal_loans', id, payload);
+}
+
 export async function deleteLoan(id: string): Promise<void> {
   const user = await getCurrentUserSafe();
   if (!user) throw new Error('Utilisateur non authentifié');

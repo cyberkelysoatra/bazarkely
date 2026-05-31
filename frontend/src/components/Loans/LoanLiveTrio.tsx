@@ -55,7 +55,7 @@ const LoanLiveTrio = ({
           <p className="text-xs font-semibold text-gray-800">{money(live.capitalOutstanding, 0)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-gray-500 leading-tight">Intérêts courus</p>
+          <p className="text-[10px] text-gray-500 leading-tight">⏱️ Intérêts courus</p>
           <p className="text-xs font-semibold text-amber-700">{money(live.accruedInterest, 3)}</p>
         </div>
         <div>
@@ -65,7 +65,7 @@ const LoanLiveTrio = ({
       </div>
       {hasInterest && (
         <p className="text-[10px] text-gray-400 text-center mt-1">
-          ⏱️ Intérêts en temps réel · {live.dailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}% / jour
+          Intérêts en temps réel · {live.dailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}% / jour
         </p>
       )}
     </>

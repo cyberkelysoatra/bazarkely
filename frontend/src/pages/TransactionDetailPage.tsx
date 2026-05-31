@@ -17,7 +17,7 @@ import RecurringConfigSection from '../components/RecurringConfig/RecurringConfi
 import { validateRecurringData } from '../utils/recurringUtils';
 import recurringTransactionService from '../services/recurringTransactionService';
 import type { RecurrenceFrequency } from '../types/recurring';
-import { getActiveLoansForDropdown } from '../services/loanService';
+import { getActiveLoansForDropdown, getLoanIdByTransactionId, getLoanById, updateLoanInterestRate } from '../services/loanService';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -181,8 +181,23 @@ const TransactionDetailPage = () => {
           const notes = transactionData.notes || '';
           const beneficiaryMatch = desc.match(/Prêt (?:à|de)\s+(.+)$/i);
           if (beneficiaryMatch?.[1]) setBeneficiaryName(beneficiaryMatch[1].trim());
+          // Taux : lire le VRAI taux du prêt (journalier effectif), pas la note texte
+          let rateSet = false;
+          if (['loan', 'loan_received'].includes(transactionData.category)) {
+            try {
+              const loanId = await getLoanIdByTransactionId(transactionData.id);
+              if (loanId) {
+                const loanRec = await getLoanById(loanId);
+                const effective = loanRec?.liveDailyRatePct ?? loanRec?.interestRate;
+                if (effective != null) {
+                  setInterestRate(String(effective));
+                  rateSet = true;
+                }
+              }
+            } catch { /* ignore, fallback note ci-dessous */ }
+          }
           const interestMatch = notes.match(/Taux:\s*([\d.,]+)\s*%/i);
-          if (interestMatch?.[1]) setInterestRate(interestMatch[1].replace(',', '.'));
+          if (!rateSet && interestMatch?.[1]) setInterestRate(interestMatch[1].replace(',', '.'));
           const durationMatch = notes.match(/Durée:\s*(\d+)\s*mois/i);
           if (durationMatch?.[1]) setDurationMonths(durationMatch[1]);
           const loanIdMatch = notes.match(/loan_id:\s*([a-fA-F0-9-]{36})/i);
@@ -539,7 +554,21 @@ const TransactionDetailPage = () => {
         }
         throw new Error('Échec de la mise à jour de la transaction');
       }
-      
+
+      // Persister le taux d'intérêt sur le VRAI prêt (le taux saisi est journalier).
+      // Avant, ce taux n'allait que dans une note texte : il ne modifiait pas le calcul.
+      if (isLoanCreation && ['loan', 'loan_received'].includes(editData.category)) {
+        try {
+          const loanId = await getLoanIdByTransactionId(transaction.id);
+          if (loanId) {
+            const parsedRate = parseFloat((interestRate || '').replace(',', '.'));
+            await updateLoanInterestRate(loanId, isNaN(parsedRate) ? 0 : parsedRate);
+          }
+        } catch (e) {
+          console.warn('Mise à jour du taux du prêt échouée (non bloquant):', e);
+        }
+      }
+
       // Update local state
       setTransaction(updatedTransaction);
       setOriginalAccountId(editData.accountId);
@@ -1072,7 +1101,7 @@ const TransactionDetailPage = () => {
                 </div>
                 <div>
                   <label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 mb-2">
-                    Taux d'intérêt % / mois (optionnel)
+                    Taux d'intérêt % / jour (optionnel)
                   </label>
                   <input
                     id="interestRate"

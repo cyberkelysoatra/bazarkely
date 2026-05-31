@@ -18,6 +18,7 @@ import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
 import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction, getLoanById } from '../services/loanService';
 import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
+import { computeLoanLiveState } from '../services/loanInterest';
 import { toast } from 'react-hot-toast';
 import { showDeleteRestoreDialog } from '../utils/dialogUtils';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
@@ -1706,11 +1707,31 @@ const TransactionsPage = () => {
                                   currency={drawerLoan.currency || 'MGA'}
                                   repayments={(drawerLoan.repayments || []).map((r: any) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
                                 />
-                                {drawerLoan.dueDate && (
-                                  <p className="text-[11px] text-gray-600 text-center mt-1">
-                                    Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}
-                                  </p>
-                                )}
+                                {drawerLoan.dueDate && (() => {
+                                  // Montant total à percevoir à l'échéance (capital + intérêts capitalisés à cette date)
+                                  const atDue = computeLoanLiveState(
+                                    {
+                                      amountInitial: drawerLoan.amountInitial,
+                                      interestRate: drawerLoan.interestRate,
+                                      interestFrequency: drawerLoan.interestFrequency,
+                                      dueDate: drawerLoan.dueDate,
+                                      createdAt: drawerLoan.createdAt,
+                                    },
+                                    (drawerLoan.repayments || []).map((r: any) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate })),
+                                    new Date(drawerLoan.dueDate)
+                                  ).totalOwed;
+                                  const cur = drawerLoan.currency || 'MGA';
+                                  const atDueLabel = cur === 'EUR'
+                                    ? `${atDue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+                                    : `${Math.round(atDue).toLocaleString('fr-FR')} Ar`;
+                                  const dueWord = drawerLoan.isITheBorrower ? 'À payer' : 'À percevoir';
+                                  return (
+                                    <div className="flex justify-between items-center text-[11px] text-gray-600 mt-1 px-1">
+                                      <span>Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}</span>
+                                      <span className="font-semibold text-gray-800">{dueWord} : {atDueLabel}</span>
+                                    </div>
+                                  );
+                                })()}
                               </>
                             )}
                           </div>
@@ -1842,17 +1863,21 @@ const TransactionsPage = () => {
                   )}
 
                   <div className="space-y-2 text-sm">
-                    <div className="bg-white/80 rounded-lg p-2">
-                      <p className="text-gray-500 text-xs">Notes</p>
-                      <p className="text-gray-800">
-                        {/* Masque l'ancien segment "Taux: …" devenu trompeur (le vrai taux est dans le trio) */}
-                        {(transaction.notes || '')
-                          .split('|')
-                          .map(s => s.trim())
-                          .filter(s => s && !/^Taux\s*:/i.test(s))
-                          .join(' | ') || 'Aucune note'}
-                      </p>
-                    </div>
+                    {(() => {
+                      // Masque l'ancien segment "Taux: …" (trompeur) ; cache tout le bloc si plus aucune note
+                      const cleanedNotes = (transaction.notes || '')
+                        .split('|')
+                        .map(s => s.trim())
+                        .filter(s => s && !/^Taux\s*:/i.test(s))
+                        .join(' | ');
+                      if (!cleanedNotes) return null;
+                      return (
+                        <div className="bg-white/80 rounded-lg p-2">
+                          <p className="text-gray-500 text-xs">Notes</p>
+                          <p className="text-gray-800">{cleanedNotes}</p>
+                        </div>
+                      );
+                    })()}
 
                     {!isLoanCategory && (
                       <div className="flex gap-2">

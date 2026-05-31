@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.16.18';
-export const APP_VERSION_NAME = 'Prêts : note "Taux:" retirée (trompeuse, le vrai taux est dans le trio) + date d\'échéance affichée dans le détail Transactions';
+export const APP_VERSION = '3.16.19';
+export const APP_VERSION_NAME = 'Prêts : modification du taux persistée sur la fiche + bloc Notes masqué si vide + icône ⏱️ sur "Intérêts courus" + montant à percevoir à l\'échéance';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.19',
+    date: '2026-05-31',
+    description: '4 ajustements prêts. (1) Le champ "Taux d\'intérêt" de l\'écran de modification met désormais à jour le VRAI taux du prêt (nouvelle fonction loanService.updateLoanInterestRate qui écrit interest_rate + force interest_frequency="daily", offline-first) ; avant, il n\'allait que dans une note texte sans effet sur le calcul. Le champ est pré-rempli avec le taux journalier effectif du prêt et son libellé passe en "% / jour". (2) Le bloc "Notes" du détail Transactions est masqué quand il n\'y a aucune note (épure). (3) L\'icône ⏱️ est déplacée du bas de carte vers le libellé "Intérêts courus" du trio (composant partagé LoanLiveTrio). (4) Sous l\'échéance (page Transactions), ajout à droite du montant total à percevoir/à payer à la date d\'échéance (capital + intérêts capitalisés à cette date, calculé par le moteur).',
+    changes: [
+      'loanService.ts : nouvelle updateLoanInterestRate(id, dailyRate) — interest_rate + interest_frequency="daily", Dexie+Supabase+queue',
+      'TransactionDetailPage.tsx : champ taux pré-rempli depuis la fiche prêt, libellé "% / jour", persistance du taux à l\'enregistrement',
+      'TransactionsPage.tsx : bloc Notes masqué si vide + ligne échéance avec "À percevoir/À payer : montant à l\'échéance"',
+      'LoanLiveTrio.tsx : icône ⏱️ déplacée sur le libellé "Intérêts courus"',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.18',
     date: '2026-05-31',
