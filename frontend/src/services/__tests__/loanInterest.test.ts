@@ -86,6 +86,45 @@ describe('computeLoanLiveState', () => {
   });
 });
 
+describe('conversion du taux selon la fréquence', () => {
+  it('fréquence "monthly" : le taux est divisé par 30 (ancien prêt)', () => {
+    // 30 %/mois → 1 %/jour effectif. +10 jours sur 1 000 000 → 100 000.
+    const s = computeLoanLiveState(
+      { amountInitial: 1_000_000, interestRate: 30, interestFrequency: 'monthly', dueDate: null, createdAt: START },
+      [],
+      at(10)
+    );
+    expect(s.dailyRatePct).toBeCloseTo(1, 6);
+    expect(s.accruedInterest).toBeCloseTo(100_000, 4);
+    expect(s.gainPerDay).toBeCloseTo(10_000, 4);
+  });
+
+  it('fréquence "daily" : le taux est gardé tel quel (nouveau prêt)', () => {
+    const s = computeLoanLiveState(
+      { amountInitial: 1_000_000, interestRate: 1, interestFrequency: 'daily', dueDate: null, createdAt: START },
+      [],
+      at(10)
+    );
+    expect(s.dailyRatePct).toBeCloseTo(1, 6);
+    expect(s.accruedInterest).toBeCloseTo(100_000, 4);
+  });
+});
+
+describe('répartition des remboursements (intérêts d\'abord)', () => {
+  it('renvoie la part intérêts / capital de chaque remboursement', () => {
+    const s = computeLoanLiveState(
+      { amountInitial: 1_000_000, interestRate: 1, dueDate: null, createdAt: START },
+      [{ amountPaid: 150_000, paymentDate: at(10).toISOString() }],
+      at(10)
+    );
+    expect(s.allocations).toHaveLength(1);
+    expect(s.allocations[0].interestPortion).toBeCloseTo(100_000, 4);
+    expect(s.allocations[0].capitalPortion).toBeCloseTo(50_000, 4);
+    expect(s.totalInterestPaid).toBeCloseTo(100_000, 4);
+    expect(s.totalCapitalPaid).toBeCloseTo(50_000, 4);
+  });
+});
+
 describe('sumLoanLiveStates', () => {
   it('additionne plusieurs prêts', () => {
     const loans = [

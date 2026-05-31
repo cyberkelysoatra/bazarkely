@@ -18,14 +18,12 @@ import { db } from '../lib/database';
 import {
   getMyLoans,
   deleteLoan,
-  getTotalUnpaidInterestByLoan,
   isPendingBorrowerConfirmation,
   confirmLoanAsBorrower,
   mergeBeneficiaryGroups
 } from '../services/loanService';
 import type {
   LoanWithDetails as Loan,
-  UnpaidInterestSummary,
   LoanStatus
 } from '../services/loanService';
 import { getExchangeRate } from '../services/exchangeRateService';
@@ -107,7 +105,6 @@ const LoansPage = () => {
   const { displayCurrency } = useCurrency();
   const { formatBalance } = useFormatBalance();
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [unpaidInterestSummaries, setUnpaidInterestSummaries] = useState<UnpaidInterestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'lender' | 'borrower'>('all');
   const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null);
@@ -163,22 +160,6 @@ const LoansPage = () => {
       .then(r => setEurToMgaRate(r.rate))
       .catch(() => setEurToMgaRate(4950));
   }, []);
-
-  useEffect(() => {
-    const loadUnpaidInterestSummary = async () => {
-      if (!user?.id) {
-        return;
-      }
-      try {
-        const summaries = await getTotalUnpaidInterestByLoan(user.id);
-        setUnpaidInterestSummaries(summaries || []);
-      } catch {
-        setUnpaidInterestSummaries([]);
-      }
-    };
-
-    loadUnpaidInterestSummary();
-  }, [user?.id]);
 
   const loadLoans = async () => {
     try {
@@ -391,22 +372,6 @@ const LoansPage = () => {
             </button>
           ))}
         </div>
-
-        {unpaidInterestSummaries.length > 0 && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">
-                  {unpaidInterestSummaries.length} prêt(s) ont des intérêts dus ce mois
-                </p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  Vérifiez les prêts concernés pour régulariser les périodes d&apos;intérêts impayées.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Anchor mode instructions banner */}
         {anchorKey !== null && (
@@ -631,9 +596,7 @@ const LoansPage = () => {
                         const loanLabel = loan.isITheBorrower
                           ? `Emprunté à ${loan.lenderName || 'Prêteur'}`
                           : `Prêté à ${loan.borrowerName}`;
-                        const unpaidInterestSummary = unpaidInterestSummaries.find(s => s.loanId === loan.id);
                         const totalRepaidInLoanCurrency = loan.totalRepaid;
-                        const remainingInLoanCurrency = loan.remainingBalance;
                         const initialAmount = loan.amountInitial;
                         const repaidPct = initialAmount > 0
                           ? Math.min((totalRepaidInLoanCurrency / initialAmount) * 100, 100)
@@ -714,7 +677,7 @@ const LoansPage = () => {
                                 <div className="mt-1">
                                   <div className="flex justify-between text-xs text-gray-600 mb-1">
                                     <span>Remboursé: {formatLoanAmount(totalRepaidInLoanCurrency)}</span>
-                                    <span>Restant: {formatLoanAmount(remainingInLoanCurrency)}</span>
+                                    <span className="font-semibold text-green-700">{repaidPct.toFixed(1)}% remboursé</span>
                                   </div>
                                   <div className="w-full bg-gray-200 rounded-full h-3">
                                     <div
@@ -722,8 +685,20 @@ const LoansPage = () => {
                                       style={{ width: `${repaidPct}%` }}
                                     />
                                   </div>
-                                  <div className="text-center text-xs font-semibold text-green-700 mt-1">
-                                    {repaidPct.toFixed(1)}% remboursé
+                                  {/* Trio : Capital restant · Intérêts courus · Total dû (calcul en direct) */}
+                                  <div className="grid grid-cols-3 gap-2 text-center mt-2">
+                                    <div>
+                                      <p className="text-[10px] text-gray-500 leading-tight">Capital</p>
+                                      <p className="text-xs font-semibold text-gray-800">{formatLoanAmount(loan.liveCapital)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-gray-500 leading-tight">Intérêts courus</p>
+                                      <p className="text-xs font-semibold text-amber-700">{formatLoanAmount(loan.liveAccruedInterest)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-gray-500 leading-tight">Total dû</p>
+                                      <p className="text-xs font-bold text-gray-900">{formatLoanAmount(loan.liveTotalOwed)}</p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -754,21 +729,10 @@ const LoansPage = () => {
                                     )}
                                   </div>
                                   <div className="flex-1 text-right">
-                                    {unpaidInterestSummary ? (
-                                      <>
-                                        <p className="text-amber-700 text-xs font-medium">Intérêts dus</p>
-                                        <p className="text-amber-800 text-xs font-semibold">
-                                          ⚠️ {unpaidInterestSummary.totalUnpaid.toLocaleString('fr-FR')} {unpaidInterestSummary.currency === 'EUR' ? '€' : 'Ar'}
-                                        </p>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <p className="text-purple-700 text-xs font-medium">Taux</p>
-                                        <p className="text-purple-800 text-xs">
-                                          {loan.interestRate}% / {loan.interestFrequency === 'monthly' ? 'mois' : loan.interestFrequency === 'weekly' ? 'sem.' : 'jour'}
-                                        </p>
-                                      </>
-                                    )}
+                                    <p className="text-purple-700 text-xs font-medium">Taux</p>
+                                    <p className="text-purple-800 text-xs">
+                                      {loan.liveDailyRatePct.toLocaleString('fr-FR', { maximumFractionDigits: 3 })}% / jour
+                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -779,6 +743,11 @@ const LoansPage = () => {
                               loanId={loan.id}
                               currency={loan.currency || 'MGA'}
                               lenderUserId={loan.lenderUserId}
+                              amountInitial={loan.amountInitial}
+                              interestRate={loan.interestRate}
+                              interestFrequency={loan.interestFrequency}
+                              dueDate={loan.dueDate}
+                              createdAt={loan.createdAt}
                             />
 
                             {/* Actions row */}
@@ -837,6 +806,7 @@ const LoansPage = () => {
             : `Prêté à ${selectedLoan.borrowerName}`
           }
           remainingBalance={selectedLoan.remainingBalance}
+          accruedInterest={selectedLoan.liveAccruedInterest}
           currency={selectedLoan.currency || 'MGA'}
           onClose={() => {
             setShowPaymentModal(false);

@@ -7,6 +7,7 @@
  */
 
 import { supabase, withTimeout } from '../lib/supabase';
+import { computeLoanLiveState } from './loanInterest';
 import { db } from '../lib/database';
 import { useAppStore } from '../stores/appStore';
 import type { SyncOperation, SyncPriority } from '../types';
@@ -201,19 +202,54 @@ function computeLoanDetails(
   interestPeriods: LoanInterestPeriod[]
 ): LoanWithDetails {
   const totalRepaid = repayments.reduce((sum, r) => sum + r.amountPaid, 0);
-  const totalInterestPaid = repayments.reduce((sum, r) => sum + r.interestPortion, 0);
+
+  // Calcul "en direct" (modèle journalier S78) — source de vérité unique pour
+  // le capital restant, les intérêts courus, le total dû et la répartition
+  // intérêts/capital de chaque remboursement (recalculés "intérêts d'abord").
+  // Les remboursements sont triés par date pour rejouer la chronologie ;
+  // les allocations sont ensuite réalignées sur l'ordre de `repayments`.
+  const indexed = repayments.map((r, i) => ({ r, i }));
+  const chrono = [...indexed].sort(
+    (a, b) => new Date(a.r.paymentDate).getTime() - new Date(b.r.paymentDate).getTime()
+  );
+  const live = computeLoanLiveState(
+    {
+      amountInitial: loan.amountInitial,
+      interestRate: loan.interestRate,
+      interestFrequency: loan.interestFrequency,
+      dueDate: loan.dueDate,
+      createdAt: loan.createdAt,
+    },
+    chrono.map(({ r }) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate })),
+    new Date()
+  );
+  // Réaligner les allocations (ordre chronologique) sur l'ordre d'entrée
+  const liveAllocations = repayments.map(() => ({ interestPortion: 0, capitalPortion: 0 }));
+  chrono.forEach(({ i }, chronoIdx) => {
+    liveAllocations[i] = live.allocations[chronoIdx] || { interestPortion: 0, capitalPortion: 0 };
+  });
+
   const today = new Date().toISOString().split('T')[0];
+  // Statut "soldé" piloté par le moteur (capital + intérêts ≈ 0)
+  const status = live.isSettled && loan.status !== 'closed' ? 'closed' : loan.status;
   const isOverdue =
-    loan.status === 'late' ||
-    (loan.dueDate !== null && loan.dueDate < today && loan.status !== 'closed');
+    status === 'late' ||
+    (loan.dueDate !== null && loan.dueDate < today && status !== 'closed' && !live.isSettled);
+
   return {
     ...loan,
+    status,
     repayments,
     interestPeriods,
     totalRepaid,
-    totalInterestPaid,
-    remainingBalance: loan.currentCapital,
+    totalInterestPaid: live.totalInterestPaid,
+    remainingBalance: live.totalOwed,
     isOverdue,
+    liveCapital: live.capitalOutstanding,
+    liveAccruedInterest: live.accruedInterest,
+    liveTotalOwed: live.totalOwed,
+    liveDailyRatePct: live.dailyRatePct,
+    liveAllocations,
   };
 }
 

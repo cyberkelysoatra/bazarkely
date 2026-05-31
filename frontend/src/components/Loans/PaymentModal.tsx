@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { Loader2, Paperclip } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
-  getUnpaidInterestPeriods,
   getUnlinkedRevenueTransactions,
   recordPayment
 } from '../../services/loanService';
-import type { LoanInterestPeriod } from '../../services/loanService';
 import { CurrencyDisplay } from '../Currency';
 import Modal from '../UI/Modal';
 import Input from '../UI/Input';
@@ -16,12 +14,14 @@ export interface PaymentModalProps {
   loanId: string;
   loanName: string;
   remainingBalance: number;
+  /** Intérêts courus "en direct" à l'instant d'ouverture (modèle journalier S78). */
+  accruedInterest?: number;
   currency: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, onSuccess }: PaymentModalProps) => {
+const PaymentModal = ({ loanId, loanName, remainingBalance, accruedInterest = 0, currency, onClose, onSuccess }: PaymentModalProps) => {
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -31,28 +31,12 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
   const [availableTransactions, setAvailableTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [unpaidInterests, setUnpaidInterests] = useState<LoanInterestPeriod[]>([]);
-  const [loadingInterests, setLoadingInterests] = useState(false);
 
   useEffect(() => {
-    loadUnpaidInterests();
     if (mode === 'link') {
       loadUnlinkedTransactions();
     }
   }, [loanId, mode]);
-
-  const loadUnpaidInterests = async () => {
-    try {
-      setLoadingInterests(true);
-      const periods = await getUnpaidInterestPeriods(loanId);
-      setUnpaidInterests(periods);
-    } catch (error) {
-      console.error('Error loading unpaid interests:', error);
-      setUnpaidInterests([]);
-    } finally {
-      setLoadingInterests(false);
-    }
-  };
 
   const loadUnlinkedTransactions = async () => {
     try {
@@ -66,8 +50,6 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
       setLoadingTransactions(false);
     }
   };
-
-  const totalUnpaidInterest = unpaidInterests.reduce((sum, p) => sum + p.interestAmount, 0);
 
   const handleTransactionSelect = (transaction: any) => {
     setSelectedTransactionId(transaction.id);
@@ -151,14 +133,10 @@ const PaymentModal = ({ loanId, loanName, remainingBalance, currency, onClose, o
           </button>
         </div>
 
-        {loadingInterests ? (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          </div>
-        ) : totalUnpaidInterest > 0 && (
+        {accruedInterest > 0 && (
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
             <p className="text-sm text-orange-800 font-medium">
-              Intérêts dus: {totalUnpaidInterest.toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}
+              Intérêts courus: {Math.round(accruedInterest).toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}
             </p>
             <p className="text-xs text-orange-600 mt-1">
               Ce paiement couvrira d'abord les intérêts

@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.16.15';
-export const APP_VERSION_NAME = 'Intérêts de prêt "en direct" (Étape A) : taux journalier, intérêts qui grimpent à la minute, carte Dashboard gains/coûts';
+export const APP_VERSION = '3.16.16';
+export const APP_VERSION_NAME = 'Intérêts de prêt "en direct" (Étape B) : calcul journalier propagé partout (page Prêts, total dû, remboursements) + conversion auto ÷30 des anciens taux mensuels';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.16',
+    date: '2026-05-31',
+    description: 'Nouveau modèle d\'intérêts — ÉTAPE B : propagation du calcul "en direct" à toute l\'app. Le moteur loanInterest devient la source de vérité unique via computeLoanDetails (loanService) : remainingBalance = total dû (capital + intérêts courus), totalInterestPaid et la répartition intérêts/capital de chaque remboursement sont RECALCULÉS "intérêts d\'abord", et le statut "soldé" est piloté par le moteur (capital + intérêts ≈ 0). Conversion automatique des ANCIENS taux selon leur fréquence d\'origine : un taux "monthly" est divisé par 30 (→ taux journalier correct), "weekly" par 7, "daily" gardé tel quel — donc aucun besoin de migration SQL. Page Prêts : le bloc "Restant" affiche le trio Capital · Intérêts courus · Total dû côte à côte ; "Taux" affiché en % / jour effectif. Ancien système d\'"intérêts dus" par périodes mensuelles RETIRÉ (bannière de la page Prêts + bannière de la fenêtre de remboursement, désormais basée sur les intérêts courus). Le write-path des remboursements est inchangé (id/montant/date) : la répartition est recalculée à l\'affichage, donc toujours correcte y compris rétroactivement.',
+    changes: [
+      'loanInterest.ts : conversion du taux selon interestFrequency (÷30 mensuel, ÷7 hebdo) + sortie totalInterestPaid/totalCapitalPaid + allocations par remboursement (12 tests au total)',
+      'loanService.computeLoanDetails : branché sur le moteur (remainingBalance = total dû, statut soldé piloté, liveCapital/liveAccruedInterest/liveTotalOwed/liveDailyRatePct/liveAllocations)',
+      'types/loans.ts : LoanWithDetails enrichi des champs live*',
+      'LoansPage.tsx : trio Capital·Intérêts·Total dû, taux en %/jour, suppression de l\'ancien indicateur "intérêts dus" (bannière + bloc)',
+      'PaymentModal.tsx : bannière "Intérêts courus" basée sur le calcul en direct (prop accruedInterest) au lieu des périodes',
+      'RepaymentHistorySection.tsx : part intérêts/capital recalculée par le moteur',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.15',
     date: '2026-05-31',

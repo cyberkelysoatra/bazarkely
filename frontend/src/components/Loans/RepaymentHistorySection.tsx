@@ -1,22 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../stores/appStore';
 import { getRepaymentHistory, confirmRepaymentAsLender, isPendingLenderRepaymentConfirmation } from '../../services/loanService';
 import type { LoanRepayment } from '../../services/loanService';
+import { computeLoanLiveState } from '../../services/loanInterest';
 import { CurrencyDisplay } from '../Currency';
 
 export interface RepaymentHistorySectionProps {
   loanId: string;
   currency: string;
   lenderUserId: string;
+  // Paramètres du prêt pour recalculer la répartition "intérêts d'abord"
+  amountInitial: number;
+  interestRate: number;
+  interestFrequency?: string | null;
+  dueDate: string | null;
+  createdAt: string;
 }
 
-const RepaymentHistorySection = ({ loanId, currency, lenderUserId }: RepaymentHistorySectionProps) => {
+const RepaymentHistorySection = ({
+  loanId,
+  currency,
+  lenderUserId,
+  amountInitial,
+  interestRate,
+  interestFrequency,
+  dueDate,
+  createdAt,
+}: RepaymentHistorySectionProps) => {
   const { user } = useAppStore();
   const [repayments, setRepayments] = useState<LoanRepayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Répartition recalculée "intérêts d'abord", alignée sur l'ordre des remboursements affichés
+  const allocations = useMemo(
+    () =>
+      computeLoanLiveState(
+        { amountInitial, interestRate, interestFrequency, dueDate, createdAt },
+        repayments.map((r) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate })),
+        new Date()
+      ).allocations,
+    [repayments, amountInitial, interestRate, interestFrequency, dueDate, createdAt]
+  );
 
   useEffect(() => {
     if (isExpanded) {
@@ -62,7 +89,7 @@ const RepaymentHistorySection = ({ loanId, currency, lenderUserId }: RepaymentHi
             </p>
           ) : (
             <div className="space-y-2">
-              {repayments.map((repayment) => (
+              {repayments.map((repayment, idx) => (
                 <div
                   key={repayment.id}
                   className="p-3 bg-gray-50 rounded-lg border border-gray-200"
@@ -84,9 +111,9 @@ const RepaymentHistorySection = ({ loanId, currency, lenderUserId }: RepaymentHi
                     />
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
-                    <span>Intérêts: {repayment.interestPortion.toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}</span>
+                    <span>Intérêts: {Math.round(allocations[idx]?.interestPortion ?? 0).toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}</span>
                     <span>•</span>
-                    <span>Capital: {repayment.capitalPortion.toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}</span>
+                    <span>Capital: {Math.round(allocations[idx]?.capitalPortion ?? 0).toLocaleString('fr-FR')} {currency === 'MGA' ? 'Ar' : '€'}</span>
                   </div>
                   {repayment.notes && (
                     <p className="text-xs text-gray-500 italic mt-1">"{repayment.notes}"</p>

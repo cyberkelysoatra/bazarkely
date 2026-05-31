@@ -60,8 +60,20 @@ export interface LoanWithDetails extends PersonalLoan {
   interestPeriods: LoanInterestPeriod[];
   totalRepaid: number;
   totalInterestPaid: number;
+  /** Total dû "en direct" = capital restant + intérêts courus (= liveTotalOwed). */
   remainingBalance: number;
   isOverdue: boolean;
+  // --- Calcul "en direct" (moteur loanInterest, modèle journalier S78) ---
+  /** Capital restant (après remboursements et capitalisation éventuelle). */
+  liveCapital: number;
+  /** Intérêts courus non encore payés à l'instant du calcul. */
+  liveAccruedInterest: number;
+  /** Total dû = liveCapital + liveAccruedInterest. */
+  liveTotalOwed: number;
+  /** Taux JOURNALIER effectif en % (après conversion depuis la fréquence d'origine). */
+  liveDailyRatePct: number;
+  /** Répartition recalculée de chaque remboursement (alignée sur `repayments`). */
+  liveAllocations: { interestPortion: number; capitalPortion: number }[];
 }
 
 export interface CreateLoanInput {

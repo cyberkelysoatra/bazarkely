@@ -2,7 +2,11 @@
  * Moteur de calcul des intérêts de prêt — calcul "en direct" (live), pur et sans effet de bord.
  *
  * Modèle (validé S78) :
- *  - Le taux saisi est un taux JOURNALIER (% par jour).
+ *  - Le taux EFFECTIF est JOURNALIER. On le déduit du taux saisi + de l'ancienne fréquence :
+ *      • 'daily'   → taux tel quel (prêts créés depuis v3.16.15)
+ *      • 'monthly' → taux ÷ 30   (anciens prêts saisis "par mois")
+ *      • 'weekly'  → taux ÷ 7
+ *    Ainsi les anciens prêts restent corrects sans migration de la base.
  *  - Intérêt SIMPLE, qui s'accumule en continu (précision à la seconde) sur le capital restant.
  *  - Point de départ = date du prêt (loan.createdAt).
  *  - Un remboursement paie D'ABORD les intérêts dus, le reste réduit le capital.
@@ -20,8 +24,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** Entrée minimale d'un prêt nécessaire au calcul. */
 export interface LoanInterestInput {
   amountInitial: number;
-  /** Taux JOURNALIER en pourcentage (ex: 1 = 1 %/jour). */
+  /** Taux saisi en pourcentage, à interpréter selon `interestFrequency`. */
   interestRate: number;
+  /** Fréquence d'origine du taux ('daily' | 'weekly' | 'monthly'). Défaut: 'daily'. */
+  interestFrequency?: string | null;
   /** Date d'échéance 'YYYY-MM-DD' ou null si pas d'échéance. */
   dueDate: string | null;
   /** Date/heure de départ du prêt (ISO). */
@@ -35,6 +41,12 @@ export interface RepaymentInput {
   paymentDate: string;
 }
 
+/** Répartition d'un remboursement, recalculée "intérêts d'abord". */
+export interface RepaymentAllocation {
+  interestPortion: number;
+  capitalPortion: number;
+}
+
 export interface LoanLiveState {
   /** Capital restant dû (après remboursements et capitalisation éventuelle). */
   capitalOutstanding: number;
@@ -42,16 +54,22 @@ export interface LoanLiveState {
   accruedInterest: number;
   /** Total dû = capital restant + intérêts accumulés. */
   totalOwed: number;
+  /** Total des intérêts déjà payés (recalculé). */
+  totalInterestPaid: number;
+  /** Total du capital déjà remboursé (recalculé). */
+  totalCapitalPaid: number;
   /** Vitesse d'accumulation actuelle des intérêts. */
   gainPerMinute: number;
   gainPerHour: number;
   gainPerDay: number;
   /** Projection sur le mois calendaire courant (nb réel de jours du mois). */
   gainPerMonth: number;
-  /** Taux journalier en %, repris tel quel. */
+  /** Taux JOURNALIER effectif en %, après conversion depuis la fréquence d'origine. */
   dailyRatePct: number;
   /** true si le prêt est entièrement soldé (capital + intérêts ≈ 0). */
   isSettled: boolean;
+  /** Répartition recalculée de chaque remboursement (alignée sur l'ordre d'entrée). */
+  allocations: RepaymentAllocation[];
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -60,6 +78,12 @@ function daysBetween(a: Date, b: Date): number {
 
 function daysInMonthOf(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+/** Convertit le taux saisi en taux JOURNALIER (fraction) selon la fréquence d'origine. */
+function dailyRateFraction(interestRate: number, frequency?: string | null): number {
+  const divisor = frequency === 'monthly' ? 30 : frequency === 'weekly' ? 7 : 1;
+  return (interestRate || 0) / 100 / divisor;
 }
 
 /**
@@ -71,34 +95,40 @@ export function computeLoanLiveState(
   repayments: RepaymentInput[] = [],
   now: Date = new Date()
 ): LoanLiveState {
-  const dailyRate = (loan.interestRate || 0) / 100; // fraction journalière
+  const dailyRate = dailyRateFraction(loan.interestRate, loan.interestFrequency);
+  const dailyRatePct = (loan.interestRate || 0) / (loan.interestFrequency === 'monthly' ? 30 : loan.interestFrequency === 'weekly' ? 7 : 1);
   const start = new Date(loan.createdAt);
+  const emptyAllocations = repayments.map(() => ({ interestPortion: 0, capitalPortion: 0 }));
 
   // Garde-fous : données invalides → état neutre basé sur le capital initial
   if (isNaN(start.getTime()) || !(loan.amountInitial > 0)) {
+    const cap = Math.max(0, loan.amountInitial || 0);
     return {
-      capitalOutstanding: Math.max(0, loan.amountInitial || 0),
+      capitalOutstanding: cap,
       accruedInterest: 0,
-      totalOwed: Math.max(0, loan.amountInitial || 0),
+      totalOwed: cap,
+      totalInterestPaid: 0,
+      totalCapitalPaid: 0,
       gainPerMinute: 0,
       gainPerHour: 0,
       gainPerDay: 0,
       gainPerMonth: 0,
-      dailyRatePct: loan.interestRate || 0,
-      isSettled: !(loan.amountInitial > 0),
+      dailyRatePct,
+      isSettled: cap <= 0,
+      allocations: emptyAllocations,
     };
   }
 
   // Construction de la chronologie des événements jusqu'à `now`
-  type Ev = { time: Date; type: 'repay' | 'capitalize'; amount?: number };
+  type Ev = { time: Date; type: 'repay' | 'capitalize'; amount?: number; idx?: number };
   const events: Ev[] = [];
 
-  for (const rp of repayments) {
+  repayments.forEach((rp, idx) => {
     const t = new Date(rp.paymentDate);
     if (!isNaN(t.getTime()) && t.getTime() <= now.getTime()) {
-      events.push({ time: t, type: 'repay', amount: rp.amountPaid || 0 });
+      events.push({ time: t, type: 'repay', amount: rp.amountPaid || 0, idx });
     }
-  }
+  });
 
   if (loan.dueDate) {
     const due = new Date(loan.dueDate);
@@ -114,8 +144,11 @@ export function computeLoanLiveState(
 
   let principal = loan.amountInitial;
   let unpaidInterest = 0;
+  let totalInterestPaid = 0;
+  let totalCapitalPaid = 0;
   let cursor = start;
   let capitalized = false;
+  const allocations = emptyAllocations;
 
   const accrueTo = (t: Date) => {
     if (t.getTime() <= cursor.getTime()) return;
@@ -131,7 +164,14 @@ export function computeLoanLiveState(
       const payInterest = Math.min(p, unpaidInterest);
       unpaidInterest -= payInterest;
       p -= payInterest;
-      principal = Math.max(0, principal - p); // le reste éponge le capital
+      const payCapital = Math.min(p, principal); // le reste éponge le capital
+      principal -= payCapital;
+      if (principal < 0) principal = 0;
+      totalInterestPaid += payInterest;
+      totalCapitalPaid += payCapital;
+      if (ev.idx !== undefined) {
+        allocations[ev.idx] = { interestPortion: payInterest, capitalPortion: payCapital };
+      }
     } else if (ev.type === 'capitalize' && !capitalized) {
       principal += unpaidInterest; // capitalisation unique à l'échéance
       unpaidInterest = 0;
@@ -153,12 +193,15 @@ export function computeLoanLiveState(
     capitalOutstanding: principal,
     accruedInterest: unpaidInterest,
     totalOwed: principal + unpaidInterest,
+    totalInterestPaid,
+    totalCapitalPaid,
     gainPerMinute: gainPerDay / (24 * 60),
     gainPerHour: gainPerDay / 24,
     gainPerDay,
     gainPerMonth: gainPerDay * daysInMonthOf(now),
-    dailyRatePct: loan.interestRate || 0,
+    dailyRatePct,
     isSettled,
+    allocations,
   };
 }
 
