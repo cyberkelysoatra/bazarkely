@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.16.13';
-export const APP_VERSION_NAME = 'Création de prêt : choix du bénéficiaire/prêteur depuis le répertoire de contacts du téléphone (Android), remplit nom + téléphone';
+export const APP_VERSION = '3.16.14';
+export const APP_VERSION_NAME = 'Sélection de contact : confirmation claire du contact retenu (✓ nom · numéro) + consigne sur la fenêtre Chrome';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.14',
+    date: '2026-05-31',
+    description: 'Suite de v3.16.13. La fenêtre de sélection de contacts est imposée par Chrome (Contact Picker API) : impossible de la remplacer par l\'appli Contacts native ni de la restyler (règle de confidentialité du navigateur). Elle affiche un compteur "1 sélectionné" plutôt que le nom, ce qui déroutait. Côté app, ajout d\'une confirmation visible APRÈS validation : ligne verte "✓ Contact retenu : Nom · Numéro" sous le champ + toast immédiat. L\'astuce indique désormais la marche à suivre dans la fenêtre Chrome (cocher un nom puis "Ajouter"). La confirmation se met à jour après le choix du numéro (contact multi-numéros), s\'efface si l\'utilisateur retape le nom à la main, et est réinitialisée après création.',
+    changes: [
+      'AddTransactionPage.tsx : état contactConfirm {name, phone} + ligne verte de confirmation (CheckCircle2) sous le champ bénéficiaire/prêteur',
+      'AddTransactionPage.tsx : toast.success immédiat à la sélection + à la confirmation du numéro',
+      'AddTransactionPage.tsx : astuce élargie expliquant la fenêtre Chrome (cocher + Ajouter)',
+      'AddTransactionPage.tsx : contactConfirm effacé à la saisie clavier manuelle, mis à jour au choix du numéro, réinitialisé après succès',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.13',
     date: '2026-05-31',

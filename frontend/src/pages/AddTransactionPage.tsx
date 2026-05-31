@@ -110,6 +110,8 @@ const AddTransactionPage = () => {
   // Choix du numéro quand le contact sélectionné dans le répertoire en a plusieurs
   const [phoneChoices, setPhoneChoices] = useState<string[]>([]);
   const [showPhoneChoice, setShowPhoneChoice] = useState<boolean>(false);
+  // Confirmation visible du contact retenu après sélection dans le répertoire
+  const [contactConfirm, setContactConfirm] = useState<{ name: string; phone: string } | null>(null);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -339,7 +341,8 @@ const AddTransactionPage = () => {
 
       const contact = contacts[0];
       const rawName = Array.isArray(contact.name) ? contact.name.find(Boolean) : contact.name;
-      if (rawName) applyContactName(String(rawName).trim());
+      const pickedName = rawName ? String(rawName).trim() : '';
+      if (pickedName) applyContactName(pickedName);
 
       const tels: string[] = Array.isArray(contact.tel)
         ? contact.tel.map((t: string) => String(t).trim()).filter(Boolean)
@@ -348,9 +351,17 @@ const AddTransactionPage = () => {
 
       if (uniqueTels.length === 1) {
         setBorrowerPhone(uniqueTels[0]);
+        setContactConfirm({ name: pickedName, phone: uniqueTels[0] });
+        toast.success(`✓ ${pickedName || 'Contact'} retenu`);
       } else if (uniqueTels.length > 1) {
+        // Confirmation partielle : le numéro sera fixé après le choix
+        setContactConfirm({ name: pickedName, phone: '' });
         setPhoneChoices(uniqueTels);
         setShowPhoneChoice(true);
+      } else {
+        // Contact sans numéro : on confirme au moins le nom
+        setContactConfirm({ name: pickedName, phone: '' });
+        toast.success(`✓ ${pickedName || 'Contact'} retenu`);
       }
     } catch (err) {
       // Permission refusée ou API indisponible — non bloquant, la saisie clavier reste possible
@@ -710,6 +721,7 @@ const AddTransactionPage = () => {
               setBorrowerPhone('');
               setPhoneChoices([]);
               setShowPhoneChoice(false);
+              setContactConfirm(null);
               setLoanSuccessStep(false);
               setLoanWhatsappUrl('');
               setLoanSuccessData(null);
@@ -1090,6 +1102,8 @@ const AddTransactionPage = () => {
                     onChange={(e) => {
                       const value = e.target.value;
                       setBeneficiaryName(value);
+                      // Saisie manuelle : la confirmation du répertoire n'est plus valable
+                      if (contactConfirm) setContactConfirm(null);
                       // Auto-populate description if empty
                       if (!formData.description.trim() && value.trim()) {
                         const autoDescription = formData.category === 'loan'
@@ -1119,9 +1133,18 @@ const AddTransactionPage = () => {
                     ))}
                   </datalist>
                 </div>
+                {contactConfirm && (
+                  <p className="text-sm font-medium text-green-700 mt-2 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>
+                      Contact retenu&nbsp;: {contactConfirm.name || '(sans nom)'}
+                      {contactConfirm.phone ? ` · ${contactConfirm.phone}` : ''}
+                    </span>
+                  </p>
+                )}
                 {supportsContactPicker && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Astuce&nbsp;: touchez l'icône&nbsp;📇 pour choisir un contact dans votre répertoire (le nom et le téléphone se remplissent automatiquement).
+                    Astuce&nbsp;: touchez l'icône&nbsp;📇 pour choisir un contact. Dans la fenêtre du navigateur, <strong>cochez un nom</strong> puis touchez <strong>«&nbsp;Ajouter&nbsp;»</strong> — le nom et le téléphone se remplissent ensuite ici.
                   </p>
                 )}
                 {knownBeneficiaryNames.length > 0 && (
@@ -1338,7 +1361,9 @@ const AddTransactionPage = () => {
                   type="button"
                   onClick={() => {
                     setBorrowerPhone(tel);
+                    setContactConfirm(prev => ({ name: prev?.name || beneficiaryName.trim(), phone: tel }));
                     setShowPhoneChoice(false);
+                    toast.success('✓ Numéro retenu');
                   }}
                   className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-blue-50 hover:border-blue-400 text-gray-800 transition-colors"
                 >
