@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.16.16';
-export const APP_VERSION_NAME = 'Intérêts de prêt "en direct" (Étape B) : calcul journalier propagé partout (page Prêts, total dû, remboursements) + conversion auto ÷30 des anciens taux mensuels';
+export const APP_VERSION = '3.16.17';
+export const APP_VERSION_NAME = 'Intérêts de prêt : trio "en direct" (Capital · Intérêts courus · Total dû) qui monte chaque seconde, identique sur Prêts et Transactions';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.17',
+    date: '2026-05-31',
+    description: 'Suite Étape B. (1) Nouveau composant partagé LoanLiveTrio qui recalcule le trio Capital · Intérêts courus · Total dû CHAQUE SECONDE (les intérêts montent visiblement) + légende "⏱️ Intérêts en temps réel · X% / jour". Avant, ces valeurs étaient calculées une seule fois au chargement (figées) sur la page Prêts → corrigé. (2) La page Transactions (détail dépliable d\'une transaction de prêt) affiche désormais EXACTEMENT le même trio que la page Prêts : elle charge le vrai prêt via getLoanById et utilise LoanLiveTrio, au lieu de l\'ancien affichage (taux brut tiré des notes, "Restant" = capital seul sans intérêts). Le taux affiché (% / jour effectif) est donc cohérent entre les deux pages. Montants en notation fr-FR (virgule = décimale) : intérêts/total affichés avec 3 décimales pour rendre la progression visible à la seconde.',
+    changes: [
+      'Nouveau components/Loans/LoanLiveTrio.tsx : trio recalculé chaque seconde (setInterval 1s) tant que le taux > 0',
+      'LoansPage.tsx : trio statique remplacé par <LoanLiveTrio> (ticking)',
+      'TransactionsPage.tsx : chargement du prêt complet (getLoanById) dans le tiroir + <LoanLiveTrio> identique à la page Prêts ; "Restant" capital-seul remplacé',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.16',
     date: '2026-05-31',

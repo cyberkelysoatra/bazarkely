@@ -16,7 +16,8 @@ import Modal from '../components/UI/Modal';
 import { shareTransaction, unshareTransaction, getFamilySharedTransactions } from '../services/familySharingService';
 import * as familyGroupService from '../services/familyGroupService';
 import { getReimbursementStatusByTransactionIds, getMemberBalances, createReimbursementRequest } from '../services/reimbursementService';
-import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction } from '../services/loanService';
+import { getLoanIdByTransactionId, getRepaymentHistory, recordPayment, getLoanByRepaymentTransactionId, getRepaymentIndexForTransaction, getLoanById } from '../services/loanService';
+import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
 import { toast } from 'react-hot-toast';
 import { showDeleteRestoreDialog } from '../utils/dialogUtils';
 import type { ShareTransactionInput, SplitType, FamilySharedTransaction, ReimbursementStatus } from '../types/family';
@@ -89,6 +90,8 @@ const TransactionsPage = () => {
   const [repaymentAccounts, setRepaymentAccounts] = useState<Account[]>([]);
   const [repaymentHistory, setRepaymentHistory] = useState<Array<{amount_paid: number; payment_date: string; notes?: string; transactionId?: string}>>([]);
   const [parentLoanInfo, setParentLoanInfo] = useState<{transactionId: string | null; amountInitial: number; createdAt: string} | null>(null);
+  // Prêt complet du tiroir (transaction de type prêt) — pour le trio "en direct"
+  const [drawerLoan, setDrawerLoan] = useState<any>(null);
   const [repaymentIndex, setRepaymentIndex] = useState<number>(1);
   const [loanProgress, setLoanProgress] = useState<{ totalRepaid: number; remaining: number; percentage: number } | null>(null);
   const [loanProgressLoading, setLoanProgressLoading] = useState<boolean>(false);
@@ -303,6 +306,7 @@ const TransactionsPage = () => {
         setLoanProgress(null);
         setLoanProgressLoading(false);
         setParentLoanInfo(null);
+        setDrawerLoan(null);
         return;
       }
 
@@ -318,6 +322,7 @@ const TransactionsPage = () => {
         setLoanProgress(null);
         setLoanProgressLoading(false);
         setParentLoanInfo(null);
+        setDrawerLoan(null);
         try {
           const result: any = await getLoanByRepaymentTransactionId(selectedTransaction.id);
           setParentLoanInfo({
@@ -355,12 +360,14 @@ const TransactionsPage = () => {
         setLoanProgress(null);
         setLoanProgressLoading(false);
         setParentLoanInfo(null);
+        setDrawerLoan(null);
         return;
       }
 
       setLoanProgressLoading(true);
       setLoanProgress(null);
       setParentLoanInfo(null);
+      setDrawerLoan(null);
 
       try {
         const loanId = await getLoanIdByTransactionId(selectedTransaction.id);
@@ -368,6 +375,14 @@ const TransactionsPage = () => {
         if (!loanId) {
           setLoanProgress(null);
           return;
+        }
+
+        // Prêt complet pour le trio "en direct" (Capital · Intérêts courus · Total dû)
+        try {
+          const fullLoan = await getLoanById(loanId);
+          setDrawerLoan(fullLoan);
+        } catch {
+          setDrawerLoan(null);
         }
 
         const repayments = await getRepaymentHistory(loanId);
@@ -1671,7 +1686,7 @@ const TransactionsPage = () => {
                           <div className="mt-1">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
                               <span>Remboursé: {formatBalance(loanProgress.totalRepaid)}</span>
-                              <span>Restant: {formatBalance(loanProgress.remaining)}</span>
+                              <span className="font-semibold text-green-700">{loanProgress.percentage.toFixed(1)}% remboursé</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div
@@ -1679,9 +1694,18 @@ const TransactionsPage = () => {
                                 style={{ width: `${loanProgress.percentage}%` }}
                               />
                             </div>
-                            <div className="text-center text-xs font-semibold text-green-700 mt-1">
-                              {loanProgress.percentage.toFixed(1)}% remboursé
-                            </div>
+                            {/* Trio "en direct" identique à la page Prêts */}
+                            {drawerLoan && (
+                              <LoanLiveTrio
+                                amountInitial={drawerLoan.amountInitial}
+                                interestRate={drawerLoan.interestRate}
+                                interestFrequency={drawerLoan.interestFrequency}
+                                dueDate={drawerLoan.dueDate}
+                                createdAt={drawerLoan.createdAt}
+                                currency={drawerLoan.currency || 'MGA'}
+                                repayments={(drawerLoan.repayments || []).map((r: any) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
+                              />
+                            )}
                           </div>
                         )
                       ) : isRepaymentCat ? (

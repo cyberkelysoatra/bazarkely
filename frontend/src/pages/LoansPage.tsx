@@ -27,6 +27,7 @@ import type {
   LoanStatus
 } from '../services/loanService';
 import { getExchangeRate } from '../services/exchangeRateService';
+import LoanLiveTrio from '../components/Loans/LoanLiveTrio';
 import { CurrencyDisplay } from '../components/Currency';
 import Button from '../components/UI/Button';
 import ConfirmDialog from '../components/UI/ConfirmDialog';
@@ -685,21 +686,16 @@ const LoansPage = () => {
                                       style={{ width: `${repaidPct}%` }}
                                     />
                                   </div>
-                                  {/* Trio : Capital restant · Intérêts courus · Total dû (calcul en direct) */}
-                                  <div className="grid grid-cols-3 gap-2 text-center mt-2">
-                                    <div>
-                                      <p className="text-[10px] text-gray-500 leading-tight">Capital</p>
-                                      <p className="text-xs font-semibold text-gray-800">{formatLoanAmount(loan.liveCapital)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-[10px] text-gray-500 leading-tight">Intérêts courus</p>
-                                      <p className="text-xs font-semibold text-amber-700">{formatLoanAmount(loan.liveAccruedInterest)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-[10px] text-gray-500 leading-tight">Total dû</p>
-                                      <p className="text-xs font-bold text-gray-900">{formatLoanAmount(loan.liveTotalOwed)}</p>
-                                    </div>
-                                  </div>
+                                  {/* Trio "en direct" : Capital · Intérêts courus · Total dû (monte chaque seconde) */}
+                                  <LoanLiveTrio
+                                    amountInitial={loan.amountInitial}
+                                    interestRate={loan.interestRate}
+                                    interestFrequency={loan.interestFrequency}
+                                    dueDate={loan.dueDate}
+                                    createdAt={loan.createdAt}
+                                    currency={loan.currency || 'MGA'}
+                                    repayments={(loan.repayments || []).map(r => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
+                                  />
                                 </div>
                               </div>
                             </div>
