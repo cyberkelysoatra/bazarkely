@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.16.12';
-export const APP_VERSION_NAME = 'Pages à carte titre (Paramètres, Version, etc.) : suppression de l\'écart excessif en haut + bandeaux colorés recollés sous l\'en-tête';
+export const APP_VERSION = '3.16.13';
+export const APP_VERSION_NAME = 'Création de prêt : choix du bénéficiaire/prêteur depuis le répertoire de contacts du téléphone (Android), remplit nom + téléphone';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.13',
+    date: '2026-05-31',
+    description: 'Création de prêt (AddTransactionPage, catégories "prêt accordé" et "prêt reçu") : une icône répertoire 📇 apparaît à droite du champ Bénéficiaire/Prêteur sur les appareils qui supportent l\'API Contact Picker (Chrome/Edge Android, HTTPS). Le clic ouvre le sélecteur de contacts natif d\'Android et remplit automatiquement le nom + le téléphone. Si le contact a plusieurs numéros, une petite fenêtre "Quel numéro ?" laisse choisir. Sur iOS/desktop (API absente), aucune icône : saisie clavier classique préservée (l\'autocomplétion des bénéficiaires connus reste intacte). Le téléphone du prêt accordé est désormais aussi CONSERVÉ dans la fiche (auparavant perdu après le lien WhatsApp). Un champ téléphone est ajouté au prêt reçu (numéro du prêteur rangé dans borrower_phone, inutilisé pour ce type ; bouton WhatsApp prêteur à venir).',
+    changes: [
+      'AddTransactionPage.tsx : détection supportsContactPicker (navigator.contacts + ContactsManager) au niveau module',
+      'AddTransactionPage.tsx : handlePickContact() → navigator.contacts.select([name, tel]) + applyContactName() (réplique l\'auto-libellé) + fenêtre de choix du numéro si plusieurs',
+      'AddTransactionPage.tsx : bouton icône BookUser à droite du champ beneficiaryName (affiché si supportsContactPicker), champ toujours tapable au clavier',
+      'AddTransactionPage.tsx : champ "Téléphone du prêteur" ajouté pour la catégorie loan_received',
+      'AddTransactionPage.tsx : borrower_phone = borrowerPhone.trim() à l\'INSERT (prêt accordé ET prêt reçu) — le numéro est désormais persisté',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.12',
     date: '2026-05-31',

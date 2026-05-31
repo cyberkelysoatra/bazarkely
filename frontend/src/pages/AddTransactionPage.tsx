@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat, CheckCircle2, BookUser } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
@@ -28,6 +28,17 @@ import { getActiveLoansForDropdown, getDistinctBeneficiaryNames } from '../servi
 import { createAcknowledgment, getWhatsAppLink } from '../services/loanAcknowledgmentService';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+
+/**
+ * Contact Picker API — disponible uniquement sur Chrome/Edge Android (HTTPS requis).
+ * Absent sur iOS Safari et desktop : l'icône répertoire n'est alors pas affichée
+ * et le champ reste en saisie clavier classique.
+ */
+const supportsContactPicker =
+  typeof navigator !== 'undefined' &&
+  'contacts' in navigator &&
+  typeof (navigator as any).contacts?.select === 'function' &&
+  'ContactsManager' in window;
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
@@ -96,6 +107,9 @@ const AddTransactionPage = () => {
   const [loanWhatsappUrl, setLoanWhatsappUrl] = useState<string>('');
   const [loanSuccessData, setLoanSuccessData] = useState<{ borrowerName: string; amountInitial: number; currency: string } | null>(null);
   const [knownBeneficiaryNames, setKnownBeneficiaryNames] = useState<string[]>([]);
+  // Choix du numéro quand le contact sélectionné dans le répertoire en a plusieurs
+  const [phoneChoices, setPhoneChoices] = useState<string[]>([]);
+  const [showPhoneChoice, setShowPhoneChoice] = useState<boolean>(false);
 
   const isIncome = transactionType === 'income';
   const isExpense = transactionType === 'expense';
@@ -302,6 +316,45 @@ const AddTransactionPage = () => {
     // Clear error when user changes input
     if (error) {
       setError(null);
+    }
+  };
+
+  // Renseigne le nom du bénéficiaire/prêteur + auto-libellé (réplique le onChange du champ)
+  const applyContactName = (name: string) => {
+    setBeneficiaryName(name);
+    if (!formData.description.trim() && name.trim()) {
+      const autoDescription = formData.category === 'loan'
+        ? `Prêt à ${name}`
+        : `Prêt de ${name}`;
+      setFormData(prev => ({ ...prev, description: autoDescription }));
+    }
+  };
+
+  // Ouvre le répertoire de contacts du téléphone (Android) et remplit nom + téléphone.
+  // Si le contact a plusieurs numéros, ouvre la fenêtre de choix du numéro.
+  const handlePickContact = async () => {
+    try {
+      const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+      if (!contacts || contacts.length === 0) return; // annulé par l'utilisateur
+
+      const contact = contacts[0];
+      const rawName = Array.isArray(contact.name) ? contact.name.find(Boolean) : contact.name;
+      if (rawName) applyContactName(String(rawName).trim());
+
+      const tels: string[] = Array.isArray(contact.tel)
+        ? contact.tel.map((t: string) => String(t).trim()).filter(Boolean)
+        : [];
+      const uniqueTels = Array.from(new Set(tels));
+
+      if (uniqueTels.length === 1) {
+        setBorrowerPhone(uniqueTels[0]);
+      } else if (uniqueTels.length > 1) {
+        setPhoneChoices(uniqueTels);
+        setShowPhoneChoice(true);
+      }
+    } catch (err) {
+      // Permission refusée ou API indisponible — non bloquant, la saisie clavier reste possible
+      console.warn('Répertoire de contacts indisponible ou annulé:', err);
     }
   };
 
@@ -524,7 +577,7 @@ const AddTransactionPage = () => {
                     lender_user_id: user.id,
                     borrower_user_id: null,
                     borrower_name: beneficiaryName.trim(),
-                    borrower_phone: '',
+                    borrower_phone: borrowerPhone.trim(),
                     is_i_the_borrower: false,
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
@@ -581,7 +634,9 @@ const AddTransactionPage = () => {
                     borrower_user_id: user.id,
                     lender_name: beneficiaryName.trim(),
                     borrower_name: '',
-                    borrower_phone: '',
+                    // Pas de colonne dédiée au prêteur : on réutilise borrower_phone
+                    // (inutilisé pour un prêt reçu) pour conserver son numéro
+                    borrower_phone: borrowerPhone.trim(),
                     is_i_the_borrower: true,
                     amount_initial: Math.abs(amount),
                     currency: originalCurrency,
@@ -653,6 +708,8 @@ const AddTransactionPage = () => {
               setInterestRate('');
               setDurationMonths('');
               setBorrowerPhone('');
+              setPhoneChoices([]);
+              setShowPhoneChoice(false);
               setLoanSuccessStep(false);
               setLoanWhatsappUrl('');
               setLoanSuccessData(null);
@@ -1023,32 +1080,50 @@ const AddTransactionPage = () => {
                 <label htmlFor="beneficiaryName" className="block text-sm font-medium text-gray-700 mb-2">
                   {formData.category === 'loan' ? 'Bénéficiaire' : 'Prêteur'} *
                 </label>
-                <input
-                  type="text"
-                  id="beneficiaryName"
-                  list="known-beneficiaries"
-                  autoComplete="off"
-                  value={beneficiaryName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setBeneficiaryName(value);
-                    // Auto-populate description if empty
-                    if (!formData.description.trim() && value.trim()) {
-                      const autoDescription = formData.category === 'loan'
-                        ? `Prêt à ${value}`
-                        : `Prêt de ${value}`;
-                      setFormData(prev => ({ ...prev, description: autoDescription }));
-                    }
-                  }}
-                  placeholder={formData.category === 'loan' ? "Nom du bénéficiaire" : "Nom du prêteur"}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <datalist id="known-beneficiaries">
-                  {knownBeneficiaryNames.map(name => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="beneficiaryName"
+                    list="known-beneficiaries"
+                    autoComplete="off"
+                    value={beneficiaryName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setBeneficiaryName(value);
+                      // Auto-populate description if empty
+                      if (!formData.description.trim() && value.trim()) {
+                        const autoDescription = formData.category === 'loan'
+                          ? `Prêt à ${value}`
+                          : `Prêt de ${value}`;
+                        setFormData(prev => ({ ...prev, description: autoDescription }));
+                      }
+                    }}
+                    placeholder={formData.category === 'loan' ? "Nom du bénéficiaire" : "Nom du prêteur"}
+                    className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${supportsContactPicker ? 'pr-12' : ''}`}
+                    required
+                  />
+                  {supportsContactPicker && (
+                    <button
+                      type="button"
+                      onClick={handlePickContact}
+                      aria-label="Choisir dans le répertoire de contacts"
+                      title="Choisir dans le répertoire"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
+                    >
+                      <BookUser className="w-5 h-5" />
+                    </button>
+                  )}
+                  <datalist id="known-beneficiaries">
+                    {knownBeneficiaryNames.map(name => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                {supportsContactPicker && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Astuce&nbsp;: touchez l'icône&nbsp;📇 pour choisir un contact dans votre répertoire (le nom et le téléphone se remplissent automatiquement).
+                  </p>
+                )}
                 {knownBeneficiaryNames.length > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
                     Astuce&nbsp;: une liste de bénéficiaires déjà utilisés s'affine au fil de la saisie — sélectionnez un nom existant pour éviter les doublons.
@@ -1105,11 +1180,11 @@ const AddTransactionPage = () => {
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              {/* Téléphone (pour confirmation WhatsApp) */}
-              {formData.category === 'loan' && (
+              {/* Téléphone (emprunteur → confirmation WhatsApp / prêteur → à retrouver) */}
+              {(formData.category === 'loan' || formData.category === 'loan_received') && (
                 <div>
                   <label htmlFor="borrowerPhone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Téléphone de l'emprunteur (optionnel)
+                    {formData.category === 'loan' ? "Téléphone de l'emprunteur" : 'Téléphone du prêteur'} (optionnel)
                   </label>
                   <input
                     type="tel"
@@ -1119,7 +1194,11 @@ const AddTransactionPage = () => {
                     placeholder="Ex: 034 00 000 00"
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Permet d'envoyer un lien de confirmation via WhatsApp</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.category === 'loan'
+                      ? "Permet d'envoyer un lien de confirmation via WhatsApp"
+                      : 'Conservé dans la fiche du prêt pour retrouver le prêteur'}
+                  </p>
                 </div>
               )}
 
@@ -1237,6 +1316,46 @@ const AddTransactionPage = () => {
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
       />
+
+      {/* Fenêtre de choix du numéro (contact à plusieurs numéros) */}
+      {showPhoneChoice && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowPhoneChoice(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-xs p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Quel numéro&nbsp;?</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Ce contact a plusieurs numéros. Choisissez celui à utiliser.
+            </p>
+            <div className="space-y-2">
+              {phoneChoices.map((tel) => (
+                <button
+                  key={tel}
+                  type="button"
+                  onClick={() => {
+                    setBorrowerPhone(tel);
+                    setShowPhoneChoice(false);
+                  }}
+                  className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-blue-50 hover:border-blue-400 text-gray-800 transition-colors"
+                >
+                  {tel}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPhoneChoice(false)}
+              className="mt-3 w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de ravitaillement quand solde insuffisant */}
       {insufficientBalanceContext && (
