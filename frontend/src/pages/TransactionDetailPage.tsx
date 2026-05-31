@@ -439,8 +439,9 @@ const TransactionDetailPage = () => {
           nextDescription = editData.category === 'loan'
             ? `Prêt à ${beneficiaryName.trim()}`
             : `Prêt de ${beneficiaryName.trim()}`;
+          // Le taux n'est plus stocké en note (source de vérité = fiche du prêt,
+          // affichée "en direct" en % / jour). On conserve seulement la durée.
           const loanDetails: string[] = [];
-          if (interestRate.trim()) loanDetails.push(`Taux: ${interestRate.trim()}%`);
           if (durationMonths.trim()) loanDetails.push(`Durée: ${durationMonths.trim()} mois`);
           if (loanDetails.length > 0) nextNotes = loanDetails.join(' | ');
         } else if (isRepaymentCategory && selectedLoanId) {

@@ -1696,15 +1696,22 @@ const TransactionsPage = () => {
                             </div>
                             {/* Trio "en direct" identique à la page Prêts */}
                             {drawerLoan && (
-                              <LoanLiveTrio
-                                amountInitial={drawerLoan.amountInitial}
-                                interestRate={drawerLoan.interestRate}
-                                interestFrequency={drawerLoan.interestFrequency}
-                                dueDate={drawerLoan.dueDate}
-                                createdAt={drawerLoan.createdAt}
-                                currency={drawerLoan.currency || 'MGA'}
-                                repayments={(drawerLoan.repayments || []).map((r: any) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
-                              />
+                              <>
+                                <LoanLiveTrio
+                                  amountInitial={drawerLoan.amountInitial}
+                                  interestRate={drawerLoan.interestRate}
+                                  interestFrequency={drawerLoan.interestFrequency}
+                                  dueDate={drawerLoan.dueDate}
+                                  createdAt={drawerLoan.createdAt}
+                                  currency={drawerLoan.currency || 'MGA'}
+                                  repayments={(drawerLoan.repayments || []).map((r: any) => ({ amountPaid: r.amountPaid, paymentDate: r.paymentDate }))}
+                                />
+                                {drawerLoan.dueDate && (
+                                  <p className="text-[11px] text-gray-600 text-center mt-1">
+                                    Échéance : {new Date(drawerLoan.dueDate).toLocaleDateString('fr-FR')}
+                                  </p>
+                                )}
+                              </>
                             )}
                           </div>
                         )
@@ -1837,7 +1844,14 @@ const TransactionsPage = () => {
                   <div className="space-y-2 text-sm">
                     <div className="bg-white/80 rounded-lg p-2">
                       <p className="text-gray-500 text-xs">Notes</p>
-                      <p className="text-gray-800">{transaction.notes || 'Aucune note'}</p>
+                      <p className="text-gray-800">
+                        {/* Masque l'ancien segment "Taux: …" devenu trompeur (le vrai taux est dans le trio) */}
+                        {(transaction.notes || '')
+                          .split('|')
+                          .map(s => s.trim())
+                          .filter(s => s && !/^Taux\s*:/i.test(s))
+                          .join(' | ') || 'Aucune note'}
+                      </p>
                     </div>
 
                     {!isLoanCategory && (

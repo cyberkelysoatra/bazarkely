@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.16.17';
-export const APP_VERSION_NAME = 'Intérêts de prêt : trio "en direct" (Capital · Intérêts courus · Total dû) qui monte chaque seconde, identique sur Prêts et Transactions';
+export const APP_VERSION = '3.16.18';
+export const APP_VERSION_NAME = 'Prêts : note "Taux:" retirée (trompeuse, le vrai taux est dans le trio) + date d\'échéance affichée dans le détail Transactions';
 export const LAST_UPDATED = '2026-05-31';
 export const APP_BUILD_DATE = '2026-05-31';
 export const VERSION_HISTORY = [
+  {
+    version: '3.16.18',
+    date: '2026-05-31',
+    description: 'Nettoyage notes prêt + échéance. (1) La note texte "Taux: X%" (mémo figé écrit à la création/édition, devenu trompeur face au vrai taux journalier du trio) n\'est plus générée à l\'édition (TransactionDetailPage) et est masquée à l\'affichage des prêts existants (segment "Taux:" filtré dans les notes du tiroir Transactions). On conserve "Durée: X mois". (2) La date d\'échéance est désormais affichée sous le trio dans le détail d\'un prêt sur la page Transactions (était absente alors qu\'elle figure sur la page Prêts).',
+    changes: [
+      'TransactionDetailPage.tsx : suppression de la génération de la note "Taux: …%" (conserve "Durée: … mois")',
+      'TransactionsPage.tsx : filtre du segment "Taux:" à l\'affichage des notes + ligne "Échéance : JJ/MM/AAAA" sous le trio',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.16.17',
     date: '2026-05-31',
