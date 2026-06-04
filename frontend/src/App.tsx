@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -21,12 +21,16 @@ import './index.css';
 // Composants de base (à créer)
 import AppLayout from './components/Layout/AppLayout';
 import LoanConfirmPage from './pages/LoanConfirmPage';
+// Page mission PUBLIQUE du module gestion-eau (hors garde d'auth)
+const EauAccueilPage = React.lazy(() => import('./modules/gestion-eau/components/EauAccueilPage'));
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 import { ModuleSwitcherProvider } from './contexts/ModuleSwitcherContext';
 // Construction POC Context - Mounted globally so Header can access ConstructionContext
 import { ConstructionProvider } from './modules/construction-poc/context/ConstructionContext';
+// Gestion Eau Context - Mounted globally (rôles admin/releveur/client, offline-first)
+import { GestionEauProvider } from './modules/gestion-eau/context';
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -163,9 +167,20 @@ function App() {
             <ModuleSwitcherProvider>
               {/* ConstructionProvider mounted globally so Header (inside AppLayout) can access ConstructionContext */}
               <ConstructionProvider>
+              {/* GestionEauProvider mounted globally so routes/nav can access roles */}
+              <GestionEauProvider>
               <div className="min-h-screen bg-gray-50">
                 <Routes>
                   <Route path="/loan-confirm/:token/*" element={<LoanConfirmPage />} />
+                  {/* Page mission publique : accessible sans authentification */}
+                  <Route
+                    path="/gestion-eau/accueil"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen" />}>
+                        <EauAccueilPage />
+                      </Suspense>
+                    }
+                  />
                   <Route path="*" element={<AppLayout />} />
                 </Routes>
                 <IOSInstallPrompt />
@@ -236,6 +251,7 @@ function App() {
               </div>
             )}
               </div>
+              </GestionEauProvider>
             </ConstructionProvider>
           </ModuleSwitcherProvider>
         </BrowserRouter>

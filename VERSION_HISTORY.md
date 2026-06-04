@@ -4,6 +4,31 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Versions 3.16.8 → 3.16.12 - 2026-05-31 (Session S77 — défilement & positionnement à l'ouverture)
+
+### 🎯 Défilement fluide façon iOS + ouverture homogène de toutes les pages
+
+- **3.16.8 — Recalage fiable au clic sur une carte de transaction (pages/TransactionsPage.tsx)** — `toggleTransactionDrawer` mesurait la position cible une seule fois 50ms après le clic puis lançait un défilement natif vers cette cible figée ; toute variation de hauteur du dessus de l'écran pendant l'animation (message de l'en-tête mobile, barre d'adresse mobile, détail qui finit de se déplier) invalidait la cible → carte parfois trop haut. Fix : mesure après stabilisation (double `requestAnimationFrame`) + passe de correction à 450ms (seuil 2px).
+- **3.16.9 — Mouvement fluide façon iOS** — Remplacement des deux défilements natifs successifs par une seule animation maison (`requestAnimationFrame` + courbe `easeInOutCubic`, 500ms) qui recalcule la cible à chaque image (auto-correction continue, fenêtre de grâce 250ms). Court-circuit si `prefers-reduced-motion` (scroll instantané) ou si déjà aligné (<2px).
+- **3.16.10 — Page Détail/Modifier transaction (pages/TransactionDetailPage.tsx)** — Bandeau titre séparé de l'en-tête par 80px (`pt-20` hérité d'une époque "header fixed"). L'en-tête étant désormais `sticky` (dans le flux), `pt-20`→`pt-2` (8px).
+- **3.16.11 — Généralisation à toutes les pages** — Nouveau composant `components/Layout/ScrollToTop.tsx` : remonte la fenêtre en haut à chaque ouverture de page (navigation PUSH), ignore POP (retour/avance navigateur) et `location.state.scrollToTransactionId` (préserve le défilement-vers-carte au retour sur /transactions). `AppLayout.tsx` : montage de `<ScrollToTop />` + `pt-2` sur `<main>` → écart de 8px identique sous l'en-tête pour toutes les pages. `pt-2` local de TransactionDetailPage retiré (sinon doublon 16px).
+- **3.16.12 — Harmonisation des pages à structure différente** — Pages à carte titre flottante (Settings, AppVersion, NotificationPreferences, Quiz, QuizResults, PWAInstructions, ProfileCompletion) : `py-8` (32px haut) → `pb-8` (l'écart vient de `<main>`). Pages à bandeau coloré pleine largeur (Recommendations, BudgetReview) : `-mt-2` sur le bandeau pour rester collé sous l'en-tête malgré le `pt-2` global.
+- **Convention établie** — En-tête `sticky` ; l'écart sous l'en-tête est géré **globalement** (`<main> pt-2` + `<ScrollToTop />`). Ne jamais ajouter de marge haute par page (s'additionne aux 8px). Bandeaux pleine largeur = `-mt-2`.
+- **Validation** — `npm run build` OK à chaque version, push sur `main`, tout validé en production par JOEL.
+
+---
+
+## Version 3.16.7 - 2026-05-31 (Session S76 — détail transaction côte à côte)
+
+### 🎨 « Partage famille » et « Remboursement » sur une même ligne
+
+- **UI (pages/TransactionsPage.tsx, grille de détail déplié)** — Pour une opération simple (non prêt), les blocs « Partage famille » et « Remboursement » étaient empilés verticalement (`space-y-2`). Ils sont désormais regroupés dans un conteneur `flex gap-2`, chacun en `flex-1` (deux colonnes égales sur une même ligne). La condition du bloc « Remboursement » passe de `{isShared && !isLoanCategory && ...}` à `{isShared && ...}` imbriqué dans le bloc parent `{!isLoanCategory && ...}`. Si l'opération n'est pas partagée, « Partage famille » occupe seul la pleine largeur. Aucun impact sur les opérations de prêt (`isLoanCategory`), qui conservent leur bloc dédié inchangé.
+- **Validation** — `npm run build` OK (exit 0), `tsc` OK (exit 0), push `f00043e..7b41465 main -> main`, affichage validé par JOEL en production.
+
+> Note : les entrées 3.16.0 → 3.16.6 ne figurent pas dans ce fichier (non mis à jour depuis S72) ; l'historique complet et à jour se trouve dans `frontend/src/constants/appVersion.ts`.
+
+---
+
 ## Version 3.15.0 - 2026-05-17 (Session S72 — Family Sharing offline-first phase 1)
 
 ### 👨‍👩‍👧 Module Famille opérationnel hors connexion + BudgetsPage offline-first

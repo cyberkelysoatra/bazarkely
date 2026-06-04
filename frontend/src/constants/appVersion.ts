@@ -1,8 +1,35 @@
-export const APP_VERSION = '3.16.26';
-export const APP_VERSION_NAME = 'Tiroir de détail d\'un prêt UNIFIÉ : même panneau (Montant · trio · jauge échéance · Notes · Infos · Historique) sur les pages Prêts et Transactions';
-export const LAST_UPDATED = '2026-05-31';
-export const APP_BUILD_DATE = '2026-05-31';
+export const APP_VERSION = '3.18.0';
+export const APP_VERSION_NAME = 'Gestion Eau Phase 2 — Facturation & Clients : factures numérotées par période (conso × tarif en Ariary, statut payé/impayé, relances, PDF par compteur + CSV global), comptes clients avec code d\'enrôlement, page mission publique (install PWA + Google), demandes d\'accès, espace client (mes factures), config désormais obligatoire (plus de seuils par défaut)';
+export const LAST_UPDATED = '2026-06-04';
+export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.18.0',
+    date: '2026-06-04',
+    description: 'PHASE 2 du module gestion-eau : FACTURATION & CLIENTS. Facturation (admin /gestion-eau/facturation) : choix d\'une période → une facture numérotée par compteur actif (indexDébut = dernier relevé ≤ début, indexFin = dernier relevé ≤ fin, conso = indexFin − indexDébut, montant = conso × tarifM3 en Ariary/MGA) ; numérotation séquentielle via eau_config.numero_facture_seq (F-000001…), statut payé/impayé modifiable, date d\'échéance, relances ; export PDF par facture (en-tête copro + logo, jspdf) + export CSV global (relevés + bilans + factures) ; génération idempotente (skip si déjà facturé sur la période exacte ou aucun relevé exploitable). CONFIG OBLIGATOIRE (décision JOEL) : suppression de TOUS les seuils par défaut — la facturation ET le calcul d\'anomalies sont bloqués (« Configurer d\'abord ») tant que la config n\'est pas complète (dimensions bassin, tarifM3, seuilPct, seuilM3, facteur aberrant, période). Comptes clients (admin /gestion-eau/utilisateurs) : désignation immédiate Administrateur/Releveur (eau_roles), création d\'un compte client (nom, contact, compteurs visibles) → code d\'enrôlement unique généré/affiché. Page mission PUBLIQUE /gestion-eau/accueil (hors garde d\'auth) : présentation, installation PWA (beforeinstallprompt Android/Chrome + instructions iOS), « J\'ai un code » (Google + code → liaison compte client, user_id + actif=true) et « Demander un accès » (Google → eau_demandes_acces en_attente) ; intention mémorisée avant la redirection Google puis traitée au retour par GestionEauProvider. Demandes d\'accès (admin /gestion-eau/demandes) : valider (rôles + compteurs visibles) ou refuser. Espace client (/gestion-eau/client) : conso + factures téléchargeables des SEULS compteurs assignés. Offline-first + sync idempotente inchangées. +19 tests (facturation/montants, numérotation, config complète, filtrage compteurs client, codes d\'enrôlement, CSV) → 40 tests module.',
+    changes: [
+      'Nouveaux services : eauFactureService, eauCompteClientService, eauDemandeService, eauEnrollmentService (+ fetchUserDirectory dans eauRoleService)',
+      'Nouveaux écrans : EauFacturationPage, EauUtilisateursPage, EauDemandesPage, EauClientPage, EauAccueilPage (publique)',
+      'Nouveaux utils : facture.ts (calcul ligne + numérotation + complétude config + filtrage), codes.ts, csv.ts, pdf.ts (jspdf), pwa.ts',
+      'eauConfigService : suppression des seuils par défaut (anomalies bloquées tant que config incomplète) + isConfigComplete/configMissingFields',
+      'PARTAGÉ App.tsx : route publique /gestion-eau/accueil (hors AppLayout/auth)',
+      'navConfig + GestionEauRoutes : routes facturation/utilisateurs/demandes/client + GestionEauContext traite l\'enrôlement au retour Google',
+    ],
+    type: 'minor' as const
+  },
+  {
+    version: '3.17.0',
+    date: '2026-06-04',
+    description: 'PHASE 1 du module gestion-eau (copropriété : distribution de l\'eau d\'un bassin ~280 m³ vers villas/golf/communs). Socle complet : intégration au Module Switcher (détection étendue /gestion-eau sans casser construction/bazarkely), rôles cumulables admin/releveur/client (bootstrap « premier admin = propriétaire » dans eau_roles) + gardes de route (GestionEauRoute / EauRoleProtectedRoute), navigation interne filtrée par rôle. Écrans : Tableau de bord (stock + % remplissage, entrées/conso du jour, dernier bilan, NRW), Configuration (admin : dimensions bassin, tarif, seuils), Saisie bassin (entrée m³ ; niveau cm → m³ = L×l×(h/100), bloqué si bassin non configuré, déclenche un bilan), Saisie compteur (recherche/liste par zone, conso = index − précédent, rupture si index<, détection aberrant confirmable), CRUD compteurs, Anomalies (liste des bilans + filtre + marquer traitée). Moteur de bilan « par relevé en continu » : stockAttendu = stockPrev + entrées − conso ; anomalie si |écart|>seuilM3 OU écart%>seuilPct ; NRW = (entrées−conso)/entrées. Offline-first : base Dexie DÉDIÉE GestionEauDB (15 stores eau_*, additif — zéro migration sur BazarKELYDB), sync Supabase idempotente (upsert id client, onConflict, jamais getUser()). 21 tests unitaires (conversion/bilan/conso/NRW/aberrant/filtrage rôles).',
+    changes: [
+      'Nouveau module frontend/src/modules/gestion-eau/ (types, db, services, context, components, utils, tests)',
+      'PARTAGÉ App.tsx : montage global de GestionEauProvider',
+      'PARTAGÉ components/Layout/AppLayout.tsx : route /gestion-eau/* (GestionEauRoute + GestionEauRoutes)',
+      'PARTAGÉ contexts/ModuleSwitcherContext.tsx : module gestion-eau dans DEFAULT_MODULES + détection étendue (moduleIdForPath)',
+      'Nouveau SUPABASE-SQL.md (DDL de référence des 15 tables eau_*) + FONCTIONNEMENT-MODULES.md mis à jour',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.16.26',
     date: '2026-05-31',

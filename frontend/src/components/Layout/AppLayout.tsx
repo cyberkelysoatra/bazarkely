@@ -54,6 +54,10 @@ import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissio
 // Family Context
 import { FamilyProvider } from '../../contexts/FamilyContext'
 
+// Gestion Eau module (offline-first) — garde d'accès + routes internes
+import GestionEauRoute from '../../modules/gestion-eau/components/GestionEauRoute'
+const GestionEauRoutes = React.lazy(() => import('../../modules/gestion-eau/components/GestionEauRoutes'))
+
 // Construction POC Components - Lazy Loading for Code Splitting
 const POCDashboard = React.lazy(() => import('../../modules/construction-poc/components/POCDashboard'))
 const ProductCatalog = React.lazy(() => import('../../modules/construction-poc/components/ProductCatalog'))
@@ -218,6 +222,16 @@ const AppLayout = () => {
             
             {/* Family Routes - Wrapped with FamilyProvider */}
             <Route path="/family/*" element={<FamilyRoutes />} />
+
+            {/* Gestion Eau Routes - GestionEauProvider monté globalement dans App.tsx */}
+            <Route
+              path="/gestion-eau/*"
+              element={
+                <GestionEauRoute>
+                  <GestionEauRoutes />
+                </GestionEauRoute>
+              }
+            />
             
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

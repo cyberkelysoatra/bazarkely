@@ -243,6 +243,83 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 
 ---
 
+## MODULE 5 — GESTION EAU (copropriété) — Phases 1 & 2
+
+### 📍 Pages concernées (préfixe `/gestion-eau`)
+- `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
+- `/gestion-eau` — **Tableau de bord** (tous les rôles du module)
+- `/gestion-eau/config` — **Configuration** (admin)
+- `/gestion-eau/saisie-bassin` — **Entrées + niveau du bassin** (releveur/admin)
+- `/gestion-eau/saisie-compteur` — **Relevés de compteur** (releveur/admin)
+- `/gestion-eau/anomalies` — **Historique des bilans** (releveur/admin)
+- `/gestion-eau/facturation` — **Facturation par période** (admin) — Phase 2
+- `/gestion-eau/compteurs` — **CRUD compteurs** (admin)
+- `/gestion-eau/utilisateurs` — **Rôles + comptes clients (code d'enrôlement)** (admin) — Phase 2
+- `/gestion-eau/demandes` — **Demandes d'accès à valider/refuser** (admin) — Phase 2
+- `/gestion-eau/client` — **Espace client** : ma conso + mes factures PDF (client) — Phase 2
+
+### 🧾 Facturation (Phase 2, admin)
+- Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
+  `indexFin` = dernier relevé ≤ fin, `conso = indexFin − indexDébut`, `montant = conso × tarifM3` (Ariary/MGA).
+- **Facture numérotée** via la séquence `eau_config.numero_facture_seq` (`F-000001`, `F-000002`…),
+  **statut payé/impayé** modifiable, **date d'échéance** (fin de période + 15 j par défaut), **relances** (`relance_count`).
+- **Bloquée tant que la config n'est pas complète** (« Configurer d'abord ») — décision JOEL : **plus aucun seuil par défaut**.
+- **Export PDF** par facture (en-tête copro + logo, période, conso, tarif, montant, statut) ; **export CSV global** (relevés + bilans + factures).
+- Génération **idempotente** : un compteur déjà facturé sur la même période exacte est ignoré ; un compteur sans relevé exploitable n'est pas facturé.
+
+### 🪪 Comptes clients & enrôlement (Phase 2)
+- L'admin crée un **compte client** (nom, contact, **compteurs visibles**) → un **code d'enrôlement** unique est généré et affiché (à transmettre).
+- Le client, sur `/gestion-eau/accueil`, fait **« J'ai un code »** → connexion **Google** + saisie du code → le compte est **lié** (`user_id`) et **activé** (`actif=true`) ; le rôle `client` devient effectif.
+- Sans code : **« Demander un accès »** → Google → crée une `eau_demandes_acces` `en_attente` ; l'admin la **valide** (rôles + compteurs visibles) ou la **refuse** depuis `/gestion-eau/demandes`.
+- L'enrôlement est mémorisé avant la redirection Google (localStorage) puis **traité au retour** par `GestionEauProvider` (quel que soit l'écran d'atterrissage).
+
+### 🎯 Objectif
+Une copropriété distribue l'eau d'un **bassin (~280 m³)** vers villas, golf et espaces
+communs. Des releveurs font **plusieurs relevés/jour**. Le socle permet de saisir les
+entrées d'eau et le niveau du bassin, les index des compteurs, et de **détecter les
+anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
+
+### 👥 Rôles (cumulables — un même utilisateur peut être plusieurs à la fois)
+- **admin** : tout (config, facturation, CRUD compteurs, comptes/rôles, demandes, saisies, anomalies, tableau de bord)
+- **releveur** : saisies bassin + compteur, anomalies, tableau de bord
+- **client** : tableau de bord + **espace client** (ma conso + mes factures de mes seuls compteurs assignés). Rôle dérivé d'un `eau_comptes_client` lié au `user_id`.
+- **Premier admin = propriétaire** : le tout premier utilisateur qui ouvre le module
+  (quand `eau_roles` ne contient aucun admin) devient automatiquement admin.
+- L'accès au module = posséder au moins un rôle. Sinon redirection vers `/dashboard`.
+- La navigation interne est **filtrée par rôle** (un releveur ne voit pas Config/Compteurs).
+
+### 🧮 Conversions & moteur de bilan
+- Volume max bassin = `L × l × hauteurMax` ; **L=10, l=7, h=4 → 280 m³**.
+- Niveau : `volumeM3 = L × l × (hauteurCm / 100)`. **Bloqué si le bassin n'est pas configuré.**
+- % remplissage = `stockMesuré / volumeMax` (borné 0–100 %).
+- **Bilan « par relevé en continu »** : déclenché à CHAQUE relevé de niveau `T`.
+  - `T_prev` = relevé de niveau précédent ; `stockPrev` = son volume (aucun → pas de bilan, simple référence).
+  - `entréesM3` = Σ entrées dans `]T_prev, T]`.
+  - Par compteur actif : `conso = index(dernier ≤ T) − index(dernier ≤ T_prev)` (0 si rupture dans l'intervalle ou pas de baseline).
+  - `stockAttendu = stockPrev + entréesM3 − consoM3` ; `écartM3 = stockMesuré − stockAttendu`.
+  - `écart% = |écartM3| / max(entréesM3, consoM3, 1) × 100`.
+  - **Anomalie** si `|écartM3| > seuilM3` **OU** `écart% > seuilPct`.
+- **NRW (période)** : `pertes = entréesΣ − consoΣ` ; `NRW% = pertes / entréesΣ × 100`.
+
+### 🔢 Saisie compteur — règles
+- Conso instantanée = nouvel index − dernier index.
+- Si **nouvel index < dernier** → confirmation + `rupture_index=true` (conso intervalle = 0, repart de zéro).
+- **Relevé aberrant** : si conso > moyenne historique × `seuilAberrantFacteur` (ou anormalement basse)
+  → confirmation requise + `aberrant_confirme=true`.
+
+### 🗄️ Données (offline-first)
+- **Base Dexie DÉDIÉE `GestionEauDB`** (isolée de `BazarKELYDB` — aucune migration sur la base partagée).
+- 15 stores `eau_*` (noms/colonnes **identiques** au schéma Supabase, cf. `SUPABASE-SQL.md`).
+- Sync Supabase **idempotente** : écriture Dexie d'abord (`_dirty`), push best-effort en
+  `upsert(onConflict: id)` avec **id client** (jamais de doublon, même après timeout). Jamais `getUser()`.
+- ⚠️ Le SQL `SUPABASE-SQL.md` doit être exécuté UNE fois dans Supabase pour que la sync fonctionne
+  (le socle marche en local sans, mais ne se synchronisera pas tant que les tables n'existent pas).
+
+### ❌ Hors périmètre Phases 1 & 2 (phases suivantes)
+- QR/scan terrain & carte/géoloc (Phase 3), graphiques d'historique client & pilotage (Phase 4), alertes push, place de marché.
+
+---
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**
@@ -260,5 +337,5 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 
 ---
 
-*Dernière mise à jour : 2026-02-17 — Session S53*
+*Dernière mise à jour : 2026-06-04 — Module gestion-eau Phase 2 : facturation + clients (v3.18.0)*
 *Validé par : Joël (réponses aux questions interactives)*

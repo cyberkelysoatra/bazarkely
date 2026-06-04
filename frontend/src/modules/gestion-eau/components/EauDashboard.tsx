@@ -1,0 +1,105 @@
+/** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW. */
+import { useEffect, useState } from 'react';
+import EauPageShell from './EauPageShell';
+import { getDashboardData, type DashboardData } from '../services/eauBilanService';
+import { fmtM3, fmtPct } from '../utils/format';
+import { fmtDate } from '../utils/format';
+
+function Card({ title, children, tone }: { title: string; children: React.ReactNode; tone?: 'ok' | 'warn' }) {
+  const ring =
+    tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white';
+  return (
+    <div className={`rounded-xl border p-4 shadow-soft ${ring}`}>
+      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</div>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
+
+export default function EauDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const d = await getDashboardData();
+      if (alive) {
+        setData(d);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return (
+    <EauPageShell title="Gestion Eau" subtitle="Tableau de bord du bassin et des compteurs">
+      {loading ? (
+        <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Card title="Stock actuel">
+            <div className="text-2xl font-bold text-sky-700">{fmtM3(data?.stockActuelM3 ?? null)}</div>
+            <div className="text-sm text-gray-500">
+              Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
+              {data?.volumeMaxM3 != null && (
+                <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>
+              )}
+            </div>
+          </Card>
+
+          <Card title="Entrées du jour">
+            <div className="text-2xl font-bold text-emerald-700">{fmtM3(data?.entreesJourM3 ?? 0)}</div>
+          </Card>
+
+          <Card title="Conso du jour">
+            <div className="text-2xl font-bold text-indigo-700">{fmtM3(data?.consoJourM3 ?? 0)}</div>
+          </Card>
+
+          <Card title="NRW (période)">
+            <div className="text-2xl font-bold text-rose-700">
+              {data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
+            </div>
+            <div className="text-sm text-gray-500">
+              Pertes : {data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}
+            </div>
+          </Card>
+
+          <div className="col-span-2">
+            <Card
+              title="Dernier bilan"
+              tone={data?.dernierBilan ? (data.dernierBilan.anomalie ? 'warn' : 'ok') : undefined}
+            >
+              {data?.dernierBilan ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">{fmtDate(data.dernierBilan.timestamp)}</span>
+                    <span
+                      className={`text-sm font-semibold ${
+                        data.dernierBilan.anomalie ? 'text-amber-700' : 'text-emerald-700'
+                      }`}
+                    >
+                      {data.dernierBilan.anomalie ? '⚠️ Anomalie' : '✅ OK'}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Écart : {fmtM3(data.dernierBilan.ecart_m3)} ({fmtPct(data.dernierBilan.ecart_pct)})
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Attendu {fmtM3(data.dernierBilan.stock_attendu)} · Mesuré {fmtM3(data.dernierBilan.stock_mesure)}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-400">
+                  Aucun bilan pour l'instant. Saisissez deux relevés de niveau pour générer un bilan.
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
+    </EauPageShell>
+  );
+}

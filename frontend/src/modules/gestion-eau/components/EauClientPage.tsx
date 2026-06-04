@@ -1,0 +1,144 @@
+/** Espace client /gestion-eau/client : conso + factures téléchargeables de SES
+ *  seuls compteurs assignés (liste + montants en Ariary). Graphique → phase 4. */
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import EauPageShell from './EauPageShell';
+import { useGestionEau } from '../context/GestionEauContext';
+import { getCompteClientForUser } from '../services/eauCompteClientService';
+import { getFacturesForCompteurs } from '../services/eauFactureService';
+import { listCompteurs } from '../services/eauCompteurService';
+import { getDernierReleveCompteur } from '../services/eauReleveService';
+import { getConfig } from '../services/eauConfigService';
+import { downloadFacturePdf } from '../utils/pdf';
+import { fmtMontant, fmtDate } from '../utils/format';
+import type { FactureLocal, CompteurLocal, ConfigLocal } from '../types/gestionEau';
+
+interface CompteurVue {
+  compteur: CompteurLocal;
+  dernierIndex: number | null;
+  dernierReleveDate: string | null;
+}
+
+export default function EauClientPage() {
+  const { userId } = useGestionEau();
+  const [loading, setLoading] = useState(true);
+  const [vues, setVues] = useState<CompteurVue[]>([]);
+  const [factures, setFactures] = useState<FactureLocal[]>([]);
+  const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
+  const [config, setConfig] = useState<ConfigLocal | null>(null);
+  const [aucunCompteur, setAucunCompteur] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      const compte = await getCompteClientForUser(userId);
+      const ids = compte?.compteur_ids ?? [];
+      setConfig(await getConfig());
+
+      if (!compte || ids.length === 0) {
+        setAucunCompteur(true);
+        setLoading(false);
+        return;
+      }
+
+      const allCompteurs = await listCompteurs();
+      const mine = allCompteurs.filter((c) => ids.includes(c.id));
+      setCompteurs(mine);
+
+      const vuesData: CompteurVue[] = [];
+      for (const c of mine) {
+        const dernier = await getDernierReleveCompteur(c.id);
+        vuesData.push({
+          compteur: c,
+          dernierIndex: dernier?.index ?? null,
+          dernierReleveDate: dernier?.timestamp ?? null,
+        });
+      }
+      setVues(vuesData);
+      setFactures(await getFacturesForCompteurs(ids));
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  const compteurNom = (id: string | null) =>
+    (id && compteurs.find((c) => c.id === id)?.nom) || id || '—';
+
+  const exportPdf = async (f: FactureLocal) => {
+    try {
+      await downloadFacturePdf({
+        facture: f,
+        config,
+        compteur: compteurs.find((c) => c.id === f.compteur_id) ?? null,
+      });
+    } catch {
+      toast.error('Échec de la génération PDF');
+    }
+  };
+
+  return (
+    <EauPageShell title="Mon espace" subtitle="Ma consommation et mes factures">
+      {loading ? (
+        <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
+      ) : aucunCompteur ? (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+          Aucun compteur associé à votre compte. Contactez l’administrateur.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Compteurs */}
+          <div>
+            <h2 className="font-semibold text-gray-800 mb-2">Mes compteurs</h2>
+            <div className="grid grid-cols-1 gap-2">
+              {vues.map((v) => (
+                <div key={v.compteur.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                  <div className="font-medium text-gray-900">{v.compteur.nom}</div>
+                  <div className="text-sm text-gray-600">
+                    Dernier index : <strong>{v.dernierIndex ?? '—'}</strong>
+                    {v.dernierReleveDate && (
+                      <span className="text-xs text-gray-400"> · relevé du {fmtDate(v.dernierReleveDate)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Factures */}
+          <div>
+            <h2 className="font-semibold text-gray-800 mb-2">Mes factures ({factures.length})</h2>
+            {factures.length === 0 ? (
+              <div className="text-gray-400 text-sm py-6 text-center">Aucune facture pour l’instant.</div>
+            ) : (
+              <div className="space-y-2">
+                {factures.map((f) => (
+                  <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{f.numero}</div>
+                      <div className="text-xs text-gray-500">
+                        {compteurNom(f.compteur_id)} · {fmtDate(f.periode_start)} → {fmtDate(f.periode_end)}
+                      </div>
+                      <div className="text-sm mt-0.5">
+                        <strong>{fmtMontant(f.montant, f.devise)}</strong>
+                        <span className={`ml-2 text-xs font-semibold ${
+                          f.statut === 'paye' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}>
+                          {f.statut === 'paye' ? 'Payée' : 'Impayée'}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={() => exportPdf(f)} className="text-sky-600 hover:underline text-sm flex-shrink-0">
+                      📄 PDF
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </EauPageShell>
+  );
+}

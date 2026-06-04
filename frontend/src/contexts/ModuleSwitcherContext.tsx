@@ -52,8 +52,29 @@ const DEFAULT_MODULES: Module[] = [
     name: 'Construction POC',
     icon: '🏗️',
     path: '/construction/dashboard'
+  },
+  {
+    id: 'gestion-eau',
+    name: 'Gestion Eau',
+    icon: '💧',
+    path: '/gestion-eau'
   }
 ];
+
+/**
+ * Préfixes de route propres à chaque module (hors bazarkely qui est le défaut).
+ * Centralise la détection pour determineActiveModule ET la restauration localStorage.
+ */
+const MODULE_PREFIXES: { id: string; prefix: string }[] = [
+  { id: 'construction', prefix: '/construction' },
+  { id: 'gestion-eau', prefix: '/gestion-eau' }
+];
+
+/** Retourne l'id du module correspondant à un chemin (défaut: 'bazarkely'). */
+function moduleIdForPath(path: string): string {
+  const match = MODULE_PREFIXES.find(m => path.startsWith(m.prefix));
+  return match ? match.id : 'bazarkely';
+}
 
 /**
  * Création du contexte
@@ -84,14 +105,10 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
    */
   const determineActiveModule = useCallback((): Module | null => {
     const currentPath = location.pathname;
-    
-    // Vérifier si on est dans le module Construction
-    if (currentPath.startsWith('/construction')) {
-      return availableModules.find(m => m.id === 'construction') || null;
-    }
-    
-    // Sinon, on est dans BazarKELY
-    return availableModules.find(m => m.id === 'bazarkely') || null;
+
+    // Détection étendue : construction, gestion-eau, sinon bazarkely (défaut)
+    const moduleId = moduleIdForPath(currentPath);
+    return availableModules.find(m => m.id === moduleId) || null;
   }, [availableModules, location.pathname]);
 
   /**
@@ -128,14 +145,15 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
       const savedModule = loadSavedModule();
       
       if (savedModule) {
-        // Vérifier si on est déjà dans le module sauvegardé
-        const isInSavedModule = savedModule.id === 'construction' 
-          ? currentPath.startsWith('/construction')
-          : !currentPath.startsWith('/construction');
-        
-        // Si on n'est pas dans le module sauvegardé et on est sur une route par défaut, naviguer
-        const isDefaultRoute = currentPath === '/dashboard' || currentPath === '/construction/dashboard';
-        
+        // Vérifier si on est déjà dans le module sauvegardé (détection étendue)
+        const isInSavedModule = moduleIdForPath(currentPath) === savedModule.id;
+
+        // Si on n'est pas dans le module sauvegardé et on est sur une route d'atterrissage, naviguer
+        const isDefaultRoute =
+          currentPath === '/dashboard' ||
+          currentPath === '/construction/dashboard' ||
+          currentPath === '/gestion-eau';
+
         if (!isInSavedModule && isDefaultRoute) {
           // Naviguer vers le module sauvegardé
           navigate(savedModule.path);

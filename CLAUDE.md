@@ -8,6 +8,24 @@
 **Production :** `https://1sakely.org` (Netlify, auto-deploy depuis GitHub `main`)  
 **Déploiement :** `DEPLOYER.ps1` → TypeScript check → build → git commit → push
 
+> 📌 **À CONSULTER À CHAQUE SESSION → [`PROCEDURES-OUTILS.md`](PROCEDURES-OUTILS.md)**
+> Procédures opératoires + pièges outillage (navigateur/Supabase/PowerShell) avec leurs
+> résolutions. **Tout nouveau point bloquant/ralentissant résolu doit y être consigné** (pas
+> ici — ce fichier reste stable). Inclut notamment la **procédure standard d'exécution SQL Supabase**.
+
+---
+
+## RÈGLE #0ter — SQL SUPABASE PRODUIT ET EXÉCUTÉ PAR CLAUDE (via le navigateur)
+
+**JOEL ne fournit PAS les requêtes SQL : c'est à Claude de les PRODUIRE** (concevoir le DDL/les
+requêtes à partir des specs, prompts et schéma du projet ; s'il existe un SQL/schéma de référence
+— ex. `SUPABASE-SQL.md` — s'y aligner exactement), **PUIS de les EXÉCUTER lui-même** en pilotant le
+navigateur de JOEL (outils « Claude in Chrome »), **PUIS de vérifier le résultat via l'API REST**
+(source de vérité) — JOEL n'a rien à copier-coller ni à lancer.
+Procédure détaillée + pièges (dont le crash Chrome Translate « removeChild », cosmétique) :
+voir **[`PROCEDURES-OUTILS.md`](PROCEDURES-OUTILS.md)**. Rappels clés : SQL **idempotent**,
+re-vérifier après (un crash UI ≠ échec serveur), ne JAMAIS moissonner de token de session.
+
 ---
 
 ## RÈGLE #0 — LANGUE
