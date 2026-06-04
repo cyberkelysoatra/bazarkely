@@ -59,11 +59,31 @@ export default {
           700: '#b45309',
           800: '#92400e',
           900: '#78350f'
+        },
+        // AHUVI Eau — palette du module gestion-eau UNIQUEMENT (header + nav en mode eau).
+        // Vert forêt / olive + accent or. N'affecte ni bazarkely (violet) ni construction.
+        ahuvi: {
+          forest: '#364E30',
+          olive: '#4C6D40',
+          gold: '#9D9B4B',
+          50: '#f4f6f2',
+          100: '#e6ebe1',
+          200: '#cdd7c4',
+          300: '#a9bb9b',
+          400: '#84996f',
+          500: '#4C6D40',
+          600: '#3f5b36',
+          700: '#364E30',
+          800: '#2a3c26',
+          900: '#22301f'
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif']
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        // AHUVI Eau : titres Playfair Display, texte Poppins (chargés via index.css).
+        'ahuvi-display': ['"Playfair Display"', 'Georgia', 'serif'],
+        'ahuvi-body': ['Poppins', 'Inter', 'system-ui', 'sans-serif']
       },
       boxShadow: {
         'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',

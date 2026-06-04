@@ -1,7 +1,10 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
+import { GestionEauContext } from '../../modules/gestion-eau/context';
+import { GESTION_EAU_NAV_ITEMS } from '../../constants';
+import HeaderEauActions from './header/HeaderEauActions';
 import apiService from '../../services/apiService';
 import budgetService from '../../services/budgetService';
 import adminService from '../../services/adminService';
@@ -42,7 +45,23 @@ const Header = () => {
   const isConstructionModule = location.pathname.includes('/construction')
     || activeModule?.id === 'construction'
     || activeModule?.id === 'construction-poc';
-  
+
+  // Détection module Gestion Eau (AHUVI) — pathname prioritaire (évite la race au 1er rendu).
+  const isEauModule = location.pathname.startsWith('/gestion-eau')
+    || activeModule?.id === 'gestion-eau';
+
+  // Rôles eau (cumulables) pour filtrer la nav desktop du module. useContext direct = sûr.
+  const eauContextValue = useContext(GestionEauContext);
+  const eauRoles = eauContextValue?.roles ?? null;
+
+  // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
+  const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt,
+  };
+  const eauNavItems = GESTION_EAU_NAV_ITEMS.filter(
+    (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
+  ).slice(0, 6);
+
   
   // Get Construction context - use useConstruction() hook (same pattern as PurchaseOrderForm.tsx)
   // Note: This will throw if used outside ConstructionProvider, but Header is always within Provider
@@ -312,9 +331,9 @@ const Header = () => {
   const [hasBudgets, setHasBudgets] = useState(false);
   
   useEffect(() => {
-    // Skip budget check in Construction module (optimization)
-    if (isConstructionModule) return;
-    
+    // Skip budget check in Construction & Gestion Eau modules (optimization)
+    if (isConstructionModule || isEauModule) return;
+
     const checkUserBudgets = async () => {
       if (!user?.id) {
         setHasBudgets(false);
@@ -331,11 +350,11 @@ const Header = () => {
     };
     
     checkUserBudgets();
-  }, [user?.id, isConstructionModule]);
+  }, [user?.id, isConstructionModule, isEauModule]);
 
   // Early return: Skip banner message generation in Construction module for performance optimization
   // Construction finale du tableau messages avec filtrage des undefined
-  const messages: InteractiveMessage[] = isConstructionModule ? [] : [
+  const messages: InteractiveMessage[] = (isConstructionModule || isEauModule) ? [] : [
     ...baseMessages,
     ...(hasCompletedPriorityQuestions ? [] : [priorityQuestionMessage]),
     // Only show quiz message if not all financial questions are completed
@@ -609,7 +628,13 @@ const Header = () => {
   }, [isRoleDropdownOpen]);
 
   return (
-    <header className="backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-50 overscroll-none">
+    <header
+      className={
+        isEauModule
+          ? 'backdrop-blur-md bg-gradient-to-r from-ahuvi-forest/95 to-ahuvi-olive/90 border-b border-ahuvi-gold/40 shadow-lg shadow-ahuvi-forest/20 sticky top-0 z-50 overscroll-none'
+          : 'backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-50 overscroll-none'
+      }
+    >
       <div className="px-4 py-4 md:px-8 lg:px-12 xl:max-w-7xl xl:mx-auto">
         {/* FIX: Conditional flex layout - justify-between for both, but ml-auto on Role Badge in Construction for right alignment */}
         <div className="flex items-center justify-between">
@@ -650,12 +675,26 @@ const Header = () => {
               </div>
             </button>
             <div>
-              {/* FIX: Title changed from "BazarKELY Construction" to "1saKELY" in Construction module */}
-              <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                {isConstructionModule ? '1saKELY' : 'BazarKELY'}
+              {/* Titre par module : AHUVI Eau (vert/or, Playfair) / 1saKELY / BazarKELY */}
+              <h1
+                className={
+                  isEauModule
+                    ? 'text-3xl font-bold text-white drop-shadow-lg font-ahuvi-display'
+                    : 'text-3xl font-bold text-white drop-shadow-lg'
+                }
+              >
+                {isEauModule ? 'AHUVI Eau' : isConstructionModule ? '1saKELY' : 'BazarKELY'}
               </h1>
-              <p className="text-sm text-purple-100 font-medium drop-shadow-sm">
-                {isConstructionModule 
+              <p
+                className={
+                  isEauModule
+                    ? 'text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body'
+                    : 'text-sm text-purple-100 font-medium drop-shadow-sm'
+                }
+              >
+                {isEauModule
+                  ? "Distribution & suivi d'eau — Nosy Be"
+                  : isConstructionModule
                   ? 'BTP Construction'
                   : 'Budget familial Madagascar'}
               </p>
@@ -672,7 +711,7 @@ const Header = () => {
           </div>
 
           {/* BANNER (CENTER) - Desktop only inline, mobile stays below */}
-          {user && !isConstructionModule && !location.pathname.includes('/construction') && (
+          {user && !isConstructionModule && !isEauModule && !location.pathname.includes('/construction') && (
             <div className="hidden lg:block lg:flex-1 lg:mx-4">
               <div className="text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
                 <div className="flex items-center justify-between flex-nowrap overflow-hidden">
@@ -821,8 +860,11 @@ const Header = () => {
               </div>
             )}
 
-          {/* Actions - Budget module only (hidden in Construction to allow Role badge right alignment) */}
-          {!isConstructionModule && (
+          {/* Actions - Gestion Eau module : menu secondaire role-filtré (AHUVI) */}
+          {isEauModule && <HeaderEauActions />}
+
+          {/* Actions - Budget module only (hidden in Construction & Eau) */}
+          {!isConstructionModule && !isEauModule && (
             <div className="flex items-center space-x-3">
               {/* Level Badge */}
               <LevelBadge
@@ -959,7 +1001,7 @@ const Header = () => {
         </div>
 
         {/* Mobile banner - visible only on mobile, same position as before */}
-        {user && !isConstructionModule && !location.pathname.includes('/construction') && (
+        {user && !isConstructionModule && !isEauModule && !location.pathname.includes('/construction') && (
           <div className="mt-2 lg:hidden text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
             <div className="flex items-center justify-between flex-nowrap overflow-hidden">
               <div>
@@ -1015,11 +1057,36 @@ const Header = () => {
           </div>
         )}
 
-        {/* LINE 2: Navigation Items (DESKTOP ONLY) */}
-        {!isConstructionModule && (
+        {/* LINE 2: Navigation Items (DESKTOP ONLY) — Gestion Eau : thèmes role-filtrés (AHUVI) */}
+        {isEauModule && (
+          <nav className="hidden lg:flex items-center justify-around mt-4">
+            {eauNavItems.map((item) => {
+              const Icon = eauIconMap[item.icon] ?? Droplet;
+              const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client';
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={exact}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center px-4 py-2 rounded-lg transition-colors font-ahuvi-body text-white/90 hover:text-white ${
+                      isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                    }`
+                  }
+                >
+                  <Icon className="w-5 h-5 mb-1" />
+                  <span className="text-xs">{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+        )}
+
+        {/* LINE 2: Navigation Items (DESKTOP ONLY) — BazarKELY */}
+        {!isConstructionModule && !isEauModule && (
           <nav className="hidden lg:flex items-center justify-between mt-4">
-            <NavLink 
-              to="/dashboard" 
+            <NavLink
+              to="/dashboard"
               className={({ isActive }) => 
                 `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
                   isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
@@ -1100,7 +1167,7 @@ const Header = () => {
         return null;
       })()}
       */}
-      {!isConstructionModule && showQuizPopup && (
+      {!isConstructionModule && !isEauModule && showQuizPopup && (
         <QuizQuestionPopup
           key={currentQuizId || 'quiz-popup'} // Force clean remount on each opening
           isOpen={showQuizPopup}

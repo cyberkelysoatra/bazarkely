@@ -1,8 +1,27 @@
-export const APP_VERSION = '3.18.2';
-export const APP_VERSION_NAME = 'Gestion Eau Phase 2 — Facturation & Clients : factures numérotées par période (conso × tarif en Ariary, statut payé/impayé, relances, PDF par compteur + CSV global), comptes clients avec code d\'enrôlement, page mission publique (install PWA + Google), demandes d\'accès, espace client (mes factures), config désormais obligatoire (plus de seuils par défaut)';
+export const APP_VERSION = '3.19.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Correctif UI : un seul header brandé AHUVI (vert forêt/olive + or, Playfair/Poppins, « AHUVI Eau · Distribution & suivi d\'eau — Nosy Be »), barre du bas et nav desktop portant les boutons-THÈMES du module (≤ 6, filtrés par rôle : Admin 5 · Releveur 3 · Client 2), suppression du second header et de la nav interne en doublon ; matrice d\'accès appliquée (gardes de route + filtrage de nav + menu secondaire role-filtré en haut à droite)';
 export const LAST_UPDATED = '2026-06-04';
 export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.19.0',
+    date: '2026-06-04',
+    description: 'CORRECTIF UI du module gestion-eau (constaté en prod v3.18.0). (a) La barre du bas (BottomNav) affichait encore les 6 items BazarKELY en module Eau et le module avait une nav interne en doublon (EauNav). (b) Le header partagé restait « BazarKELY » et un second header (titre/sous-titre) s\'affichait dans la page. Désormais : UN SEUL header, brandé AHUVI (palette vert forêt #364E30 / olive #4C6D40 + accent or #9D9B4B, titres Playfair Display, texte Poppins, « AHUVI Eau » + slogan « Distribution & suivi d\'eau — Nosy Be »), conditionné par le module (bazarkely violet et construction inchangés). La nav PRINCIPALE vit dans BottomNav (mobile) + nav desktop du header : boutons THÉMATIQUES (≤ 6) filtrés par rôle — Admin (5 : Tableau de bord · Relevés · Suivi · Compteurs · Facturation), Releveur (3 : Tableau de bord · Relevés · Suivi), Client (2 : Ma conso · Mes factures). Chaque thème regroupe ses sous-écrans via des onglets internes (Relevés = Bassin/Compteur ; Suivi = Anomalies/Bilans ; Compteurs = Liste/Carte ; Facturation = Factures/Rapports ; Client = Ma conso/Mes factures). Le secondaire (Configuration, Utilisateurs & rôles, Demandes d\'accès, + Alertes/Annonces/Audit Phase 3-4) passe dans un menu en haut à droite (HeaderEauActions), filtré par rôle. MATRICE D\'ACCÈS appliquée à 3 niveaux : gardes EauRoleProtectedRoute sur chaque route (redirection role-aware sans boucle : un client refusé atterrit sur son espace), filtrage de nav (footer + desktop + menu), scoping des données client (compteurs assignés, inchangé). EauPageShell ne rend plus de seconde barre ni de gros en-tête.',
+    changes: [
+      'PARTAGÉ tailwind.config.js : namespace couleurs `ahuvi` + fontFamily ahuvi-display/ahuvi-body (utilisés uniquement en mode eau)',
+      'PARTAGÉ src/index.css : import Google Fonts Playfair Display + Poppins',
+      'PARTAGÉ constants/index.ts : GESTION_EAU_NAV_ITEMS (boutons-thèmes + rôles)',
+      'PARTAGÉ BottomNav.tsx : branche gestion-eau (items role-filtrés, ≤ 6, thème vert AHUVI actif)',
+      'PARTAGÉ Header.tsx : branche isEauModule (fond AHUVI, titre/slogan, nav desktop role-filtrée, HeaderEauActions, bannière/quiz/level masqués)',
+      'Nouveau header/HeaderEauActions.tsx : menu secondaire role-filtré (Config, Utilisateurs, Demandes ; Alertes/Annonces/Audit = bientôt ; déconnexion + version)',
+      'Nouveaux écrans-thèmes : EauRelevesPage, EauSuiviPage + composant EauTabs (onglets internes)',
+      'EauCompteursPage / EauFacturationPage / EauClientPage : onglets internes (Liste/Carte ; Factures/Rapports ; Ma conso/Mes factures)',
+      'EauPageShell : suppression de EauNav + du gros en-tête (titre de section discret only)',
+      'GestionEauRoutes : routes /releves /suivi /client/:tab + gardes de rôle sur toutes les routes + redirections anciennes routes',
+      'EauRoleProtectedRoute : redirection role-aware (home calculé) sans boucle',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.18.2',
     date: '2026-06-04',

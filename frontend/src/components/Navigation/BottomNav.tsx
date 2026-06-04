@@ -1,10 +1,11 @@
 import { useEffect, useRef, useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS } from '../../constants';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle } from 'lucide-react';
+import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from '../../constants';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt } from 'lucide-react';
 import { useModuleSwitcher } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
+import { GestionEauContext } from '../../modules/gestion-eau/context';
 
 /*
  * SPACING CHANGES MADE FOR COMPACT BOTTOM NAV:
@@ -28,7 +29,14 @@ const iconMap = {
   ShoppingCart,
   Package,
   Warehouse,
-  PlusCircle
+  PlusCircle,
+  // Gestion Eau (AHUVI) icons
+  Gauge,
+  TrendingUp,
+  Network,
+  FileText,
+  Droplet,
+  Receipt
 };
 
 const BottomNav = () => {
@@ -45,9 +53,15 @@ const BottomNav = () => {
   // Use useContext directly to safely check if ConstructionProvider exists
   const constructionContext = useContext(ConstructionContext);
   const userRole = constructionContext?.userRole || null;
-  const showBCIItems = activeModule?.id === 'construction' 
-    ? canAccessBCI(userRole) 
+  const showBCIItems = activeModule?.id === 'construction'
+    ? canAccessBCI(userRole)
     : true; // Show all items if not in Construction module
+
+  // Gestion Eau : rôles (admin/releveur/client, cumulables) pour filtrer la nav du module.
+  // useContext direct → ne plante pas si le provider n'est pas monté.
+  const eauContext = useContext(GestionEauContext);
+  const eauRoles = eauContext?.roles ?? null;
+  const isEauModule = activeModule?.id === 'gestion-eau';
 
   // Click-outside detection to exit switcher mode
   useEffect(() => {
@@ -93,11 +107,19 @@ const BottomNav = () => {
    * Render navigation mode (shows BazarKELY or Construction items based on active module)
    */
   const renderNavigationMode = () => {
-    // Select navigation items based on active module
-    // Use Construction items if Construction module is active, otherwise use BazarKELY items
-    let navItems = activeModule?.id === 'construction' ? CONSTRUCTION_NAV_ITEMS : BOTTOM_NAV_ITEMS;
-    
-    // Filter BCI navigation items for Construction module (AGENT 11)
+    // Select navigation items based on active module.
+    // Construction → CONSTRUCTION_NAV_ITEMS, Gestion Eau → GESTION_EAU_NAV_ITEMS (rôle-filtrés),
+    // sinon BazarKELY.
+    let navItems: ReadonlyArray<{ path: string; icon: string; label: string }> =
+      activeModule?.id === 'construction'
+        ? CONSTRUCTION_NAV_ITEMS
+        : isEauModule
+        ? GESTION_EAU_NAV_ITEMS.filter(
+            (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
+          )
+        : BOTTOM_NAV_ITEMS;
+
+    // Filtre BCI (Construction)
     if (activeModule?.id === 'construction' && !showBCIItems) {
       // Filter out BCI-related navigation items if user doesn't have access
       navItems = navItems.filter(item => {
@@ -105,7 +127,15 @@ const BottomNav = () => {
         return item.path !== '/construction/orders' && item.path !== '/construction/new-order';
       });
     }
-    
+
+    // Garde-fou : jamais plus de 6 boutons dans la barre (cumul de rôles rare).
+    if (navItems.length > 6) navItems = navItems.slice(0, 6);
+
+    // Thème actif : vert AHUVI en mode eau, bleu sinon.
+    const activeBg = isEauModule ? 'bg-ahuvi-forest' : 'bg-blue-600';
+    const hoverBg = isEauModule ? 'hover:bg-ahuvi-50' : 'hover:bg-blue-50';
+    const activeText = isEauModule ? 'text-ahuvi-forest' : 'text-blue-600';
+
     return (
       <nav 
         ref={navRef}
@@ -114,21 +144,25 @@ const BottomNav = () => {
         <div className="flex items-center justify-around py-1.5 animate-in fade-in duration-300">
           {navItems.map((item) => {
             const IconComponent = iconMap[item.icon as keyof typeof iconMap];
-            
+            // Routes "racine" (dashboard eau, espace client) → match exact pour ne pas
+            // rester actives sur leurs sous-routes (ex. /gestion-eau/client/factures).
+            const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client';
+
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
+                end={exact}
                 className={({ isActive }) =>
                   `mobile-nav-item ${isActive ? 'active' : ''}`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <div className={`p-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-blue-600 shadow-lg scale-110' : 'hover:bg-blue-50 hover:scale-105'}`}>
+                    <div className={`p-3 rounded-xl transition-all duration-300 ${isActive ? `${activeBg} shadow-lg scale-110` : `${hoverBg} hover:scale-105`}`}>
                       <IconComponent className={`w-[18px] h-[18px] transition-colors duration-200 ${isActive ? 'text-white' : 'text-slate-600'}`} />
                     </div>
-                    <span className={`text-xs font-semibold mt-1 transition-colors duration-200 ${isActive ? 'text-blue-600' : 'text-slate-600'}`}>
+                    <span className={`text-xs font-semibold mt-1 transition-colors duration-200 ${isActive ? activeText : 'text-slate-600'}`}>
                       {item.label}
                     </span>
                   </>

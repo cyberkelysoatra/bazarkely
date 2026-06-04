@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import EauTabs from './EauTabs';
 import {
   listCompteurs,
   createCompteur,
@@ -81,15 +82,25 @@ export default function EauCompteursPage() {
   };
 
   return (
-    <EauPageShell
-      title="Compteurs"
-      subtitle="Gestion des compteurs (admin)"
-      actions={
-        <button onClick={openNew} className="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-3 py-2 rounded-lg">
-          + Nouveau
-        </button>
-      }
-    >
+    <div>
+      {/* Onglets internes du thème Compteurs : Liste (CRUD + QR) · Carte (Phase 3). */}
+      <EauTabs
+        active="liste"
+        onChange={() => {}}
+        tabs={[
+          { key: 'liste', label: 'Liste' },
+          { key: 'carte', label: 'Carte', disabled: true, badge: 'bientôt' },
+        ]}
+      />
+      <EauPageShell
+        title="Compteurs"
+        subtitle="Gestion des compteurs (admin)"
+        actions={
+          <button onClick={openNew} className="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-3 py-2 rounded-lg">
+            + Nouveau
+          </button>
+        }
+      >
       {showForm && (
         <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 shadow-soft space-y-3 mb-4">
           <h2 className="font-semibold text-gray-800">{editing ? 'Modifier' : 'Nouveau compteur'}</h2>
@@ -199,6 +210,7 @@ export default function EauCompteursPage() {
           ))}
         </div>
       )}
-    </EauPageShell>
+      </EauPageShell>
+    </div>
   );
 }

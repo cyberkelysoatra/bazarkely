@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import EauTabs from './EauTabs';
 import { getConfig } from '../services/eauConfigService';
 import { isConfigComplete, configMissingFields } from '../utils/facture';
 import {
@@ -39,6 +40,8 @@ export default function EauFacturationPage() {
   const [factures, setFactures] = useState<FactureLocal[]>([]);
   const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
   const [busy, setBusy] = useState(false);
+  // Onglets internes du thème : Factures (génération + liste) · Rapports (exports).
+  const [view, setView] = useState<'factures' | 'rapports'>('factures');
 
   const reloadFactures = useCallback(async () => {
     setFactures(await listFactures());
@@ -126,18 +129,20 @@ export default function EauFacturationPage() {
   };
 
   return (
-    <EauPageShell
-      title="Facturation"
-      subtitle="Génération des factures par période (admin)"
-      actions={
-        <button
-          onClick={exportCsv}
-          className="bg-white border border-sky-200 text-sky-700 text-sm font-medium px-3 py-2 rounded-lg hover:bg-sky-50"
-        >
-          ⬇️ CSV global
-        </button>
-      }
-    >
+    <div>
+      {/* Onglets internes du thème Facturation : Factures (génération + liste) · Rapports (exports). */}
+      <EauTabs
+        active={view}
+        onChange={(k) => setView(k as 'factures' | 'rapports')}
+        tabs={[
+          { key: 'factures', label: 'Factures' },
+          { key: 'rapports', label: 'Rapports' },
+        ]}
+      />
+      <EauPageShell
+        title="Facturation"
+        subtitle={view === 'rapports' ? 'Exports (admin)' : 'Génération des factures par période (admin)'}
+      >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : !complete ? (
@@ -155,7 +160,7 @@ export default function EauFacturationPage() {
             Aller à la configuration →
           </a>
         </div>
-      ) : (
+      ) : view === 'factures' ? (
         <div className="space-y-4">
           {/* Période */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
@@ -269,7 +274,28 @@ export default function EauFacturationPage() {
             )}
           </div>
         </div>
+      ) : (
+        /* Onglet Rapports : exports globaux + rappel des PDF par facture. */
+        <div className="space-y-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+            <h2 className="font-semibold text-gray-800 mb-1">Export CSV global</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Relevés, bilans et factures de la copropriété, dans un seul fichier .csv.
+            </p>
+            <button
+              onClick={exportCsv}
+              className="bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
+            >
+              ⬇️ Télécharger le CSV global
+            </button>
+          </div>
+          <div className="rounded-xl border border-ahuvi-100 bg-ahuvi-50/60 p-4 text-sm text-ahuvi-800">
+            Les <strong>PDF par facture</strong> se téléchargent depuis l'onglet « Factures »
+            (bouton 📄 PDF sur chaque facture émise).
+          </div>
+        </div>
       )}
-    </EauPageShell>
+      </EauPageShell>
+    </div>
   );
 }

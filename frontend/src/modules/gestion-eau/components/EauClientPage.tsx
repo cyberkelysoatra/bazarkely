@@ -1,8 +1,10 @@
 /** Espace client /gestion-eau/client : conso + factures téléchargeables de SES
  *  seuls compteurs assignés (liste + montants en Ariary). Graphique → phase 4. */
 import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import EauTabs from './EauTabs';
 import { useGestionEau } from '../context/GestionEauContext';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
@@ -21,6 +23,10 @@ interface CompteurVue {
 
 export default function EauClientPage() {
   const { userId } = useGestionEau();
+  const navigate = useNavigate();
+  // Onglet piloté par l'URL (cohérent avec les 2 boutons du footer : Ma conso / Mes factures).
+  const { tab } = useParams<{ tab?: string }>();
+  const active = tab === 'factures' ? 'factures' : 'conso';
   const [loading, setLoading] = useState(true);
   const [vues, setVues] = useState<CompteurVue[]>([]);
   const [factures, setFactures] = useState<FactureLocal[]>([]);
@@ -79,7 +85,21 @@ export default function EauClientPage() {
   };
 
   return (
-    <EauPageShell title="Mon espace" subtitle="Ma consommation et mes factures">
+    <div>
+      {/* Onglets internes = 2 boutons du footer client (Ma conso / Mes factures) + QR (Phase 3). */}
+      <EauTabs
+        active={active}
+        onChange={(k) => navigate(k === 'factures' ? '/gestion-eau/client/factures' : '/gestion-eau/client')}
+        tabs={[
+          { key: 'conso', label: 'Ma conso' },
+          { key: 'factures', label: 'Mes factures' },
+          { key: 'qr', label: 'Mon QR', disabled: true, badge: 'bientôt' },
+        ]}
+      />
+      <EauPageShell
+        title={active === 'factures' ? 'Mes factures' : 'Ma consommation'}
+        subtitle="Espace client"
+      >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : aucunCompteur ? (
@@ -88,7 +108,8 @@ export default function EauClientPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Compteurs */}
+          {/* Compteurs (onglet « Ma conso ») */}
+          {active === 'conso' && (
           <div>
             <h2 className="font-semibold text-gray-800 mb-2">Mes compteurs</h2>
             <div className="grid grid-cols-1 gap-2">
@@ -105,8 +126,10 @@ export default function EauClientPage() {
               ))}
             </div>
           </div>
+          )}
 
-          {/* Factures */}
+          {/* Factures (onglet « Mes factures ») */}
+          {active === 'factures' && (
           <div>
             <h2 className="font-semibold text-gray-800 mb-2">Mes factures ({factures.length})</h2>
             {factures.length === 0 ? (
@@ -137,8 +160,10 @@ export default function EauClientPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       )}
-    </EauPageShell>
+      </EauPageShell>
+    </div>
   );
 }

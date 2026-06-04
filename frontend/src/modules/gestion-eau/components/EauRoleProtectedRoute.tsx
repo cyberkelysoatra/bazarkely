@@ -17,9 +17,20 @@ interface Props {
 export default function EauRoleProtectedRoute({
   children,
   allowedRoles,
-  redirectTo = '/gestion-eau',
+  redirectTo,
 }: Props) {
   const { roles, isLoading, hasEauAccess } = useGestionEau();
+
+  // Accueil par défaut selon le rôle : admin/releveur → tableau de bord ;
+  // client (sans rôle interne) → son espace. Évite toute boucle de redirection
+  // (un client refusé sur le dashboard atterrit sur /gestion-eau/client, pas sur /gestion-eau).
+  const home =
+    roles.admin || roles.releveur
+      ? '/gestion-eau'
+      : roles.client
+      ? '/gestion-eau/client'
+      : '/dashboard';
+  const target = redirectTo ?? home;
 
   useEffect(() => {
     if (!isLoading && !hasEauAccess) {
@@ -51,7 +62,7 @@ export default function EauRoleProtectedRoute({
   }, [hasRequiredRole, isLoading, hasEauAccess]);
 
   if (!hasRequiredRole) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={target} replace />;
   }
 
   return <>{children}</>;

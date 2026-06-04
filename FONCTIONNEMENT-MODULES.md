@@ -247,16 +247,28 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 
 ### 📍 Pages concernées (préfixe `/gestion-eau`)
 - `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
-- `/gestion-eau` — **Tableau de bord** (tous les rôles du module)
-- `/gestion-eau/config` — **Configuration** (admin)
-- `/gestion-eau/saisie-bassin` — **Entrées + niveau du bassin** (releveur/admin)
-- `/gestion-eau/saisie-compteur` — **Relevés de compteur** (releveur/admin)
-- `/gestion-eau/anomalies` — **Historique des bilans** (releveur/admin)
-- `/gestion-eau/facturation` — **Facturation par période** (admin) — Phase 2
-- `/gestion-eau/compteurs` — **CRUD compteurs** (admin)
-- `/gestion-eau/utilisateurs` — **Rôles + comptes clients (code d'enrôlement)** (admin) — Phase 2
-- `/gestion-eau/demandes` — **Demandes d'accès à valider/refuser** (admin) — Phase 2
-- `/gestion-eau/client` — **Espace client** : ma conso + mes factures PDF (client) — Phase 2
+- `/gestion-eau` — **Tableau de bord** opérationnel (admin/releveur ; le client est redirigé vers son espace)
+- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Bassin · Compteur** (+ Tournée/Scan = Phase 3) (releveur/admin)
+- `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans** (+ Tendances = Phase 4) (releveur/admin)
+- `/gestion-eau/compteurs` — **Thème Compteurs** : onglets **Liste (CRUD + QR)** (+ Carte = Phase 3) (admin)
+- `/gestion-eau/facturation` — **Thème Facturation** : onglets **Factures · Rapports** (admin) — Phase 2
+- `/gestion-eau/client` + `/gestion-eau/client/factures` — **Espace client** : onglets **Ma conso · Mes factures** (+ Mon QR = Phase 3) (client/admin)
+- `/gestion-eau/config` — **Configuration** (admin) — *menu en haut à droite*
+- `/gestion-eau/utilisateurs` — **Rôles + comptes clients (code d'enrôlement)** (admin) — *menu en haut à droite*
+- `/gestion-eau/demandes` — **Demandes d'accès à valider/refuser** (admin) — *menu en haut à droite*
+- Anciennes routes `saisie-bassin` / `saisie-compteur` / `anomalies` → **redirigent** vers `/releves` / `/suivi` (compatibilité).
+
+### 🧭 Header & navigation (correctif UI v3.19.0)
+- **UN SEUL header**, le **header partagé** (`components/Layout/Header.tsx`), conditionné par module via `isEauModule`.
+  En mode eau : **branding AHUVI** (palette `ahuvi` vert forêt `#364E30` / olive `#4C6D40` + accent or `#9D9B4B`,
+  titres **Playfair Display**, texte **Poppins**), titre **« AHUVI Eau »** + slogan **« Distribution & suivi d'eau — Nosy Be »**.
+  Le violet BazarKELY et le header Construction restent **inchangés**.
+- **Navigation principale = BottomNav (mobile) + nav desktop du header**, avec des **boutons THÉMATIQUES ≤ 6, filtrés par rôle**
+  (`GESTION_EAU_NAV_ITEMS` dans `constants/`) : **Admin (5)** Tableau de bord · Relevés · Suivi · Compteurs · Facturation —
+  **Releveur (3)** Tableau de bord · Relevés · Suivi — **Client (2)** Ma conso · Mes factures.
+  Chaque bouton-thème **regroupe ses sous-écrans** via des **onglets internes** (composant `EauTabs`).
+- **Écrans secondaires** (Configuration, Utilisateurs & rôles, Demandes d'accès ; + Alertes/Annonces/Audit = Phase 3-4 « bientôt »)
+  → **menu en haut à droite** (`header/HeaderEauActions.tsx`), filtré par rôle. La nav interne historique (`EauNav`) **n'est plus la barre principale**.
 
 ### 🧾 Facturation (Phase 2, admin)
 - Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
@@ -286,7 +298,24 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - **Premier admin = propriétaire** : le tout premier utilisateur qui ouvre le module
   (quand `eau_roles` ne contient aucun admin) devient automatiquement admin.
 - L'accès au module = posséder au moins un rôle. Sinon redirection vers `/dashboard`.
-- La navigation interne est **filtrée par rôle** (un releveur ne voit pas Config/Compteurs).
+- La navigation est **filtrée par rôle** (un releveur ne voit pas Compteurs/Facturation/Config ; un client ne voit que son espace).
+
+### 🔐 Matrice d'accès (appliquée à 3 niveaux : gardes de route + filtrage de nav + scoping des données)
+| Écran / route | Admin | Releveur | Client |
+|---|:---:|:---:|:---:|
+| `/gestion-eau/accueil`, `/gestion-eau/scan` | public | public | public |
+| `/gestion-eau` Tableau de bord | ✅ | ✅ | ❌ (→ son espace) |
+| `/gestion-eau/releves` (Bassin/Compteur/Tournée/Scan) | ✅ | ✅ | ❌ |
+| `/gestion-eau/suivi` (Anomalies/Bilans · Tendances) | ✅ | ✅ | ❌ |
+| `/gestion-eau/compteurs` (Liste CRUD+QR · Carte) | ✅ | ❌ | ❌ |
+| `/gestion-eau/facturation` (Factures · Rapports) | ✅ | ❌ | ❌ |
+| `/gestion-eau/config`, `/utilisateurs`, `/demandes` | ✅ | ❌ | ❌ |
+| `/gestion-eau/alertes`, `/annonces`, `/audit` (Phase 3-4) | ✅ | ❌ | ❌ |
+| `/gestion-eau/client` (Ma conso · Mes factures · QR) — **SES compteurs** | ✅ (supervision) | ❌ | ✅ |
+
+- **Cumul de rôles** = **union** des accès. **Garde** : `EauRoleProtectedRoute allowedRoles={…}` sur chaque route ;
+  un accès URL direct non autorisé **redirige vers l'écran d'accueil du rôle** (client → `/gestion-eau/client`, sinon `/gestion-eau`), sans boucle.
+- **Données** : l'espace client ne lit que les **compteurs assignés** (`compteur_ids`). *(RLS par rôle Supabase = renforcement futur ; aujourd'hui RLS = `authenticated`, l'isolement repose sur les gardes + le scoping des requêtes.)*
 
 ### 🧮 Conversions & moteur de bilan
 - Volume max bassin = `L × l × hauteurMax` ; **L=10, l=7, h=4 → 280 m³**.
@@ -337,5 +366,5 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-*Dernière mise à jour : 2026-06-04 — Module gestion-eau Phase 2 : facturation + clients (v3.18.0)*
+*Dernière mise à jour : 2026-06-04 — Module gestion-eau : correctif UI (header AHUVI unique + BottomNav thématique role-filtré + matrice d'accès) (v3.19.0)*
 *Validé par : Joël (réponses aux questions interactives)*
