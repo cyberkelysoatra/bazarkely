@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.18.0';
+export const APP_VERSION = '3.18.1';
 export const APP_VERSION_NAME = 'Gestion Eau Phase 2 — Facturation & Clients : factures numérotées par période (conso × tarif en Ariary, statut payé/impayé, relances, PDF par compteur + CSV global), comptes clients avec code d\'enrôlement, page mission publique (install PWA + Google), demandes d\'accès, espace client (mes factures), config désormais obligatoire (plus de seuils par défaut)';
 export const LAST_UPDATED = '2026-06-04';
 export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.18.1',
+    date: '2026-06-04',
+    description: 'Fix gestion-eau (découvert en validation connectée) : le GestionEauProvider rechargeait avec un spinner BLOQUANT à chaque bascule online/offline (isOnline dans ses deps) → sur réseau instable (cas Madagascar), les écrans du module se démontaient/remontaient en boucle, faisant flasher l\'UI et PERDRE la saisie en cours (config, période de facturation, formulaires). Désormais le spinner ne s\'affiche qu\'au TOUT PREMIER chargement (initialLoadDoneRef) ; les rechargements suivants (changement de statut réseau ou de session) se font en arrière-plan sans démonter les écrans.',
+    changes: [
+      'GestionEauContext : load(showSpinner) + initialLoadDoneRef → plus de spinner bloquant sur les rechargements déclenchés par isOnline/login',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.18.0',
     date: '2026-06-04',

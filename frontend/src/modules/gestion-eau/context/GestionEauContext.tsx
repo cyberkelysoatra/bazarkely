@@ -3,7 +3,7 @@
  * Modèle calqué sur ConstructionContext, mais offline-first (Dexie + getSession,
  * jamais getUser()). Applique le bootstrap « premier admin = propriétaire ».
  */
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../../stores/appStore';
 import { getCurrentUserIdSafe } from '../services/eauAuth';
@@ -61,9 +61,13 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const [roles, setRoles] = useState<EauRoles>(EMPTY_ROLES);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Le spinner bloquant ne doit s'afficher qu'au TOUT PREMIER chargement.
+  // Les rechargements suivants (bascule online/offline, fréquente sur réseau instable)
+  // se font en arrière-plan SANS démonter les écrans → pas de flash ni de perte de saisie.
+  const initialLoadDoneRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
+  const load = useCallback(async (showSpinner: boolean) => {
+    if (showSpinner) setIsLoading(true);
     setError(null);
     try {
       const id = await getCurrentUserIdSafe();
@@ -71,7 +75,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         // Pas d'utilisateur : pas d'accès, mais NE PAS planter (offline-first).
         setUserId(null);
         setRoles(EMPTY_ROLES);
-        setIsLoading(false);
+        if (showSpinner) setIsLoading(false);
         return;
       }
       setUserId(id);
@@ -102,13 +106,15 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
       setError(e?.message ?? 'Erreur de chargement du module Gestion Eau');
       setRoles(EMPTY_ROLES);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
-    // Recharge si l'utilisateur connecté change.
+    // Spinner uniquement au premier chargement ; rechargements (réseau/login) en arrière-plan.
+    const showSpinner = !initialLoadDoneRef.current;
+    initialLoadDoneRef.current = true;
+    load(showSpinner);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeUser?.id, isOnline]);
 
