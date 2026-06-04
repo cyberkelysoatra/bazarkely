@@ -9,7 +9,7 @@
 export { GestionEauProvider, useGestionEau, GestionEauContext } from './context';
 
 // Gardes & routes
-export { GestionEauRoute, EauRoleProtectedRoute, GestionEauRoutes, EauNav } from './components';
+export { GestionEauRoute, EauRoleProtectedRoute, GestionEauRoutes } from './components';
 
 // Base locale
 export { eauDb, EAU_TABLES } from './db/gestionEauDb';

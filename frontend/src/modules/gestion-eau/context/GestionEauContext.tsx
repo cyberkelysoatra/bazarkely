@@ -9,7 +9,7 @@ import { useAppStore } from '../../../stores/appStore';
 import { getCurrentUserIdSafe } from '../services/eauAuth';
 import { ensureRolesBootstrap, getRolesForUser } from '../services/eauRoleService';
 import { refreshConfig } from '../services/eauConfigService';
-import { pullAll } from '../services/eauSync';
+import { pullAll, syncAll } from '../services/eauSync';
 import { getPendingEnrollment, processPendingEnrollment } from '../services/eauEnrollmentService';
 import type { EauRoles } from '../types/gestionEau';
 
@@ -117,6 +117,18 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     load(showSpinner);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeUser?.id, isOnline]);
+
+  // Déclencheur de SYNC au retour en ligne : vide la file `_dirty` (relevés, compteurs,
+  // QR, scans… créés hors-ligne) puis tire les nouveautés serveur. Idempotent (upsert id
+  // client) → aucun doublon même si un envoi hors-ligne avait déjà été commité. Best-effort.
+  const wasOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    const cameOnline = !wasOnlineRef.current && isOnline;
+    wasOnlineRef.current = isOnline;
+    if (cameOnline) {
+      void syncAll().catch(() => {});
+    }
+  }, [isOnline]);
 
   const refreshRoles = useCallback(async () => {
     if (!userId) return;

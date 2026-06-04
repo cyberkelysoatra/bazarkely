@@ -23,6 +23,8 @@ import AppLayout from './components/Layout/AppLayout';
 import LoanConfirmPage from './pages/LoanConfirmPage';
 // Page mission PUBLIQUE du module gestion-eau (hors garde d'auth)
 const EauAccueilPage = React.lazy(() => import('./modules/gestion-eau/components/EauAccueilPage'));
+// Résolveur de scan QR PUBLIC (applique la matrice de rôle / redirige vers mission)
+const EauScanResolverPage = React.lazy(() => import('./modules/gestion-eau/components/EauScanResolverPage'));
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -178,6 +180,15 @@ function App() {
                     element={
                       <Suspense fallback={<div className="min-h-screen" />}>
                         <EauAccueilPage />
+                      </Suspense>
+                    }
+                  />
+                  {/* Résolveur de scan QR : public (gère lui-même la matrice de rôle / mission) */}
+                  <Route
+                    path="/gestion-eau/scan"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen" />}>
+                        <EauScanResolverPage />
                       </Suspense>
                     }
                   />

@@ -24,7 +24,15 @@ interface Evaluation {
   aberrant: AberrantResult;
 }
 
-export default function EauSaisieCompteurPage() {
+export default function EauSaisieCompteurPage({
+  preselectCompteurId,
+  onScanRequest,
+}: {
+  /** Compteur à préselectionner (deep-link depuis un scan ou la tournée). */
+  preselectCompteurId?: string | null;
+  /** Callback pour ouvrir le scanner caméra (fourni par la page-thème Relevés). */
+  onScanRequest?: () => void;
+} = {}) {
   const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<CompteurLocal | null>(null);
@@ -45,6 +53,16 @@ export default function EauSaisieCompteurPage() {
       setLoading(false);
     })();
   }, []);
+
+  // Préselection directe (scan d'un QR compteur ou choix depuis la tournée) :
+  // dès que la liste est chargée, sélectionne le compteur ciblé sans action manuelle.
+  useEffect(() => {
+    if (!preselectCompteurId || compteurs.length === 0) return;
+    if (selected?.id === preselectCompteurId) return;
+    const target = compteurs.find((c) => c.id === preselectCompteurId);
+    if (target) selectCompteur(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectCompteurId, compteurs]);
 
   // Filtrage + regroupement par zone
   const grouped = useMemo(() => {
@@ -223,6 +241,14 @@ export default function EauSaisieCompteurPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {onScanRequest && (
+            <button
+              onClick={onScanRequest}
+              className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold py-2.5 rounded-lg"
+            >
+              📷 Scanner un QR
+            </button>
+          )}
           <input
             type="search"
             value={query}

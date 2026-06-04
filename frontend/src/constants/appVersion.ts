@@ -1,8 +1,27 @@
-export const APP_VERSION = '3.19.0';
-export const APP_VERSION_NAME = 'Gestion Eau — Correctif UI : un seul header brandé AHUVI (vert forêt/olive + or, Playfair/Poppins, « AHUVI Eau · Distribution & suivi d\'eau — Nosy Be »), barre du bas et nav desktop portant les boutons-THÈMES du module (≤ 6, filtrés par rôle : Admin 5 · Releveur 3 · Client 2), suppression du second header et de la nav interne en doublon ; matrice d\'accès appliquée (gardes de route + filtrage de nav + menu secondaire role-filtré en haut à droite)';
+export const APP_VERSION = '3.20.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Phase 3 (QR & terrain) : QR multi-emplacements par compteur (export JPEG + étiquettes imprimables), QR client personnel, route de scan /gestion-eau/scan appliquant la matrice de rôle (releveur → saisie d\'index directe ; agent → fiche client ; client → son espace / « Ce QR ne vous est pas destiné »), scanner caméra intégré (html5-qrcode), journal des scans par compteur (emplacement + qui), mode tournée (liste ordonnée + progression X/N + reprise), carte hors-ligne Leaflet/OSM avec pré-téléchargement de la zone configurée (cache IndexedDB dédié, repli liste si tuile manquante), géoloc lat/lng des compteurs, déclencheur de sync au retour en ligne (vide la file _dirty). Nettoyage : suppression d\'EauNav/navConfig (test migré vers GESTION_EAU_NAV_ITEMS)';
 export const LAST_UPDATED = '2026-06-04';
 export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.20.0',
+    date: '2026-06-04',
+    description: 'PHASE 3 du module gestion-eau (QR & terrain). (A) QR compteur : un compteur peut porter PLUSIEURS QR (eau_qr_compteur), chacun avec un libellé d\'emplacement et un code unique ; QR encode …/gestion-eau/scan?t=c&k=<code> ; export JPEG par QR + page d\'étiquettes imprimable (HTML). QR client : un par compte (code_qr), encode t=cl, téléchargeable JPEG (onglet « Mon QR »). (B) Route de scan publique /gestion-eau/scan : résout selon connexion + rôle et JOURNALISE dans eau_scans (emplacement, utilisateur, rôle, résultat) — releveur/admin + QR compteur → saisie d\'index directe du bon compteur (préselection) ; releveur/admin + QR client → fiche conso du client ; client + son QR → son espace ; client + autre QR → « Ce QR ne vous est pas destiné » ; non connecté/sans rôle → page mission. Scanner caméra intégré (html5-qrcode) en onglet Scan + bouton sur la saisie compteur. Journal des scans par compteur visible dans le gestionnaire QR (admin). (C) Mode tournée (/releves onglet Tournée) : compteurs ordonnés zone/ordre, progression X/N des relevés du jour, reprise au 1er non relevé, sélection → saisie directe. (D) Carte hors-ligne (compteurs onglet Carte) : Leaflet + tuiles OSM, géoloc lat/lng éditable en fiche compteur, bouton « Télécharger la carte de la zone » qui pré-télécharge les tuiles de la zone configurée (eau_config.map_centre_lat/lng, map_rayon_km, map_zoom_min/max) dans un cache IndexedDB dédié (GestionEauTilesDB, hors sync, plafonné à 1500 tuiles — politique OSM) ; auto au 1er lancement en ligne ; repli sur la liste des compteurs si tuile manquante hors-ligne. Champs « Zone carte » ajoutés en Configuration. (E) Déclencheur de sync au retour online (écoute useAppStore.isOnline) : vide la file _dirty (relevés, compteurs, QR, scans créés hors-ligne) via upsert idempotent (id client) → aucun doublon. Nettoyage : EauNav.tsx + navConfig.ts supprimés (nav principale = GESTION_EAU_NAV_ITEMS), test eauNavRoles migré. Dépendances ajoutées : qrcode, html5-qrcode, leaflet (+ types). Tables eau_qr_compteur/eau_scans + colonnes lat/lng/map_* déjà présentes côté Supabase (aucun SQL).',
+    changes: [
+      'Nouveaux utils : scanUrl.ts (encode/décode liens QR), qrImage.ts (export JPEG + étiquettes imprimables)',
+      'Nouveaux services : eauQrService (CRUD multi-QR compteur), eauScanService (résolution matrice rôle + journalisation, decideOutcome pur), eauTourneeService (progression du jour)',
+      'Nouvelle base locale dédiée : db/eauTiles.ts (cache tuiles OSM, NON synchronisé)',
+      'Nouvelle couche carte : components/map/offlineTiles.ts (OfflineTileLayer + downloadZoneTiles bornée à la zone)',
+      'Nouveaux écrans : EauScanResolverPage (route publique /gestion-eau/scan), EauQrScanner (caméra), EauQrCompteurManager (QR + journal), EauTourneePage, EauCartePage, EauClientQrPage',
+      'Onglets activés : Tournée + Scan (EauRelevesPage), Carte (EauCompteursPage), Mon QR (EauClientPage)',
+      'PARTAGÉ App.tsx : route publique /gestion-eau/scan',
+      'eauCompteurService/EauCompteursPage : géoloc lat/lng éditable + bouton QR par compteur',
+      'EauConfigPage : section « Zone carte » (centre/rayon/zoom)',
+      'GestionEauContext : déclencheur syncAll() au retour en ligne (vide _dirty)',
+      'Suppression EauNav.tsx + navConfig.ts ; test eauNavRoles migré vers GESTION_EAU_NAV_ITEMS ; 16 tests Phase 3 ajoutés (scanUrl, decideOutcome, tiles)',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.19.0',
     date: '2026-06-04',

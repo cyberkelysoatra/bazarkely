@@ -22,6 +22,15 @@ const NUM_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?:
   { key: 'periode_facturation_jours', label: 'Période facturation (jours)', step: '1' },
 ];
 
+// Zone carte (Phase 3) : pré-téléchargement hors-ligne des tuiles OSM autour du centre.
+const MAP_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?: string }[] = [
+  { key: 'map_centre_lat', label: 'Centre — latitude', step: '0.000001', hint: 'ex. -13.41 (Nosy Be)' },
+  { key: 'map_centre_lng', label: 'Centre — longitude', step: '0.000001', hint: 'ex. 48.27' },
+  { key: 'map_rayon_km', label: 'Rayon (km)', step: '0.5', hint: 'zone à mettre en cache' },
+  { key: 'map_zoom_min', label: 'Zoom min', step: '1', hint: 'ex. 13' },
+  { key: 'map_zoom_max', label: 'Zoom max', step: '1', hint: 'ex. 17 (plus = plus de tuiles)' },
+];
+
 export default function EauConfigPage() {
   const [form, setForm] = useState<FormState>({});
   const [devise, setDevise] = useState('MGA');
@@ -35,7 +44,7 @@ export default function EauConfigPage() {
       const online = navigator.onLine;
       const cfg = (await refreshConfig(online)) ?? (await getConfig());
       const f: FormState = {};
-      for (const { key } of NUM_FIELDS) {
+      for (const { key } of [...NUM_FIELDS, ...MAP_FIELDS]) {
         const v = cfg?.[key];
         f[key as string] = v == null ? '' : String(v);
       }
@@ -72,7 +81,7 @@ export default function EauConfigPage() {
         copro_nom: coproNom || null,
         copro_contact: coproContact || null,
       };
-      for (const { key } of NUM_FIELDS) {
+      for (const { key } of [...NUM_FIELDS, ...MAP_FIELDS]) {
         (patch as any)[key] = parsedNum(key as string);
       }
       await saveConfig(patch);
@@ -145,6 +154,29 @@ export default function EauConfigPage() {
                   className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
                 />
               </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+            <h2 className="font-semibold text-gray-800 mb-1">Zone carte (hors-ligne)</h2>
+            <p className="text-xs text-gray-400 mb-3">
+              Définit la zone pré-téléchargée pour la carte des compteurs utilisable sans connexion.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {MAP_FIELDS.map(({ key, label, step, hint }) => (
+                <label key={key as string} className="text-sm">
+                  <span className="block text-gray-600 mb-1">{label}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step={step}
+                    value={form[key as string] ?? ''}
+                    onChange={(e) => set(key as string, e.target.value)}
+                    className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  />
+                  {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
+                </label>
+              ))}
             </div>
           </div>
 

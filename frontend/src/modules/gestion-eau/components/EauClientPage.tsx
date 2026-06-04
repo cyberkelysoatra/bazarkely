@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
 import EauTabs from './EauTabs';
+import EauClientQrPage from './EauClientQrPage';
 import { useGestionEau } from '../context/GestionEauContext';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
@@ -26,7 +27,7 @@ export default function EauClientPage() {
   const navigate = useNavigate();
   // Onglet piloté par l'URL (cohérent avec les 2 boutons du footer : Ma conso / Mes factures).
   const { tab } = useParams<{ tab?: string }>();
-  const active = tab === 'factures' ? 'factures' : 'conso';
+  const active = tab === 'factures' ? 'factures' : tab === 'qr' ? 'qr' : 'conso';
   const [loading, setLoading] = useState(true);
   const [vues, setVues] = useState<CompteurVue[]>([]);
   const [factures, setFactures] = useState<FactureLocal[]>([]);
@@ -89,18 +90,28 @@ export default function EauClientPage() {
       {/* Onglets internes = 2 boutons du footer client (Ma conso / Mes factures) + QR (Phase 3). */}
       <EauTabs
         active={active}
-        onChange={(k) => navigate(k === 'factures' ? '/gestion-eau/client/factures' : '/gestion-eau/client')}
+        onChange={(k) =>
+          navigate(
+            k === 'factures'
+              ? '/gestion-eau/client/factures'
+              : k === 'qr'
+              ? '/gestion-eau/client/qr'
+              : '/gestion-eau/client'
+          )
+        }
         tabs={[
           { key: 'conso', label: 'Ma conso' },
           { key: 'factures', label: 'Mes factures' },
-          { key: 'qr', label: 'Mon QR', disabled: true, badge: 'bientôt' },
+          { key: 'qr', label: 'Mon QR' },
         ]}
       />
       <EauPageShell
-        title={active === 'factures' ? 'Mes factures' : 'Ma consommation'}
+        title={active === 'factures' ? 'Mes factures' : active === 'qr' ? 'Mon QR' : 'Ma consommation'}
         subtitle="Espace client"
       >
-      {loading ? (
+      {active === 'qr' ? (
+        <EauClientQrPage userId={userId} />
+      ) : loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : aucunCompteur ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">

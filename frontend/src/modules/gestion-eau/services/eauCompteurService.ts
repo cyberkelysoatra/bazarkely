@@ -12,6 +12,8 @@ export interface CompteurInput {
   proprietaire?: string | null;
   zone?: string | null;
   ordre?: number | null;
+  lat?: number | null;
+  lng?: number | null;
   actif?: boolean;
 }
 
@@ -65,8 +67,8 @@ export async function createCompteur(input: CompteurInput): Promise<CompteurLoca
     proprietaire: input.proprietaire ?? null,
     zone: input.zone ?? null,
     ordre: input.ordre ?? null,
-    lat: null,
-    lng: null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
     actif: input.actif ?? true,
     created_at: now,
     updated_at: now,
