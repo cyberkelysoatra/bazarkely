@@ -248,11 +248,12 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 ### 📍 Pages concernées (préfixe `/gestion-eau`)
 - `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
 - `/gestion-eau` — **Tableau de bord** opérationnel (admin/releveur ; le client est redirigé vers son espace)
-- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Bassin · Compteur** (+ Tournée/Scan = Phase 3) (releveur/admin)
+- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Compteur · Bassin · Tournée · Scan** (Tournée/Scan **livrés Phase 3**) (releveur/admin)
 - `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans** (+ Tendances = Phase 4) (releveur/admin)
-- `/gestion-eau/compteurs` — **Thème Compteurs** : onglets **Liste (CRUD + QR)** (+ Carte = Phase 3) (admin)
+- `/gestion-eau/compteurs` — **Thème Compteurs** : onglets **Liste (CRUD + QR + géoloc lat/lng) · Carte** (Carte **livrée Phase 3**) (admin)
+- `/gestion-eau/scan` — **Résolveur de scan QR PUBLIC** : applique la matrice de rôle (compteur → saisie directe ; client → fiche/son espace) + **journalise** le scan (Phase 3)
 - `/gestion-eau/facturation` — **Thème Facturation** : onglets **Factures · Rapports** (admin) — Phase 2
-- `/gestion-eau/client` + `/gestion-eau/client/factures` — **Espace client** : onglets **Ma conso · Mes factures** (+ Mon QR = Phase 3) (client/admin)
+- `/gestion-eau/client` + `/gestion-eau/client/factures` + `/gestion-eau/client/qr` — **Espace client** : onglets **Ma conso · Mes factures · Mon QR** (Mon QR **livré Phase 3**) (client/admin)
 - `/gestion-eau/config` — **Configuration** (admin) — *menu en haut à droite*
 - `/gestion-eau/utilisateurs` — **Rôles + comptes clients (code d'enrôlement)** (admin) — *menu en haut à droite*
 - `/gestion-eau/demandes` — **Demandes d'accès à valider/refuser** (admin) — *menu en haut à droite*
@@ -269,6 +270,26 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   Chaque bouton-thème **regroupe ses sous-écrans** via des **onglets internes** (composant `EauTabs`).
 - **Écrans secondaires** (Configuration, Utilisateurs & rôles, Demandes d'accès ; + Alertes/Annonces/Audit = Phase 3-4 « bientôt »)
   → **menu en haut à droite** (`header/HeaderEauActions.tsx`), filtré par rôle. La nav interne historique (`EauNav`) **n'est plus la barre principale**.
+
+### 📷 QR, scan & terrain (Phase 3, v3.20.0)
+- **QR compteur (multi-emplacements)** : un compteur peut porter **plusieurs QR** (`eau_qr_compteur`), chacun avec un **libellé d'emplacement**
+  (ex. « Entrée villa », « Regard ») et un **code unique**. Le QR encode `…/gestion-eau/scan?t=c&k=<code>`. Géré par l'admin depuis
+  le bouton **« QR »** de chaque compteur (onglet Liste) : génération, **export JPEG** par QR, **page d'étiquettes imprimable**, suppression.
+- **QR client** : un par compte (`eau_comptes_client.code_qr`), encode `…/scan?t=cl&k=<code>`, affiché et **téléchargeable JPEG** dans
+  l'onglet **« Mon QR »** de l'espace client.
+- **Résolveur de scan `/gestion-eau/scan` (public)** : lit `t`/`k`, applique la **matrice de rôle** et **journalise** dans `eau_scans` :
+  Releveur/Admin + QR compteur → **saisie d'index directe** du bon compteur ; Releveur/Admin + QR client → **fiche conso** du client ;
+  Client + **son** QR → son espace ; Client + **autre** QR (ou QR compteur) → **« Ce QR ne vous est pas destiné »** ;
+  non connecté / sans rôle → **page mission**. **Scanner caméra** intégré (`html5-qrcode`) en onglet **Scan** + bouton sur la saisie compteur.
+- **Journal des scans** *(admin)* : visible dans le gestionnaire QR de chaque compteur — **emplacement** + **qui** (rôle) + **horodatage**.
+- **Mode tournée** (onglet **Tournée**) : compteurs **ordonnés** (zone/ordre), **progression X/N** des relevés du jour, **reprise** au 1ᵉʳ non relevé ;
+  sélectionner un compteur ouvre **directement** sa saisie d'index.
+- **Carte hors-ligne** (onglet **Carte**) : **Leaflet + OSM**, **géoloc lat/lng** éditable en fiche compteur, bouton **« Télécharger la carte de la zone »**
+  qui pré-télécharge les tuiles de la **zone configurée** (`eau_config.map_centre_lat/lng`, `map_rayon_km`, `map_zoom_min/max`) dans un **cache
+  IndexedDB dédié** (`GestionEauTilesDB`, **hors sync**, plafond **1500 tuiles** — politique OSM) ; auto au 1ᵉʳ lancement en ligne ; **repli sur la
+  liste** des compteurs si une tuile manque hors-ligne. Champs **« Zone carte »** ajoutés en Configuration.
+- **Sync au retour en ligne** : un déclencheur (écoute `useAppStore.isOnline`) **vide la file `_dirty`** (relevés, compteurs, QR, scans créés
+  hors-ligne) via **upsert idempotent (id client)** → aucun doublon.
 
 ### 🧾 Facturation (Phase 2, admin)
 - Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
@@ -344,8 +365,9 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - ⚠️ Le SQL `SUPABASE-SQL.md` doit être exécuté UNE fois dans Supabase pour que la sync fonctionne
   (le socle marche en local sans, mais ne se synchronisera pas tant que les tables n'existent pas).
 
-### ❌ Hors périmètre Phases 1 & 2 (phases suivantes)
-- QR/scan terrain & carte/géoloc (Phase 3), graphiques d'historique client & pilotage (Phase 4), alertes push, place de marché.
+### ❌ Hors périmètre Phases 1, 2 & 3 (phase suivante)
+- Graphiques d'historique client & pilotage/charte (Phase 4), alertes push, place de marché.
+- *(QR/scan terrain & carte/géoloc = **livrés Phase 3 v3.20.0**.)*
 
 ---
 
@@ -366,5 +388,5 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-*Dernière mise à jour : 2026-06-04 — Module gestion-eau : correctif UI (header AHUVI unique + BottomNav thématique role-filtré + matrice d'accès) (v3.19.0)*
+*Dernière mise à jour : 2026-06-04 — Module gestion-eau : **Phase 3 (QR & terrain)** — QR multi-emplacements + scan/journal + mode tournée + carte hors-ligne + sync auto (v3.20.0)*
 *Validé par : Joël (réponses aux questions interactives)*
