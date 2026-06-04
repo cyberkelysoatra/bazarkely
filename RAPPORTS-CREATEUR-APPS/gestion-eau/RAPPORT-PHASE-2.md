@@ -94,4 +94,31 @@
 6. **Notifications** (relances facture impayée, demande validée) : rejoint le backlog idées JOEL (rappels d'échéance) — à mutualiser.
 
 ---
-*Rapport généré en fin de Phase 2 — module `gestion-eau` v3.18.0.*
+
+## 🔌 VALIDATION CONNECTÉE (post-déploiement, navigateur logué sur 1sakely.org)
+
+Déploiement Netlify depuis `main`, version vérifiée live via `/app-version`. Walkthrough réel mené en tant qu'admin (cyberkelysoatra@gmail.com).
+
+### 🐞 2 bugs trouvés ET corrigés pendant la validation
+1. **v3.18.1 — Spinner bloquant sur bascule réseau (perte de saisie).** `GestionEauProvider` avait `isOnline` dans les deps de son effet de chargement + `setIsLoading(true)` → à **chaque** flip online/offline (fréquent sur réseau instable, cas Madagascar), tous les écrans du module se **démontaient/remontaient** → flash + **perte de la saisie en cours** (config, période, formulaires). Les clics étaient aussi gelés (CDP) car le bouton était remonté. **Fix** : spinner uniquement au tout premier chargement (`initialLoadDoneRef`) ; rechargements suivants en arrière-plan.
+2. **v3.18.2 — `window.confirm` neutralisé par `dialogService`.** Les confirmations (`Refuser` une demande, `Supprimer` un compteur, retrait auto-admin, rupture/relevé aberrant) utilisaient `window.confirm()`, **overridé globalement** par `dialogService` (renvoie `undefined`, aucun dialogue) → l'action ne s'exécutait **jamais**. **Fix** : remplacement des 5 `window.confirm` du module par `showConfirm()` (modal async de l'app). C'est le piège déjà documenté en v3.16.2.
+
+### ✅ Critères validés EN CONNECTÉ (clôture #4, #5, #8)
+| # | Validation réelle effectuée | Résultat |
+|---|------------------------------|----------|
+| Config | Saisie L=10/l=7/h=4 (→ **280 m³**), tarif 1500, seuils 10/5, facteur 3, période 30 → enregistré + **persistant après reload** | ✅ |
+| 2 | Compteur « Villa A - Test », relevé index 120 ; **aperçu** = 120 m³ → **180 000 MGA** ; **génération** → **F-000001** ; **relance** → « Relances : 1 » ; **statut** Impayée→**Payée** ; **PDF** (clic sans erreur console) ; **CSV** dispo | ✅ |
+| 2-idempotence | Re-génération même période → « **Aucune facture générée** », toujours **1** facture (pas de doublon) | ✅ |
+| 3 | Création compte client « Client VA Final » + compteur visible → **code d'enrôlement SZ7V8R** affiché | ✅ |
+| 4 | `/accueil` connecté → « J'ai un code » SZ7V8R → **« Accès activé »** → espace client affiche **Villa A - Test + facture F-000001 (180 000 MGA)** et **uniquement** ce compteur | ✅ |
+| 5 | « Demander un accès » → demande **en_attente** ; **Valider** (admin+releveur) → « Aucune demande en attente » ; 2ᵉ demande → **Refuser** (via showConfirm) → refusée | ✅ |
+| 6 | Écran Utilisateurs liste les rôles (2 admins) avec cases Admin/Releveur à effet immédiat | ✅ |
+| 7 | `/accueil` non installé : section « Installer l'application » + toast « Installation directe disponible » (beforeinstallprompt capté) | ✅ |
+| 8 | Toutes tables `_dirty:0` (= push Supabase réussi) ; **vidage local de `eau_factures` + reload → F-000001 re-tirée du serveur en 1 SEUL exemplaire** (`compteur_id` = UUID client, pas d'id régénéré). Pas de doublon | ✅ |
+
+*Note #8 : le scénario « avion » strict (coupure réseau réelle pendant l'écriture) n'a pas été simulé via throttling CDP ; la preuve repose sur la confirmation serveur (`_dirty:false`), le round-trip vidage→pull (1 ligne) et l'idempotence de re-génération — qui sont exactement les garde-fous anti-doublon (upsert + id client).*
+
+### 🧹 Données de test laissées en base (à nettoyer si besoin)
+Compteur « Villa A - Test » (+ 1 relevé index 120), facture **F-000001**, 3 comptes clients (« Client Test » & « Client Villa A » à 0 compteur, « Client VA Final » lié au compte de JOEL), 2 demandes traitées (validée/refusée), config réelle (280 m³, tarif 1500). **Effet de bord** : le compte de JOEL est désormais aussi **client** (lié à « Client VA Final ») et **releveur** (validation de demande) en plus d'admin.
+
+*Rapport généré en fin de Phase 2 — module `gestion-eau`, déployé et validé en connecté (v3.18.2).*
