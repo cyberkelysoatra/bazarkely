@@ -243,13 +243,18 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 
 ---
 
-## MODULE 5 — GESTION EAU (copropriété) — Phases 1 & 2
+## MODULE 5 — GESTION EAU (copropriété) — Phases 1 à 4 (complet)
 
 ### 📍 Pages concernées (préfixe `/gestion-eau`)
 - `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
 - `/gestion-eau` — **Tableau de bord** opérationnel (admin/releveur ; le client est redirigé vers son espace)
 - `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Compteur · Bassin · Tournée · Scan** (Tournée/Scan **livrés Phase 3**) (releveur/admin)
-- `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans** (+ Tendances = Phase 4) (releveur/admin)
+- `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans · Tendances** (Tendances **livré Phase 4**) (releveur/admin)
+- `/gestion-eau/tendances` — **Tendances (pilotage)** : graphiques conso/niveau/NRW/top consommateurs/zone (Phase 4) (releveur/admin) — *menu en haut à droite*
+- `/gestion-eau/alertes` — **Centre d'alertes** : génération + notifications + suivi lu/traité (Phase 4) (admin) — *menu en haut à droite*
+- `/gestion-eau/rapports` — **Rapport mensuel PDF** + proposition fin de période (Phase 4) (admin) — *menu en haut à droite*
+- `/gestion-eau/annonces` — **Annonces du domaine** (CRUD ; bandeau header) (Phase 4) (admin) — *menu en haut à droite*
+- `/gestion-eau/audit` — **Journal d'audit** (actions clés + journal des scans) (Phase 4) (admin) — *menu en haut à droite*
 - `/gestion-eau/compteurs` — **Thème Compteurs** : onglets **Liste (CRUD + QR + géoloc lat/lng) · Carte** (Carte **livrée Phase 3**) (admin)
 - `/gestion-eau/scan` — **Résolveur de scan QR PUBLIC** : applique la matrice de rôle (compteur → saisie directe ; client → fiche/son espace) + **journalise** le scan (Phase 3)
 - `/gestion-eau/facturation` — **Thème Facturation** : onglets **Factures · Rapports** (admin) — Phase 2
@@ -268,8 +273,9 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   (`GESTION_EAU_NAV_ITEMS` dans `constants/`) : **Admin (5)** Tableau de bord · Relevés · Suivi · Compteurs · Facturation —
   **Releveur (3)** Tableau de bord · Relevés · Suivi — **Client (2)** Ma conso · Mes factures.
   Chaque bouton-thème **regroupe ses sous-écrans** via des **onglets internes** (composant `EauTabs`).
-- **Écrans secondaires** (Configuration, Utilisateurs & rôles, Demandes d'accès ; + Alertes/Annonces/Audit = Phase 3-4 « bientôt »)
-  → **menu en haut à droite** (`header/HeaderEauActions.tsx`), filtré par rôle. La nav interne historique (`EauNav`) **n'est plus la barre principale**.
+- **Écrans secondaires** (pilotage **Tendances · Alertes · Rapports · Annonces · Audit** *(Phase 4, activés)* + paramétrage **Configuration · Utilisateurs & rôles · Demandes d'accès**)
+  → **menu en haut à droite** (`header/HeaderEauActions.tsx`), filtré par rôle, avec **badges** (alertes non lues + file `_dirty` « N en attente de sync »). La nav interne historique (`EauNav`) **n'est plus la barre principale**.
+- **Bandeau d'annonces** (`header/HeaderEauAnnonces.tsx`) : en mode eau, les **annonces actives** (`eau_annonces`, fenêtre date + actif) **défilent** dans le header (rotation 6 s) et sont **fermables** (mémorisé en session).
 
 ### 📷 QR, scan & terrain (Phase 3, v3.20.0)
 - **QR compteur (multi-emplacements)** : un compteur peut porter **plusieurs QR** (`eau_qr_compteur`), chacun avec un **libellé d'emplacement**
@@ -290,6 +296,25 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   liste** des compteurs si une tuile manque hors-ligne. Champs **« Zone carte »** ajoutés en Configuration.
 - **Sync au retour en ligne** : un déclencheur (écoute `useAppStore.isOnline`) **vide la file `_dirty`** (relevés, compteurs, QR, scans créés
   hors-ligne) via **upsert idempotent (id client)** → aucun doublon.
+
+### 📊 Pilotage & finitions (Phase 4, v3.21.0)
+- **Tendances** (`/gestion-eau/tendances`, releveur/admin) : graphiques **recharts** — **conso métrée/jour** (aire), **niveau du bassin** (ligne),
+  **NRW par semaine** (barres), **top consommateurs** et **conso par zone** (barres horizontales). Le **tableau de bord** porte un **mini-graphe**
+  conso 30 j (lien vers Tendances) ; l'**espace client** affiche l'**historique de consommation** (12 derniers relevés). Charte verte AHUVI.
+- **Centre d'alertes** (`/gestion-eau/alertes`, admin) : **génération idempotente** d'`eau_alertes` —
+  `anomalie` (bilan non traité), `compteur_non_releve` (> `jours_sans_releve_alerte`), `bassin_critique` (< `bassin_seuil_critique_pct`),
+  `fuite` suspectée (NRW ≥ 25 % + pertes > 0). Déduplication par `type`+`ref_id` non traité (rejouable sans empiler).
+  **Notifications sur l'appareil** via le **`notificationService` partagé** (type `eau_alert`) ; **marquage lu / traité** ; bouton **« Activer »** la permission.
+- **Rapport mensuel** (`/gestion-eau/rapports`, admin) : synthèse (entrées, conso, **pertes/NRW**, anomalies, factures + impayé) → **PDF** (jsPDF, charte verte) ;
+  **proposition automatique en fin de période** (derniers/premiers jours du mois → mois ciblé, mémorisée en localStorage).
+- **Annonces du domaine** (`/gestion-eau/annonces`, admin) : **CRUD** (`eau_annonces` : titre, texte, type `promo|evenement|communaute`,
+  fenêtre `date_debut/date_fin`, `actif`). Les annonces **actives** défilent dans le **bandeau du header** (mode eau), fermable.
+- **Journal d'audit** (`/gestion-eau/audit`, admin) : **actions clés journalisées** (`eau_audit` : qui/quoi/quand — config modifiée, factures générées,
+  annonces CRUD) **+ journal des scans QR** (Phase 3), filtre texte, 2 onglets. `logAudit` est best-effort (n'interrompt jamais l'action métier).
+- **Reprises Phase 3** : **photo de relevé** compteur (capture caméra + **compression JPEG locale**, stockée en data URL via la file `_dirty`) ;
+  bouton **« Purger le cache carte »** en Configuration (`clearTiles`/`countTiles`) ; **badge « N en attente de sync »** (`countDirty`) dans le menu header.
+- **Charte AHUVI** : palette/typo déjà en place (v3.19.0), **étendue** (tokens `ahuvi.gold-light` `#C3C067`, `ahuvi.teal` `#10939F`).
+  Tous les écrans Phase 4 sont stylés AHUVI ; **aucun autre module n'est affecté** (modifications de fichiers partagés strictement additives et conditionnées à `isEauModule`).
 
 ### 🧾 Facturation (Phase 2, admin)
 - Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
@@ -365,9 +390,11 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - ⚠️ Le SQL `SUPABASE-SQL.md` doit être exécuté UNE fois dans Supabase pour que la sync fonctionne
   (le socle marche en local sans, mais ne se synchronisera pas tant que les tables n'existent pas).
 
-### ❌ Hors périmètre Phases 1, 2 & 3 (phase suivante)
-- Graphiques d'historique client & pilotage/charte (Phase 4), alertes push, place de marché.
-- *(QR/scan terrain & carte/géoloc = **livrés Phase 3 v3.20.0**.)*
+### ✅ Module complet (Phases 1 à 4) — hors périmètre restant
+- **Livrés** : socle bassin/compteurs/anomalies/NRW (P1), facturation/clients/enrôlement (P2), QR/scan/tournée/carte hors-ligne (P3),
+  pilotage (tendances/alertes/rapports/annonces/audit) + charte AHUVI + reprises terrain (P4).
+- **Non couvert (évolutions futures)** : RLS Supabase par rôle (aujourd'hui `authenticated` + gardes), upload photo vers bucket dédié (aujourd'hui data URL),
+  notifications push serveur (aujourd'hui notifications locales), place de marché P2P.
 
 ---
 
@@ -388,5 +415,5 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-*Dernière mise à jour : 2026-06-04 — Module gestion-eau : **Phase 3 (QR & terrain)** — QR multi-emplacements + scan/journal + mode tournée + carte hors-ligne + sync auto (v3.20.0)*
+*Dernière mise à jour : 2026-06-04 — Module gestion-eau : **Phase 4 (pilotage & finitions)** — Tendances + Centre d'alertes + Rapport mensuel PDF + Annonces (bandeau header) + Journal d'audit + reprises terrain (photo, purge cache, badge sync) + charte AHUVI étendue (v3.21.0). Module COMPLET (4 phases) — validé live ADMIN sur 1sakely.org.*
 *Validé par : Joël (réponses aux questions interactives)*
