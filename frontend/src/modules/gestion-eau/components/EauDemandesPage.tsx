@@ -6,6 +6,7 @@ import { listDemandes, validerDemande, refuserDemande } from '../services/eauDem
 import { listCompteurs } from '../services/eauCompteurService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { fmtDate } from '../utils/format';
+import { showConfirm } from '../../../utils/dialogUtils';
 import type { DemandeAccesLocal, CompteurLocal } from '../types/gestionEau';
 
 interface DraftState {
@@ -66,7 +67,7 @@ export default function EauDemandesPage() {
   };
 
   const refuser = async (d: DemandeAccesLocal) => {
-    if (!window.confirm('Refuser cette demande ?')) return;
+    if (!(await showConfirm('Refuser cette demande ?', 'Demande d\'accès', { variant: 'danger', confirmText: 'Refuser' }))) return;
     await refuserDemande(d.id, me);
     await reload();
     toast.success('Demande refusée');

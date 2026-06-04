@@ -8,6 +8,7 @@ import { listRoles, setRoles, fetchUserDirectory, type UserInfo } from '../servi
 import { listCompteurs } from '../services/eauCompteurService';
 import { listComptesClient, createCompteClient } from '../services/eauCompteClientService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
+import { showConfirm } from '../../../utils/dialogUtils';
 import type { RoleLocal, CompteurLocal, CompteClientLocal } from '../types/gestionEau';
 
 export default function EauUtilisateursPage() {
@@ -52,7 +53,7 @@ export default function EauUtilisateursPage() {
 
   const toggleRole = async (r: RoleLocal, key: 'admin' | 'releveur', value: boolean) => {
     if (key === 'admin' && !value && r.user_id === me) {
-      if (!window.confirm('Retirer VOTRE propre rôle administrateur ? Vous perdrez l’accès admin.')) return;
+      if (!(await showConfirm('Retirer VOTRE propre rôle administrateur ? Vous perdrez l’accès admin.', 'Rôles', { variant: 'danger', confirmText: 'Retirer' }))) return;
     }
     await setRoles(r.user_id, {
       admin: key === 'admin' ? value : r.admin,

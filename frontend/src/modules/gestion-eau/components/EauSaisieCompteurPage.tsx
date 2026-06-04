@@ -12,6 +12,7 @@ import {
   addReleveCompteur,
 } from '../services/eauReleveService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
+import { showConfirm } from '../../../utils/dialogUtils';
 import { fmtM3, fmtDate } from '../utils/format';
 import type { CompteurLocal, ReleveCompteurLocal } from '../types/gestionEau';
 import type { AberrantResult } from '../utils/bilan';
@@ -101,9 +102,11 @@ export default function EauSaisieCompteurPage() {
 
     // Confirmation rupture
     if (ev.ruptureIndex) {
-      const ok = window.confirm(
-        `L'index saisi (${n}) est INFÉRIEUR au dernier index (${ev.dernier?.index}).\n` +
-          `Cela indique un compteur remis à zéro / remplacé (rupture). La conso de l'intervalle sera 0.\n\nConfirmer ?`
+      const ok = await showConfirm(
+        `L'index saisi (${n}) est INFÉRIEUR au dernier index (${ev.dernier?.index}). ` +
+          `Cela indique un compteur remis à zéro / remplacé (rupture). La conso de l'intervalle sera 0. Confirmer ?`,
+        'Rupture d\'index',
+        { variant: 'warning', confirmText: 'Confirmer' }
       );
       if (!ok) return;
     }
@@ -111,8 +114,10 @@ export default function EauSaisieCompteurPage() {
     // Confirmation aberrant
     if (!ev.ruptureIndex && ev.aberrant.aberrant) {
       const sens = ev.aberrant.type === 'haut' ? 'anormalement ÉLEVÉE' : 'anormalement BASSE';
-      const ok = window.confirm(
-        `La consommation calculée (${ev.conso} m³) est ${sens} par rapport à l'historique.\n\nConfirmer quand même ?`
+      const ok = await showConfirm(
+        `La consommation calculée (${ev.conso} m³) est ${sens} par rapport à l'historique. Confirmer quand même ?`,
+        'Relevé aberrant',
+        { variant: 'warning', confirmText: 'Confirmer' }
       );
       if (!ok) return;
     }

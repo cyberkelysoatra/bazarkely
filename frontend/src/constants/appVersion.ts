@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.18.1';
+export const APP_VERSION = '3.18.2';
 export const APP_VERSION_NAME = 'Gestion Eau Phase 2 — Facturation & Clients : factures numérotées par période (conso × tarif en Ariary, statut payé/impayé, relances, PDF par compteur + CSV global), comptes clients avec code d\'enrôlement, page mission publique (install PWA + Google), demandes d\'accès, espace client (mes factures), config désormais obligatoire (plus de seuils par défaut)';
 export const LAST_UPDATED = '2026-06-04';
 export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.18.2',
+    date: '2026-06-04',
+    description: 'Fix gestion-eau (découvert en validation connectée) : les confirmations utilisaient window.confirm(), NEUTRALISÉ globalement par dialogService (override qui logue un warning et renvoie undefined, sans dialogue cliquable). Conséquence : « Refuser » une demande d\'accès, « Supprimer » un compteur, retirer son propre rôle admin, et confirmer une rupture/relevé aberrant ne déclenchaient JAMAIS l\'action (le if(!confirm) return sortait toujours). Remplacement des 5 window.confirm du module par showConfirm() (modal asynchrone propre de l\'app, dialogUtils). Même piège que v3.16.2.',
+    changes: [
+      'EauDemandesPage (Refuser), EauCompteursPage (Supprimer), EauUtilisateursPage (retrait auto-admin), EauSaisieCompteurPage (rupture + aberrant) : window.confirm → await showConfirm',
+    ],
+    type: 'patch' as const
+  },
   {
     version: '3.18.1',
     date: '2026-06-04',

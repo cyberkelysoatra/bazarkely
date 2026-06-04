@@ -10,6 +10,7 @@ import {
   type CompteurInput,
 } from '../services/eauCompteurService';
 import type { CompteurLocal, CompteurType } from '../types/gestionEau';
+import { showConfirm } from '../../../utils/dialogUtils';
 
 const TYPES: CompteurType[] = ['villa', 'golf', 'commun'];
 
@@ -73,7 +74,7 @@ export default function EauCompteursPage() {
   };
 
   const remove = async (c: CompteurLocal) => {
-    if (!window.confirm(`Supprimer le compteur « ${c.nom} » ?`)) return;
+    if (!(await showConfirm(`Supprimer le compteur « ${c.nom} » ?`, 'Suppression', { variant: 'danger', confirmText: 'Supprimer' }))) return;
     await deleteCompteur(c.id);
     await reload();
     toast.success('Compteur supprimé');
