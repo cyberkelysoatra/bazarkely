@@ -1,10 +1,11 @@
 /**
  * Page-thème « Suivi » (/gestion-eau/suivi) — releveur/admin.
- * Onglets internes : Anomalies / Bilans (livré) · Tendances (Phase 4).
+ * Onglets internes : Anomalies / Bilans · Tendances (Phase 4, graphiques de pilotage).
  */
 import { useState } from 'react';
 import EauTabs from './EauTabs';
 import EauAnomaliesPage from './EauAnomaliesPage';
+import EauTendancesPage from './EauTendancesPage';
 
 export default function EauSuiviPage() {
   const [tab, setTab] = useState<'anomalies' | 'tendances'>('anomalies');
@@ -16,10 +17,10 @@ export default function EauSuiviPage() {
         onChange={(k) => setTab(k as 'anomalies' | 'tendances')}
         tabs={[
           { key: 'anomalies', label: 'Anomalies / Bilans' },
-          { key: 'tendances', label: 'Tendances', disabled: true, badge: 'bientôt' },
+          { key: 'tendances', label: 'Tendances' },
         ]}
       />
-      <EauAnomaliesPage />
+      {tab === 'tendances' ? <EauTendancesPage /> : <EauAnomaliesPage />}
     </div>
   );
 }

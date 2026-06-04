@@ -14,6 +14,7 @@ import {
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { showConfirm } from '../../../utils/dialogUtils';
 import { fmtM3, fmtDate } from '../utils/format';
+import { compressImageFile, dataUrlSizeKo } from '../utils/photo';
 import type { CompteurLocal, ReleveCompteurLocal } from '../types/gestionEau';
 import type { AberrantResult } from '../utils/bilan';
 
@@ -38,6 +39,8 @@ export default function EauSaisieCompteurPage({
   const [selected, setSelected] = useState<CompteurLocal | null>(null);
   const [indexStr, setIndexStr] = useState('');
   const [note, setNote] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [evalState, setEvalState] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -88,7 +91,23 @@ export default function EauSaisieCompteurPage({
     setSelected(c);
     setIndexStr('');
     setNote('');
+    setPhoto(null);
     setEvalState(null);
+  };
+
+  const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await compressImageFile(file);
+      setPhoto(dataUrl);
+    } catch {
+      toast.error('Photo illisible');
+    } finally {
+      setPhotoBusy(false);
+      e.target.value = ''; // permet de reprendre la même photo
+    }
   };
 
   // Recalcule l'évaluation à chaque changement d'index
@@ -148,6 +167,7 @@ export default function EauSaisieCompteurPage({
         rupture_index: ev.ruptureIndex,
         aberrant_confirme: !ev.ruptureIndex && ev.aberrant.aberrant,
         note: note || null,
+        photo_url: photo,
         agent_id: getCurrentUserIdSync(),
       });
       toast.success(
@@ -158,6 +178,7 @@ export default function EauSaisieCompteurPage({
       setSelected(null);
       setIndexStr('');
       setNote('');
+      setPhoto(null);
       setEvalState(null);
     } finally {
       setBusy(false);
@@ -229,7 +250,34 @@ export default function EauSaisieCompteurPage({
               className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
             />
           </label>
-          {/* Photo optionnelle — capture/upload arrive en phase 3 (QR/terrain). */}
+
+          {/* Photo de relevé (optionnelle) — capture caméra + compression locale. */}
+          <div className="text-sm">
+            <span className="block text-gray-600 mb-1">Photo du compteur (optionnel)</span>
+            {photo ? (
+              <div className="flex items-center gap-3">
+                <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+                <div className="text-xs text-gray-500">
+                  <div>≈ {dataUrlSizeKo(photo)} Ko</div>
+                  <button onClick={() => setPhoto(null)} className="text-rose-600 hover:underline mt-1">
+                    Retirer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 w-full border border-dashed border-gray-300 rounded-lg py-3 text-gray-500 cursor-pointer hover:bg-gray-50">
+                {photoBusy ? 'Traitement…' : '📷 Prendre / choisir une photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={onPhotoChange}
+                  className="hidden"
+                  disabled={photoBusy}
+                />
+              </label>
+            )}
+          </div>
 
           <button
             onClick={submit}

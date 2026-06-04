@@ -5,6 +5,7 @@ import EauPageShell from './EauPageShell';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
 import { volumeMaxM3 } from '../utils/bassin';
 import { fmtM3 } from '../utils/format';
+import { countTiles, clearTiles } from '../db/eauTiles';
 import type { ConfigLocal } from '../types/gestionEau';
 
 type FormState = Record<string, string>;
@@ -38,6 +39,8 @@ export default function EauConfigPage() {
   const [coproContact, setCoproContact] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tileCount, setTileCount] = useState<number | null>(null);
+  const [purging, setPurging] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -52,9 +55,23 @@ export default function EauConfigPage() {
       setDevise(cfg?.devise ?? 'MGA');
       setCoproNom(cfg?.copro_nom ?? '');
       setCoproContact(cfg?.copro_contact ?? '');
+      setTileCount(await countTiles());
       setLoading(false);
     })();
   }, []);
+
+  const purgerCacheCarte = async () => {
+    setPurging(true);
+    try {
+      await clearTiles();
+      setTileCount(0);
+      toast.success('Cache carte purgé');
+    } catch {
+      toast.error('Échec de la purge');
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -177,6 +194,19 @@ export default function EauConfigPage() {
                   {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
                 </label>
               ))}
+            </div>
+            {/* Purge du cache de tuiles cartographiques (hors-ligne). */}
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-500">
+                {tileCount == null ? 'Cache carte…' : `${tileCount} tuile(s) en cache`}
+              </span>
+              <button
+                onClick={purgerCacheCarte}
+                disabled={purging || !tileCount}
+                className="text-xs font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg"
+              >
+                {purging ? 'Purge…' : '🗑️ Purger le cache carte'}
+              </button>
             </div>
           </div>
 

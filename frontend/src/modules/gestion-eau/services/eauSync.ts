@@ -145,6 +145,19 @@ export async function saveLocal<T extends LocalMeta>(table: EauTableName, record
   return toStore;
 }
 
+/**
+ * Compte les enregistrements en attente de synchronisation (`_dirty`) sur toutes
+ * les tables — alimente le badge « N en attente de sync » de l'UI terrain.
+ */
+export async function countDirty(): Promise<number> {
+  let total = 0;
+  for (const t of EAU_TABLES) {
+    const all = (await eauDb.table(t).toArray()) as LocalMeta[];
+    total += all.filter((r) => r._dirty === true).length;
+  }
+  return total;
+}
+
 /** Supprime un enregistrement en local + Supabase (best-effort). */
 export async function deleteLocal(table: EauTableName, id: string): Promise<void> {
   await eauDb.table(table).delete(id);

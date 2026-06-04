@@ -5,6 +5,7 @@ import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
 import { GESTION_EAU_NAV_ITEMS } from '../../constants';
 import HeaderEauActions from './header/HeaderEauActions';
+import HeaderEauAnnonces from './header/HeaderEauAnnonces';
 import apiService from '../../services/apiService';
 import budgetService from '../../services/budgetService';
 import adminService from '../../services/adminService';
@@ -1056,6 +1057,9 @@ const Header = () => {
             </div>
           </div>
         )}
+
+        {/* Bandeau d'annonces du domaine (mode eau) — annonces actives défilantes, fermables. */}
+        {isEauModule && user && <HeaderEauAnnonces />}
 
         {/* LINE 2: Navigation Items (DESKTOP ONLY) — Gestion Eau : thèmes role-filtrés (AHUVI) */}
         {isEauModule && (

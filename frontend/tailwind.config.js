@@ -66,6 +66,8 @@ export default {
           forest: '#364E30',
           olive: '#4C6D40',
           gold: '#9D9B4B',
+          'gold-light': '#C3C067',
+          teal: '#10939F',
           50: '#f4f6f2',
           100: '#e6ebe1',
           200: '#cdd7c4',

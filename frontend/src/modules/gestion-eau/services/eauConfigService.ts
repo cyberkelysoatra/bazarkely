@@ -52,7 +52,12 @@ export async function refreshConfig(online: boolean): Promise<ConfigLocal | null
 export async function saveConfig(patch: Partial<ConfigLocal>): Promise<ConfigLocal> {
   const current = (await getConfig()) ?? emptyConfig();
   const merged: ConfigLocal = { ...current, ...patch, id: CONFIG_SINGLETON_ID };
-  return saveLocal('eau_config', merged);
+  const saved = await saveLocal('eau_config', merged);
+  // Journal d'audit (best-effort, import paresseux pour éviter tout cycle).
+  void import('./eauAuditService')
+    .then((m) => m.logAudit({ action: 'config_modifiee', entite: 'eau_config', entiteId: CONFIG_SINGLETON_ID, details: Object.keys(patch) }))
+    .catch(() => {});
+  return saved;
 }
 
 /** Dimensions du bassin extraites de la config (ou null si incomplètes). */

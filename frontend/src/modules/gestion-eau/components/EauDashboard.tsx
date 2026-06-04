@@ -1,7 +1,11 @@
-/** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW. */
+/** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW + mini-graphe. */
 import { useEffect, useState } from 'react';
+import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { Link } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { getDashboardData, type DashboardData } from '../services/eauBilanService';
+import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
@@ -18,14 +22,16 @@ function Card({ title, children, tone }: { title: string; children: React.ReactN
 
 export default function EauDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [conso, setConso] = useState<SeriePoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const d = await getDashboardData();
+      const [d, t] = await Promise.all([getDashboardData(), getTendances({ fenetreJours: 30 })]);
       if (alive) {
         setData(d);
+        setConso(t.consoParJour);
         setLoading(false);
       }
     })();
@@ -97,6 +103,30 @@ export default function EauDashboard() {
                 </div>
               )}
             </Card>
+          </div>
+
+          {/* Mini-graphique : consommation des 30 derniers jours → renvoie vers Tendances. */}
+          <div className="col-span-2">
+            <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Conso (30 j)
+                </div>
+                <Link to="/gestion-eau/tendances" className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline">
+                  <TrendingUp className="w-3.5 h-3.5" /> Tendances
+                </Link>
+              </div>
+              {conso.length === 0 ? (
+                <div className="text-sm text-gray-400 py-4 text-center">Pas encore de bilan.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={90}>
+                  <AreaChart data={conso}>
+                    <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
+                    <Area type="monotone" dataKey="value" stroke="#4C6D40" fill="#4C6D40" fillOpacity={0.2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@ import { db } from '../lib/database'
 
 export interface NotificationData {
   id: string
-  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day' | 'recurring_reminder' | 'recurring_created' | 'loan_due_reminder' | 'loan_overdue_alert'
+  type: 'budget_alert' | 'goal_reminder' | 'transaction_alert' | 'daily_summary' | 'sync_notification' | 'security_alert' | 'mobile_money' | 'seasonal' | 'family_event' | 'market_day' | 'recurring_reminder' | 'recurring_created' | 'loan_due_reminder' | 'loan_overdue_alert' | 'eau_alert'
   title: string
   body: string
   icon?: string

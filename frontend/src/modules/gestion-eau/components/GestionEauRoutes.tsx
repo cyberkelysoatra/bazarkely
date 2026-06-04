@@ -22,6 +22,12 @@ const EauFacturationPage = React.lazy(() => import('./EauFacturationPage'));
 const EauUtilisateursPage = React.lazy(() => import('./EauUtilisateursPage'));
 const EauDemandesPage = React.lazy(() => import('./EauDemandesPage'));
 const EauClientPage = React.lazy(() => import('./EauClientPage'));
+// Phase 4 — écrans de pilotage (secondaires, accessibles via le menu HeaderEauActions).
+const EauTendancesPage = React.lazy(() => import('./EauTendancesPage'));
+const EauAlertesPage = React.lazy(() => import('./EauAlertesPage'));
+const EauRapportsPage = React.lazy(() => import('./EauRapportsPage'));
+const EauAnnoncesPage = React.lazy(() => import('./EauAnnoncesPage'));
+const EauAuditPage = React.lazy(() => import('./EauAuditPage'));
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -79,6 +85,50 @@ export default function GestionEauRoutes() {
           element={
             <EauRoleProtectedRoute allowedRoles={['admin']}>
               <EauFacturationPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+
+        {/* Phase 4 — Tendances (lecture) : admin + releveur. */}
+        <Route
+          path="tendances"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur']}>
+              <EauTendancesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+
+        {/* Phase 4 — Alertes / Rapports / Annonces / Audit : admin uniquement. */}
+        <Route
+          path="alertes"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin']}>
+              <EauAlertesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route
+          path="rapports"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin']}>
+              <EauRapportsPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route
+          path="annonces"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin']}>
+              <EauAnnoncesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route
+          path="audit"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin']}>
+              <EauAuditPage />
             </EauRoleProtectedRoute>
           }
         />

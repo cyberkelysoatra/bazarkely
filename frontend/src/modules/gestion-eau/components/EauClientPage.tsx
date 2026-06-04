@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
 import EauPageShell from './EauPageShell';
 import EauTabs from './EauTabs';
 import EauClientQrPage from './EauClientQrPage';
@@ -10,16 +11,17 @@ import { useGestionEau } from '../context/GestionEauContext';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
 import { listCompteurs } from '../services/eauCompteurService';
-import { getDernierReleveCompteur } from '../services/eauReleveService';
+import { getDernierReleveCompteur, historiqueConsoCompteur } from '../services/eauReleveService';
 import { getConfig } from '../services/eauConfigService';
 import { downloadFacturePdf } from '../utils/pdf';
-import { fmtMontant, fmtDate } from '../utils/format';
+import { fmtMontant, fmtDate, fmtM3 } from '../utils/format';
 import type { FactureLocal, CompteurLocal, ConfigLocal } from '../types/gestionEau';
 
 interface CompteurVue {
   compteur: CompteurLocal;
   dernierIndex: number | null;
   dernierReleveDate: string | null;
+  consos: { i: number; value: number }[];
 }
 
 export default function EauClientPage() {
@@ -58,10 +60,12 @@ export default function EauClientPage() {
       const vuesData: CompteurVue[] = [];
       for (const c of mine) {
         const dernier = await getDernierReleveCompteur(c.id);
+        const hist = await historiqueConsoCompteur(c.id);
         vuesData.push({
           compteur: c,
           dernierIndex: dernier?.index ?? null,
           dernierReleveDate: dernier?.timestamp ?? null,
+          consos: hist.slice(-12).map((value, i) => ({ i: i + 1, value })),
         });
       }
       setVues(vuesData);
@@ -133,6 +137,21 @@ export default function EauClientPage() {
                       <span className="text-xs text-gray-400"> · relevé du {fmtDate(v.dernierReleveDate)}</span>
                     )}
                   </div>
+                  {/* Historique de consommation (12 derniers relevés). */}
+                  {v.consos.length > 0 ? (
+                    <div className="mt-2">
+                      <div className="text-xs text-gray-400 mb-1">Historique de consommation</div>
+                      <ResponsiveContainer width="100%" height={80}>
+                        <BarChart data={v.consos}>
+                          <XAxis dataKey="i" hide />
+                          <Tooltip formatter={(val: number) => fmtM3(val)} labelFormatter={() => ''} />
+                          <Bar dataKey="value" fill="#4C6D40" radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs text-gray-400">Historique disponible après plusieurs relevés.</div>
+                  )}
                 </div>
               ))}
             </div>

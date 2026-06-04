@@ -138,6 +138,15 @@ export async function genererFactures(
   // Persiste la nouvelle valeur de séquence (idempotent : ne régénère pas les factures existantes).
   if (created.length > 0) {
     await saveConfig({ numero_facture_seq: seq });
+    void import('./eauAuditService')
+      .then((m) =>
+        m.logAudit({
+          action: 'factures_generees',
+          entite: 'eau_factures',
+          details: { nb: created.length, periode_start: periodeStartIso, periode_end: periodeEndIso },
+        })
+      )
+      .catch(() => {});
   }
   return created;
 }

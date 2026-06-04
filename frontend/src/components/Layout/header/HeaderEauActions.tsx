@@ -19,6 +19,8 @@ import {
   Bell,
   Megaphone,
   ClipboardList,
+  TrendingUp,
+  FileText,
   IdCard,
   LogOut,
   RefreshCw,
@@ -26,6 +28,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../../stores/appStore';
 import { useGestionEau } from '../../../modules/gestion-eau/context';
+import { countUnread } from '../../../modules/gestion-eau/services/eauAlerteService';
+import { countDirty } from '../../../modules/gestion-eau/services/eauSync';
 import { APP_VERSION } from '../../../constants/appVersion';
 
 interface MenuLink {
@@ -33,16 +37,19 @@ interface MenuLink {
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: Array<'admin' | 'releveur' | 'client'>;
-}
-
-interface SoonLink {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  roles: Array<'admin' | 'releveur' | 'client'>;
+  /** Clé de badge dynamique (ex. alertes non lues). */
+  badge?: 'alertes';
 }
 
 // Écrans secondaires fonctionnels, filtrés par rôle (cumulable).
 const SECONDARY_LINKS: MenuLink[] = [
+  // Pilotage (Phase 4)
+  { label: 'Tendances', path: '/gestion-eau/tendances', icon: TrendingUp, roles: ['admin', 'releveur'] },
+  { label: 'Alertes', path: '/gestion-eau/alertes', icon: Bell, roles: ['admin'], badge: 'alertes' },
+  { label: 'Rapports', path: '/gestion-eau/rapports', icon: FileText, roles: ['admin'] },
+  { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin'] },
+  { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin'] },
+  // Paramétrage
   { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin'] },
   { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin'] },
   { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin'] },
@@ -50,18 +57,13 @@ const SECONDARY_LINKS: MenuLink[] = [
   { label: 'Ma fiche / Mon QR', path: '/gestion-eau/client', icon: IdCard, roles: ['client'] },
 ];
 
-// Écrans à venir (Phase 3-4) — affichés désactivés pour matérialiser la cible produit.
-const SOON_LINKS: SoonLink[] = [
-  { label: 'Alertes', icon: Bell, roles: ['admin'] },
-  { label: 'Annonces', icon: Megaphone, roles: ['admin'] },
-  { label: 'Audit / Journaux', icon: ClipboardList, roles: ['admin'] },
-];
-
 export default function HeaderEauActions() {
   const navigate = useNavigate();
   const { logout, user } = useAppStore();
   const { roles } = useGestionEau();
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [dirty, setDirty] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,24 +75,52 @@ export default function HeaderEauActions() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
+  // Compteurs (alertes non lues + file en attente de sync) — rafraîchis à l'ouverture du menu.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [u, d] = await Promise.all([
+          roles?.admin ? countUnread() : Promise.resolve(0),
+          countDirty(),
+        ]);
+        if (alive) {
+          setUnread(u);
+          setDirty(d);
+        }
+      } catch {
+        /* best-effort */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [open, roles?.admin]);
+
   const has = (r: Array<'admin' | 'releveur' | 'client'>) => r.some((x) => roles?.[x]);
   const links = SECONDARY_LINKS.filter((l) => has(l.roles));
-  const soon = SOON_LINKS.filter((l) => has(l.roles));
 
   const go = (path: string) => {
     setOpen(false);
     navigate(path);
   };
 
+  const badgeCount = unread + dirty;
+
   return (
     <div className="relative ml-auto" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/25 shadow-lg hover:bg-white/25 transition-all duration-200"
+        className="relative flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/25 shadow-lg hover:bg-white/25 transition-all duration-200"
         aria-label="Menu Gestion Eau"
       >
-        <span className="w-9 h-9 bg-white/30 rounded-full flex items-center justify-center border border-white/40">
+        <span className="relative w-9 h-9 bg-white/30 rounded-full flex items-center justify-center border border-white/40">
           <User className="w-5 h-5 text-white" />
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-ahuvi-gold text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white/60">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
         </span>
         <span className="hidden sm:block text-white font-medium text-sm font-ahuvi-body max-w-28 truncate">
           {user?.username || user?.email || 'Compte'}
@@ -99,11 +129,19 @@ export default function HeaderEauActions() {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl border border-ahuvi-100 shadow-2xl z-50 min-w-[230px] overflow-hidden">
+        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl border border-ahuvi-100 shadow-2xl z-50 min-w-[240px] overflow-hidden">
+          {/* Badge file d'attente de synchronisation (terrain à réseau instable). */}
+          {dirty > 0 && (
+            <div className="px-4 py-2 bg-ahuvi-50 border-b border-ahuvi-100 flex items-center gap-2 text-xs text-ahuvi-800">
+              <RefreshCw className="w-3.5 h-3.5 text-ahuvi-olive" />
+              {dirty} en attente de synchronisation
+            </div>
+          )}
           {links.length > 0 && (
             <div className="py-1">
               {links.map((l) => {
                 const Icon = l.icon;
+                const showBadge = l.badge === 'alertes' && unread > 0;
                 return (
                   <button
                     key={l.path}
@@ -112,29 +150,13 @@ export default function HeaderEauActions() {
                   >
                     <Icon className="w-4 h-4 text-ahuvi-olive" />
                     <span className="flex-1 text-left">{l.label}</span>
+                    {showBadge && (
+                      <span className="min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
                     <ChevronRight className="w-3.5 h-3.5 text-ahuvi-300" />
                   </button>
-                );
-              })}
-            </div>
-          )}
-
-          {soon.length > 0 && (
-            <div className="py-1 border-t border-ahuvi-100">
-              {soon.map((l) => {
-                const Icon = l.icon;
-                return (
-                  <div
-                    key={l.label}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 cursor-not-allowed font-ahuvi-body"
-                    title="Disponible prochainement"
-                  >
-                    <Icon className="w-4 h-4 text-gray-300" />
-                    <span className="flex-1 text-left">{l.label}</span>
-                    <span className="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-400 rounded px-1.5 py-0.5">
-                      bientôt
-                    </span>
-                  </div>
                 );
               })}
             </div>

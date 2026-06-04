@@ -1,8 +1,26 @@
-export const APP_VERSION = '3.20.0';
-export const APP_VERSION_NAME = 'Gestion Eau — Phase 3 (QR & terrain) : QR multi-emplacements par compteur (export JPEG + étiquettes imprimables), QR client personnel, route de scan /gestion-eau/scan appliquant la matrice de rôle (releveur → saisie d\'index directe ; agent → fiche client ; client → son espace / « Ce QR ne vous est pas destiné »), scanner caméra intégré (html5-qrcode), journal des scans par compteur (emplacement + qui), mode tournée (liste ordonnée + progression X/N + reprise), carte hors-ligne Leaflet/OSM avec pré-téléchargement de la zone configurée (cache IndexedDB dédié, repli liste si tuile manquante), géoloc lat/lng des compteurs, déclencheur de sync au retour en ligne (vide la file _dirty). Nettoyage : suppression d\'EauNav/navConfig (test migré vers GESTION_EAU_NAV_ITEMS)';
+export const APP_VERSION = '3.21.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Phase 4 (pilotage & finitions) : Tendances (graphiques recharts — conso/jour, niveau bassin, NRW/semaine, top consommateurs, conso par zone) + mini-graphe au tableau de bord et historique de conso dans l\'espace client ; Centre d\'alertes (génération idempotente anomalie/compteur non relevé/bassin critique/fuite, notifications sur l\'appareil via notificationService, marquage lu/traité) ; Rapport mensuel PDF (entrées, conso, pertes/NRW, anomalies, factures) + proposition auto en fin de période ; Annonces du domaine (CRUD admin, bandeau défilant fermable dans le header AHUVI) ; Journal d\'audit (actions clés qui/quoi/quand + journal des scans QR). Reprises Phase 3 : photo de relevé (capture caméra + compression), bouton « Purger le cache carte », badge file _dirty « N en attente de sync ». Charte AHUVI étendue (tokens or-clair/teal). Menu HeaderEauActions : entrées Alertes/Annonces/Audit/Tendances/Rapports activées (role-filtrées).';
 export const LAST_UPDATED = '2026-06-04';
 export const APP_BUILD_DATE = '2026-06-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.21.0',
+    date: '2026-06-04',
+    description: 'PHASE 4 du module gestion-eau (pilotage & finitions + charte AHUVI). (A) Tendances /gestion-eau/tendances (admin+releveur) : graphiques recharts — conso métrée par jour (aire), niveau du bassin (ligne), NRW par semaine (barres), top consommateurs et conso par zone (barres horizontales) ; mini-graphe conso 30 j au tableau de bord (lien Tendances) ; onglet Tendances activé sous Suivi ; historique de consommation (12 derniers relevés) dans l\'espace client. (B) Centre d\'alertes /gestion-eau/alertes (admin) : génération IDEMPOTENTE (anomalie de bilan, compteur non relevé > jours_sans_releve_alerte, bassin critique < bassin_seuil_critique_pct, fuite suspectée si NRW ≥ 25 % + pertes > 0) ; dédup par type+ref non traité ; notifications sur l\'appareil via le notificationService partagé (type eau_alert) ; marquage lu/traité ; bouton « Activer » les notifications. (C) Rapport mensuel /gestion-eau/rapports (admin) : synthèse (entrées, conso, pertes/NRW, anomalies, factures + impayé) → PDF (jsPDF, charte verte) ; proposition automatique en fin de période (derniers/premiers jours du mois, mémorisée). (D) Annonces /gestion-eau/annonces (admin) : CRUD (titre, texte, type promo/évènement/communauté, fenêtre date, actif) ; les annonces actives défilent dans un bandeau fermable du header en mode eau. (E) Journal d\'audit /gestion-eau/audit (admin) : actions clés journalisées (config modifiée, factures générées, annonces CRUD) + journal des scans QR (Phase 3), filtre texte, 2 onglets. (F) Charte AHUVI : palette/typo déjà en place, étendue (tokens ahuvi.gold-light #C3C067, ahuvi.teal #10939F) ; écrans Phase 4 stylés (vert forêt/olive/or, Playfair/Poppins) ; aucun autre module affecté. Reprises Phase 3 : photo de relevé compteur (capture caméra + compression JPEG locale, stockée en data URL via la file _dirty), bouton « Purger le cache carte » (countTiles/clearTiles) en Configuration, badge « N en attente de sync » (countDirty) dans le menu header. Menu HeaderEauActions : Tendances/Alertes/Rapports/Annonces/Audit activées (role-filtrées) + badge alertes non lues. Aucun SQL (tables eau_alertes/eau_audit/eau_annonces + colonnes déjà présentes).',
+    changes: [
+      'Nouveaux services : eauAlerteService (génération idempotente + notifs), eauAnnonceService (CRUD + fenêtre active), eauAuditService (logAudit/listAudit), eauTendanceService (séries conso/niveau/NRW/top/zone), eauRapportService (synthèse mensuelle + proposition fin de période)',
+      'Nouvel util pur testable : utils/alertes.ts (computeAlerteCandidates) ; utils/rapportPdf.ts (PDF mensuel) ; utils/photo.ts (compression image)',
+      'Nouveaux écrans : EauTendancesPage, EauAlertesPage, EauRapportsPage, EauAnnoncesPage, EauAuditPage + routes role-gardées',
+      'EauSuiviPage : onglet Tendances activé ; EauDashboard : mini-graphe conso 30 j ; EauClientPage : historique conso ; EauSaisieCompteurPage : capture photo ; EauConfigPage : purge cache carte',
+      'PARTAGÉ Header.tsx : bandeau d\'annonces défilant (HeaderEauAnnonces) en mode eau',
+      'PARTAGÉ header/HeaderEauActions.tsx : entrées Phase 4 activées + badges (alertes non lues, file _dirty)',
+      'PARTAGÉ notificationService.ts : type eau_alert ajouté (additif)',
+      'PARTAGÉ tailwind.config.js : tokens ahuvi.gold-light + ahuvi.teal',
+      'eauSync.countDirty() ; hooks d\'audit additifs dans eauConfigService.saveConfig et eauFactureService.genererFactures',
+      '20 tests Phase 4 (alertes, annonces, tendances, NRW, rapport) — 77 tests eau au total',
+    ],
+    type: 'minor' as const
+  },
   {
     version: '3.20.0',
     date: '2026-06-04',
