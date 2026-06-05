@@ -17,6 +17,8 @@ import {
   type ZoneSpec,
 } from './map/offlineTiles';
 import { countTiles } from '../db/eauTiles';
+import EauAide from './EauAide';
+import { AIDE } from './eauAideTextes';
 import type { CompteurLocal, ConfigLocal } from '../types/gestionEau';
 
 function zoneFromConfig(cfg: ConfigLocal | null): ZoneSpec | null {
@@ -143,6 +145,7 @@ export default function EauCartePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-3 space-y-3">
+      <EauAide id={AIDE.carte.id} quoi={AIDE.carte.quoi} comment={AIDE.carte.comment} />
       {/* Barre d'action : téléchargement de la zone hors-ligne. */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm text-gray-600">

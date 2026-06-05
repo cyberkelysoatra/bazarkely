@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { listDemandes, validerDemande, refuserDemande } from '../services/eauDemandeService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
@@ -74,7 +75,7 @@ export default function EauDemandesPage() {
   };
 
   return (
-    <EauPageShell title="Demandes d’accès" subtitle="Valider ou refuser les nouvelles demandes (admin)">
+    <EauPageShell title="Demandes d’accès" subtitle="Valider ou refuser les nouvelles demandes (admin)" aide={AIDE.demandes}>
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : demandes.length === 0 ? (

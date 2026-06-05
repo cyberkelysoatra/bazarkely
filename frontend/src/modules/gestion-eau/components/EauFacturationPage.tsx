@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import { getConfig } from '../services/eauConfigService';
 import { isConfigComplete, configMissingFields } from '../utils/facture';
@@ -142,6 +143,7 @@ export default function EauFacturationPage() {
       <EauPageShell
         title="Facturation"
         subtitle={view === 'rapports' ? 'Exports (admin)' : 'Génération des factures par période (admin)'}
+        aide={AIDE.facturation}
       >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>

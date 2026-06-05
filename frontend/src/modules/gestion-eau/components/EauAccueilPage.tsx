@@ -19,6 +19,8 @@ import {
 } from '../services/eauEnrollmentService';
 import { isStandalone, isIOS, type BeforeInstallPromptEvent } from '../utils/pwa';
 import { normalizeCode } from '../utils/codes';
+import EauAide from './EauAide';
+import { AIDE } from './eauAideTextes';
 
 export default function EauAccueilPage() {
   const navigate = useNavigate();
@@ -111,6 +113,8 @@ export default function EauAccueilPage() {
             Une application gratuite, simple, qui fonctionne même sans connexion.
           </p>
         </header>
+
+        <EauAide id={AIDE.accueil.id} quoi={AIDE.accueil.quoi} comment={AIDE.accueil.comment} />
 
         {/* Mission / valeurs */}
         <section className="rounded-xl border border-sky-100 bg-white p-4 shadow-soft text-sm text-gray-700 space-y-2">

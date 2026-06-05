@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import EauClientQrPage from './EauClientQrPage';
 import { useGestionEau } from '../context/GestionEauContext';
@@ -112,6 +113,7 @@ export default function EauClientPage() {
       <EauPageShell
         title={active === 'factures' ? 'Mes factures' : active === 'qr' ? 'Mon QR' : 'Ma consommation'}
         subtitle="Espace client"
+        aide={AIDE.client}
       >
       {active === 'qr' ? (
         <EauClientQrPage userId={userId} />

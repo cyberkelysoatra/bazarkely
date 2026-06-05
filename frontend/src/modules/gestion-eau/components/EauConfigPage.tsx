@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
 import { bassinDeductions, isBassinModelComplete } from '../utils/bassin';
 import { fmtM3 } from '../utils/format';
@@ -122,7 +123,7 @@ export default function EauConfigPage() {
   };
 
   return (
-    <EauPageShell title="Configuration" subtitle="Paramètres du bassin et seuils (admin)">
+    <EauPageShell title="Configuration" subtitle="Paramètres du bassin et seuils (admin)" aide={AIDE.config}>
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import EauCartePage from './EauCartePage';
 import EauQrCompteurManager from './EauQrCompteurManager';
@@ -109,6 +110,7 @@ export default function EauCompteursPage() {
         <EauPageShell
           title="Compteurs"
           subtitle="Gestion des compteurs (admin)"
+          aide={AIDE.compteurs}
           actions={
             <button onClick={openNew} className="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-3 py-2 rounded-lg">
               + Nouveau

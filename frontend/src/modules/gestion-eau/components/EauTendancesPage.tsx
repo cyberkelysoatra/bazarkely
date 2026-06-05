@@ -12,6 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { getTendances, type TendancesData } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
 
@@ -62,7 +63,7 @@ export default function EauTendancesPage() {
   }, []);
 
   return (
-    <EauPageShell title="Tendances" subtitle="Pilotage — conso, niveau, NRW, consommateurs">
+    <EauPageShell title="Tendances" subtitle="Pilotage — conso, niveau, NRW, consommateurs" aide={AIDE.tendances}>
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : !data ? (

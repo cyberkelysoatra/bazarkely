@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { listBilans, markBilanTraitee, refreshBilans } from '../services/eauBilanService';
 import { fmtM3, fmtPct, fmtDate } from '../utils/format';
 import type { BilanLocal } from '../types/gestionEau';
@@ -40,7 +41,7 @@ export default function EauAnomaliesPage() {
   };
 
   return (
-    <EauPageShell title="Anomalies" subtitle="Historique des bilans">
+    <EauPageShell title="Anomalies" subtitle="Historique des bilans" aide={AIDE.anomalies}>
       <label className="flex items-center gap-2 text-sm mb-3">
         <input
           type="checkbox"

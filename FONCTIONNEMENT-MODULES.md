@@ -413,9 +413,17 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - ⚠️ Le SQL `SUPABASE-SQL.md` doit être exécuté UNE fois dans Supabase pour que la sync fonctionne
   (le socle marche en local sans, mais ne se synchronisera pas tant que les tables n'existent pas).
 
+### 🆘 Aide contextuelle dépliable (v3.23.0)
+- **Sur chaque écran et chaque onglet** du module : un bouton **ⓘ « Aide »** discret près du titre (et le **sous-titre devient cliquable**)
+  déplie/replie un panneau d'aide structuré **« À quoi ça sert »** + **« Comment s'en servir »**, en français simple (utilisateurs non techniques).
+- **Couverture** : Tableau de bord, Relevés (général), **Saisie bassin avec une aide PAR onglet** (Entrée / Niveau / Débit), Saisie compteur, Tournée, Scan,
+  Suivi (Anomalies / Tendances), Compteurs, Carte, Facturation, Configuration, Utilisateurs, Demandes, Annonces, Audit, Centre d'alertes, Rapports, Espace client, Page d'accueil.
+- **Comportement** : état **mémorisé par écran** (localStorage `eau_aide_<id>`), **replié par défaut sauf à la 1ʳᵉ visite** (déplié pour découvrir), accessible (aria-expanded), mobile-first, charte AHUVI.
+- **Implémentation** : composant réutilisable `EauAide` + textes centralisés `eauAideTextes.ts` ; intégré via la prop `aide` de `EauPageShell` (écrans à shell) ou en composant autonome (Relevés/Scan/onglets bassin/Tournée/Carte/Accueil). 100 % additif.
+
 ### ✅ Module complet (Phases 1 à 4) — hors périmètre restant
 - **Livrés** : socle bassin/compteurs/anomalies/NRW (P1), facturation/clients/enrôlement (P2), QR/scan/tournée/carte hors-ligne (P3),
-  pilotage (tendances/alertes/rapports/annonces/audit) + charte AHUVI + reprises terrain (P4).
+  pilotage (tendances/alertes/rapports/annonces/audit) + charte AHUVI + reprises terrain (P4), **aide contextuelle dépliable sur tous les écrans (v3.23.0)**.
 - **Non couvert (évolutions futures)** : RLS Supabase par rôle (aujourd'hui `authenticated` + gardes), upload photo vers bucket dédié (aujourd'hui data URL),
   notifications push serveur (aujourd'hui notifications locales), place de marché P2P.
 
@@ -438,5 +446,5 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-*Dernière mise à jour : 2026-06-04 — Module gestion-eau : **Phase 4 (pilotage & finitions)** — Tendances + Centre d'alertes + Rapport mensuel PDF + Annonces (bandeau header) + Journal d'audit + reprises terrain (photo, purge cache, badge sync) + charte AHUVI étendue (v3.21.0). Module COMPLET (4 phases) — validé live ADMIN sur 1sakely.org.*
+*Dernière mise à jour : 2026-06-05 — Module gestion-eau : **Aide contextuelle dépliable** (ⓘ « Aide » + sous-titre cliquable → panneau « À quoi ça sert / Comment s'en servir ») sur TOUS les écrans et onglets, dont les 3 onglets de Saisie bassin ; état mémorisé par écran, replié par défaut sauf 1ʳᵉ visite ; charte AHUVI, mobile-first (v3.23.0). Précédemment : Phase 4 (pilotage & finitions) v3.21.0 + évolution bassin/débit v3.22.0. Module COMPLET — validé live ADMIN sur 1sakely.org.*
 *Validé par : Joël (réponses aux questions interactives)*

@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { listCompteursActifs } from '../services/eauCompteurService';
 import {
   evaluerReleveCompteur,
@@ -186,7 +187,7 @@ export default function EauSaisieCompteurPage({
   };
 
   return (
-    <EauPageShell title="Saisie compteur" subtitle="Relevé d'index des compteurs">
+    <EauPageShell title="Saisie compteur" subtitle="Relevé d'index des compteurs" aide={AIDE.saisieCompteur}>
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : selected ? (

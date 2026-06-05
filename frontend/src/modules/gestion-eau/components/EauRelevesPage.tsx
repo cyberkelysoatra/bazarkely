@@ -8,6 +8,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import EauTabs from './EauTabs';
+import EauAide from './EauAide';
+import { AIDE } from './eauAideTextes';
 import EauSaisieBassinPage from './EauSaisieBassinPage';
 import EauSaisieCompteurPage from './EauSaisieCompteurPage';
 import EauTourneePage from './EauTourneePage';
@@ -67,6 +69,13 @@ export default function EauRelevesPage() {
         ]}
       />
 
+      <EauAide
+        id={AIDE.releves.id}
+        quoi={AIDE.releves.quoi}
+        comment={AIDE.releves.comment}
+        className="max-w-3xl mx-auto px-3"
+      />
+
       {tab === 'compteur' && (
         <EauSaisieCompteurPage preselectCompteurId={preselect} onScanRequest={() => setScannerOpen(true)} />
       )}
@@ -74,6 +83,7 @@ export default function EauRelevesPage() {
       {tab === 'tournee' && <EauTourneePage onPick={pickCompteur} />}
       {tab === 'scan' && (
         <div className="max-w-3xl mx-auto px-3">
+          <EauAide id={AIDE.scan.id} quoi={AIDE.scan.quoi} comment={AIDE.scan.comment} />
           <div className="rounded-xl border border-ahuvi-200 bg-white p-6 text-center space-y-3 shadow-soft">
             <div className="text-4xl">📷</div>
             <h2 className="font-semibold text-ahuvi-forest">Scanner un QR</h2>

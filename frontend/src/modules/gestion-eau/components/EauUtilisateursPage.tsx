@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { listRoles, setRoles, fetchUserDirectory, type UserInfo } from '../services/eauRoleService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { listComptesClient, createCompteClient } from '../services/eauCompteClientService';
@@ -100,6 +101,7 @@ export default function EauUtilisateursPage() {
     <EauPageShell
       title="Utilisateurs"
       subtitle="Rôles & comptes clients (admin)"
+      aide={AIDE.utilisateurs}
       actions={
         <button
           onClick={() => { setShowForm((v) => !v); setNewCode(null); }}

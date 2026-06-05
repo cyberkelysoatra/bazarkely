@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Megaphone, Pencil, X } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import {
   listAnnonces,
   saveAnnonce,
@@ -118,6 +119,7 @@ export default function EauAnnoncesPage() {
     <EauPageShell
       title="Annonces du domaine"
       subtitle="Promos, évènements, actions communautaires (admin)"
+      aide={AIDE.annonces}
       actions={
         !draft && (
           <button

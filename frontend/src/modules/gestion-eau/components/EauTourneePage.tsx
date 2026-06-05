@@ -6,6 +6,8 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
+import EauAide from './EauAide';
+import { AIDE } from './eauAideTextes';
 import { fmtDate } from '../utils/format';
 
 export default function EauTourneePage({ onPick }: { onPick: (compteurId: string) => void }) {
@@ -43,6 +45,7 @@ export default function EauTourneePage({ onPick }: { onPick: (compteurId: string
 
   return (
     <div className="max-w-3xl mx-auto px-3 space-y-3">
+      <EauAide id={AIDE.tournee.id} quoi={AIDE.tournee.quoi} comment={AIDE.tournee.comment} />
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : total === 0 ? (

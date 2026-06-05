@@ -4,6 +4,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { Link } from 'react-router-dom';
 import { TrendingUp } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
@@ -50,7 +51,7 @@ export default function EauDashboard() {
   }, []);
 
   return (
-    <EauPageShell title="Gestion Eau" subtitle="Tableau de bord du bassin et des compteurs">
+    <EauPageShell title="Gestion Eau" subtitle="Tableau de bord du bassin et des compteurs" aide={AIDE.dashboard}>
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (

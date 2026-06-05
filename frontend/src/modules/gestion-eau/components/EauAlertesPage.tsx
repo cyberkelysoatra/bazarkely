@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Bell, BellOff, RefreshCw, Check, Eye } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import {
   listAlertes,
   genererEtNotifier,
@@ -107,6 +108,7 @@ export default function EauAlertesPage() {
     <EauPageShell
       title="Centre d'alertes"
       subtitle="Anomalies, compteurs non relevés, bassin critique, fuites (admin)"
+      aide={AIDE.alertes}
       actions={
         <button
           onClick={generer}

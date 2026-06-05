@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.22.0';
-export const APP_VERSION_NAME = 'Gestion Eau — Évolution « bassin/débit » : modèle physique flotteur/trop-plein (surface, volume utile, m³/cm, volume sécurité), tests de débit des pompes « vanne fermée » (Q_in = S × Δniveau ÷ durée) avec historique + débit courant + alerte « débit instable », conso réseau réelle (apport − Δstock), pertes & NRW recalculés, autonomie estimée (stock ÷ conso horaire), alerte « flotteur défaillant » (niveau > flotteur). Configuration enrichie (hauteur flotteur/trop-plein, écart débit max). Rétrocompatible (repli sur saisie manuelle d\'entrées sans test de débit). Offline-first, sync idempotente.';
+export const APP_VERSION = '3.23.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Aide contextuelle dépliable sur tous les écrans : un bouton ⓘ « Aide » discret (et le sous-titre cliquable) déplie/replie un panneau « À quoi ça sert » / « Comment s\'en servir » pour utilisateurs non techniques, sur chaque écran et chaque onglet (dont les 3 onglets de Saisie bassin : Entrée / Niveau / Débit). État mémorisé par écran (localStorage), replié par défaut sauf 1ʳᵉ visite, mobile-first, charte AHUVI. Évolution additive (ne casse rien).';
 export const LAST_UPDATED = '2026-06-05';
 export const APP_BUILD_DATE = '2026-06-05';
 export const VERSION_HISTORY = [
+  {
+    version: '3.23.0',
+    date: '2026-06-05',
+    description: 'ÉVOLUTION « Aide contextuelle » du module gestion-eau : chaque écran et chaque action explique « à quoi ça sert » et « comment s\'en servir » via un panneau d\'aide dépliable, pour des utilisateurs non techniques. (A) Nouveau composant réutilisable EauAide : bouton ⓘ « Aide » discret près du titre + sous-titre cliquable, qui déplient/replient un panneau structuré (À quoi ça sert / Comment s\'en servir). Accessible (aria-expanded, aria-controls, focus), charte AHUVI (vert/or, fond clair), mobile-first. État mémorisé par écran en localStorage (eau_aide_<id>) : replié par défaut, sauf 1ʳᵉ visite (déplié). (B) Aide branchée sur TOUS les écrans/onglets : Tableau de bord, Relevés (général), Saisie bassin (aide PAR onglet : Entrée / Niveau / Débit), Saisie compteur, Tournée, Scan, Suivi (Anomalies / Tendances), Compteurs, Carte, Facturation, Configuration, Utilisateurs, Demandes, Annonces, Audit, Centre d\'alertes, Rapports, Espace client, Page d\'accueil. (C) Intégration via prop `aide` de EauPageShell (bouton + sous-titre + panneau, état unique partagé) pour les écrans à shell, et composant EauAide autonome pour les emplacements hors shell (bandeau Relevés, onglet Scan, onglets bassin, Tournée, Carte, Accueil). Textes centralisés (eauAideTextes.ts). Évolution 100 % additive (aucune régression, aucun SQL). 5 tests ajoutés (rendu, 1ʳᵉ visite dépliée, mémorisation repli, toggle + persistance, couverture du catalogue).',
+    changes: [
+      'Nouveau composant components/EauAide.tsx (hook useAideState + AideToggleButton + AidePanel + EauAide autonome)',
+      'Nouveau catalogue components/eauAideTextes.ts (22 entrées d\'aide, français simple)',
+      'EauPageShell : prop optionnelle `aide` (bouton ⓘ près du titre, sous-titre cliquable, panneau sous l\'en-tête, état unique)',
+      'Aide branchée sur tous les écrans à shell (Dashboard, SaisieCompteur, Anomalies, Tendances, Compteurs, Facturation, Config, Utilisateurs, Demandes, Annonces, Audit, Client, Alertes, Rapports)',
+      'Aide autonome sur les écrans/onglets hors shell : Relevés (général + Scan), Saisie bassin (Entrée/Niveau/Débit), Tournée, Carte, Accueil',
+      '5 tests RTL (eauAide.test.tsx) : rendu, 1ʳᵉ visite dépliée, mémorisation du repli, toggle + persistance localStorage, couverture du catalogue',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.22.0',
     date: '2026-06-05',

@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import EauPageShell from './EauPageShell';
+import EauAide from './EauAide';
+import { AIDE } from './eauAideTextes';
 import { getConfig, dimensionsFromConfig } from '../services/eauConfigService';
 import {
   surfaceFromConfig,
@@ -206,6 +208,17 @@ export default function EauSaisieBassinPage() {
               ⚙️ Débit
             </button>
           </div>
+
+          {/* Aide spécifique à l'onglet bassin actif (Entrée / Niveau / Débit). */}
+          {tab === 'entree' && (
+            <EauAide id={AIDE.bassinEntree.id} quoi={AIDE.bassinEntree.quoi} comment={AIDE.bassinEntree.comment} />
+          )}
+          {tab === 'niveau' && (
+            <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
+          )}
+          {tab === 'debit' && (
+            <EauAide id={AIDE.bassinDebit.id} quoi={AIDE.bassinDebit.quoi} comment={AIDE.bassinDebit.comment} />
+          )}
 
           {tab === 'entree' && (
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft space-y-3">

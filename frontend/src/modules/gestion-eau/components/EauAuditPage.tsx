@@ -4,6 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import { listAudit } from '../services/eauAuditService';
 import { listScans } from '../services/eauScanService';
@@ -82,7 +83,7 @@ export default function EauAuditPage() {
           { key: 'scans', label: `Scans QR (${scans.length})` },
         ]}
       />
-      <EauPageShell title="Journal d'audit" subtitle="Traçabilité des actions et des scans (admin)">
+      <EauPageShell title="Journal d'audit" subtitle="Traçabilité des actions et des scans (admin)" aide={AIDE.audit}>
         <input
           type="search"
           value={q}

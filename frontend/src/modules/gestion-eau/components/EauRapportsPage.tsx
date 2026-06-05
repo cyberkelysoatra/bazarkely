@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { FileDown, CalendarClock } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { AIDE } from './eauAideTextes';
 import {
   getRapportMensuel,
   shouldProposeRapport,
@@ -78,7 +79,7 @@ export default function EauRapportsPage() {
   const monthInputValue = `${year}-${String(month + 1).padStart(2, '0')}`;
 
   return (
-    <EauPageShell title="Rapport mensuel" subtitle="Synthèse de pilotage à exporter (admin)">
+    <EauPageShell title="Rapport mensuel" subtitle="Synthèse de pilotage à exporter (admin)" aide={AIDE.rapports}>
       {propose && (
         <div className="mb-3 rounded-xl border border-ahuvi-gold/50 bg-ahuvi-50 p-3 flex items-start gap-2">
           <CalendarClock className="w-5 h-5 text-ahuvi-gold flex-shrink-0 mt-0.5" />
