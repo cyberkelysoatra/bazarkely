@@ -3,12 +3,18 @@
  * Sert à regrouper les sous-vues d'un thème (ex. Relevés = Bassin / Compteur / Tournée).
  * Les onglets désactivés (Phase 3-4) matérialisent la cible produit sans casser la nav.
  */
+import type { ComponentType } from 'react';
+
+type TabIcon = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
+
 export interface EauTabDef {
   key: string;
   label: string;
   disabled?: boolean;
   /** Pastille (ex. « bientôt ») pour les sous-vues non encore livrées. */
   badge?: string;
+  /** Icône lucide optionnelle, affichée avant le libellé. */
+  icon?: TabIcon;
 }
 
 export default function EauTabs({
@@ -39,6 +45,7 @@ export default function EauTabs({
                   : 'bg-white text-ahuvi-forest border border-ahuvi-200 hover:bg-ahuvi-50'
               }`}
             >
+              {t.icon && <t.icon className="w-4 h-4" aria-hidden="true" />}
               <span>{t.label}</span>
               {t.badge && (
                 <span className="text-[10px] uppercase tracking-wide bg-gray-200 text-gray-500 rounded px-1.5 py-0.5">

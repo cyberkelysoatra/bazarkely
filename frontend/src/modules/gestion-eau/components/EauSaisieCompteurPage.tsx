@@ -5,12 +5,18 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
+import {
+  ChevronLeft, ChevronRight, ScanLine, Camera, Save, Gauge, AlertTriangle, Flag, Trash2, BarChart3,
+} from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { listCompteursActifs } from '../services/eauCompteurService';
 import {
   evaluerReleveCompteur,
   addReleveCompteur,
+  historiqueConsoCompteur,
 } from '../services/eauReleveService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { showConfirm } from '../../../utils/dialogUtils';
@@ -43,6 +49,7 @@ export default function EauSaisieCompteurPage({
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [evalState, setEvalState] = useState<Evaluation | null>(null);
+  const [histo, setHisto] = useState<{ i: number; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -94,6 +101,13 @@ export default function EauSaisieCompteurPage({
     setNote('');
     setPhoto(null);
     setEvalState(null);
+    setHisto([]);
+    try {
+      const hist = await historiqueConsoCompteur(c.id);
+      setHisto(hist.slice(-12).map((value, i) => ({ i: i + 1, value })));
+    } catch {
+      setHisto([]);
+    }
   };
 
   const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,16 +206,35 @@ export default function EauSaisieCompteurPage({
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : selected ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft space-y-3">
-          <button className="text-sm text-sky-600 underline" onClick={() => setSelected(null)}>
-            ← Retour à la liste
+          <button className="inline-flex items-center gap-1 text-sm text-ahuvi-olive hover:underline" onClick={() => setSelected(null)}>
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Retour à la liste
           </button>
-          <div>
-            <div className="font-semibold text-gray-900">{selected.nom}</div>
-            <div className="text-sm text-gray-500">
-              {selected.zone ?? 'Sans zone'} · {selected.type}
-              {selected.proprietaire ? ` · ${selected.proprietaire}` : ''}
+          <div className="flex items-center gap-2">
+            <EauListIcon icon={Gauge} tone="teal" />
+            <div>
+              <div className="font-semibold text-gray-900">{selected.nom}</div>
+              <div className="text-sm text-gray-500">
+                {selected.zone ?? 'Sans zone'} · {selected.type}
+                {selected.proprietaire ? ` · ${selected.proprietaire}` : ''}
+              </div>
             </div>
           </div>
+
+          {/* Histogramme de consommation par période (12 derniers relevés) du compteur sélectionné. */}
+          {histo.length > 0 && (
+            <div className="rounded-lg border border-ahuvi-100 bg-ahuvi-50/40 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                <BarChart3 className="w-3.5 h-3.5" aria-hidden="true" /> Consommation par période
+              </div>
+              <ResponsiveContainer width="100%" height={90}>
+                <BarChart data={histo}>
+                  <XAxis dataKey="i" hide />
+                  <Tooltip formatter={(val: number) => fmtM3(val)} labelFormatter={() => ''} />
+                  <Bar dataKey="value" fill="#4C6D40" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div className="text-sm bg-gray-50 rounded-lg px-3 py-2">
             {evalState?.dernier || selected ? (
@@ -217,7 +250,7 @@ export default function EauSaisieCompteurPage({
               step="0.001"
               value={indexStr}
               onChange={(e) => setIndexStr(e.target.value)}
-              className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
               placeholder="Index relevé"
               autoFocus
             />
@@ -226,17 +259,19 @@ export default function EauSaisieCompteurPage({
           {evalState && (
             <div className="space-y-1">
               {evalState.ruptureIndex ? (
-                <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  ⚠️ Index inférieur au précédent → rupture (conso intervalle = 0)
+                <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>Index inférieur au précédent → rupture (conso intervalle = 0)</span>
                 </div>
               ) : (
-                <div className="text-sm text-sky-700 bg-sky-50 rounded-lg px-3 py-2">
+                <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
                   Consommation : <strong>{fmtM3(evalState.conso)}</strong>
                 </div>
               )}
               {!evalState.ruptureIndex && evalState.aberrant.aberrant && (
-                <div className="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-                  🚩 Relevé aberrant ({evalState.aberrant.type === 'haut' ? 'trop élevé' : 'trop bas'}) — confirmation requise
+                <div className="flex items-start gap-2 text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                  <Flag className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>Relevé aberrant ({evalState.aberrant.type === 'haut' ? 'trop élevé' : 'trop bas'}) — confirmation requise</span>
                 </div>
               )}
             </div>
@@ -248,7 +283,7 @@ export default function EauSaisieCompteurPage({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
             />
           </label>
 
@@ -260,14 +295,15 @@ export default function EauSaisieCompteurPage({
                 <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
                 <div className="text-xs text-gray-500">
                   <div>≈ {dataUrlSizeKo(photo)} Ko</div>
-                  <button onClick={() => setPhoto(null)} className="text-rose-600 hover:underline mt-1">
-                    Retirer
+                  <button onClick={() => setPhoto(null)} className="inline-flex items-center gap-1 text-rose-600 hover:underline mt-1">
+                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Retirer
                   </button>
                 </div>
               </div>
             ) : (
               <label className="flex items-center justify-center gap-2 w-full border border-dashed border-gray-300 rounded-lg py-3 text-gray-500 cursor-pointer hover:bg-gray-50">
-                {photoBusy ? 'Traitement…' : '📷 Prendre / choisir une photo'}
+                <Camera className="w-4 h-4" aria-hidden="true" />
+                {photoBusy ? 'Traitement…' : 'Prendre / choisir une photo'}
                 <input
                   type="file"
                   accept="image/*"
@@ -283,9 +319,9 @@ export default function EauSaisieCompteurPage({
           <button
             onClick={submit}
             disabled={busy || indexStr.trim() === ''}
-            className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+            className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
           >
-            Enregistrer le relevé
+            <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé
           </button>
         </div>
       ) : (
@@ -293,9 +329,9 @@ export default function EauSaisieCompteurPage({
           {onScanRequest && (
             <button
               onClick={onScanRequest}
-              className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold py-2.5 rounded-lg"
+              className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 text-white text-sm font-semibold py-2.5 rounded-lg"
             >
-              📷 Scanner un QR
+              <ScanLine className="w-4 h-4" aria-hidden="true" /> Scanner un QR
             </button>
           )}
           <input
@@ -303,10 +339,10 @@ export default function EauSaisieCompteurPage({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher (nom, villa, zone)…"
-            className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
           />
           {grouped.length === 0 ? (
-            <div className="text-sm text-gray-400 text-center py-8">Aucun compteur actif.</div>
+            <EauEmptyState icon={Gauge} title="Aucun compteur actif" hint="Aucun compteur ne correspond à votre recherche." />
           ) : (
             grouped.map(([zone, list]) => (
               <div key={zone}>
@@ -316,13 +352,19 @@ export default function EauSaisieCompteurPage({
                     <button
                       key={c.id}
                       onClick={() => selectCompteur(c)}
-                      className="w-full text-left bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-sky-50 flex items-center justify-between"
+                      className="w-full text-left bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-ahuvi-50 flex items-center justify-between gap-2"
                     >
-                      <span>
-                        <span className="font-medium text-gray-900">{c.nom}</span>
-                        {c.proprietaire && <span className="text-gray-400 text-sm"> · {c.proprietaire}</span>}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <EauListIcon icon={Gauge} tone="neutral" />
+                        <span className="min-w-0">
+                          <span className="font-medium text-gray-900">{c.nom}</span>
+                          {c.proprietaire && <span className="text-gray-400 text-sm"> · {c.proprietaire}</span>}
+                        </span>
                       </span>
-                      <span className="text-xs text-gray-400">{c.type}</span>
+                      <span className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-xs text-gray-400">{c.type}</span>
+                        <ChevronRight className="w-4 h-4 text-gray-300" aria-hidden="true" />
+                      </span>
                     </button>
                   ))}
                 </div>

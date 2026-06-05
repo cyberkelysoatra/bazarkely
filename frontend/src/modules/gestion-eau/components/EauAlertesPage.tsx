@@ -5,8 +5,9 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Bell, BellOff, RefreshCw, Check, Eye } from 'lucide-react';
+import { Bell, BellOff, RefreshCw, Check, Eye, AlertTriangle } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauIconButton } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import {
   listAlertes,
@@ -110,14 +111,9 @@ export default function EauAlertesPage() {
       subtitle="Anomalies, compteurs non relevés, bassin critique, fuites (admin)"
       aide={AIDE.alertes}
       actions={
-        <button
-          onClick={generer}
-          disabled={busy}
-          className="flex items-center gap-1.5 bg-ahuvi-forest hover:bg-ahuvi-olive disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${busy ? 'animate-spin' : ''}`} />
+        <EauIconButton icon={RefreshCw} variant="primary" onClick={generer} disabled={busy}>
           Générer
-        </button>
+        </EauIconButton>
       }
     >
       {/* Bandeau notifications */}
@@ -133,9 +129,9 @@ export default function EauAlertesPage() {
         {perm !== 'granted' && (
           <button
             onClick={activerNotifications}
-            className="flex-shrink-0 text-xs font-semibold text-ahuvi-forest underline"
+            className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-ahuvi-forest underline"
           >
-            Activer
+            <Bell className="w-3.5 h-3.5" aria-hidden="true" /> Activer
           </button>
         )}
       </div>
@@ -143,9 +139,11 @@ export default function EauAlertesPage() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : alertes.length === 0 ? (
-        <div className="text-gray-400 text-sm py-8 text-center">
-          Aucune alerte. Cliquez « Générer » pour analyser les données.
-        </div>
+        <EauEmptyState
+          icon={AlertTriangle}
+          title="Aucune alerte"
+          hint="Cliquez « Générer » pour analyser les données."
+        />
       ) : (
         <div className="space-y-4">
           <div>

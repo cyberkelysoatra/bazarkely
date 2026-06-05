@@ -9,6 +9,8 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { SearchX, Ban, User, FileText, Gauge, ChevronLeft } from 'lucide-react';
+import { EauEmptyState, EauIconButton, EauStatCard, EauListIcon } from './EauUi';
 import { useGestionEau } from '../context/GestionEauContext';
 import { resolveAndLog, type ScanOutcome } from '../services/eauScanService';
 import { parseScanQuery } from '../utils/scanUrl';
@@ -67,12 +69,16 @@ export default function EauScanResolverPage() {
   if (!scan) {
     return (
       <Centered>
-        <div className="text-4xl">❓</div>
-        <h1 className="text-lg font-semibold text-gray-800">QR non reconnu</h1>
-        <p className="text-sm text-gray-500">Ce lien de scan est invalide ou incomplet.</p>
-        <button onClick={() => navigate('/gestion-eau')} className="text-ahuvi-forest hover:underline text-sm">
-          Retour au module
-        </button>
+        <EauEmptyState
+          icon={SearchX}
+          title="QR non reconnu"
+          hint="Ce lien de scan est invalide ou incomplet."
+          action={
+            <EauIconButton icon={ChevronLeft} variant="ghost" onClick={() => navigate('/gestion-eau')}>
+              Retour au module
+            </EauIconButton>
+          }
+        />
       </Centered>
     );
   }
@@ -83,25 +89,31 @@ export default function EauScanResolverPage() {
     case 'refus':
       return (
         <Centered>
-          <div className="text-4xl">🚫</div>
-          <h1 className="text-lg font-semibold text-gray-800">Ce QR ne vous est pas destiné</h1>
-          <p className="text-sm text-gray-500">Vous n’êtes pas autorisé à accéder à ce contenu.</p>
-          <button onClick={() => navigate('/gestion-eau/client')} className="text-ahuvi-forest hover:underline text-sm">
-            Aller à mon espace
-          </button>
+          <EauEmptyState
+            icon={Ban}
+            title="Ce QR ne vous est pas destiné"
+            hint="Vous n’êtes pas autorisé à accéder à ce contenu."
+            action={
+              <EauIconButton icon={User} variant="secondary" onClick={() => navigate('/gestion-eau/client')}>
+                Aller à mon espace
+              </EauIconButton>
+            }
+          />
         </Centered>
       );
     case 'introuvable':
       return (
         <Centered>
-          <div className="text-4xl">🔍</div>
-          <h1 className="text-lg font-semibold text-gray-800">QR inconnu</h1>
-          <p className="text-sm text-gray-500">
-            Ce {outcome.type === 'client' ? 'QR client' : 'QR compteur'} n’existe pas (ou pas encore synchronisé).
-          </p>
-          <button onClick={() => navigate('/gestion-eau')} className="text-ahuvi-forest hover:underline text-sm">
-            Retour au module
-          </button>
+          <EauEmptyState
+            icon={SearchX}
+            title="QR inconnu"
+            hint={`Ce ${outcome.type === 'client' ? 'QR client' : 'QR compteur'} n’existe pas (ou pas encore synchronisé).`}
+            action={
+              <EauIconButton icon={ChevronLeft} variant="ghost" onClick={() => navigate('/gestion-eau')}>
+                Retour au module
+              </EauIconButton>
+            }
+          />
         </Centered>
       );
     case 'fiche-client':
@@ -141,35 +153,32 @@ function FicheClient({ clientId, nom }: { clientId: string; nom: string }) {
 
   return (
     <div className="max-w-md mx-auto p-6 space-y-4">
-      <div className="text-center">
-        <div className="text-3xl">👤</div>
-        <h1 className="text-lg font-semibold text-gray-900">{nom}</h1>
+      <div className="flex flex-col items-center text-center">
+        <EauListIcon icon={User} tone="forest" />
+        <h1 className="text-lg font-semibold text-gray-900 mt-2">{nom}</h1>
         <p className="text-sm text-gray-500">Fiche consommation (vue agent)</p>
       </div>
       {loading ? (
         <div className="text-gray-400 text-sm py-6 text-center">Chargement…</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-lg border border-gray-200 p-3">
-              <div className="text-xl font-bold text-ahuvi-forest">{facturesCount}</div>
-              <div className="text-xs text-gray-500">Factures</div>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-3">
-              <div className={`text-xl font-bold ${impayes > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{impayes}</div>
-              <div className="text-xs text-gray-500">Impayées</div>
-            </div>
+          <div className="grid grid-cols-2 gap-2">
+            <EauStatCard icon={FileText} label="Factures" value={facturesCount} tone="forest" />
+            <EauStatCard icon={FileText} label="Impayées" value={impayes} tone={impayes > 0 ? 'rose' : 'emerald'} />
           </div>
           <div className="space-y-1">
             {rows.length === 0 ? (
               <div className="text-gray-400 text-sm text-center py-4">Aucun compteur associé.</div>
             ) : (
               rows.map((r) => (
-                <div key={r.compteur.id} className="bg-white border border-gray-200 rounded-lg p-3">
-                  <div className="font-medium text-gray-900">{r.compteur.nom}</div>
-                  <div className="text-sm text-gray-600">
-                    Dernier index : <strong>{r.index ?? '—'}</strong>
-                    {r.date && <span className="text-xs text-gray-400"> · {fmtDate(r.date)}</span>}
+                <div key={r.compteur.id} className="bg-white border border-gray-200 rounded-lg p-3 flex items-start gap-3">
+                  <EauListIcon icon={Gauge} tone="teal" />
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900">{r.compteur.nom}</div>
+                    <div className="text-sm text-gray-600">
+                      Dernier index : <strong>{r.index ?? '—'}</strong>
+                      {r.date && <span className="text-xs text-gray-400"> · {fmtDate(r.date)}</span>}
+                    </div>
                   </div>
                 </div>
               ))
@@ -177,9 +186,9 @@ function FicheClient({ clientId, nom }: { clientId: string; nom: string }) {
           </div>
         </>
       )}
-      <button onClick={() => navigate('/gestion-eau')} className="w-full text-ahuvi-forest hover:underline text-sm">
+      <EauIconButton icon={ChevronLeft} variant="ghost" onClick={() => navigate('/gestion-eau')} className="w-full">
         Retour au module
-      </button>
+      </EauIconButton>
     </div>
   );
 }

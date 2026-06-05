@@ -7,7 +7,9 @@
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Gauge, Waves, Route, ScanLine, Camera } from 'lucide-react';
 import EauTabs from './EauTabs';
+import { EauIconButton } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import EauSaisieBassinPage from './EauSaisieBassinPage';
@@ -62,10 +64,10 @@ export default function EauRelevesPage() {
         active={tab}
         onChange={(k) => changeTab(k as TabKey)}
         tabs={[
-          { key: 'compteur', label: 'Compteur' },
-          { key: 'bassin', label: 'Bassin' },
-          { key: 'tournee', label: 'Tournée' },
-          { key: 'scan', label: 'Scan' },
+          { key: 'compteur', label: 'Compteur', icon: Gauge },
+          { key: 'bassin', label: 'Bassin', icon: Waves },
+          { key: 'tournee', label: 'Tournée', icon: Route },
+          { key: 'scan', label: 'Scan', icon: ScanLine },
         ]}
       />
 
@@ -85,17 +87,18 @@ export default function EauRelevesPage() {
         <div className="max-w-3xl mx-auto px-3">
           <EauAide id={AIDE.scan.id} quoi={AIDE.scan.quoi} comment={AIDE.scan.comment} />
           <div className="rounded-xl border border-ahuvi-200 bg-white p-6 text-center space-y-3 shadow-soft">
-            <div className="text-4xl">📷</div>
+            <div className="flex justify-center">
+              <span className="w-14 h-14 rounded-2xl bg-cyan-50 text-ahuvi-teal flex items-center justify-center">
+                <ScanLine className="w-7 h-7" aria-hidden="true" />
+              </span>
+            </div>
             <h2 className="font-semibold text-ahuvi-forest">Scanner un QR</h2>
             <p className="text-sm text-gray-500">
               Scannez le QR d’un compteur pour saisir son index directement, ou le QR d’un client pour voir sa fiche.
             </p>
-            <button
-              onClick={() => setScannerOpen(true)}
-              className="bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold px-5 py-2.5 rounded-lg"
-            >
+            <EauIconButton icon={Camera} variant="primary" onClick={() => setScannerOpen(true)} className="mx-auto">
               Ouvrir la caméra
-            </button>
+            </EauIconButton>
           </div>
         </div>
       )}

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
+import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import EauClientQrPage from './EauClientQrPage';
@@ -105,9 +107,9 @@ export default function EauClientPage() {
           )
         }
         tabs={[
-          { key: 'conso', label: 'Ma conso' },
-          { key: 'factures', label: 'Mes factures' },
-          { key: 'qr', label: 'Mon QR' },
+          { key: 'conso', label: 'Ma conso', icon: Droplet },
+          { key: 'factures', label: 'Mes factures', icon: Receipt },
+          { key: 'qr', label: 'Mon QR', icon: QrCode },
         ]}
       />
       <EauPageShell
@@ -120,9 +122,11 @@ export default function EauClientPage() {
       ) : loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : aucunCompteur ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-          Aucun compteur associé à votre compte. Contactez l’administrateur.
-        </div>
+        <EauEmptyState
+          icon={AlertTriangle}
+          title="Aucun compteur associé à votre compte"
+          hint="Contactez l’administrateur pour rattacher un compteur."
+        />
       ) : (
         <div className="space-y-4">
           {/* Compteurs (onglet « Ma conso ») */}
@@ -132,8 +136,11 @@ export default function EauClientPage() {
             <div className="grid grid-cols-1 gap-2">
               {vues.map((v) => (
                 <div key={v.compteur.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
-                  <div className="font-medium text-gray-900">{v.compteur.nom}</div>
-                  <div className="text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <EauListIcon icon={Gauge} tone="teal" />
+                    <div className="font-medium text-gray-900">{v.compteur.nom}</div>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
                     Dernier index : <strong>{v.dernierIndex ?? '—'}</strong>
                     {v.dernierReleveDate && (
                       <span className="text-xs text-gray-400"> · relevé du {fmtDate(v.dernierReleveDate)}</span>
@@ -165,28 +172,33 @@ export default function EauClientPage() {
           <div>
             <h2 className="font-semibold text-gray-800 mb-2">Mes factures ({factures.length})</h2>
             {factures.length === 0 ? (
-              <div className="text-gray-400 text-sm py-6 text-center">Aucune facture pour l’instant.</div>
+              <EauEmptyState icon={Receipt} title="Aucune facture pour l’instant" />
             ) : (
               <div className="space-y-2">
                 {factures.map((f) => (
-                  <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900">{f.numero}</div>
-                      <div className="text-xs text-gray-500">
-                        {compteurNom(f.compteur_id)} · {fmtDate(f.periode_start)} → {fmtDate(f.periode_end)}
-                      </div>
-                      <div className="text-sm mt-0.5">
-                        <strong>{fmtMontant(f.montant, f.devise)}</strong>
-                        <span className={`ml-2 text-xs font-semibold ${
-                          f.statut === 'paye' ? 'text-emerald-600' : 'text-rose-600'
-                        }`}>
-                          {f.statut === 'paye' ? 'Payée' : 'Impayée'}
-                        </span>
+                  <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft flex items-center justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <EauListIcon icon={Receipt} tone="olive" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900">{f.numero}</div>
+                        <div className="text-xs text-gray-500">
+                          {compteurNom(f.compteur_id)} · {fmtDate(f.periode_start)} → {fmtDate(f.periode_end)}
+                        </div>
+                        <div className="text-sm mt-0.5">
+                          <strong>{fmtMontant(f.montant, f.devise)}</strong>
+                          <span className={`ml-2 inline-flex items-center gap-1 text-xs font-semibold ${
+                            f.statut === 'paye' ? 'text-emerald-600' : 'text-rose-600'
+                          }`}>
+                            {f.statut === 'paye'
+                              ? <><BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" /> Payée</>
+                              : <><CircleAlert className="w-3.5 h-3.5" aria-hidden="true" /> Impayée</>}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => exportPdf(f)} className="text-sky-600 hover:underline text-sm flex-shrink-0">
-                      📄 PDF
-                    </button>
+                    <EauIconButton icon={FileDown} variant="ghost" onClick={() => exportPdf(f)} className="flex-shrink-0">
+                      PDF
+                    </EauIconButton>
                   </div>
                 ))}
               </div>

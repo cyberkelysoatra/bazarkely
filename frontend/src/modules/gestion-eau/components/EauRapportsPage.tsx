@@ -5,8 +5,9 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { FileDown, CalendarClock } from 'lucide-react';
+import { FileDown, CalendarClock, Droplet, Gauge, TrendingDown, AlertTriangle, Receipt, Coins } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauStatCard, EauIconButton } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import {
   getRapportMensuel,
@@ -17,16 +18,6 @@ import {
 } from '../services/eauRapportService';
 import { downloadRapportMensuelPdf } from '../utils/rapportPdf';
 import { fmtM3, fmtPct, fmtMontant } from '../utils/format';
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: 'rose' | 'forest' }) {
-  const color = tone === 'rose' ? 'text-rose-700' : tone === 'forest' ? 'text-ahuvi-forest' : 'text-gray-800';
-  return (
-    <div className="rounded-lg border border-ahuvi-100 bg-white p-3 shadow-soft">
-      <div className="text-xs text-gray-500 uppercase tracking-wide">{label}</div>
-      <div className={`text-lg font-bold ${color}`}>{value}</div>
-    </div>
-  );
-}
 
 export default function EauRapportsPage() {
   const now = new Date();
@@ -100,7 +91,10 @@ export default function EauRapportsPage() {
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft mb-4">
         <label className="text-sm block">
-          <span className="block text-gray-600 mb-1">Mois du rapport</span>
+          <span className="flex items-center gap-1.5 text-gray-600 mb-1">
+            <CalendarClock className="w-4 h-4 text-ahuvi-olive flex-shrink-0" aria-hidden="true" />
+            Mois du rapport
+          </span>
           <input
             type="month"
             value={monthInputValue}
@@ -118,12 +112,12 @@ export default function EauRapportsPage() {
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <Stat label="Entrées" value={fmtM3(rapport.entreesM3)} tone="forest" />
-            <Stat label="Consommation" value={fmtM3(rapport.consoM3)} />
-            <Stat label="Pertes (NRW)" value={`${fmtM3(rapport.pertesM3)} · ${fmtPct(rapport.nrwPct)}`} tone="rose" />
-            <Stat label="Anomalies" value={String(rapport.nbAnomalies)} tone={rapport.nbAnomalies > 0 ? 'rose' : undefined} />
-            <Stat label="Factures émises" value={String(rapport.nbFactures)} />
-            <Stat label="Montant facturé" value={fmtMontant(rapport.montantFactureTotal, rapport.config?.devise)} tone="forest" />
+            <EauStatCard icon={Droplet} label="Entrées" value={fmtM3(rapport.entreesM3)} tone="forest" />
+            <EauStatCard icon={Gauge} label="Consommation" value={fmtM3(rapport.consoM3)} tone="teal" />
+            <EauStatCard icon={TrendingDown} label="Pertes (NRW)" value={`${fmtM3(rapport.pertesM3)} · ${fmtPct(rapport.nrwPct)}`} tone="rose" />
+            <EauStatCard icon={AlertTriangle} label="Anomalies" value={String(rapport.nbAnomalies)} tone={rapport.nbAnomalies > 0 ? 'rose' : 'neutral'} />
+            <EauStatCard icon={Receipt} label="Factures émises" value={String(rapport.nbFactures)} tone="olive" />
+            <EauStatCard icon={Coins} label="Montant facturé" value={fmtMontant(rapport.montantFactureTotal, rapport.config?.devise)} tone="forest" />
           </div>
 
           {rapport.montantImpaye > 0 && (
@@ -132,13 +126,14 @@ export default function EauRapportsPage() {
             </div>
           )}
 
-          <button
+          <EauIconButton
+            icon={FileDown}
+            variant="primary"
             onClick={genererPdf}
-            className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-olive text-white font-semibold py-3 rounded-xl shadow-soft"
+            className="w-full py-3 rounded-xl"
           >
-            <FileDown className="w-5 h-5" />
             Générer le rapport PDF — {rapport.periodeLabel}
-          </button>
+          </EauIconButton>
         </div>
       )}
     </EauPageShell>

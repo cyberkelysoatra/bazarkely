@@ -5,8 +5,9 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Megaphone, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, Megaphone, Pencil, X, Save } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import {
   listAnnonces,
@@ -122,12 +123,9 @@ export default function EauAnnoncesPage() {
       aide={AIDE.annonces}
       actions={
         !draft && (
-          <button
-            onClick={openNew}
-            className="flex items-center gap-1.5 bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-xs font-semibold px-3 py-2 rounded-lg"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nouvelle
-          </button>
+          <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+            Nouvelle
+          </EauIconButton>
         )
       }
     >
@@ -137,8 +135,8 @@ export default function EauAnnoncesPage() {
             <h2 className="font-semibold text-ahuvi-forest font-ahuvi-body">
               {draft.id ? 'Modifier l’annonce' : 'Nouvelle annonce'}
             </h2>
-            <button onClick={() => setDraft(null)} className="text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
+            <button onClick={() => setDraft(null)} aria-label="Fermer" className="text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           <label className="text-sm block">
@@ -203,22 +201,25 @@ export default function EauAnnoncesPage() {
               />
             </label>
           </div>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="w-full bg-ahuvi-forest hover:bg-ahuvi-olive disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg"
-          >
+          <EauIconButton icon={Save} variant="primary" onClick={save} disabled={saving} className="w-full">
             {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          </EauIconButton>
         </div>
       )}
 
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : annonces.length === 0 ? (
-        <div className="text-gray-400 text-sm py-8 text-center">
-          Aucune annonce. Créez-en une pour l’afficher dans le bandeau du domaine.
-        </div>
+        <EauEmptyState
+          icon={Megaphone}
+          title="Aucune annonce"
+          hint="Créez-en une pour l’afficher dans le bandeau du domaine."
+          action={
+            <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+              Nouvelle
+            </EauIconButton>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {annonces.map((a) => {
@@ -227,9 +228,10 @@ export default function EauAnnoncesPage() {
             return (
               <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-soft">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex items-start gap-3">
+                    <EauListIcon icon={Megaphone} tone="olive" />
+                    <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <Megaphone className="w-4 h-4 text-ahuvi-olive flex-shrink-0" />
                       <span className="font-medium text-gray-900 truncate">{a.titre}</span>
                       <span className="text-[10px] uppercase tracking-wide bg-ahuvi-50 text-ahuvi-700 rounded px-1.5 py-0.5">
                         {opt?.label ?? a.type}
@@ -240,6 +242,7 @@ export default function EauAnnoncesPage() {
                       {a.date_debut || a.date_fin
                         ? `${a.date_debut ? fmtDate(a.date_debut) : '…'} → ${a.date_fin ? fmtDate(a.date_fin) : '…'}`
                         : 'Sans date'}
+                    </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -252,11 +255,11 @@ export default function EauAnnoncesPage() {
                       {active ? 'Affichée' : a.actif ? 'Hors période' : 'Inactive'}
                     </button>
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(a)} className="text-gray-400 hover:text-ahuvi-olive">
-                        <Pencil className="w-4 h-4" />
+                      <button onClick={() => openEdit(a)} aria-label="Modifier" className="text-gray-400 hover:text-ahuvi-olive">
+                        <Pencil className="w-4 h-4" aria-hidden="true" />
                       </button>
-                      <button onClick={() => remove(a)} className="text-gray-400 hover:text-rose-600">
-                        <Trash2 className="w-4 h-4" />
+                      <button onClick={() => remove(a)} aria-label="Supprimer" className="text-gray-400 hover:text-rose-600">
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>

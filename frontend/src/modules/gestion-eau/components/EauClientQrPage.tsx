@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Download, AlertTriangle } from 'lucide-react';
+import { EauIconButton, EauEmptyState } from './EauUi';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { buildScanUrl } from '../utils/scanUrl';
 import { qrToJpegDataUrl, downloadQrJpeg, safeFileName } from '../utils/qrImage';
@@ -44,9 +46,11 @@ export default function EauClientQrPage({ userId }: { userId: string | null }) {
   }
   if (!compte) {
     return (
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-        Aucun compte client associé. Contactez l’administrateur.
-      </div>
+      <EauEmptyState
+        icon={AlertTriangle}
+        title="Aucun compte client associé"
+        hint="Contactez l’administrateur."
+      />
     );
   }
 
@@ -61,12 +65,9 @@ export default function EauClientQrPage({ userId }: { userId: string | null }) {
         <div className="w-56 h-56 rounded-xl bg-gray-100" />
       )}
       <div className="text-xs text-gray-400 font-mono">{compte.code_qr}</div>
-      <button
-        onClick={download}
-        className="bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
-      >
-        ⬇️ Télécharger en JPEG
-      </button>
+      <EauIconButton icon={Download} variant="primary" onClick={download}>
+        Télécharger en JPEG
+      </EauIconButton>
     </div>
   );
 }

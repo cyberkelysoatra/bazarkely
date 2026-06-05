@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.23.0';
-export const APP_VERSION_NAME = 'Gestion Eau — Aide contextuelle dépliable sur tous les écrans : un bouton ⓘ « Aide » discret (et le sous-titre cliquable) déplie/replie un panneau « À quoi ça sert » / « Comment s\'en servir » pour utilisateurs non techniques, sur chaque écran et chaque onglet (dont les 3 onglets de Saisie bassin : Entrée / Niveau / Débit). État mémorisé par écran (localStorage), replié par défaut sauf 1ʳᵉ visite, mobile-first, charte AHUVI. Évolution additive (ne casse rien).';
-export const LAST_UPDATED = '2026-06-05';
-export const APP_BUILD_DATE = '2026-06-05';
+export const APP_VERSION = '3.24.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Iconographie systématique (style BazarKELY en charte AHUVI vert/or) + graphiques clés : chaque bouton, carte KPI, ligne de liste, état vide et onglet du module porte désormais une icône cohérente (lucide) pour reconnaître les fonctions sans lire. Recolorisation complète bleu/violet → vert forêt/olive + accent or (teal conservé pour l\'eau, ambre/rouge pour les alertes). Nouveaux graphiques : niveau du bassin (tableau de bord + saisie bassin), historique du débit des pompes, histogramme de conso par compteur, barres conso/montant facturé par période. Briques mutualisées EauStatCard / EauIconButton / EauEmptyState / EauListIcon. Évolution additive et cosmétique (aucune logique métier modifiée).';
+export const LAST_UPDATED = '2026-06-06';
+export const APP_BUILD_DATE = '2026-06-06';
 export const VERSION_HISTORY = [
+  {
+    version: '3.24.0',
+    date: '2026-06-06',
+    description: 'ÉVOLUTION « Iconographie + graphiques » du module gestion-eau. (A) Iconographie systématique façon BazarKELY mais en charte AHUVI (vert forêt #364E30 / olive #4C6D40 + accent or #9D9B4B ; plus aucun violet/bleu — teal conservé comme accent eau, ambre/rouge conservés pour le sens des alertes). Chaque bouton d\'action porte une icône en tête, chaque carte KPI une icône dans un conteneur teinté, chaque ligne de liste une icône de tête (+ ChevronRight vers un détail), chaque état vide une grande icône muette, chaque onglet une icône. Icônes décoratives en aria-hidden, lisibilité mobile préservée. (B) Briques d\'UI mutualisées (DRY) : EauStatCard, EauIconButton, EauEmptyState, EauListIcon (components/EauUi.tsx) + icône optionnelle sur EauTabs. (C) Graphiques pertinents (recharts, charte AHUVI) : tableau de bord (mini-conso 30 j + niveau du bassin), saisie bassin (courbe du niveau + histogramme du débit des pompes), détail compteur (histogramme de conso par période), facturation (barres conso et montant facturé par période), espace client (historique conso conservé), tendances (5 graphiques vérifiés). États vides illustrés partout. Évolution 100 % additive et cosmétique (aucune logique métier, aucun service, aucune signature modifiés ; aucun SQL). tsc --noEmit OK, build OK, 97 tests eau verts.',
+    changes: [
+      'Nouveau components/EauUi.tsx : EauStatCard (KPI icône+conteneur teinté AHUVI), EauIconButton (bouton à icône, variantes primary/secondary/danger/ghost/gold), EauEmptyState (état vide grande icône), EauListIcon (pastille de tête de ligne)',
+      'EauTabs : prop optionnelle `icon` (lucide) sur chaque onglet',
+      'Iconographie + recolorisation AHUVI appliquées à tous les écrans : Dashboard, Relevés, Saisie compteur/bassin, Tournée, Scan/QR, Suivi (Anomalies/Tendances), Compteurs, Carte, Facturation, Config, Utilisateurs, Demandes, Annonces, Audit, Alertes, Rapports, Client, Accueil',
+      'Graphiques : niveau du bassin (Dashboard + Saisie bassin), historique du débit pompes (barres), histogramme conso/compteur (détail), barres conso+montant facturé/période (Facturation)',
+      'Spinners route guards (GestionEauRoute, EauRoleProtectedRoute) recolorés sky→ahuvi',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.23.0',
     date: '2026-06-05',

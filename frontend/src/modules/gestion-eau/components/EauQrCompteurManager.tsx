@@ -5,6 +5,8 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { X, QrCode, Printer, Download, Trash2, ScanLine } from 'lucide-react';
+import { EauIconButton, EauEmptyState } from './EauUi';
 import {
   listQrForCompteur,
   createQrCompteur,
@@ -102,8 +104,8 @@ export default function EauQrCompteurManager({
             <h3 className="font-semibold text-ahuvi-forest">QR — {compteur.nom}</h3>
             <p className="text-xs text-gray-500">{compteur.zone ?? 'Sans zone'} · {compteur.type}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none" aria-label="Fermer">
-            ×
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 -mr-1" aria-label="Fermer">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -119,29 +121,27 @@ export default function EauQrCompteurManager({
                 className="w-full rounded-lg border-gray-300 focus:border-ahuvi-forest focus:ring-ahuvi-forest text-sm"
               />
             </label>
-            <button
-              onClick={addQr}
-              disabled={busy}
-              className="w-full bg-ahuvi-forest hover:bg-ahuvi-olive disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg"
-            >
-              + Générer un QR
-            </button>
+            <EauIconButton icon={QrCode} variant="primary" onClick={addQr} disabled={busy} className="w-full">
+              Générer un QR
+            </EauIconButton>
           </div>
 
           {/* Liste des QR */}
           {loading ? (
             <div className="text-gray-400 text-sm py-6 text-center">Chargement…</div>
           ) : qrs.length === 0 ? (
-            <div className="text-gray-400 text-sm py-6 text-center">
-              Aucun QR pour ce compteur. Générez-en un ci-dessus.
-            </div>
+            <EauEmptyState
+              icon={QrCode}
+              title="Aucun QR pour ce compteur"
+              hint="Générez-en un ci-dessus."
+            />
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-gray-700">{qrs.length} QR</h4>
-                <button onClick={printLabels} className="text-sm text-ahuvi-forest hover:underline">
-                  🖨️ Imprimer les étiquettes
-                </button>
+                <EauIconButton icon={Printer} variant="ghost" onClick={printLabels} className="px-2 py-1">
+                  Imprimer les étiquettes
+                </EauIconButton>
               </div>
               <div className="grid grid-cols-1 gap-2">
                 {qrs.map((q) => (
@@ -155,10 +155,12 @@ export default function EauQrCompteurManager({
                       <div className="font-medium text-gray-900 text-sm truncate">{q.emplacement ?? 'Sans emplacement'}</div>
                       <div className="text-xs text-gray-400 font-mono">{q.code}</div>
                       <div className="flex gap-3 mt-1 text-sm">
-                        <button onClick={() => exportJpeg(q)} className="text-ahuvi-forest hover:underline">
-                          ⬇️ JPEG
+                        <button onClick={() => exportJpeg(q)} className="inline-flex items-center gap-1 text-ahuvi-forest hover:underline">
+                          <Download className="w-4 h-4" aria-hidden="true" />
+                          JPEG
                         </button>
-                        <button onClick={() => removeQr(q)} className="text-rose-600 hover:underline">
+                        <button onClick={() => removeQr(q)} className="inline-flex items-center gap-1 text-rose-600 hover:underline">
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
                           Suppr.
                         </button>
                       </div>
@@ -173,7 +175,7 @@ export default function EauQrCompteurManager({
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">Journal des scans</h4>
             {scans.length === 0 ? (
-              <div className="text-gray-400 text-xs py-3 text-center">Aucun scan enregistré pour ce compteur.</div>
+              <EauEmptyState icon={ScanLine} title="Aucun scan enregistré pour ce compteur." className="py-6" />
             ) : (
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {scans.map((s) => (

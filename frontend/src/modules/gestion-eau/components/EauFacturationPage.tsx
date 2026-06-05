@@ -1,8 +1,13 @@
 /** Facturation /gestion-eau/facturation (admin) : période → factures numérotées,
  *  statut payé/impayé, relances, export PDF par compteur + CSV global. */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import {
+  Receipt, FileBarChart, Eye, FileDown, Bell, Download, BadgeCheck, CircleAlert, Settings,
+} from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauIconButton, EauEmptyState } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import { getConfig } from '../services/eauConfigService';
@@ -66,6 +71,25 @@ export default function EauFacturationPage() {
   const complete = isConfigComplete(config);
   const compteurNom = (id: string | null) =>
     (id && compteurs.find((c) => c.id === id)?.nom) || id || '—';
+
+  // Agrégat pour les graphiques : conso (m³) et montant facturé par période (mois de début).
+  const parPeriode = useMemo(() => {
+    const map = new Map<string, { label: string; ms: number; conso: number; montant: number }>();
+    for (const f of factures) {
+      const d = new Date(f.periode_start);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+      const cur = map.get(key);
+      if (cur) {
+        cur.conso += f.conso_m3 ?? 0;
+        cur.montant += f.montant ?? 0;
+      } else {
+        map.set(key, { label, ms: new Date(`${key}-01`).getTime(), conso: f.conso_m3 ?? 0, montant: f.montant ?? 0 });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.ms - b.ms);
+  }, [factures]);
 
   const runPreview = async () => {
     if (!start || !end) {
@@ -136,8 +160,8 @@ export default function EauFacturationPage() {
         active={view}
         onChange={(k) => setView(k as 'factures' | 'rapports')}
         tabs={[
-          { key: 'factures', label: 'Factures' },
-          { key: 'rapports', label: 'Rapports' },
+          { key: 'factures', label: 'Factures', icon: Receipt },
+          { key: 'rapports', label: 'Rapports', icon: FileBarChart },
         ]}
       />
       <EauPageShell
@@ -158,15 +182,15 @@ export default function EauFacturationPage() {
               <li key={f}>{f}</li>
             ))}
           </ul>
-          <a href="/gestion-eau/config" className="inline-block mt-2 text-sky-700 font-medium underline">
-            Aller à la configuration →
+          <a href="/gestion-eau/config" className="inline-flex items-center gap-1 mt-2 text-ahuvi-forest font-medium underline">
+            <Settings className="w-4 h-4" aria-hidden="true" /> Aller à la configuration
           </a>
         </div>
       ) : view === 'factures' ? (
         <div className="space-y-4">
           {/* Période */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-            <h2 className="font-semibold text-gray-800 mb-3">Période</h2>
+            <h2 className="font-semibold text-ahuvi-forest mb-3">Période</h2>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm">
                 <span className="block text-gray-600 mb-1">Début</span>
@@ -174,7 +198,7 @@ export default function EauFacturationPage() {
                   type="date"
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
               <label className="text-sm">
@@ -183,35 +207,27 @@ export default function EauFacturationPage() {
                   type="date"
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
             </div>
             <div className="flex gap-2 mt-3">
-              <button
-                onClick={runPreview}
-                disabled={busy}
-                className="flex-1 bg-white border border-sky-300 text-sky-700 font-medium py-2.5 rounded-lg hover:bg-sky-50 disabled:opacity-50"
-              >
+              <EauIconButton icon={Eye} variant="secondary" onClick={runPreview} disabled={busy} className="flex-1 py-2.5">
                 Aperçu
-              </button>
-              <button
-                onClick={runGenerate}
-                disabled={busy}
-                className="flex-1 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg"
-              >
+              </EauIconButton>
+              <EauIconButton icon={Receipt} variant="primary" onClick={runGenerate} disabled={busy} className="flex-1 py-2.5">
                 Générer les factures
-              </button>
+              </EauIconButton>
             </div>
           </div>
 
           {/* Aperçu */}
           {previews && (
-            <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 shadow-soft">
-              <h2 className="font-semibold text-gray-800 mb-2">Aperçu</h2>
+            <div className="rounded-xl border border-ahuvi-200 bg-ahuvi-50/50 p-4 shadow-soft">
+              <h2 className="font-semibold text-ahuvi-forest mb-2">Aperçu</h2>
               <div className="space-y-1">
                 {previews.map((p) => (
-                  <div key={p.compteur.id} className="flex items-center justify-between text-sm py-1 border-b border-sky-100 last:border-0">
+                  <div key={p.compteur.id} className="flex items-center justify-between text-sm py-1 border-b border-ahuvi-100 last:border-0">
                     <span className="text-gray-800">{p.compteur.nom}</span>
                     {p.skipRaison ? (
                       <span className="text-gray-400 italic">{p.skipRaison}</span>
@@ -228,9 +244,9 @@ export default function EauFacturationPage() {
 
           {/* Liste des factures */}
           <div>
-            <h2 className="font-semibold text-gray-800 mb-2">Factures émises ({factures.length})</h2>
+            <h2 className="font-semibold text-ahuvi-forest mb-2">Factures émises ({factures.length})</h2>
             {factures.length === 0 ? (
-              <div className="text-gray-400 text-sm py-6 text-center">Aucune facture pour l’instant.</div>
+              <EauEmptyState icon={Receipt} title="Aucune facture pour l’instant" hint="Choisissez une période puis générez les factures." />
             ) : (
               <div className="space-y-2">
                 {factures.map((f) => (
@@ -250,23 +266,25 @@ export default function EauFacturationPage() {
                       </div>
                       <button
                         onClick={() => toggleStatut(f)}
-                        className={`flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
+                        className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
                           f.statut === 'paye'
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-rose-100 text-rose-700'
                         }`}
                         title="Basculer le statut"
                       >
-                        {f.statut === 'paye' ? '✓ Payée' : '✗ Impayée'}
+                        {f.statut === 'paye'
+                          ? <><BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" /> Payée</>
+                          : <><CircleAlert className="w-3.5 h-3.5" aria-hidden="true" /> Impayée</>}
                       </button>
                     </div>
                     <div className="flex gap-3 mt-2 text-sm">
-                      <button onClick={() => exportPdf(f)} className="text-sky-600 hover:underline">
-                        📄 PDF
+                      <button onClick={() => exportPdf(f)} className="inline-flex items-center gap-1 text-ahuvi-olive hover:underline">
+                        <FileDown className="w-4 h-4" aria-hidden="true" /> PDF
                       </button>
                       {f.statut === 'impaye' && (
-                        <button onClick={() => relancer(f)} className="text-amber-600 hover:underline">
-                          🔔 Relancer
+                        <button onClick={() => relancer(f)} className="inline-flex items-center gap-1 text-amber-600 hover:underline">
+                          <Bell className="w-4 h-4" aria-hidden="true" /> Relancer
                         </button>
                       )}
                     </div>
@@ -277,19 +295,55 @@ export default function EauFacturationPage() {
           </div>
         </div>
       ) : (
-        /* Onglet Rapports : exports globaux + rappel des PDF par facture. */
+        /* Onglet Rapports : graphiques + exports globaux + rappel des PDF par facture. */
         <div className="space-y-4">
+          {/* Graphiques : conso (m³) et montant facturé par période. */}
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-3 shadow-soft">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ahuvi-forest mb-2">
+              <FileBarChart className="w-4 h-4" aria-hidden="true" /> Montant facturé par période
+            </h3>
+            {parPeriode.length === 0 ? (
+              <EauEmptyState icon={Receipt} title="Aucune facture à représenter" />
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={parPeriode}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={40} />
+                  <Tooltip formatter={(v: number) => fmtMontant(v, config?.devise)} />
+                  <Bar dataKey="montant" name="Montant" fill="#9D9B4B" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-3 shadow-soft">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ahuvi-forest mb-2">
+              <FileBarChart className="w-4 h-4" aria-hidden="true" /> Consommation facturée par période
+            </h3>
+            {parPeriode.length === 0 ? (
+              <EauEmptyState icon={Receipt} title="Aucune facture à représenter" />
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={parPeriode}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={32} />
+                  <Tooltip formatter={(v: number) => fmtM3(v)} />
+                  <Bar dataKey="conso" name="Conso" fill="#4C6D40" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-            <h2 className="font-semibold text-gray-800 mb-1">Export CSV global</h2>
+            <h2 className="font-semibold text-ahuvi-forest mb-1">Export CSV global</h2>
             <p className="text-sm text-gray-600 mb-3">
               Relevés, bilans et factures de la copropriété, dans un seul fichier .csv.
             </p>
-            <button
-              onClick={exportCsv}
-              className="bg-ahuvi-forest hover:bg-ahuvi-olive text-white text-sm font-semibold px-4 py-2.5 rounded-lg"
-            >
-              ⬇️ Télécharger le CSV global
-            </button>
+            <EauIconButton icon={Download} variant="primary" onClick={exportCsv}>
+              Télécharger le CSV global
+            </EauIconButton>
           </div>
           <div className="rounded-xl border border-ahuvi-100 bg-ahuvi-50/60 p-4 text-sm text-ahuvi-800">
             Les <strong>PDF par facture</strong> se téléchargent depuis l'onglet « Factures »

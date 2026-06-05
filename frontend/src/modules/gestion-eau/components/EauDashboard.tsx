@@ -1,9 +1,12 @@
 /** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW + mini-graphe. */
 import { useEffect, useState } from 'react';
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link } from 'react-router-dom';
-import { TrendingUp } from 'lucide-react';
+import {
+  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText,
+} from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauStatCard } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
@@ -19,12 +22,15 @@ function fmtAutonomie(heures: number | null): string {
   return `${j} j ${h} h`;
 }
 
-function Card({ title, children, tone }: { title: string; children: React.ReactNode; tone?: 'ok' | 'warn' }) {
+function Card({ title, icon: Icon, children, tone }: { title: string; icon?: typeof ScrollText; children: React.ReactNode; tone?: 'ok' | 'warn' }) {
   const ring =
-    tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white';
+    tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-ahuvi-100 bg-white';
   return (
     <div className={`rounded-xl border p-4 shadow-soft ${ring}`}>
-      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</div>
+      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+        {Icon && <Icon className="w-4 h-4" aria-hidden="true" />}
+        {title}
+      </div>
       <div className="mt-1">{children}</div>
     </div>
   );
@@ -33,6 +39,7 @@ function Card({ title, children, tone }: { title: string; children: React.ReactN
 export default function EauDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [conso, setConso] = useState<SeriePoint[]>([]);
+  const [niveau, setNiveau] = useState<SeriePoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,6 +49,7 @@ export default function EauDashboard() {
       if (alive) {
         setData(d);
         setConso(t.consoParJour);
+        setNiveau(t.niveauBassin);
         setLoading(false);
       }
     })();
@@ -56,58 +64,70 @@ export default function EauDashboard() {
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <Card title="Stock actuel">
-            <div className="text-2xl font-bold text-sky-700">{fmtM3(data?.stockActuelM3 ?? null)}</div>
-            <div className="text-sm text-gray-500">
-              Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
-              {data?.volumeMaxM3 != null && (
-                <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>
-              )}
-            </div>
-          </Card>
+          <EauStatCard
+            icon={Droplet}
+            tone="teal"
+            label="Stock actuel"
+            value={fmtM3(data?.stockActuelM3 ?? null)}
+            hint={
+              <>
+                Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
+                {data?.volumeMaxM3 != null && <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>}
+              </>
+            }
+          />
 
-          <Card title="Entrées du jour">
-            <div className="text-2xl font-bold text-emerald-700">{fmtM3(data?.entreesJourM3 ?? 0)}</div>
-          </Card>
+          <EauStatCard
+            icon={ArrowDownToLine}
+            tone="emerald"
+            label="Entrées du jour"
+            value={fmtM3(data?.entreesJourM3 ?? 0)}
+          />
 
-          <Card title="Conso du jour">
-            <div className="text-2xl font-bold text-indigo-700">{fmtM3(data?.consoJourM3 ?? 0)}</div>
-          </Card>
+          <EauStatCard
+            icon={Droplet}
+            tone="olive"
+            label="Conso du jour"
+            value={fmtM3(data?.consoJourM3 ?? 0)}
+          />
 
-          <Card title="Débit courant">
-            <div className="text-2xl font-bold text-ahuvi-olive">
-              {data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
-            </div>
-            <div className="text-sm text-gray-500">Apport des pompes</div>
-          </Card>
+          <EauStatCard
+            icon={Gauge}
+            tone="forest"
+            label="Débit courant"
+            value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
+            hint="Apport des pompes"
+          />
 
           {/* NRW : modèle réseau (apport − Δstock − compteurs) si disponible, sinon ancien NRW. */}
-          <Card title="NRW (période)">
-            <div className="text-2xl font-bold text-rose-700">
-              {data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
-            </div>
-            <div className="text-sm text-gray-500">
-              Pertes : {data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}
-            </div>
-          </Card>
+          <EauStatCard
+            icon={Percent}
+            tone="rose"
+            label="NRW (période)"
+            value={data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
+            hint={`Pertes : ${data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}`}
+          />
 
-          <Card title="Conso réseau (période)">
-            <div className="text-2xl font-bold text-teal-700">
-              {data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
-            </div>
-            <div className="text-sm text-gray-500">Sortie vers le réseau</div>
-          </Card>
+          <EauStatCard
+            icon={Waves}
+            tone="teal"
+            label="Conso réseau (période)"
+            value={data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
+            hint="Sortie vers le réseau"
+          />
 
-          <Card title="Autonomie estimée">
-            <div className="text-2xl font-bold text-amber-700">{fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}</div>
-            <div className="text-sm text-gray-500">
-              {data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
-            </div>
-          </Card>
+          <EauStatCard
+            icon={Hourglass}
+            tone="amber"
+            label="Autonomie estimée"
+            value={fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}
+            hint={data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
+          />
 
           <div className="col-span-2">
             <Card
               title="Dernier bilan"
+              icon={ScrollText}
               tone={data?.dernierBilan ? (data.dernierBilan.anomalie ? 'warn' : 'ok') : undefined}
             >
               {data?.dernierBilan ? (
@@ -141,11 +161,11 @@ export default function EauDashboard() {
           <div className="col-span-2">
             <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Conso (30 j)
+                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <Droplet className="w-4 h-4" aria-hidden="true" /> Conso (30 j)
                 </div>
                 <Link to="/gestion-eau/tendances" className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline">
-                  <TrendingUp className="w-3.5 h-3.5" /> Tendances
+                  <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
                 </Link>
               </div>
               {conso.length === 0 ? (
@@ -155,6 +175,31 @@ export default function EauDashboard() {
                   <AreaChart data={conso}>
                     <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
                     <Area type="monotone" dataKey="value" stroke="#4C6D40" fill="#4C6D40" fillOpacity={0.2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Mini-graphique : niveau du bassin (volume mesuré) sur la période. */}
+          <div className="col-span-2">
+            <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <Waves className="w-4 h-4" aria-hidden="true" /> Niveau du bassin
+                </div>
+                <Link to="/gestion-eau/tendances" className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline">
+                  <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
+                </Link>
+              </div>
+              {niveau.length === 0 ? (
+                <div className="text-sm text-gray-400 py-4 text-center">Pas encore de relevé de niveau.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={90}>
+                  <AreaChart data={niveau}>
+                    <XAxis dataKey="label" hide />
+                    <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
+                    <Area type="monotone" dataKey="value" stroke="#10939F" fill="#10939F" fillOpacity={0.2} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}

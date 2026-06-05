@@ -421,6 +421,13 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - **Comportement** : état **mémorisé par écran** (localStorage `eau_aide_<id>`), **replié par défaut sauf à la 1ʳᵉ visite** (déplié pour découvrir), accessible (aria-expanded), mobile-first, charte AHUVI.
 - **Implémentation** : composant réutilisable `EauAide` + textes centralisés `eauAideTextes.ts` ; intégré via la prop `aide` de `EauPageShell` (écrans à shell) ou en composant autonome (Relevés/Scan/onglets bassin/Tournée/Carte/Accueil). 100 % additif.
 
+### 🎨 Iconographie systématique + graphiques (v3.24.0)
+- **Iconographie façon BazarKELY, en charte AHUVI** (vert forêt / olive + accent or ; **plus aucun violet/bleu** — teal conservé comme accent eau, ambre/rouge conservés pour le **sens** des alertes/pertes).
+  Sur **tous les écrans** : chaque **bouton** porte une icône en tête, chaque **carte KPI** une icône dans un conteneur teinté, chaque **ligne de liste** une icône de tête (+ `ChevronRight` vers un détail), chaque **état vide** une grande icône muette, chaque **onglet** une icône. Icônes décoratives en `aria-hidden`, lisibilité mobile préservée.
+- **Briques mutualisées** (`components/EauUi.tsx`) : `EauStatCard`, `EauIconButton`, `EauEmptyState`, `EauListIcon` + prop `icon` optionnelle sur `EauTabs`.
+- **Graphiques (recharts, charte AHUVI)** : Tableau de bord (mini-conso 30 j + **niveau du bassin**), **Saisie bassin** (courbe du niveau + **histogramme du débit des pompes**), **Détail compteur** (histogramme de conso par période), **Facturation** (barres **conso** et **montant facturé** par période), **Espace client** (historique conso conservé), **Tendances** (5 graphiques). États vides illustrés.
+- **Implémentation** : évolution **100 % additive et cosmétique** (aucune logique métier, aucun service, aucune signature modifiés ; aucun SQL).
+
 ### ✅ Module complet (Phases 1 à 4) — hors périmètre restant
 - **Livrés** : socle bassin/compteurs/anomalies/NRW (P1), facturation/clients/enrôlement (P2), QR/scan/tournée/carte hors-ligne (P3),
   pilotage (tendances/alertes/rapports/annonces/audit) + charte AHUVI + reprises terrain (P4), **aide contextuelle dépliable sur tous les écrans (v3.23.0)**.
@@ -446,5 +453,5 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-*Dernière mise à jour : 2026-06-05 — Module gestion-eau : **Aide contextuelle dépliable** (ⓘ « Aide » + sous-titre cliquable → panneau « À quoi ça sert / Comment s'en servir ») sur TOUS les écrans et onglets, dont les 3 onglets de Saisie bassin ; état mémorisé par écran, replié par défaut sauf 1ʳᵉ visite ; charte AHUVI, mobile-first (v3.23.0). Précédemment : Phase 4 (pilotage & finitions) v3.21.0 + évolution bassin/débit v3.22.0. Module COMPLET — validé live ADMIN sur 1sakely.org.*
+*Dernière mise à jour : 2026-06-06 — Module gestion-eau : **Iconographie systématique (style BazarKELY en charte AHUVI vert/or) + graphiques clés** (niveau bassin, débit pompes, conso/compteur, conso+montant facturé/période) ; briques EauStatCard/EauIconButton/EauEmptyState/EauListIcon ; recolorisation complète bleu/violet → AHUVI ; évolution additive et cosmétique (v3.24.0). Précédemment : aide contextuelle dépliable (v3.23.0), Phase 4 v3.21.0, bassin/débit v3.22.0. Module COMPLET — validé live ADMIN sur 1sakely.org.*
 *Validé par : Joël (réponses aux questions interactives)*

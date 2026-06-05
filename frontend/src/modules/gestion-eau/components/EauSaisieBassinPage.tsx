@@ -9,7 +9,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
+import {
+  ArrowDownToLine, Ruler, Gauge, Save, AlertTriangle, Settings, Waves, Activity,
+} from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { getConfig, dimensionsFromConfig } from '../services/eauConfigService';
@@ -18,6 +25,7 @@ import {
   listDebitTests,
   addDebitTest,
 } from '../services/eauBassinService';
+import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { hauteurCmToVolumeM3 } from '../utils/bassin';
 import { computeDebit } from '../utils/debit';
 import { addEntreeBassin, addReleveBassin } from '../services/eauReleveService';
@@ -51,6 +59,7 @@ export default function EauSaisieBassinPage() {
   const [debitDureeMin, setDebitDureeMin] = useState('');
   const [debitNote, setDebitNote] = useState('');
   const [tests, setTests] = useState<DebitTestLocal[]>([]);
+  const [niveauSerie, setNiveauSerie] = useState<SeriePoint[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -59,9 +68,20 @@ export default function EauSaisieBassinPage() {
       setDim(dimensionsFromConfig(cfg));
       setSurface(surfaceFromConfig(cfg));
       setTests(await listDebitTests());
+      const t = await getTendances({ fenetreJours: 30 });
+      setNiveauSerie(t.niveauBassin);
       setLoading(false);
     })();
   }, []);
+
+  // Historique du débit (du plus ancien au plus récent) pour le graphe en barres.
+  const debitChartData = useMemo(
+    () =>
+      [...tests]
+        .reverse()
+        .map((t) => ({ label: fmtDate(t.timestamp).slice(0, 5), debit: t.debit_m3h })),
+    [tests]
+  );
 
   // Hauteur du flotteur en cm (avertissement « au-dessus du flotteur »).
   const flotteurCm = useMemo(() => {
@@ -171,6 +191,8 @@ export default function EauSaisieBassinPage() {
       }
       setHauteurCm('');
       setNiveauNote('');
+      const t = await getTendances({ fenetreJours: 30 });
+      setNiveauSerie(t.niveauBassin);
     } finally {
       setBusy(false);
     }
@@ -185,27 +207,27 @@ export default function EauSaisieBassinPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setTab('entree')}
-              className={`flex-1 py-2 rounded-lg font-medium text-xs ${
-                tab === 'entree' ? 'bg-emerald-600 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg font-medium text-xs ${
+                tab === 'entree' ? 'bg-ahuvi-forest text-white' : 'bg-white border border-ahuvi-200 text-ahuvi-forest'
               }`}
             >
-              ➕ Entrée
+              <ArrowDownToLine className="w-4 h-4" aria-hidden="true" /> Entrée
             </button>
             <button
               onClick={() => setTab('niveau')}
-              className={`flex-1 py-2 rounded-lg font-medium text-xs ${
-                tab === 'niveau' ? 'bg-sky-600 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg font-medium text-xs ${
+                tab === 'niveau' ? 'bg-ahuvi-forest text-white' : 'bg-white border border-ahuvi-200 text-ahuvi-forest'
               }`}
             >
-              📏 Niveau
+              <Ruler className="w-4 h-4" aria-hidden="true" /> Niveau
             </button>
             <button
               onClick={() => setTab('debit')}
-              className={`flex-1 py-2 rounded-lg font-medium text-xs ${
-                tab === 'debit' ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg font-medium text-xs ${
+                tab === 'debit' ? 'bg-ahuvi-forest text-white' : 'bg-white border border-ahuvi-200 text-ahuvi-forest'
               }`}
             >
-              ⚙️ Débit
+              <Gauge className="w-4 h-4" aria-hidden="true" /> Débit
             </button>
           </div>
 
@@ -230,7 +252,7 @@ export default function EauSaisieBassinPage() {
                   step="0.1"
                   value={entreeM3}
                   onChange={(e) => setEntreeM3(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                   placeholder="ex : 50"
                 />
               </label>
@@ -240,15 +262,15 @@ export default function EauSaisieBassinPage() {
                   type="text"
                   value={entreeNote}
                   onChange={(e) => setEntreeNote(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
               <button
                 onClick={submitEntree}
                 disabled={busy}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
               >
-                Enregistrer l'entrée
+                <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'entrée
               </button>
             </div>
           )}
@@ -256,11 +278,14 @@ export default function EauSaisieBassinPage() {
           {tab === 'niveau' && (
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft space-y-3">
               {!dim && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-                  ⚠️ Configurez le bassin d'abord (dimensions L × l × hauteur).{' '}
-                  <button className="underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
-                    Configurer
-                  </button>
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    Configurez le bassin d'abord (dimensions L × l × hauteur).{' '}
+                    <button className="inline-flex items-center gap-1 underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
+                      <Settings className="w-3.5 h-3.5" aria-hidden="true" /> Configurer
+                    </button>
+                  </span>
                 </div>
               )}
               <label className="text-sm block">
@@ -272,12 +297,12 @@ export default function EauSaisieBassinPage() {
                   value={hauteurCm}
                   onChange={(e) => setHauteurCm(e.target.value)}
                   disabled={!dim}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-gray-100"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                   placeholder="ex : 180"
                 />
               </label>
               {volumePreview != null && (
-                <div className="text-sm text-sky-700 bg-sky-50 rounded-lg px-3 py-2">
+                <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
                   Volume correspondant : <strong>{fmtM3(volumePreview)}</strong>
                 </div>
               )}
@@ -288,16 +313,36 @@ export default function EauSaisieBassinPage() {
                   value={niveauNote}
                   onChange={(e) => setNiveauNote(e.target.value)}
                   disabled={!dim}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-gray-100"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                 />
               </label>
               <button
                 onClick={submitNiveau}
                 disabled={busy || !dim}
-                className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
               >
-                Enregistrer le relevé (déclenche un bilan)
+                <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé (déclenche un bilan)
               </button>
+
+              {/* Courbe du niveau du bassin (volume mesuré) sur la période. */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                  <Waves className="w-4 h-4" aria-hidden="true" /> Niveau du bassin (30 j)
+                </div>
+                {niveauSerie.length === 0 ? (
+                  <EauEmptyState icon={Waves} title="Pas encore de relevé de niveau" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={150}>
+                    <LineChart data={niveauSerie.map((p) => ({ ...p, x: p.label.slice(5) }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="x" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} width={32} />
+                      <Tooltip formatter={(v: number) => fmtM3(v)} />
+                      <Line type="monotone" dataKey="value" name="Niveau" stroke="#10939F" dot={false} strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           )}
 
@@ -309,11 +354,14 @@ export default function EauSaisieBassinPage() {
                   notez la durée — le débit d'apport Q_in est déduit automatiquement.
                 </div>
                 {surface == null && (
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-                    ⚠️ Configurez les dimensions du bassin (L × l) d'abord.{' '}
-                    <button className="underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
-                      Configurer
-                    </button>
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                    <span>
+                      Configurez les dimensions du bassin (L × l) d'abord.{' '}
+                      <button className="inline-flex items-center gap-1 underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
+                        <Settings className="w-3.5 h-3.5" aria-hidden="true" /> Configurer
+                      </button>
+                    </span>
                   </div>
                 )}
                 <div className="grid grid-cols-3 gap-2">
@@ -324,7 +372,7 @@ export default function EauSaisieBassinPage() {
                       value={debitDebutCm}
                       onChange={(e) => setDebitDebutCm(e.target.value)}
                       disabled={surface == null}
-                      className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
+                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 150"
                     />
                   </label>
@@ -335,7 +383,7 @@ export default function EauSaisieBassinPage() {
                       value={debitFinCm}
                       onChange={(e) => setDebitFinCm(e.target.value)}
                       disabled={surface == null}
-                      className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
+                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 160"
                     />
                   </label>
@@ -346,7 +394,7 @@ export default function EauSaisieBassinPage() {
                       value={debitDureeMin}
                       onChange={(e) => setDebitDureeMin(e.target.value)}
                       disabled={surface == null}
-                      className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
+                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 60"
                     />
                   </label>
@@ -359,9 +407,9 @@ export default function EauSaisieBassinPage() {
                 )}
                 {debitPreview != null && (
                   debitPreview.valid ? (
-                    <div className="text-sm text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2">
+                    <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
                       Débit d'apport Q_in : <strong>{debitPreview.debitM3h.toFixed(1)} m³/h</strong>
-                      <span className="text-indigo-400"> ({fmtM3(debitPreview.volumeM3)} en {debitDureeMin} min)</span>
+                      <span className="text-ahuvi-teal/60"> ({fmtM3(debitPreview.volumeM3)} en {debitDureeMin} min)</span>
                     </div>
                   ) : (
                     <div className="text-sm text-rose-700 bg-rose-50 rounded-lg px-3 py-2">{debitPreview.error}</div>
@@ -374,47 +422,68 @@ export default function EauSaisieBassinPage() {
                     value={debitNote}
                     onChange={(e) => setDebitNote(e.target.value)}
                     disabled={surface == null}
-                    className="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
+                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                   />
                 </label>
                 <button
                   onClick={submitDebit}
                   disabled={busy || surface == null || !(debitPreview?.valid)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
                 >
-                  Enregistrer le test de débit
+                  <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le test de débit
                 </button>
               </div>
 
               {/* Historique des tests — débit courant (le plus récent) mis en évidence. */}
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-                <h3 className="font-semibold text-gray-800 mb-2 text-sm">Historique des tests</h3>
+                <h3 className="flex items-center gap-1.5 font-semibold text-ahuvi-forest mb-2 text-sm">
+                  <Gauge className="w-4 h-4" aria-hidden="true" /> Historique des tests
+                </h3>
                 {tests.length === 0 ? (
-                  <div className="text-sm text-gray-400">Aucun test de débit pour l'instant.</div>
+                  <EauEmptyState icon={Gauge} title="Aucun test de débit pour l'instant" />
                 ) : (
-                  <ul className="space-y-2">
-                    {tests.map((t, i) => (
-                      <li
-                        key={t.id}
-                        className={`rounded-lg px-3 py-2 text-sm border ${
-                          i === 0 ? 'border-indigo-300 bg-indigo-50' : 'border-gray-100 bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-indigo-700">
-                            {t.debit_m3h.toFixed(1)} m³/h
-                            {i === 0 && <span className="ml-2 text-[10px] uppercase tracking-wide text-indigo-500">débit courant</span>}
-                          </span>
-                          {t.ecart_pct != null && (
-                            <span className="text-xs text-gray-500">écart {t.ecart_pct.toFixed(0)} %</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {fmtDate(t.timestamp)} · {t.niveau_debut_cm}→{t.niveau_fin_cm} cm en {t.duree_min} min
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    {/* Graphe en barres : débit (m³/h) des derniers tests, du plus ancien au plus récent. */}
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+                      <Activity className="w-3.5 h-3.5" aria-hidden="true" /> Débit mesuré (m³/h)
+                    </div>
+                    <ResponsiveContainer width="100%" height={140}>
+                      <BarChart data={debitChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} width={32} />
+                        <Tooltip formatter={(v: number) => `${v.toFixed(1)} m³/h`} />
+                        <Bar dataKey="debit" name="Débit" fill="#10939F" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    <ul className="space-y-2 mt-3">
+                      {tests.map((t, i) => (
+                        <li
+                          key={t.id}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${
+                            i === 0 ? 'border-ahuvi-300 bg-ahuvi-50' : 'border-gray-100 bg-gray-50'
+                          }`}
+                        >
+                          <EauListIcon icon={Gauge} tone={i === 0 ? 'teal' : 'neutral'} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-ahuvi-teal">
+                                {t.debit_m3h.toFixed(1)} m³/h
+                                {i === 0 && <span className="ml-2 text-[10px] uppercase tracking-wide text-ahuvi-olive">débit courant</span>}
+                              </span>
+                              {t.ecart_pct != null && (
+                                <span className="text-xs text-gray-500">écart {t.ecart_pct.toFixed(0)} %</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {fmtDate(t.timestamp)} · {t.niveau_debut_cm}→{t.niveau_fin_cm} cm en {t.duree_min} min
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </div>
             </div>

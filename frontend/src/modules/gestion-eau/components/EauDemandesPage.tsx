@@ -1,7 +1,9 @@
 /** Demandes d'accès /gestion-eau/demandes (admin) : valider (rôles + compteurs) ou refuser. */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { Inbox, UserPlus, Check, X, Shield, Gauge } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { listDemandes, validerDemande, refuserDemande } from '../services/eauDemandeService';
 import { listCompteurs } from '../services/eauCompteurService';
@@ -79,7 +81,7 @@ export default function EauDemandesPage() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : demandes.length === 0 ? (
-        <div className="text-gray-400 text-sm py-8 text-center">Aucune demande en attente.</div>
+        <EauEmptyState icon={Inbox} title="Aucune demande en attente" />
       ) : (
         <div className="space-y-2">
           {demandes.map((d) => {
@@ -88,10 +90,13 @@ export default function EauDemandesPage() {
             return (
               <div key={d.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-medium text-gray-900">{d.nom || d.email || 'Utilisateur'}</div>
-                    <div className="text-xs text-gray-500">
-                      {d.email ?? ''} · {fmtDate(d.created_at)}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <EauListIcon icon={UserPlus} tone="olive" />
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900">{d.nom || d.email || 'Utilisateur'}</div>
+                      <div className="text-xs text-gray-500">
+                        {d.email ?? ''} · {fmtDate(d.created_at)}
+                      </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
@@ -105,13 +110,15 @@ export default function EauDemandesPage() {
                       <label className="flex items-center gap-1.5">
                         <input type="checkbox" checked={draft.admin}
                           onChange={(e) => updateDraft(d.id, { admin: e.target.checked })}
-                          className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
+                          className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
+                        <Shield className="w-4 h-4 text-ahuvi-olive" aria-hidden="true" />
                         <span className="text-gray-700">Administrateur</span>
                       </label>
                       <label className="flex items-center gap-1.5">
                         <input type="checkbox" checked={draft.releveur}
                           onChange={(e) => updateDraft(d.id, { releveur: e.target.checked })}
-                          className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
+                          className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
+                        <Gauge className="w-4 h-4 text-ahuvi-olive" aria-hidden="true" />
                         <span className="text-gray-700">Releveur</span>
                       </label>
                     </div>
@@ -125,7 +132,7 @@ export default function EauDemandesPage() {
                             <label key={c.id} className="flex items-center gap-2 px-3 py-2">
                               <input type="checkbox" checked={draft.compteurs.has(c.id)}
                                 onChange={() => toggleCompteur(d.id, c.id)}
-                                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
+                                className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
                               <span className="text-gray-800">{c.nom}</span>
                             </label>
                           ))}
@@ -134,22 +141,21 @@ export default function EauDemandesPage() {
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => valider(d)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg">
-                        Valider
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg">
+                        <Check className="w-4 h-4" aria-hidden="true" /> Valider
                       </button>
-                      <button onClick={() => setOpenId(null)}
-                        className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600">
+                      <EauIconButton icon={X} variant="secondary" onClick={() => setOpenId(null)}>
                         Annuler
-                      </button>
+                      </EauIconButton>
                     </div>
                   </div>
                 ) : (
                   <div className="flex gap-3 mt-2 text-sm">
-                    <button onClick={() => setOpenId(d.id)} className="text-emerald-600 hover:underline font-medium">
-                      Valider…
+                    <button onClick={() => setOpenId(d.id)} className="inline-flex items-center gap-1 text-emerald-600 hover:underline font-medium">
+                      <Check className="w-4 h-4" aria-hidden="true" /> Valider…
                     </button>
-                    <button onClick={() => refuser(d)} className="text-rose-600 hover:underline">
-                      Refuser
+                    <button onClick={() => refuser(d)} className="inline-flex items-center gap-1 text-rose-600 hover:underline">
+                      <X className="w-4 h-4" aria-hidden="true" /> Refuser
                     </button>
                   </div>
                 )}

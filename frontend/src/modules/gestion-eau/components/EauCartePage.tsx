@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
+import { Map as MapIcon, Download, AlertTriangle, MapPin, Gauge } from 'lucide-react';
+import { EauListIcon } from './EauUi';
 import { listCompteurs } from '../services/eauCompteurService';
 import { getConfig } from '../services/eauConfigService';
 import {
@@ -150,7 +152,9 @@ export default function EauCartePage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm text-gray-600">
           {tilesCount > 0 ? (
-            <span className="text-emerald-700">🗺️ Carte hors-ligne prête ({tilesCount} tuiles)</span>
+            <span className="inline-flex items-center gap-1 text-emerald-700">
+              <MapIcon className="w-4 h-4" aria-hidden="true" /> Carte hors-ligne prête ({tilesCount} tuiles)
+            </span>
           ) : (
             <span className="text-gray-500">Carte non encore téléchargée</span>
           )}
@@ -158,36 +162,47 @@ export default function EauCartePage() {
         <button
           onClick={() => runDownload(false)}
           disabled={downloading || !zone || !online}
-          className="bg-ahuvi-forest hover:bg-ahuvi-olive disabled:opacity-50 text-white text-sm font-medium px-3 py-2 rounded-lg"
+          className="inline-flex items-center gap-1.5 bg-ahuvi-forest hover:bg-ahuvi-olive disabled:opacity-50 text-white text-sm font-medium px-3 py-2 rounded-lg"
           title={!online ? 'Nécessite une connexion' : !zone ? 'Configurez la zone carte' : ''}
         >
+          <Download className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
           {downloading
             ? `Téléchargement… ${progress ? Math.round((progress.done / Math.max(1, progress.total)) * 100) : 0}%`
-            : '⬇️ Télécharger la carte de la zone'}
+            : 'Télécharger la carte de la zone'}
         </button>
       </div>
 
       {!zone && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-          Zone carte non configurée. Renseignez le centre et le rayon dans <strong>Configuration → Zone carte</strong> pour activer le téléchargement hors-ligne.
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            Zone carte non configurée. Renseignez le centre et le rayon dans <strong>Configuration → Zone carte</strong> pour activer le téléchargement hors-ligne.
+          </span>
         </div>
       )}
 
       {fallbackList ? (
         <div>
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 mb-2">
-            Carte indisponible hors-ligne (tuiles non téléchargées). Affichage de la liste des compteurs.
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 mb-2">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <span>Carte indisponible hors-ligne (tuiles non téléchargées). Affichage de la liste des compteurs.</span>
           </div>
           <div className="space-y-1">
-            {compteurs.map((c) => (
-              <div key={c.id} className="bg-white border border-gray-200 rounded-lg px-3 py-2">
-                <div className="font-medium text-gray-900">{c.nom}</div>
-                <div className="text-xs text-gray-500">
-                  {c.type} · {c.zone ?? 'sans zone'}
-                  {c.lat != null && c.lng != null ? ` · ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : ' · non géolocalisé'}
+            {compteurs.map((c) => {
+              const geoloc = c.lat != null && c.lng != null;
+              return (
+                <div key={c.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                  <EauListIcon icon={geoloc ? MapPin : Gauge} tone={geoloc ? 'forest' : 'neutral'} />
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 truncate">{c.nom}</div>
+                    <div className="text-xs text-gray-500">
+                      {c.type} · {c.zone ?? 'sans zone'}
+                      {geoloc ? ` · ${c.lat!.toFixed(5)}, ${c.lng!.toFixed(5)}` : ' · non géolocalisé'}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (

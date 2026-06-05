@@ -3,7 +3,9 @@
  * journal des scans QR (créé en Phase 3). Deux onglets internes, filtre texte.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { ScrollText, QrCode, Gauge, User } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauEmptyState, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import { listAudit } from '../services/eauAuditService';
@@ -79,8 +81,8 @@ export default function EauAuditPage() {
         active={tab}
         onChange={(k) => setTab(k as 'actions' | 'scans')}
         tabs={[
-          { key: 'actions', label: `Actions (${audit.length})` },
-          { key: 'scans', label: `Scans QR (${scans.length})` },
+          { key: 'actions', label: `Actions (${audit.length})`, icon: ScrollText },
+          { key: 'scans', label: `Scans QR (${scans.length})`, icon: QrCode },
         ]}
       />
       <EauPageShell title="Journal d'audit" subtitle="Traçabilité des actions et des scans (admin)" aide={AIDE.audit}>
@@ -95,43 +97,49 @@ export default function EauAuditPage() {
           <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
         ) : tab === 'actions' ? (
           auditFiltered.length === 0 ? (
-            <div className="text-gray-400 text-sm py-8 text-center">Aucune action journalisée.</div>
+            <EauEmptyState icon={ScrollText} title="Aucune action journalisée." />
           ) : (
             <div className="space-y-1.5">
               {auditFiltered.map((a) => (
-                <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-ahuvi-forest">
-                      {ACTION_LABEL[a.action ?? ''] ?? a.action ?? '—'}
-                    </span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(a.timestamp)}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    {a.entite ?? '—'}
-                    {a.user_id ? ` · par ${a.user_id.slice(0, 8)}…` : ''}
-                    {a.details ? ` · ${formatDetails(a.details)}` : ''}
+                <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
+                  <EauListIcon icon={ScrollText} tone="forest" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-ahuvi-forest">
+                        {ACTION_LABEL[a.action ?? ''] ?? a.action ?? '—'}
+                      </span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(a.timestamp)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {a.entite ?? '—'}
+                      {a.user_id ? ` · par ${a.user_id.slice(0, 8)}…` : ''}
+                      {a.details ? ` · ${formatDetails(a.details)}` : ''}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )
         ) : scansFiltered.length === 0 ? (
-          <div className="text-gray-400 text-sm py-8 text-center">Aucun scan journalisé.</div>
+          <EauEmptyState icon={QrCode} title="Aucun scan journalisé." />
         ) : (
           <div className="space-y-1.5">
             {scansFiltered.map((s) => (
-              <div key={s.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-ahuvi-forest">
-                    {SCAN_RESULT_LABEL[s.resultat ?? ''] ?? s.resultat ?? '—'}
-                  </span>
-                  <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(s.timestamp)}</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {s.type === 'compteur' ? compteurNom(s.compteur_id) : 'Client'}
-                  {s.emplacement ? ` · ${s.emplacement}` : ''}
-                  {s.role ? ` · ${s.role}` : ''}
-                  {s.code ? ` · ${s.code}` : ''}
+              <div key={s.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
+                <EauListIcon icon={s.type === 'compteur' ? Gauge : User} tone={s.type === 'compteur' ? 'teal' : 'olive'} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-ahuvi-forest">
+                      {SCAN_RESULT_LABEL[s.resultat ?? ''] ?? s.resultat ?? '—'}
+                    </span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(s.timestamp)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {s.type === 'compteur' ? compteurNom(s.compteur_id) : 'Client'}
+                    {s.emplacement ? ` · ${s.emplacement}` : ''}
+                    {s.role ? ` · ${s.role}` : ''}
+                    {s.code ? ` · ${s.code}` : ''}
+                  </div>
                 </div>
               </div>
             ))}

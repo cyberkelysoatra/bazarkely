@@ -4,7 +4,9 @@
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { AlertTriangle, BadgeCheck, ScrollText } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauListIcon, EauEmptyState, EauIconButton } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { listBilans, markBilanTraitee, refreshBilans } from '../services/eauBilanService';
 import { fmtM3, fmtPct, fmtDate } from '../utils/format';
@@ -47,7 +49,7 @@ export default function EauAnomaliesPage() {
           type="checkbox"
           checked={anomaliesOnly}
           onChange={(e) => setAnomaliesOnly(e.target.checked)}
-          className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+          className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500"
         />
         <span className="text-gray-700">Anomalies seulement</span>
       </label>
@@ -55,9 +57,10 @@ export default function EauAnomaliesPage() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : bilans.length === 0 ? (
-        <div className="text-gray-400 text-sm py-8 text-center">
-          {anomaliesOnly ? 'Aucune anomalie.' : 'Aucun bilan pour l\'instant.'}
-        </div>
+        <EauEmptyState
+          icon={anomaliesOnly ? AlertTriangle : ScrollText}
+          title={anomaliesOnly ? 'Aucune anomalie.' : "Aucun bilan pour l'instant."}
+        />
       ) : (
         <div className="space-y-2">
           {bilans.map((b) => (
@@ -68,9 +71,13 @@ export default function EauAnomaliesPage() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">{fmtDate(b.timestamp)}</span>
-                <span className={`text-sm font-semibold ${b.anomalie ? 'text-amber-700' : 'text-emerald-700'}`}>
-                  {b.anomalie ? '⚠️ Anomalie' : '✅ OK'}
+                <span className="flex items-center gap-2 text-sm text-gray-600">
+                  <EauListIcon icon={b.anomalie ? AlertTriangle : BadgeCheck} tone={b.anomalie ? 'amber' : 'emerald'} />
+                  {fmtDate(b.timestamp)}
+                </span>
+                <span className={`flex items-center gap-1 text-sm font-semibold ${b.anomalie ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {b.anomalie ? <AlertTriangle className="w-4 h-4" aria-hidden="true" /> : <BadgeCheck className="w-4 h-4" aria-hidden="true" />}
+                  {b.anomalie ? 'Anomalie' : 'OK'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm text-gray-700 mt-1">
@@ -87,14 +94,16 @@ export default function EauAnomaliesPage() {
               )}
               <div className="mt-2 flex items-center justify-between">
                 {b.traitee ? (
-                  <span className="text-xs text-emerald-700 font-medium">✔ Traitée</span>
+                  <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
+                    <BadgeCheck className="w-4 h-4" aria-hidden="true" /> Traitée
+                  </span>
                 ) : (
                   <span className="text-xs text-gray-400">Non traitée</span>
                 )}
                 {!b.traitee && (
-                  <button onClick={() => traiter(b)} className="text-sm text-sky-600 hover:underline">
+                  <EauIconButton icon={BadgeCheck} variant="secondary" onClick={() => traiter(b)}>
                     Marquer traitée
-                  </button>
+                  </EauIconButton>
                 )}
               </div>
             </div>

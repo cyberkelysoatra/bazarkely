@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { X, AlertTriangle, ScanLine } from 'lucide-react';
 
 export default function EauQrScanner({
   onResult,
@@ -70,14 +71,20 @@ export default function EauQrScanner({
     <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h3 className="font-semibold text-ahuvi-forest">Scanner un QR</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none" aria-label="Fermer">
-            ×
+          <h3 className="inline-flex items-center gap-1.5 font-semibold text-ahuvi-forest">
+            <ScanLine className="w-5 h-5" aria-hidden="true" />
+            Scanner un QR
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 -mr-1" aria-label="Fermer">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
         <div className="p-3">
           {error ? (
-            <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error}</div>
+            <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
           ) : (
             <>
               <div id={elementId} className="w-full overflow-hidden rounded-lg bg-black" />
@@ -88,8 +95,9 @@ export default function EauQrScanner({
         <div className="px-4 py-3 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium"
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium"
           >
+            <X className="w-4 h-4" aria-hidden="true" />
             Annuler
           </button>
         </div>

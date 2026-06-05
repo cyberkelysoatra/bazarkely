@@ -5,7 +5,9 @@
  * un compteur ouvre directement sa saisie d'index (onglet Compteur préselectionné).
  */
 import { useEffect, useState, useCallback } from 'react';
+import { RefreshCw, CheckCircle2, ArrowRight, Square, Route } from 'lucide-react';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
+import { EauEmptyState } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { fmtDate } from '../utils/format';
@@ -49,7 +51,7 @@ export default function EauTourneePage({ onPick }: { onPick: (compteurId: string
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : total === 0 ? (
-        <div className="text-gray-400 text-sm py-8 text-center">Aucun compteur actif à relever.</div>
+        <EauEmptyState icon={Route} title="Aucun compteur actif à relever." />
       ) : (
         <>
           {/* Progression */}
@@ -63,8 +65,8 @@ export default function EauTourneePage({ onPick }: { onPick: (compteurId: string
             </div>
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs text-gray-500">{pct}% relevés</span>
-              <button onClick={reload} className="text-xs text-ahuvi-forest hover:underline">
-                ↻ Actualiser
+              <button onClick={reload} className="inline-flex items-center gap-1 text-xs text-ahuvi-forest hover:underline">
+                <RefreshCw className="w-4 h-4" aria-hidden="true" /> Actualiser
               </button>
             </div>
           </div>
@@ -91,7 +93,13 @@ export default function EauTourneePage({ onPick }: { onPick: (compteurId: string
                     >
                       <span className="min-w-0">
                         <span className="font-medium text-gray-900 flex items-center gap-2">
-                          {it.releveAujourdhui ? '✅' : isReprise ? '➡️' : '⬜'}
+                          {it.releveAujourdhui ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" aria-hidden="true" />
+                          ) : isReprise ? (
+                            <ArrowRight className="w-4 h-4 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-300 flex-shrink-0" aria-hidden="true" />
+                          )}
                           <span className="truncate">{it.compteur.nom}</span>
                         </span>
                         <span className="block text-xs text-gray-500 pl-6">

@@ -1,7 +1,9 @@
 /** Configuration /gestion-eau/config (admin) : bassin, tarif, seuils, copropriété. */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Gauge, Building2, Map, Trash2, Save } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauIconButton } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
 import { bassinDeductions, isBassinModelComplete } from '../utils/bassin';
@@ -129,7 +131,10 @@ export default function EauConfigPage() {
       ) : (
         <div className="space-y-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-            <h2 className="font-semibold text-gray-800 mb-3">Dimensions & tarif</h2>
+            <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
+              <Gauge className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+              Dimensions & tarif
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               {NUM_FIELDS.map(({ key, label, step, hint }) => (
                 <label key={key as string} className="text-sm">
@@ -140,7 +145,7 @@ export default function EauConfigPage() {
                     step={step}
                     value={form[key as string] ?? ''}
                     onChange={(e) => set(key as string, e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                   />
                   {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
                 </label>
@@ -151,12 +156,12 @@ export default function EauConfigPage() {
                   type="text"
                   value={devise}
                   onChange={(e) => setDevise(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
             </div>
             {deductions != null && (
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-sky-800 bg-sky-50 rounded-lg px-3 py-2">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-ahuvi-800 bg-ahuvi-50 rounded-lg px-3 py-2">
                 <div>Surface : <strong>{deductions.surfaceM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²</strong></div>
                 <div>Volume utile : <strong>{fmtM3(deductions.volumeUtileM3)}</strong></div>
                 <div>m³ / cm : <strong>{deductions.m3ParCm.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}</strong></div>
@@ -166,7 +171,10 @@ export default function EauConfigPage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-            <h2 className="font-semibold text-gray-800 mb-3">Copropriété</h2>
+            <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
+              <Building2 className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+              Copropriété
+            </h2>
             <div className="grid grid-cols-1 gap-3">
               <label className="text-sm">
                 <span className="block text-gray-600 mb-1">Nom</span>
@@ -174,7 +182,7 @@ export default function EauConfigPage() {
                   type="text"
                   value={coproNom}
                   onChange={(e) => setCoproNom(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
               <label className="text-sm">
@@ -183,14 +191,17 @@ export default function EauConfigPage() {
                   type="text"
                   value={coproContact}
                   onChange={(e) => setCoproContact(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
             </div>
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
-            <h2 className="font-semibold text-gray-800 mb-1">Zone carte (hors-ligne)</h2>
+            <h2 className="font-semibold text-gray-800 mb-1 flex items-center gap-1.5">
+              <Map className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+              Zone carte (hors-ligne)
+            </h2>
             <p className="text-xs text-gray-400 mb-3">
               Définit la zone pré-téléchargée pour la carte des compteurs utilisable sans connexion.
             </p>
@@ -204,7 +215,7 @@ export default function EauConfigPage() {
                     step={step}
                     value={form[key as string] ?? ''}
                     onChange={(e) => set(key as string, e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-sky-500 focus:ring-sky-500"
+                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                   />
                   {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
                 </label>
@@ -215,23 +226,27 @@ export default function EauConfigPage() {
               <span className="text-xs text-gray-500">
                 {tileCount == null ? 'Cache carte…' : `${tileCount} tuile(s) en cache`}
               </span>
-              <button
+              <EauIconButton
+                icon={Trash2}
+                variant="danger"
                 onClick={purgerCacheCarte}
                 disabled={purging || !tileCount}
-                className="text-xs font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg"
+                className="text-xs px-3 py-1.5 disabled:cursor-not-allowed"
               >
-                {purging ? 'Purge…' : '🗑️ Purger le cache carte'}
-              </button>
+                {purging ? 'Purge…' : 'Purger le cache carte'}
+              </EauIconButton>
             </div>
           </div>
 
-          <button
+          <EauIconButton
+            icon={Save}
+            variant="primary"
             onClick={onSave}
             disabled={saving}
-            className="w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl shadow-soft"
+            className="w-full py-3 rounded-xl"
           >
             {saving ? 'Enregistrement…' : 'Enregistrer la configuration'}
-          </button>
+          </EauIconButton>
         </div>
       )}
     </EauPageShell>
