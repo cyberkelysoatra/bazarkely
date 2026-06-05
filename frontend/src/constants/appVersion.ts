@@ -1,8 +1,26 @@
-export const APP_VERSION = '3.21.0';
-export const APP_VERSION_NAME = 'Gestion Eau — Phase 4 (pilotage & finitions) : Tendances (graphiques recharts — conso/jour, niveau bassin, NRW/semaine, top consommateurs, conso par zone) + mini-graphe au tableau de bord et historique de conso dans l\'espace client ; Centre d\'alertes (génération idempotente anomalie/compteur non relevé/bassin critique/fuite, notifications sur l\'appareil via notificationService, marquage lu/traité) ; Rapport mensuel PDF (entrées, conso, pertes/NRW, anomalies, factures) + proposition auto en fin de période ; Annonces du domaine (CRUD admin, bandeau défilant fermable dans le header AHUVI) ; Journal d\'audit (actions clés qui/quoi/quand + journal des scans QR). Reprises Phase 3 : photo de relevé (capture caméra + compression), bouton « Purger le cache carte », badge file _dirty « N en attente de sync ». Charte AHUVI étendue (tokens or-clair/teal). Menu HeaderEauActions : entrées Alertes/Annonces/Audit/Tendances/Rapports activées (role-filtrées).';
-export const LAST_UPDATED = '2026-06-04';
-export const APP_BUILD_DATE = '2026-06-04';
+export const APP_VERSION = '3.22.0';
+export const APP_VERSION_NAME = 'Gestion Eau — Évolution « bassin/débit » : modèle physique flotteur/trop-plein (surface, volume utile, m³/cm, volume sécurité), tests de débit des pompes « vanne fermée » (Q_in = S × Δniveau ÷ durée) avec historique + débit courant + alerte « débit instable », conso réseau réelle (apport − Δstock), pertes & NRW recalculés, autonomie estimée (stock ÷ conso horaire), alerte « flotteur défaillant » (niveau > flotteur). Configuration enrichie (hauteur flotteur/trop-plein, écart débit max). Rétrocompatible (repli sur saisie manuelle d\'entrées sans test de débit). Offline-first, sync idempotente.';
+export const LAST_UPDATED = '2026-06-05';
+export const APP_BUILD_DATE = '2026-06-05';
 export const VERSION_HISTORY = [
+  {
+    version: '3.22.0',
+    date: '2026-06-05',
+    description: 'ÉVOLUTION « bassin/débit » du module gestion-eau (modèle physique affiné + mesure de l\'apport). (A) Modèle bassin flotteur/trop-plein : la Configuration saisit désormais Longueur, Largeur, Hauteur flotteur (arrêt pompes — plafond opérationnel, référence du % de remplissage) et Hauteur trop-plein (sécurité) + écart débit max (%). Déductions centralisées et affichées en lecture seule : surface S = L×l, volume utile = S×Hf, volume sécurité = S×Htp, m³/cm = S×0,01 (ex. 14×7×2,50 → 98 m², 245 m³, 0,98 m³/cm ; trop-plein 2,90 → 284,2 m³). (B) Tests de débit des pompes « vanne fermée » (Relevés → onglet Bassin → mode Débit) : niveau début/fin (cm) + durée (min) → Q_in (m³/h) = S × (Δniveau/100) ÷ (durée/60) ; historique des tests + débit courant (dernier) mis en évidence ; écart % vs précédent ; alerte « débit instable » si écart > seuil (déf. 15 %). Nouvelle table eau_debit_tests. (C) Conso réseau & pertes recalculées : apport = Q_in×Δt (ou volume manuel en override) ; conso réseau = apport − Δstock ; pertes = conso réseau − Σ compteurs ; NRW = pertes / conso réseau. Bilans enrichis (apport_m3, conso_reseau_m3, pertes_m3, debit_m3h_utilise). (D) Autonomie estimée = stock courant ÷ conso horaire moyenne (+ date de vidage prévue), conso moyenne/jour. (E) Tableau de bord : cartes Débit courant, Conso réseau, NRW (modèle réseau), Autonomie ; % remplissage référencé au flotteur. (F) Alertes ajoutées : « flotteur défaillant » (niveau mesuré > flotteur → risque débordement) et « débit instable » — via le centre d\'alertes + notificationService existants. Rétrocompatible : sans test de débit, repli automatique sur la saisie manuelle d\'entrées (aucune casse). Offline-first (Dexie v2) + sync idempotente (id client, upsert). 15 tests ajoutés (107 tests eau au total).',
+    changes: [
+      'Nouveaux utils purs : utils/debit.ts (computeDebit/ecartDebitPct/debitInstable) ; utils/bassin.ts étendu (BassinModel, bassinDeductions, tauxRemplissageFlotteur, estimerAutonomie)',
+      'utils/bilan.ts : computeBilan calcule apport/conso réseau/pertes/NRW réseau (additif, rétrocompatible) ; utils/alertes.ts : candidat flotteur_defaillant',
+      'Nouveau service central eauBassinService (source unique des déductions bassin + CRUD tests de débit + alerte débit instable)',
+      'eauBilanService : bilan alimenté par le débit courant + champs réseau persistés ; DashboardData enrichi (débit, conso réseau, NRW réseau, autonomie)',
+      'eauConfigService : dimensionsFromConfig référence le flotteur (repli hauteur max) ; debitEcartMaxPctFromConfig',
+      'eauAlerteService : flotteur défaillant alimenté (hauteur dernière vs flotteur) + titres des 2 nouveaux types',
+      'UI : EauConfigPage (flotteur/trop-plein/écart débit + déductions lecture seule), EauSaisieBassinPage (onglet Débit : saisie/aperçu Q_in + historique), EauDashboard (cartes débit/conso réseau/autonomie), EauAlertesPage (libellés)',
+      'Types/Dexie : eau_debit_tests (table v2) + champs eau_config (flotteur/trop-plein/écart) + eau_bilans (apport/conso réseau/pertes/débit) + AlerteType (flotteur_defaillant, debit_instable)',
+      'SQL : ALTER eau_config (3 colonnes), CREATE eau_debit_tests (+ RLS), ALTER eau_bilans (4 colonnes), élargissement du check des types eau_alertes',
+      '15 tests ajoutés (déductions bassin, Q_in, conso réseau/pertes/NRW, autonomie, alerte flotteur) — 107 tests eau',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.21.0',
     date: '2026-06-04',

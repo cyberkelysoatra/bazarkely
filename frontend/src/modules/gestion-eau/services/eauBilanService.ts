@@ -19,6 +19,7 @@ import {
   seuilsFromConfig,
   dimensionsFromConfig,
 } from './eauConfigService';
+import { getDebitCourantM3h, estimerAutonomie, type AutonomieEstimee } from './eauBassinService';
 import { tauxRemplissage, volumeMaxM3 } from '../utils/bassin';
 import type {
   BilanLocal,
@@ -37,12 +38,13 @@ export async function computeAndSaveBilan(current: {
   timestamp: string;
   volume_m3: number;
 }): Promise<BilanLocal | null> {
-  const [config, relevesBassin, entrees, compteurs, relevesCompteur] = await Promise.all([
+  const [config, relevesBassin, entrees, compteurs, relevesCompteur, debitM3h] = await Promise.all([
     getConfig(),
     eauDb.eau_releves_bassin.toArray() as Promise<ReleveBassinLocal[]>,
     eauDb.eau_entrees_bassin.toArray() as Promise<EntreeBassinLocal[]>,
     eauDb.eau_compteurs.toArray() as Promise<CompteurLocal[]>,
     eauDb.eau_releves_compteur.toArray() as Promise<ReleveCompteurLocal[]>,
+    getDebitCourantM3h(),
   ]);
 
   const { seuilM3, seuilPct } = seuilsFromConfig(config);
@@ -56,6 +58,7 @@ export async function computeAndSaveBilan(current: {
     relevesCompteur: relevesCompteur as ReleveCompteurLite[],
     seuilM3,
     seuilPct,
+    debitM3h,
   });
 
   if (!result) return null;
@@ -71,9 +74,14 @@ export async function computeAndSaveBilan(current: {
     stock_mesure: result.stockMesure,
     ecart_m3: result.ecartM3,
     ecart_pct: result.ecartPct,
-    anomalie: result.anomalie,
+    // Anomalie = écart de stock (héritage) OU pertes/NRW réseau (nouveau modèle).
+    anomalie: result.anomalie || result.anomalieReseau,
     traitee: false,
     commentaire: null,
+    apport_m3: result.apportM3,
+    conso_reseau_m3: result.consoReseauM3,
+    pertes_m3: result.pertesM3,
+    debit_m3h_utilise: result.debitM3hUtilise,
   };
 
   return saveLocal('eau_bilans', bilan);
@@ -136,11 +144,20 @@ export interface DashboardData {
   /** Dernier relevé de niveau (volume mesuré) ou null. */
   stockActuelM3: number | null;
   volumeMaxM3: number | null;
-  tauxRemplissage: number | null; // [0,1]
+  tauxRemplissage: number | null; // [0,1] — référencé au flotteur
   entreesJourM3: number;
   consoJourM3: number;
   dernierBilan: BilanLocal | null;
   nrwPeriode: NRWResult | null;
+  // ── Évolution « bassin/débit » ──
+  /** Débit courant des pompes (m³/h), null si aucun test. */
+  debitCourantM3h: number | null;
+  /** Conso réseau cumulée sur la période (m³). */
+  consoReseauPeriodeM3: number | null;
+  /** NRW recalculé via le modèle réseau (pertes réseau / conso réseau). */
+  nrwReseauPeriode: NRWResult | null;
+  /** Autonomie estimée (stock ÷ conso horaire moyenne). */
+  autonomie: AutonomieEstimee;
 }
 
 /** Agrégats du tableau de bord (jour courant + NRW sur la période de facturation). */
@@ -181,8 +198,37 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // NRW sur la période de facturation (défaut 30 j)
   const periodeJours = config?.periode_facturation_jours ?? 30;
-  const nrwStart = now.getTime() - periodeJours * 24 * 60 * 60 * 1000;
-  const nrwAgg = await computeNRWForPeriod(nrwStart, now.getTime());
+  const nowMs = now.getTime();
+  const nrwStart = nowMs - periodeJours * 24 * 60 * 60 * 1000;
+  const nrwAgg = await computeNRWForPeriod(nrwStart, nowMs);
+
+  // Modèle réseau : conso réseau cumulée + pertes/NRW recalculés via les bilans.
+  const bilansPeriode = bilans.filter((b) => {
+    const ms = new Date(b.timestamp).getTime();
+    return ms >= nrwStart && ms <= nowMs;
+  });
+  const consoReseauPeriodeM3 = bilansPeriode.reduce((acc, b) => acc + (b.conso_reseau_m3 ?? 0), 0);
+  const pertesReseauM3 = bilansPeriode.reduce((acc, b) => acc + (b.pertes_m3 ?? 0), 0);
+  const aDuReseau = bilansPeriode.some((b) => b.conso_reseau_m3 != null);
+  const nrwReseauPeriode: NRWResult | null = aDuReseau
+    ? {
+        pertesM3: pertesReseauM3,
+        nrwPct: consoReseauPeriodeM3 > 0 ? (pertesReseauM3 / consoReseauPeriodeM3) * 100 : 0,
+      }
+    : null;
+
+  // Débit courant + autonomie estimée
+  const debitCourantM3h = await getDebitCourantM3h();
+  const autonomie = estimerAutonomie({
+    stockActuelM3,
+    bilans: bilans.map((b) => ({
+      timestamp: b.timestamp,
+      conso_reseau_m3: b.conso_reseau_m3 ?? null,
+      conso_m3: b.conso_m3,
+    })),
+    fenetreJours: periodeJours,
+    nowMs,
+  });
 
   return {
     stockActuelM3,
@@ -192,5 +238,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     consoJourM3,
     dernierBilan,
     nrwPeriode: { pertesM3: nrwAgg.pertesM3, nrwPct: nrwAgg.nrwPct },
+    debitCourantM3h,
+    consoReseauPeriodeM3: aDuReseau ? consoReseauPeriodeM3 : null,
+    nrwReseauPeriode,
+    autonomie,
   };
 }

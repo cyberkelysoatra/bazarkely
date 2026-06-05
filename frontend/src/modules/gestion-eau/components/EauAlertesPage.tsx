@@ -23,6 +23,8 @@ const TYPE_LABEL: Record<AlerteType, string> = {
   fuite: 'Fuite suspectée',
   compteur_non_releve: 'Compteur non relevé',
   bassin_critique: 'Bassin critique',
+  flotteur_defaillant: 'Flotteur défaillant',
+  debit_instable: 'Débit instable',
 };
 
 function niveauClasses(niveau: string | null): string {

@@ -88,6 +88,14 @@ export interface ComputeBilanInput {
   relevesCompteur: ReleveCompteurLite[];
   seuilM3: number;
   seuilPct: number;
+  /**
+   * Évolution « bassin/débit » — débit courant des pompes (m³/h) supposé stable.
+   * Si fourni (> 0), l'apport sur l'intervalle = débit × Δt(h). Sinon repli sur
+   * les entrées manuelles (rétrocompatibilité). Ignoré si `apportOverrideM3` fourni.
+   */
+  debitM3h?: number | null;
+  /** Apport manuel imposé pour l'intervalle (m³) — prioritaire sur le débit. */
+  apportOverrideM3?: number | null;
 }
 
 export interface BilanResult {
@@ -101,6 +109,19 @@ export interface BilanResult {
   ecartM3: number;
   ecartPct: number;
   anomalie: boolean;
+  // ── Modèle « bassin/débit » (additif) ──
+  /** Apport sur l'intervalle (m³) : override | débit×Δt | Σ entrées (repli). */
+  apportM3: number;
+  /** Débit courant utilisé (m³/h) ou null si repli sur entrées/override. */
+  debitM3hUtilise: number | null;
+  /** Conso vers le réseau = apport − Δstock (m³). */
+  consoReseauM3: number;
+  /** Pertes = conso réseau − conso compteurs (m³). */
+  pertesM3: number;
+  /** NRW réseau = pertes / conso réseau × 100 (%). */
+  nrwReseauPct: number;
+  /** Anomalie selon le modèle réseau (pertes > seuilM3 OU NRW% > seuilPct). */
+  anomalieReseau: boolean;
 }
 
 /**
@@ -137,12 +158,38 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
     consoM3 += consoCompteurSurIntervalle(relevesC, tPrevMs, tMs);
   }
 
-  const stockAttendu = stockPrev + entreesM3 - consoM3;
   const stockMesure = input.stockMesureM3;
+
+  // ── Apport sur l'intervalle (modèle « bassin/débit ») ──
+  //   priorité : override explicite > Σ entrées manuelles de l'intervalle (mode « Entrée »)
+  //              > débit courant × Δt > 0 (repli). Une saisie manuelle prime donc toujours
+  //              sur l'estimation par débit, et l'absence des deux retombe sur l'historique.
+  const dtHours = (tMs - tPrevMs) / 3_600_000;
+  let apportM3: number;
+  let debitM3hUtilise: number | null = null;
+  if (input.apportOverrideM3 != null && input.apportOverrideM3 >= 0) {
+    apportM3 = input.apportOverrideM3;
+  } else if (entreesM3 > 0) {
+    apportM3 = entreesM3; // override manuel : volume(s) saisi(s) pour l'intervalle
+  } else if (input.debitM3h != null && input.debitM3h > 0) {
+    apportM3 = input.debitM3h * dtHours;
+    debitM3hUtilise = input.debitM3h;
+  } else {
+    apportM3 = entreesM3; // = 0 : ni entrées, ni débit → aucun apport connu
+  }
+
+  // Stock attendu basé sur l'apport (≡ entrées quand aucun débit/override → rétrocompatible).
+  const stockAttendu = stockPrev + apportM3 - consoM3;
   const ecartM3 = stockMesure - stockAttendu;
-  const denom = Math.max(entreesM3, consoM3, 1);
+  const denom = Math.max(apportM3, consoM3, 1);
   const ecartPct = (Math.abs(ecartM3) / denom) * 100;
   const anomalie = Math.abs(ecartM3) > input.seuilM3 || ecartPct > input.seuilPct;
+
+  // Conso réseau / pertes / NRW réseau.
+  const consoReseauM3 = apportM3 - (stockMesure - stockPrev);
+  const pertesM3 = consoReseauM3 - consoM3;
+  const nrwReseauPct = consoReseauM3 > 0 ? (pertesM3 / consoReseauM3) * 100 : 0;
+  const anomalieReseau = pertesM3 > input.seuilM3 || nrwReseauPct > input.seuilPct;
 
   return {
     timestamp: tMs,
@@ -155,6 +202,12 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
     ecartM3,
     ecartPct,
     anomalie,
+    apportM3,
+    debitM3hUtilise,
+    consoReseauM3,
+    pertesM3,
+    nrwReseauPct,
+    anomalieReseau,
   };
 }
 

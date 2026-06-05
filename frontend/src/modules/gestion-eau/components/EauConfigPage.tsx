@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import EauPageShell from './EauPageShell';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
-import { volumeMaxM3 } from '../utils/bassin';
+import { bassinDeductions, isBassinModelComplete } from '../utils/bassin';
 import { fmtM3 } from '../utils/format';
 import { countTiles, clearTiles } from '../db/eauTiles';
 import type { ConfigLocal } from '../types/gestionEau';
@@ -13,7 +13,9 @@ type FormState = Record<string, string>;
 const NUM_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?: string }[] = [
   { key: 'bassin_longueur_m', label: 'Longueur bassin (m)', step: '0.01' },
   { key: 'bassin_largeur_m', label: 'Largeur bassin (m)', step: '0.01' },
-  { key: 'bassin_hauteur_max_m', label: 'Hauteur max (m)', step: '0.01' },
+  { key: 'bassin_hauteur_flotteur_m', label: 'Hauteur flotteur (m)', step: '0.01', hint: 'Arrêt pompes — plafond opérationnel' },
+  { key: 'bassin_hauteur_trop_plein_m', label: 'Hauteur trop-plein (m)', step: '0.01', hint: 'Sécurité (≥ flotteur)' },
+  { key: 'debit_ecart_max_pct', label: 'Écart débit max (%)', step: '1', hint: 'Alerte si test instable (déf. 15)' },
   { key: 'tarif_m3', label: 'Tarif / m³', step: '1' },
   { key: 'seuil_pct', label: 'Seuil anomalie (%)', step: '0.1', hint: 'Écart toléré en %' },
   { key: 'seuil_m3', label: 'Seuil anomalie (m³)', step: '0.1', hint: 'Écart toléré en m³' },
@@ -82,12 +84,21 @@ export default function EauConfigPage() {
     return Number.isFinite(n) ? n : null;
   };
 
-  const previewVolume = (() => {
-    const L = parsedNum('bassin_longueur_m');
-    const l = parsedNum('bassin_largeur_m');
-    const h = parsedNum('bassin_hauteur_max_m');
-    if (L && l && h && L > 0 && l > 0 && h > 0) return volumeMaxM3({ longueurM: L, largeurM: l, hauteurMaxM: h });
-    return null;
+  // Déductions géométriques en lecture seule (surface, volume utile/sécurité, m³/cm).
+  const deductions = (() => {
+    const longueurM = parsedNum('bassin_longueur_m');
+    const largeurM = parsedNum('bassin_largeur_m');
+    const hauteurFlotteurM = parsedNum('bassin_hauteur_flotteur_m');
+    const tpRaw = parsedNum('bassin_hauteur_trop_plein_m');
+    // Trop-plein optionnel : repli sur le flotteur (pas de marge de sécurité connue).
+    const hauteurTropPleinM = tpRaw && tpRaw > 0 ? tpRaw : hauteurFlotteurM;
+    const model = {
+      longueurM: longueurM ?? undefined,
+      largeurM: largeurM ?? undefined,
+      hauteurFlotteurM: hauteurFlotteurM ?? undefined,
+      hauteurTropPleinM: hauteurTropPleinM ?? undefined,
+    };
+    return isBassinModelComplete(model) ? bassinDeductions(model) : null;
   })();
 
   const onSave = async () => {
@@ -143,9 +154,12 @@ export default function EauConfigPage() {
                 />
               </label>
             </div>
-            {previewVolume != null && (
-              <div className="mt-3 text-sm text-sky-700 bg-sky-50 rounded-lg px-3 py-2">
-                Volume max calculé : <strong>{fmtM3(previewVolume)}</strong>
+            {deductions != null && (
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-sky-800 bg-sky-50 rounded-lg px-3 py-2">
+                <div>Surface : <strong>{deductions.surfaceM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²</strong></div>
+                <div>Volume utile : <strong>{fmtM3(deductions.volumeUtileM3)}</strong></div>
+                <div>m³ / cm : <strong>{deductions.m3ParCm.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}</strong></div>
+                <div>Volume sécurité : <strong>{fmtM3(deductions.volumeSecuriteM3)}</strong></div>
               </div>
             )}
           </div>

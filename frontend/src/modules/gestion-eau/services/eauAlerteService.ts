@@ -72,6 +72,15 @@ export async function genererAlertes(): Promise<AlerteLocal[]> {
     tauxRemplissagePct = ratio * 100;
   }
 
+  // Flotteur défaillant : dernière hauteur mesurée vs hauteur du flotteur (cm).
+  const hauteurDerniereCm = dernierBassin ? dernierBassin.hauteur_cm : null;
+  const hauteurFlotteurCm =
+    config?.bassin_hauteur_flotteur_m != null && config.bassin_hauteur_flotteur_m > 0
+      ? config.bassin_hauteur_flotteur_m * 100
+      : config?.bassin_hauteur_max_m != null && config.bassin_hauteur_max_m > 0
+        ? config.bassin_hauteur_max_m * 100
+        : null;
+
   // NRW sur la période de facturation
   const periodeJours = config?.periode_facturation_jours ?? 30;
   const nrwAgg = await computeNRWForPeriod(now - periodeJours * MS_PER_DAY, now);
@@ -88,6 +97,8 @@ export async function genererAlertes(): Promise<AlerteLocal[]> {
       .map((b) => ({ id: b.id, ecart_pct: b.ecart_pct })),
     nrwPct: nrwAgg.nrwPct,
     pertesM3: nrwAgg.pertesM3,
+    hauteurDerniereCm,
+    hauteurFlotteurCm,
   });
 
   // Déduplication : une alerte (type+ref) NON TRAITÉE existante bloque la recréation.
@@ -157,6 +168,10 @@ function titreForType(t: AlerteType | null): string {
       return '⏰ Compteur non relevé';
     case 'bassin_critique':
       return '🔴 Bassin critique';
+    case 'flotteur_defaillant':
+      return '🌊 Flotteur défaillant';
+    case 'debit_instable':
+      return '📉 Débit instable';
     default:
       return 'Alerte eau';
   }

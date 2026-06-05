@@ -86,6 +86,8 @@ export interface ConfigCompletude {
   bassin_longueur_m: number | null;
   bassin_largeur_m: number | null;
   bassin_hauteur_max_m: number | null;
+  /** Évolution « bassin/débit » : hauteur du flotteur (remplace la hauteur max). */
+  bassin_hauteur_flotteur_m?: number | null;
   tarif_m3: number | null;
   seuil_pct: number | null;
   seuil_m3: number | null;
@@ -93,10 +95,10 @@ export interface ConfigCompletude {
   periode_facturation_jours: number | null;
 }
 
+/** Champs simples requis (la hauteur du bassin est traitée à part — flotteur OU max). */
 const COMPLETUDE_FIELDS: (keyof ConfigCompletude)[] = [
   'bassin_longueur_m',
   'bassin_largeur_m',
-  'bassin_hauteur_max_m',
   'tarif_m3',
   'seuil_pct',
   'seuil_m3',
@@ -104,10 +106,10 @@ const COMPLETUDE_FIELDS: (keyof ConfigCompletude)[] = [
   'periode_facturation_jours',
 ];
 
-const COMPLETUDE_LABELS: Record<keyof ConfigCompletude, string> = {
+const COMPLETUDE_LABELS: Record<string, string> = {
   bassin_longueur_m: 'Longueur bassin',
   bassin_largeur_m: 'Largeur bassin',
-  bassin_hauteur_max_m: 'Hauteur max bassin',
+  bassin_hauteur: 'Hauteur bassin (flotteur)',
   tarif_m3: 'Tarif / m³',
   seuil_pct: 'Seuil anomalie (%)',
   seuil_m3: 'Seuil anomalie (m³)',
@@ -115,13 +117,23 @@ const COMPLETUDE_LABELS: Record<keyof ConfigCompletude, string> = {
   periode_facturation_jours: 'Période de facturation (jours)',
 };
 
+function positif(v: number | null | undefined): boolean {
+  return v != null && typeof v === 'number' && v > 0;
+}
+
 /** Liste des champs de config encore manquants (vide = config complète). */
 export function configMissingFields(config: ConfigCompletude | null | undefined): string[] {
-  if (!config) return COMPLETUDE_FIELDS.map((f) => COMPLETUDE_LABELS[f]);
-  return COMPLETUDE_FIELDS.filter((f) => {
-    const v = config[f];
-    return v == null || !(typeof v === 'number' && v > 0);
-  }).map((f) => COMPLETUDE_LABELS[f]);
+  if (!config) {
+    return [...COMPLETUDE_FIELDS.map((f) => COMPLETUDE_LABELS[f]), COMPLETUDE_LABELS.bassin_hauteur];
+  }
+  const missing = COMPLETUDE_FIELDS.filter((f) => !positif(config[f] as number | null)).map(
+    (f) => COMPLETUDE_LABELS[f]
+  );
+  // Hauteur du bassin : flotteur (nouveau) OU hauteur max (héritage) suffit.
+  if (!positif(config.bassin_hauteur_flotteur_m) && !positif(config.bassin_hauteur_max_m)) {
+    missing.push(COMPLETUDE_LABELS.bassin_hauteur);
+  }
+  return missing;
 }
 
 /** true si la configuration permet facturation + anomalies. */

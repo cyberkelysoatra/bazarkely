@@ -94,8 +94,35 @@ export interface BilanRow {
   anomalie: boolean;
   traitee: boolean;
   commentaire: string | null;
+  // Évolution « bassin/débit » (additif) : apport mesuré (Q_in×Δt ou override),
+  // conso réelle vers le réseau (apport − Δstock), pertes (conso réseau − Σ compteurs)
+  // et débit courant utilisé pour le calcul. Nullables → rétrocompatibles.
+  apport_m3?: number | null;
+  conso_reseau_m3?: number | null;
+  pertes_m3?: number | null;
+  debit_m3h_utilise?: number | null;
 }
 export type BilanLocal = BilanRow & LocalMeta;
+
+// ──────────────────────────── eau_debit_tests ────────────────────────────
+/**
+ * Test de débit des pompes « vanne fermée » : on mesure la montée de niveau
+ * (cm) sur une durée (min) pour déduire Q_in (m³/h). Le dernier test = débit
+ * courant supposé stable ; `ecart_pct` mémorise l'écart vs le test précédent.
+ */
+export interface DebitTestRow {
+  id: string;
+  niveau_debut_cm: number;
+  niveau_fin_cm: number;
+  duree_min: number;
+  debit_m3h: number;
+  ecart_pct: number | null;
+  timestamp: string;
+  agent_id: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+export type DebitTestLocal = DebitTestRow & LocalMeta;
 
 // ────────────────────────────── eau_factures ─────────────────────────────
 export type FactureStatut = 'paye' | 'impaye';
@@ -126,6 +153,12 @@ export interface ConfigRow {
   bassin_longueur_m: number | null;
   bassin_largeur_m: number | null;
   bassin_hauteur_max_m: number | null;
+  /** Hauteur du flotteur (m) — arrêt des pompes / plafond opérationnel (réf. % remplissage). */
+  bassin_hauteur_flotteur_m: number | null;
+  /** Hauteur du trop-plein (m) — sécurité, atteinte seulement si flotteurs défaillants. */
+  bassin_hauteur_trop_plein_m: number | null;
+  /** Écart % max entre deux tests de débit au-delà duquel on alerte « débit instable » (déf. 15). */
+  debit_ecart_max_pct: number | null;
   tarif_m3: number | null;
   devise: string;
   seuil_pct: number | null;
@@ -207,7 +240,13 @@ export interface ScanRow {
 export type ScanLocal = ScanRow & LocalMeta;
 
 // ────────────────────────────── eau_alertes ──────────────────────────────
-export type AlerteType = 'anomalie' | 'fuite' | 'compteur_non_releve' | 'bassin_critique';
+export type AlerteType =
+  | 'anomalie'
+  | 'fuite'
+  | 'compteur_non_releve'
+  | 'bassin_critique'
+  | 'flotteur_defaillant'
+  | 'debit_instable';
 
 export interface AlerteRow {
   id: string;

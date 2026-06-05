@@ -316,6 +316,29 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - **Charte AHUVI** : palette/typo déjà en place (v3.19.0), **étendue** (tokens `ahuvi.gold-light` `#C3C067`, `ahuvi.teal` `#10939F`).
   Tous les écrans Phase 4 sont stylés AHUVI ; **aucun autre module n'est affecté** (modifications de fichiers partagés strictement additives et conditionnées à `isEauModule`).
 
+### 🌊 Modèle bassin, débit des pompes & conso réseau (Évolution « bassin/débit », v3.22.0)
+- **Modèle physique flotteur / trop-plein.** La **Configuration** saisit **Longueur `L`**, **Largeur `l`**,
+  **Hauteur flotteur `Hf`** (arrêt des pompes — **plafond opérationnel**, référence du % de remplissage) et
+  **Hauteur trop-plein `Htp`** (sécurité, atteinte seulement si flotteurs défaillants) + **écart débit max (%)**.
+  **Déductions centralisées** (service unique `eauBassinService`, logique pure `utils/bassin.ts`) affichées en lecture seule :
+  `S = L×l` (surface), **volume utile** `= S×Hf` (100 % de remplissage), **volume sécurité** `= S×Htp`, **m³/cm** `= S×0,01`,
+  `Stock(niveau) = S × niveau_cm/100`. *Ex. 14×7×2,50 → 98 m², 245 m³, 0,98 m³/cm ; trop-plein 2,90 → 284,2 m³.*
+- **Tests de débit des pompes « vanne fermée »** (`/gestion-eau/releves` → onglet **Bassin** → mode **Débit**, releveur/admin) :
+  on saisit **niveau début/fin (cm) + durée (min)** → **Q_in (m³/h)** `= S × (Δniveau/100) ÷ (durée/60)` (aperçu avant validation).
+  **Historique** des tests + **débit courant** (le plus récent) **mis en évidence** ; **écart %** vs le test précédent ;
+  **alerte « débit instable »** si écart > seuil (déf. **15 %**). Nouvelle table **`eau_debit_tests`** (offline-first, sync idempotente).
+- **Conso réseau & pertes réelles** (recalculées dans `computeBilan`, additif/rétrocompatible) sur l'intervalle entre deux relevés :
+  **Apport** `= Q_in × Δt` *(ou volume manuel saisi en mode « Entrée » → override de l'intervalle)* ;
+  **Conso réseau** `= Apport − Δstock` (ce qui est sorti vers le réseau) ; **Pertes** `= Conso réseau − Σ compteurs` ;
+  **NRW %** `= Pertes / Conso réseau × 100`. **Bilans enrichis** (`apport_m3`, `conso_reseau_m3`, `pertes_m3`, `debit_m3h_utilise`).
+  L'**anomalie** d'un bilan = écart de stock (héritage) **OU** pertes/NRW réseau au-delà des seuils `seuil_m3`/`seuil_pct`.
+- **Pilotage** (tableau de bord) : cartes **Débit courant** (m³/h), **Conso réseau** (période), **NRW** (modèle réseau),
+  **Autonomie estimée** `= stock courant ÷ conso horaire moyenne` (+ date de vidage prévue). **% remplissage référencé au flotteur**.
+- **Alertes ajoutées** (centre d'alertes + `notificationService` existants) : **`flotteur_defaillant`** (niveau mesuré **> flotteur** → risque
+  de débordement) et **`debit_instable`** (test au-delà du seuil d'écart). Le check des types `eau_alertes` est élargi côté Supabase.
+- **Rétrocompatibilité** : **sans test de débit**, l'apport **retombe automatiquement sur la saisie manuelle d'entrées** (aucune casse) ;
+  la hauteur de référence retombe sur l'ancienne `bassin_hauteur_max_m` tant que le flotteur n'est pas saisi.
+
 ### 🧾 Facturation (Phase 2, admin)
 - Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
   `indexFin` = dernier relevé ≤ fin, `conso = indexFin − indexDébut`, `montant = conso × tarifM3` (Ariary/MGA).

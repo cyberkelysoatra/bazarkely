@@ -33,6 +33,11 @@ export interface AlerteSnapshot {
   bilansAnomalieNonTraitee: { id: string; ecart_pct: number | null }[];
   nrwPct: number | null;
   pertesM3: number | null;
+  // ── Évolution « bassin/débit » (optionnels → rétrocompatibles) ──
+  /** Dernière hauteur mesurée du bassin (cm), ou null. */
+  hauteurDerniereCm?: number | null;
+  /** Hauteur du flotteur (cm) = plafond opérationnel, ou null si non configuré. */
+  hauteurFlotteurCm?: number | null;
 }
 
 /** Construit la liste des alertes CANDIDATES à partir d'un instantané des données. */
@@ -80,6 +85,20 @@ export function computeAlerteCandidates(input: AlerteSnapshot): AlerteCandidate[
         niveau: 'critique',
       });
     }
+  }
+
+  // 3bis) Flotteur défaillant : niveau mesuré au-dessus du flotteur (risque débordement).
+  if (
+    input.hauteurFlotteurCm != null && input.hauteurFlotteurCm > 0 &&
+    input.hauteurDerniereCm != null &&
+    input.hauteurDerniereCm > input.hauteurFlotteurCm
+  ) {
+    out.push({
+      type: 'flotteur_defaillant',
+      ref_id: `flotteur|${dayKey(new Date(input.now))}`,
+      message: `Niveau ${input.hauteurDerniereCm.toFixed(0)} cm au-dessus du flotteur (${input.hauteurFlotteurCm.toFixed(0)} cm) — flotteur défaillant / risque de débordement.`,
+      niveau: 'critique',
+    });
   }
 
   // 4) Fuite suspectée (NRW élevé sur la période)

@@ -15,6 +15,9 @@ function emptyConfig(): ConfigLocal {
     bassin_longueur_m: null,
     bassin_largeur_m: null,
     bassin_hauteur_max_m: null,
+    bassin_hauteur_flotteur_m: null,
+    bassin_hauteur_trop_plein_m: null,
+    debit_ecart_max_pct: null,
     tarif_m3: null,
     devise: 'MGA',
     seuil_pct: null,
@@ -60,18 +63,32 @@ export async function saveConfig(patch: Partial<ConfigLocal>): Promise<ConfigLoc
   return saved;
 }
 
-/** Dimensions du bassin extraites de la config (ou null si incomplètes). */
+/**
+ * Dimensions du bassin extraites de la config (ou null si incomplètes).
+ * `hauteurMaxM` = hauteur du flotteur (plafond opérationnel, réf. % remplissage),
+ * avec repli sur l'ancienne `bassin_hauteur_max_m` tant que le flotteur n'est pas saisi.
+ */
 export function dimensionsFromConfig(config: ConfigLocal | null): BassinDimensions | null {
   if (!config) return null;
-  const { bassin_longueur_m, bassin_largeur_m, bassin_hauteur_max_m } = config;
+  const { bassin_longueur_m, bassin_largeur_m, bassin_hauteur_flotteur_m, bassin_hauteur_max_m } = config;
+  const hauteurRef =
+    bassin_hauteur_flotteur_m != null && bassin_hauteur_flotteur_m > 0
+      ? bassin_hauteur_flotteur_m
+      : bassin_hauteur_max_m;
   if (
     bassin_longueur_m != null && bassin_longueur_m > 0 &&
     bassin_largeur_m != null && bassin_largeur_m > 0 &&
-    bassin_hauteur_max_m != null && bassin_hauteur_max_m > 0
+    hauteurRef != null && hauteurRef > 0
   ) {
-    return { longueurM: bassin_longueur_m, largeurM: bassin_largeur_m, hauteurMaxM: bassin_hauteur_max_m };
+    return { longueurM: bassin_longueur_m, largeurM: bassin_largeur_m, hauteurMaxM: hauteurRef };
   }
   return null;
+}
+
+/** Seuil d'écart de débit (%) au-delà duquel un test est jugé instable (déf. 15). */
+export function debitEcartMaxPctFromConfig(config: ConfigLocal | null): number {
+  const v = config?.debit_ecart_max_pct;
+  return v != null && v > 0 ? v : 15;
 }
 
 /**

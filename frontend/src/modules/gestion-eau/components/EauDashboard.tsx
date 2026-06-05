@@ -9,6 +9,15 @@ import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
+/** Formate une autonomie en heures → « 2 j 4 h » ou « 5 h » (— si indéfinie). */
+function fmtAutonomie(heures: number | null): string {
+  if (heures == null || !Number.isFinite(heures)) return '—';
+  if (heures < 24) return `${heures.toFixed(1)} h`;
+  const j = Math.floor(heures / 24);
+  const h = Math.round(heures - j * 24);
+  return `${j} j ${h} h`;
+}
+
 function Card({ title, children, tone }: { title: string; children: React.ReactNode; tone?: 'ok' | 'warn' }) {
   const ring =
     tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white';
@@ -64,12 +73,34 @@ export default function EauDashboard() {
             <div className="text-2xl font-bold text-indigo-700">{fmtM3(data?.consoJourM3 ?? 0)}</div>
           </Card>
 
+          <Card title="Débit courant">
+            <div className="text-2xl font-bold text-ahuvi-olive">
+              {data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
+            </div>
+            <div className="text-sm text-gray-500">Apport des pompes</div>
+          </Card>
+
+          {/* NRW : modèle réseau (apport − Δstock − compteurs) si disponible, sinon ancien NRW. */}
           <Card title="NRW (période)">
             <div className="text-2xl font-bold text-rose-700">
-              {data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
+              {data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
             </div>
             <div className="text-sm text-gray-500">
-              Pertes : {data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}
+              Pertes : {data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}
+            </div>
+          </Card>
+
+          <Card title="Conso réseau (période)">
+            <div className="text-2xl font-bold text-teal-700">
+              {data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
+            </div>
+            <div className="text-sm text-gray-500">Sortie vers le réseau</div>
+          </Card>
+
+          <Card title="Autonomie estimée">
+            <div className="text-2xl font-bold text-amber-700">{fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}</div>
+            <div className="text-sm text-gray-500">
+              {data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
             </div>
           </Card>
 

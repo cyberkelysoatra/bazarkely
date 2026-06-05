@@ -71,7 +71,26 @@ create table if not exists eau_bilans (
   ecart_pct numeric,
   anomalie boolean default false,
   traitee boolean default false,
-  commentaire text
+  commentaire text,
+  -- Évolution « bassin/débit » : apport mesuré, conso réseau réelle, pertes, débit utilisé.
+  apport_m3 numeric,
+  conso_reseau_m3 numeric,
+  pertes_m3 numeric,
+  debit_m3h_utilise numeric
+);
+
+-- Tests de débit des pompes « vanne fermée » (évolution « bassin/débit »).
+create table if not exists eau_debit_tests (
+  id text primary key,
+  niveau_debut_cm numeric not null,
+  niveau_fin_cm numeric not null,
+  duree_min numeric not null,
+  debit_m3h numeric not null,
+  ecart_pct numeric,
+  timestamp timestamptz not null,
+  agent_id text,
+  note text,
+  created_at timestamptz default now()
 );
 
 create table if not exists eau_factures (
@@ -98,6 +117,10 @@ create table if not exists eau_config (
   bassin_longueur_m numeric,
   bassin_largeur_m numeric,
   bassin_hauteur_max_m numeric,
+  -- Évolution « bassin/débit » : hauteurs flotteur (plafond op.) / trop-plein (sécurité) + seuil stabilité débit.
+  bassin_hauteur_flotteur_m numeric,
+  bassin_hauteur_trop_plein_m numeric,
+  debit_ecart_max_pct numeric default 15,
   tarif_m3 numeric,
   devise text default 'MGA',
   seuil_pct numeric,
@@ -167,7 +190,7 @@ create table if not exists eau_scans (
 
 create table if not exists eau_alertes (
   id text primary key,
-  type text check (type in ('anomalie','fuite','compteur_non_releve','bassin_critique')),
+  type text check (type in ('anomalie','fuite','compteur_non_releve','bassin_critique','flotteur_defaillant','debit_instable')),
   ref_id text,
   message text,
   niveau text,
@@ -205,6 +228,7 @@ create index if not exists idx_eau_entrees_bassin_ts on eau_entrees_bassin (time
 create index if not exists idx_eau_factures_cid on eau_factures (compteur_id);
 create index if not exists idx_eau_qr_compteur_cid on eau_qr_compteur (compteur_id);
 create index if not exists idx_eau_scans_cid_ts on eau_scans (compteur_id, timestamp);
+create index if not exists idx_eau_debit_tests_ts on eau_debit_tests (timestamp);
 
 -- ========== RLS (activation + policy authentifiés) ==========
 do $$
@@ -212,7 +236,7 @@ declare t text;
 begin
   foreach t in array array[
     'eau_compteurs','eau_qr_compteur','eau_releves_compteur','eau_releves_bassin',
-    'eau_entrees_bassin','eau_bilans','eau_factures','eau_config','eau_roles',
+    'eau_entrees_bassin','eau_bilans','eau_debit_tests','eau_factures','eau_config','eau_roles',
     'eau_comptes_client','eau_demandes_acces','eau_scans','eau_alertes','eau_audit','eau_annonces'
   ]
   loop

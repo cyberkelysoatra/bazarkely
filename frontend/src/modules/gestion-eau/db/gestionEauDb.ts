@@ -16,6 +16,7 @@ import type {
   ReleveBassinLocal,
   EntreeBassinLocal,
   BilanLocal,
+  DebitTestLocal,
   FactureLocal,
   ConfigLocal,
   RoleLocal,
@@ -34,6 +35,7 @@ export class GestionEauDB extends Dexie {
   eau_releves_bassin!: Table<ReleveBassinLocal, string>;
   eau_entrees_bassin!: Table<EntreeBassinLocal, string>;
   eau_bilans!: Table<BilanLocal, string>;
+  eau_debit_tests!: Table<DebitTestLocal, string>;
   eau_factures!: Table<FactureLocal, string>;
   eau_config!: Table<ConfigLocal, string>;
   eau_roles!: Table<RoleLocal, string>;
@@ -65,6 +67,12 @@ export class GestionEauDB extends Dexie {
       eau_audit: 'id, timestamp',
       eau_annonces: 'id, actif',
     });
+
+    // v2 — Évolution « bassin/débit » : nouvelle table des tests de débit (vanne fermée).
+    // Additif : Dexie reporte automatiquement les stores inchangés.
+    this.version(2).stores({
+      eau_debit_tests: 'id, timestamp',
+    });
   }
 }
 
@@ -78,6 +86,7 @@ export const EAU_TABLES = [
   'eau_releves_bassin',
   'eau_entrees_bassin',
   'eau_bilans',
+  'eau_debit_tests',
   'eau_factures',
   'eau_config',
   'eau_roles',
