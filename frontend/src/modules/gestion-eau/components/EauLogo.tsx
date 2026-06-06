@@ -21,8 +21,8 @@ const EauLogo = ({ className }: EauLogoProps) => (
     <title>AHUVI Eau</title>
     <defs>
       <linearGradient id="ahuviDropGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#1d8fad" />
-        <stop offset="1" stopColor="#0f6f8c" />
+        <stop offset="0" stopColor="#2a9bc0" />
+        <stop offset="1" stopColor="#0d6f8d" />
       </linearGradient>
     </defs>
     <rect x="24" y="24" width="464" height="464" rx="96" fill="#262626" />
@@ -38,17 +38,6 @@ const EauLogo = ({ className }: EauLogoProps) => (
       d="M 256 150 C 256 210 340 252 340 320 A 84 84 0 1 1 172 320 C 172 252 256 210 256 150 Z"
       fill="url(#ahuviDropGrad)"
     />
-    <text
-      x="256"
-      y="378"
-      textAnchor="middle"
-      fontFamily="Arial, Helvetica, sans-serif"
-      fontSize="150"
-      fontWeight="700"
-      fill="#ffffff"
-    >
-      A
-    </text>
   </svg>
 );
 
