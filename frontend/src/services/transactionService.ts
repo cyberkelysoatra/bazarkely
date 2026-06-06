@@ -725,6 +725,18 @@ class TransactionService {
       await db.transactions.delete(id);
       console.log(`📱 [TransactionService] ✅ Transaction "${transaction.description}" supprimée de IndexedDB`);
 
+      // STEP 3ter: Cascade locale — supprimer le reçu + les lignes d'article rattachés.
+      // Dexie ne gère pas les FK : on purge explicitement. Côté Supabase, les FK
+      // ON DELETE CASCADE suppriment reçu + lignes au rejeu de la suppression de la
+      // transaction (envoi direct online ou file DELETE) → pas de DELETE séparé à queue.
+      // Idempotent (re-supprimer ne casse rien) et non bloquant.
+      try {
+        await db.transactionItems.where('transactionId').equals(id).delete();
+        await db.transactionReceipts.where('transactionId').equals(id).delete();
+      } catch (cascadeError) {
+        console.warn('📱 [TransactionService] ⚠️ Cascade locale reçu/lignes échouée (non bloquant):', cascadeError);
+      }
+
       // STEP 3bis: Restituer le solde du compte si demandé (vraie mise à jour, offline-first)
       // L'inverse exact de la création : à la création on a fait balance += amount,
       // donc restituer = balance -= amount.
