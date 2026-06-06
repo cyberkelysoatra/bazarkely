@@ -230,7 +230,12 @@ create index if not exists idx_eau_qr_compteur_cid on eau_qr_compteur (compteur_
 create index if not exists idx_eau_scans_cid_ts on eau_scans (compteur_id, timestamp);
 create index if not exists idx_eau_debit_tests_ts on eau_debit_tests (timestamp);
 
--- ========== RLS (activation + policy authentifiés) ==========
+-- ========== RLS (activation + policy public) ==========
+-- IMPORTANT : role `public` (PAS `authenticated`). L'app BazarKELY connecte ses
+-- utilisateurs via son propre système (identifiant/mot de passe), invisible du serveur :
+-- côté Supabase, les requêtes arrivent en rôle `anon`. Les tables principales (accounts,
+-- transactions, budgets…) sont déjà en `public`. Utiliser `authenticated` ici bloquerait
+-- TOUTES les écritures (401 / « violates row level security policy »). Corrigé S85 (2026-06-07).
 do $$
 declare t text;
 begin
@@ -242,7 +247,7 @@ begin
   loop
     execute format('alter table %I enable row level security;', t);
     execute format('drop policy if exists %I on %I;', t||'_auth_all', t);
-    execute format('create policy %I on %I for all to authenticated using (true) with check (true);', t||'_auth_all', t);
+    execute format('create policy %I on %I for all to public using (true) with check (true);', t||'_auth_all', t);
   end loop;
 end $$;
 ```
