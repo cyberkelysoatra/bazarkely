@@ -164,7 +164,7 @@ export default function HeaderEauActions() {
 
           <div className="py-1 border-t border-ahuvi-100">
             <button
-              onClick={() => go('/app-version')}
+              onClick={() => go('/gestion-eau/version')}
               className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-ahuvi-800 hover:bg-ahuvi-50 transition-colors font-ahuvi-body"
             >
               <span className="flex items-center gap-3">

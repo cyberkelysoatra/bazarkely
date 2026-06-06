@@ -12,6 +12,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import EauRoleProtectedRoute from './EauRoleProtectedRoute';
+import AppVersionPage from '../../../pages/AppVersionPage';
 
 const EauDashboard = React.lazy(() => import('./EauDashboard'));
 const EauConfigPage = React.lazy(() => import('./EauConfigPage'));
@@ -181,6 +182,11 @@ export default function GestionEauRoutes() {
         <Route path="saisie-bassin" element={<Navigate to="/gestion-eau/releves" replace />} />
         <Route path="saisie-compteur" element={<Navigate to="/gestion-eau/releves" replace />} />
         <Route path="anomalies" element={<Navigate to="/gestion-eau/suivi" replace />} />
+
+        {/* Page version/mise à jour, montée sous le préfixe du module pour ne pas sortir
+            du module Eau (sinon le switcher rebascule sur BazarKELY). Accessible à tous
+            les rôles du module — pas de garde de rôle. */}
+        <Route path="version" element={<AppVersionPage />} />
 
         <Route path="*" element={<Navigate to="/gestion-eau" replace />} />
       </Routes>
