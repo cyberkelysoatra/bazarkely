@@ -6,12 +6,24 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../../stores/appStore';
-import { getCurrentUserIdSafe } from '../services/eauAuth';
+import authService from '../../../services/authService';
+import { waitForEauSession } from '../services/eauAuth';
 import { ensureRolesBootstrap, getRolesForUser } from '../services/eauRoleService';
 import { refreshConfig } from '../services/eauConfigService';
 import { pullAll, syncAll } from '../services/eauSync';
 import { getPendingEnrollment, processPendingEnrollment } from '../services/eauEnrollmentService';
 import type { EauRoles } from '../types/gestionEau';
+
+/**
+ * État de la session Supabase vis-à-vis du module eau (Phase 1 — fondation identité) :
+ *  - 'checking'      : vérification en cours (boot/réseau) — afficher un spinner.
+ *  - 'valid'         : session présente ET identité = utilisateur courant du shell.
+ *  - 'needs-reauth'  : aucune session lisible alors qu'on est en ligne (ou jamais
+ *                      établie hors-ligne) → proposer une reconnexion Google.
+ *  - 'mismatch'      : la session Google appartient à un AUTRE compte que celui du
+ *                      shell → refuser (ne jamais créer une 2ᵉ identité).
+ */
+export type EauSessionStatus = 'checking' | 'valid' | 'needs-reauth' | 'mismatch';
 
 interface GestionEauContextType {
   userId: string | null;
@@ -20,7 +32,11 @@ interface GestionEauContextType {
   hasEauAccess: boolean;
   isLoading: boolean;
   error: string | null;
+  /** Fiabilité de la session Supabase pour ce module (cf. EauSessionStatus). */
+  sessionStatus: EauSessionStatus;
   refreshRoles: () => Promise<void>;
+  /** Déclenche une reconnexion Google (même identité que le shell). */
+  reauth: () => Promise<void>;
 }
 
 const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false };
@@ -61,6 +77,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const [roles, setRoles] = useState<EauRoles>(EMPTY_ROLES);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<EauSessionStatus>('checking');
   // Le spinner bloquant ne doit s'afficher qu'au TOUT PREMIER chargement.
   // Les rechargements suivants (bascule online/offline, fréquente sur réseau instable)
   // se font en arrière-plan SANS démonter les écrans → pas de flash ni de perte de saisie.
@@ -70,17 +87,42 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     if (showSpinner) setIsLoading(true);
     setError(null);
     try {
-      const id = await getCurrentUserIdSafe();
-      if (!id) {
-        // Pas d'utilisateur : pas d'accès, mais NE PAS planter (offline-first).
-        setUserId(null);
+      const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+
+      // ── Étape B : garantir une session Supabase FIABLE = utilisateur courant du shell.
+      // On attend la session (absorbe la course au boot ; lecture localStorage, pas de
+      // réseau). On NE crée jamais une 2ᵉ identité et on NE déconnecte jamais.
+      const session = await waitForEauSession(online ? 6 : 2);
+      const storeId = useAppStore.getState().user?.id ?? null;
+      const sessionUserId = session?.user?.id ?? null;
+
+      let id: string | null;
+      if (sessionUserId) {
+        if (storeId && sessionUserId !== storeId) {
+          // Compte Google différent du compte connecté au shell → refuser.
+          setSessionStatus('mismatch');
+          setUserId(storeId);
+          setRoles(EMPTY_ROLES);
+          if (showSpinner) setIsLoading(false);
+          return;
+        }
+        id = sessionUserId; // identité fiable (uid == users.id du shell)
+        setSessionStatus('valid');
+      } else if (storeId && !online) {
+        // Hors-ligne sans session lisible MAIS une session avait été établie sur
+        // l'appareil (store rehydraté) → continuer en lecture locale (Dexie).
+        id = storeId;
+        setSessionStatus('valid');
+      } else {
+        // En ligne sans session lisible (ou jamais établie hors-ligne) → ré-auth Google.
+        setSessionStatus('needs-reauth');
+        setUserId(storeId);
         setRoles(EMPTY_ROLES);
         if (showSpinner) setIsLoading(false);
         return;
       }
-      setUserId(id);
 
-      const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+      setUserId(id);
 
       // Enrôlement en attente (retour de connexion Google) : lier un code ou créer
       // une demande d'accès, AVANT de lire les rôles (pour refléter le rôle client).
@@ -136,11 +178,22 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     setRoles(effective);
   }, [userId]);
 
+  // Reconnexion Google depuis le module (même identité que le shell). La redirection
+  // OAuth est gérée par authService/AuthPage ; au retour, le statut repassera à 'valid'.
+  const reauth = useCallback(async () => {
+    try {
+      await authService.signInWithGoogle();
+    } catch (e: any) {
+      console.error('❌ [GestionEau] Échec reconnexion Google:', e);
+      toast.error('Reconnexion impossible pour le moment. Réessayez.', { duration: 5000 });
+    }
+  }, []);
+
   const hasEauAccess = roles.admin || roles.releveur || roles.client;
 
   return (
     <GestionEauContext.Provider
-      value={{ userId, roles, hasEauAccess, isLoading, error, refreshRoles }}
+      value={{ userId, roles, hasEauAccess, isLoading, error, sessionStatus, refreshRoles, reauth }}
     >
       {children}
     </GestionEauContext.Provider>

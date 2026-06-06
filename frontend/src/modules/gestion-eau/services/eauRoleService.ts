@@ -12,6 +12,9 @@ import { nowIso } from '../utils/id';
 import { supabase, withTimeout } from '../../../lib/supabase';
 import type { RoleLocal, EauRoles } from '../types/gestionEau';
 
+/** Timeout des requêtes réseau du service de rôles (RPC bootstrap) — cf. CLAUDE.md. */
+const ROLE_RPC_TIMEOUT_MS = 8000;
+
 /** Rôles d'un utilisateur (admin/releveur depuis Dexie, client dérivé des comptes client). */
 export async function getRolesForUser(userId: string): Promise<EauRoles> {
   const row = (await eauDb.eau_roles.get(userId)) as RoleLocal | undefined;
@@ -47,21 +50,33 @@ export async function setRoles(userId: string, roles: { admin: boolean; releveur
 /**
  * Initialise l'accès du user au montage du module et applique le bootstrap propriétaire.
  * Retourne les rôles effectifs après bootstrap éventuel.
+ *
+ * Phase 1 (sécurité) : le bootstrap « premier admin = propriétaire » est désormais
+ * fait CÔTÉ SERVEUR via la RPC idempotente `eau_bootstrap_admin()` (SECURITY DEFINER) :
+ * elle pose admin = true sur `auth.uid()` UNIQUEMENT s'il n'existe encore aucun admin.
+ * On ne pousse plus jamais une ligne de rôle admin depuis le client (fragile + bientôt
+ * refusé par la RLS). Hors-ligne : on lit l'état local pour l'affichage, sans push.
  */
 export async function ensureRolesBootstrap(userId: string, online: boolean): Promise<EauRoles> {
-  // 1. Si online, tirer l'état serveur des rôles + comptes client d'abord.
   if (online) {
+    // 1. Bootstrap propriétaire côté serveur (idempotent : no-op si un admin existe déjà).
+    try {
+      await withTimeout(
+        (supabase.rpc as any)('eau_bootstrap_admin'),
+        ROLE_RPC_TIMEOUT_MS,
+        'eau:bootstrapAdmin'
+      );
+    } catch (e: any) {
+      // Best-effort : un timeout/erreur ne doit pas bloquer l'ouverture du module.
+      console.warn('⚠️ [eauRole] eau_bootstrap_admin RPC échec (rejouable):', e?.message);
+    }
+
+    // 2. Tirer l'état serveur des rôles + comptes client (source de vérité).
     await pullTable('eau_roles');
     await pullTable('eau_comptes_client');
   }
 
-  // 2. Bootstrap propriétaire : aucun admin connu → ce user devient admin.
-  const anyAdmin = await hasAnyAdminLocal();
-  if (!anyAdmin) {
-    const existing = (await eauDb.eau_roles.get(userId)) as RoleLocal | undefined;
-    await setRoles(userId, { admin: true, releveur: existing?.releveur ?? false });
-  }
-
+  // 3. Dériver les rôles effectifs depuis Dexie (en ligne : à jour ; hors-ligne : dernier connu).
   return getRolesForUser(userId);
 }
 
