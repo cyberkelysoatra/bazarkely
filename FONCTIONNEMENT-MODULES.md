@@ -436,32 +436,43 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
-## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phase 1 hors-ligne) — v3.25.0
+## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0
 
 ### 📍 Pages / composants concernés
 - `AddTransactionPage` — bouton **« Scanner un ticket »** (dépenses ponctuelles uniquement)
 - `components/Receipt/ReceiptScanButton` — flux capture → OCR → décision
 - `components/Receipt/ReviewReceipt` — écran de relecture/correction (« correction si doute »)
 - `components/Receipt/ReceiptItemsCard` — carte « Articles du ticket » sur `TransactionDetailPage`
+- `netlify/functions/ocr-receipt.ts` — **Phase 2** : OCR cloud Google Vision (clé serveur cachée)
 
 ### 🎯 Objectif
 Photographier un ticket de caisse pour créer **automatiquement** une dépense (montant = total du
-ticket) avec le détail des articles, **sans rien retaper**. 100 % **hors-ligne et gratuit** en
-Phase 1 (Tesseract.js, assets servis localement et précachés). L'OCR cloud haute précision
-(Google Vision) est prévu en **Phase 2**.
+ticket) avec le détail des articles, **sans rien retaper**.
+
+### 🔀 Deux moteurs OCR + bascule automatique (Phase 2, v3.26.0)
+- **En ligne → Google Cloud Vision** (haute précision), via la **Netlify Function**
+  `/.netlify/functions/ocr-receipt`. La **clé `GOOGLE_VISION_API_KEY` reste CÔTÉ SERVEUR**
+  (jamais dans le bundle client ni le dépôt).
+- **Hors-ligne** (ou **échec / timeout / quota** Vision) → **repli automatique Tesseract.js**
+  (Phase 1, 100 % local, gratuit, assets précachés). **Jamais de blocage** utilisateur.
+- Point d'entrée unique `ocrService.recognize()` ; le moteur réellement utilisé est tracé dans
+  `transaction_receipts.ocr_engine` (`google_vision` | `tesseract`).
 
 ### 🔄 Flux complet
 1. `/add-transaction` (dépense) → **« Scanner un ticket »** ouvre la caméra arrière
    (`<input type="file" accept="image/*" capture="environment">`, repli galerie).
 2. **Pré-traitement** en mémoire (downscale ~1500 px + niveaux de gris) — **aucune image stockée**.
-3. **OCR hors-ligne** (`ocrService.recognizeOffline`, Tesseract `fra`, cœur WASM `simd-lstm` +
-   `fra.traineddata.gz` servis depuis `/public/tesseract`, **précachés par le service worker**).
-4. **Parsing** pur (`receiptParser.parseReceipt`) : fournisseur, lignes (libellé/quantité/prix),
-   total (TOTAL/NET/À PAYER sinon Σ lignes), exclusions (TVA, rendu, dates, paiement), confiance.
-5. **Décision** : confiance ≥ seuil (`RECEIPT_CONFIDENCE_THRESHOLD = 0,75`) **ET** cohérent
-   (Σ lignes ≈ total) → **insertion directe** ; sinon **écran de relecture/correction**.
+3. **OCR** (`ocrService.recognize`) : en ligne → `recognizeOnline` (Netlify Function Vision,
+   `withTimeout` 12 s) ; hors-ligne ou échec → `recognizeOffline` (Tesseract `fra`, cœur WASM
+   `simd-lstm` + `fra.traineddata.gz` servis depuis `/public/tesseract`, **précachés par le SW**).
+4. **Parsing** pur (`receiptParser.parseReceipt`, **commun aux deux moteurs**) : fournisseur, lignes
+   (libellé/quantité/prix), total (TOTAL/NET/À PAYER sinon Σ lignes), exclusions (TVA, rendu, dates,
+   paiement), confiance.
+5. **Décision** : confiance ≥ **seuil propre au moteur** (`confidenceThresholdFor` :
+   Tesseract `0,75` prudent, Vision `0,60` car texte propre) **ET** cohérent (Σ lignes ≈ total) →
+   **insertion directe** ; sinon **écran de relecture/correction**.
 6. **Création** : `transactionService.createTransaction` (type `expense`, montant = total) puis
-   `receiptService.saveReceipt` (en-tête + lignes + `receipt_md`). Navigation vers le détail.
+   `receiptService.saveReceipt` (en-tête + lignes + `receipt_md`, `ocr_engine` réel). Navigation vers le détail.
 
 ### 🗄️ Tables Supabase (miroir Dexie v17)
 - `transaction_receipts` (en-tête : supplier, **receipt_md** = seule trace, ocr_engine, ocr_confidence)

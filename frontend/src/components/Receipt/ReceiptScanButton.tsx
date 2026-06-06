@@ -15,10 +15,10 @@ import { toast } from 'react-hot-toast';
 import type { Account, TransactionCategory } from '../../types';
 import transactionService from '../../services/transactionService';
 import receiptService from '../../services/receiptService';
-import { recognizeOffline } from '../../services/ocrService';
+import { recognize, type OcrEngine } from '../../services/ocrService';
 import { parseReceipt, buildReceiptMarkdown } from '../../services/receiptParser';
 import { preprocessReceiptImage } from '../../utils/receiptImage';
-import { RECEIPT_CONFIDENCE_THRESHOLD, RECEIPT_COHERENCE_TOLERANCE } from '../../constants/receipt';
+import { confidenceThresholdFor, RECEIPT_COHERENCE_TOLERANCE } from '../../constants/receipt';
 import type { ParsedReceiptItem } from '../../types/receipt';
 import ReviewReceipt, { type ReviewReceiptResult } from './ReviewReceipt';
 
@@ -38,6 +38,7 @@ interface ReviewState {
   total?: number;
   suggestedCategory?: string;
   ocrConfidence: number;
+  ocrEngine: OcrEngine;
 }
 
 const todayISO = () => new Date().toISOString().split('T')[0];
@@ -68,8 +69,9 @@ const ReceiptScanButton = ({
     category: string;
     date: string;
     ocrConfidence: number;
+    ocrEngine: OcrEngine;
   }): Promise<boolean> => {
-    const { supplier, items, total, accountId, category, date, ocrConfidence } = args;
+    const { supplier, items, total, accountId, category, date, ocrConfidence, ocrEngine } = args;
     const transaction = await transactionService.createTransaction(userId, {
       type: 'expense',
       amount: -Math.abs(total),
@@ -91,7 +93,7 @@ const ReceiptScanButton = ({
     const receiptMd = buildReceiptMarkdown(supplier, items, total, dateLabel);
     await receiptService.saveReceipt(
       transaction.id,
-      { supplier, receiptMd, ocrEngine: 'tesseract', ocrConfidence },
+      { supplier, receiptMd, ocrEngine, ocrConfidence },
       items
     );
 
@@ -110,16 +112,16 @@ const ReceiptScanButton = ({
       // 1) Pré-traitement léger (downscale + gris) — en mémoire, jamais stocké
       const processed = await preprocessReceiptImage(file);
 
-      // 2) OCR hors-ligne
-      const { text, confidence } = await recognizeOffline(processed);
+      // 2) OCR : Google Vision en ligne, repli Tesseract hors-ligne / en cas d'échec
+      const { text, confidence, engine } = await recognize(processed);
 
-      // 3) Parsing
+      // 3) Parsing (commun aux deux moteurs ; le texte Vision étant plus propre → meilleurs résultats)
       const parsed = parseReceipt(text, confidence);
 
       if (parsed.items.length === 0) {
         toast.error("Aucun article détecté. Réessayez avec une photo plus nette ou saisissez à la main.");
         // Ouvrir tout de même la revue (vide) pour saisie manuelle
-        setReview({ supplier: parsed.supplier, items: [], total: parsed.total, ocrConfidence: confidence });
+        setReview({ supplier: parsed.supplier, items: [], total: parsed.total, ocrConfidence: confidence, ocrEngine: engine });
         return;
       }
 
@@ -137,7 +139,7 @@ const ReceiptScanButton = ({
       const directAccountId = defaultAccountId || accounts[0]?.id;
 
       if (
-        parsed.confidence >= RECEIPT_CONFIDENCE_THRESHOLD &&
+        parsed.confidence >= confidenceThresholdFor(engine) &&
         coherent &&
         directAccountId &&
         suggestedCategory
@@ -151,6 +153,7 @@ const ReceiptScanButton = ({
           category: suggestedCategory,
           date: todayISO(),
           ocrConfidence: confidence,
+          ocrEngine: engine,
         });
         if (ok) toast.success('Ticket enregistré');
         return;
@@ -163,6 +166,7 @@ const ReceiptScanButton = ({
         total: parsed.total,
         suggestedCategory,
         ocrConfidence: confidence,
+        ocrEngine: engine,
       });
     } catch (error) {
       console.error('🧾 [ReceiptScanButton] ❌ Erreur OCR/scan:', error);
@@ -183,6 +187,7 @@ const ReceiptScanButton = ({
         category: result.category,
         date: result.date,
         ocrConfidence: review?.ocrConfidence ?? 0,
+        ocrEngine: review?.ocrEngine ?? 'tesseract',
       });
       if (ok) {
         toast.success('Ticket enregistré');

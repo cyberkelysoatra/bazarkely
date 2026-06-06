@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.25.0';
-export const APP_VERSION_NAME = 'Scan de ticket (Phase 1, hors-ligne) — Depuis « Ajouter une dépense », photographiez un ticket de caisse : l\'app le lit hors-ligne et gratuitement avec Tesseract.js (français, assets servis localement, mis en cache pour fonctionner sans réseau), en extrait le fournisseur, les lignes d\'article (libellé/quantité/prix) et le total, puis crée une dépense dont le montant = total du ticket. Si la lecture est sûre, insertion directe ; sinon écran de relecture/correction (« correction si doute »). Le détail de la transaction affiche une carte « Articles du ticket » éditable (corriger un prix, ajouter/supprimer une ligne → le total et le solde s\'ajustent). Une trace markdown légère est conservée (aucune image stockée). Offline-first (Dexie v17, sync idempotente id client/upsert) ; tables Supabase transaction_receipts/transaction_items + RLS. L\'OCR cloud haute précision arrive en Phase 2.';
+export const APP_VERSION = '3.26.0';
+export const APP_VERSION_NAME = 'Scan de ticket (Phase 2, OCR cloud) — Le scan de ticket gagne un 2ᵉ moteur, plus précis, qui s\'active TOUT SEUL quand vous avez Internet : Google Cloud Vision (lecture cloud haute précision). Hors-ligne, ou si le service en ligne tombe en panne / met trop de temps, l\'app bascule automatiquement sur la lecture locale gratuite Tesseract.js (Phase 1) — vous n\'êtes jamais bloqué. La clé du service reste cachée côté serveur (Netlify Function), jamais dans l\'application. Comme le texte lu en ligne est plus propre, le ticket est inséré directement plus souvent ; l\'écran de relecture n\'apparaît qu\'en cas de doute (lecture incertaine ou total ≠ somme des lignes). Le moteur réellement utilisé est tracé sur chaque ticket. Tout le reste de la Phase 1 est inchangé (création de la dépense = total, articles éditables, aucune image stockée).';
 export const LAST_UPDATED = '2026-06-06';
 export const APP_BUILD_DATE = '2026-06-06';
 export const VERSION_HISTORY = [
+  {
+    version: '3.26.0',
+    date: '2026-06-06',
+    description: 'PHASE 2 du « Scan de ticket » : 2ᵉ moteur OCR EN LIGNE haute précision (Google Cloud Vision) avec bascule automatique online/offline. La clé Google Vision reste CÔTÉ SERVEUR via une Netlify Function `/.netlify/functions/ocr-receipt` (POST image base64 → DOCUMENT_TEXT_DETECTION, languageHints fr → { text, confidence }) — jamais dans le bundle client (vérifié : GOOGLE_VISION_API_KEY et vision.googleapis.com absents de dist). ocrService.recognize() : en ligne → recognizeOnline (appel fonction, withTimeout 12 s) ; hors-ligne OU échec/timeout/texte vide/quota Vision → repli SILENCIEUX recognizeOffline (Tesseract, Phase 1) — aucun blocage utilisateur. Chaque résultat porte engine = google_vision | tesseract, tracé dans transaction_receipts.ocr_engine. Le parsing (receiptParser) reste COMMUN aux deux moteurs (texte Vision plus propre → meilleurs résultats sans dupliquer la logique). Seuil de confiance par moteur : Tesseract prudent (0,75, revue plus fréquente), Vision plus permissif (0,60) car texte propre — la cohérence Σ lignes ≈ total reste le vrai garde-fou (confidenceThresholdFor). Dégradation propre : hors-ligne = aucun appel réseau ; en ligne mais Vision KO = repli Tesseract + log. Function : limite taille image (≤ 8 Mo base64 → 413), gestion clé absente (503), erreur/quota Vision (502), timeout (504, AbortController 10 s). Aucune dépendance npm ajoutée (fetch/Buffer/AbortController natifs Node 20). tsc (gate --noEmit) OK, build OK, 20 tests Phase 1 non régressés.',
+    changes: [
+      'Nouveau frontend/netlify/functions/ocr-receipt.ts : Netlify Function Google Vision (clé serveur process.env.GOOGLE_VISION_API_KEY, jamais exposée ; limites de taille + erreurs/timeout/quota gérés)',
+      'services/ocrService.ts : type OcrEngine, recognizeOnline() (appel fonction + withTimeout), recognize() (bascule auto online→Vision / offline|échec→Tesseract), recognizeOffline() renvoie désormais engine',
+      'constants/receipt.ts : RECEIPT_CONFIDENCE_THRESHOLD_VISION (0,60) + confidenceThresholdFor(engine) ; seuil Tesseract (0,75) conservé',
+      'components/Receipt/ReceiptScanButton.tsx : utilise recognize(), applique le seuil selon le moteur, stocke l\'ocr_engine RÉEL (plus de \'tesseract\' en dur)',
+      'Variable d\'environnement Netlify GOOGLE_VISION_API_KEY (clé serveur) — à renseigner côté Netlify si pas encore fait ; repli Tesseract tant qu\'absente',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.25.0',
     date: '2026-06-06',
