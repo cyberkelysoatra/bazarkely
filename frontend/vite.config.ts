@@ -12,9 +12,11 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw-custom.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // wasm + gz inclus pour précacher les assets OCR Tesseract (/tesseract/*) →
+        // « Scan de ticket » 100 % hors-ligne dès la première utilisation.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,gz}'],
         rollupFormat: 'iife',
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB (cœur Tesseract simd-lstm ~3.9 MB)
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],

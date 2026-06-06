@@ -20,6 +20,7 @@ import type { RecurrenceFrequency } from '../types/recurring';
 import { getActiveLoansForDropdown, getLoanIdByTransactionId, getLoanById, updateLoanTerms } from '../services/loanService';
 import LoanTermsFields from '../components/Loans/LoanTermsFields';
 import { computeDailyRatePct, daysBetweenDates, type InterestMode, type InterestPeriod } from '../services/loanTerms';
+import ReceiptItemsCard from '../components/Receipt/ReceiptItemsCard';
 
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
@@ -838,6 +839,22 @@ const TransactionDetailPage = () => {
     }
   };
 
+  // Recharge la transaction (et son compte) après une édition des lignes du ticket :
+  // le total de la transaction et le solde du compte ont pu changer (receiptService).
+  const refreshTransaction = async () => {
+    if (!transactionId || !user) return;
+    try {
+      const fresh = await transactionService.getTransaction(transactionId, user.id);
+      if (fresh) {
+        setTransaction(fresh);
+        const acc = await accountService.getAccount(fresh.accountId, user.id);
+        setAccount(acc);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors du rafraîchissement de la transaction:', error);
+    }
+  };
+
   const handleCancel = () => {
     if (isEditing) {
       setIsEditing(false);
@@ -1248,6 +1265,15 @@ const TransactionDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Carte « Articles du ticket » (visible hors édition, si un ticket existe) */}
+        {!isEditing && !isTransfer && (
+          <ReceiptItemsCard
+            transactionId={transaction.id}
+            formatCurrency={formatCurrency}
+            onChanged={refreshTransaction}
+          />
+        )}
 
         {/* Partage famille section (only in edit mode) */}
         {isEditing && !isTransfer && activeFamilyGroup && (

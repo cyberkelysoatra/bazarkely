@@ -1,8 +1,27 @@
-export const APP_VERSION = '3.24.2';
-export const APP_VERSION_NAME = 'Gestion Eau — Iconographie systématique (style BazarKELY en charte AHUVI vert/or) + graphiques clés : chaque bouton, carte KPI, ligne de liste, état vide et onglet du module porte désormais une icône cohérente (lucide) pour reconnaître les fonctions sans lire. Recolorisation complète bleu/violet → vert forêt/olive + accent or (teal conservé pour l\'eau, ambre/rouge pour les alertes). Nouveaux graphiques : niveau du bassin (tableau de bord + saisie bassin), historique du débit des pompes, histogramme de conso par compteur, barres conso/montant facturé par période. Briques mutualisées EauStatCard / EauIconButton / EauEmptyState / EauListIcon. Évolution additive et cosmétique (aucune logique métier modifiée).';
+export const APP_VERSION = '3.25.0';
+export const APP_VERSION_NAME = 'Scan de ticket (Phase 1, hors-ligne) — Depuis « Ajouter une dépense », photographiez un ticket de caisse : l\'app le lit hors-ligne et gratuitement avec Tesseract.js (français, assets servis localement, mis en cache pour fonctionner sans réseau), en extrait le fournisseur, les lignes d\'article (libellé/quantité/prix) et le total, puis crée une dépense dont le montant = total du ticket. Si la lecture est sûre, insertion directe ; sinon écran de relecture/correction (« correction si doute »). Le détail de la transaction affiche une carte « Articles du ticket » éditable (corriger un prix, ajouter/supprimer une ligne → le total et le solde s\'ajustent). Une trace markdown légère est conservée (aucune image stockée). Offline-first (Dexie v17, sync idempotente id client/upsert) ; tables Supabase transaction_receipts/transaction_items + RLS. L\'OCR cloud haute précision arrive en Phase 2.';
 export const LAST_UPDATED = '2026-06-06';
 export const APP_BUILD_DATE = '2026-06-06';
 export const VERSION_HISTORY = [
+  {
+    version: '3.25.0',
+    date: '2026-06-06',
+    description: 'PHASE 1 du « Scan de ticket de caisse », intégrée au flux Transactions (pas un nouveau module). Depuis /add-transaction (dépenses ponctuelles), un bouton « Scanner un ticket » (icône ScanLine + aide ⓘ dépliable) ouvre la caméra arrière (input capture=environment, repli galerie). L\'image est pré-traitée en mémoire (downscale ~1500px + niveaux de gris, jamais stockée) puis lue HORS-LIGNE et gratuitement par Tesseract.js (langue fra, OEM LSTM, worker+cœur WASM simd-lstm+données servis depuis /public/tesseract — aucun CDN runtime ; assets PRÉCACHÉS par le service worker pour un OCR 100% hors-ligne). Parsing pur et testé (receiptParser) : fournisseur (1ʳᵉ ligne textuelle), lignes d\'article (libellé/quantité via « 2 x 1500 »/prix), total (TOTAL/NET/À PAYER sinon Σ lignes), exclusion TVA/rendu/dates/moyens de paiement, score de confiance (confiance OCR + cohérence Σ vs total). « Correction si doute » : confiance ≥ seuil (0,75) ET cohérent → insertion directe ; sinon écran de relecture/correction (fournisseur, lignes éditables, compte, catégorie suggérée, date). Création : 1 transaction expense (montant = total) + N transaction_items + 1 transaction_receipts (avec receipt_md, seule trace conservée — aucune image). Détail transaction : carte « Articles du ticket » (fournisseur + lignes + total) avec édition inline (corriger/ajouter/supprimer → recalcul du total ET ajustement du solde du compte) + « Voir le ticket » (markdown). Catégorie suggérée (historique fournisseur puis mots-clés), jamais bloquante. Offline-first : Dexie v17 (transactionReceipts/transactionItems), sync Supabase idempotente (id client, upsert onConflict, rejeu ignoreDuplicates) ; tables transaction_receipts/transaction_items + RLS user_id=auth.uid(). Dépendance ajoutée : tesseract.js (assets locaux ~7,2 Mo précachés). tsc --noEmit OK, build OK, 20 tests (parser + recalcul total + rendu carte).',
+    changes: [
+      'Nouveaux : types/receipt.ts, services/receiptParser.ts (+ tests), services/ocrService.ts (Tesseract hors-ligne), services/receiptService.ts (offline-first), utils/receiptImage.ts (pré-traitement), constants/receipt.ts (seuil de confiance)',
+      'Nouveaux composants : components/Receipt/ReceiptScanButton.tsx (flux capture→OCR→décision), ReviewReceipt.tsx (relecture/correction), ReceiptItemsCard.tsx (carte Articles éditable) + tests',
+      'Assets OCR locaux : public/tesseract/ (worker.min.js, core/tesseract-core-simd-lstm.wasm(.js), lang/fra.traineddata.gz « fast ») — servis localement, précachés par le SW',
+      'PARTAGÉ src/types/index.ts : SyncOperation.table_name étend transaction_receipts/transaction_items',
+      'PARTAGÉ lib/database.ts : Dexie v17 (transactionReceipts/transactionItems, migration additive)',
+      'PARTAGÉ services/apiService.ts : upsertReceipt/upsertReceiptItems/getReceiptByTransaction/getItemsByTransaction/deleteReceiptItem (upsert idempotent)',
+      'PARTAGÉ services/syncManager.ts : cas de rejeu transaction_receipts/transaction_items (upsert ignoreDuplicates + DELETE)',
+      'PARTAGÉ pages/AddTransactionPage.tsx : bouton « Scanner un ticket » (dépenses ponctuelles)',
+      'PARTAGÉ pages/TransactionDetailPage.tsx : carte « Articles du ticket » (hors édition) + rafraîchissement après édition',
+      'PARTAGÉ vite.config.ts : globPatterns injectManifest étendus (wasm,gz) pour précacher les assets OCR',
+      'SQL : CREATE transaction_receipts + transaction_items (+ index + RLS user_id=auth.uid()), exécuté et vérifié via REST (négatif anon INSERT → 401)',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.24.0',
     date: '2026-06-06',

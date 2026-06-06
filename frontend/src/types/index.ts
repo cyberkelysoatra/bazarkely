@@ -226,7 +226,9 @@ export interface SyncOperation {
     | 'family_shared_transactions'
     | 'family_sharing_rules'
     | 'family_shared_recurring_transactions'
-    | 'family_members';
+    | 'family_members'
+    | 'transaction_receipts'
+    | 'transaction_items';
   data: any;
   timestamp: Date;
   retryCount: number;

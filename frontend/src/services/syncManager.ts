@@ -495,6 +495,12 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'family_members':
         result = await processFamilyMemberOperation(operation);
         break;
+      case 'transaction_receipts':
+        result = await processTransactionReceiptOperation(operation);
+        break;
+      case 'transaction_items':
+        result = await processTransactionItemOperation(operation);
+        break;
       default:
         console.error(`🔄 [SyncManager] ❌ Table non supportée: ${operation.table_name}`);
         await db.syncQueue.update(operation.id, {
@@ -1107,6 +1113,88 @@ async function processFamilyMemberOperation(
         const { id } = data;
         const { error } = await supabase
           .from('family_members')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur transaction_receipts (module Scan de ticket).
+ * Data poussé par receiptService est déjà en snake_case + id client.
+ * Rejeu idempotent : upsert(onConflict: 'id', ignoreDuplicates: true) — un envoi
+ * « expiré-mais-commité » et le rejeu convergent sur la même ligne.
+ */
+async function processTransactionReceiptOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await (supabase as any)
+          .from('transaction_receipts')
+          .upsert(data, { onConflict: 'id', ignoreDuplicates: true });
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await (supabase as any)
+          .from('transaction_receipts')
+          .update(updateData)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await (supabase as any)
+          .from('transaction_receipts')
+          .delete()
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      default:
+        return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur transaction_items (module Scan de ticket).
+ * Data déjà en snake_case + id client. Rejeu idempotent comme ci-dessus.
+ */
+async function processTransactionItemOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    switch (opType) {
+      case 'CREATE': {
+        const { error } = await (supabase as any)
+          .from('transaction_items')
+          .upsert(data, { onConflict: 'id', ignoreDuplicates: true });
+        return error ? { error } : null;
+      }
+      case 'UPDATE': {
+        const { id, ...updateData } = data;
+        const { error } = await (supabase as any)
+          .from('transaction_items')
+          .update(updateData)
+          .eq('id', id);
+        return error ? { error } : null;
+      }
+      case 'DELETE': {
+        const { id } = data;
+        const { error } = await (supabase as any)
+          .from('transaction_items')
           .delete()
           .eq('id', id);
         return error ? { error } : null;

@@ -6,6 +6,7 @@ import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
 import accountService from '../services/accountService';
 import CategoryHelpModal from '../components/Transaction/CategoryHelpModal';
+import ReceiptScanButton from '../components/Receipt/ReceiptScanButton';
 import QuickTopUpModal from '../components/Transaction/QuickTopUpModal';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
@@ -858,6 +859,22 @@ const AddTransactionPage = () => {
             </div>
           )}
           
+          {/* Scanner un ticket (dépenses ponctuelles uniquement) */}
+          {isExpense && !isRecurring && user && (
+            <ReceiptScanButton
+              userId={user.id}
+              accounts={accounts}
+              defaultAccountId={formData.accountId}
+              categories={categories}
+              formatCurrency={formatBalance}
+              currency={transactionCurrency}
+              onCreated={(txId) => {
+                trackTransaction();
+                navigate(`/transaction/${txId}`);
+              }}
+            />
+          )}
+
           {/* Toggle Transaction récurrente */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between">

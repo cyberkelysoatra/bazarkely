@@ -436,6 +436,50 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
+## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phase 1 hors-ligne) — v3.25.0
+
+### 📍 Pages / composants concernés
+- `AddTransactionPage` — bouton **« Scanner un ticket »** (dépenses ponctuelles uniquement)
+- `components/Receipt/ReceiptScanButton` — flux capture → OCR → décision
+- `components/Receipt/ReviewReceipt` — écran de relecture/correction (« correction si doute »)
+- `components/Receipt/ReceiptItemsCard` — carte « Articles du ticket » sur `TransactionDetailPage`
+
+### 🎯 Objectif
+Photographier un ticket de caisse pour créer **automatiquement** une dépense (montant = total du
+ticket) avec le détail des articles, **sans rien retaper**. 100 % **hors-ligne et gratuit** en
+Phase 1 (Tesseract.js, assets servis localement et précachés). L'OCR cloud haute précision
+(Google Vision) est prévu en **Phase 2**.
+
+### 🔄 Flux complet
+1. `/add-transaction` (dépense) → **« Scanner un ticket »** ouvre la caméra arrière
+   (`<input type="file" accept="image/*" capture="environment">`, repli galerie).
+2. **Pré-traitement** en mémoire (downscale ~1500 px + niveaux de gris) — **aucune image stockée**.
+3. **OCR hors-ligne** (`ocrService.recognizeOffline`, Tesseract `fra`, cœur WASM `simd-lstm` +
+   `fra.traineddata.gz` servis depuis `/public/tesseract`, **précachés par le service worker**).
+4. **Parsing** pur (`receiptParser.parseReceipt`) : fournisseur, lignes (libellé/quantité/prix),
+   total (TOTAL/NET/À PAYER sinon Σ lignes), exclusions (TVA, rendu, dates, paiement), confiance.
+5. **Décision** : confiance ≥ seuil (`RECEIPT_CONFIDENCE_THRESHOLD = 0,75`) **ET** cohérent
+   (Σ lignes ≈ total) → **insertion directe** ; sinon **écran de relecture/correction**.
+6. **Création** : `transactionService.createTransaction` (type `expense`, montant = total) puis
+   `receiptService.saveReceipt` (en-tête + lignes + `receipt_md`). Navigation vers le détail.
+
+### 🗄️ Tables Supabase (miroir Dexie v17)
+- `transaction_receipts` (en-tête : supplier, **receipt_md** = seule trace, ocr_engine, ocr_confidence)
+- `transaction_items` (lignes : label, quantity, unit_price, line_total, sort_order)
+- RLS : `user_id = auth.uid()` (select/insert/update/delete). Offline-first : Dexie d'abord, sync
+  Supabase **idempotente** (id client, `upsert onConflict:'id'`, rejeu `ignoreDuplicates`).
+
+### ✏️ Édition (TransactionDetailPage → carte « Articles du ticket »)
+Corriger un prix, modifier/supprimer/ajouter une ligne → `receiptService` **recalcule le total ET
+ajuste le solde du compte**. « Voir le ticket » affiche le markdown conservé.
+
+### ❌ Ce qui N'est PAS le comportement attendu
+- ❌ Aucune **image** n'est conservée (ni base, ni Dexie) — seule la trace markdown `receipt_md`.
+- ❌ Pas de nouveau module ni d'entrée switcher : c'est une **brique du flux Transactions**.
+- ❌ La catégorie suggérée n'est **jamais bloquante** (toujours modifiable).
+
+---
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

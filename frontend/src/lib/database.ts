@@ -27,6 +27,7 @@ import type {
   FamilySharingRuleLocal,
   FamilySharedRecurringLocal
 } from '../types/familyLocal';
+import type { ReceiptHeader, ReceiptItem } from '../types/receipt';
 
 // Types pour les notifications
 interface NotificationData {
@@ -167,6 +168,12 @@ export class BazarKELYDB extends Dexie {
   familySharedTransactions!: Table<FamilySharedTransactionLocal>;
   familySharingRules!: Table<FamilySharingRuleLocal>;
   familySharedRecurring!: Table<FamilySharedRecurringLocal>;
+
+  // Tables pour la fonctionnalité « Scan de ticket » (offline-first — v17)
+  // Miroir local de transaction_receipts / transaction_items. Aucune image stockée :
+  // seul receiptMd (markdown léger) sert de trace dans transactionReceipts.
+  transactionReceipts!: Table<ReceiptHeader>;
+  transactionItems!: Table<ReceiptItem>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -759,6 +766,21 @@ export class BazarKELYDB extends Dexie {
       // getUserSharingRules, getSharedRecurringTransactions) peuplera Dexie depuis Supabase
       // avec les snapshots dénormalisés des transactions sources.
       console.log('✅ [Database] Migration to v16 complete - Family sharing tables ready');
+    });
+
+    // Version 17 - Offline-first « Scan de ticket » (Phase 1)
+    // Deux nouvelles tables miroir de Supabase : transactionReceipts (en-tête + markdown
+    // du ticket, jamais d'image) et transactionItems (lignes d'article). Migration
+    // additive minimale (delta Dexie) : les stores existants sont hérités des versions
+    // précédentes et restent intacts. Premier remplissage : à la création d'une
+    // transaction depuis un ticket scanné (receiptService.saveReceipt).
+    this.version(17).stores({
+      transactionReceipts: 'id, transactionId, userId, supplier',
+      transactionItems: 'id, transactionId, userId, sortOrder, [transactionId+sortOrder]'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v17 - Adding receipt scan tables (transactionReceipts/transactionItems)');
+      // Nouvelles tables vides : aucune transformation de données nécessaire.
+      console.log('✅ [Database] Migration to v17 complete - Receipt scan tables ready');
     });
 
     // Initialiser le pool de connexions

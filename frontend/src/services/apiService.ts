@@ -646,6 +646,87 @@ class ApiService {
       supabase: true
     };
   }
+
+  // === SCAN DE TICKET (transaction_receipts / transaction_items) ===
+  // Calqué sur createTransaction : upsert idempotent (onConflict: 'id'), payloads en
+  // snake_case. Les tables ne figurent pas dans le schéma TS généré → cast `as any`.
+
+  /**
+   * Upsert (idempotent) de l'en-tête de ticket. Le `id` client est conservé.
+   */
+  async upsertReceipt(payload: Record<string, any>): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('transaction_receipts')
+        .upsert(payload, { onConflict: 'id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return this.handleError(error, 'upsertReceipt');
+    }
+  }
+
+  /**
+   * Upsert (idempotent) en lot des lignes d'article. Vide → no-op succès.
+   */
+  async upsertReceiptItems(items: Record<string, any>[]): Promise<ApiResponse<any>> {
+    try {
+      if (!items || items.length === 0) {
+        return { success: true, data: [] };
+      }
+      const { data, error } = await (supabase as any)
+        .from('transaction_items')
+        .upsert(items, { onConflict: 'id' })
+        .select();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return this.handleError(error, 'upsertReceiptItems');
+    }
+  }
+
+  async getReceiptByTransaction(transactionId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('transaction_receipts')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return this.handleError(error, 'getReceiptByTransaction');
+    }
+  }
+
+  async getItemsByTransaction(transactionId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('transaction_items')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return this.handleError(error, 'getItemsByTransaction');
+    }
+  }
+
+  async deleteReceiptItem(id: string): Promise<ApiResponse<boolean>> {
+    try {
+      const { error } = await (supabase as any)
+        .from('transaction_items')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true, data: true };
+    } catch (error) {
+      return this.handleError(error, 'deleteReceiptItem');
+    }
+  }
 }
 
 export default new ApiService();
