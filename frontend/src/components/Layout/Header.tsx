@@ -689,7 +689,7 @@ const Header = () => {
               <p
                 className={
                   isEauModule
-                    ? 'text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body'
+                    ? 'text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body whitespace-nowrap'
                     : 'text-sm text-purple-100 font-medium drop-shadow-sm'
                 }
               >

@@ -1,4 +1,4 @@
-export const APP_VERSION = '3.24.1';
+export const APP_VERSION = '3.24.2';
 export const APP_VERSION_NAME = 'Gestion Eau — Iconographie systématique (style BazarKELY en charte AHUVI vert/or) + graphiques clés : chaque bouton, carte KPI, ligne de liste, état vide et onglet du module porte désormais une icône cohérente (lucide) pour reconnaître les fonctions sans lire. Recolorisation complète bleu/violet → vert forêt/olive + accent or (teal conservé pour l\'eau, ambre/rouge pour les alertes). Nouveaux graphiques : niveau du bassin (tableau de bord + saisie bassin), historique du débit des pompes, histogramme de conso par compteur, barres conso/montant facturé par période. Briques mutualisées EauStatCard / EauIconButton / EauEmptyState / EauListIcon. Évolution additive et cosmétique (aucune logique métier modifiée).';
 export const LAST_UPDATED = '2026-06-06';
 export const APP_BUILD_DATE = '2026-06-06';
