@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.26.1';
-export const APP_VERSION_NAME = 'Correctif scan de ticket — Quand vous supprimez (ou « restituez ») une dépense scannée, son ticket et ses lignes d\'article sont désormais supprimés EN MÊME TEMPS, sur l\'appareil comme dans le cloud : plus de données orphelines qui traînent. Les anciennes données orphelines déjà présentes ont aussi été nettoyées. Aucun changement visible sur la suppression des opérations normales ni des transferts. (Détail précédent v3.26.0 : Le scan de ticket gagne un 2ᵉ moteur, plus précis, qui s\'active TOUT SEUL quand vous avez Internet : Google Cloud Vision (lecture cloud haute précision). Hors-ligne, ou si le service en ligne tombe en panne / met trop de temps, l\'app bascule automatiquement sur la lecture locale gratuite Tesseract.js (Phase 1) — vous n\'êtes jamais bloqué. La clé du service reste cachée côté serveur (Netlify Function), jamais dans l\'application. Comme le texte lu en ligne est plus propre, le ticket est inséré directement plus souvent ; l\'écran de relecture n\'apparaît qu\'en cas de doute (lecture incertaine ou total ≠ somme des lignes). Le moteur réellement utilisé est tracé sur chaque ticket. Tout le reste de la Phase 1 est inchangé (création de la dépense = total, articles éditables, aucune image stockée).';
+export const APP_VERSION = '3.27.0';
+export const APP_VERSION_NAME = 'Nouveau logo du module AHUVI Eau : dans l\'en-tête de la Gestion Eau, l\'ancien carré générique « B » est remplacé par le logo AHUVI Eau (carré sombre, jauge cyan, goutte d\'eau et lettre « A »). Les autres modules (BazarKELY, Construction) gardent leur logo « B » inchangé. Le clic sur le logo continue de basculer entre les modules. (Détail précédent v3.26.1 : Correctif scan de ticket — Quand vous supprimez (ou « restituez ») une dépense scannée, son ticket et ses lignes d\'article sont désormais supprimés EN MÊME TEMPS, sur l\'appareil comme dans le cloud : plus de données orphelines qui traînent. Les anciennes données orphelines déjà présentes ont aussi été nettoyées. Aucun changement visible sur la suppression des opérations normales ni des transferts. (Détail précédent v3.26.0 : Le scan de ticket gagne un 2ᵉ moteur, plus précis, qui s\'active TOUT SEUL quand vous avez Internet : Google Cloud Vision (lecture cloud haute précision). Hors-ligne, ou si le service en ligne tombe en panne / met trop de temps, l\'app bascule automatiquement sur la lecture locale gratuite Tesseract.js (Phase 1) — vous n\'êtes jamais bloqué. La clé du service reste cachée côté serveur (Netlify Function), jamais dans l\'application. Comme le texte lu en ligne est plus propre, le ticket est inséré directement plus souvent ; l\'écran de relecture n\'apparaît qu\'en cas de doute (lecture incertaine ou total ≠ somme des lignes). Le moteur réellement utilisé est tracé sur chaque ticket. Tout le reste de la Phase 1 est inchangé (création de la dépense = total, articles éditables, aucune image stockée).)';
 export const LAST_UPDATED = '2026-06-06';
 export const APP_BUILD_DATE = '2026-06-06';
 export const VERSION_HISTORY = [
+  {
+    version: '3.27.0',
+    date: '2026-06-06',
+    description: 'AHUVI Eau module header logo. The generic "B" square in the Gestion Eau header is replaced by the AHUVI Eau logo (dark rounded square, cyan gauge arc, water drop, white "A" reserved in the drop). Rendered inline as SVG (new component modules/gestion-eau/components/EauLogo.tsx) — no <img> request, crisp at any size, immune to Service Worker caching, unique stable gradient id. Asset of reference stored at modules/gestion-eau/assets/ahuvi-eau-logo.svg. Header.tsx (SHARED) change is strictly additive: the EauLogo only renders when isEauModule is true; BazarKELY and Construction keep the unchanged "B" square. The logo button still toggles the module switcher (onClick, logoRipple, aria-label, title preserved). Root-level stray "logo [GestionEAU].svg" removed.',
+    changes: [
+      'NEW modules/gestion-eau/assets/ahuvi-eau-logo.svg : reference SVG asset (with the white "A")',
+      'NEW modules/gestion-eau/components/EauLogo.tsx : inline SVG React component (className prop, unique gradient id)',
+      'modules/gestion-eau/components/index.ts : export EauLogo',
+      'SHARED components/Layout/Header.tsx : render <EauLogo /> in the logo button when isEauModule, "B" square otherwise (additive)',
+      'Removed stray root file "logo [GestionEAU].svg"',
+    ],
+    type: 'minor' as const,
+  },
   {
     version: '3.26.1',
     date: '2026-06-06',

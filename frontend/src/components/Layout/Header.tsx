@@ -4,6 +4,7 @@ import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
 import { GESTION_EAU_NAV_ITEMS } from '../../constants';
+import { EauLogo } from '../../modules/gestion-eau/components';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
 import apiService from '../../services/apiService';
@@ -668,12 +669,21 @@ const Header = () => {
               aria-label="Basculer entre les modules"
               title="Cliquez pour changer de module"
             >
-              <div className="w-12 h-12 bg-white/40 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/50 relative z-10 overflow-hidden">
-                {logoRipple && (
-                  <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping" />
-                )}
-                <span className="text-white font-bold text-xl relative z-10">B</span>
-              </div>
+              {isEauModule ? (
+                <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg relative z-10">
+                  {logoRipple && (
+                    <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping z-10" />
+                  )}
+                  <EauLogo />
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-white/40 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/50 relative z-10 overflow-hidden">
+                  {logoRipple && (
+                    <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping" />
+                  )}
+                  <span className="text-white font-bold text-xl relative z-10">B</span>
+                </div>
+              )}
             </button>
             <div>
               {/* Titre par module : AHUVI Eau (vert/or, Playfair) / 1saKELY / BazarKELY */}
