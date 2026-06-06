@@ -14,7 +14,7 @@
  *  - `<EauAide … />` autonome, pour les emplacements hors shell (bandeau Relevés, onglet Scan, onglets bassin).
  */
 import { ReactNode, useCallback, useState } from 'react';
-import { Info, ChevronDown } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export interface AideContenu {
   /** Identifiant stable de l'écran/onglet (clé localStorage `eau_aide_<id>`). */
@@ -71,14 +71,13 @@ export function AideToggleButton({
       onClick={onClick}
       aria-expanded={open}
       aria-controls={controls}
-      className="flex-shrink-0 inline-flex items-center gap-1 rounded-full border border-ahuvi-200 bg-ahuvi-50 px-2.5 py-1 text-xs font-medium text-ahuvi-olive hover:bg-ahuvi-100 focus:outline-none focus:ring-2 focus:ring-ahuvi-300 transition-colors"
+      aria-label="Aide"
+      title="Aide"
+      className={`flex-shrink-0 inline-flex items-center justify-center rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-ahuvi-300 transition-colors ${
+        open ? 'text-ahuvi-olive' : 'text-ahuvi-olive/50 hover:text-ahuvi-olive'
+      }`}
     >
       <Info className="w-3.5 h-3.5" aria-hidden />
-      <span>Aide</span>
-      <ChevronDown
-        className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
-        aria-hidden
-      />
     </button>
   );
 }
