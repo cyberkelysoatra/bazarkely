@@ -148,11 +148,10 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
         // Vérifier si on est déjà dans le module sauvegardé (détection étendue)
         const isInSavedModule = moduleIdForPath(currentPath) === savedModule.id;
 
-        // Si on n'est pas dans le module sauvegardé et on est sur une route d'atterrissage, naviguer
-        const isDefaultRoute =
-          currentPath === '/dashboard' ||
-          currentPath === '/construction/dashboard' ||
-          currentPath === '/gestion-eau';
+        // Auto-reprise du dernier module UNIQUEMENT depuis la racine neutre.
+        // Arriver directement sur une route explicite d'un autre module
+        // (/gestion-eau, /construction/...) — lien, signet ou F5 — n'y rebondit plus.
+        const isDefaultRoute = currentPath === '/dashboard';
 
         if (!isInSavedModule && isDefaultRoute) {
           // Naviguer vers le module sauvegardé
