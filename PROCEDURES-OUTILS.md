@@ -84,6 +84,29 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Cause :** le top-level `await` n'est pas supporté dans ce contexte d'exécution.
 - **Résolution :** envelopper le code dans une IIFE `(function(){ … })()` (et éviter `await`, ou utiliser `.then`).
 
+### P7 — RPC/fonction Supabase : `revoke execute ... from public` ne bloque PAS l'anon (S88)
+- **Symptôme :** après `revoke execute on function f() from public`, un appel REST en **clé anon** (`POST /rest/v1/rpc/f`) réussit toujours (HTTP 200, la fonction s'exécute). Une RPC SECURITY DEFINER d'écriture utilisant `auth.uid()` écrit alors avec `auth.uid()` **NULL**.
+- **Cause :** **Supabase accorde `EXECUTE` EXPLICITEMENT au rôle `anon`** (et `authenticated`) sur les fonctions du schéma `public`, via `ALTER DEFAULT PRIVILEGES`. Un grant explicite à `anon` n'est PAS retiré par un `revoke ... from public`.
+- **Résolution :** `revoke execute on function f(args) from anon;` (en plus de `public`). Re-tester en anon → doit renvoyer **401 `42501` « permission denied for function »**. Idem raisonnement pour les GRANT de tables.
+
+### P8 — Tester la RLS PAR RÔLE dans l'éditeur SQL sans moissonner de token (S88)
+- **Besoin :** vérifier qu'un releveur/client ne voit que ce qu'il doit, **sans** récupérer son JWT (interdit, cf. P4) et **sans** que le rôle `postgres` de l'éditeur (qui BYPASSe la RLS) ne fausse le test.
+- **Résolution :** simuler `auth.uid()` dans une **transaction annulée** (lecture seule, aucune mutation) :
+  ```sql
+  begin;
+  select set_config('request.jwt.claims','{"sub":"<USER_UUID>","role":"authenticated"}', true);
+  set local role authenticated;
+  select (select count(*) from eau_factures) as ...;   -- les policies s'appliquent
+  rollback;
+  ```
+  Les helpers SECURITY DEFINER (`eau_is_admin()`…) lisent bien le `sub` via `current_setting`. Pour un test d'écriture (« l'admin PEUT insérer »), faire l'`insert ... ; select count(...)` AVANT le `rollback` (rien n'est persisté). L'éditeur n'affiche que le **dernier** `select` → une requête par rôle, ou un `select` final agrégé.
+- **Anon :** se teste en REST avec la **clé anon publique** (pas dans l'éditeur). `[]` partout = filtré ; INSERT → 401 RLS.
+
+### P9 — `ModuleSwitcher` (1sakely.org) ne répond pas aux clics scriptés (S88)
+- **Symptôme :** cliquer le logo (« Basculer entre les modules ») puis l'option « Sélectionner Gestion Eau » (via `find`/`ref`) ne change pas de module (`localStorage.bazarkely_active_module` reste `bazarkely`, path reste `/dashboard`).
+- **Cause probable :** dropdown ouvert/fermé par toggle + re-render ; le `ref` trouvé pointe une entrée non réellement cliquable à l'instant du clic.
+- **Contournement :** pour valider une isolation **côté serveur**, ne pas dépendre de la nav in-app — prouver via REST/SQL (P7/P8). Le hard-load d'URL directe `/gestion-eau` rebondit vers `/dashboard` (bug shell pré-existant, hors périmètre). Le shell qui charge (`/dashboard` complet) suffit comme non-régression.
+
 ---
 
-*Créé le 2026-06-04 (session module gestion-eau Phase 1). À enrichir au fil des sessions.*
+*Créé le 2026-06-04 (session module gestion-eau Phase 1). À enrichir au fil des sessions. Enrichi S88 (Phase 2 RLS) : P7–P9.*
