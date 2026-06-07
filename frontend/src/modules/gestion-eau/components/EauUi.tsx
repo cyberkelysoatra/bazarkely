@@ -46,7 +46,17 @@ const TONE_VALUE: Record<EauTone, string> = {
   emerald: 'text-emerald-700',
 };
 
-/** Carte KPI : icône (conteneur teinté AHUVI) + libellé + valeur. ChevronRight si cliquable. */
+/**
+ * Carte KPI : icône (conteneur teinté AHUVI) + libellé + valeur.
+ *
+ * Comportement au clic (tout est OPTIONNEL et ADDITIF — sans ces props, rendu inchangé) :
+ *   - `onClick`      : action au clic sur le CORPS de la carte (« voir »).
+ *   - `onIconClick`  : action au clic sur l'ICÔNE (« saisir »). Quand fourni, le corps devient
+ *                      un `div role="button"` (clavier Enter/Espace) et l'icône un vrai `<button>`
+ *                      avec stopPropagation → on évite un <button> imbriqué dans un <button>.
+ *   - `iconAriaLabel`: libellé accessible du bouton-icône.
+ *   - `hideChevron`  : masque le ChevronRight même quand `onClick` est fourni.
+ */
 export function EauStatCard({
   icon: Icon,
   label,
@@ -54,6 +64,9 @@ export function EauStatCard({
   hint,
   tone = 'forest',
   onClick,
+  onIconClick,
+  iconAriaLabel,
+  hideChevron,
   className,
 }: {
   icon: LucideIcon;
@@ -62,35 +75,85 @@ export function EauStatCard({
   hint?: React.ReactNode;
   tone?: EauTone;
   onClick?: () => void;
+  onIconClick?: () => void;
+  iconAriaLabel?: string;
+  hideChevron?: boolean;
   className?: string;
 }) {
-  const Wrapper: any = onClick ? 'button' : 'div';
-  return (
-    <Wrapper
-      onClick={onClick}
-      type={onClick ? 'button' : undefined}
-      className={cn(
-        'w-full text-left rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
-        onClick && 'hover:border-ahuvi-300 hover:shadow-md transition-colors',
-        className,
-      )}
-    >
+  const interactive = !!onClick;
+  // Si l'icône a sa propre action, on ne peut pas imbriquer 2 <button> → corps = div role=button.
+  const useDivRole = !!onIconClick;
+  const showChevron = interactive && !hideChevron;
+
+  const baseClass = cn(
+    'w-full text-left rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
+    interactive && 'cursor-pointer hover:border-ahuvi-300 hover:shadow-md transition-colors',
+    interactive && 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300',
+    className,
+  );
+
+  const inner = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
         <div className="flex items-center gap-1">
-          <span
-            className={cn(
-              'w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center flex-shrink-0',
-              TONE_CONTAINER[tone],
-            )}
-          >
-            <Icon className="w-5 h-5 md:w-6 md:h-6" aria-hidden="true" />
-          </span>
-          {onClick && <ChevronRight className="w-4 h-4 text-gray-300" aria-hidden="true" />}
+          {onIconClick ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onIconClick();
+              }}
+              aria-label={iconAriaLabel}
+              className={cn(
+                'w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                'cursor-pointer transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300',
+                TONE_CONTAINER[tone],
+              )}
+            >
+              <Icon className="w-5 h-5 md:w-6 md:h-6" aria-hidden="true" />
+            </button>
+          ) : (
+            <span
+              className={cn(
+                'w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                TONE_CONTAINER[tone],
+              )}
+            >
+              <Icon className="w-5 h-5 md:w-6 md:h-6" aria-hidden="true" />
+            </span>
+          )}
+          {showChevron && <ChevronRight className="w-4 h-4 text-gray-300" aria-hidden="true" />}
         </div>
       </div>
       <div className={cn('mt-2 text-2xl font-bold', TONE_VALUE[tone])}>{value}</div>
       {hint && <div className="text-sm text-gray-500 mt-0.5">{hint}</div>}
+    </>
+  );
+
+  if (useDivRole) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
+        className={baseClass}
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  const Wrapper: any = interactive ? 'button' : 'div';
+  return (
+    <Wrapper onClick={onClick} type={interactive ? 'button' : undefined} className={baseClass}>
+      {inner}
     </Wrapper>
   );
 }

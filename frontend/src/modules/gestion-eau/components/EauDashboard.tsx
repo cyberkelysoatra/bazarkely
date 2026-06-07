@@ -1,7 +1,7 @@
 /** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW + mini-graphe. */
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText,
 } from 'lucide-react';
@@ -22,13 +22,62 @@ function fmtAutonomie(heures: number | null): string {
   return `${j} j ${h} h`;
 }
 
-function Card({ title, icon: Icon, children, tone }: { title: string; icon?: typeof ScrollText; children: React.ReactNode; tone?: 'ok' | 'warn' }) {
+function Card({
+  title,
+  icon: Icon,
+  children,
+  tone,
+  onClick,
+  onIconClick,
+  iconAriaLabel,
+}: {
+  title: string;
+  icon?: typeof ScrollText;
+  children: React.ReactNode;
+  tone?: 'ok' | 'warn';
+  onClick?: () => void;
+  onIconClick?: () => void;
+  iconAriaLabel?: string;
+}) {
   const ring =
     tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-ahuvi-100 bg-white';
+  const interactiveProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick,
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        },
+      }
+    : {};
   return (
-    <div className={`rounded-xl border p-4 shadow-soft ${ring}`}>
+    <div
+      {...interactiveProps}
+      className={`rounded-xl border p-4 shadow-soft ${ring} ${
+        onClick ? 'cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300' : ''
+      }`}
+    >
       <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-        {Icon && <Icon className="w-4 h-4" aria-hidden="true" />}
+        {Icon &&
+          (onIconClick ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onIconClick();
+              }}
+              aria-label={iconAriaLabel}
+              className="rounded cursor-pointer hover:text-ahuvi-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+            >
+              <Icon className="w-4 h-4" aria-hidden="true" />
+            </button>
+          ) : (
+            <Icon className="w-4 h-4" aria-hidden="true" />
+          ))}
         {title}
       </div>
       <div className="mt-1">{children}</div>
@@ -37,6 +86,13 @@ function Card({ title, icon: Icon, children, tone }: { title: string; icon?: typ
 }
 
 export default function EauDashboard() {
+  const navigate = useNavigate();
+  // Destinations « voir » et « saisir » (cf. matrice du tableau de bord).
+  const goTendances = () => navigate('/gestion-eau/tendances');
+  const goSuivi = () => navigate('/gestion-eau/suivi');
+  const goSaisieBassin = () => navigate('/gestion-eau/releves?tab=bassin');
+  const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
+
   const [data, setData] = useState<DashboardData | null>(null);
   const [conso, setConso] = useState<SeriePoint[]>([]);
   const [niveau, setNiveau] = useState<SeriePoint[]>([]);
@@ -63,72 +119,112 @@ export default function EauDashboard() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <EauStatCard
-            icon={Droplet}
-            tone="teal"
-            label="Stock actuel"
-            value={fmtM3(data?.stockActuelM3 ?? null)}
-            hint={
-              <>
-                Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
-                {data?.volumeMaxM3 != null && <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>}
-              </>
-            }
-          />
+        <div className="space-y-3">
+          {/* 2 colonnes thématiques : gauche = saisie bassin, droite = saisie compteur. */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Colonne gauche : cartes dont l'icône ouvre la saisie BASSIN. */}
+            <div className="flex flex-col gap-3">
+              <EauStatCard
+                icon={Droplet}
+                tone="teal"
+                label="Stock actuel"
+                value={fmtM3(data?.stockActuelM3 ?? null)}
+                hint={
+                  <>
+                    Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
+                    {data?.volumeMaxM3 != null && <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>}
+                  </>
+                }
+                onClick={goTendances}
+                onIconClick={goSaisieBassin}
+                iconAriaLabel="Saisir un relevé bassin"
+                hideChevron
+              />
 
-          <EauStatCard
-            icon={ArrowDownToLine}
-            tone="emerald"
-            label="Entrées du jour"
-            value={fmtM3(data?.entreesJourM3 ?? 0)}
-          />
+              <EauStatCard
+                icon={ArrowDownToLine}
+                tone="emerald"
+                label="Entrées du jour"
+                value={fmtM3(data?.entreesJourM3 ?? 0)}
+                onClick={goTendances}
+                onIconClick={goSaisieBassin}
+                iconAriaLabel="Saisir une entrée d'eau (bassin)"
+                hideChevron
+              />
 
-          <EauStatCard
-            icon={Droplet}
-            tone="olive"
-            label="Conso du jour"
-            value={fmtM3(data?.consoJourM3 ?? 0)}
-          />
+              <EauStatCard
+                icon={Gauge}
+                tone="forest"
+                label="Débit courant"
+                value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
+                hint="Apport des pompes"
+                onClick={goTendances}
+                onIconClick={goSaisieBassin}
+                iconAriaLabel="Saisir un relevé bassin"
+                hideChevron
+              />
+            </div>
 
-          <EauStatCard
-            icon={Gauge}
-            tone="forest"
-            label="Débit courant"
-            value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
-            hint="Apport des pompes"
-          />
+            {/* Colonne droite : cartes dont l'icône ouvre la saisie COMPTEUR. */}
+            <div className="flex flex-col gap-3">
+              <EauStatCard
+                icon={Droplet}
+                tone="olive"
+                label="Conso du jour"
+                value={fmtM3(data?.consoJourM3 ?? 0)}
+                onClick={goTendances}
+                onIconClick={goSaisieCompteur}
+                iconAriaLabel="Saisir un relevé compteur"
+                hideChevron
+              />
 
-          {/* NRW : modèle réseau (apport − Δstock − compteurs) si disponible, sinon ancien NRW. */}
-          <EauStatCard
-            icon={Percent}
-            tone="rose"
-            label="NRW (période)"
-            value={data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
-            hint={`Pertes : ${data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}`}
-          />
+              {/* NRW : modèle réseau (apport − Δstock − compteurs) si disponible, sinon ancien NRW. */}
+              <EauStatCard
+                icon={Percent}
+                tone="rose"
+                label="NRW (période)"
+                value={data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
+                hint={`Pertes : ${data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}`}
+                onClick={goSuivi}
+                onIconClick={goSaisieCompteur}
+                iconAriaLabel="Saisir un relevé compteur"
+                hideChevron
+              />
 
-          <EauStatCard
-            icon={Waves}
-            tone="teal"
-            label="Conso réseau (période)"
-            value={data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
-            hint="Sortie vers le réseau"
-          />
+              <EauStatCard
+                icon={Waves}
+                tone="teal"
+                label="Conso réseau (période)"
+                value={data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
+                hint="Sortie vers le réseau"
+                onClick={goTendances}
+                onIconClick={goSaisieCompteur}
+                iconAriaLabel="Saisir un relevé compteur"
+                hideChevron
+              />
 
-          <EauStatCard
-            icon={Hourglass}
-            tone="amber"
-            label="Autonomie estimée"
-            value={fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}
-            hint={data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
-          />
+              <EauStatCard
+                icon={Hourglass}
+                tone="amber"
+                label="Autonomie estimée"
+                value={fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}
+                hint={data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
+                onClick={goTendances}
+                onIconClick={goSaisieCompteur}
+                iconAriaLabel="Saisir un relevé compteur"
+                hideChevron
+              />
+            </div>
+          </div>
 
-          <div className="col-span-2">
+          <div>
             <Card
               title="Dernier bilan"
               icon={ScrollText}
               tone={data?.dernierBilan ? (data.dernierBilan.anomalie ? 'warn' : 'ok') : undefined}
+              onClick={goSuivi}
+              onIconClick={goSaisieBassin}
+              iconAriaLabel="Saisir un relevé bassin"
             >
               {data?.dernierBilan ? (
                 <div className="space-y-1">
@@ -157,14 +253,28 @@ export default function EauDashboard() {
             </Card>
           </div>
 
-          {/* Mini-graphique : consommation des 30 derniers jours → renvoie vers Tendances. */}
-          <div className="col-span-2">
-            <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
+          {/* Mini-graphique : consommation des 30 derniers jours → toute la zone renvoie vers Tendances. */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={goTendances}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                goTendances();
+              }
+            }}
+            className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+          >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
                   <Droplet className="w-4 h-4" aria-hidden="true" /> Conso (30 j)
                 </div>
-                <Link to="/gestion-eau/tendances" className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline">
+                <Link
+                  to="/gestion-eau/tendances"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
+                >
                   <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
                 </Link>
               </div>
@@ -178,17 +288,30 @@ export default function EauDashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               )}
-            </div>
           </div>
 
-          {/* Mini-graphique : niveau du bassin (volume mesuré) sur la période. */}
-          <div className="col-span-2">
-            <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
+          {/* Mini-graphique : niveau du bassin (volume mesuré) → toute la zone renvoie vers Tendances. */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={goTendances}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                goTendances();
+              }
+            }}
+            className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+          >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
                   <Waves className="w-4 h-4" aria-hidden="true" /> Niveau du bassin
                 </div>
-                <Link to="/gestion-eau/tendances" className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline">
+                <Link
+                  to="/gestion-eau/tendances"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
+                >
                   <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
                 </Link>
               </div>
@@ -203,7 +326,6 @@ export default function EauDashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               )}
-            </div>
           </div>
         </div>
       )}
