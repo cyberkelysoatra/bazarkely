@@ -149,8 +149,12 @@ const AppLayout = () => {
     return (
       <div className="min-h-screen">
         <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="*" element={<Navigate to="/auth" replace />} />
+          {/* Afficher l'écran de connexion SANS écraser l'adresse courante :
+              au boot (session pas encore restaurée) comme en déconnexion réelle,
+              l'URL d'origine (/gestion-eau, /construction/...) est préservée.
+              Quand la session se restaure, AppLayout re-rend la branche authentifiée
+              sur la MÊME adresse → l'utilisateur reste dans son module. */}
+          <Route path="*" element={<AuthPage />} />
         </Routes>
       </div>
     )

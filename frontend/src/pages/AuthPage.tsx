@@ -160,8 +160,12 @@ const AuthPage = () => {
               window.history.replaceState({}, document.title, window.location.pathname);
             }
 
-            console.log('✅ Navigation vers dashboard (profil complet chargé par App.tsx SIGNED_IN)');
-            navigate('/dashboard');
+            // Deep-link : revenir sur l'adresse d'origine mémorisée avant le login,
+            // sinon comportement par défaut (/dashboard). N'affecte que la cible de navigation.
+            const postLoginRedirect = sessionStorage.getItem('bazarkely_post_login_redirect');
+            sessionStorage.removeItem('bazarkely_post_login_redirect');
+            console.log('✅ Navigation post-login (profil complet chargé par App.tsx SIGNED_IN):', postLoginRedirect || '/dashboard');
+            navigate(postLoginRedirect || '/dashboard');
           } else {
             console.error('❌ No session established after setSession');
             setError('Aucune session établie');
@@ -191,6 +195,13 @@ const AuthPage = () => {
     setError(null);
 
     try {
+      // Deep-link : mémoriser l'adresse d'origine pour y revenir après le retour OAuth
+      // (sinon retour par défaut sur /dashboard). On ignore /auth et la racine /.
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/auth' && currentPath !== '/') {
+        sessionStorage.setItem('bazarkely_post_login_redirect', currentPath + window.location.search);
+      }
+
       const result = await authService.signInWithGoogle();
       
       if (result.success) {
