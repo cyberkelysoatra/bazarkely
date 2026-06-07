@@ -8,6 +8,7 @@
  *     remplit `user_id` et passe `actif=true`. Le rôle `client` devient effectif
  *     (getRolesForUser le dérive d'un compte client lié au user).
  */
+import { supabase, withTimeout } from '../../../lib/supabase';
 import { eauDb } from '../db/gestionEauDb';
 import { pullTable, saveLocal } from './eauSync';
 import { newId, nowIso } from '../utils/id';
@@ -95,20 +96,49 @@ export async function linkByEnrolementCode(
   const code = normalizeCode(rawCode);
   if (!code) return { ok: false, reason: 'invalide' };
 
-  // S'assure d'avoir l'état serveur le plus récent (best-effort).
-  await pullTable('eau_comptes_client').catch(() => {});
-
-  const all = (await eauDb.eau_comptes_client.toArray()) as CompteClientLocal[];
-  const compte = all.find((c) => normalizeCode(c.code_enrolement) === code);
-  if (!compte) return { ok: false, reason: 'invalide' };
-
-  if (compte.user_id && compte.user_id !== userId) {
-    return { ok: false, reason: 'deja_utilise' };
+  // Enrôlement CÔTÉ SERVEUR (RLS Phase 2) : un client sans rôle ne peut plus lire
+  // `eau_comptes_client` en clair → on délègue le rattachement à la RPC SECURITY DEFINER
+  // `eau_claim_enrolement`, qui pose `user_id = auth.uid()` + `actif = true` SI le code est
+  // libre (ou déjà rattaché à soi). Elle retourne l'id du compte, ou `null` si le code est
+  // introuvable OU déjà pris par un AUTRE utilisateur (indistinguables sous RLS → traités
+  // comme « invalide » ; l'ancienne nuance `deja_utilise` n'est plus observable côté client).
+  let claimedId: string | null = null;
+  try {
+    const { data, error } = (await withTimeout(
+      (supabase.rpc as any)('eau_claim_enrolement', { p_code: code }),
+      8000,
+      'eau:claimEnrolement'
+    )) as any;
+    if (error) return { ok: false, reason: 'invalide' };
+    claimedId = (data as string | null) ?? null;
+  } catch {
+    // Réseau/timeout : rattachement non confirmé → invalide (l'utilisateur peut réessayer).
+    return { ok: false, reason: 'invalide' };
   }
+  if (!claimedId) return { ok: false, reason: 'invalide' };
 
-  const merged: CompteClientLocal = { ...compte, user_id: userId, actif: true };
-  const saved = await saveLocal('eau_comptes_client', merged);
-  return { ok: true, compte: saved };
+  // Le compte est désormais lisible par le client (user_id = soi) → on le rapatrie en local.
+  await pullTable('eau_comptes_client').catch(() => {});
+  const compte = await getCompteClient(claimedId);
+  if (compte) return { ok: true, compte };
+
+  // Pull réseau raté mais rattachement serveur réussi : on synthétise une ligne locale
+  // minimale (non `_dirty` : déjà persistée serveur, pas de push) pour que le rôle client
+  // soit dérivé immédiatement ; les champs complets seront rafraîchis au prochain pull.
+  const fallback: CompteClientLocal = {
+    id: claimedId,
+    nom: '',
+    contact: null,
+    compteur_ids: [],
+    code_enrolement: code,
+    code_qr: '',
+    user_id: userId,
+    actif: true,
+    created_by: null,
+    created_at: nowIso(),
+  };
+  await eauDb.eau_comptes_client.put({ ...fallback, _dirty: false } as any);
+  return { ok: true, compte: fallback };
 }
 
 /**

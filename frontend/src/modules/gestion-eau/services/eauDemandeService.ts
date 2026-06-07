@@ -3,6 +3,7 @@
  * Un utilisateur sans code se connecte avec Google et demande un accès → demande
  * `en_attente`. Un admin valide (attribue rôles + compteurs visibles) ou refuse.
  */
+import { supabase, withTimeout } from '../../../lib/supabase';
 import { eauDb } from '../db/gestionEauDb';
 import { pullTable, saveLocal } from './eauSync';
 import { newId, nowIso } from '../utils/id';
@@ -21,13 +22,29 @@ export interface DemandeInput {
  * existe déjà pour cet utilisateur, la renvoie sans en créer une seconde).
  */
 export async function createDemande(input: DemandeInput): Promise<DemandeAccesLocal> {
+  // Idempotence : une demande en_attente déjà existante pour ce user (lisible via RLS,
+  // car user_id = soi) est renvoyée sans en recréer une seconde.
   await pullTable('eau_demandes_acces').catch(() => {});
   const all = (await eauDb.eau_demandes_acces.toArray()) as DemandeAccesLocal[];
   const existing = all.find((d) => d.user_id === input.user_id && d.statut === 'en_attente');
   if (existing) return existing;
 
+  // Création CÔTÉ SERVEUR (RLS Phase 2) via la RPC SECURITY DEFINER `eau_create_demande`,
+  // qui insère la demande avec `user_id = auth.uid()` + statut 'en_attente' et retourne l'id.
+  let serverId: string | null = null;
+  try {
+    const { data, error } = (await withTimeout(
+      (supabase.rpc as any)('eau_create_demande', { p_email: input.email ?? null, p_nom: input.nom ?? null }),
+      8000,
+      'eau:createDemande'
+    )) as any;
+    if (!error) serverId = (data as string | null) ?? null;
+  } catch {
+    /* réseau/timeout : on retombe sur une création locale (offline-first) ci-dessous */
+  }
+
   const record: DemandeAccesLocal = {
-    id: newId(),
+    id: serverId ?? newId(),
     user_id: input.user_id,
     email: input.email ?? null,
     nom: input.nom ?? null,
@@ -38,6 +55,15 @@ export async function createDemande(input: DemandeInput): Promise<DemandeAccesLo
     traitee_at: null,
     created_at: nowIso(),
   };
+
+  if (serverId) {
+    // Déjà persistée serveur via la RPC → écriture locale SANS `_dirty` (pas de push :
+    // un upsert repartirait en UPDATE, refusé par la policy réservée à l'admin).
+    await eauDb.eau_demandes_acces.put({ ...record, _dirty: false } as any);
+    return record;
+  }
+  // Hors-ligne / RPC en échec : offline-first. Le push best-effort ultérieur est un INSERT
+  // (id client neuf) accepté par la policy `with check (user_id = auth.uid())`.
   return saveLocal('eau_demandes_acces', record);
 }
 
