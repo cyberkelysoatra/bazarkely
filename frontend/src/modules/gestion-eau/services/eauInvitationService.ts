@@ -61,13 +61,22 @@ export interface InvitationInput {
 }
 
 /**
- * Crée une invitation `en_attente`. L'id client est transmis (idempotence : un envoi
- * « expiré-mais-commité » et le rejeu de file convergent sur la même ligne via upsert).
+ * Crée (ou met à jour) une invitation `en_attente` pour un email.
+ *
+ * Idempotence : si une invitation `en_attente` existe déjà pour cet email, on la
+ * **met à jour en conservant son id** (et sa date de création) plutôt que d'en créer
+ * une 2ᵉ — l'admin peut ainsi corriger rôles/compteurs/numéro sans accumuler de doublons.
+ * L'id client est transmis dans le payload (un envoi « expiré-mais-commité » et le rejeu
+ * de file convergent sur la même ligne via upsert).
  */
 export async function createInvitation(input: InvitationInput): Promise<InvitationLocal> {
+  const email = input.email.trim().toLowerCase();
+  const existing = ((await eauDb.eau_invitations.toArray()) as InvitationLocal[]).find(
+    (i) => i.email === email && i.statut === 'en_attente'
+  );
   const record: InvitationLocal = {
-    id: newId(),
-    email: input.email.trim().toLowerCase(),
+    id: existing?.id ?? newId(),
+    email,
     nom: input.nom ?? null,
     phone: input.phone ?? null,
     role_admin: input.role_admin ?? false,
@@ -77,7 +86,7 @@ export async function createInvitation(input: InvitationInput): Promise<Invitati
     cible: input.cible ?? null,
     statut: 'en_attente',
     invited_by: input.invited_by ?? null,
-    created_at: nowIso(),
+    created_at: existing?.created_at ?? nowIso(),
     accepted_by: null,
     accepted_at: null,
   };
@@ -105,4 +114,82 @@ export async function revokeInvitation(id: string): Promise<InvitationLocal | nu
 export async function refreshInvitations(online: boolean): Promise<InvitationLocal[]> {
   if (online) await pullTable('eau_invitations').catch(() => {});
   return listInvitations();
+}
+
+// ────────────────────────── WhatsApp (wa.me) — Phase 2 ───────────────────────
+// Helpers purs (testables, sans I/O) : normalisation du numéro malgache, libellé de
+// rôle, lien profond d'atterrissage, message FR pré-rempli et lien wa.me complet.
+
+/** Base de production pour les liens profonds envoyés aux invités. */
+export const INVITATION_BASE_URL = 'https://1sakely.org';
+
+type RoleFlags = { role_admin?: boolean; role_releveur?: boolean; role_client?: boolean };
+
+/**
+ * Normalise un numéro de téléphone au format international malgache (digits only, sans `+`),
+ * tel qu'attendu par wa.me :
+ *  - on ne garde que les chiffres ;
+ *  - déjà international (commence par l'indicatif `261`) → conservé tel quel ;
+ *  - commence par `0` (format local) → le `0` est remplacé par `261` ;
+ *  - sinon → on préfixe `261`.
+ * Ex. `032 89 95 681` ou `0328995681` → `261328995681`.
+ */
+export function normalizeWhatsappNumber(raw: string | null | undefined): string {
+  const digits = (raw ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('261')) return digits;
+  if (digits.startsWith('0')) return '261' + digits.slice(1);
+  return '261' + digits;
+}
+
+/** Libellé FR des rôles cumulés d'une invitation (pour le message). */
+export function invitationRoleLabel(flags: RoleFlags): string {
+  const parts: string[] = [];
+  if (flags.role_admin) parts.push('Administrateur');
+  if (flags.role_releveur) parts.push('Releveur');
+  if (flags.role_client) parts.push('Client');
+  return parts.join(' / ') || 'utilisateur';
+}
+
+/**
+ * Chemin d'atterrissage (lien profond) selon le rôle :
+ *  - Releveur OU Admin → saisie bassin/niveau,
+ *  - Client seul       → espace client.
+ */
+export function invitationTargetPath(flags: RoleFlags): string {
+  if (flags.role_admin || flags.role_releveur) return '/gestion-eau/releves?tab=bassin&bt=niveau';
+  return '/gestion-eau/client';
+}
+
+/** URL complète d'atterrissage (base prod + cible enregistrée ou dérivée du rôle). */
+export function invitationDeepLink(inv: { cible?: string | null } & RoleFlags): string {
+  const path = inv.cible && inv.cible.trim() ? inv.cible : invitationTargetPath(inv);
+  return path.startsWith('http') ? path : INVITATION_BASE_URL + path;
+}
+
+/**
+ * Message FR pré-rempli. Insiste explicitement sur l'usage de CETTE adresse Google
+ * (sinon l'octroi automatique ne matchera pas l'email).
+ */
+export function buildInvitationMessage(
+  inv: { nom?: string | null; email: string; cible?: string | null } & RoleFlags
+): string {
+  const link = invitationDeepLink(inv);
+  const greeting = inv.nom && inv.nom.trim() ? `Bonjour ${inv.nom.trim()},` : 'Bonjour,';
+  return [
+    `${greeting} vous êtes invité(e) comme ${invitationRoleLabel(inv)} sur l'application Gestion Eau AHUVI (BazarKELY).`,
+    `1) Ouvrez ce lien : ${link}`,
+    `2) Connectez-vous avec CE compte Google : ${inv.email}`,
+    `⚠️ Important : connectez-vous bien avec CETTE adresse Google, sinon votre accès ne pourra pas s'activer.`,
+    `Votre accès s'activera automatiquement. C'est gratuit et l'app fonctionne même hors connexion.`,
+  ].join('\n');
+}
+
+/** Lien wa.me complet (numéro normalisé + message encodé) prêt à ouvrir. */
+export function buildWhatsappUrl(
+  inv: { nom?: string | null; email: string; phone?: string | null; cible?: string | null } & RoleFlags
+): string {
+  const digits = normalizeWhatsappNumber(inv.phone);
+  const message = buildInvitationMessage(inv);
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }

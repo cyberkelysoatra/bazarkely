@@ -358,6 +358,15 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - Sans code : **« Demander un accès »** → Google → crée une `eau_demandes_acces` `en_attente` ; l'admin la **valide** (rôles + compteurs visibles) ou la **refuse** depuis `/gestion-eau/demandes`.
 - L'enrôlement est mémorisé avant la redirection Google (localStorage) puis **traité au retour** par `GestionEauProvider` (quel que soit l'écran d'atterrissage).
 
+### ✉️ Invitation par email + WhatsApp (Phases 1 & 2)
+- **Octroi automatique au 1er login (Phase 1)** : l'admin pré-enregistre une invitation (email Google + rôles cumulables admin/releveur/client + compteurs visibles si client). À la **première connexion Google** de la personne **avec cette adresse exacte**, la RPC `eau_claim_invitation()` attribue le(s) rôle(s) **sans validation manuelle** (et crée/active son compte client + compteurs si `role_client`), puis marque l'invitation `acceptee`. Idempotent (un 2ᵉ login ne duplique rien).
+- **UI admin + WhatsApp (Phase 2)** — page **« Invitations & demandes »** (`/gestion-eau/demandes`, `EauDemandesPage`, admin) :
+  - **Formulaire d'invitation** : nom (optionnel), **email Google** (requis, mis en minuscules), **numéro WhatsApp** (requis), rôles **Administrateur / Releveur** (cumulables) + option **Client** → **multiselect des compteurs visibles**.
+  - À la création, bouton **« Envoyer sur WhatsApp »** (+ **« Copier le message »** en secours) : ouvre **wa.me** avec un **message FR pré-rempli** contenant le **lien profond** selon le rôle (Releveur/Admin → `/gestion-eau/releves?tab=bassin&bt=niveau` ; Client seul → `/gestion-eau/client`) et l'**email exact**, en insistant sur l'usage de **CETTE adresse Google** (sinon l'octroi auto ne matche pas). Numéro **normalisé** au format malgache (`0XXXXXXXXX` → `261XXXXXXXXX`).
+  - **Liste des invitations** (en attente / acceptées ; révoquées masquées) avec **Renvoyer le WhatsApp** et **Révoquer** (invitation `en_attente` seulement, avec confirmation).
+  - **Idempotence** : ré-inviter le même email en attente **met à jour** l'invitation existante (pas de doublon).
+  - La **gestion des demandes d'accès reçues** (valider/refuser) reste sur la même page.
+
 ### 🎯 Objectif
 Une copropriété distribue l'eau d'un **bassin (~280 m³)** vers villas, golf et espaces
 communs. Des releveurs font **plusieurs relevés/jour**. Le socle permet de saisir les

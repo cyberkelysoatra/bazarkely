@@ -97,6 +97,12 @@ export const AIDE: Record<string, AideTexte> = {
     quoi: 'Gérer les demandes d’accès des nouveaux utilisateurs.',
     comment: 'Validez ou refusez chaque demande ; un compte validé reçoit ses compteurs.',
   },
+  invitations: {
+    id: 'invitations',
+    quoi: 'Inviter quelqu’un par email : son accès s’ouvre tout seul à sa 1ʳᵉ connexion Google, et vous lui envoyez l’invitation par WhatsApp. Vous gérez aussi ici les demandes d’accès reçues.',
+    comment:
+      'Renseignez le nom, l’adresse Google de la personne, son numéro WhatsApp et son rôle (Administrateur / Releveur / Client — pour un client, choisissez ses compteurs). Appuyez sur « Envoyer sur WhatsApp » : un message tout prêt s’ouvre, vous n’avez qu’à l’envoyer. ⚠️ La personne DOIT se connecter avec EXACTEMENT l’adresse Google indiquée, sinon l’accès ne s’activera pas. Plus bas, suivez les invitations envoyées (en attente / acceptées) et les demandes d’accès à valider.',
+  },
   annonces: {
     id: 'annonces',
     quoi: 'Informer (promo Club House, événements, vie du village).',
