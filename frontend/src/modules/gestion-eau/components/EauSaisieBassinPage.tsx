@@ -13,7 +13,7 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import {
-  ArrowDownToLine, Ruler, Gauge, Save, AlertTriangle, Settings, Waves, Activity,
+  ArrowDownToLine, Ruler, Gauge, Save, AlertTriangle, Settings, Waves, Activity, CalendarClock,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauListIcon } from './EauUi';
@@ -36,6 +36,20 @@ import type { BassinDimensions } from '../utils/bassin';
 
 type Tab = 'entree' | 'niveau' | 'debit';
 
+// Convertit la valeur d'un <input datetime-local> en ISO, ou undefined si vide.
+function toIsoOrUndefined(local: string): string | undefined {
+  if (!local.trim()) return undefined;
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+// true si la valeur saisie est dans le futur.
+function isFuture(local: string): boolean {
+  if (!local.trim()) return false;
+  const t = new Date(local).getTime();
+  return Number.isFinite(t) && t > Date.now();
+}
+
 export default function EauSaisieBassinPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('niveau');
@@ -48,10 +62,12 @@ export default function EauSaisieBassinPage() {
   // Entrée
   const [entreeM3, setEntreeM3] = useState('');
   const [entreeNote, setEntreeNote] = useState('');
+  const [entreeDateTime, setEntreeDateTime] = useState('');
 
   // Niveau
   const [hauteurCm, setHauteurCm] = useState('');
   const [niveauNote, setNiveauNote] = useState('');
+  const [niveauDateTime, setNiveauDateTime] = useState('');
 
   // Test de débit
   const [debitDebutCm, setDebitDebutCm] = useState('');
@@ -150,12 +166,22 @@ export default function EauSaisieBassinPage() {
       toast.error('Volume invalide');
       return;
     }
+    if (isFuture(entreeDateTime)) {
+      toast.error('Date dans le futur impossible');
+      return;
+    }
     setBusy(true);
     try {
-      await addEntreeBassin({ volume_m3: v, note: entreeNote || null, agent_id: getCurrentUserIdSync() });
+      await addEntreeBassin({
+        volume_m3: v,
+        note: entreeNote || null,
+        agent_id: getCurrentUserIdSync(),
+        timestamp: toIsoOrUndefined(entreeDateTime),
+      });
       toast.success(`Entrée enregistrée : ${fmtM3(v)}`);
       setEntreeM3('');
       setEntreeNote('');
+      setEntreeDateTime('');
     } finally {
       setBusy(false);
     }
@@ -171,6 +197,10 @@ export default function EauSaisieBassinPage() {
       toast.error('Hauteur invalide');
       return;
     }
+    if (isFuture(niveauDateTime)) {
+      toast.error('Date dans le futur impossible');
+      return;
+    }
     const volume = hauteurCmToVolumeM3(h, dim);
     setBusy(true);
     try {
@@ -179,6 +209,7 @@ export default function EauSaisieBassinPage() {
         volume_m3: volume,
         note: niveauNote || null,
         agent_id: getCurrentUserIdSync(),
+        timestamp: toIsoOrUndefined(niveauDateTime),
       });
       if (bilan) {
         toast.success(
@@ -191,6 +222,7 @@ export default function EauSaisieBassinPage() {
       }
       setHauteurCm('');
       setNiveauNote('');
+      setNiveauDateTime('');
       const t = await getTendances({ fenetreJours: 30 });
       setNiveauSerie(t.niveauBassin);
     } finally {
@@ -265,6 +297,20 @@ export default function EauSaisieBassinPage() {
                   className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                 />
               </label>
+              <label className="text-sm block">
+                <span className="flex items-center gap-1.5 text-gray-600 mb-1">
+                  <CalendarClock className="w-4 h-4" aria-hidden="true" /> Date et heure de l'entrée (optionnel)
+                </span>
+                <input
+                  type="datetime-local"
+                  value={entreeDateTime}
+                  onChange={(e) => setEntreeDateTime(e.target.value)}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                />
+                <span className="block text-xs text-gray-500 mt-1">
+                  Laisser vide = date et heure d'aujourd'hui. Renseigner pour saisir une entrée passée.
+                </span>
+              </label>
               <button
                 onClick={submitEntree}
                 disabled={busy}
@@ -315,6 +361,21 @@ export default function EauSaisieBassinPage() {
                   disabled={!dim}
                   className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                 />
+              </label>
+              <label className="text-sm block">
+                <span className="flex items-center gap-1.5 text-gray-600 mb-1">
+                  <CalendarClock className="w-4 h-4" aria-hidden="true" /> Date et heure du relevé (optionnel)
+                </span>
+                <input
+                  type="datetime-local"
+                  value={niveauDateTime}
+                  onChange={(e) => setNiveauDateTime(e.target.value)}
+                  disabled={!dim}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
+                />
+                <span className="block text-xs text-gray-500 mt-1">
+                  Laisser vide = date et heure d'aujourd'hui. Renseigner pour saisir un relevé passé.
+                </span>
               </label>
               <button
                 onClick={submitNiveau}

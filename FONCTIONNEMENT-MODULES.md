@@ -338,6 +338,10 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   de débordement) et **`debit_instable`** (test au-delà du seuil d'écart). Le check des types `eau_alertes` est élargi côté Supabase.
 - **Rétrocompatibilité** : **sans test de débit**, l'apport **retombe automatiquement sur la saisie manuelle d'entrées** (aucune casse) ;
   la hauteur de référence retombe sur l'ancienne `bassin_hauteur_max_m` tant que le flotteur n'est pas saisi.
+- **Date/heure de saisie OPTIONNELLE** (v3.30.1, onglets **Niveau** et **Entrée**) : un champ `<input type="datetime-local">`
+  facultatif (icône `CalendarClock`, sous la Note) permet d'**horodater un relevé/une entrée à une date passée** au lieu de l'instant présent.
+  **Vide** → comportement inchangé (le service applique `nowIso()`) ; **rempli** → `timestamp` ISO transmis à `addReleveBassin`/`addEntreeBassin`.
+  **Garde douce** : une date **dans le futur** est refusée (toast « Date dans le futur impossible »). Champ réinitialisé après succès. Strictement additif (services/schéma inchangés).
 
 ### 🧾 Facturation (Phase 2, admin)
 - Choix d'une période → pour chaque compteur actif : `indexDébut` = dernier relevé ≤ début,
