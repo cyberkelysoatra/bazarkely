@@ -39,6 +39,11 @@ const Loader = () => (
 export default function GestionEauRoutes() {
   return (
     <Suspense fallback={<Loader />}>
+      {/* Marge basse scopée au module : la BottomNav du module (libellés sur 2 lignes
+          « Tableau de bord » / « Facturation » + zone sûre Android) dépasse les 80px
+          du <main>, recouvrant la dernière carte. Ce padding additif laisse un espace
+          net au-dessus de la barre, sans impacter les autres modules. */}
+      <div className="pb-[calc(5rem+env(safe-area-inset-bottom))]">
       <Routes>
         {/* Tableau de bord opérationnel — admin/releveur (le client est redirigé vers son espace). */}
         <Route
@@ -190,6 +195,7 @@ export default function GestionEauRoutes() {
 
         <Route path="*" element={<Navigate to="/gestion-eau" replace />} />
       </Routes>
+      </div>
     </Suspense>
   );
 }
