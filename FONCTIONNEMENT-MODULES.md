@@ -384,7 +384,8 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 - **Cumul de rôles** = **union** des accès. **Garde** : `EauRoleProtectedRoute allowedRoles={…}` sur chaque route ;
   un accès URL direct non autorisé **redirige vers l'écran d'accueil du rôle** (client → `/gestion-eau/client`, sinon `/gestion-eau`), sans boucle.
-- **Données** : l'espace client ne lit que les **compteurs assignés** (`compteur_ids`). *(RLS par rôle Supabase = renforcement futur ; aujourd'hui RLS = `authenticated`, l'isolement repose sur les gardes + le scoping des requêtes.)*
+- **Données** : l'espace client ne lit que les **compteurs assignés** (`compteur_ids`).
+- 🔐 **RLS par rôle Supabase — LIVRÉE Phase 2 (v3.30.0).** L'isolement n'est plus seulement applicatif (gardes + scoping) : il est **imposé CÔTÉ SERVEUR** par 63 policies RLS conditionnées par `auth.uid()`/rôle sur les 16 tables `eau_*`. Concrètement, même une requête API directe respecte la matrice : un **client** ne lit QUE ses compteurs/relevés/factures (jamais un voisin ni le **bassin**) ; un **releveur** lit compteurs/config/bassin et saisit relevés/bassin mais **pas** les factures ni les comptes clients ; l'**admin** a tout. Choix d'archi : policies `to public` + prédicats (pas `to authenticated`) → une requête anon résiduelle est filtrée à 0 ligne, pas rejetée en 401. Les parcours sans rôle (enrôlement par code, demande d'accès) passent par des **RPC SECURITY DEFINER** (`eau_claim_enrolement`, `eau_create_demande`). Détail : `SUPABASE-SQL.md` § « RLS PAR RÔLE — PHASE 2 » + `RAPPORTS-CREATEUR-APPS/gestion-eau/RAPPORT-SECU-PHASE-2.md`.
 
 ### 🧮 Conversions & moteur de bilan
 - Volume max bassin = `L × l × hauteurMax` ; **L=10, l=7, h=4 → 280 m³**.

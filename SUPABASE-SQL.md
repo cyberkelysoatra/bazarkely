@@ -230,12 +230,14 @@ create index if not exists idx_eau_qr_compteur_cid on eau_qr_compteur (compteur_
 create index if not exists idx_eau_scans_cid_ts on eau_scans (compteur_id, timestamp);
 create index if not exists idx_eau_debit_tests_ts on eau_debit_tests (timestamp);
 
--- ========== RLS (activation + policy public) ==========
--- IMPORTANT : role `public` (PAS `authenticated`). L'app BazarKELY connecte ses
--- utilisateurs via son propre système (identifiant/mot de passe), invisible du serveur :
--- côté Supabase, les requêtes arrivent en rôle `anon`. Les tables principales (accounts,
--- transactions, budgets…) sont déjà en `public`. Utiliser `authenticated` ici bloquerait
--- TOUTES les écritures (401 / « violates row level security policy »). Corrigé S85 (2026-06-07).
+-- ========== RLS (activation + policy public) — ⚠️ REMPLACÉ pour eau_* par la PHASE 2 (v3.30.0) ==========
+-- ⚠️ HISTORIQUE (S85) — NE PLUS RÉ-EXÉCUTER pour les tables eau_* : le bloc ci-dessous crée
+-- des policies PERMISSIVES `using(true)` qui ont été SUPPRIMÉES en Phase 2 (v3.30.0) au profit
+-- de policies par rôle conditionnées (voir section « RLS PAR RÔLE — PHASE 2 » plus bas).
+-- La note « auth maison → anon » s'est révélée ERRONÉE (cf. Phase 1 v3.29.0) : l'app utilise une
+-- VRAIE session Supabase (JWT `authenticated`, `sub == users.id`). Le « anon » historique venait
+-- d'une course au boot, pas d'une auth maison.
+-- IMPORTANT (tables NON-eau, accounts/transactions/budgets…) : elles restent `public using(true)`.
 do $$
 declare t text;
 begin
@@ -253,3 +255,74 @@ end $$;
 ```
 
 > **Après exécution**, vérifie dans Supabase → Table Editor que les 15 tables `eau_*` apparaissent. C'est tout : Claude Code se charge du reste (le code de l'app lit/écrit ces tables).
+
+---
+
+## RLS PAR RÔLE — PHASE 2 (v3.30.0, 2026-06-07) — ÉTAT COURANT DES TABLES eau_*
+
+> **Remplace** le bloc permissif `*_auth_all` / `using(true)` (S85) ci-dessus pour TOUTES les
+> tables `eau_*`. Isolation portée par **les prédicats `auth.uid()`/rôle**, pas par le rôle SQL :
+> les policies ciblent `to public` MAIS sont conditionnées → une requête anon résiduelle (course
+> au boot, sync de fond) est **filtrée à 0 ligne** au lieu d'être rejetée en 401. **63 policies**
+> sur **16 tables** (RLS forcée enable), **0 policy permissive résiduelle** (vérifié `pg_policies`).
+
+**Identité.** `auth.uid()` (uuid) == `users.id` == `eau_roles.user_id` == `eau_comptes_client.user_id`.
+Colonnes `id`/`user_id` en `text` → comparer avec `auth.uid()::text`. `eau_comptes_client.compteur_ids`
+est **jsonb** (opérateur `?` pour tester l'appartenance d'un id de compteur).
+
+**Helpers (SECURITY DEFINER, search_path figé, `grant ... to public`).** Owner `postgres` (BYPASSRLS)
+→ pas de récursion quand une policy sur `eau_roles` appelle `eau_is_admin()`.
+```sql
+create or replace function eau_is_admin() returns boolean language sql security definer stable
+  set search_path = public as $$ select coalesce((select admin from eau_roles where user_id = auth.uid()::text), false); $$;
+create or replace function eau_is_releveur() returns boolean language sql security definer stable
+  set search_path = public as $$ select coalesce((select releveur from eau_roles where user_id = auth.uid()::text), false); $$;
+create or replace function eau_client_has_compteur(cid text) returns boolean language sql security definer stable
+  set search_path = public as $$ select coalesce((select compteur_ids from eau_comptes_client
+     where user_id = auth.uid()::text and actif), '[]'::jsonb) ? cid; $$;
+grant execute on function eau_is_admin(), eau_is_releveur(), eau_client_has_compteur(text) to public;
+```
+
+**RPC parcours sans rôle (SECURITY DEFINER, `grant authenticated`, `revoke anon` + `revoke public`).**
+⚠️ Supabase accorde `EXECUTE` à `anon` PAR DÉFAUT (ALTER DEFAULT PRIVILEGES) → `revoke from public`
+NE SUFFIT PAS, il faut aussi `revoke from anon` (sinon un anon peut écrire avec `auth.uid()` NULL).
+```sql
+-- eau_bootstrap_admin() (Phase 1) durcie : revoke from anon
+revoke execute on function eau_bootstrap_admin() from anon;
+create or replace function eau_claim_enrolement(p_code text) returns text language plpgsql security definer
+  set search_path = public as $$
+declare v_id text; begin
+  update eau_comptes_client set user_id = auth.uid()::text, actif = true
+   where code_enrolement = p_code and (user_id is null or user_id = auth.uid()::text) returning id into v_id;
+  return v_id; end; $$;
+create or replace function eau_create_demande(p_email text, p_nom text) returns text language plpgsql security definer
+  set search_path = public as $$
+declare v_id text; begin
+  insert into eau_demandes_acces(id, user_id, email, nom, statut, created_at)
+  values (gen_random_uuid()::text, auth.uid()::text, p_email, p_nom, 'en_attente', now()) returning id into v_id;
+  return v_id; end; $$;
+revoke execute on function eau_claim_enrolement(text), eau_create_demande(text,text) from public, anon;
+grant  execute on function eau_claim_enrolement(text), eau_create_demande(text,text) to authenticated;
+```
+
+**Matrice des policies (rôle `public` + prédicats).** « tout utilisateur connecté » = `auth.uid() is not null`.
+
+| Table | SELECT | INSERT (with check) | UPDATE / DELETE |
+|---|---|---|---|
+| eau_roles | admin OR `user_id=auth.uid()` (sa ligne) | admin | admin |
+| eau_comptes_client | admin OR `user_id=auth.uid()` (sa ligne) | admin | admin |
+| eau_demandes_acces | admin OR `user_id=auth.uid()` | admin OR `user_id=auth.uid()` | admin |
+| eau_compteurs | admin OR releveur OR `eau_client_has_compteur(id)` | admin | admin |
+| eau_qr_compteur | admin OR releveur | admin | admin |
+| eau_releves_compteur | admin OR releveur OR `eau_client_has_compteur(compteur_id)` | admin OR releveur | admin |
+| eau_releves_bassin / eau_entrees_bassin / eau_bilans / eau_debit_tests | admin OR releveur (**client = aucune branche → bassin invisible**) | admin OR releveur | admin |
+| eau_factures | admin OR `eau_client_has_compteur(compteur_id)` | admin | admin |
+| eau_config | admin OR releveur | admin | admin |
+| eau_scans | admin | admin OR releveur OR `user_id=auth.uid()` | admin |
+| eau_alertes | admin OR releveur | admin OR releveur | admin |
+| eau_audit | admin | `auth.uid() is not null` | DELETE admin (pas d'UPDATE) |
+| eau_annonces | `auth.uid() is not null` | admin | admin |
+
+**Tests négatifs vérifiés (v3.30.0)** : anon = 0 ligne sur les 16 tables + écriture 401 RLS ;
+releveur lit compteurs/config/bassin mais 0 sur factures/comptes_client ; client voit ses 3 compteurs
+(sur 11) + son compte (1 sur 3) mais 0 sur bassin/config/voisin. Détail : `RAPPORTS-CREATEUR-APPS/gestion-eau/RAPPORT-SECU-PHASE-2.md`.
