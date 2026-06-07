@@ -12,6 +12,7 @@ import { ensureRolesBootstrap, getRolesForUser } from '../services/eauRoleServic
 import { refreshConfig } from '../services/eauConfigService';
 import { pullAll, syncAll } from '../services/eauSync';
 import { getPendingEnrollment, processPendingEnrollment } from '../services/eauEnrollmentService';
+import { claimInvitationForCurrentUser } from '../services/eauInvitationService';
 import type { EauRoles } from '../types/gestionEau';
 
 /**
@@ -146,6 +147,15 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         } catch {
           /* best-effort */
         }
+      }
+
+      // Octroi automatique « invitation par email » (Phase 1) : si une invitation
+      // `en_attente` cible l'adresse Google de ce compte, la RPC attribue les rôles
+      // (et crée/active le compte client + compteurs). EN LIGNE uniquement et AVANT la
+      // lecture des rôles, pour que `ensureRolesBootstrap` reflète le rôle fraîchement
+      // accordé. Best-effort : un échec réseau ne casse pas le chargement.
+      if (online) {
+        await claimInvitationForCurrentUser(online).catch(() => null);
       }
 
       // Rafraîchit config + données de base en arrière-plan (best-effort).

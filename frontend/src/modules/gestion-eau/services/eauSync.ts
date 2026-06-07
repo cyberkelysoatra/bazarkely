@@ -27,6 +27,7 @@ const PK_BY_TABLE: Record<EauTableName, string> = {
   eau_roles: 'user_id',
   eau_comptes_client: 'id',
   eau_demandes_acces: 'id',
+  eau_invitations: 'id',
   eau_scans: 'id',
   eau_alertes: 'id',
   eau_audit: 'id',

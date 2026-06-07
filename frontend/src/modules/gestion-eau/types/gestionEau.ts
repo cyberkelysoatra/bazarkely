@@ -223,6 +223,33 @@ export interface DemandeAccesRow {
 }
 export type DemandeAccesLocal = DemandeAccesRow & LocalMeta;
 
+// ──────────────────────────── eau_invitations ────────────────────────────
+/**
+ * Invitation par email (octroi automatique du rôle au 1er login Google).
+ * Un admin pré-enregistre l'email + les rôles ; à la connexion de la personne
+ * avec cette adresse Google, la RPC `eau_claim_invitation()` attribue les rôles
+ * (et crée/active le compte client + compteurs si `role_client`). Voir Phase 1.
+ */
+export type InvitationStatut = 'en_attente' | 'acceptee' | 'revoquee';
+
+export interface InvitationRow {
+  id: string;
+  email: string;
+  nom: string | null;
+  phone: string | null;
+  role_admin: boolean;
+  role_releveur: boolean;
+  role_client: boolean;
+  compteur_ids: string[]; // jsonb
+  cible: string | null;
+  statut: InvitationStatut;
+  invited_by: string | null;
+  created_at: string | null;
+  accepted_by: string | null;
+  accepted_at: string | null;
+}
+export type InvitationLocal = InvitationRow & LocalMeta;
+
 // ─────────────────────────────── eau_scans ───────────────────────────────
 export interface ScanRow {
   id: string;

@@ -22,6 +22,7 @@ import type {
   RoleLocal,
   CompteClientLocal,
   DemandeAccesLocal,
+  InvitationLocal,
   ScanLocal,
   AlerteLocal,
   AuditLocal,
@@ -41,6 +42,7 @@ export class GestionEauDB extends Dexie {
   eau_roles!: Table<RoleLocal, string>;
   eau_comptes_client!: Table<CompteClientLocal, string>;
   eau_demandes_acces!: Table<DemandeAccesLocal, string>;
+  eau_invitations!: Table<InvitationLocal, string>;
   eau_scans!: Table<ScanLocal, string>;
   eau_alertes!: Table<AlerteLocal, string>;
   eau_audit!: Table<AuditLocal, string>;
@@ -73,6 +75,12 @@ export class GestionEauDB extends Dexie {
     this.version(2).stores({
       eau_debit_tests: 'id, timestamp',
     });
+
+    // v3 — Invitations par email (octroi automatique du rôle au 1er login Google).
+    // Additif : Dexie reporte automatiquement les stores inchangés (aucune perte).
+    this.version(3).stores({
+      eau_invitations: 'id, email, statut',
+    });
   }
 }
 
@@ -92,6 +100,7 @@ export const EAU_TABLES = [
   'eau_roles',
   'eau_comptes_client',
   'eau_demandes_acces',
+  'eau_invitations',
   'eau_scans',
   'eau_alertes',
   'eau_audit',
