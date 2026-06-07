@@ -34,7 +34,16 @@ interface GestionEauContextType {
   error: string | null;
   /** Fiabilité de la session Supabase pour ce module (cf. EauSessionStatus). */
   sessionStatus: EauSessionStatus;
+  /**
+   * `true` = les rôles ont été résolus de façon FIABLE (pull serveur OK, ou cache local
+   * hors-ligne). `false` = état non résolu (démarrage à froid : pull lent/échoué/timeout).
+   * La garde d'accès ne redirige vers /dashboard QUE sur un refus confirmé
+   * (`rolesConfirmed && !hasEauAccess`), jamais sur un état non résolu.
+   */
+  rolesConfirmed: boolean;
   refreshRoles: () => Promise<void>;
+  /** Relance complète de la résolution session+rôles (bouton « Réessayer »). */
+  retryAccess: () => Promise<void>;
   /** Déclenche une reconnexion Google (même identité que le shell). */
   reauth: () => Promise<void>;
 }
@@ -78,6 +87,9 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<EauSessionStatus>('checking');
+  // Fiabilité de la résolution des rôles (cf. RolesResolution.confirmed). false au boot :
+  // tant que le pull serveur n'a pas répondu, on ne conclut pas « aucun accès ».
+  const [rolesConfirmed, setRolesConfirmed] = useState(false);
   // Le spinner bloquant ne doit s'afficher qu'au TOUT PREMIER chargement.
   // Les rechargements suivants (bascule online/offline, fréquente sur réseau instable)
   // se font en arrière-plan SANS démonter les écrans → pas de flash ni de perte de saisie.
@@ -140,13 +152,16 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
       void refreshConfig(online).catch(() => {});
       void pullAll().catch(() => {});
 
-      // Bootstrap propriétaire + lecture des rôles effectifs.
-      const effective = await ensureRolesBootstrap(id, online);
+      // Bootstrap propriétaire + lecture des rôles effectifs (avec retry du pull à froid).
+      const { roles: effective, confirmed } = await ensureRolesBootstrap(id, online);
       setRoles(effective);
+      setRolesConfirmed(confirmed);
     } catch (e: any) {
       console.error('❌ [GestionEau] Erreur chargement contexte:', e);
       setError(e?.message ?? 'Erreur de chargement du module Gestion Eau');
       setRoles(EMPTY_ROLES);
+      // Erreur = état NON résolu : la garde affichera un écran d'attente, pas un rebond.
+      setRolesConfirmed(false);
     } finally {
       if (showSpinner) setIsLoading(false);
     }
@@ -178,6 +193,12 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     setRoles(effective);
   }, [userId]);
 
+  // Relance complète (session + bootstrap + pull rôles) avec spinner. Utilisé par
+  // l'écran d'attente lorsque la résolution à froid a échoué (« Réessayer »).
+  const retryAccess = useCallback(async () => {
+    await load(true);
+  }, [load]);
+
   // Reconnexion Google depuis le module (même identité que le shell). La redirection
   // OAuth est gérée par authService/AuthPage ; au retour, le statut repassera à 'valid'.
   const reauth = useCallback(async () => {
@@ -193,7 +214,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
 
   return (
     <GestionEauContext.Provider
-      value={{ userId, roles, hasEauAccess, isLoading, error, sessionStatus, refreshRoles, reauth }}
+      value={{ userId, roles, hasEauAccess, isLoading, error, sessionStatus, rolesConfirmed, refreshRoles, retryAccess, reauth }}
     >
       {children}
     </GestionEauContext.Provider>

@@ -84,8 +84,13 @@ export async function pushTable(table: EauTableName): Promise<{ pushed: number }
  * Tire depuis Supabase toutes les lignes d'une table vers Dexie.
  * Un enregistrement local `_dirty` n'est JAMAIS écrasé (le local en attente gagne
  * jusqu'à son push). Les autres sont remplacés par la version serveur (`_dirty:false`).
+ *
+ * `ok` = le serveur a RÉPONDU (requête réussie, même si 0 ligne). `ok:false` =
+ * erreur réseau / timeout / réponse non exploitable. Ce drapeau permet de distinguer
+ * « confirmé : aucune donnée serveur » de « non résolu : pull raté » — crucial pour
+ * la garde d'accès (ne jamais conclure « aucun rôle » sur un simple échec de pull).
  */
-export async function pullTable(table: EauTableName): Promise<{ pulled: number }> {
+export async function pullTable(table: EauTableName): Promise<{ pulled: number; ok: boolean }> {
   try {
     const { data, error } = (await withTimeout(
       supabase.from(table).select('*') as any,
@@ -94,7 +99,7 @@ export async function pullTable(table: EauTableName): Promise<{ pulled: number }
     )) as any;
     if (error || !Array.isArray(data)) {
       if (error) console.warn(`⚠️ [eauSync] pull ${table} échec:`, error.message);
-      return { pulled: 0 };
+      return { pulled: 0, ok: false };
     }
 
     const dexieTable = eauDb.table(table);
@@ -106,10 +111,10 @@ export async function pullTable(table: EauTableName): Promise<{ pulled: number }
       await dexieTable.put({ ...(row as any), _dirty: false });
       pulled++;
     }
-    return { pulled };
+    return { pulled, ok: true };
   } catch (e: any) {
     console.warn(`⚠️ [eauSync] pull ${table} timeout/erreur:`, e?.message);
-    return { pulled: 0 };
+    return { pulled: 0, ok: false };
   }
 }
 
