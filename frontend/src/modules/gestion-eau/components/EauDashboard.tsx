@@ -90,7 +90,10 @@ export default function EauDashboard() {
   // Destinations « voir » et « saisir » (cf. matrice du tableau de bord).
   const goTendances = () => navigate('/gestion-eau/tendances');
   const goSuivi = () => navigate('/gestion-eau/suivi');
-  const goSaisieBassin = () => navigate('/gestion-eau/releves?tab=bassin');
+  // Le paramètre `bt` (bassin-tab) ouvre directement le bon sous-onglet de la saisie bassin
+  // (EauSaisieBassinPage lit `bt` : niveau/entree/debit). Absent → Niveau par défaut.
+  const goSaisieBassin = (bt: 'niveau' | 'entree' | 'debit' = 'niveau') =>
+    navigate(`/gestion-eau/releves?tab=bassin&bt=${bt}`);
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
 
   const [data, setData] = useState<DashboardData | null>(null);
@@ -136,7 +139,7 @@ export default function EauDashboard() {
                   </>
                 }
                 onClick={goTendances}
-                onIconClick={goSaisieBassin}
+                onIconClick={() => goSaisieBassin('niveau')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
               />
@@ -147,7 +150,7 @@ export default function EauDashboard() {
                 label="Entrées du jour"
                 value={fmtM3(data?.entreesJourM3 ?? 0)}
                 onClick={goTendances}
-                onIconClick={goSaisieBassin}
+                onIconClick={() => goSaisieBassin('entree')}
                 iconAriaLabel="Saisir une entrée d'eau (bassin)"
                 hideChevron
               />
@@ -159,7 +162,7 @@ export default function EauDashboard() {
                 value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
                 hint="Apport des pompes"
                 onClick={goTendances}
-                onIconClick={goSaisieBassin}
+                onIconClick={() => goSaisieBassin('debit')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
               />
@@ -223,7 +226,7 @@ export default function EauDashboard() {
               icon={ScrollText}
               tone={data?.dernierBilan ? (data.dernierBilan.anomalie ? 'warn' : 'ok') : undefined}
               onClick={goSuivi}
-              onIconClick={goSaisieBassin}
+              onIconClick={() => goSaisieBassin('niveau')}
               iconAriaLabel="Saisir un relevé bassin"
             >
               {data?.dernierBilan ? (

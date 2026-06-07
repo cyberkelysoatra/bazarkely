@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
@@ -36,6 +36,12 @@ import type { BassinDimensions } from '../utils/bassin';
 
 type Tab = 'entree' | 'niveau' | 'debit';
 
+// Sous-onglet demandé via le deep-link `?bt=` (depuis les cartes bassin du tableau de bord).
+// Toute valeur absente ou invalide retombe sur 'niveau' (comportement par défaut historique).
+function parseBassinTab(bt: string | null): Tab {
+  return bt === 'entree' || bt === 'niveau' || bt === 'debit' ? bt : 'niveau';
+}
+
 // Convertit la valeur d'un <input datetime-local> en ISO, ou undefined si vide.
 function toIsoOrUndefined(local: string): string | undefined {
   if (!local.trim()) return undefined;
@@ -52,7 +58,10 @@ function isFuture(local: string): boolean {
 
 export default function EauSaisieBassinPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('niveau');
+  const [searchParams] = useSearchParams();
+  const btParam = searchParams.get('bt');
+  // Démarre sur le sous-onglet demandé par le deep-link (?bt=), sinon Niveau.
+  const [tab, setTab] = useState<Tab>(parseBassinTab(btParam));
   const [config, setConfig] = useState<ConfigLocal | null>(null);
   const [dim, setDim] = useState<BassinDimensions | null>(null);
   const [surface, setSurface] = useState<number | null>(null);
@@ -76,6 +85,13 @@ export default function EauSaisieBassinPage() {
   const [debitNote, setDebitNote] = useState('');
   const [tests, setTests] = useState<DebitTestLocal[]>([]);
   const [niveauSerie, setNiveauSerie] = useState<SeriePoint[]>([]);
+
+  // Réagit à un nouveau deep-link (?bt=) sans remonter le composant : un clic sur une
+  // autre carte bassin du tableau de bord bascule le sous-onglet. Un changement manuel
+  // d'onglet (boutons) ne touche pas l'URL, donc n'est pas écrasé par cet effet.
+  useEffect(() => {
+    setTab(parseBassinTab(btParam));
+  }, [btParam]);
 
   useEffect(() => {
     (async () => {
