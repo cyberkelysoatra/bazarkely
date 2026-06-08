@@ -318,3 +318,36 @@ export function buildWhatsappUrl(
   const message = buildInvitationMessage(inv);
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
+
+// ───────────────── Invitation par JETON (canal WhatsApp) — Phase 4 ─────────────────
+// Contrairement au canal email, le message NE doit PAS exiger une adresse Google
+// précise : c'est le JETON du lien `/i/<token>` qui enrôle, quel que soit le compte
+// Google choisi par l'invité. Le LIEN est le cœur du message (il porte l'aperçu image).
+
+/**
+ * Message FR pré-rempli pour une invitation par jeton (WhatsApp). On insiste sur le
+ * lien (à toucher) et on précise que n'importe quel compte Google convient — surtout
+ * pas d'adresse imposée (l'octroi se fait par correspondance du jeton, pas de l'email).
+ */
+export function buildWhatsappInviteMessage(inv: { nom?: string | null; token: string | null }): string {
+  const link = inv.token ? buildInviteUrl(inv.token) : INVITATION_BASE_URL;
+  const greeting = inv.nom && inv.nom.trim() ? `Bonjour ${inv.nom.trim()} 👋` : 'Bonjour 👋';
+  return [
+    greeting,
+    `Vous êtes invité(e) à rejoindre *Gestion Eau AHUVI*.`,
+    `👉 Touchez ce lien pour voir et confirmer : ${link}`,
+    `Connectez-vous avec le compte Google de votre choix. C'est gratuit et l'app marche même hors connexion.`,
+  ].join('\n');
+}
+
+/**
+ * Lien wa.me complet pour une invitation par jeton (numéro normalisé + message encodé).
+ * Le message contient le lien `/i/<token>` ; « Renvoyer » réutilise le MÊME jeton.
+ */
+export function buildWhatsappInviteUrl(
+  inv: { nom?: string | null; phone?: string | null; token: string | null }
+): string {
+  const digits = normalizeWhatsappNumber(inv.phone);
+  const message = buildWhatsappInviteMessage(inv);
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}

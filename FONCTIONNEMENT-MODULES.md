@@ -358,14 +358,23 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - Sans code : **« Demander un accès »** → Google → crée une `eau_demandes_acces` `en_attente` ; l'admin la **valide** (rôles + compteurs visibles) ou la **refuse** depuis `/gestion-eau/demandes`.
 - L'enrôlement est mémorisé avant la redirection Google (localStorage) puis **traité au retour** par `GestionEauProvider` (quel que soit l'écran d'atterrissage).
 
-### ✉️ Invitation par email + WhatsApp (Phases 1 & 2)
-- **Octroi automatique au 1er login (Phase 1)** : l'admin pré-enregistre une invitation (email Google + rôles cumulables admin/releveur/client + compteurs visibles si client). À la **première connexion Google** de la personne **avec cette adresse exacte**, la RPC `eau_claim_invitation()` attribue le(s) rôle(s) **sans validation manuelle** (et crée/active son compte client + compteurs si `role_client`), puis marque l'invitation `acceptee`. Idempotent (un 2ᵉ login ne duplique rien).
-- **UI admin + WhatsApp (Phase 2)** — page **« Invitations & demandes »** (`/gestion-eau/demandes`, `EauDemandesPage`, admin) :
-  - **Formulaire d'invitation** : nom (optionnel), **email Google** (requis, mis en minuscules), **numéro WhatsApp** (requis), rôles **Administrateur / Releveur** (cumulables) + option **Client** → **multiselect des compteurs visibles**.
-  - À la création, bouton **« Envoyer sur WhatsApp »** (+ **« Copier le message »** en secours) : ouvre **wa.me** avec un **message FR pré-rempli** contenant le **lien profond** selon le rôle (Releveur/Admin → `/gestion-eau/releves?tab=bassin&bt=niveau` ; Client seul → `/gestion-eau/client`) et l'**email exact**, en insistant sur l'usage de **CETTE adresse Google** (sinon l'octroi auto ne matche pas). Numéro **normalisé** au format malgache (`0XXXXXXXXX` → `261XXXXXXXXX`).
-  - **Liste des invitations** (en attente / acceptées ; révoquées masquées) avec **Renvoyer le WhatsApp** et **Révoquer** (invitation `en_attente` seulement, avec confirmation).
-  - **Idempotence** : ré-inviter le même email en attente **met à jour** l'invitation existante (pas de doublon).
-  - La **gestion des demandes d'accès reçues** (valider/refuser) reste sur la même page.
+### ✉️ Invitation par email + 🔗 par lien WhatsApp (Phases 1–4) — deux canaux
+**Deux façons d'inviter, gérées sur la même page admin** « Invitations & demandes » (`/gestion-eau/demandes`, `EauDemandesPage`, sous garde admin). Le formulaire « Inviter » a un **sélecteur de canal (onglets Email / WhatsApp)**.
+
+**Canal EMAIL (par correspondance d'adresse Google) — Phases 1 & 2 :**
+- **Octroi automatique au 1er login (Phase 1)** : l'admin pré-enregistre une invitation (email Google + rôles cumulables admin/releveur/client + compteurs visibles si client). À la **première connexion Google** de la personne **avec cette adresse exacte**, la RPC `eau_claim_invitation()` attribue le(s) rôle(s) **sans validation manuelle** (et crée/active son compte client + compteurs si `role_client`), puis marque l'invitation `acceptee`. Idempotent.
+- **Formulaire (onglet Email)** : nom (optionnel), **email Google** (requis), **numéro WhatsApp** (requis), rôles **Administrateur / Releveur** (cumulables) + option **Client** → **multiselect compteurs**.
+- À la création, bouton **« Envoyer sur WhatsApp »** (+ **« Copier le message »**) : ouvre **wa.me** avec un **message FR** contenant le **lien profond** selon le rôle et l'**email exact**, en insistant sur l'usage de **CETTE adresse Google**. Numéro **normalisé** malgache (`0XXXXXXXXX` → `261XXXXXXXXX`).
+- **Liste « Invitations par email »** (en attente / acceptées ; révoquées masquées) : **Renvoyer le WhatsApp**, **Copier**, **Révoquer**. Ré-inviter le même email en attente **met à jour** l'invitation (pas de doublon).
+
+**Canal LIEN WhatsApp (par JETON, compte Google au choix) — Phases 1, 2 (vitrine), 4 (UI admin) :**
+- **Principe** : l'admin **n'a que le numéro** (pas l'email). On crée une invitation portant un **jeton unguessable** (`createWhatsappInvitation`, offline-first) et une **date d'expiration** (7/30/90 j ou illimité). Le **lien `https://1sakely.org/i/<token>`** (page vitrine publique, Phase 2) enrôle au 1er login via la RPC `eau_claim_invitation_by_token()` — **quel que soit le compte Google choisi** (aucune adresse imposée). Usage unique, idempotent même user, refus si jeton inconnu/expiré/déjà accepté.
+- **Formulaire (onglet WhatsApp)** : **numéro WhatsApp** (requis), nom (optionnel), rôles cumulables (Admin/Releveur/Client, **≥1 compteur si client**), **délai de validité** (7/30/90 j ou illimité).
+- À la création, **bandeau de confirmation** affichant le **lien `/i/<token>`** + **« Envoyer sur WhatsApp »** (wa.me, **message FR centré sur le lien** — c'est lui qui porte **l'aperçu image** côté WhatsApp), **« Copier le lien »**, **« Copier le message »**. Helpers purs `buildWhatsappInviteMessage` / `buildWhatsappInviteUrl`.
+- **Liste « Invitations par lien WhatsApp »** (filtre `invite_channel === 'whatsapp'`, tri En attente < Acceptée < Expirée) : icône de rôle, nom/numéro, badges, **statut** (En attente / Acceptée le… / **Expirée** si `expires_at < now`), **expiration affichée** ; actions **Renvoyer WhatsApp** (régénère le wa.me **avec le même jeton**), **Copier le lien**, **Révoquer** (si en attente, confirmation).
+- **Limite (aperçu image)** : l'aperçu visuel du lien dans WhatsApp dépend du **cache de scraping** de WhatsApp/Facebook ; il peut mettre quelques minutes à apparaître la 1ʳᵉ fois, ou rester un simple lien texte selon le client. Le lien reste fonctionnel dans tous les cas.
+
+- La **gestion des demandes d'accès reçues** (valider/refuser) reste sur la même page, inchangée.
 
 ### 🎯 Objectif
 Une copropriété distribue l'eau d'un **bassin (~280 m³)** vers villas, golf et espaces
