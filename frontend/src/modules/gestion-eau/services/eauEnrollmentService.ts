@@ -14,7 +14,15 @@ const PENDING_KEY = 'eau_pending_enrollment';
 
 export type PendingEnrollment =
   | { intent: 'code'; code: string }
-  | { intent: 'demande'; nom?: string | null };
+  | {
+      intent: 'demande';
+      nom?: string | null;
+      // Fiche d'accès enrichie (ÉVO 1) — capturés sur la vitrine publique.
+      email?: string | null;
+      phone?: string | null;
+      fonction?: string | null;
+      message?: string | null;
+    };
 
 export function setPendingEnrollment(p: PendingEnrollment): void {
   try {
@@ -70,6 +78,15 @@ export async function processPendingEnrollment(
   }
 
   // intent === 'demande'
-  await createDemande({ user_id: userId, email: email ?? null, nom: pending.nom ?? null });
+  // On conserve l'email réel du compte Google s'il est fourni en argument,
+  // sinon celui saisi dans la fiche d'accès publique.
+  await createDemande({
+    user_id: userId,
+    email: email ?? pending.email ?? null,
+    nom: pending.nom ?? null,
+    phone: pending.phone ?? null,
+    fonction: pending.fonction ?? null,
+    message: pending.message ?? null,
+  });
   return { kind: 'demande-ok' };
 }

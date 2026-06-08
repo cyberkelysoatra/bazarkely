@@ -87,6 +87,13 @@ export class GestionEauDB extends Dexie {
     this.version(4).stores({
       eau_invitations: 'id, email, statut, token',
     });
+
+    // v5 — Fiche d'accès enrichie (ÉVO 1) : `eau_demandes_acces` gagne phone/fonction/
+    // message (champs texte simples, NON indexés). Le schéma d'index reste inchangé →
+    // simple bump de version pour signaler la nouvelle forme ; Dexie conserve les données.
+    this.version(5).stores({
+      eau_demandes_acces: 'id, user_id, statut',
+    });
   }
 }
 

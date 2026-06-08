@@ -214,6 +214,10 @@ export interface DemandeAccesRow {
   user_id: string | null;
   email: string | null;
   nom: string | null;
+  /** Fiche d'accès enrichie (ÉVO 1) : champs capturés sur la vitrine publique. */
+  phone: string | null;
+  fonction: string | null;
+  message: string | null;
   statut: DemandeStatut;
   roles_attribues: unknown | null; // jsonb
   compteurs_visibles: unknown | null; // jsonb

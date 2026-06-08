@@ -85,6 +85,33 @@ export async function claimPendingTokenInvitation(online: boolean): Promise<stri
   }
 }
 
+/** État public d'un jeton d'invitation (vu par la vitrine `/i/<token>`, ÉVO 1). */
+export type InviteTokenState = 'valid' | 'used' | 'expired' | 'revoked' | 'unknown';
+
+/**
+ * État public d'un jeton d'invitation (appel RPC ANONYME `eau_invitation_token_state`).
+ * Aucune donnée nominative renvoyée — uniquement le libellé d'état. Par défaut `'unknown'`
+ * en cas d'erreur/hors-ligne, pour que la vitrine (ÉVO 2) montre la page marketing plutôt
+ * qu'une inscription trompeuse sur un lien peut-être mort.
+ */
+export async function getInvitationTokenState(token: string): Promise<InviteTokenState> {
+  if (!token) return 'unknown';
+  try {
+    const { data, error } = (await withTimeout(
+      (supabase.rpc as any)('eau_invitation_token_state', { p_token: token }),
+      6000,
+      'eau:token-state'
+    )) as any;
+    if (error || data == null) return 'unknown';
+    const s = String(Array.isArray(data) ? data[0] : data);
+    return (['valid', 'used', 'expired', 'revoked', 'unknown'] as const).includes(s as any)
+      ? (s as InviteTokenState)
+      : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 // ───────────────────────── Administration (Phase 2) ──────────────────────────
 // Créés ici pour être réutilisés par l'UI admin de la Phase 2. Offline-first sur le
 // modèle de eauDemandeService : la policy RLS `eau_is_admin()` autorise l'admin à

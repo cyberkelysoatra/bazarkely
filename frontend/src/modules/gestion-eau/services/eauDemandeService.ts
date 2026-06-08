@@ -15,6 +15,10 @@ export interface DemandeInput {
   user_id: string;
   email?: string | null;
   nom?: string | null;
+  /** Fiche d'accès enrichie (ÉVO 1) — capturés sur la vitrine publique. */
+  phone?: string | null;
+  fonction?: string | null;
+  message?: string | null;
 }
 
 /**
@@ -34,7 +38,13 @@ export async function createDemande(input: DemandeInput): Promise<DemandeAccesLo
   let serverId: string | null = null;
   try {
     const { data, error } = (await withTimeout(
-      (supabase.rpc as any)('eau_create_demande', { p_email: input.email ?? null, p_nom: input.nom ?? null }),
+      (supabase.rpc as any)('eau_create_demande', {
+        p_email: input.email ?? null,
+        p_nom: input.nom ?? null,
+        p_phone: input.phone ?? null,
+        p_fonction: input.fonction ?? null,
+        p_message: input.message ?? null,
+      }),
       8000,
       'eau:createDemande'
     )) as any;
@@ -48,6 +58,9 @@ export async function createDemande(input: DemandeInput): Promise<DemandeAccesLo
     user_id: input.user_id,
     email: input.email ?? null,
     nom: input.nom ?? null,
+    phone: input.phone ?? null,
+    fonction: input.fonction ?? null,
+    message: input.message ?? null,
     statut: 'en_attente',
     roles_attribues: null,
     compteurs_visibles: null,
