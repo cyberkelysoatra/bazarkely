@@ -234,7 +234,8 @@ export type InvitationStatut = 'en_attente' | 'acceptee' | 'revoquee';
 
 export interface InvitationRow {
   id: string;
-  email: string;
+  /** Nullable : une invitation WhatsApp par jeton n'a pas l'email d'avance. */
+  email: string | null;
   nom: string | null;
   phone: string | null;
   role_admin: boolean;
@@ -247,6 +248,12 @@ export interface InvitationRow {
   created_at: string | null;
   accepted_by: string | null;
   accepted_at: string | null;
+  /** Jeton unguessable d'enrôlement (canal WhatsApp). null pour le canal email. */
+  token: string | null;
+  /** Expiration du jeton (ISO). null = pas d'expiration. */
+  expires_at: string | null;
+  /** Canal d'invitation : 'email' (match sur l'adresse Google) ou 'whatsapp' (match sur le jeton). */
+  invite_channel: 'email' | 'whatsapp';
 }
 export type InvitationLocal = InvitationRow & LocalMeta;
 

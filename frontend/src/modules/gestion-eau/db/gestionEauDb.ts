@@ -81,6 +81,12 @@ export class GestionEauDB extends Dexie {
     this.version(3).stores({
       eau_invitations: 'id, email, statut',
     });
+
+    // v4 — Invitation vitrine WhatsApp par JETON : index `token` (match au login
+    // sur le jeton, pas l'email). Additif : Dexie reporte les stores inchangés.
+    this.version(4).stores({
+      eau_invitations: 'id, email, statut, token',
+    });
   }
 }
 

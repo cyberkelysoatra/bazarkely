@@ -43,6 +43,48 @@ export async function claimInvitationForCurrentUser(online: boolean): Promise<st
   }
 }
 
+/** Clé sessionStorage portant le jeton d'invitation capturé sur la vitrine `/i/<token>`. */
+export const PENDING_TOKEN_KEY = 'eau_pending_invitation_token';
+
+/**
+ * Octroi automatique « invitation vitrine WhatsApp par JETON » (Phase 1) : si un jeton
+ * a été capturé (vitrine `/i/<token>`) et déposé dans `sessionStorage`, appelle la RPC
+ * `eau_claim_invitation_by_token` pour attribuer les rôles (et créer/activer le compte
+ * client + compteurs si demandé). Au succès (id non null), retire le jeton du
+ * sessionStorage (usage unique). En hors-ligne ou échec, le jeton est CONSERVÉ pour
+ * réessayer au prochain login. Best-effort : ne JETTE jamais, n'écrit rien en local —
+ * le pull des rôles/comptes reflète l'octroi.
+ */
+export async function claimPendingTokenInvitation(online: boolean): Promise<string | null> {
+  let token: string | null = null;
+  try {
+    token = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(PENDING_TOKEN_KEY) : null;
+  } catch {
+    token = null;
+  }
+  if (!token || !online) return null;
+  try {
+    const { data, error } = (await withTimeout(
+      (supabase.rpc as any)('eau_claim_invitation_by_token', { p_token: token }),
+      8000,
+      'eau:claim-token'
+    )) as any;
+    if (error) return null;
+    const id = (data as string | null) ?? null;
+    if (id) {
+      try {
+        sessionStorage.removeItem(PENDING_TOKEN_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+    return id;
+  } catch {
+    // Réseau/timeout : jeton conservé, réessai au prochain login. Ne casse jamais le boot.
+    return null;
+  }
+}
+
 // ───────────────────────── Administration (Phase 2) ──────────────────────────
 // Créés ici pour être réutilisés par l'UI admin de la Phase 2. Offline-first sur le
 // modèle de eauDemandeService : la policy RLS `eau_is_admin()` autorise l'admin à
@@ -89,6 +131,89 @@ export async function createInvitation(input: InvitationInput): Promise<Invitati
     created_at: existing?.created_at ?? nowIso(),
     accepted_by: null,
     accepted_at: null,
+    // Canal email : octroi par correspondance d'adresse Google (pas de jeton).
+    token: existing?.token ?? null,
+    expires_at: existing?.expires_at ?? null,
+    invite_channel: 'email',
+  };
+  return saveLocal('eau_invitations', record);
+}
+
+// ───────────────────── Invitation vitrine WhatsApp (JETON) — Phase 1 ─────────────────────
+
+/**
+ * Génère un jeton d'enrôlement aléatoire, unguessable et URL-safe (base64url de 16
+ * octets aléatoires → 22 caractères, ~128 bits d'entropie). Ce n'est PAS l'id de la
+ * ligne : le jeton seul circule (lien `/i/<token>`) sans révéler l'identifiant interne.
+ */
+export function generateInviteToken(): string {
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  // base64url sans padding
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** URL de la vitrine d'invitation : prod `https://1sakely.org/i/<token>` ; en dev, l'origine courante. */
+export function buildInviteUrl(token: string): string {
+  const base =
+    (import.meta as any)?.env?.DEV && typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : INVITATION_BASE_URL;
+  return `${base}/i/${token}`;
+}
+
+export interface WhatsappInvitationInput {
+  /** Numéro WhatsApp (requis) — normalisé en 261XXXXXXXXX. */
+  phone: string;
+  nom?: string | null;
+  role_admin?: boolean;
+  role_releveur?: boolean;
+  role_client?: boolean;
+  compteur_ids?: string[];
+  /** Délai d'expiration en jours (ex. 7 / 30 / 90) ; null/0 = pas d'expiration. */
+  expiresInDays?: number | null;
+  invited_by?: string | null;
+}
+
+/**
+ * Crée une invitation par JETON (canal WhatsApp) : pas d'email d'avance, l'octroi se
+ * fait au 1er login sur correspondance du jeton (et non de l'adresse Google). Offline-first
+ * (`saveLocal` + push best-effort). Renvoie l'InvitationLocal (avec son `token`).
+ */
+export async function createWhatsappInvitation(input: WhatsappInvitationInput): Promise<InvitationLocal> {
+  const phone = normalizeWhatsappNumber(input.phone);
+  const roles = {
+    role_admin: input.role_admin ?? false,
+    role_releveur: input.role_releveur ?? false,
+    role_client: input.role_client ?? false,
+  };
+  const days = input.expiresInDays ?? null;
+  const expires_at =
+    days && days > 0 ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString() : null;
+  const record: InvitationLocal = {
+    id: newId(),
+    email: null,
+    nom: input.nom ?? null,
+    phone,
+    role_admin: roles.role_admin,
+    role_releveur: roles.role_releveur,
+    role_client: roles.role_client,
+    compteur_ids: input.compteur_ids ?? [],
+    cible: invitationTargetPath(roles),
+    statut: 'en_attente',
+    invited_by: input.invited_by ?? null,
+    created_at: nowIso(),
+    accepted_by: null,
+    accepted_at: null,
+    token: generateInviteToken(),
+    expires_at,
+    invite_channel: 'whatsapp',
   };
   return saveLocal('eau_invitations', record);
 }
@@ -172,14 +297,14 @@ export function invitationDeepLink(inv: { cible?: string | null } & RoleFlags): 
  * (sinon l'octroi automatique ne matchera pas l'email).
  */
 export function buildInvitationMessage(
-  inv: { nom?: string | null; email: string; cible?: string | null } & RoleFlags
+  inv: { nom?: string | null; email: string | null; cible?: string | null } & RoleFlags
 ): string {
   const link = invitationDeepLink(inv);
   const greeting = inv.nom && inv.nom.trim() ? `Bonjour ${inv.nom.trim()},` : 'Bonjour,';
   return [
     `${greeting} vous êtes invité(e) comme ${invitationRoleLabel(inv)} sur l'application Gestion Eau AHUVI (BazarKELY).`,
     `1) Ouvrez ce lien : ${link}`,
-    `2) Connectez-vous avec CE compte Google : ${inv.email}`,
+    `2) Connectez-vous avec CE compte Google : ${inv.email ?? ''}`,
     `⚠️ Important : connectez-vous bien avec CETTE adresse Google, sinon votre accès ne pourra pas s'activer.`,
     `Votre accès s'activera automatiquement. C'est gratuit et l'app fonctionne même hors connexion.`,
   ].join('\n');
@@ -187,7 +312,7 @@ export function buildInvitationMessage(
 
 /** Lien wa.me complet (numéro normalisé + message encodé) prêt à ouvrir. */
 export function buildWhatsappUrl(
-  inv: { nom?: string | null; email: string; phone?: string | null; cible?: string | null } & RoleFlags
+  inv: { nom?: string | null; email: string | null; phone?: string | null; cible?: string | null } & RoleFlags
 ): string {
   const digits = normalizeWhatsappNumber(inv.phone);
   const message = buildInvitationMessage(inv);
