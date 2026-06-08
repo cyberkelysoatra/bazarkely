@@ -92,7 +92,12 @@ function VitrinePhoto({
   return (
     <figure className="rounded-2xl overflow-hidden border border-ahuvi-100 bg-white shadow-soft">
       <div className="relative aspect-[16/10] bg-gradient-to-br from-ahuvi-100 to-ahuvi-50 flex items-center justify-center">
-        {!failed ? (
+        {/* Couche de base : icône TOUJOURS présente — visible tant que la photo n'a pas
+            recouvert le bloc (absente, en attente, ou onError). En prod, un chemin de photo
+            absent renvoie le fallback SPA (200/HTML) qui ne déclenche pas toujours onError :
+            l'icône en fond garantit une dégradation propre dans tous les cas. */}
+        <Icon className="w-12 h-12 text-ahuvi-forest/40" aria-hidden="true" />
+        {!failed && (
           <img
             src={src}
             alt={caption}
@@ -100,8 +105,6 @@ function VitrinePhoto({
             onError={() => setFailed(true)}
             className="absolute inset-0 w-full h-full object-cover"
           />
-        ) : (
-          <Icon className="w-12 h-12 text-ahuvi-forest/40" aria-hidden="true" />
         )}
       </div>
       <figcaption className="px-4 py-2.5 text-xs text-gray-500 text-center">{caption}</figcaption>
