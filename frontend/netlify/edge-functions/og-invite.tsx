@@ -138,6 +138,7 @@ export default async (_request: Request, _context: Context): Promise<Response> =
                 key: 'pill',
                 style: {
                   display: 'flex',
+                  alignSelf: 'flex-start',
                   marginTop: '30px',
                   paddingTop: '12px',
                   paddingBottom: '12px',
