@@ -51,8 +51,8 @@ import {
   BellRing,
   UserPlus,
   Flag,
-  Sun,
-  Anchor,
+  Home,
+  Waves,
 } from 'lucide-react';
 
 /** Deep-link de retour OAuth : page publique robuste au boot à froid (pas de garde de rôle). */
@@ -342,11 +342,11 @@ export default function EauVitrinePage() {
             </p>
           </section>
 
-          {/* Photo 2 — solaire */}
+          {/* Photo 2 — Résidences */}
           <VitrinePhoto
-            src="/gestion-eau/vitrine/ahuvi-solaire.jpg"
-            caption="La centrale solaire est en service."
-            icon={Sun}
+            src="/gestion-eau/vitrine/ahuvi-residences.jpg"
+            caption="Les Résidences, pensées pour durer."
+            icon={Home}
           />
 
           {/* Bloc « Une eau suivie, un domaine serein » */}
@@ -396,11 +396,11 @@ export default function EauVitrinePage() {
             </ul>
           </section>
 
-          {/* Photo 3 — ponton */}
+          {/* Photo 3 — villas / piscine */}
           <VitrinePhoto
-            src="/gestion-eau/vitrine/ahuvi-ponton.jpg"
-            caption="Le ponton, porte d’entrée du domaine."
-            icon={Anchor}
+            src="/gestion-eau/vitrine/ahuvi-villa-piscine.jpg"
+            caption="Les villas du domaine prennent vie."
+            icon={Waves}
           />
 
           {/* Fiche de demande d'accès */}
