@@ -93,7 +93,7 @@ export default async (_request: Request, _context: Context): Promise<Response> =
 
     // En-tête : goutte (carré arrondi pivoté) + marque.
     const header = h(
-      { display: 'flex', alignItems: 'center' },
+      { display: 'flex', alignItems: 'center', justifyContent: 'center' },
       [
         React.createElement('div', {
           key: 'drop',
@@ -117,11 +117,18 @@ export default async (_request: Request, _context: Context): Promise<Response> =
     // Bloc central : chiffres OU slogan générique.
     const center = hasNumbers
       ? h(
-          { display: 'flex', flexDirection: 'column', justifyContent: 'center', flexGrow: 1 },
+          {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center',
+            flexGrow: 1,
+          },
           [
             React.createElement(
               'div',
-              { key: 'pct', style: { fontSize: '210px', fontWeight: 800, lineHeight: 1 } },
+              { key: 'pct', style: { fontSize: '190px', fontWeight: 800, lineHeight: 1 } },
               `${pct} %`
             ),
             React.createElement(
@@ -138,7 +145,7 @@ export default async (_request: Request, _context: Context): Promise<Response> =
                 key: 'pill',
                 style: {
                   display: 'flex',
-                  alignSelf: 'flex-start',
+                  alignSelf: 'center',
                   marginTop: '30px',
                   paddingTop: '12px',
                   paddingBottom: '12px',
@@ -155,13 +162,20 @@ export default async (_request: Request, _context: Context): Promise<Response> =
           ]
         )
       : h(
-          { display: 'flex', flexDirection: 'column', justifyContent: 'center', flexGrow: 1 },
+          {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center',
+            flexGrow: 1,
+          },
           [
             React.createElement(
               'div',
               {
                 key: 'slogan',
-                style: { fontSize: '78px', fontWeight: 800, lineHeight: 1.12, maxWidth: '960px' },
+                style: { fontSize: '78px', fontWeight: 800, lineHeight: 1.12, maxWidth: '620px' },
               },
               "Suivez l'eau de votre quartier, simplement."
             ),
@@ -170,7 +184,16 @@ export default async (_request: Request, _context: Context): Promise<Response> =
 
     const footer = React.createElement(
       'div',
-      { style: { display: 'flex', fontSize: '34px', fontWeight: 600 } },
+      {
+        style: {
+          display: 'flex',
+          justifyContent: 'center',
+          textAlign: 'center',
+          maxWidth: '620px',
+          fontSize: '34px',
+          fontWeight: 600,
+        },
+      },
       "Rejoignez le suivi de l'eau de votre quartier"
     );
 
@@ -183,6 +206,8 @@ export default async (_request: Request, _context: Context): Promise<Response> =
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          alignItems: 'center',
+          textAlign: 'center',
           paddingTop: '70px',
           paddingBottom: '70px',
           paddingLeft: '80px',
@@ -193,9 +218,21 @@ export default async (_request: Request, _context: Context): Promise<Response> =
         },
       },
       [
-        React.createElement('div', { key: 'h', style: { display: 'flex' } }, header),
-        React.createElement('div', { key: 'c', style: { display: 'flex', flexGrow: 1 } }, center),
-        React.createElement('div', { key: 'f', style: { display: 'flex' } }, footer),
+        React.createElement(
+          'div',
+          { key: 'h', style: { display: 'flex', justifyContent: 'center' } },
+          header
+        ),
+        React.createElement(
+          'div',
+          { key: 'c', style: { display: 'flex', justifyContent: 'center', flexGrow: 1 } },
+          center
+        ),
+        React.createElement(
+          'div',
+          { key: 'f', style: { display: 'flex', justifyContent: 'center' } },
+          footer
+        ),
       ]
     );
 

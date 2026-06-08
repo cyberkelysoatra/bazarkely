@@ -101,7 +101,10 @@ export default async (request: Request, context: Context): Promise<Response> => 
       )}). Suivez l'eau de votre quartier, simplement — gratuit et même sans connexion. Touchez pour rejoindre.`
     : GENERIC_DESC;
 
-  const imageUrl = `${origin}/og-invite.png`;
+  // `?v=N` : cache-buster pour forcer WhatsApp/Facebook à re-télécharger l'image après
+  // un changement de composition (même endpoint, le `?v=` est ignoré côté edge). Incrémenter
+  // à chaque refonte visuelle de /og-invite.png. v2 = composition recentrée (anti-rognage carré).
+  const imageUrl = `${origin}/og-invite.png?v=2`;
   const pageUrl = request.url;
 
   // 3) Balises sociales (titre/description figés ; jeton jamais exposé hors og:url).
