@@ -187,6 +187,12 @@ export interface RoleRow {
   user_id: string;
   admin: boolean;
   releveur: boolean;
+  /**
+   * Promoteur (Phase 2) : lecture TOTALE de tous les écrans (métier + admin) en
+   * lecture seule + réglage des seuils d'alerte via RPC. N'écrit rien d'autre
+   * (la RLS Phase 1 est le filet serveur). Cumulable, colonne `eau_roles.promoteur`.
+   */
+  promoteur: boolean;
   updated_at: string | null;
 }
 export type RoleLocal = RoleRow & LocalMeta;
@@ -329,10 +335,12 @@ export type AnnonceLocal = AnnonceRow & LocalMeta;
  * Rôles cumulables du module. `client` est dérivé (un compte client lié au user)
  * et reste inexploité en phase 1. `admin`/`releveur` proviennent de eau_roles.
  */
-export type EauRole = 'admin' | 'releveur' | 'client';
+export type EauRole = 'admin' | 'releveur' | 'client' | 'promoteur';
 
 export interface EauRoles {
   admin: boolean;
   releveur: boolean;
   client: boolean;
+  /** Promoteur (Phase 2) : lecture totale + seuils d'alerte ; aucune autre écriture. */
+  promoteur: boolean;
 }

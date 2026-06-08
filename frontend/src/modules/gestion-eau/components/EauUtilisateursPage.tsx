@@ -3,14 +3,16 @@
  *  - créer un compte client (nom, contact, compteurs visibles) → code d'enrôlement */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { UserPlus, Users, Shield, ClipboardList, Save, Copy, BadgeCheck, Clock, KeyRound, Gauge } from 'lucide-react';
+import { UserPlus, Users, Shield, ClipboardList, Save, Copy, BadgeCheck, Clock, KeyRound, Gauge, Eye } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
 import { listRoles, setRoles, fetchUserDirectory, type UserInfo } from '../services/eauRoleService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { listComptesClient, createCompteClient } from '../services/eauCompteClientService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
+import { useGestionEau } from '../context';
 import { showConfirm } from '../../../utils/dialogUtils';
 import type { RoleLocal, CompteurLocal, CompteClientLocal } from '../types/gestionEau';
 
@@ -30,6 +32,7 @@ export default function EauUtilisateursPage() {
   const [newCode, setNewCode] = useState<string | null>(null);
 
   const me = getCurrentUserIdSync();
+  const { isReadOnly } = useGestionEau();
 
   const reload = useCallback(async () => {
     const r = await listRoles();
@@ -54,13 +57,15 @@ export default function EauUtilisateursPage() {
     return `${userId.slice(0, 8)}…`;
   };
 
-  const toggleRole = async (r: RoleLocal, key: 'admin' | 'releveur', value: boolean) => {
+  const toggleRole = async (r: RoleLocal, key: 'admin' | 'releveur' | 'promoteur', value: boolean) => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (key === 'admin' && !value && r.user_id === me) {
       if (!(await showConfirm('Retirer VOTRE propre rôle administrateur ? Vous perdrez l’accès admin.', 'Rôles', { variant: 'danger', confirmText: 'Retirer' }))) return;
     }
     await setRoles(r.user_id, {
       admin: key === 'admin' ? value : r.admin,
       releveur: key === 'releveur' ? value : r.releveur,
+      promoteur: key === 'promoteur' ? value : (r.promoteur ?? false),
     });
     await reload();
     toast.success('Rôles mis à jour');
@@ -76,6 +81,7 @@ export default function EauUtilisateursPage() {
   };
 
   const submitClient = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!nom.trim()) {
       toast.error('Le nom est requis');
       return;
@@ -105,13 +111,17 @@ export default function EauUtilisateursPage() {
       subtitle="Rôles & comptes clients (admin)"
       aide={AIDE.utilisateurs}
       actions={
-        <EauIconButton
-          icon={UserPlus}
-          variant="primary"
-          onClick={() => { setShowForm((v) => !v); setNewCode(null); }}
-        >
-          Compte client
-        </EauIconButton>
+        isReadOnly ? (
+          <EauReadOnlyBadge />
+        ) : (
+          <EauIconButton
+            icon={UserPlus}
+            variant="primary"
+            onClick={() => { setShowForm((v) => !v); setNewCode(null); }}
+          >
+            Compte client
+          </EauIconButton>
+        )
       }
     >
       {loading ? (
@@ -193,24 +203,33 @@ export default function EauUtilisateursPage() {
               <div className="space-y-1">
                 {roles.map((r) => (
                   <div key={r.user_id} className="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-start gap-2.5">
-                    <EauListIcon icon={r.admin ? Shield : r.releveur ? ClipboardList : Users} tone={r.admin ? 'gold' : r.releveur ? 'olive' : 'neutral'} />
+                    <EauListIcon
+                      icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : Users}
+                      tone={r.admin ? 'gold' : r.releveur ? 'olive' : r.promoteur ? 'teal' : 'neutral'}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 text-sm truncate">
                         {labelFor(r.user_id)}
                         {r.user_id === me && <span className="ml-2 text-xs text-ahuvi-olive">(vous)</span>}
                       </div>
-                      <div className="flex gap-4 mt-1 text-sm">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm">
                         <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={r.admin}
+                          <input type="checkbox" checked={r.admin} disabled={isReadOnly}
                             onChange={(e) => toggleRole(r, 'admin', e.target.checked)}
-                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
+                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500 disabled:opacity-50" />
                           <span className="text-gray-700">Administrateur</span>
                         </label>
                         <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={r.releveur}
+                          <input type="checkbox" checked={r.releveur} disabled={isReadOnly}
                             onChange={(e) => toggleRole(r, 'releveur', e.target.checked)}
-                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
+                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500 disabled:opacity-50" />
                           <span className="text-gray-700">Releveur</span>
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                          <input type="checkbox" checked={r.promoteur ?? false} disabled={isReadOnly}
+                            onChange={(e) => toggleRole(r, 'promoteur', e.target.checked)}
+                            className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500 disabled:opacity-50" />
+                          <span className="text-gray-700">Promoteur</span>
                         </label>
                       </div>
                     </div>

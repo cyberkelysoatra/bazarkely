@@ -406,23 +406,24 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 - **admin** : tout (config, facturation, CRUD compteurs, comptes/rôles, demandes, saisies, anomalies, tableau de bord)
 - **releveur** : saisies bassin + compteur, anomalies, tableau de bord
 - **client** : tableau de bord + **espace client** (ma conso + mes factures de mes seuls compteurs assignés). Rôle dérivé d'un `eau_comptes_client` lié au `user_id`.
+- **promoteur** *(Phase 2 frontend, v3.44.0)* : **lecture TOTALE** de tous les écrans métier ET admin (dont **toutes les factures**), mais **aucune écriture** — la seule exception est le **réglage des seuils d'alerte** dans la Configuration (via la RPC `eau_set_alert_thresholds`). Colonne `eau_roles.promoteur` (attribuée par l'admin dans *Utilisateurs & rôles*). Côté UI, le contexte expose `isReadOnly = promoteur && !admin && !releveur` (un admin/releveur cumulant promoteur **garde** l'écriture) : chaque écran masque/désactive ses contrôles d'écriture, garde ses handlers (`if (isReadOnly) return;`) et affiche un repère « Lecture seule (promoteur) ». Filet serveur = RLS Phase 1 (lecture-all + RPC seuils, voir `RAPPORT-PROMOTEUR-1-rls.md`).
 - **Premier admin = propriétaire** : le tout premier utilisateur qui ouvre le module
   (quand `eau_roles` ne contient aucun admin) devient automatiquement admin.
 - L'accès au module = posséder au moins un rôle. Sinon redirection vers `/dashboard`.
 - La navigation est **filtrée par rôle** (un releveur ne voit pas Compteurs/Facturation/Config ; un client ne voit que son espace).
 
 ### 🔐 Matrice d'accès (appliquée à 3 niveaux : gardes de route + filtrage de nav + scoping des données)
-| Écran / route | Admin | Releveur | Client |
-|---|:---:|:---:|:---:|
-| `/gestion-eau/accueil`, `/gestion-eau/scan` | public | public | public |
-| `/gestion-eau` Tableau de bord | ✅ | ✅ | ❌ (→ son espace) |
-| `/gestion-eau/releves` (Bassin/Compteur/Tournée/Scan) | ✅ | ✅ | ❌ |
-| `/gestion-eau/suivi` (Anomalies/Bilans · Tendances) | ✅ | ✅ | ❌ |
-| `/gestion-eau/compteurs` (Liste CRUD+QR · Carte) | ✅ | ❌ | ❌ |
-| `/gestion-eau/facturation` (Factures · Rapports) | ✅ | ❌ | ❌ |
-| `/gestion-eau/config`, `/utilisateurs`, `/demandes` | ✅ | ❌ | ❌ |
-| `/gestion-eau/alertes`, `/annonces`, `/audit` (Phase 3-4) | ✅ | ❌ | ❌ |
-| `/gestion-eau/client` (Ma conso · Mes factures · QR) — **SES compteurs** | ✅ (supervision) | ❌ | ✅ |
+| Écran / route | Admin | Releveur | Client | Promoteur |
+|---|:---:|:---:|:---:|:---:|
+| `/gestion-eau/accueil`, `/gestion-eau/scan` | public | public | public | public |
+| `/gestion-eau` Tableau de bord | ✅ | ✅ | ❌ (→ son espace) | 👁️ lecture |
+| `/gestion-eau/releves` (Bassin/Compteur/Tournée/Scan) | ✅ | ✅ | ❌ | 👁️ lecture |
+| `/gestion-eau/suivi` (Anomalies/Bilans · Tendances) | ✅ | ✅ | ❌ | 👁️ lecture |
+| `/gestion-eau/compteurs` (Liste CRUD+QR · Carte) | ✅ | ❌ | ❌ | 👁️ lecture |
+| `/gestion-eau/facturation` (Factures · Rapports) | ✅ | ❌ | ❌ | 👁️ lecture (toutes factures) |
+| `/gestion-eau/config`, `/utilisateurs`, `/demandes` | ✅ | ❌ | ❌ | 👁️ lecture (+ seuils d'alerte éditables en Config) |
+| `/gestion-eau/alertes`, `/annonces`, `/audit` (Phase 3-4) | ✅ | ❌ | ❌ | 👁️ lecture |
+| `/gestion-eau/client` (Ma conso · Mes factures · QR) — **SES compteurs** | ✅ (supervision) | ❌ | ✅ | ❌ |
 
 - **Cumul de rôles** = **union** des accès. **Garde** : `EauRoleProtectedRoute allowedRoles={…}` sur chaque route ;
   un accès URL direct non autorisé **redirige vers l'écran d'accueil du rôle** (client → `/gestion-eau/client`, sinon `/gestion-eau`), sans boucle.

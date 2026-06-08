@@ -36,23 +36,25 @@ interface MenuLink {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles: Array<'admin' | 'releveur' | 'client'>;
+  roles: Array<'admin' | 'releveur' | 'client' | 'promoteur'>;
   /** Clé de badge dynamique (ex. alertes non lues). */
   badge?: 'alertes';
 }
 
 // Écrans secondaires fonctionnels, filtrés par rôle (cumulable).
+// Le promoteur (Phase 2) voit toutes les entrées admin EN LECTURE SEULE (la garde
+// d'écran masque ensuite les contrôles d'écriture) → on l'ajoute aux mêmes entrées.
 const SECONDARY_LINKS: MenuLink[] = [
   // Pilotage (Phase 4)
-  { label: 'Tendances', path: '/gestion-eau/tendances', icon: TrendingUp, roles: ['admin', 'releveur'] },
-  { label: 'Alertes', path: '/gestion-eau/alertes', icon: Bell, roles: ['admin'], badge: 'alertes' },
-  { label: 'Rapports', path: '/gestion-eau/rapports', icon: FileText, roles: ['admin'] },
-  { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin'] },
-  { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin'] },
+  { label: 'Tendances', path: '/gestion-eau/tendances', icon: TrendingUp, roles: ['admin', 'releveur', 'promoteur'] },
+  { label: 'Alertes', path: '/gestion-eau/alertes', icon: Bell, roles: ['admin', 'promoteur'], badge: 'alertes' },
+  { label: 'Rapports', path: '/gestion-eau/rapports', icon: FileText, roles: ['admin', 'promoteur'] },
+  { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin', 'promoteur'] },
+  { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin', 'promoteur'] },
   // Paramétrage
-  { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin'] },
-  { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin'] },
-  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin'] },
+  { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin', 'promoteur'] },
+  { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin', 'promoteur'] },
+  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'] },
   // Client : sa fiche / son QR (rattaché à l'espace client).
   { label: 'Ma fiche / Mon QR', path: '/gestion-eau/client', icon: IdCard, roles: ['client'] },
 ];
@@ -81,7 +83,7 @@ export default function HeaderEauActions() {
     (async () => {
       try {
         const [u, d] = await Promise.all([
-          roles?.admin ? countUnread() : Promise.resolve(0),
+          roles?.admin || roles?.promoteur ? countUnread() : Promise.resolve(0),
           countDirty(),
         ]);
         if (alive) {
@@ -95,9 +97,9 @@ export default function HeaderEauActions() {
     return () => {
       alive = false;
     };
-  }, [open, roles?.admin]);
+  }, [open, roles?.admin, roles?.promoteur]);
 
-  const has = (r: Array<'admin' | 'releveur' | 'client'>) => r.some((x) => roles?.[x]);
+  const has = (r: Array<'admin' | 'releveur' | 'client' | 'promoteur'>) => r.some((x) => roles?.[x]);
   const links = SECONDARY_LINKS.filter((l) => has(l.roles));
 
   const go = (path: string) => {

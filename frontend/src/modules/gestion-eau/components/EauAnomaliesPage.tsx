@@ -7,12 +7,15 @@ import toast from 'react-hot-toast';
 import { AlertTriangle, BadgeCheck, ScrollText } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauListIcon, EauEmptyState, EauIconButton } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context';
 import { AIDE } from './eauAideTextes';
 import { listBilans, markBilanTraitee, refreshBilans } from '../services/eauBilanService';
 import { fmtM3, fmtPct, fmtDate } from '../utils/format';
 import type { BilanLocal } from '../types/gestionEau';
 
 export default function EauAnomaliesPage() {
+  const { isReadOnly } = useGestionEau();
   const [bilans, setBilans] = useState<BilanLocal[]>([]);
   const [anomaliesOnly, setAnomaliesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,6 +39,7 @@ export default function EauAnomaliesPage() {
   }, [anomaliesOnly]);
 
   const traiter = async (b: BilanLocal) => {
+    if (isReadOnly) return;
     const commentaire = window.prompt('Commentaire de traitement (optionnel) :', b.commentaire ?? '') ?? '';
     await markBilanTraitee(b.id, commentaire);
     await reload();
@@ -44,6 +48,7 @@ export default function EauAnomaliesPage() {
 
   return (
     <EauPageShell title="Anomalies" subtitle="Historique des bilans" aide={AIDE.anomalies}>
+      {isReadOnly && <EauReadOnlyBadge className="mb-3" />}
       <label className="flex items-center gap-2 text-sm mb-3">
         <input
           type="checkbox"
@@ -100,7 +105,7 @@ export default function EauAnomaliesPage() {
                 ) : (
                   <span className="text-xs text-gray-400">Non traitée</span>
                 )}
-                {!b.traitee && (
+                {!isReadOnly && !b.traitee && (
                   <EauIconButton icon={BadgeCheck} variant="secondary" onClick={() => traiter(b)}>
                     Marquer traitée
                   </EauIconButton>

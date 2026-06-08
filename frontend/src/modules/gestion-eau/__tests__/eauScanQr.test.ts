@@ -9,10 +9,10 @@ import { decideOutcome } from '../services/eauScanService';
 import { boundsFromCenter, countZoneTiles } from '../components/map/offlineTiles';
 import type { EauRoles } from '../types/gestionEau';
 
-const ADMIN: EauRoles = { admin: true, releveur: false, client: false };
-const RELEVEUR: EauRoles = { admin: false, releveur: true, client: false };
-const CLIENT: EauRoles = { admin: false, releveur: false, client: true };
-const NONE: EauRoles = { admin: false, releveur: false, client: false };
+const ADMIN: EauRoles = { admin: true, releveur: false, client: false, promoteur: false };
+const RELEVEUR: EauRoles = { admin: false, releveur: true, client: false, promoteur: false };
+const CLIENT: EauRoles = { admin: false, releveur: false, client: true, promoteur: false };
+const NONE: EauRoles = { admin: false, releveur: false, client: false, promoteur: false };
 
 describe('scanUrl — encodage / décodage des liens QR', () => {
   it('encode un QR compteur (t=c) et le re-décode à l’identique', () => {

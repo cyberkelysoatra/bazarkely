@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauListIcon } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { useGestionEau } from '../context/GestionEauContext';
@@ -77,7 +78,7 @@ function isoToLocalInput(iso: string): string {
 
 export default function EauSaisieBassinPage() {
   const navigate = useNavigate();
-  const { roles } = useGestionEau();
+  const { roles, isReadOnly } = useGestionEau();
   const isOnline = useAppStore((s) => s.isOnline);
   const [searchParams] = useSearchParams();
   const btParam = searchParams.get('bt');
@@ -182,6 +183,7 @@ export default function EauSaisieBassinPage() {
     flotteurCm != null && debitFinCm.trim() !== '' && Number(debitFinCm) > flotteurCm;
 
   const submitDebit = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (surface == null) {
       toast.error('Configurez les dimensions du bassin d\'abord');
       return;
@@ -216,6 +218,7 @@ export default function EauSaisieBassinPage() {
   };
 
   const submitEntree = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     const v = Number(entreeM3);
     if (!Number.isFinite(v) || v <= 0) {
       toast.error('Volume invalide');
@@ -243,6 +246,7 @@ export default function EauSaisieBassinPage() {
   };
 
   const submitNiveau = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!dim) {
       toast.error('Configurez le bassin d\'abord');
       return;
@@ -288,6 +292,7 @@ export default function EauSaisieBassinPage() {
 
   // ── Actions admin sur un relevé ──
   const saveEdit = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!editing) return;
     const h = Number(editing.hauteur);
     if (!Number.isFinite(h) || h < 0) {
@@ -316,6 +321,7 @@ export default function EauSaisieBassinPage() {
   };
 
   const removeReleve = async (r: ReleveBassinLocal) => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     const ok = await showConfirm(
       `Supprimer ce relevé du ${fmtDate(r.timestamp)} (${r.hauteur_cm} cm) ? Les bilans seront recalculés.`,
       'Relevés',
@@ -336,6 +342,7 @@ export default function EauSaisieBassinPage() {
   };
 
   const recomputeAll = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     const ok = await showConfirm(
       'Recalculer TOUS les bilans depuis le début ? Utile pour générer les bilans des relevés importés. Les bilans déjà « traités » repasseront en « non traité ».',
       'Bilans',
@@ -356,7 +363,11 @@ export default function EauSaisieBassinPage() {
   };
 
   return (
-    <EauPageShell title="Saisie bassin" subtitle="Entrées d'eau et relevé de niveau">
+    <EauPageShell
+      title="Saisie bassin"
+      subtitle="Entrées d'eau et relevé de niveau"
+      actions={isReadOnly ? <EauReadOnlyBadge /> : undefined}
+    >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
@@ -409,7 +420,8 @@ export default function EauSaisieBassinPage() {
                   step="0.1"
                   value={entreeM3}
                   onChange={(e) => setEntreeM3(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  disabled={isReadOnly}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400"
                   placeholder="ex : 50"
                 />
               </label>
@@ -419,7 +431,8 @@ export default function EauSaisieBassinPage() {
                   type="text"
                   value={entreeNote}
                   onChange={(e) => setEntreeNote(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  disabled={isReadOnly}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400"
                 />
               </label>
               <label className="text-sm block">
@@ -430,19 +443,22 @@ export default function EauSaisieBassinPage() {
                   type="datetime-local"
                   value={entreeDateTime}
                   onChange={(e) => setEntreeDateTime(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  disabled={isReadOnly}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400"
                 />
                 <span className="block text-xs text-gray-500 mt-1">
                   Laisser vide = date et heure d'aujourd'hui. Renseigner pour saisir une entrée passée.
                 </span>
               </label>
-              <button
-                onClick={submitEntree}
-                disabled={busy}
-                className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
-              >
-                <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'entrée
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={submitEntree}
+                  disabled={busy}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                >
+                  <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'entrée
+                </button>
+              )}
             </div>
           )}
 
@@ -468,7 +484,7 @@ export default function EauSaisieBassinPage() {
                   step="0.1"
                   value={hauteurCm}
                   onChange={(e) => setHauteurCm(e.target.value)}
-                  disabled={!dim}
+                  disabled={!dim || isReadOnly}
                   className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                   placeholder="ex : 180"
                 />
@@ -484,7 +500,7 @@ export default function EauSaisieBassinPage() {
                   type="text"
                   value={niveauNote}
                   onChange={(e) => setNiveauNote(e.target.value)}
-                  disabled={!dim}
+                  disabled={!dim || isReadOnly}
                   className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                 />
               </label>
@@ -496,20 +512,22 @@ export default function EauSaisieBassinPage() {
                   type="datetime-local"
                   value={niveauDateTime}
                   onChange={(e) => setNiveauDateTime(e.target.value)}
-                  disabled={!dim}
+                  disabled={!dim || isReadOnly}
                   className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                 />
                 <span className="block text-xs text-gray-500 mt-1">
                   Laisser vide = date et heure d'aujourd'hui. Renseigner pour saisir un relevé passé.
                 </span>
               </label>
-              <button
-                onClick={submitNiveau}
-                disabled={busy || !dim}
-                className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
-              >
-                <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé (déclenche un bilan)
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={submitNiveau}
+                  disabled={busy || !dim}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                >
+                  <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé (déclenche un bilan)
+                </button>
+              )}
 
               {/* Courbe du niveau du bassin (volume mesuré) sur la période. */}
               <div className="pt-2 border-t border-gray-100">
@@ -671,7 +689,7 @@ export default function EauSaisieBassinPage() {
                       type="number" inputMode="decimal" step="0.1"
                       value={debitDebutCm}
                       onChange={(e) => setDebitDebutCm(e.target.value)}
-                      disabled={surface == null}
+                      disabled={surface == null || isReadOnly}
                       className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 150"
                     />
@@ -682,7 +700,7 @@ export default function EauSaisieBassinPage() {
                       type="number" inputMode="decimal" step="0.1"
                       value={debitFinCm}
                       onChange={(e) => setDebitFinCm(e.target.value)}
-                      disabled={surface == null}
+                      disabled={surface == null || isReadOnly}
                       className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 160"
                     />
@@ -693,7 +711,7 @@ export default function EauSaisieBassinPage() {
                       type="number" inputMode="decimal" step="1"
                       value={debitDureeMin}
                       onChange={(e) => setDebitDureeMin(e.target.value)}
-                      disabled={surface == null}
+                      disabled={surface == null || isReadOnly}
                       className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                       placeholder="ex : 60"
                     />
@@ -721,17 +739,19 @@ export default function EauSaisieBassinPage() {
                     type="text"
                     value={debitNote}
                     onChange={(e) => setDebitNote(e.target.value)}
-                    disabled={surface == null}
+                    disabled={surface == null || isReadOnly}
                     className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
                   />
                 </label>
-                <button
-                  onClick={submitDebit}
-                  disabled={busy || surface == null || !(debitPreview?.valid)}
-                  className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
-                >
-                  <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le test de débit
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={submitDebit}
+                    disabled={busy || surface == null || !(debitPreview?.valid)}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                  >
+                    <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le test de débit
+                  </button>
+                )}
               </div>
 
               {/* Historique des tests — débit courant (le plus récent) mis en évidence. */}

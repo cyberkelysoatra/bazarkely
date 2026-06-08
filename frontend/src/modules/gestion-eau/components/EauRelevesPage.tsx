@@ -16,6 +16,8 @@ import EauSaisieBassinPage from './EauSaisieBassinPage';
 import EauSaisieCompteurPage from './EauSaisieCompteurPage';
 import EauTourneePage from './EauTourneePage';
 import EauQrScanner from './EauQrScanner';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context';
 import { parseScanText, buildInternalScanPath } from '../utils/scanUrl';
 import toast from 'react-hot-toast';
 
@@ -24,6 +26,7 @@ type TabKey = 'compteur' | 'bassin' | 'tournee' | 'scan';
 export default function EauRelevesPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isReadOnly } = useGestionEau();
   const initialTab = (params.get('tab') as TabKey) || 'compteur';
   const [tab, setTab] = useState<TabKey>(['compteur', 'bassin', 'tournee', 'scan'].includes(initialTab) ? initialTab : 'compteur');
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
@@ -60,6 +63,12 @@ export default function EauRelevesPage() {
 
   return (
     <div>
+      {isReadOnly && (
+        <div className="max-w-3xl mx-auto px-3 pt-2">
+          <EauReadOnlyBadge />
+        </div>
+      )}
+
       <EauTabs
         active={tab}
         onChange={(k) => changeTab(k as TabKey)}
@@ -96,9 +105,11 @@ export default function EauRelevesPage() {
             <p className="text-sm text-gray-500">
               Scannez le QR d’un compteur pour saisir son index directement, ou le QR d’un client pour voir sa fiche.
             </p>
-            <EauIconButton icon={Camera} variant="primary" onClick={() => setScannerOpen(true)} className="mx-auto">
-              Ouvrir la caméra
-            </EauIconButton>
+            {!isReadOnly && (
+              <EauIconButton icon={Camera} variant="primary" onClick={() => setScannerOpen(true)} className="mx-auto">
+                Ouvrir la caméra
+              </EauIconButton>
+            )}
           </div>
         </div>
       )}

@@ -8,6 +8,8 @@ import EauTabs from './EauTabs';
 import EauCartePage from './EauCartePage';
 import EauQrCompteurManager from './EauQrCompteurManager';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context/GestionEauContext';
 import {
   listCompteurs,
   createCompteur,
@@ -25,6 +27,7 @@ const emptyForm: CompteurInput = {
 };
 
 export default function EauCompteursPage() {
+  const { isReadOnly } = useGestionEau();
   const [tab, setTab] = useState<'liste' | 'carte'>('liste');
   const [list, setList] = useState<CompteurLocal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,12 +47,14 @@ export default function EauCompteursPage() {
   }, []);
 
   const openNew = () => {
+    if (isReadOnly) return;
     setEditing(null);
     setForm(emptyForm);
     setShowForm(true);
   };
 
   const openEdit = (c: CompteurLocal) => {
+    if (isReadOnly) return;
     setEditing(c);
     setForm({
       nom: c.nom,
@@ -65,6 +70,7 @@ export default function EauCompteursPage() {
   };
 
   const save = async () => {
+    if (isReadOnly) return;
     if (!form.nom.trim()) {
       toast.error('Le nom est requis');
       return;
@@ -86,6 +92,7 @@ export default function EauCompteursPage() {
   };
 
   const remove = async (c: CompteurLocal) => {
+    if (isReadOnly) return;
     if (!(await showConfirm(`Supprimer le compteur « ${c.nom} » ?`, 'Suppression', { variant: 'danger', confirmText: 'Supprimer' }))) return;
     await deleteCompteur(c.id);
     await reload();
@@ -114,9 +121,13 @@ export default function EauCompteursPage() {
           subtitle="Gestion des compteurs (admin)"
           aide={AIDE.compteurs}
           actions={
-            <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
-              Nouveau
-            </EauIconButton>
+            isReadOnly ? (
+              <EauReadOnlyBadge />
+            ) : (
+              <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+                Nouveau
+              </EauIconButton>
+            )
           }
         >
           {showForm && (
@@ -209,7 +220,7 @@ export default function EauCompteursPage() {
                   icon={editing ? Save : Plus}
                   variant="primary"
                   onClick={save}
-                  disabled={busy}
+                  disabled={busy || isReadOnly}
                   className="flex-1"
                 >
                   {editing ? 'Enregistrer' : 'Créer'}
@@ -227,11 +238,13 @@ export default function EauCompteursPage() {
             <EauEmptyState
               icon={Gauge}
               title="Aucun compteur"
-              hint="Créez-en un pour commencer."
+              hint={isReadOnly ? 'Aucun compteur enregistré.' : 'Créez-en un pour commencer.'}
               action={
-                <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
-                  Nouveau
-                </EauIconButton>
+                isReadOnly ? undefined : (
+                  <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+                    Nouveau
+                  </EauIconButton>
+                )
               }
             />
           ) : (
@@ -261,12 +274,16 @@ export default function EauCompteursPage() {
                     <button onClick={() => setQrCompteur(c)} title="QR" className="inline-flex items-center gap-1 text-ahuvi-forest hover:underline">
                       <QrCode className="w-4 h-4" aria-hidden="true" /> QR
                     </button>
-                    <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 text-ahuvi-olive hover:underline">
-                      <Pencil className="w-4 h-4" aria-hidden="true" /> Modifier
-                    </button>
-                    <button onClick={() => remove(c)} title="Supprimer" className="inline-flex items-center gap-1 text-rose-600 hover:underline">
-                      <Trash2 className="w-4 h-4" aria-hidden="true" /> Suppr.
-                    </button>
+                    {!isReadOnly && (
+                      <>
+                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 text-ahuvi-olive hover:underline">
+                          <Pencil className="w-4 h-4" aria-hidden="true" /> Modifier
+                        </button>
+                        <button onClick={() => remove(c)} title="Supprimer" className="inline-flex items-center gap-1 text-rose-600 hover:underline">
+                          <Trash2 className="w-4 h-4" aria-hidden="true" /> Suppr.
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

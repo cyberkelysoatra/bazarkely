@@ -34,8 +34,15 @@ export type EauSessionStatus = 'checking' | 'valid' | 'needs-reauth' | 'mismatch
 interface GestionEauContextType {
   userId: string | null;
   roles: EauRoles;
-  /** Accès au module = au moins un rôle (admin OU releveur OU client). */
+  /** Accès au module = au moins un rôle (admin OU releveur OU client OU promoteur). */
   hasEauAccess: boolean;
+  /**
+   * Lecture seule (Phase 2 — Promoteur) : un promoteur « pur » (sans admin ni releveur)
+   * voit tous les écrans mais ne peut RIEN écrire, sauf les seuils d'alerte (via RPC).
+   * Les écrans masquent/désactivent leurs contrôles d'écriture quand `isReadOnly === true`.
+   * Un admin/releveur garde l'écriture même s'il est aussi promoteur.
+   */
+  isReadOnly: boolean;
   isLoading: boolean;
   error: string | null;
   /** Fiabilité de la session Supabase pour ce module (cf. EauSessionStatus). */
@@ -54,7 +61,7 @@ interface GestionEauContextType {
   reauth: () => Promise<void>;
 }
 
-const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false };
+const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false, promoteur: false };
 
 /** Notifie l'utilisateur du résultat d'un enrôlement traité au retour de Google. */
 function notifyEnrollment(res: Awaited<ReturnType<typeof processPendingEnrollment>>): void {
@@ -247,11 +254,13 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const hasEauAccess = roles.admin || roles.releveur || roles.client;
+  const hasEauAccess = roles.admin || roles.releveur || roles.client || roles.promoteur;
+  // Promoteur « pur » = lecture seule. Un admin/releveur (même cumulé promoteur) écrit.
+  const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
 
   return (
     <GestionEauContext.Provider
-      value={{ userId, roles, hasEauAccess, isLoading, error, sessionStatus, rolesConfirmed, refreshRoles, retryAccess, reauth }}
+      value={{ userId, roles, hasEauAccess, isReadOnly, isLoading, error, sessionStatus, rolesConfirmed, refreshRoles, retryAccess, reauth }}
     >
       {children}
     </GestionEauContext.Provider>

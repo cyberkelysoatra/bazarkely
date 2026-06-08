@@ -4,14 +4,31 @@ import toast from 'react-hot-toast';
 import { Gauge, Building2, Map, Trash2, Save } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
 import { bassinDeductions, isBassinModelComplete } from '../utils/bassin';
 import { fmtM3 } from '../utils/format';
 import { countTiles, clearTiles } from '../db/eauTiles';
+import { useGestionEau } from '../context';
+import { supabase, withTimeout } from '../../../lib/supabase';
 import type { ConfigLocal } from '../types/gestionEau';
 
 type FormState = Record<string, string>;
+
+/**
+ * Clés des 6 SEUILS D'ALERTE réglables par le promoteur (via la RPC SECURITY DEFINER
+ * `eau_set_alert_thresholds`). Les autres champs de config lui restent en lecture seule.
+ */
+const THRESHOLD_KEYS = [
+  'seuil_pct',
+  'seuil_m3',
+  'seuil_aberrant_facteur',
+  'jours_sans_releve_alerte',
+  'bassin_seuil_critique_pct',
+  'debit_ecart_max_pct',
+] as const;
+const isThresholdKey = (k: string): boolean => (THRESHOLD_KEYS as readonly string[]).includes(k);
 
 const NUM_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?: string }[] = [
   { key: 'bassin_longueur_m', label: 'Longueur bassin (m)', step: '0.01' },
@@ -38,6 +55,7 @@ const MAP_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?:
 ];
 
 export default function EauConfigPage() {
+  const { isReadOnly } = useGestionEau();
   const [form, setForm] = useState<FormState>({});
   const [devise, setDevise] = useState('MGA');
   const [coproNom, setCoproNom] = useState('');
@@ -47,25 +65,31 @@ export default function EauConfigPage() {
   const [tileCount, setTileCount] = useState<number | null>(null);
   const [purging, setPurging] = useState(false);
 
+  /** Recopie une config (locale ou serveur) dans l'état du formulaire. */
+  const applyConfig = (cfg: ConfigLocal | null) => {
+    const f: FormState = {};
+    for (const { key } of [...NUM_FIELDS, ...MAP_FIELDS]) {
+      const v = cfg?.[key];
+      f[key as string] = v == null ? '' : String(v);
+    }
+    setForm(f);
+    setDevise(cfg?.devise ?? 'MGA');
+    setCoproNom(cfg?.copro_nom ?? '');
+    setCoproContact(cfg?.copro_contact ?? '');
+  };
+
   useEffect(() => {
     (async () => {
       const online = navigator.onLine;
       const cfg = (await refreshConfig(online)) ?? (await getConfig());
-      const f: FormState = {};
-      for (const { key } of [...NUM_FIELDS, ...MAP_FIELDS]) {
-        const v = cfg?.[key];
-        f[key as string] = v == null ? '' : String(v);
-      }
-      setForm(f);
-      setDevise(cfg?.devise ?? 'MGA');
-      setCoproNom(cfg?.copro_nom ?? '');
-      setCoproContact(cfg?.copro_contact ?? '');
+      applyConfig(cfg);
       setTileCount(await countTiles());
       setLoading(false);
     })();
   }, []);
 
   const purgerCacheCarte = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     setPurging(true);
     try {
       await clearTiles();
@@ -104,9 +128,34 @@ export default function EauConfigPage() {
     return isBassinModelComplete(model) ? bassinDeductions(model) : null;
   })();
 
+  // Promoteur : enregistre UNIQUEMENT les 6 seuils d'alerte via la RPC SECURITY DEFINER
+  // (la RLS refuse un saveConfig direct). null = « ne pas changer » (coalesce côté SQL).
+  const saveThresholdsAsPromoteur = async () => {
+    const { error } = (await withTimeout(
+      (supabase.rpc as any)('eau_set_alert_thresholds', {
+        p_seuil_pct: parsedNum('seuil_pct'),
+        p_seuil_m3: parsedNum('seuil_m3'),
+        p_seuil_aberrant_facteur: parsedNum('seuil_aberrant_facteur'),
+        p_jours_sans_releve_alerte: parsedNum('jours_sans_releve_alerte'),
+        p_bassin_seuil_critique_pct: parsedNum('bassin_seuil_critique_pct'),
+        p_debit_ecart_max_pct: parsedNum('debit_ecart_max_pct'),
+      }),
+      8000,
+      'eau:setAlertThresholds'
+    )) as any;
+    if (error) throw error;
+    // Re-tirer la config serveur pour rafraîchir l'affichage (source de vérité).
+    applyConfig(await refreshConfig(navigator.onLine));
+  };
+
   const onSave = async () => {
     setSaving(true);
     try {
+      if (isReadOnly) {
+        await saveThresholdsAsPromoteur();
+        toast.success('Seuils d’alerte enregistrés');
+        return;
+      }
       const patch: Partial<ConfigLocal> = {
         devise: devise || 'MGA',
         copro_nom: coproNom || null,
@@ -125,7 +174,12 @@ export default function EauConfigPage() {
   };
 
   return (
-    <EauPageShell title="Configuration" subtitle="Paramètres du bassin et seuils (admin)" aide={AIDE.config}>
+    <EauPageShell
+      title="Configuration"
+      subtitle="Paramètres du bassin et seuils (admin)"
+      aide={AIDE.config}
+      actions={isReadOnly ? <EauReadOnlyBadge /> : undefined}
+    >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
@@ -136,27 +190,33 @@ export default function EauConfigPage() {
               Dimensions & tarif
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              {NUM_FIELDS.map(({ key, label, step, hint }) => (
-                <label key={key as string} className="text-sm">
-                  <span className="block text-gray-600 mb-1">{label}</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step={step}
-                    value={form[key as string] ?? ''}
-                    onChange={(e) => set(key as string, e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                  {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
-                </label>
-              ))}
+              {NUM_FIELDS.map(({ key, label, step, hint }) => {
+                // Promoteur : seuls les 6 champs de seuils d'alerte restent éditables.
+                const disabled = isReadOnly && !isThresholdKey(key as string);
+                return (
+                  <label key={key as string} className="text-sm">
+                    <span className="block text-gray-600 mb-1">{label}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step={step}
+                      value={form[key as string] ?? ''}
+                      disabled={disabled}
+                      onChange={(e) => set(key as string, e.target.value)}
+                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    />
+                    {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
+                  </label>
+                );
+              })}
               <label className="text-sm">
                 <span className="block text-gray-600 mb-1">Devise</span>
                 <input
                   type="text"
                   value={devise}
+                  disabled={isReadOnly}
                   onChange={(e) => setDevise(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </label>
             </div>
@@ -181,8 +241,9 @@ export default function EauConfigPage() {
                 <input
                   type="text"
                   value={coproNom}
+                  disabled={isReadOnly}
                   onChange={(e) => setCoproNom(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </label>
               <label className="text-sm">
@@ -190,8 +251,9 @@ export default function EauConfigPage() {
                 <input
                   type="text"
                   value={coproContact}
+                  disabled={isReadOnly}
                   onChange={(e) => setCoproContact(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
               </label>
             </div>
@@ -214,8 +276,9 @@ export default function EauConfigPage() {
                     inputMode="decimal"
                     step={step}
                     value={form[key as string] ?? ''}
+                    disabled={isReadOnly}
                     onChange={(e) => set(key as string, e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   />
                   {hint && <span className="block text-xs text-gray-400 mt-0.5">{hint}</span>}
                 </label>
@@ -230,7 +293,7 @@ export default function EauConfigPage() {
                 icon={Trash2}
                 variant="danger"
                 onClick={purgerCacheCarte}
-                disabled={purging || !tileCount}
+                disabled={purging || !tileCount || isReadOnly}
                 className="text-xs px-3 py-1.5 disabled:cursor-not-allowed"
               >
                 {purging ? 'Purge…' : 'Purger le cache carte'}
@@ -238,6 +301,12 @@ export default function EauConfigPage() {
             </div>
           </div>
 
+          {isReadOnly && (
+            <p className="text-xs text-ahuvi-olive flex items-center gap-1.5 -mb-1">
+              Mode promoteur : seuls les seuils d’alerte (Seuil anomalie %, m³, facteur aberrant,
+              jours sans relevé, bassin critique %, écart débit max %) sont modifiables.
+            </p>
+          )}
           <EauIconButton
             icon={Save}
             variant="primary"
@@ -245,7 +314,11 @@ export default function EauConfigPage() {
             disabled={saving}
             className="w-full py-3 rounded-xl"
           >
-            {saving ? 'Enregistrement…' : 'Enregistrer la configuration'}
+            {saving
+              ? 'Enregistrement…'
+              : isReadOnly
+              ? 'Enregistrer les seuils d’alerte'
+              : 'Enregistrer la configuration'}
           </EauIconButton>
         </div>
       )}

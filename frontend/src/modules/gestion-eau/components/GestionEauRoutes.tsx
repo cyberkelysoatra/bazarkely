@@ -49,7 +49,7 @@ export default function GestionEauRoutes() {
         <Route
           index
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur', 'promoteur']}>
               <EauDashboard />
             </EauRoleProtectedRoute>
           }
@@ -59,7 +59,7 @@ export default function GestionEauRoutes() {
         <Route
           path="releves"
           element={
-            <EauRoleProtectedRoute allowedRoles={['releveur', 'admin']}>
+            <EauRoleProtectedRoute allowedRoles={['releveur', 'admin', 'promoteur']}>
               <EauRelevesPage />
             </EauRoleProtectedRoute>
           }
@@ -69,7 +69,7 @@ export default function GestionEauRoutes() {
         <Route
           path="suivi"
           element={
-            <EauRoleProtectedRoute allowedRoles={['releveur', 'admin']}>
+            <EauRoleProtectedRoute allowedRoles={['releveur', 'admin', 'promoteur']}>
               <EauSuiviPage />
             </EauRoleProtectedRoute>
           }
@@ -79,7 +79,7 @@ export default function GestionEauRoutes() {
         <Route
           path="compteurs"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauCompteursPage />
             </EauRoleProtectedRoute>
           }
@@ -89,7 +89,7 @@ export default function GestionEauRoutes() {
         <Route
           path="facturation"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauFacturationPage />
             </EauRoleProtectedRoute>
           }
@@ -99,7 +99,7 @@ export default function GestionEauRoutes() {
         <Route
           path="tendances"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur', 'promoteur']}>
               <EauTendancesPage />
             </EauRoleProtectedRoute>
           }
@@ -109,7 +109,7 @@ export default function GestionEauRoutes() {
         <Route
           path="alertes"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauAlertesPage />
             </EauRoleProtectedRoute>
           }
@@ -117,7 +117,7 @@ export default function GestionEauRoutes() {
         <Route
           path="rapports"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauRapportsPage />
             </EauRoleProtectedRoute>
           }
@@ -125,7 +125,7 @@ export default function GestionEauRoutes() {
         <Route
           path="annonces"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauAnnoncesPage />
             </EauRoleProtectedRoute>
           }
@@ -133,7 +133,7 @@ export default function GestionEauRoutes() {
         <Route
           path="audit"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauAuditPage />
             </EauRoleProtectedRoute>
           }
@@ -143,7 +143,7 @@ export default function GestionEauRoutes() {
         <Route
           path="config"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauConfigPage />
             </EauRoleProtectedRoute>
           }
@@ -151,7 +151,7 @@ export default function GestionEauRoutes() {
         <Route
           path="utilisateurs"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauUtilisateursPage />
             </EauRoleProtectedRoute>
           }
@@ -159,7 +159,7 @@ export default function GestionEauRoutes() {
         <Route
           path="demandes"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauDemandesPage />
             </EauRoleProtectedRoute>
           }

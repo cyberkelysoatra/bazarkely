@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context';
 import { AIDE } from './eauAideTextes';
 import { listDemandes, validerDemande, refuserDemande } from '../services/eauDemandeService';
 import {
@@ -50,6 +52,7 @@ export default function EauDemandesPage() {
   const [drafts, setDrafts] = useState<Record<string, DraftState>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const me = getCurrentUserIdSync();
+  const { isReadOnly } = useGestionEau();
 
   // Formulaire d'invitation
   const [showForm, setShowForm] = useState(false);
@@ -147,6 +150,7 @@ export default function EauDemandesPage() {
   // — Import du répertoire → lot d'invitations WhatsApp (jeton) —
   /** Ouvre le sélecteur de contacts du téléphone (geste utilisateur requis), mappe et ouvre la revue du lot. */
   const openContactPicker = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     try {
       const nav = navigator as any;
       const props = ['name', 'tel'];
@@ -179,6 +183,7 @@ export default function EauDemandesPage() {
 
   /** Crée toutes les invitations valides du lot (séquentiel, idempotent), puis prépare les liens. */
   const createBatch = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!batch) return;
     const valid = batch.filter((c) => c.phone.replace(/\D/g, '')); // numéro requis
     if (valid.length === 0) { toast.error('Aucune ligne valide (numéro WhatsApp requis)'); return; }
@@ -209,6 +214,7 @@ export default function EauDemandesPage() {
   };
 
   const submitInvite = async () => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (channel === 'email' && !EMAIL_RE.test(iEmail.trim().toLowerCase())) {
       toast.error('Email Google invalide'); return;
     }
@@ -249,6 +255,7 @@ export default function EauDemandesPage() {
   };
 
   const revoke = async (inv: InvitationLocal) => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     const who = inv.invite_channel === 'whatsapp' ? (inv.nom || inv.phone || 'ce lien') : (inv.email ?? 'cette personne');
     if (!(await showConfirm(`Révoquer l’invitation de ${who} ?`, 'Invitation', { variant: 'danger', confirmText: 'Révoquer' }))) return;
     await revokeInvitation(inv.id);
@@ -279,6 +286,7 @@ export default function EauDemandesPage() {
   };
 
   const valider = async (d: DemandeAccesLocal) => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     const draft = draftFor(d.id);
     if (!draft.admin && !draft.releveur && draft.compteurs.size === 0) {
       toast.error('Attribuez au moins un rôle ou un compteur visible');
@@ -296,6 +304,7 @@ export default function EauDemandesPage() {
   };
 
   const refuser = async (d: DemandeAccesLocal) => {
+    if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!(await showConfirm('Refuser cette demande ?', 'Demande d\'accès', { variant: 'danger', confirmText: 'Refuser' }))) return;
     await refuserDemande(d.id, me);
     await reload();
@@ -322,20 +331,25 @@ export default function EauDemandesPage() {
       subtitle="Inviter par email ou par lien WhatsApp, et valider les demandes reçues (admin)"
       aide={AIDE.invitations}
       actions={
-        <EauIconButton
-          icon={UserPlus}
-          variant="primary"
-          onClick={() => { setShowForm((v) => !v); setLastInvite(null); }}
-        >
-          Inviter
-        </EauIconButton>
+        isReadOnly ? (
+          <EauReadOnlyBadge />
+        ) : (
+          <EauIconButton
+            icon={UserPlus}
+            variant="primary"
+            onClick={() => { setShowForm((v) => !v); setLastInvite(null); }}
+          >
+            Inviter
+          </EauIconButton>
+        )
       }
     >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
         <div className="space-y-5">
-          {/* Import du répertoire → lot d'invitations WhatsApp (ÉVO 3) */}
+          {/* Import du répertoire → lot d'invitations WhatsApp (ÉVO 3) — masqué en lecture seule (promoteur) */}
+          {!isReadOnly && (
           <div className="rounded-xl border border-ahuvi-200 bg-white p-4 shadow-soft">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="font-semibold text-ahuvi-forest flex items-center gap-1.5">
@@ -373,6 +387,7 @@ export default function EauDemandesPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Revue du lot importé (avant création) */}
           {batch && (
@@ -721,7 +736,7 @@ export default function EauDemandesPage() {
                           className="inline-flex items-center gap-1 text-gray-500 hover:underline">
                           <LinkIcon className="w-4 h-4" aria-hidden="true" /> Copier le lien
                         </button>
-                        {!accepted && (
+                        {!accepted && !isReadOnly && (
                           <button onClick={() => revoke(inv)}
                             className="inline-flex items-center gap-1 text-rose-600 hover:underline">
                             <Trash2 className="w-4 h-4" aria-hidden="true" /> Révoquer
@@ -778,7 +793,7 @@ export default function EauDemandesPage() {
                           className="inline-flex items-center gap-1 text-gray-500 hover:underline">
                           <Copy className="w-4 h-4" aria-hidden="true" /> Copier
                         </button>
-                        {!accepted && (
+                        {!accepted && !isReadOnly && (
                           <button onClick={() => revoke(inv)}
                             className="inline-flex items-center gap-1 text-rose-600 hover:underline">
                             <Trash2 className="w-4 h-4" aria-hidden="true" /> Révoquer
@@ -867,7 +882,7 @@ export default function EauDemandesPage() {
                             </EauIconButton>
                           </div>
                         </div>
-                      ) : (
+                      ) : isReadOnly ? null : (
                         <div className="flex gap-3 mt-2 text-sm">
                           <button onClick={() => setOpenId(d.id)} className="inline-flex items-center gap-1 text-emerald-600 hover:underline font-medium">
                             <Check className="w-4 h-4" aria-hidden="true" /> Valider…

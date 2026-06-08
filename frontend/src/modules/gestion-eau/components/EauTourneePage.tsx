@@ -8,15 +8,18 @@ import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, CheckCircle2, ArrowRight, Square, Route } from 'lucide-react';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
 import { EauEmptyState } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { fmtDate } from '../utils/format';
+import { useGestionEau } from '../context';
 
 export default function EauTourneePage({ onPick }: { onPick: (compteurId: string) => void }) {
   const [items, setItems] = useState<TourneeItem[]>([]);
   const [total, setTotal] = useState(0);
   const [faits, setFaits] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { isReadOnly } = useGestionEau();
 
   const reload = useCallback(async () => {
     const data = await getTourneeData();
@@ -48,6 +51,11 @@ export default function EauTourneePage({ onPick }: { onPick: (compteurId: string
   return (
     <div className="max-w-3xl mx-auto px-3 space-y-3">
       <EauAide id={AIDE.tournee.id} quoi={AIDE.tournee.quoi} comment={AIDE.tournee.comment} />
+      {isReadOnly && (
+        <div className="flex justify-end">
+          <EauReadOnlyBadge />
+        </div>
+      )}
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : total === 0 ? (

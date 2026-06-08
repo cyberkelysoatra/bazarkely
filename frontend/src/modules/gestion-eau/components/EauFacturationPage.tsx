@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton, EauEmptyState } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
+import { useGestionEau } from '../context';
 import { getConfig } from '../services/eauConfigService';
 import { isConfigComplete, configMissingFields } from '../utils/facture';
 import {
@@ -38,6 +40,7 @@ function toDateInput(d: Date): string {
 }
 
 export default function EauFacturationPage() {
+  const { isReadOnly } = useGestionEau();
   const [config, setConfig] = useState<ConfigLocal | null>(null);
   const [loading, setLoading] = useState(true);
   const [start, setStart] = useState('');
@@ -106,6 +109,7 @@ export default function EauFacturationPage() {
   };
 
   const runGenerate = async () => {
+    if (isReadOnly) return;
     setBusy(true);
     try {
       const created = await genererFactures(toIsoStartOfDay(start), toIsoEndOfDay(end));
@@ -122,11 +126,13 @@ export default function EauFacturationPage() {
   };
 
   const toggleStatut = async (f: FactureLocal) => {
+    if (isReadOnly) return;
     await setStatutFacture(f.id, f.statut === 'paye' ? 'impaye' : 'paye');
     await reloadFactures();
   };
 
   const relancer = async (f: FactureLocal) => {
+    if (isReadOnly) return;
     await relancerFacture(f.id);
     await reloadFactures();
     toast.success('Relance enregistrée');
@@ -168,6 +174,7 @@ export default function EauFacturationPage() {
         title="Facturation"
         subtitle={view === 'rapports' ? 'Exports (admin)' : 'Génération des factures par période (admin)'}
         aide={AIDE.facturation}
+        actions={isReadOnly ? <EauReadOnlyBadge /> : undefined}
       >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
@@ -215,9 +222,11 @@ export default function EauFacturationPage() {
               <EauIconButton icon={Eye} variant="secondary" onClick={runPreview} disabled={busy} className="flex-1 py-2.5">
                 Aperçu
               </EauIconButton>
-              <EauIconButton icon={Receipt} variant="primary" onClick={runGenerate} disabled={busy} className="flex-1 py-2.5">
-                Générer les factures
-              </EauIconButton>
+              {!isReadOnly && (
+                <EauIconButton icon={Receipt} variant="primary" onClick={runGenerate} disabled={busy} className="flex-1 py-2.5">
+                  Générer les factures
+                </EauIconButton>
+              )}
             </div>
           </div>
 
@@ -264,25 +273,39 @@ export default function EauFacturationPage() {
                           <div className="text-xs text-rose-600 mt-0.5">Relances : {f.relance_count}</div>
                         )}
                       </div>
-                      <button
-                        onClick={() => toggleStatut(f)}
-                        className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
-                          f.statut === 'paye'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-rose-100 text-rose-700'
-                        }`}
-                        title="Basculer le statut"
-                      >
-                        {f.statut === 'paye'
-                          ? <><BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" /> Payée</>
-                          : <><CircleAlert className="w-3.5 h-3.5" aria-hidden="true" /> Impayée</>}
-                      </button>
+                      {isReadOnly ? (
+                        <span
+                          className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                            f.statut === 'paye'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          {f.statut === 'paye'
+                            ? <><BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" /> Payée</>
+                            : <><CircleAlert className="w-3.5 h-3.5" aria-hidden="true" /> Impayée</>}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => toggleStatut(f)}
+                          className={`flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                            f.statut === 'paye'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                          title="Basculer le statut"
+                        >
+                          {f.statut === 'paye'
+                            ? <><BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" /> Payée</>
+                            : <><CircleAlert className="w-3.5 h-3.5" aria-hidden="true" /> Impayée</>}
+                        </button>
+                      )}
                     </div>
                     <div className="flex gap-3 mt-2 text-sm">
                       <button onClick={() => exportPdf(f)} className="inline-flex items-center gap-1 text-ahuvi-olive hover:underline">
                         <FileDown className="w-4 h-4" aria-hidden="true" /> PDF
                       </button>
-                      {f.statut === 'impaye' && (
+                      {!isReadOnly && f.statut === 'impaye' && (
                         <button onClick={() => relancer(f)} className="inline-flex items-center gap-1 text-amber-600 hover:underline">
                           <Bell className="w-4 h-4" aria-hidden="true" /> Relancer
                         </button>

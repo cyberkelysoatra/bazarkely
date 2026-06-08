@@ -46,6 +46,7 @@ export async function getRolesForUser(userId: string): Promise<EauRoles> {
     admin: row?.admin ?? false,
     releveur: row?.releveur ?? false,
     client: !!clientCompte,
+    promoteur: row?.promoteur ?? false,
   };
 }
 
@@ -58,12 +59,16 @@ export async function hasAnyAdminLocal(): Promise<boolean> {
   return all.some((r) => r.admin === true);
 }
 
-/** Définit/écrase les rôles admin+releveur d'un utilisateur (upsert idempotent). */
-export async function setRoles(userId: string, roles: { admin: boolean; releveur: boolean }): Promise<RoleLocal> {
+/** Définit/écrase les rôles admin+releveur+promoteur d'un utilisateur (upsert idempotent). */
+export async function setRoles(
+  userId: string,
+  roles: { admin: boolean; releveur: boolean; promoteur?: boolean }
+): Promise<RoleLocal> {
   const record: RoleLocal = {
     user_id: userId,
     admin: roles.admin,
     releveur: roles.releveur,
+    promoteur: roles.promoteur ?? false,
     updated_at: nowIso(),
   };
   return saveLocal('eau_roles', record);

@@ -7,6 +7,8 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { X, QrCode, Printer, Download, Trash2, ScanLine } from 'lucide-react';
 import { EauIconButton, EauEmptyState } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context/GestionEauContext';
 import {
   listQrForCompteur,
   createQrCompteur,
@@ -32,6 +34,7 @@ export default function EauQrCompteurManager({
   const [emplacement, setEmplacement] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { isReadOnly } = useGestionEau();
 
   const reload = useCallback(async () => {
     const list = await listQrForCompteur(compteur.id);
@@ -52,6 +55,7 @@ export default function EauQrCompteurManager({
   }, [reload]);
 
   const addQr = async () => {
+    if (isReadOnly) return;
     setBusy(true);
     try {
       await createQrCompteur(compteur.id, emplacement || null);
@@ -64,6 +68,7 @@ export default function EauQrCompteurManager({
   };
 
   const removeQr = async (q: QrCompteurLocal) => {
+    if (isReadOnly) return;
     if (!(await showConfirm(`Supprimer ce QR (${q.emplacement ?? q.code}) ?`, 'Suppression QR', { variant: 'danger', confirmText: 'Supprimer' }))) return;
     await deleteQrCompteur(q.id);
     await reload();
@@ -101,7 +106,10 @@ export default function EauQrCompteurManager({
       <div className="bg-white w-full max-w-lg sm:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
         <div className="sticky top-0 bg-white flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div>
-            <h3 className="font-semibold text-ahuvi-forest">QR — {compteur.nom}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-ahuvi-forest">QR — {compteur.nom}</h3>
+              {isReadOnly && <EauReadOnlyBadge />}
+            </div>
             <p className="text-xs text-gray-500">{compteur.zone ?? 'Sans zone'} · {compteur.type}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-1 -mr-1" aria-label="Fermer">
@@ -118,10 +126,11 @@ export default function EauQrCompteurManager({
                 value={emplacement}
                 onChange={(e) => setEmplacement(e.target.value)}
                 placeholder="ex. Entrée villa, Regard, Local technique…"
-                className="w-full rounded-lg border-gray-300 focus:border-ahuvi-forest focus:ring-ahuvi-forest text-sm"
+                disabled={isReadOnly}
+                className="w-full rounded-lg border-gray-300 focus:border-ahuvi-forest focus:ring-ahuvi-forest text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
             </label>
-            <EauIconButton icon={QrCode} variant="primary" onClick={addQr} disabled={busy} className="w-full">
+            <EauIconButton icon={QrCode} variant="primary" onClick={addQr} disabled={busy || isReadOnly} className="w-full">
               Générer un QR
             </EauIconButton>
           </div>
@@ -159,10 +168,12 @@ export default function EauQrCompteurManager({
                           <Download className="w-4 h-4" aria-hidden="true" />
                           JPEG
                         </button>
-                        <button onClick={() => removeQr(q)} className="inline-flex items-center gap-1 text-rose-600 hover:underline">
-                          <Trash2 className="w-4 h-4" aria-hidden="true" />
-                          Suppr.
-                        </button>
+                        {!isReadOnly && (
+                          <button onClick={() => removeQr(q)} className="inline-flex items-center gap-1 text-rose-600 hover:underline">
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            Suppr.
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -25,7 +25,7 @@ export default function EauRoleProtectedRoute({
   // client (sans rôle interne) → son espace. Évite toute boucle de redirection
   // (un client refusé sur le dashboard atterrit sur /gestion-eau/client, pas sur /gestion-eau).
   const home =
-    roles.admin || roles.releveur
+    roles.admin || roles.releveur || roles.promoteur
       ? '/gestion-eau'
       : roles.client
       ? '/gestion-eau/client'

@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import { Bell, BellOff, RefreshCw, Check, Eye, AlertTriangle } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauIconButton } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context/GestionEauContext';
 import { AIDE } from './eauAideTextes';
 import {
   listAlertes,
@@ -41,6 +43,7 @@ function niveauClasses(niveau: string | null): string {
 }
 
 export default function EauAlertesPage() {
+  const { isReadOnly } = useGestionEau();
   const [alertes, setAlertes] = useState<AlerteLocal[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -56,13 +59,17 @@ export default function EauAlertesPage() {
     (async () => {
       await reload();
       // Marquer comme lues à l'ouverture du centre (best-effort), puis recharger l'affichage.
-      await markAllLues();
-      await reload();
+      // En lecture seule (promoteur), ne rien écrire en base.
+      if (!isReadOnly) {
+        await markAllLues();
+        await reload();
+      }
       setLoading(false);
     })();
-  }, [reload]);
+  }, [reload, isReadOnly]);
 
   const generer = async () => {
+    if (isReadOnly) return;
     setBusy(true);
     try {
       const created = await genererEtNotifier();
@@ -93,11 +100,13 @@ export default function EauAlertesPage() {
   };
 
   const traiter = async (a: AlerteLocal) => {
+    if (isReadOnly) return;
     await markAlerteTraitee(a.id);
     await reload();
   };
 
   const basculerLu = async (a: AlerteLocal) => {
+    if (isReadOnly) return;
     await markAlerteLue(a.id, !a.lu);
     await reload();
   };
@@ -111,9 +120,13 @@ export default function EauAlertesPage() {
       subtitle="Anomalies, compteurs non relevés, bassin critique, fuites (admin)"
       aide={AIDE.alertes}
       actions={
-        <EauIconButton icon={RefreshCw} variant="primary" onClick={generer} disabled={busy}>
-          Générer
-        </EauIconButton>
+        isReadOnly ? (
+          <EauReadOnlyBadge />
+        ) : (
+          <EauIconButton icon={RefreshCw} variant="primary" onClick={generer} disabled={busy}>
+            Générer
+          </EauIconButton>
+        )
       }
     >
       {/* Bandeau notifications */}
@@ -142,7 +155,7 @@ export default function EauAlertesPage() {
         <EauEmptyState
           icon={AlertTriangle}
           title="Aucune alerte"
-          hint="Cliquez « Générer » pour analyser les données."
+          hint={isReadOnly ? 'Aucune alerte à afficher.' : 'Cliquez « Générer » pour analyser les données.'}
         />
       ) : (
         <div className="space-y-4">
@@ -163,20 +176,22 @@ export default function EauAlertesPage() {
                         <div className="text-sm text-gray-800 mt-0.5">{a.message}</div>
                         <div className="text-xs text-gray-400 mt-0.5">{fmtDate(a.created_at)}</div>
                       </div>
-                      <div className="flex flex-col gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => traiter(a)}
-                          className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded"
-                        >
-                          <Check className="w-3 h-3" /> Traité
-                        </button>
-                        <button
-                          onClick={() => basculerLu(a)}
-                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1"
-                        >
-                          <Eye className="w-3 h-3" /> {a.lu ? 'Non lu' : 'Lu'}
-                        </button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="flex flex-col gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => traiter(a)}
+                            className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded"
+                          >
+                            <Check className="w-3 h-3" /> Traité
+                          </button>
+                          <button
+                            onClick={() => basculerLu(a)}
+                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1"
+                          >
+                            <Eye className="w-3 h-3" /> {a.lu ? 'Non lu' : 'Lu'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauListIcon } from './EauUi';
+import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
+import { useGestionEau } from '../context';
 import { listCompteursActifs } from '../services/eauCompteurService';
 import {
   evaluerReleveCompteur,
@@ -41,6 +43,7 @@ export default function EauSaisieCompteurPage({
   /** Callback pour ouvrir le scanner caméra (fourni par la page-thème Relevés). */
   onScanRequest?: () => void;
 } = {}) {
+  const { isReadOnly } = useGestionEau();
   const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<CompteurLocal | null>(null);
@@ -111,6 +114,7 @@ export default function EauSaisieCompteurPage({
   };
 
   const onPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoBusy(true);
@@ -144,6 +148,7 @@ export default function EauSaisieCompteurPage({
   }, [indexStr, selected]);
 
   const submit = async () => {
+    if (isReadOnly) return;
     if (!selected) return;
     const n = Number(indexStr);
     if (!Number.isFinite(n) || n < 0) {
@@ -206,9 +211,12 @@ export default function EauSaisieCompteurPage({
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : selected ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft space-y-3">
-          <button className="inline-flex items-center gap-1 text-sm text-ahuvi-olive hover:underline" onClick={() => setSelected(null)}>
-            <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Retour à la liste
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button className="inline-flex items-center gap-1 text-sm text-ahuvi-olive hover:underline" onClick={() => setSelected(null)}>
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" /> Retour à la liste
+            </button>
+            {isReadOnly && <EauReadOnlyBadge />}
+          </div>
           <div className="flex items-center gap-2">
             <EauListIcon icon={Gauge} tone="teal" />
             <div>
@@ -250,7 +258,8 @@ export default function EauSaisieCompteurPage({
               step="0.001"
               value={indexStr}
               onChange={(e) => setIndexStr(e.target.value)}
-              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+              disabled={isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               placeholder="Index relevé"
               autoFocus
             />
@@ -283,7 +292,8 @@ export default function EauSaisieCompteurPage({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+              disabled={isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
             />
           </label>
 
@@ -295,13 +305,13 @@ export default function EauSaisieCompteurPage({
                 <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
                 <div className="text-xs text-gray-500">
                   <div>≈ {dataUrlSizeKo(photo)} Ko</div>
-                  <button onClick={() => setPhoto(null)} className="inline-flex items-center gap-1 text-rose-600 hover:underline mt-1">
+                  <button onClick={() => setPhoto(null)} disabled={isReadOnly} className="inline-flex items-center gap-1 text-rose-600 hover:underline mt-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline">
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Retirer
                   </button>
                 </div>
               </div>
             ) : (
-              <label className="flex items-center justify-center gap-2 w-full border border-dashed border-gray-300 rounded-lg py-3 text-gray-500 cursor-pointer hover:bg-gray-50">
+              <label className={`flex items-center justify-center gap-2 w-full border border-dashed border-gray-300 rounded-lg py-3 text-gray-500 ${isReadOnly ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
                 <Camera className="w-4 h-4" aria-hidden="true" />
                 {photoBusy ? 'Traitement…' : 'Prendre / choisir une photo'}
                 <input
@@ -310,7 +320,7 @@ export default function EauSaisieCompteurPage({
                   capture="environment"
                   onChange={onPhotoChange}
                   className="hidden"
-                  disabled={photoBusy}
+                  disabled={photoBusy || isReadOnly}
                 />
               </label>
             )}
@@ -318,18 +328,24 @@ export default function EauSaisieCompteurPage({
 
           <button
             onClick={submit}
-            disabled={busy || indexStr.trim() === ''}
-            className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+            disabled={busy || indexStr.trim() === '' || isReadOnly}
+            className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl"
           >
             <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé
           </button>
         </div>
       ) : (
         <div className="space-y-3">
+          {isReadOnly && (
+            <div className="flex justify-end">
+              <EauReadOnlyBadge />
+            </div>
+          )}
           {onScanRequest && (
             <button
               onClick={onScanRequest}
-              className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 text-white text-sm font-semibold py-2.5 rounded-lg"
+              disabled={isReadOnly}
+              className="w-full flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 rounded-lg"
             >
               <ScanLine className="w-4 h-4" aria-hidden="true" /> Scanner un QR
             </button>

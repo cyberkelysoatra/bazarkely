@@ -7,6 +7,8 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Megaphone, Pencil, X, Save } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import { EauReadOnlyBadge } from './EauReadOnly';
+import { useGestionEau } from '../context/GestionEauContext';
 import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import {
@@ -48,6 +50,7 @@ function toIso(dateStr: string, endOfDay = false): string | null {
 }
 
 export default function EauAnnoncesPage() {
+  const { isReadOnly } = useGestionEau();
   const [annonces, setAnnonces] = useState<AnnonceLocal[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -64,8 +67,12 @@ export default function EauAnnoncesPage() {
     })();
   }, [reload]);
 
-  const openNew = () => setDraft({ ...EMPTY_DRAFT });
-  const openEdit = (a: AnnonceLocal) =>
+  const openNew = () => {
+    if (isReadOnly) return;
+    setDraft({ ...EMPTY_DRAFT });
+  };
+  const openEdit = (a: AnnonceLocal) => {
+    if (isReadOnly) return;
     setDraft({
       id: a.id,
       titre: a.titre ?? '',
@@ -75,8 +82,10 @@ export default function EauAnnoncesPage() {
       date_debut: toDateInput(a.date_debut),
       date_fin: toDateInput(a.date_fin),
     });
+  };
 
   const save = async () => {
+    if (isReadOnly) return;
     if (!draft) return;
     if (!draft.titre.trim()) {
       toast.error('Titre requis');
@@ -102,6 +111,7 @@ export default function EauAnnoncesPage() {
   };
 
   const remove = async (a: AnnonceLocal) => {
+    if (isReadOnly) return;
     const ok = await showConfirm(`Supprimer l'annonce « ${a.titre} » ?`, 'Suppression', {
       variant: 'danger',
       confirmText: 'Supprimer',
@@ -112,6 +122,7 @@ export default function EauAnnoncesPage() {
   };
 
   const toggle = async (a: AnnonceLocal) => {
+    if (isReadOnly) return;
     await toggleAnnonceActif(a.id);
     await reload();
   };
@@ -122,10 +133,14 @@ export default function EauAnnoncesPage() {
       subtitle="Promos, évènements, actions communautaires (admin)"
       aide={AIDE.annonces}
       actions={
-        !draft && (
-          <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
-            Nouvelle
-          </EauIconButton>
+        isReadOnly ? (
+          <EauReadOnlyBadge />
+        ) : (
+          !draft && (
+            <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+              Nouvelle
+            </EauIconButton>
+          )
         )
       }
     >
@@ -201,7 +216,7 @@ export default function EauAnnoncesPage() {
               />
             </label>
           </div>
-          <EauIconButton icon={Save} variant="primary" onClick={save} disabled={saving} className="w-full">
+          <EauIconButton icon={Save} variant="primary" onClick={save} disabled={saving || isReadOnly} className="w-full">
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </EauIconButton>
         </div>
@@ -215,9 +230,11 @@ export default function EauAnnoncesPage() {
           title="Aucune annonce"
           hint="Créez-en une pour l’afficher dans le bandeau du domaine."
           action={
-            <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
-              Nouvelle
-            </EauIconButton>
+            !isReadOnly && (
+              <EauIconButton icon={Plus} variant="primary" onClick={openNew}>
+                Nouvelle
+              </EauIconButton>
+            )
           }
         />
       ) : (
@@ -246,22 +263,34 @@ export default function EauAnnoncesPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => toggle(a)}
-                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {active ? 'Affichée' : a.actif ? 'Hors période' : 'Inactive'}
-                    </button>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(a)} aria-label="Modifier" className="text-gray-400 hover:text-ahuvi-olive">
-                        <Pencil className="w-4 h-4" aria-hidden="true" />
+                    {isReadOnly ? (
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {active ? 'Affichée' : a.actif ? 'Hors période' : 'Inactive'}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => toggle(a)}
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {active ? 'Affichée' : a.actif ? 'Hors période' : 'Inactive'}
                       </button>
-                      <button onClick={() => remove(a)} aria-label="Supprimer" className="text-gray-400 hover:text-rose-600">
-                        <Trash2 className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                    </div>
+                    )}
+                    {!isReadOnly && (
+                      <div className="flex gap-2">
+                        <button onClick={() => openEdit(a)} aria-label="Modifier" className="text-gray-400 hover:text-ahuvi-olive">
+                          <Pencil className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <button onClick={() => remove(a)} aria-label="Supprimer" className="text-gray-400 hover:text-rose-600">
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
