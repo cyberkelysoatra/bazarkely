@@ -1,51 +1,21 @@
 /**
- * Composant de notification de mise à jour du Service Worker
- * Affiche une bannière en bas de l'écran quand une nouvelle version est disponible
+ * Pilote de mise à jour du Service Worker — mise à jour 100% AUTOMATIQUE.
+ *
+ * Ce composant n'affiche plus aucun bandeau : il monte simplement le hook
+ * `useServiceWorkerUpdate`, qui détecte une nouvelle version, l'active (le SW fait
+ * `skipWaiting` à l'install + purge les anciens caches) puis recharge la page
+ * automatiquement. L'utilisateur n'a AUCUNE manipulation à faire ; un toast discret
+ * « Application mise à jour ✅ » confirme après le rechargement. Les données et la file
+ * de synchronisation hors-ligne ne sont jamais touchées.
  */
 
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
-import { isStandalone } from '../utils/browserDetection';
 
 const UpdatePrompt: React.FC = () => {
-  const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
-
-  // Only show update banner in PWA standalone mode (installed on device)
-  // In a regular browser, users can simply reload the page
-  if (!updateAvailable || !isStandalone()) {
-    return null;
-  }
-
-  return (
-    <div
-      className="fixed bottom-20 left-0 right-0 z-50 px-4 animate-slide-up"
-      role="alert"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <div className="max-w-md mx-auto bg-purple-600 text-white rounded-lg shadow-lg p-4 flex items-center justify-between gap-4">
-        {/* Icône et texte */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex-shrink-0">
-            <RefreshCw className="w-5 h-5 animate-spin" aria-hidden="true" />
-          </div>
-          <p className="text-sm font-medium flex-1">
-            Nouvelle version disponible
-          </p>
-        </div>
-
-        {/* Bouton Actualiser */}
-        <button
-          onClick={applyUpdate}
-          className="flex-shrink-0 bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-purple-50 active:bg-purple-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
-          aria-label="Actualiser pour appliquer la mise à jour"
-        >
-          Actualiser
-        </button>
-      </div>
-    </div>
-  );
+  // Monte le pilote d'auto-mise-à-jour (détection + activation + purge + rechargement).
+  useServiceWorkerUpdate();
+  return null;
 };
 
 export default UpdatePrompt;

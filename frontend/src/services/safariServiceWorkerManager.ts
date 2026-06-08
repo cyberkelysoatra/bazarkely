@@ -78,12 +78,11 @@ class SafariServiceWorkerManager {
   /**
    * Détermine le chemin du Service Worker approprié
    */
-  private getServiceWorkerPath(capabilities: any): string {
-    if (capabilities.isSafari) {
-      return '/sw.js';
-    } else {
-      return '/sw.js';
-    }
+  private getServiceWorkerPath(_capabilities: any): string {
+    // Le vrai Service Worker produit par vite-plugin-pwa (injectManifest) est
+    // `/sw-custom.js` — PAS `/sw.js` (inexistant → 404). Cet enregistrement est
+    // idempotent avec celui de `registerSW.js` (même URL + même scope).
+    return '/sw-custom.js';
   }
 
   /**
@@ -137,30 +136,13 @@ class SafariServiceWorkerManager {
   }
 
   /**
-   * Notifie qu'une mise à jour est disponible
+   * Mise à jour disponible. Mise à jour 100% AUTOMATIQUE : on N'AFFICHE PLUS de bandeau
+   * ici (l'ancien bandeau bleu manuel entrait en conflit avec l'auto-mise-à-jour). Le SW
+   * s'auto-active (skipWaiting + purge des anciens caches) et le rechargement de la page
+   * est géré par `useServiceWorkerUpdate` (controllerchange). On se contente de tracer.
    */
   private notifyUpdateAvailable(): void {
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 bg-blue-500 text-white p-4 rounded-lg shadow-lg z-50';
-    notification.innerHTML = `
-      <div class="flex items-center space-x-3">
-        <span>🔄 Mise à jour disponible</span>
-        <button
-          onclick="this.parentElement.parentElement.remove(); window.location.reload();"
-          class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-        >
-          Actualiser
-        </button>
-      </div>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      if (notification.parentElement) {
-        notification.remove();
-      }
-    }, 10000);
+    console.log('🔄 Nouvelle version détectée — activation automatique en cours (sans action utilisateur)');
   }
 
   /**

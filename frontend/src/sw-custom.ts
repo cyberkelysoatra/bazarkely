@@ -6,9 +6,10 @@
  * Ce fichier est utilisé comme SW principal avec Vite PWA en mode injectManifest
  */
 
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { precacheAndRoute, createHandlerBoundToURL, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
+import { cacheNames } from 'workbox-core';
 
 // Écouter les messages pour activer la mise à jour (contrôlée par l'utilisateur)
 self.addEventListener('message', (event) => {
@@ -20,21 +21,32 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Événement install - ne pas appeler skipWaiting() immédiatement
-// Attendre la confirmation de l'utilisateur via le message SKIP_WAITING
+// Événement install - mise à jour 100% AUTOMATIQUE : on active la nouvelle version sans
+// attendre (plus de bandeau ni de clic). Le rechargement de la page est déclenché côté
+// client sur `controllerchange` (voir useServiceWorkerUpdate) pour servir le code neuf.
 self.addEventListener('install', (event) => {
-  console.log('[SW] 📦 Installation d\'une nouvelle version...');
-  // Ne pas appeler skipWaiting() ici - attendre la confirmation utilisateur
-  // Le message SKIP_WAITING déclenchera skipWaiting() quand l'utilisateur clique sur "Mettre à jour"
+  console.log('[SW] 📦 Installation d\'une nouvelle version — activation automatique');
+  self.skipWaiting();
 });
 
-// Événement activate - prendre le contrôle des clients après activation
+// Événement activate - purge des caches OBSOLÈTES + prise de contrôle des clients.
+// On supprime tout cache d'une ANCIENNE version (pour ne jamais servir de résidus), en
+// conservant le précache courant, le cache runtime courant et l'api-cache. On ne touche
+// JAMAIS à IndexedDB/Dexie (données métier + file de synchronisation hors-ligne préservées).
 self.addEventListener('activate', (event) => {
   console.log('[SW] ✅ Service Worker activé');
   event.waitUntil(
-    self.clients.claim().then(() => {
-      console.log('[SW] ✅ Contrôle des clients pris');
-    })
+    (async () => {
+      try {
+        const keep = new Set<string>([cacheNames.precache, cacheNames.runtime, 'api-cache']);
+        const names = await caches.keys();
+        await Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)));
+      } catch (e) {
+        console.warn('[SW] ⚠️ Purge des caches obsolètes échouée (non bloquant):', e);
+      }
+      await self.clients.claim();
+      console.log('[SW] ✅ Contrôle des clients pris + caches obsolètes purgés');
+    })()
   );
 });
 
@@ -408,6 +420,10 @@ declare const self: ServiceWorkerGlobalScope & {
 
 // Précharger les assets définis par Vite PWA
 precacheAndRoute(self.__WB_MANIFEST);
+
+// Supprime les précaches Workbox PÉRIMÉS (entrées d'anciennes versions) à l'activation.
+// Complète la purge manuelle de l'événement `activate` ci-dessus.
+cleanupOutdatedCaches();
 
 // Navigation fallback pour SPA
 const handler = createHandlerBoundToURL('/index.html');

@@ -4,11 +4,39 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { toast } from 'react-hot-toast'
 
 interface ServiceWorkerUpdateState {
   updateAvailable: boolean
   isChecking: boolean
   applyUpdate: () => Promise<void>
+}
+
+/** Clés sessionStorage pour le rechargement automatique de mise à jour. */
+const RELOAD_GUARD_KEY = 'bk_sw_reload_ts'   // anti-boucle (horodatage du dernier reload auto)
+const JUST_UPDATED_KEY = 'bk_just_updated'   // drapeau « on vient de se mettre à jour » → toast au remontage
+
+/**
+ * Recharge la page pour appliquer la nouvelle version, de façon SÛRE :
+ *  - anti-boucle : jamais 2 rechargements auto à moins de 10 s (protège des cas type
+ *    DevTools « Update on reload ») ;
+ *  - pose un drapeau pour afficher un toast de confirmation après le rechargement.
+ * Ne touche à AUCUNE donnée (IndexedDB/Dexie/localStorage métier intacts).
+ */
+function safeReloadForUpdate(): void {
+  try {
+    const now = Date.now()
+    const last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || '0')
+    if (now - last < 10000) {
+      console.warn('🔁 [SW] Rechargement auto ignoré (anti-boucle <10s)')
+      return
+    }
+    sessionStorage.setItem(RELOAD_GUARD_KEY, String(now))
+    sessionStorage.setItem(JUST_UPDATED_KEY, '1')
+  } catch {
+    /* sessionStorage indisponible : on recharge quand même */
+  }
+  window.location.reload()
 }
 
 /**
@@ -33,8 +61,14 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const updateCheckIntervalRef = useRef<number | null>(null)
   const waitingWorkerRef = useRef<ServiceWorker | null>(null)
-  // Guard: only auto-reload if user explicitly clicked update
-  const userRequestedUpdateRef = useRef(false)
+  // Distingue la TOUTE PREMIÈRE prise de contrôle (install initiale, aucune ancienne
+  // version à remplacer → PAS de rechargement) d'une vraie mise à jour (→ rechargement).
+  // `controller` est null tant qu'aucun SW ne contrôle encore la page (1ʳᵉ visite).
+  const firstInstallRef = useRef(
+    typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+      ? !navigator.serviceWorker.controller
+      : false
+  )
 
   /**
    * Vérifie si une mise à jour est disponible
@@ -118,9 +152,9 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
 
     try {
       console.log('🔄 Application de la mise à jour...')
-      userRequestedUpdateRef.current = true
 
-      // Envoyer le message skipWaiting au worker en attente
+      // Envoyer le message skipWaiting au worker en attente (redondant avec le skipWaiting
+      // automatique du SW à l'install, mais conservé pour les anciens clients en transition).
       waitingWorker.postMessage({ type: 'SKIP_WAITING' })
 
       // Attendre que le nouveau worker prenne le contrôle
@@ -191,20 +225,38 @@ export const useServiceWorkerUpdate = (): ServiceWorkerUpdateState => {
     }
 
     const handleControllerChange = () => {
-      // Only auto-reload if user explicitly clicked the update button
-      // Prevents infinite reload loop when DevTools "Update on reload" is checked
-      if (!userRequestedUpdateRef.current) {
-        console.log('🔄 Nouveau Service Worker a pris le contrôle (rechargement ignoré — pas déclenché par l\'utilisateur)')
+      // 1ʳᵉ prise de contrôle (install initiale) : la page affiche déjà la version courante
+      // → ne PAS recharger (et ne plus considérer les suivantes comme « première »).
+      if (firstInstallRef.current) {
+        firstInstallRef.current = false
+        console.log('✅ Service Worker a pris le contrôle (1ʳᵉ installation, pas de rechargement)')
         return
       }
-      console.log('🔄 Nouveau Service Worker a pris le contrôle, rechargement...')
-      window.location.reload()
+      // Vraie mise à jour : le nouveau SW (auto-activé) contrôle désormais la page →
+      // rechargement AUTOMATIQUE et sûr pour charger 100% du code neuf.
+      console.log('🔄 Nouvelle version active — rechargement automatique…')
+      safeReloadForUpdate()
     }
 
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
 
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
+    }
+  }, [])
+
+  /**
+   * Au remontage après un rechargement automatique de mise à jour : confirmer à
+   * l'utilisateur (toast discret) que l'application est désormais à jour.
+   */
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(JUST_UPDATED_KEY) === '1') {
+        sessionStorage.removeItem(JUST_UPDATED_KEY)
+        toast.success('Application mise à jour ✅', { duration: 3000, position: 'top-center' })
+      }
+    } catch {
+      /* sessionStorage indisponible : pas de toast, sans gravité */
     }
   }, [])
 
