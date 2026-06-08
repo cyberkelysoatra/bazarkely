@@ -91,6 +91,15 @@ export interface TendancesData {
 
 // ─────────────────────────── Fonctions pures ───────────────────────────
 
+/** Étiquette de jour LOCAL 'YYYY-MM-DD' (pour la projection, alignée sur le jour
+ *  perçu par l'utilisateur ; cf. tableau de bord qui borne le jour en local). */
+export function localDayLabel(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Regroupe une liste {ms,value} par jour (somme), trié croissant. */
 export function bucketByDay(points: { ms: number; value: number }[]): SeriePoint[] {
   const map = new Map<string, { ms: number; value: number }>();
@@ -219,20 +228,27 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
     });
     projectionSource = proj.source;
     if (proj.tauxJourM3 > 0) {
-      const todayKey = new Date(endMs).toISOString().slice(0, 10);
-      const todayMs = new Date(todayKey).getTime();
-      const fractionJour = Math.min(1, Math.max(0, (endMs - todayMs) / MS_PER_DAY));
-      const lastEstMs =
-        consoEstimeeParJour.length > 0 ? consoEstimeeParJour[consoEstimeeParJour.length - 1].ms : null;
-      // Démarre au lendemain du dernier jour estimé ; série vide → au moins aujourd'hui.
-      const startDayMs = lastEstMs != null ? lastEstMs + MS_PER_DAY : todayMs;
+      // « Aujourd'hui » au sens LOCAL (cohérent avec le tableau de bord et la
+      // perception de l'utilisateur), même quand UTC n'a pas encore basculé : sinon,
+      // dans les premières heures locales, le dernier jour estimé EST « aujourd'hui »
+      // en UTC et aucune projection n'apparaîtrait.
+      const now = new Date(endMs);
+      const todayStartLocalMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const todayLabel = localDayLabel(now);
+      const fractionJour = Math.min(1, Math.max(0, (endMs - todayStartLocalMs) / MS_PER_DAY));
+      const lastEstLabel =
+        consoEstimeeParJour.length > 0 ? consoEstimeeParJour[consoEstimeeParJour.length - 1].label : null;
+      // On comble du dernier jour estimé (exclu) jusqu'à aujourd'hui (inclus). On
+      // remonte jour par jour depuis aujourd'hui tant que le jour reste après le
+      // dernier jour estimé ; série estimée vide → on projette au moins aujourd'hui.
       const points: SeriePoint[] = [];
-      for (let dMs = startDayMs; dMs <= todayMs; dMs += MS_PER_DAY) {
-        const key = new Date(dMs).toISOString().slice(0, 10);
-        const isToday = key === todayKey;
-        points.push({ label: key, ms: dMs, value: isToday ? proj.tauxJourM3 * fractionJour : proj.tauxJourM3 });
+      for (let dMs = todayStartLocalMs, guard = 0; guard < 400; dMs -= MS_PER_DAY, guard++) {
+        const label = localDayLabel(new Date(dMs));
+        if (lastEstLabel != null && label <= lastEstLabel) break;
+        points.push({ label, ms: dMs, value: label === todayLabel ? proj.tauxJourM3 * fractionJour : proj.tauxJourM3 });
+        if (lastEstLabel == null) break; // série vide → uniquement aujourd'hui
       }
-      consoProjeteeParJour = points;
+      consoProjeteeParJour = points.sort((a, b) => a.ms - b.ms);
       aProjection = points.length > 0;
     }
   }
