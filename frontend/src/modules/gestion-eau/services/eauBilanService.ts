@@ -2,8 +2,9 @@
  * Bilans (eau_bilans), NRW et agrégats du tableau de bord — offline-first.
  * Le calcul pur vit dans utils/bilan.ts ; ce service charge Dexie et persiste.
  */
+import { supabase, withTimeout } from '../../../lib/supabase';
 import { eauDb } from '../db/gestionEauDb';
-import { pullTable, saveLocal } from './eauSync';
+import { pullTable, saveLocal, deleteLocal } from './eauSync';
 import { newId } from '../utils/id';
 import {
   computeBilan,
@@ -85,6 +86,64 @@ export async function computeAndSaveBilan(current: {
   };
 
   return saveLocal('eau_bilans', bilan);
+}
+
+// ─────────────────── Recalcul ciblé (« voisins ») + complet ───────────────────
+/**
+ * Supprime le(s) bilan(s) dont le `timestamp` correspond à `timestamp` (Dexie +
+ * Supabase). Sert à retirer un bilan devenu orphelin (à un horodatage qui n'a
+ * plus de relevé) avant un recalcul ciblé. La comparaison se fait sur l'instant
+ * (getTime) pour absorber les variantes de formatage ISO.
+ */
+export async function deleteBilanAt(timestamp: string): Promise<void> {
+  const targetMs = new Date(timestamp).getTime();
+  const all = (await eauDb.eau_bilans.toArray()) as BilanLocal[];
+  const ids = all
+    .filter((b) => new Date(b.timestamp).getTime() === targetMs)
+    .map((b) => b.id);
+  for (const id of ids) {
+    await deleteLocal('eau_bilans', id);
+  }
+}
+
+/**
+ * Recalcule le bilan d'un relevé donné : retire son bilan existant (s'il y en a un)
+ * puis le recrée. Retourne `null` si le relevé n'a pas de précédent (le plus ancien →
+ * simple référence, aucun bilan recréé).
+ */
+export async function rebuildBilanForReleve(r: { timestamp: string; volume_m3: number }): Promise<BilanLocal | null> {
+  await deleteBilanAt(r.timestamp);
+  return computeAndSaveBilan({ timestamp: r.timestamp, volume_m3: r.volume_m3 });
+}
+
+/**
+ * Recalcul COMPLET de la chaîne de bilans (bouton manuel + filet de sécurité, PAS le
+ * chemin automatique) : vide tous les bilans (Dexie + Supabase) puis recrée un bilan
+ * par relevé dans l'ordre chronologique. Idempotent (le plus ancien ne produit pas
+ * de bilan). Nécessite la connexion pour purger côté serveur.
+ */
+export async function recomputeAllBilans(): Promise<void> {
+  const releves = ((await eauDb.eau_releves_bassin.toArray()) as ReleveBassinLocal[])
+    .slice()
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  // Purge locale + serveur (best-effort côté serveur si en ligne).
+  await eauDb.eau_bilans.clear();
+  if (typeof navigator === 'undefined' || navigator.onLine) {
+    try {
+      await withTimeout(
+        supabase.from('eau_bilans').delete().not('id', 'is', null) as any,
+        8000,
+        'eau:recompute:clear-bilans'
+      );
+    } catch {
+      /* best-effort : un échec serveur n'empêche pas la reconstruction locale */
+    }
+  }
+
+  for (const r of releves) {
+    await computeAndSaveBilan({ timestamp: r.timestamp, volume_m3: r.volume_m3 });
+  }
 }
 
 /** Liste des bilans, plus récents d'abord ; option « anomalies seulement ». */

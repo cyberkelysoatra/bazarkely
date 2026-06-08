@@ -14,11 +14,15 @@ import {
 } from 'recharts';
 import {
   ArrowDownToLine, Ruler, Gauge, Save, AlertTriangle, Settings, Waves, Activity, CalendarClock,
+  ListChecks, Pencil, Trash2, RefreshCw,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
+import { useGestionEau } from '../context/GestionEauContext';
+import { useAppStore } from '../../../stores/appStore';
+import { showConfirm } from '../../../utils/dialogUtils';
 import { getConfig, dimensionsFromConfig } from '../services/eauConfigService';
 import {
   surfaceFromConfig,
@@ -26,12 +30,19 @@ import {
   addDebitTest,
 } from '../services/eauBassinService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
+import { recomputeAllBilans } from '../services/eauBilanService';
 import { hauteurCmToVolumeM3 } from '../utils/bassin';
 import { computeDebit } from '../utils/debit';
-import { addEntreeBassin, addReleveBassin } from '../services/eauReleveService';
+import {
+  addEntreeBassin,
+  addReleveBassin,
+  listRecentRelevesBassin,
+  updateReleveBassin,
+  deleteReleveBassin,
+} from '../services/eauReleveService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { fmtM3, fmtDate } from '../utils/format';
-import type { ConfigLocal, DebitTestLocal } from '../types/gestionEau';
+import type { ConfigLocal, DebitTestLocal, ReleveBassinLocal } from '../types/gestionEau';
 import type { BassinDimensions } from '../utils/bassin';
 
 type Tab = 'entree' | 'niveau' | 'debit';
@@ -56,8 +67,18 @@ function isFuture(local: string): boolean {
   return Number.isFinite(t) && t > Date.now();
 }
 
+// Convertit un horodatage ISO en valeur d'<input datetime-local> (heure locale, sans secondes).
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function EauSaisieBassinPage() {
   const navigate = useNavigate();
+  const { roles } = useGestionEau();
+  const isOnline = useAppStore((s) => s.isOnline);
   const [searchParams] = useSearchParams();
   const btParam = searchParams.get('bt');
   // Démarre sur le sous-onglet demandé par le deep-link (?bt=), sinon Niveau.
@@ -86,6 +107,11 @@ export default function EauSaisieBassinPage() {
   const [tests, setTests] = useState<DebitTestLocal[]>([]);
   const [niveauSerie, setNiveauSerie] = useState<SeriePoint[]>([]);
 
+  // Section admin « Relevés récents » (édition / suppression + recalcul des bilans).
+  const [relevesList, setRelevesList] = useState<ReleveBassinLocal[]>([]);
+  const [editing, setEditing] = useState<{ id: string; hauteur: string; datetime: string } | null>(null);
+  const [recomputing, setRecomputing] = useState(false);
+
   // Réagit à un nouveau deep-link (?bt=) sans remonter le composant : un clic sur une
   // autre carte bassin du tableau de bord bascule le sous-onglet. Un changement manuel
   // d'onglet (boutons) ne touche pas l'URL, donc n'est pas écrasé par cet effet.
@@ -105,6 +131,19 @@ export default function EauSaisieBassinPage() {
       setLoading(false);
     })();
   }, []);
+
+  // Charge la liste des relevés récents dès que le rôle admin est confirmé.
+  useEffect(() => {
+    if (!roles.admin) return;
+    void listRecentRelevesBassin(30).then(setRelevesList);
+  }, [roles.admin]);
+
+  // Rafraîchit conjointement la liste admin et la courbe de niveau après une opération.
+  const refreshAdminData = async () => {
+    setRelevesList(await listRecentRelevesBassin(30));
+    const t = await getTendances({ fenetreJours: 30 });
+    setNiveauSerie(t.niveauBassin);
+  };
 
   // Historique du débit (du plus ancien au plus récent) pour le graphe en barres.
   const debitChartData = useMemo(
@@ -241,8 +280,78 @@ export default function EauSaisieBassinPage() {
       setNiveauDateTime('');
       const t = await getTendances({ fenetreJours: 30 });
       setNiveauSerie(t.niveauBassin);
+      if (roles.admin) setRelevesList(await listRecentRelevesBassin(30));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // ── Actions admin sur un relevé ──
+  const saveEdit = async () => {
+    if (!editing) return;
+    const h = Number(editing.hauteur);
+    if (!Number.isFinite(h) || h < 0) {
+      toast.error('Hauteur invalide');
+      return;
+    }
+    if (!editing.datetime.trim() || isFuture(editing.datetime)) {
+      toast.error('Date invalide (vide ou dans le futur)');
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateReleveBassin({
+        id: editing.id,
+        hauteur_cm: h,
+        timestamp: new Date(editing.datetime).toISOString(),
+      });
+      setEditing(null);
+      await refreshAdminData();
+      toast.success('Relevé modifié — bilans recalculés');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Modification impossible');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeReleve = async (r: ReleveBassinLocal) => {
+    const ok = await showConfirm(
+      `Supprimer ce relevé du ${fmtDate(r.timestamp)} (${r.hauteur_cm} cm) ? Les bilans seront recalculés.`,
+      'Relevés',
+      { variant: 'danger', confirmText: 'Supprimer' }
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteReleveBassin(r.id);
+      if (editing?.id === r.id) setEditing(null);
+      await refreshAdminData();
+      toast.success('Relevé supprimé — bilans recalculés');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Suppression impossible');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const recomputeAll = async () => {
+    const ok = await showConfirm(
+      'Recalculer TOUS les bilans depuis le début ? Utile pour générer les bilans des relevés importés. Les bilans déjà « traités » repasseront en « non traité ».',
+      'Bilans',
+      { confirmText: 'Recalculer' }
+    );
+    if (!ok) return;
+    setRecomputing(true);
+    try {
+      await recomputeAllBilans();
+      const t = await getTendances({ fenetreJours: 30 });
+      setNiveauSerie(t.niveauBassin);
+      toast.success('Bilans recalculés');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Recalcul impossible');
+    } finally {
+      setRecomputing(false);
     }
   };
 
@@ -338,6 +447,7 @@ export default function EauSaisieBassinPage() {
           )}
 
           {tab === 'niveau' && (
+            <>
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft space-y-3">
               {!dim && (
                 <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
@@ -421,6 +531,119 @@ export default function EauSaisieBassinPage() {
                 )}
               </div>
             </div>
+
+            {/* Section réservée à l'admin : édition / suppression d'un relevé + recalcul des bilans. */}
+            {roles.admin && (
+              <details className="rounded-xl border border-ahuvi-200 bg-white shadow-soft">
+                <summary className="flex items-center gap-2 cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ahuvi-forest">
+                  <ListChecks className="w-4 h-4" aria-hidden="true" /> Relevés récents (admin)
+                </summary>
+                <div className="px-4 pb-4 space-y-3">
+                  <p className="text-xs text-gray-500 leading-snug">
+                    Un bilan compare deux relevés qui se suivent (niveau précédent → niveau actuel)
+                    pour estimer la consommation et les pertes. Quand vous modifiez ou supprimez un
+                    relevé, les bilans concernés — celui de ce relevé et celui du relevé suivant —
+                    sont recalculés automatiquement. Le bouton « Recalculer tous les bilans » refait
+                    toute la série depuis le début (utile une fois pour les relevés importés).
+                  </p>
+
+                  {!isOnline && (
+                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      Connectez-vous pour corriger un relevé.
+                    </div>
+                  )}
+
+                  {relevesList.length === 0 ? (
+                    <EauEmptyState icon={Ruler} title="Aucun relevé de niveau pour l'instant" />
+                  ) : (
+                    <ul className="space-y-2">
+                      {relevesList.map((r) => (
+                        <li key={r.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
+                          {editing?.id === r.id ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="block">
+                                  <span className="block text-xs text-gray-600 mb-1">Hauteur (cm)</span>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.1"
+                                    value={editing.hauteur}
+                                    onChange={(e) => setEditing((prev) => (prev ? { ...prev, hauteur: e.target.value } : prev))}
+                                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="block text-xs text-gray-600 mb-1">Date et heure</span>
+                                  <input
+                                    type="datetime-local"
+                                    value={editing.datetime}
+                                    onChange={(e) => setEditing((prev) => (prev ? { ...prev, datetime: e.target.value } : prev))}
+                                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                                  />
+                                </label>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={saveEdit}
+                                  disabled={busy}
+                                  className="inline-flex items-center gap-1.5 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+                                >
+                                  <Save className="w-3.5 h-3.5" aria-hidden="true" /> Enregistrer
+                                </button>
+                                <button
+                                  onClick={() => setEditing(null)}
+                                  disabled={busy}
+                                  className="inline-flex items-center gap-1.5 bg-white border border-ahuvi-200 text-ahuvi-forest text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50"
+                                >
+                                  Annuler
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <EauListIcon icon={Ruler} tone="teal" />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-gray-800">
+                                  {r.hauteur_cm} cm · {fmtM3(r.volume_m3)}
+                                </div>
+                                <div className="text-xs text-gray-500">{fmtDate(r.timestamp)}</div>
+                              </div>
+                              <button
+                                onClick={() => setEditing({ id: r.id, hauteur: String(r.hauteur_cm), datetime: isoToLocalInput(r.timestamp) })}
+                                disabled={busy || !isOnline}
+                                aria-label="Modifier le relevé"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-40"
+                              >
+                                <Pencil className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                              <button
+                                onClick={() => removeReleve(r)}
+                                disabled={busy || !isOnline}
+                                aria-label="Supprimer le relevé"
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+                              >
+                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <button
+                    onClick={recomputeAll}
+                    disabled={recomputing || busy || !isOnline}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-50 text-sm font-medium py-2.5 rounded-lg"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} aria-hidden="true" />
+                    {recomputing ? 'Recalcul…' : 'Recalculer tous les bilans'}
+                  </button>
+                </div>
+              </details>
+            )}
+            </>
           )}
 
           {tab === 'debit' && (

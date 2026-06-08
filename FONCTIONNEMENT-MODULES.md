@@ -332,6 +332,14 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   **Conso réseau** `= Apport − Δstock` (ce qui est sorti vers le réseau) ; **Pertes** `= Conso réseau − Σ compteurs` ;
   **NRW %** `= Pertes / Conso réseau × 100`. **Bilans enrichis** (`apport_m3`, `conso_reseau_m3`, `pertes_m3`, `debit_m3h_utilise`).
   L'**anomalie** d'un bilan = écart de stock (héritage) **OU** pertes/NRW réseau au-delà des seuils `seuil_m3`/`seuil_pct`.
+- **Édition / suppression d'un relevé de niveau (admin, v3.41.0)** (`/gestion-eau/releves` → onglet **Bassin** → mode **Niveau** →
+  section dépliable **« Relevés récents (admin) »**, visible **admin uniquement**) : liste des 30 derniers relevés (date/hauteur/volume).
+  **Modifier** (hauteur et/ou date-heure → `updateReleveBassin`, volume recalculé via la config) ou **supprimer** (`deleteReleveBassin`)
+  un relevé **recalcule automatiquement les bilans « voisins »**. Comme un bilan compare **deux relevés consécutifs** (précédent → courant),
+  seuls **≤ 3 bilans** changent (celui du relevé édité et celui du relevé suivant) ; les autres bilans **conservent leur statut `traitee`/`commentaire`**.
+  Bouton **« Recalculer tous les bilans »** (`recomputeAllBilans`) : reconstruit toute la chaîne depuis le plus ancien (idempotent — utile une
+  fois pour les relevés importés). Actions **en ligne uniquement** (purge serveur des bilans → cohérence Dexie+Supabase ; boutons désactivés hors ligne).
+  La **saisie rétro-datée** d'un nouveau relevé recalcule aussi le bilan du relevé suivant (pas de bilan périmé) ; saisie « en avant » inchangée.
 - **Pilotage** (tableau de bord) : cartes **Débit courant** (m³/h), **Conso réseau** (période), **NRW** (modèle réseau),
   **Autonomie estimée** `= stock courant ÷ conso horaire moyenne` (+ date de vidage prévue). **% remplissage référencé au flotteur**.
 - **Alertes ajoutées** (centre d'alertes + `notificationService` existants) : **`flotteur_defaillant`** (niveau mesuré **> flotteur** → risque

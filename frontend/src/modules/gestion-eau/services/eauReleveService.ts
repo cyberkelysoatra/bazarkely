@@ -3,10 +3,11 @@
  * relevés de compteur (rupture d'index + détection aberrant). Offline-first.
  */
 import { eauDb } from '../db/gestionEauDb';
-import { pullTable, saveLocal } from './eauSync';
+import { pullTable, saveLocal, deleteLocal } from './eauSync';
 import { newId, nowIso } from '../utils/id';
-import { computeAndSaveBilan } from './eauBilanService';
-import { getConfig, facteurAberrantFromConfig } from './eauConfigService';
+import { computeAndSaveBilan, deleteBilanAt, rebuildBilanForReleve } from './eauBilanService';
+import { getConfig, dimensionsFromConfig, facteurAberrantFromConfig } from './eauConfigService';
+import { hauteurCmToVolumeM3 } from '../utils/bassin';
 import { moyenne, detectAberrant, type AberrantResult } from '../utils/bilan';
 import type {
   EntreeBassinLocal,
@@ -59,7 +60,88 @@ export async function addReleveBassin(input: {
   // Déclenche le bilan APRÈS persistance du relevé courant (il devient le stock mesuré).
   const bilan = await computeAndSaveBilan({ timestamp: ts, volume_m3: input.volume_m3 });
 
+  // Cohérence du voisin en saisie rétro-datée : si un relevé existe APRÈS celui-ci,
+  // son « précédent » a changé → son bilan doit être recalculé. En saisie « en avant »
+  // normale, `next` est null → chemin rapide, comportement strictement inchangé.
+  const next = await nextReleveAfter(ts, saved.id);
+  if (next) await rebuildBilanForReleve(next);
+
   return { releve: saved, bilan };
+}
+
+// ───────────────── Édition / suppression d'un relevé de niveau (admin) ─────────────────
+/**
+ * Relevé immédiatement APRÈS un horodatage (plus petit `timestamp` strictement `> ts`),
+ * en excluant éventuellement un id donné. `null` s'il n'existe pas de relevé postérieur.
+ */
+async function nextReleveAfter(ts: string, excludeId?: string): Promise<ReleveBassinLocal | null> {
+  const tMs = new Date(ts).getTime();
+  const all = (await eauDb.eau_releves_bassin.toArray()) as ReleveBassinLocal[];
+  const after = all
+    .filter((r) => r.id !== excludeId && new Date(r.timestamp).getTime() > tMs)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  return after[0] ?? null;
+}
+
+/** Tous les relevés de niveau, du plus récent au plus ancien, limités à `limit`. */
+export async function listRecentRelevesBassin(limit = 30): Promise<ReleveBassinLocal[]> {
+  const all = (await eauDb.eau_releves_bassin.toArray()) as ReleveBassinLocal[];
+  return all
+    .slice()
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
+}
+
+/**
+ * Modifie un relevé de niveau (hauteur et/ou horodatage) puis recalcule les bilans
+ * « voisins » (≤ 3 : l'ancien emplacement, le nouvel emplacement, et le relevé suivant
+ * de part et d'autre). Les autres bilans (et leur statut traitee/commentaire) sont
+ * conservés. Le volume est recalculé depuis la config du bassin.
+ */
+export async function updateReleveBassin(input: {
+  id: string;
+  hauteur_cm: number;
+  timestamp: string;
+}): Promise<ReleveBassinLocal> {
+  const existing = (await eauDb.eau_releves_bassin.get(input.id)) as ReleveBassinLocal | undefined;
+  if (!existing) throw new Error('Relevé introuvable');
+  const oldTs = existing.timestamp;
+  const oldNext = await nextReleveAfter(oldTs, input.id);
+
+  const dim = dimensionsFromConfig(await getConfig());
+  if (!dim) throw new Error('Configurez le bassin d\'abord (dimensions manquantes)');
+  const volume_m3 = hauteurCmToVolumeM3(input.hauteur_cm, dim);
+
+  const updated = await saveLocal('eau_releves_bassin', {
+    ...existing,
+    hauteur_cm: input.hauteur_cm,
+    volume_m3,
+    timestamp: input.timestamp,
+  });
+
+  // Recalcul des voisins.
+  await deleteBilanAt(oldTs);                 // retire le bilan de l'ancien emplacement (orphelin si la date a changé)
+  await rebuildBilanForReleve(updated);       // bilan du relevé à sa nouvelle position
+  const newNext = await nextReleveAfter(input.timestamp, input.id);
+  if (oldNext) await rebuildBilanForReleve(oldNext);
+  if (newNext && newNext.id !== oldNext?.id) await rebuildBilanForReleve(newNext);
+
+  return updated;
+}
+
+/**
+ * Supprime un relevé de niveau puis recalcule les bilans concernés : retire son bilan
+ * (devenu orphelin) et recalcule le bilan du relevé suivant (dont le « précédent » était
+ * le relevé supprimé). Les autres bilans sont conservés.
+ */
+export async function deleteReleveBassin(id: string): Promise<void> {
+  const existing = (await eauDb.eau_releves_bassin.get(id)) as ReleveBassinLocal | undefined;
+  if (!existing) return;
+  const ts = existing.timestamp;
+  const next = await nextReleveAfter(ts, id);
+  await deleteLocal('eau_releves_bassin', id);
+  await deleteBilanAt(ts);
+  if (next) await rebuildBilanForReleve(next);
 }
 
 // ─────────────────────────── Relevés compteur ─────────────────────────────
