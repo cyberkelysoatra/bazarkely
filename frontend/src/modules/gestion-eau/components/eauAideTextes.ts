@@ -72,7 +72,7 @@ export const AIDE: Record<string, AideTexte> = {
     id: 'tendances-conso-estimee',
     quoi: "Estimation de la consommation calculée à partir du débit des pompes et des niveaux relevés (apport = débit × durée − variation du bassin), en attendant l'installation des compteurs.",
     comment:
-      "Les fuites et l'évaporation sont négligées. L'estimation est moins fiable quand le bassin reste au niveau maximum (la pompe se coupe par intermittence). Elle sera remplacée par la mesure réelle dès l'installation des compteurs.",
+      "La courbe pleine est estimée à partir des relevés ; la partie en pointillés est une projection quand les relevés tardent (basée sur la tendance des 3 derniers jours), pour ne pas afficher 0 par erreur. Une absence de relevé n'est pas une consommation nulle. Les pertes réseau (~30 %) sont déduites. Dès l'installation des compteurs, l'affichage repasse sur la consommation mesurée.",
   },
   compteurs: {
     id: 'compteurs',

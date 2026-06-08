@@ -65,6 +65,84 @@ function ConsoArea({ points }: { points: SeriePoint[] }) {
   );
 }
 
+/**
+ * Fusionne la série estimée (trait plein) et la série projetée (pointillés) par jour.
+ * Pour connecter visuellement la projection à l'estimé, le dernier jour estimé porte
+ * aussi une valeur `projection` (= sa valeur estimée) → la zone pointillée démarre là.
+ */
+function mergeConsoSeries(
+  estimee: SeriePoint[],
+  projetee: SeriePoint[]
+): { x: string; value: number | null; projection: number | null }[] {
+  const map = new Map<string, { ms: number; value: number | null; projection: number | null }>();
+  for (const p of estimee) map.set(p.label, { ms: p.ms, value: p.value, projection: null });
+  for (const p of projetee) {
+    const cur = map.get(p.label);
+    if (cur) cur.projection = p.value;
+    else map.set(p.label, { ms: p.ms, value: null, projection: p.value });
+  }
+  const rows = Array.from(map.entries())
+    .map(([label, v]) => ({ label, ...v }))
+    .sort((a, b) => a.ms - b.ms);
+  // Ancre de raccord : si une projection existe, le dernier jour estimé reçoit sa
+  // valeur comme point de départ du tracé pointillé (sinon la ligne « saute »).
+  if (projetee.length > 0 && estimee.length > 0) {
+    const lastEstLabel = estimee[estimee.length - 1].label;
+    const anchor = rows.find((r) => r.label === lastEstLabel);
+    if (anchor && anchor.projection == null) anchor.projection = anchor.value;
+  }
+  return rows.map((r) => ({ x: shortDay(r.label), value: r.value, projection: r.projection }));
+}
+
+/** Conso estimée (zone pleine) + projection (zone pointillée, relevés en attente). */
+function ConsoEstimeeProjeteeChart({ estimee, projetee }: { estimee: SeriePoint[]; projetee: SeriePoint[] }) {
+  const data = mergeConsoSeries(estimee, projetee);
+  return (
+    <>
+      <ResponsiveContainer width="100%" height={180}>
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+          <XAxis dataKey="x" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} width={32} />
+          <Tooltip formatter={(v: number) => fmtM3(v)} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            name="Estimée"
+            stroke={OLIVE}
+            fill={OLIVE}
+            fillOpacity={0.25}
+            isAnimationActive={false}
+            connectNulls={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="projection"
+            name="Projection"
+            stroke={GOLD}
+            fill={GOLD}
+            fillOpacity={0.12}
+            strokeDasharray="5 4"
+            isAnimationActive={false}
+            connectNulls
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+      {projetee.length > 0 && (
+        <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block w-3 h-[3px] rounded" style={{ background: OLIVE }} /> estimée
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block w-3 border-t-2 border-dashed" style={{ borderColor: GOLD }} /> projection
+            (relevés en attente)
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
 function shortDay(label: string): string {
   // 'YYYY-MM-DD' → 'DD/MM'
   const [, m, d] = label.split('-');
@@ -111,6 +189,22 @@ export default function EauTendancesPage() {
                 <ConsoArea points={data.consoParJour} />
               )}
             </ChartCard>
+          ) : data.consoEstimeeParJour.length > 0 || data.aProjection ? (
+            <ChartCard
+              title="Consommation estimée par jour"
+              hint="m³ — estimée via le débit/les niveaux, nette des pertes réseau (~30 %)"
+              badge={
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                  estimée{data.aProjection ? ' + projection' : ''}
+                </span>
+              }
+            >
+              <EauAide {...AIDE.tendancesConsoEstimee} />
+              <ConsoEstimeeProjeteeChart
+                estimee={data.consoEstimeeParJour}
+                projetee={data.consoProjeteeParJour}
+              />
+            </ChartCard>
           ) : data.debitDisponible ? (
             <ChartCard
               title="Consommation estimée par jour"
@@ -122,11 +216,7 @@ export default function EauTendancesPage() {
               }
             >
               <EauAide {...AIDE.tendancesConsoEstimee} />
-              {data.consoEstimeeParJour.length === 0 ? (
-                <Empty>Pas assez de relevés de niveau pour estimer.</Empty>
-              ) : (
-                <ConsoArea points={data.consoEstimeeParJour} />
-              )}
+              <Empty>Pas assez de relevés de niveau pour estimer.</Empty>
             </ChartCard>
           ) : (
             <ChartCard title="Consommation estimée par jour">

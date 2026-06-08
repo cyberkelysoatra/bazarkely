@@ -307,6 +307,14 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   **badge « estimée (débit) »** + **aide repliable** (fuites/évaporation négligées, moins fiable au niveau max) ; sans test de débit → état vide
   « enregistrez un test de débit ». Sur le **tableau de bord**, le chiffre du jour porte la mention « estimée (débit) ». **Bascule AUTOMATIQUE** : dès qu'**un
   seul relevé de compteur** existe, tout repasse sur la conso **réellement mesurée** (titre « métrée », sans mention). Rien n'est enregistré (recalcul à l'affichage).
+- **Conso du jour jamais 0 par absence de relevé** (v3.44.1) : une **absence de relevé n'est PAS une conso nulle**. Tant qu'il n'y a **pas de compteurs**,
+  la conso estimée est désormais **nette des pertes réseau** (`PERTE_RESEAU_DEFAUT_PCT = 30 %`, évaporation + fuites : `consoReseau − 0,30×apport`).
+  Si **aucun relevé n'est tombé aujourd'hui** (`n=0`), le tableau de bord ne montre plus 0 mais une **projection** (`utils/projection.ts`, pur) en cascade :
+  **tendance des 3 derniers jours** → **conso moyenne de la période** → **débit borné** (`débit × 24 × 0,5 × (1−pertes)`, **jamais** `débit×24`), **proratisée**
+  sur la fraction du jour écoulée (le chiffre monte au fil des heures). Une **mention** sous le chiffre précise l'origine (`consoJourSource` : estimée tendance/moyenne/débit).
+  Sur **Tendances**, la courbe estimée est **prolongée jusqu'à aujourd'hui** par une **aire en pointillés** « projection (relevés en attente) » (légende dédiée).
+  **Carve-out 0 légitime** : si des **compteurs existent et indiquent réellement 0**, le 0 est **conservé** (« mesurée (compteurs à 0) ») — on ne projette **jamais**
+  par-dessus une mesure compteur. Bascule automatique sur le métré (sans pertes) dès le 1ᵉʳ relevé de compteur. `CONSO RÉSEAU (PÉRIODE)` et le NRW restent **bruts** (inchangés).
 - **Centre d'alertes** (`/gestion-eau/alertes`, admin) : **génération idempotente** d'`eau_alertes` —
   `anomalie` (bilan non traité), `compteur_non_releve` (> `jours_sans_releve_alerte`), `bassin_critique` (< `bassin_seuil_critique_pct`),
   `fuite` suspectée (NRW ≥ 25 % + pertes > 0). Déduplication par `type`+`ref_id` non traité (rejouable sans empiler).

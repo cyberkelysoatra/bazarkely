@@ -9,12 +9,15 @@ import { newId } from '../utils/id';
 import {
   computeBilan,
   computeNRW,
+  PERTE_RESEAU_DEFAUT_PCT,
   type ReleveBassinLite,
   type EntreeLite,
   type ReleveCompteurLite,
   type CompteurLite,
   type NRWResult,
 } from '../utils/bilan';
+import { projeterConsoJour } from '../utils/projection';
+import { bucketByDay } from './eauTendanceService';
 import {
   getConfig,
   seuilsFromConfig,
@@ -199,6 +202,23 @@ export async function computeNRWForPeriod(startMs: number, endMs: number): Promi
   return { ...nrw, entreesTotalM3, consoTotalM3 };
 }
 
+/**
+ * Origine du chiffre « conso du jour » affiché, pour piloter le libellé :
+ *  - mesuree            : conso métrée (compteurs) > 0
+ *  - estimee_intervalle : estimée par intervalle (relevés du jour + débit), nette de pertes
+ *  - projection_tendance: projetée sur la tendance des 3 derniers jours (relevés en attente)
+ *  - projection_moyenne : projetée sur la conso moyenne de la période
+ *  - projection_debit   : projetée sur le débit (dernier recours, à confirmer)
+ *  - zero_compteurs     : compteurs présents mais 0 réel (les compteurs n'ont pas tourné)
+ */
+export type ConsoJourSource =
+  | 'mesuree'
+  | 'estimee_intervalle'
+  | 'projection_tendance'
+  | 'projection_moyenne'
+  | 'projection_debit'
+  | 'zero_compteurs';
+
 export interface DashboardData {
   /** Dernier relevé de niveau (volume mesuré) ou null. */
   stockActuelM3: number | null;
@@ -207,8 +227,10 @@ export interface DashboardData {
   entreesJourM3: number;
   /** Conso du jour affichée : métrée (compteurs) ou estimée (débit) selon `consoJourEstimee`. */
   consoJourM3: number;
-  /** true si `consoJourM3` est une ESTIMATION (débit) faute de compteurs. */
+  /** true si `consoJourM3` est une ESTIMATION (débit/projection) faute de compteurs. */
   consoJourEstimee: boolean;
+  /** Origine du chiffre affiché (pilote le libellé sous la valeur). */
+  consoJourSource: ConsoJourSource;
   dernierBilan: BilanLocal | null;
   nrwPeriode: NRWResult | null;
   // ── Évolution « bassin/débit » ──
@@ -284,22 +306,39 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Débit courant + autonomie estimée
   const debitCourantM3h = await getDebitCourantM3h();
 
-  // ── Conso du jour : métrée (compteurs) si disponible, sinon ESTIMÉE (débit) ──
-  // Même réutilisation de computeBilan que les tendances. On somme, sur les relevés
-  // de niveau du jour ayant un précédent, max(0, consoReseauM3).
+  const autonomie = estimerAutonomie({
+    stockActuelM3,
+    bilans: bilans.map((b) => ({
+      timestamp: b.timestamp,
+      conso_reseau_m3: b.conso_reseau_m3 ?? null,
+      conso_m3: b.conso_m3,
+    })),
+    fenetreJours: periodeJours,
+    nowMs,
+  });
+
+  // ── Conso du jour : métrée (compteurs) si dispo, sinon ESTIMÉE puis PROJETÉE ──
+  // Une absence de relevé n'est PAS une consommation nulle : à défaut d'intervalle
+  // aujourd'hui, on PROJETTE (tendance 3 j → moyenne → débit borné), proratisé sur la
+  // fraction du jour écoulée. On ne projette JAMAIS par-dessus une mesure compteur.
   const aDesCompteurs = relevesCompteur.length > 0;
   let consoJourAffichee = consoJourM3; // métré par défaut
   let consoJourEstimee = false;
-  if (!aDesCompteurs) {
+  let consoJourSource: ConsoJourSource;
+
+  if (aDesCompteurs) {
+    // Carve-out : 0 légitime si les compteurs n'ont pas tourné (aucune projection).
+    consoJourSource = consoJourM3 > 0 ? 'mesuree' : 'zero_compteurs';
+  } else {
     const { seuilM3, seuilPct } = seuilsFromConfig(config);
     const compteursActifs = compteurs.filter((c) => c.actif);
     const estimable = (debitCourantM3h != null && debitCourantM3h > 0) || entrees.length > 0;
+
+    // Série conso estimée/jour (NETTE des pertes réseau) sur tous les relevés : sert au
+    // cumul des intervalles du jour ET de base à la projection. Vide si non estimable.
+    const estimPoints: { ms: number; value: number }[] = [];
     if (estimable) {
-      let somme = 0;
-      let n = 0;
       for (const r of relevesBassin) {
-        const ms = new Date(r.timestamp).getTime();
-        if (ms < startOfDay || ms > endOfDay) continue;
         const result = computeBilan({
           currentTimestamp: r.timestamp,
           stockMesureM3: r.volume_m3,
@@ -312,25 +351,53 @@ export async function getDashboardData(): Promise<DashboardData> {
           debitM3h: debitCourantM3h,
         });
         if (!result) continue;
-        somme += Math.max(0, result.consoReseauM3);
+        estimPoints.push({
+          ms: new Date(r.timestamp).getTime(),
+          value: Math.max(0, result.consoReseauM3 - PERTE_RESEAU_DEFAUT_PCT * result.apportM3),
+        });
+      }
+    }
+
+    // Intervalles tombant AUJOURD'HUI (estimation par relevés du jour).
+    let somme = 0;
+    let n = 0;
+    for (const p of estimPoints) {
+      if (p.ms >= startOfDay && p.ms <= endOfDay) {
+        somme += p.value;
         n++;
       }
-      if (n > 0) {
-        consoJourAffichee = somme;
+    }
+
+    if (n > 0) {
+      consoJourAffichee = somme;
+      consoJourEstimee = true;
+      consoJourSource = 'estimee_intervalle';
+    } else {
+      // Anti-zéro : aucun relevé aujourd'hui → projeter plutôt qu'afficher 0.
+      const proj = projeterConsoJour({
+        consoEstimeeParJour: bucketByDay(estimPoints),
+        consoMoyenneJourM3: autonomie.consoMoyenneJourM3,
+        debitM3h: debitCourantM3h,
+        pertePct: PERTE_RESEAU_DEFAUT_PCT,
+      });
+      if (proj.tauxJourM3 > 0) {
+        const heuresEcoulees = (nowMs - startOfDay) / 3_600_000;
+        consoJourAffichee = proj.tauxJourM3 * (heuresEcoulees / 24);
         consoJourEstimee = true;
+        consoJourSource =
+          proj.source === 'tendance3'
+            ? 'projection_tendance'
+            : proj.source === 'moyenne'
+              ? 'projection_moyenne'
+              : 'projection_debit';
+      } else {
+        // Rien de calculable (ni historique, ni moyenne, ni débit) → 0 propre, sans mention.
+        consoJourAffichee = 0;
+        consoJourEstimee = false;
+        consoJourSource = 'mesuree';
       }
     }
   }
-  const autonomie = estimerAutonomie({
-    stockActuelM3,
-    bilans: bilans.map((b) => ({
-      timestamp: b.timestamp,
-      conso_reseau_m3: b.conso_reseau_m3 ?? null,
-      conso_m3: b.conso_m3,
-    })),
-    fenetreJours: periodeJours,
-    nowMs,
-  });
 
   return {
     stockActuelM3,
@@ -339,6 +406,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     entreesJourM3,
     consoJourM3: consoJourAffichee,
     consoJourEstimee,
+    consoJourSource,
     dernierBilan,
     nrwPeriode: { pertesM3: nrwAgg.pertesM3, nrwPct: nrwAgg.nrwPct },
     debitCourantM3h,

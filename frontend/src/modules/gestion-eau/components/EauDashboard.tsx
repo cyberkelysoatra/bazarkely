@@ -8,10 +8,37 @@ import {
 import EauPageShell from './EauPageShell';
 import { EauStatCard } from './EauUi';
 import { AIDE } from './eauAideTextes';
-import { getDashboardData, type DashboardData } from '../services/eauBilanService';
+import { getDashboardData, type DashboardData, type ConsoJourSource } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
 import { fmtDate } from '../utils/format';
+
+/**
+ * Libellé discret sous « Conso du jour » selon l'origine du chiffre. Une absence de
+ * relevé n'est pas une consommation nulle → on signale qu'il s'agit d'une projection.
+ */
+function consoJourHint(source: ConsoJourSource | undefined): React.ReactNode {
+  const proj = (txt: string) => (
+    <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+      <TrendingUp className="w-3 h-3" aria-hidden="true" /> {txt}
+    </span>
+  );
+  switch (source) {
+    case 'estimee_intervalle':
+      return <span className="text-xs text-gray-400">estimée (débit)</span>;
+    case 'projection_tendance':
+      return proj('estimée (tendance, relevés en attente)');
+    case 'projection_moyenne':
+      return proj('estimée (moyenne période)');
+    case 'projection_debit':
+      return proj('estimée (débit, à confirmer)');
+    case 'zero_compteurs':
+      return <span className="text-xs text-gray-400">mesurée (compteurs à 0)</span>;
+    case 'mesuree':
+    default:
+      return undefined;
+  }
+}
 
 /** Formate une autonomie en heures → « 2 j 4 h » ou « 5 h » (— si indéfinie). */
 function fmtAutonomie(heures: number | null): string {
@@ -175,7 +202,7 @@ export default function EauDashboard() {
                 tone="olive"
                 label="Conso du jour"
                 value={fmtM3(data?.consoJourM3 ?? 0)}
-                hint={data?.consoJourEstimee ? <span className="text-xs text-gray-400">estimée (débit)</span> : undefined}
+                hint={consoJourHint(data?.consoJourSource)}
                 onClick={goTendances}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"

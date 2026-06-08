@@ -7,16 +7,18 @@
  */
 import { eauDb } from '../db/gestionEauDb';
 import { getConfig, seuilsFromConfig } from './eauConfigService';
-import { getDebitCourantM3h } from './eauBassinService';
+import { getDebitCourantM3h, estimerAutonomie } from './eauBassinService';
 import {
   consoCompteurSurIntervalle,
   computeNRW,
   computeBilan,
+  PERTE_RESEAU_DEFAUT_PCT,
   type ReleveBassinLite,
   type EntreeLite,
   type ReleveCompteurLite,
   type CompteurLite,
 } from '../utils/bilan';
+import { projeterConsoJour, type ProjectionResult } from '../utils/projection';
 import type {
   BilanLocal,
   ReleveBassinLocal,
@@ -59,6 +61,17 @@ export interface TendancesData {
    * Vide si aucun débit ni entrée manuelle (non calculable).
    */
   consoEstimeeParJour: SeriePoint[];
+  /**
+   * Conso PROJETÉE par jour (m³/jour) comblant le trou entre le dernier jour estimé
+   * et aujourd'hui quand les relevés tardent et qu'il n'y a pas de compteurs. Le jour
+   * courant est proratisé sur la fraction écoulée. Vide si projection impossible ou
+   * si des compteurs existent (bascule sur le métré).
+   */
+  consoProjeteeParJour: SeriePoint[];
+  /** Origine de la projection retenue (cf. projeterConsoJour). */
+  projectionSource: ProjectionResult['source'];
+  /** true si une projection a été produite (au moins le jour courant). */
+  aProjection: boolean;
   /** true s'il existe au moins un relevé de compteur (→ basculer sur le métré). */
   aDesCompteurs: boolean;
   /** true si un débit courant > 0 est disponible (estimation activable). */
@@ -169,10 +182,60 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
         debitM3h,
       });
       if (!result) continue; // pas de relevé précédent → pas d'intervalle
-      consoEstimeePoints.push({ ms, value: Math.max(0, result.consoReseauM3) });
+      // Conso NETTE des pertes réseau (évaporation + fuites) : consoReseau − 30 %×apport.
+      consoEstimeePoints.push({
+        ms,
+        value: Math.max(0, result.consoReseauM3 - PERTE_RESEAU_DEFAUT_PCT * result.apportM3),
+      });
     }
   }
   const consoEstimeeParJour = bucketByDay(consoEstimeePoints);
+
+  // ── Projection « anti-zéro » : prolonge la courbe jusqu'à aujourd'hui ──
+  // Tant qu'il n'y a pas de compteurs, on comble les jours sans relevé (entre le
+  // dernier jour estimé et aujourd'hui inclus) par le taux de référence projeté, en
+  // proratisant le jour courant sur la fraction écoulée. Une absence de relevé n'est
+  // PAS une consommation nulle.
+  let consoProjeteeParJour: SeriePoint[] = [];
+  let projectionSource: ProjectionResult['source'] = 'aucune';
+  let aProjection = false;
+  if (!aDesCompteurs) {
+    const periodeJours = config?.periode_facturation_jours ?? 30;
+    const { consoMoyenneJourM3 } = estimerAutonomie({
+      stockActuelM3: null,
+      bilans: bilans.map((b) => ({
+        timestamp: b.timestamp,
+        conso_reseau_m3: b.conso_reseau_m3 ?? null,
+        conso_m3: b.conso_m3,
+      })),
+      fenetreJours: periodeJours,
+      nowMs: endMs,
+    });
+    const proj = projeterConsoJour({
+      consoEstimeeParJour,
+      consoMoyenneJourM3,
+      debitM3h,
+      pertePct: PERTE_RESEAU_DEFAUT_PCT,
+    });
+    projectionSource = proj.source;
+    if (proj.tauxJourM3 > 0) {
+      const todayKey = new Date(endMs).toISOString().slice(0, 10);
+      const todayMs = new Date(todayKey).getTime();
+      const fractionJour = Math.min(1, Math.max(0, (endMs - todayMs) / MS_PER_DAY));
+      const lastEstMs =
+        consoEstimeeParJour.length > 0 ? consoEstimeeParJour[consoEstimeeParJour.length - 1].ms : null;
+      // Démarre au lendemain du dernier jour estimé ; série vide → au moins aujourd'hui.
+      const startDayMs = lastEstMs != null ? lastEstMs + MS_PER_DAY : todayMs;
+      const points: SeriePoint[] = [];
+      for (let dMs = startDayMs; dMs <= todayMs; dMs += MS_PER_DAY) {
+        const key = new Date(dMs).toISOString().slice(0, 10);
+        const isToday = key === todayKey;
+        points.push({ label: key, ms: dMs, value: isToday ? proj.tauxJourM3 * fractionJour : proj.tauxJourM3 });
+      }
+      consoProjeteeParJour = points;
+      aProjection = points.length > 0;
+    }
+  }
 
   // Niveau bassin (chaque relevé dans la fenêtre)
   const niveauBassin: SeriePoint[] = relevesBassin
@@ -240,6 +303,9 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
   return {
     consoParJour,
     consoEstimeeParJour,
+    consoProjeteeParJour,
+    projectionSource,
+    aProjection,
     aDesCompteurs,
     debitDisponible,
     niveauBassin,

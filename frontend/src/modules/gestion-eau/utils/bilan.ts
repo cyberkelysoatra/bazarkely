@@ -6,6 +6,17 @@
 
 export type TS = string | number | Date;
 
+/**
+ * Taux de pertes réseau par défaut (évaporation + fuites de canalisation entre le
+ * bassin et les abonnés) utilisé pour ESTIMER la consommation réelle tant qu'il n'y
+ * a pas de compteurs. Valeur figée à partir des repères publics de "non-revenue water"
+ * (NRW) : dans les pays en développement, 40–60 % de l'eau produite est perdue (les
+ * pertes physiques/fuites en représentant une large part) ; le seuil "bon réseau"
+ * recommandé est ~25 %. On retient une valeur médiane prudente pour un petit réseau.
+ * Sources : World Bank (NRW) ; IWA / Aquatech "Essential guide NRW".
+ */
+export const PERTE_RESEAU_DEFAUT_PCT = 0.30; // 30 %
+
 export function toMs(t: TS): number {
   if (typeof t === 'number') return t;
   if (t instanceof Date) return t.getTime();
