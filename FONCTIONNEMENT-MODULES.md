@@ -374,6 +374,12 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - **Liste « Invitations par lien WhatsApp »** (filtre `invite_channel === 'whatsapp'`, tri En attente < Acceptée < Expirée) : icône de rôle, nom/numéro, badges, **statut** (En attente / Acceptée le… / **Expirée** si `expires_at < now`), **expiration affichée** ; actions **Renvoyer WhatsApp** (régénère le wa.me **avec le même jeton**), **Copier le lien**, **Révoquer** (si en attente, confirmation).
 - **Limite (aperçu image)** : l'aperçu visuel du lien dans WhatsApp dépend du **cache de scraping** de WhatsApp/Facebook ; il peut mettre quelques minutes à apparaître la 1ʳᵉ fois, ou rester un simple lien texte selon le client. Le lien reste fonctionnel dans tous les cas.
 
+**Aperçu WhatsApp riche (Phase 3 — Netlify Edge Functions) :**
+- **Pourquoi côté serveur** : le robot d'aperçu de WhatsApp/Facebook **n'exécute pas le JavaScript** — la PWA seule renvoie une page sans contenu social. Deux **edge functions** (Deno, `frontend/netlify/edge-functions`, déclarées dans `netlify.toml`) préparent l'aperçu **au moment du partage**, sans gêner le chargement normal de la page pour un vrai navigateur.
+- **`invite-og` sur `/i/*`** : injecte dans la page les **balises Open Graph** — titre « **Gestion Eau AHUVI — Vous êtes invité(e)** », description en français reprenant le **% de remplissage du bassin** et sa **tendance** (ou un texte générique si indisponible), et une **image** `…/og-invite.png`. Les chiffres viennent de la **même** source que la vitrine (RPC anon `eau_public_vitrine_stats()`) → cohérence aperçu/page. **Le jeton n'apparaît jamais** dans le titre, la description ni l'image.
+- **`og-invite.png`** : **vraie image PNG** 1200×630 (pas de SVG, non fiable sur WhatsApp) aux **couleurs AHUVI** — grand **« X % »** + « Niveau du bassin » + **tendance** (En hausse / En baisse / Stable) + bandeau d'invitation ; version **générique** (slogan, sans %) si les chiffres manquent. L'image reflète les chiffres **globaux** (pas de donnée nominative).
+- **Limite de cache WhatsApp (à connaître)** : WhatsApp **garde en mémoire l'aperçu par URL** (souvent plusieurs jours). Comme **chaque invitation a un jeton unique**, l'aperçu est **frais au 1er partage** et reflète les chiffres de ce moment ; il **ne se met pas à jour** ensuite pour ce **même** lien — **sans importance** (1 lien = 1 personne).
+
 - La **gestion des demandes d'accès reçues** (valider/refuser) reste sur la même page, inchangée.
 
 ### 🎯 Objectif

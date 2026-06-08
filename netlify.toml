@@ -9,6 +9,17 @@
   NODE_VERSION = "20"
   NODE_ENV = "development"
 
+# --- Edge functions « Invitation vitrine WhatsApp » (Phase 3) ---
+# Injecte les balises Open Graph sur /i/* pour l'aperçu WhatsApp (le robot n'exécute pas le JS).
+[[edge_functions]]
+  path = "/i/*"
+  function = "invite-og"
+
+# Sert l'image PNG 1200×630 référencée par og:image.
+[[edge_functions]]
+  path = "/og-invite.png"
+  function = "og-invite"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
