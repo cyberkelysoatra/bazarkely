@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import {
   Inbox, UserPlus, Check, X, Shield, Gauge, Send, Copy, Trash2, RefreshCw,
   ShieldCheck, ClipboardList, Users, Mail, BadgeCheck, Clock, MailPlus,
-  MessageCircle, Link as LinkIcon, CalendarClock, BookUser, Info,
+  MessageCircle, Link as LinkIcon, CalendarClock, BookUser, Info, Eye,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
@@ -33,6 +33,7 @@ import type { DemandeAccesLocal, CompteurLocal, InvitationLocal } from '../types
 interface DraftState {
   admin: boolean;
   releveur: boolean;
+  promoteur: boolean;
   compteurs: Set<string>;
 }
 
@@ -63,6 +64,7 @@ export default function EauDemandesPage() {
   const [rAdmin, setRAdmin] = useState(false);
   const [rReleveur, setRReleveur] = useState(true);
   const [rClient, setRClient] = useState(false);
+  const [rPromoteur, setRPromoteur] = useState(false);
   const [iCompteurs, setICompteurs] = useState<Set<string>>(new Set());
   const [iExpiresDays, setIExpiresDays] = useState<number | null>(30);
   const [busy, setBusy] = useState(false);
@@ -96,7 +98,7 @@ export default function EauDemandesPage() {
   // ─────────────────────────── Invitations ────────────────────────────
   const resetForm = () => {
     setINom(''); setIEmail(''); setIPhone('');
-    setRAdmin(false); setRReleveur(true); setRClient(false);
+    setRAdmin(false); setRReleveur(true); setRClient(false); setRPromoteur(false);
     setICompteurs(new Set()); setIExpiresDays(30);
   };
 
@@ -219,11 +221,11 @@ export default function EauDemandesPage() {
       toast.error('Email Google invalide'); return;
     }
     if (!iPhone.replace(/\D/g, '')) { toast.error('Numéro WhatsApp requis'); return; }
-    if (!rAdmin && !rReleveur && !rClient) { toast.error('Choisissez au moins un rôle'); return; }
+    if (!rAdmin && !rReleveur && !rClient && !rPromoteur) { toast.error('Choisissez au moins un rôle'); return; }
     if (rClient && iCompteurs.size === 0) { toast.error('Choisissez au moins un compteur pour un client'); return; }
     setBusy(true);
     try {
-      const flags = { role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient };
+      const flags = { role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient, role_promoteur: rPromoteur };
       const compteur_ids = rClient ? Array.from(iCompteurs) : [];
       const inv =
         channel === 'email'
@@ -272,7 +274,7 @@ export default function EauDemandesPage() {
 
   // ─────────────────────────── Demandes reçues ────────────────────────
   const draftFor = (id: string): DraftState =>
-    drafts[id] ?? { admin: false, releveur: false, compteurs: new Set() };
+    drafts[id] ?? { admin: false, releveur: false, promoteur: false, compteurs: new Set() };
 
   const updateDraft = (id: string, patch: Partial<DraftState>) =>
     setDrafts((p) => ({ ...p, [id]: { ...draftFor(id), ...patch } }));
@@ -288,13 +290,14 @@ export default function EauDemandesPage() {
   const valider = async (d: DemandeAccesLocal) => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     const draft = draftFor(d.id);
-    if (!draft.admin && !draft.releveur && draft.compteurs.size === 0) {
+    if (!draft.admin && !draft.releveur && !draft.promoteur && draft.compteurs.size === 0) {
       toast.error('Attribuez au moins un rôle ou un compteur visible');
       return;
     }
     await validerDemande(d.id, {
       admin: draft.admin,
       releveur: draft.releveur,
+      promoteur: draft.promoteur,
       compteur_ids: Array.from(draft.compteurs),
       traitee_par: me,
     });
@@ -315,6 +318,7 @@ export default function EauDemandesPage() {
     <div className="flex flex-wrap gap-1 mt-1">
       {inv.role_admin && <Badge icon={ShieldCheck} tone="gold">Admin</Badge>}
       {inv.role_releveur && <Badge icon={ClipboardList} tone="olive">Releveur</Badge>}
+      {inv.role_promoteur && <Badge icon={Eye} tone="teal">Promoteur</Badge>}
       {inv.role_client && <Badge icon={Users} tone="teal">Client{inv.compteur_ids?.length ? ` · ${inv.compteur_ids.length} compteur(s)` : ''}</Badge>}
     </div>
   );
@@ -657,6 +661,12 @@ export default function EauDemandesPage() {
                     <Users className="w-4 h-4 text-ahuvi-olive" aria-hidden="true" />
                     <span className="text-gray-700">Client</span>
                   </label>
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={rPromoteur} onChange={(e) => setRPromoteur(e.target.checked)}
+                      className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500" />
+                    <Eye className="w-4 h-4 text-ahuvi-teal" aria-hidden="true" />
+                    <span className="text-gray-700">Promoteur</span>
+                  </label>
                 </div>
               </div>
               {rClient && (
@@ -853,6 +863,13 @@ export default function EauDemandesPage() {
                                 className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
                               <Gauge className="w-4 h-4 text-ahuvi-olive" aria-hidden="true" />
                               <span className="text-gray-700">Releveur</span>
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <input type="checkbox" checked={draft.promoteur}
+                                onChange={(e) => updateDraft(d.id, { promoteur: e.target.checked })}
+                                className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500" />
+                              <Eye className="w-4 h-4 text-ahuvi-teal" aria-hidden="true" />
+                              <span className="text-gray-700">Promoteur</span>
                             </label>
                           </div>
                           <div className="text-sm">

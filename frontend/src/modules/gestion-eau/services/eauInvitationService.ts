@@ -124,6 +124,7 @@ export interface InvitationInput {
   role_admin?: boolean;
   role_releveur?: boolean;
   role_client?: boolean;
+  role_promoteur?: boolean;
   compteur_ids?: string[];
   cible?: string | null;
   invited_by?: string | null;
@@ -151,6 +152,7 @@ export async function createInvitation(input: InvitationInput): Promise<Invitati
     role_admin: input.role_admin ?? false,
     role_releveur: input.role_releveur ?? false,
     role_client: input.role_client ?? false,
+    role_promoteur: input.role_promoteur ?? false,
     compteur_ids: input.compteur_ids ?? [],
     cible: input.cible ?? null,
     statut: 'en_attente',
@@ -202,6 +204,7 @@ export interface WhatsappInvitationInput {
   role_admin?: boolean;
   role_releveur?: boolean;
   role_client?: boolean;
+  role_promoteur?: boolean;
   compteur_ids?: string[];
   /** Délai d'expiration en jours (ex. 7 / 30 / 90) ; null/0 = pas d'expiration. */
   expiresInDays?: number | null;
@@ -219,6 +222,7 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_admin: input.role_admin ?? false,
     role_releveur: input.role_releveur ?? false,
     role_client: input.role_client ?? false,
+    role_promoteur: input.role_promoteur ?? false,
   };
   const days = input.expiresInDays ?? null;
   const expires_at =
@@ -231,6 +235,7 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_admin: roles.role_admin,
     role_releveur: roles.role_releveur,
     role_client: roles.role_client,
+    role_promoteur: roles.role_promoteur,
     compteur_ids: input.compteur_ids ?? [],
     cible: invitationTargetPath(roles),
     statut: 'en_attente',
@@ -275,7 +280,7 @@ export async function refreshInvitations(online: boolean): Promise<InvitationLoc
 /** Base de production pour les liens profonds envoyés aux invités. */
 export const INVITATION_BASE_URL = 'https://1sakely.org';
 
-type RoleFlags = { role_admin?: boolean; role_releveur?: boolean; role_client?: boolean };
+type RoleFlags = { role_admin?: boolean; role_releveur?: boolean; role_client?: boolean; role_promoteur?: boolean };
 
 /**
  * Normalise un numéro de téléphone au format international malgache (digits only, sans `+`),
@@ -299,6 +304,7 @@ export function invitationRoleLabel(flags: RoleFlags): string {
   const parts: string[] = [];
   if (flags.role_admin) parts.push('Administrateur');
   if (flags.role_releveur) parts.push('Releveur');
+  if (flags.role_promoteur) parts.push('Promoteur');
   if (flags.role_client) parts.push('Client');
   return parts.join(' / ') || 'utilisateur';
 }
@@ -306,10 +312,12 @@ export function invitationRoleLabel(flags: RoleFlags): string {
 /**
  * Chemin d'atterrissage (lien profond) selon le rôle :
  *  - Releveur OU Admin → saisie bassin/niveau,
+ *  - Promoteur seul    → tableau de bord (lecture seule),
  *  - Client seul       → espace client.
  */
 export function invitationTargetPath(flags: RoleFlags): string {
   if (flags.role_admin || flags.role_releveur) return '/gestion-eau/releves?tab=bassin&bt=niveau';
+  if (flags.role_promoteur) return '/gestion-eau';
   return '/gestion-eau/client';
 }
 

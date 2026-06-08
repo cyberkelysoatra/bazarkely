@@ -251,6 +251,8 @@ export interface InvitationRow {
   role_admin: boolean;
   role_releveur: boolean;
   role_client: boolean;
+  /** Promoteur (Phase 3) : invite un promoteur (lecture totale + seuils). Octroyé au login par les RPC de claim. */
+  role_promoteur: boolean;
   compteur_ids: string[]; // jsonb
   cible: string | null;
   statut: InvitationStatut;

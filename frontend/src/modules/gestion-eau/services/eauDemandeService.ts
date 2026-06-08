@@ -93,6 +93,8 @@ export async function getDemande(id: string): Promise<DemandeAccesLocal | null> 
 export interface ValidationInput {
   admin: boolean;
   releveur: boolean;
+  /** Promoteur (Phase 3) : lecture totale + seuils, aucune autre écriture. */
+  promoteur?: boolean;
   /** Compteurs visibles → si non vide, l'utilisateur devient client. */
   compteur_ids: string[];
   traitee_par: string | null;
@@ -106,8 +108,8 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   const demande = await getDemande(id);
   if (!demande || !demande.user_id) return null;
 
-  if (v.admin || v.releveur) {
-    await setRoles(demande.user_id, { admin: v.admin, releveur: v.releveur });
+  if (v.admin || v.releveur || v.promoteur) {
+    await setRoles(demande.user_id, { admin: v.admin, releveur: v.releveur, promoteur: v.promoteur ?? false });
   }
   if (v.compteur_ids.length > 0) {
     await ensureActivatedClientForUser(
@@ -121,7 +123,7 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   const merged: DemandeAccesLocal = {
     ...demande,
     statut: 'validee',
-    roles_attribues: { admin: v.admin, releveur: v.releveur } as unknown,
+    roles_attribues: { admin: v.admin, releveur: v.releveur, promoteur: v.promoteur ?? false } as unknown,
     compteurs_visibles: v.compteur_ids as unknown,
     traitee_par: v.traitee_par,
     traitee_at: nowIso(),
