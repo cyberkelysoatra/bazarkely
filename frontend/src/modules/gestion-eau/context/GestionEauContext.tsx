@@ -4,6 +4,7 @@
  * jamais getUser()). Applique le bootstrap « premier admin = propriétaire ».
  */
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../../stores/appStore';
 import authService from '../../../services/authService';
@@ -12,7 +13,11 @@ import { ensureRolesBootstrap, getRolesForUser } from '../services/eauRoleServic
 import { refreshConfig } from '../services/eauConfigService';
 import { pullAll, syncAll } from '../services/eauSync';
 import { getPendingEnrollment, processPendingEnrollment } from '../services/eauEnrollmentService';
-import { claimInvitationForCurrentUser, claimPendingTokenInvitation } from '../services/eauInvitationService';
+import {
+  claimInvitationForCurrentUser,
+  claimPendingTokenInvitation,
+  invitationTargetPath,
+} from '../services/eauInvitationService';
 import type { EauRoles } from '../types/gestionEau';
 
 /**
@@ -81,6 +86,7 @@ interface ProviderProps {
 }
 
 export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
+  const navigate = useNavigate();
   const storeUser = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
   const [userId, setUserId] = useState<string | null>(null);
@@ -154,12 +160,15 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
       // (et crée/active le compte client + compteurs). EN LIGNE uniquement et AVANT la
       // lecture des rôles, pour que `ensureRolesBootstrap` reflète le rôle fraîchement
       // accordé. Best-effort : un échec réseau ne casse pas le chargement.
+      // Octroi « invitation vitrine WhatsApp par JETON » : id non null = un jeton vient
+      // d'être consommé (rôle fraîchement accordé) → on atterrira sur la cible du rôle.
+      let claimedTokenId: string | null = null;
       if (online) {
         await claimInvitationForCurrentUser(online).catch(() => null);
         // Octroi « invitation vitrine WhatsApp par JETON » : si un jeton a été capturé
         // (vitrine /i/<token>) et déposé en sessionStorage, la RPC attribue les rôles
         // (et crée/active le compte client). Best-effort, AVANT la lecture des rôles.
-        await claimPendingTokenInvitation(online).catch(() => null);
+        claimedTokenId = await claimPendingTokenInvitation(online).catch(() => null);
       }
 
       // Rafraîchit config + données de base en arrière-plan (best-effort).
@@ -170,6 +179,20 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
       const { roles: effective, confirmed } = await ensureRolesBootstrap(id, online);
       setRoles(effective);
       setRolesConfirmed(confirmed);
+
+      // Redirection post-claim (invitation vitrine WhatsApp) : un jeton vient d'être
+      // consommé avec succès → atterrir sur la cible du rôle accordé (releveur/admin →
+      // saisie bassin ; client → espace client). Évite de laisser l'invité sur la page
+      // publique d'atterrissage. Ne se déclenche qu'UNE fois (le jeton est retiré du
+      // sessionStorage au succès, donc les chargements suivants renvoient null).
+      if (claimedTokenId) {
+        const target = invitationTargetPath({
+          role_admin: effective.admin,
+          role_releveur: effective.releveur,
+          role_client: effective.client,
+        });
+        navigate(target);
+      }
     } catch (e: any) {
       console.error('❌ [GestionEau] Erreur chargement contexte:', e);
       setError(e?.message ?? 'Erreur de chargement du module Gestion Eau');
@@ -179,7 +202,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     } finally {
       if (showSpinner) setIsLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     // Spinner uniquement au premier chargement ; rechargements (réseau/login) en arrière-plan.

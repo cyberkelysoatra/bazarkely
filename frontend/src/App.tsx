@@ -25,6 +25,8 @@ import LoanConfirmPage from './pages/LoanConfirmPage';
 const EauAccueilPage = React.lazy(() => import('./modules/gestion-eau/components/EauAccueilPage'));
 // Résolveur de scan QR PUBLIC (applique la matrice de rôle / redirige vers mission)
 const EauScanResolverPage = React.lazy(() => import('./modules/gestion-eau/components/EauScanResolverPage'));
+// Vitrine PUBLIQUE d'invitation par jeton /i/:token (capture le jeton + CTA Google)
+const EauVitrinePage = React.lazy(() => import('./modules/gestion-eau/components/EauVitrinePage'));
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -189,6 +191,15 @@ function App() {
                     element={
                       <Suspense fallback={<div className="min-h-screen" />}>
                         <EauScanResolverPage />
+                      </Suspense>
+                    }
+                  />
+                  {/* Vitrine d'invitation par jeton : publique (capte le jeton, CTA Google) */}
+                  <Route
+                    path="/i/:token"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen" />}>
+                        <EauVitrinePage />
                       </Suspense>
                     }
                   />
