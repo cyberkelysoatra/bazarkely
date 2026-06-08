@@ -2,6 +2,28 @@
 
 Historique complet des versions et changements de l'application BazarKELY.
 
+> ℹ️ Source vivante du changelog détaillé : `frontend/src/constants/appVersion.ts` (tableau `VERSION_HISTORY`). Ce fichier ne reprend que des jalons.
+
+---
+
+## Version 3.36.0 - 2026-06-08 (Session S92 — Gestion Eau : invitation par LIEN WhatsApp / jeton, Phase 4 — UI admin)
+
+### 🔗 Inviter par lien WhatsApp (2ᵉ canal, sans connaître l'adresse Google) — VALIDÉ E2E EN PROD
+
+- **UI admin** dans `EauDemandesPage` (`/gestion-eau/demandes`) : **sélecteur de canal (onglets Email / WhatsApp)** dans le formulaire « Inviter ». Canal WhatsApp : numéro requis + nom + rôles cumulables (admin/releveur/client, ≥1 compteur si client) + **délai de validité** (7/30/90 j ou illimité) → `createWhatsappInvitation` (Phase 1, offline-first, jeton + `expires_at` + `invite_channel='whatsapp'`).
+- À la création : **lien `https://1sakely.org/i/<token>`** affiché + boutons **« Envoyer sur WhatsApp »** (wa.me, message FR centré sur le lien, **aucune adresse Google imposée** — compte au choix), **« Copier le lien »**, **« Copier le message »**.
+- Nouvelle liste **« Invitations par lien WhatsApp »** (statut En attente / Acceptée / **Expirée**, expiration affichée ; **Renvoyer** = même jeton, **Copier le lien**, **Révoquer**). Liste email conservée à part ; demandes reçues inchangées.
+- **Code** : 2 helpers purs `buildWhatsappInviteMessage` + `buildWhatsappInviteUrl` (`eauInvitationService`), aide `invitations` maj, icônes `MessageCircle`/`Link`/`CalendarClock`. **8 tests** (`eauWhatsappInvite.test.ts`), 105/105 tests eau verts. Aucune table/SQL nouvelle. `tsc --noEmit` + build OK. Commits `082d06d` + `662ec48`. (Phases 1-3 : back+RPC v3.34.0, vitrine `/i/:token` v3.35.0, aperçu OG WhatsApp v3.37.0.)
+
+## Version 3.32.0 - 2026-06-07 (Session S90 — Gestion Eau : invitation par email, Phase 1)
+
+### ✉️ Invitation par email + octroi automatique du rôle au 1er login Google
+
+- Un admin pré-enregistre une invitation (email Google + rôles admin/releveur/client cumulables + compteurs visibles si client). À la connexion de la personne avec cette adresse Google, son rôle est attribué **sans validation** (et compte client + compteurs créés/activés si client). Aucune UI admin (Phase 2 à venir).
+- **Serveur** : table `eau_invitations` (RLS admin-only `eau_is_admin()`, index partiel `lower(email) WHERE en_attente`) + RPC `eau_claim_invitation()` SECURITY DEFINER (`revoke public, anon` / `grant authenticated`). Tests : anon→401, sans invitation→null, releveur→releveur=true+acceptée+idempotent, client→compte actif+compteurs, non-admin voit 0 invitation.
+- **Code (additif, scopé module eau)** : type `InvitationLocal`, store Dexie `eau_invitations` (v3), sync (`PK_BY_TABLE` + `EAU_TABLES`), service `eauInvitationService.ts`, appel `claimInvitationForCurrentUser(online)` dans `GestionEauContext.load()` avant `ensureRolesBootstrap`.
+- **Validation** : `tsc --noEmit` 0, build OK, push `main`, version confirmée en ligne, **octroi releveur validé E2E en production** (connexion cyberkelysoatra → releveur=true automatique, invitation acceptée).
+
 ---
 
 ## Versions 3.16.8 → 3.16.12 - 2026-05-31 (Session S77 — défilement & positionnement à l'ouverture)
