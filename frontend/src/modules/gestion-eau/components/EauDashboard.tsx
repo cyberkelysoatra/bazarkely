@@ -175,6 +175,7 @@ export default function EauDashboard() {
                 tone="olive"
                 label="Conso du jour"
                 value={fmtM3(data?.consoJourM3 ?? 0)}
+                hint={data?.consoJourEstimee ? <span className="text-xs text-gray-400">estimée (débit)</span> : undefined}
                 onClick={goTendances}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"

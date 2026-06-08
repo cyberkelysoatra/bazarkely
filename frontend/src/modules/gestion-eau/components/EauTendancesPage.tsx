@@ -11,9 +11,12 @@ import {
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import { Gauge } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import EauAide from './EauAide';
+import { EauEmptyState } from './EauUi';
 import { AIDE } from './eauAideTextes';
-import { getTendances, type TendancesData } from '../services/eauTendanceService';
+import { getTendances, type TendancesData, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
 
 const FOREST = '#364E30';
@@ -22,15 +25,43 @@ const GOLD = '#9D9B4B';
 const TEAL = '#10939F';
 const ROSE = '#b91c1c';
 
-function ChartCard({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  hint,
+  badge,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-ahuvi-100 bg-white p-3 shadow-soft">
       <div className="mb-2">
-        <h3 className="text-sm font-semibold text-ahuvi-forest font-ahuvi-body">{title}</h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-sm font-semibold text-ahuvi-forest font-ahuvi-body">{title}</h3>
+          {badge}
+        </div>
         {hint && <p className="text-xs text-gray-400">{hint}</p>}
       </div>
       {children}
     </div>
+  );
+}
+
+/** Aire de consommation (m³/jour) — animation Recharts désactivée (cf. v3.43.1). */
+function ConsoArea({ points }: { points: SeriePoint[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={180}>
+      <AreaChart data={points.map((p) => ({ ...p, x: shortDay(p.label) }))}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+        <XAxis dataKey="x" tick={{ fontSize: 10 }} />
+        <YAxis tick={{ fontSize: 10 }} width={32} />
+        <Tooltip formatter={(v: number) => fmtM3(v)} />
+        <Area type="monotone" dataKey="value" name="Conso" stroke={OLIVE} fill={OLIVE} fillOpacity={0.25} isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -70,21 +101,42 @@ export default function EauTendancesPage() {
         <Empty>Aucune donnée.</Empty>
       ) : (
         <div className="space-y-3">
-          <ChartCard title="Consommation métrée par jour" hint="m³ — issu des bilans">
-            {data.consoParJour.length === 0 ? (
-              <Empty>Pas encore de bilan sur la période.</Empty>
-            ) : (
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={data.consoParJour.map((p) => ({ ...p, x: shortDay(p.label) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                  <XAxis dataKey="x" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} width={32} />
-                  <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Area type="monotone" dataKey="value" name="Conso" stroke={OLIVE} fill={OLIVE} fillOpacity={0.25} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
+          {/* Conso par jour : MÉTRÉE dès qu'il existe des relevés de compteur,
+              sinon ESTIMÉE via le débit des pompes (bascule automatique). */}
+          {data.aDesCompteurs ? (
+            <ChartCard title="Consommation métrée par jour" hint="m³ — issu des compteurs">
+              {data.consoParJour.length === 0 ? (
+                <Empty>Pas encore de bilan sur la période.</Empty>
+              ) : (
+                <ConsoArea points={data.consoParJour} />
+              )}
+            </ChartCard>
+          ) : data.debitDisponible ? (
+            <ChartCard
+              title="Consommation estimée par jour"
+              hint="m³ — estimée via le débit des pompes (en attendant les compteurs)"
+              badge={
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                  estimée (débit)
+                </span>
+              }
+            >
+              <EauAide {...AIDE.tendancesConsoEstimee} />
+              {data.consoEstimeeParJour.length === 0 ? (
+                <Empty>Pas assez de relevés de niveau pour estimer.</Empty>
+              ) : (
+                <ConsoArea points={data.consoEstimeeParJour} />
+              )}
+            </ChartCard>
+          ) : (
+            <ChartCard title="Consommation estimée par jour">
+              <EauEmptyState
+                icon={Gauge}
+                title="Estimation indisponible"
+                hint="Enregistrez un test de débit (onglet Débit de la saisie bassin) pour estimer la consommation."
+              />
+            </ChartCard>
+          )}
 
           <ChartCard title="Niveau du bassin" hint="volume mesuré (m³) à chaque relevé">
             {data.niveauBassin.length === 0 ? (

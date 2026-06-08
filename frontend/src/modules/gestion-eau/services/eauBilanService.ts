@@ -205,7 +205,10 @@ export interface DashboardData {
   volumeMaxM3: number | null;
   tauxRemplissage: number | null; // [0,1] — référencé au flotteur
   entreesJourM3: number;
+  /** Conso du jour affichée : métrée (compteurs) ou estimée (débit) selon `consoJourEstimee`. */
   consoJourM3: number;
+  /** true si `consoJourM3` est une ESTIMATION (débit) faute de compteurs. */
+  consoJourEstimee: boolean;
   dernierBilan: BilanLocal | null;
   nrwPeriode: NRWResult | null;
   // ── Évolution « bassin/débit » ──
@@ -224,10 +227,12 @@ export async function getDashboardData(): Promise<DashboardData> {
   const config = await getConfig();
   const dim = dimensionsFromConfig(config);
 
-  const [relevesBassin, entrees, bilans] = await Promise.all([
+  const [relevesBassin, entrees, bilans, relevesCompteur, compteurs] = await Promise.all([
     eauDb.eau_releves_bassin.toArray() as Promise<ReleveBassinLocal[]>,
     eauDb.eau_entrees_bassin.toArray() as Promise<EntreeBassinLocal[]>,
     eauDb.eau_bilans.toArray() as Promise<BilanLocal[]>,
+    eauDb.eau_releves_compteur.toArray() as Promise<ReleveCompteurLocal[]>,
+    eauDb.eau_compteurs.toArray() as Promise<CompteurLocal[]>,
   ]);
 
   // Dernier relevé de niveau
@@ -278,6 +283,44 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // Débit courant + autonomie estimée
   const debitCourantM3h = await getDebitCourantM3h();
+
+  // ── Conso du jour : métrée (compteurs) si disponible, sinon ESTIMÉE (débit) ──
+  // Même réutilisation de computeBilan que les tendances. On somme, sur les relevés
+  // de niveau du jour ayant un précédent, max(0, consoReseauM3).
+  const aDesCompteurs = relevesCompteur.length > 0;
+  let consoJourAffichee = consoJourM3; // métré par défaut
+  let consoJourEstimee = false;
+  if (!aDesCompteurs) {
+    const { seuilM3, seuilPct } = seuilsFromConfig(config);
+    const compteursActifs = compteurs.filter((c) => c.actif);
+    const estimable = (debitCourantM3h != null && debitCourantM3h > 0) || entrees.length > 0;
+    if (estimable) {
+      let somme = 0;
+      let n = 0;
+      for (const r of relevesBassin) {
+        const ms = new Date(r.timestamp).getTime();
+        if (ms < startOfDay || ms > endOfDay) continue;
+        const result = computeBilan({
+          currentTimestamp: r.timestamp,
+          stockMesureM3: r.volume_m3,
+          relevesBassin: relevesBassin as ReleveBassinLite[],
+          entrees: entrees as EntreeLite[],
+          compteursActifs: compteursActifs as CompteurLite[],
+          relevesCompteur: relevesCompteur as ReleveCompteurLite[],
+          seuilM3,
+          seuilPct,
+          debitM3h: debitCourantM3h,
+        });
+        if (!result) continue;
+        somme += Math.max(0, result.consoReseauM3);
+        n++;
+      }
+      if (n > 0) {
+        consoJourAffichee = somme;
+        consoJourEstimee = true;
+      }
+    }
+  }
   const autonomie = estimerAutonomie({
     stockActuelM3,
     bilans: bilans.map((b) => ({
@@ -294,7 +337,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     volumeMaxM3: dim ? volumeMaxM3(dim) : null,
     tauxRemplissage: dim && stockActuelM3 != null ? tauxRemplissage(stockActuelM3, dim) : null,
     entreesJourM3,
-    consoJourM3,
+    consoJourM3: consoJourAffichee,
+    consoJourEstimee,
     dernierBilan,
     nrwPeriode: { pertesM3: nrwAgg.pertesM3, nrwPct: nrwAgg.nrwPct },
     debitCourantM3h,

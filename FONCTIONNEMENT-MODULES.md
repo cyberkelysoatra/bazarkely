@@ -301,6 +301,12 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - **Tendances** (`/gestion-eau/tendances`, releveur/admin) : graphiques **recharts** — **conso métrée/jour** (aire), **niveau du bassin** (ligne),
   **NRW par semaine** (barres), **top consommateurs** et **conso par zone** (barres horizontales). Le **tableau de bord** porte un **mini-graphe**
   conso 30 j (lien vers Tendances) ; l'**espace client** affiche l'**historique de consommation** (12 derniers relevés). Charte verte AHUVI.
+- **Consommation estimée par le débit** (v3.43.2) : tant qu'**aucun relevé de compteur** n'existe, la conso métrée est vide → on affiche une **conso ESTIMÉE**
+  déduite du **débit des pompes**, calculée **à la volée** via `computeBilan` (formule unique, non modifiée) : `consoReseauM3 = apport − Δstock`, avec
+  `apport = débit × Δt` quand aucune entrée manuelle, **bornée ≥ 0**. Sur **Tendances**, la courbe devient « **Consommation estimée par jour** » avec un
+  **badge « estimée (débit) »** + **aide repliable** (fuites/évaporation négligées, moins fiable au niveau max) ; sans test de débit → état vide
+  « enregistrez un test de débit ». Sur le **tableau de bord**, le chiffre du jour porte la mention « estimée (débit) ». **Bascule AUTOMATIQUE** : dès qu'**un
+  seul relevé de compteur** existe, tout repasse sur la conso **réellement mesurée** (titre « métrée », sans mention). Rien n'est enregistré (recalcul à l'affichage).
 - **Centre d'alertes** (`/gestion-eau/alertes`, admin) : **génération idempotente** d'`eau_alertes` —
   `anomalie` (bilan non traité), `compteur_non_releve` (> `jours_sans_releve_alerte`), `bassin_critique` (< `bassin_seuil_critique_pct`),
   `fuite` suspectée (NRW ≥ 25 % + pertes > 0). Déduplication par `type`+`ref_id` non traité (rejouable sans empiler).

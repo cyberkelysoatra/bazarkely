@@ -6,8 +6,17 @@
  * ne fait que charger l'instantané Dexie et appeler ces fonctions.
  */
 import { eauDb } from '../db/gestionEauDb';
-import { getConfig } from './eauConfigService';
-import { consoCompteurSurIntervalle, computeNRW } from '../utils/bilan';
+import { getConfig, seuilsFromConfig } from './eauConfigService';
+import { getDebitCourantM3h } from './eauBassinService';
+import {
+  consoCompteurSurIntervalle,
+  computeNRW,
+  computeBilan,
+  type ReleveBassinLite,
+  type EntreeLite,
+  type ReleveCompteurLite,
+  type CompteurLite,
+} from '../utils/bilan';
 import type {
   BilanLocal,
   ReleveBassinLocal,
@@ -44,6 +53,16 @@ export interface NamedValue {
 export interface TendancesData {
   /** Conso métrée par jour (Σ conso_m3 des bilans du jour). */
   consoParJour: SeriePoint[];
+  /**
+   * Conso ESTIMÉE par jour, calculée à la volée via le modèle « bassin/débit »
+   * (apport = débit × Δt − variation du bassin), en attendant les compteurs.
+   * Vide si aucun débit ni entrée manuelle (non calculable).
+   */
+  consoEstimeeParJour: SeriePoint[];
+  /** true s'il existe au moins un relevé de compteur (→ basculer sur le métré). */
+  aDesCompteurs: boolean;
+  /** true si un débit courant > 0 est disponible (estimation activable). */
+  debitDisponible: boolean;
   /** Niveau du bassin (volume m³) à chaque relevé de niveau. */
   niveauBassin: SeriePoint[];
   /** NRW par bucket (semaine) sur la fenêtre. */
@@ -102,12 +121,13 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
   const config = await getConfig();
   const fenetreJours = opts?.fenetreJours ?? (config?.periode_facturation_jours ?? 30) * 3;
 
-  const [bilans, relevesBassin, entrees, relevesCompteur, compteurs] = await Promise.all([
+  const [bilans, relevesBassin, entrees, relevesCompteur, compteurs, debitM3h] = await Promise.all([
     eauDb.eau_bilans.toArray() as Promise<BilanLocal[]>,
     eauDb.eau_releves_bassin.toArray() as Promise<ReleveBassinLocal[]>,
     eauDb.eau_entrees_bassin.toArray() as Promise<EntreeBassinLocal[]>,
     eauDb.eau_releves_compteur.toArray() as Promise<ReleveCompteurLocal[]>,
     eauDb.eau_compteurs.toArray() as Promise<CompteurLocal[]>,
+    getDebitCourantM3h(),
   ]);
 
   const endMs = Date.now();
@@ -122,6 +142,37 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
       })
       .map((b) => ({ ms: new Date(b.timestamp).getTime(), value: b.conso_m3 ?? 0 }))
   );
+
+  // ── Conso ESTIMÉE par jour (modèle bassin/débit, à la volée) ──
+  // On réutilise computeBilan (formule unique) sur chaque relevé de niveau de la
+  // fenêtre ayant un relevé précédent. consoReseauM3 = apport − Δstock, borné ≥ 0.
+  const { seuilM3, seuilPct } = seuilsFromConfig(config);
+  const compteursActifs = compteurs.filter((c) => c.actif);
+  const aDesCompteurs = relevesCompteur.length > 0;
+  const debitDisponible = debitM3h != null && debitM3h > 0;
+  // Non calculable sans débit ET sans aucune entrée manuelle → série vide.
+  const estimable = debitDisponible || entrees.length > 0;
+  const consoEstimeePoints: { ms: number; value: number }[] = [];
+  if (estimable) {
+    for (const r of relevesBassin) {
+      const ms = new Date(r.timestamp).getTime();
+      if (ms < startMs || ms > endMs) continue;
+      const result = computeBilan({
+        currentTimestamp: r.timestamp,
+        stockMesureM3: r.volume_m3,
+        relevesBassin: relevesBassin as ReleveBassinLite[],
+        entrees: entrees as EntreeLite[],
+        compteursActifs: compteursActifs as CompteurLite[],
+        relevesCompteur: relevesCompteur as ReleveCompteurLite[],
+        seuilM3,
+        seuilPct,
+        debitM3h,
+      });
+      if (!result) continue; // pas de relevé précédent → pas d'intervalle
+      consoEstimeePoints.push({ ms, value: Math.max(0, result.consoReseauM3) });
+    }
+  }
+  const consoEstimeeParJour = bucketByDay(consoEstimeePoints);
 
   // Niveau bassin (chaque relevé dans la fenêtre)
   const niveauBassin: SeriePoint[] = relevesBassin
@@ -188,6 +239,9 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
 
   return {
     consoParJour,
+    consoEstimeeParJour,
+    aDesCompteurs,
+    debitDisponible,
     niveauBassin,
     nrwParBucket,
     topConsommateurs: topConsommateurs.slice(0, 10),

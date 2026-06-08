@@ -68,6 +68,12 @@ export const AIDE: Record<string, AideTexte> = {
     quoi: "Comprendre l'évolution : consommation, niveau, NRW, plus gros consommateurs.",
     comment: 'Lisez les graphiques ; ils se remplissent au fil des relevés.',
   },
+  tendancesConsoEstimee: {
+    id: 'tendances-conso-estimee',
+    quoi: "Estimation de la consommation calculée à partir du débit des pompes et des niveaux relevés (apport = débit × durée − variation du bassin), en attendant l'installation des compteurs.",
+    comment:
+      "Les fuites et l'évaporation sont négligées. L'estimation est moins fiable quand le bassin reste au niveau maximum (la pompe se coupe par intermittence). Elle sera remplacée par la mesure réelle dès l'installation des compteurs.",
+  },
   compteurs: {
     id: 'compteurs',
     quoi: 'Gérer la liste des compteurs, leurs QR et la carte.',
