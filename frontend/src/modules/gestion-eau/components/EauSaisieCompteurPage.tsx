@@ -230,7 +230,7 @@ export default function EauSaisieCompteurPage({
                 <BarChart data={histo}>
                   <XAxis dataKey="i" hide />
                   <Tooltip formatter={(val: number) => fmtM3(val)} labelFormatter={() => ''} />
-                  <Bar dataKey="value" fill="#4C6D40" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="value" fill="#4C6D40" radius={[2, 2, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -80,7 +80,7 @@ export default function EauTendancesPage() {
                   <XAxis dataKey="x" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={32} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Area type="monotone" dataKey="value" name="Conso" stroke={OLIVE} fill={OLIVE} fillOpacity={0.25} />
+                  <Area type="monotone" dataKey="value" name="Conso" stroke={OLIVE} fill={OLIVE} fillOpacity={0.25} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -96,7 +96,7 @@ export default function EauTendancesPage() {
                   <XAxis dataKey="x" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={32} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Line type="monotone" dataKey="value" name="Niveau" stroke={TEAL} dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="value" name="Niveau" stroke={TEAL} dot={false} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -112,7 +112,7 @@ export default function EauTendancesPage() {
                   <XAxis dataKey="x" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={32} />
                   <Tooltip formatter={(v: number) => fmtPct(v)} />
-                  <Bar dataKey="nrwPct" name="NRW" fill={ROSE} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="nrwPct" name="NRW" fill={ROSE} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -131,7 +131,7 @@ export default function EauTendancesPage() {
                   <XAxis type="number" tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="nom" width={90} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Bar dataKey="value" name="Conso" fill={FOREST} radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="value" name="Conso" fill={FOREST} radius={[0, 3, 3, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -146,7 +146,7 @@ export default function EauTendancesPage() {
                   <XAxis type="number" tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="nom" width={90} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Bar dataKey="value" name="Conso" fill={GOLD} radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="value" name="Conso" fill={GOLD} radius={[0, 3, 3, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}

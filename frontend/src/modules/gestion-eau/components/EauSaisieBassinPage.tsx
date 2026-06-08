@@ -525,7 +525,7 @@ export default function EauSaisieBassinPage() {
                       <XAxis dataKey="x" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} width={32} />
                       <Tooltip formatter={(v: number) => fmtM3(v)} />
-                      <Line type="monotone" dataKey="value" name="Niveau" stroke="#10939F" dot={false} strokeWidth={2} />
+                      <Line type="monotone" dataKey="value" name="Niveau" stroke="#10939F" dot={false} strokeWidth={2} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -753,7 +753,7 @@ export default function EauSaisieBassinPage() {
                         <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                         <YAxis tick={{ fontSize: 10 }} width={32} />
                         <Tooltip formatter={(v: number) => `${v.toFixed(1)} m³/h`} />
-                        <Bar dataKey="debit" name="Débit" fill="#10939F" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="debit" name="Débit" fill="#10939F" radius={[3, 3, 0, 0]} isAnimationActive={false} />
                       </BarChart>
                     </ResponsiveContainer>
 

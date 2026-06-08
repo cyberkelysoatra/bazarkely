@@ -311,7 +311,7 @@ export default function EauFacturationPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip formatter={(v: number) => fmtMontant(v, config?.devise)} />
-                  <Bar dataKey="montant" name="Montant" fill="#9D9B4B" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="montant" name="Montant" fill="#9D9B4B" radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -330,7 +330,7 @@ export default function EauFacturationPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={32} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Bar dataKey="conso" name="Conso" fill="#4C6D40" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="conso" name="Conso" fill="#4C6D40" radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}

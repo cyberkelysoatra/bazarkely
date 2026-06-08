@@ -287,7 +287,7 @@ export default function EauDashboard() {
                 <ResponsiveContainer width="100%" height={90}>
                   <AreaChart data={conso}>
                     <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                    <Area type="monotone" dataKey="value" stroke="#4C6D40" fill="#4C6D40" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="value" stroke="#4C6D40" fill="#4C6D40" fillOpacity={0.2} isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -325,7 +325,7 @@ export default function EauDashboard() {
                   <AreaChart data={niveau}>
                     <XAxis dataKey="label" hide />
                     <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                    <Area type="monotone" dataKey="value" stroke="#10939F" fill="#10939F" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="value" stroke="#10939F" fill="#10939F" fillOpacity={0.2} isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
