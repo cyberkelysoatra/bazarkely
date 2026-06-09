@@ -9,7 +9,7 @@ import {
   type BassinModel,
 } from '../utils/bassin';
 import { computeDebit, ecartDebitPct, debitInstable } from '../utils/debit';
-import { computeBilan, type ReleveBassinLite, type EntreeLite } from '../utils/bilan';
+import { computeBilan, FRACTION_POMPE, type ReleveBassinLite, type EntreeLite } from '../utils/bilan';
 import { computeAlerteCandidates } from '../utils/alertes';
 
 // Modèle de référence du prompt : 14 × 7 × flotteur 2,50 / trop-plein 2,90.
@@ -72,16 +72,18 @@ describe('test de débit (Q_in) — critère #3', () => {
 });
 
 describe('conso réseau / pertes / NRW réseau — critère #4', () => {
-  // tPrev = t0, t = t0 + 1h. stockPrev 100, stockMesure 105 → Δstock +5.
+  // tPrev = t0, t = t0 + 2h. stockPrev 100, stockMesure 105 → Δstock +5.
+  // Δt 2h car l'apport par débit est pondéré par FRACTION_POMPE (0,5) : débit×2h×0,5
+  // = débit×1h → les valeurs ci-dessous restent identiques à la version « marche continue 1h ».
   const t0 = 1_000_000;
-  const t1 = t0 + 3_600_000; // +1 h
+  const t1 = t0 + 7_200_000; // +2 h
   const relevesBassin: ReleveBassinLite[] = [
     { volume_m3: 100, timestamp: t0 },
     { volume_m3: 105, timestamp: t1 },
   ];
   const entrees: EntreeLite[] = []; // aucun apport manuel → on s'appuie sur le débit
 
-  it('Q_in 9,8 m³/h, Δt 1h → apport 9,8 ; conso réseau 4,8 ; pertes 1,8 ; NRW 37,5 %', () => {
+  it('Q_in 9,8 m³/h, Δt 2h × fraction pompe 0,5 → apport 9,8 ; conso réseau 4,8 ; pertes 1,8 ; NRW 37,5 %', () => {
     const r = computeBilan({
       currentTimestamp: t1,
       stockMesureM3: 105,
@@ -135,6 +137,24 @@ describe('conso réseau / pertes / NRW réseau — critère #4', () => {
     expect(r.apportM3).toBe(20);
     expect(r.debitM3hUtilise).toBeNull();
     expect(r.entreesM3).toBe(20);
+  });
+
+  it('apport par débit PONDÉRÉ par FRACTION_POMPE (pompe intermittente, pas de marche continue)', () => {
+    const r = computeBilan({
+      currentTimestamp: t1,
+      stockMesureM3: 100, // Δstock 0 → consoReseau = apport
+      relevesBassin,
+      entrees,
+      compteursActifs: [],
+      relevesCompteur: [],
+      seuilM3: 1000,
+      seuilPct: 1000,
+      debitM3h: 10,
+    })!;
+    // Δt 2h : apport = 10 × 2 × FRACTION_POMPE(0,5) = 10 (et NON 20 = marche continue).
+    expect(r.apportM3).toBeCloseTo(10 * 2 * FRACTION_POMPE, 6);
+    expect(r.apportM3).toBeCloseTo(10, 6);
+    expect(r.consoReseauM3).toBeCloseTo(10, 6); // apport − Δstock(0)
   });
 });
 

@@ -10,12 +10,12 @@
  */
 
 /**
- * Fraction de la journée pendant laquelle la pompe tourne effectivement (elle se
- * coupe au niveau flotteur → jamais 24 h/24). Sert à BORNER l'estimation par débit,
- * qui n'est qu'un dernier recours : `débit × 24` brut surestime massivement
- * (≈ 122 m³/j vs ≈ 12 m³/j réellement observés). La tendance reste la référence.
+ * Fraction de temps de marche effective de la pompe (elle se coupe au flotteur → jamais
+ * 24 h/24). Sert ici à BORNER l'estimation par débit (dernier recours). Constante
+ * CANONIQUE définie dans utils/bilan.ts, ré-exportée pour les importateurs existants.
  */
-export const FRACTION_POMPE = 0.5;
+export { FRACTION_POMPE } from './bilan';
+import { FRACTION_POMPE } from './bilan';
 
 export interface ProjectionInput {
   /** Série conso estimée par jour déjà calculée (m³/jour), triée croissante. */

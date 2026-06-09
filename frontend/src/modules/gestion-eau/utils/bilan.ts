@@ -17,6 +17,16 @@ export type TS = string | number | Date;
  */
 export const PERTE_RESEAU_DEFAUT_PCT = 0.30; // 30 %
 
+/**
+ * Fraction de temps de marche EFFECTIVE de la pompe sur un intervalle. La pompe est
+ * intermittente : elle se coupe au niveau flotteur et ne tourne pas en continu. Donc
+ * `débit × Δt` (qui suppose une marche continue) surestime l'apport réel sur un
+ * intervalle. On pondère l'apport estimé par débit par ce facteur. Valeur prudente par
+ * défaut (≈ 50 % du temps), à exposer en configuration admin ultérieurement.
+ * Constante CANONIQUE du module (réutilisée par utils/projection.ts qui la ré-exporte).
+ */
+export const FRACTION_POMPE = 0.5;
+
 export function toMs(t: TS): number {
   if (typeof t === 'number') return t;
   if (t instanceof Date) return t.getTime();
@@ -183,7 +193,12 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
   } else if (entreesM3 > 0) {
     apportM3 = entreesM3; // override manuel : volume(s) saisi(s) pour l'intervalle
   } else if (input.debitM3h != null && input.debitM3h > 0) {
-    apportM3 = input.debitM3h * dtHours;
+    // Pompe INTERMITTENTE (se coupe au flotteur) → `débit × Δt` (marche continue)
+    // surestime l'apport. On pondère par la fraction de temps de marche effective.
+    // Faute de capteur de temps de pompe, c'est l'approximation retenue (cf. rapport
+    // « conso-plafond-pompe »). N'impacte QUE l'estimation par débit (override/entrées
+    // manuelles inchangés). consoReseau = apport − Δstock devient ainsi réaliste.
+    apportM3 = input.debitM3h * dtHours * FRACTION_POMPE;
     debitM3hUtilise = input.debitM3h;
   } else {
     apportM3 = entreesM3; // = 0 : ni entrées, ni débit → aucun apport connu

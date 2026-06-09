@@ -322,7 +322,13 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   par `consoBase × Δt` ; une **entrée manuelle** = bilan direct `max(0, entrée − Δstock)`. `consoBase` (m³/h) = **moyenne du rythme de conso des vidages** (anti-circularité) ;
   replis `estimerAutonomie.consoMoyenneHeureM3` → `débit × FRACTION_POMPE (0,5)` → 0. Net de pertes = `× (1 − 0,30)`. `eauTendanceService` (série) et `eauBilanService`
   (conso du jour) **rebranchés** sur ce helper, **bucket par jour LOCAL** (`bucketByLocalDay`). La projection anti-zéro hérite d'une base réaliste (live : `consoBase` 1,66 m³/h,
-  série ~11–40 m³/j). **Hors périmètre / inchangés** : `computeBilan`, les bilans persistés, le **NRW**, « CONSO RÉSEAU (PÉRIODE) » (restent bruts, mass-balance débit×Δt).
+  série ~11–40 m³/j). **À ce stade (v3.45.2)** `computeBilan`, les bilans persistés, le **NRW** et « CONSO RÉSEAU (PÉRIODE) » restaient bruts (mass-balance débit×Δt).
+- **Moteur des bilans aligné sur la pompe intermittente** (v3.46.1) : décision JOEL (facturation = compteurs uniquement, donc aucun impact montants). Dans `computeBilan`,
+  la branche **apport par débit** devient `apport = débit × Δt × FRACTION_POMPE` (0,5) — la pompe se coupe au flotteur, pas de marche continue. `FRACTION_POMPE` est désormais la
+  constante **CANONIQUE de `utils/bilan.ts`** (ré-exportée par `utils/projection.ts`). N'impacte **pas** l'override ni les entrées manuelles. Effet : **bilans persistés**,
+  « **CONSO RÉSEAU (PÉRIODE)** », **pertes/NRW** et **anomalies** deviennent réalistes (≈ ÷2) ; les fausses anomalies (apport gonflé → stock attendu trop haut) disparaissent.
+  ⚠️ Les bilans **déjà enregistrés** gardent leurs valeurs jusqu'à **« Recalculer tous les bilans »** (admin, onglet Niveau) ; les nouveaux relevés sont corrects d'emblée.
+  Indépendant de `consoEstimee.ts` (affichage estimé) → **pas de double comptage**.
 - **Centre d'alertes** (`/gestion-eau/alertes`, admin) : **génération idempotente** d'`eau_alertes` —
   `anomalie` (bilan non traité), `compteur_non_releve` (> `jours_sans_releve_alerte`), `bassin_critique` (< `bassin_seuil_critique_pct`),
   `fuite` suspectée (NRW ≥ 25 % + pertes > 0). Déduplication par `type`+`ref_id` non traité (rejouable sans empiler).
