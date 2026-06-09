@@ -45,6 +45,12 @@ export const AIDE: Record<string, AideTexte> = {
     comment:
       "Cherchez ou scannez le compteur, saisissez l'index affiché. Un index plus bas que le précédent = compteur remplacé ou erreur (l'app vous demande confirmation).",
   },
+  elecReleves: {
+    id: 'elecReleves',
+    quoi: "Relever l'index du compteur ÉLECTRIQUE (kWh) d'une villa. La consommation = index relevé − index précédent.",
+    comment:
+      "Cherchez la villa (mêmes compteurs que l'eau), saisissez l'index en kWh affiché sur le compteur électrique. Un index plus bas que le précédent = compteur remplacé ou erreur (l'app vous demande confirmation). Cette consommation servira à facturer l'électricité avec l'eau.",
+  },
   tournee: {
     id: 'tournee',
     quoi: 'Relever tous les compteurs dans l’ordre sans en oublier.',

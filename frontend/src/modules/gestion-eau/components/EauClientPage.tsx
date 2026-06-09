@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
-import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert, Waves } from 'lucide-react';
+import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert, Waves, Zap } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
@@ -16,9 +16,10 @@ import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { getDernierReleveCompteur, historiqueConsoCompteur } from '../services/eauReleveService';
+import { getDernierReleveElec, historiqueConsoElec } from '../services/eauElecReleveService';
 import { getConfig } from '../services/eauConfigService';
 import { downloadFacturePdf } from '../utils/pdf';
-import { fmtMontant, fmtDate, fmtM3 } from '../utils/format';
+import { fmtMontant, fmtDate, fmtM3, fmtKwh } from '../utils/format';
 import type { FactureLocal, CompteurLocal, ConfigLocal } from '../types/gestionEau';
 
 interface CompteurVue {
@@ -26,6 +27,10 @@ interface CompteurVue {
   dernierIndex: number | null;
   dernierReleveDate: string | null;
   consos: { i: number; value: number }[];
+  // Électricité (lecture seule) : dernier index kWh + conso récente du même compteur.
+  elecDernierIndex: number | null;
+  elecDernierDate: string | null;
+  elecConsos: { i: number; value: number }[];
 }
 
 export default function EauClientPage() {
@@ -66,11 +71,16 @@ export default function EauClientPage() {
       for (const c of mine) {
         const dernier = await getDernierReleveCompteur(c.id);
         const hist = await historiqueConsoCompteur(c.id);
+        const elecDernier = await getDernierReleveElec(c.id);
+        const elecHist = await historiqueConsoElec(c.id);
         vuesData.push({
           compteur: c,
           dernierIndex: dernier?.index ?? null,
           dernierReleveDate: dernier?.timestamp ?? null,
           consos: hist.slice(-12).map((value, i) => ({ i: i + 1, value })),
+          elecDernierIndex: elecDernier?.index ?? null,
+          elecDernierDate: elecDernier?.timestamp ?? null,
+          elecConsos: elecHist.slice(-12).map((value, i) => ({ i: i + 1, value })),
         });
       }
       setVues(vuesData);
@@ -176,6 +186,39 @@ export default function EauClientPage() {
                   ) : (
                     <div className="mt-2 text-xs text-gray-400">Historique disponible après plusieurs relevés.</div>
                   )}
+
+                  {/* Électricité (lecture seule) : dernier index kWh + conso récente. */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-ahuvi-olive mb-1">
+                      <Zap className="w-4 h-4" aria-hidden="true" /> Électricité
+                    </div>
+                    {v.elecDernierIndex == null ? (
+                      <div className="text-xs text-gray-400">Aucun relevé électrique pour l’instant.</div>
+                    ) : (
+                      <>
+                        <div className="text-sm text-gray-600">
+                          Dernier index : <strong>{v.elecDernierIndex}</strong> kWh
+                          {v.elecDernierDate && (
+                            <span className="text-xs text-gray-400"> · relevé du {fmtDate(v.elecDernierDate)}</span>
+                          )}
+                        </div>
+                        {v.elecConsos.length > 0 ? (
+                          <div className="mt-2">
+                            <div className="text-xs text-gray-400 mb-1">Historique de consommation (kWh)</div>
+                            <ResponsiveContainer width="100%" height={80}>
+                              <BarChart data={v.elecConsos}>
+                                <XAxis dataKey="i" hide />
+                                <Tooltip formatter={(val: number) => fmtKwh(val)} labelFormatter={() => ''} />
+                                <Bar dataKey="value" fill="#B8860B" radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-gray-400">Historique disponible après plusieurs relevés.</div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

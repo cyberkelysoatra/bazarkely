@@ -7,13 +7,14 @@
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Gauge, Waves, Route, ScanLine, Camera } from 'lucide-react';
+import { Gauge, Waves, Route, ScanLine, Camera, Zap } from 'lucide-react';
 import EauTabs from './EauTabs';
 import { EauIconButton } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import EauSaisieBassinPage from './EauSaisieBassinPage';
 import EauSaisieCompteurPage from './EauSaisieCompteurPage';
+import EauSaisieElecPage from './EauSaisieElecPage';
 import EauTourneePage from './EauTourneePage';
 import EauQrScanner from './EauQrScanner';
 import { EauReadOnlyBadge } from './EauReadOnly';
@@ -21,14 +22,16 @@ import { useGestionEau } from '../context';
 import { parseScanText, buildInternalScanPath } from '../utils/scanUrl';
 import toast from 'react-hot-toast';
 
-type TabKey = 'compteur' | 'bassin' | 'tournee' | 'scan';
+type TabKey = 'compteur' | 'elec' | 'bassin' | 'tournee' | 'scan';
+
+const TAB_KEYS: TabKey[] = ['compteur', 'elec', 'bassin', 'tournee', 'scan'];
 
 export default function EauRelevesPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { isReadOnly } = useGestionEau();
   const initialTab = (params.get('tab') as TabKey) || 'compteur';
-  const [tab, setTab] = useState<TabKey>(['compteur', 'bassin', 'tournee', 'scan'].includes(initialTab) ? initialTab : 'compteur');
+  const [tab, setTab] = useState<TabKey>(TAB_KEYS.includes(initialTab) ? initialTab : 'compteur');
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -36,7 +39,7 @@ export default function EauRelevesPage() {
   useEffect(() => {
     const t = params.get('tab') as TabKey | null;
     const c = params.get('c');
-    if (t && ['compteur', 'bassin', 'tournee', 'scan'].includes(t)) setTab(t);
+    if (t && TAB_KEYS.includes(t)) setTab(t);
     if (c) setPreselect(c);
   }, [params]);
 
@@ -74,6 +77,7 @@ export default function EauRelevesPage() {
         onChange={(k) => changeTab(k as TabKey)}
         tabs={[
           { key: 'compteur', label: 'Compteur', icon: Gauge },
+          { key: 'elec', label: 'Électricité', icon: Zap },
           { key: 'bassin', label: 'Bassin', icon: Waves },
           { key: 'tournee', label: 'Tournée', icon: Route },
           { key: 'scan', label: 'Scan', icon: ScanLine },
@@ -90,6 +94,7 @@ export default function EauRelevesPage() {
       {tab === 'compteur' && (
         <EauSaisieCompteurPage preselectCompteurId={preselect} onScanRequest={() => setScannerOpen(true)} />
       )}
+      {tab === 'elec' && <EauSaisieElecPage preselectCompteurId={preselect} />}
       {tab === 'bassin' && <EauSaisieBassinPage />}
       {tab === 'tournee' && <EauTourneePage onPick={pickCompteur} />}
       {tab === 'scan' && (

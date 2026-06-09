@@ -5,6 +5,11 @@ export function fmtM3(v: number | null | undefined, digits = 1): string {
   return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits })} m³`;
 }
 
+export function fmtKwh(v: number | null | undefined, digits = 0): string {
+  if (v == null || Number.isNaN(v)) return '—';
+  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits })} kWh`;
+}
+
 export function fmtPct(ratioOrPct: number | null | undefined, opts?: { isRatio?: boolean; digits?: number }): string {
   if (ratioOrPct == null || Number.isNaN(ratioOrPct)) return '—';
   const pct = opts?.isRatio ? ratioOrPct * 100 : ratioOrPct;
