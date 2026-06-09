@@ -353,14 +353,15 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
 
   y = Math.max(yL, yR) + 10;
 
-  // ── Tableau ÉLECTRICITÉ ──
+  // ── Tableaux : devise dans l'en-tête des colonnes monétaires (pas dans les
+  //    cellules) pour éviter tout chevauchement P.U./Total sur les gros montants ──
   const cols: TableCol[] = [
-    { header: 'Désignation', width: 44 },
-    { header: 'Index init.', width: 26, align: 'right' },
-    { header: 'Index final', width: 26, align: 'right' },
-    { header: 'Conso', width: 24, align: 'right' },
-    { header: 'P.U.', width: 28, align: 'right' },
-    { header: 'Total', width: 26, align: 'right' },
+    { header: 'Désignation', width: 40 },
+    { header: 'Index init.', width: 24, align: 'right' },
+    { header: 'Index final', width: 24, align: 'right' },
+    { header: 'Conso', width: 26, align: 'right' },
+    { header: `P.U. (${devise})`, width: 28, align: 'right' },
+    { header: `Total (${devise})`, width: 32, align: 'right' },
   ];
 
   if (hasElec) {
@@ -381,8 +382,8 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
           fmtNb(facture.index_debut_elec),
           fmtNb(facture.index_fin_elec),
           `${fmtNb(facture.conso_kwh)} kWh`,
-          fmtAr(facture.prix_kwh, devise),
-          fmtAr(facture.montant_elec, devise),
+          fmtNb(facture.prix_kwh),
+          fmtNb(facture.montant_elec),
         ],
       ],
       accentSky
@@ -410,8 +411,8 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
           fmtNb(facture.index_debut),
           fmtNb(facture.index_fin),
           `${fmtNb(facture.conso_m3)} m³`,
-          fmtAr(facture.tarif, devise),
-          fmtAr(facture.montant, devise),
+          fmtNb(facture.tarif),
+          fmtNb(facture.montant),
         ],
       ],
       accentEau
@@ -428,7 +429,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
       /* indisponible hors-ligne → encadré omis */
     }
     if (cout) {
-      const boxH = 26;
+      const boxH = 33;
       doc.setDrawColor(accentSky[0], accentSky[1], accentSky[2]);
       doc.setFillColor(240, 248, 252);
       doc.roundedRect(left, y, width, boxH, 2, 2, 'FD');
@@ -439,16 +440,17 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
       doc.setTextColor(40);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
-      const lh = 4.6;
-      doc.text(`A · Facture JIRAMA : ${fmtAr(cout.total_jirama, devise)}`, left + 4, y + 12);
-      doc.text(`B · Gasoil groupe : ${fmtAr(cout.total_gasoil, devise)}`, left + 4, y + 12 + lh);
-      doc.text(`C · Production : ${fmtNb(cout.total_kwh, 0)} kWh`, left + width / 2, y + 12);
+      // 4 lignes empilées pleine largeur → aucun chevauchement horizontal.
+      const lh = 5;
+      let by = y + 12;
+      doc.text(`A · Facture JIRAMA : ${fmtAr(cout.total_jirama, devise)}`, left + 4, by);
+      by += lh;
+      doc.text(`B · Gasoil groupe électrogène : ${fmtAr(cout.total_gasoil, devise)}`, left + 4, by);
+      by += lh;
+      doc.text(`C · Production totale : ${fmtNb(cout.total_kwh, 0)} kWh`, left + 4, by);
+      by += lh;
       doc.setFont('helvetica', 'bold');
-      doc.text(
-        `D · P.U. kWh = (A+B)/C = ${fmtAr(cout.prix_kwh, devise)}`,
-        left + width / 2,
-        y + 12 + lh
-      );
+      doc.text(`D · Prix du kWh = (A + B) / C = ${fmtAr(cout.prix_kwh, devise)}`, left + 4, by);
       doc.setTextColor(0);
       y += boxH + 8;
     }
