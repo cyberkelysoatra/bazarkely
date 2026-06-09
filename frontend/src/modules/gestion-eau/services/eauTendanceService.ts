@@ -6,19 +6,16 @@
  * ne fait que charger l'instantané Dexie et appeler ces fonctions.
  */
 import { eauDb } from '../db/gestionEauDb';
-import { getConfig, seuilsFromConfig } from './eauConfigService';
+import { getConfig, dimensionsFromConfig } from './eauConfigService';
 import { getDebitCourantM3h, estimerAutonomie } from './eauBassinService';
 import {
   consoCompteurSurIntervalle,
   computeNRW,
-  computeBilan,
   PERTE_RESEAU_DEFAUT_PCT,
-  type ReleveBassinLite,
-  type EntreeLite,
-  type ReleveCompteurLite,
-  type CompteurLite,
 } from '../utils/bilan';
 import { projeterConsoJour, type ProjectionResult } from '../utils/projection';
+import { calculerConsoEstimee } from '../utils/consoEstimee';
+import { volumeMaxM3 } from '../utils/bassin';
 import type {
   BilanLocal,
   ReleveBassinLocal,
@@ -100,6 +97,25 @@ export function localDayLabel(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Regroupe une liste {ms,value} par jour LOCAL (somme), trié croissant. Utilisé pour
+ * la conso estimée + projection (cohérent avec le tableau de bord qui borne le jour en
+ * local ; évite la divergence UTC↔local des 3 premières heures à Madagascar UTC+3).
+ */
+export function bucketByLocalDay(points: { ms: number; value: number }[]): SeriePoint[] {
+  const map = new Map<string, { ms: number; value: number }>();
+  for (const p of points) {
+    const label = localDayLabel(new Date(p.ms));
+    const dayMs = new Date(`${label}T00:00:00`).getTime(); // minuit LOCAL
+    const cur = map.get(label);
+    if (cur) cur.value += p.value;
+    else map.set(label, { ms: dayMs, value: p.value });
+  }
+  return Array.from(map.entries())
+    .map(([label, v]) => ({ label, ms: v.ms, value: v.value }))
+    .sort((a, b) => a.ms - b.ms);
+}
+
 /** Regroupe une liste {ms,value} par jour (somme), trié croissant. */
 export function bucketByDay(points: { ms: number; value: number }[]): SeriePoint[] {
   const map = new Map<string, { ms: number; value: number }>();
@@ -165,40 +181,39 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
       .map((b) => ({ ms: new Date(b.timestamp).getTime(), value: b.conso_m3 ?? 0 }))
   );
 
-  // ── Conso ESTIMÉE par jour (modèle bassin/débit, à la volée) ──
-  // On réutilise computeBilan (formule unique) sur chaque relevé de niveau de la
-  // fenêtre ayant un relevé précédent. consoReseauM3 = apport − Δstock, borné ≥ 0.
-  const { seuilM3, seuilPct } = seuilsFromConfig(config);
-  const compteursActifs = compteurs.filter((c) => c.actif);
+  // ── Conso ESTIMÉE par jour (estimateur corrigé « pompe intermittente ») ──
+  // Source unique : calculerConsoEstimee plafonne les intervalles « parqués au flotteur »
+  // (où débit×Δt surestime) sur un taux de base réaliste ancré sur les intervalles fiables.
   const aDesCompteurs = relevesCompteur.length > 0;
   const debitDisponible = debitM3h != null && debitM3h > 0;
   // Non calculable sans débit ET sans aucune entrée manuelle → série vide.
   const estimable = debitDisponible || entrees.length > 0;
-  const consoEstimeePoints: { ms: number; value: number }[] = [];
-  if (estimable) {
-    for (const r of relevesBassin) {
-      const ms = new Date(r.timestamp).getTime();
-      if (ms < startMs || ms > endMs) continue;
-      const result = computeBilan({
-        currentTimestamp: r.timestamp,
-        stockMesureM3: r.volume_m3,
-        relevesBassin: relevesBassin as ReleveBassinLite[],
-        entrees: entrees as EntreeLite[],
-        compteursActifs: compteursActifs as CompteurLite[],
-        relevesCompteur: relevesCompteur as ReleveCompteurLite[],
-        seuilM3,
-        seuilPct,
+  const dim = dimensionsFromConfig(config);
+  const volumeFlotteurM3 = dim ? volumeMaxM3(dim) : null;
+  const periodeJoursAuto = config?.periode_facturation_jours ?? 30;
+  const { consoMoyenneHeureM3 } = estimerAutonomie({
+    stockActuelM3: null,
+    bilans: bilans.map((b) => ({
+      timestamp: b.timestamp,
+      conso_reseau_m3: b.conso_reseau_m3 ?? null,
+      conso_m3: b.conso_m3,
+    })),
+    fenetreJours: periodeJoursAuto,
+    nowMs: endMs,
+  });
+  const consoEstimeePoints: { ms: number; value: number }[] = estimable
+    ? calculerConsoEstimee({
+        relevesBassin,
+        entrees,
         debitM3h,
-      });
-      if (!result) continue; // pas de relevé précédent → pas d'intervalle
-      // Conso NETTE des pertes réseau (évaporation + fuites) : consoReseau − 30 %×apport.
-      consoEstimeePoints.push({
-        ms,
-        value: Math.max(0, result.consoReseauM3 - PERTE_RESEAU_DEFAUT_PCT * result.apportM3),
-      });
-    }
-  }
-  const consoEstimeeParJour = bucketByDay(consoEstimeePoints);
+        volumeFlotteurM3,
+        consoMoyenneHeureM3,
+        pertePct: PERTE_RESEAU_DEFAUT_PCT,
+      })
+        .filter((iv) => iv.ms >= startMs && iv.ms <= endMs)
+        .map((iv) => ({ ms: iv.ms, value: iv.consoNetteM3 }))
+    : [];
+  const consoEstimeeParJour = bucketByLocalDay(consoEstimeePoints);
 
   // ── Projection « anti-zéro » : prolonge la courbe jusqu'à aujourd'hui ──
   // Tant qu'il n'y a pas de compteurs, on comble les jours sans relevé (entre le

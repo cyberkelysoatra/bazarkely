@@ -315,6 +315,14 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   Sur **Tendances**, la courbe estimée est **prolongée jusqu'à aujourd'hui** par une **aire en pointillés** « projection (relevés en attente) » (légende dédiée).
   **Carve-out 0 légitime** : si des **compteurs existent et indiquent réellement 0**, le 0 est **conservé** (« mesurée (compteurs à 0) ») — on ne projette **jamais**
   par-dessus une mesure compteur. Bascule automatique sur le métré (sans pertes) dès le 1ᵉʳ relevé de compteur. `CONSO RÉSEAU (PÉRIODE)` et le NRW restent **bruts** (inchangés).
+- **Conso estimée corrigée des coupures de pompe** (v3.45.1) : `apport = débit × Δt` suppose la **pompe en marche continue**, or elle **se coupe au flotteur**
+  (niveau plein) → sur tout intervalle « parqué au flotteur », `débit×Δt` **surestime** l'apport (donc la conso). Constaté en prod : série 50–138 m³/j et tendance
+  ~81,5 m³/j alors que le réel ≈ 18,8 m³/j. **Source unique** `utils/consoEstimee.ts` (`calculerConsoEstimee`, pur) : chaque intervalle est classé **FIABLE**
+  (fini sous `τ=0,95 × V_flotteur` → garde `apport − Δstock`) ou **PLAFONNÉ** (fini au flotteur, apport par débit → remplacé par `consoBase × Δt`). `consoBase` (m³/h)
+  = **moyenne du rythme réel des intervalles fiables** (anti-circularité) ; replis `estimerAutonomie.consoMoyenneHeureM3` → `débit × FRACTION_POMPE (0,5)` → 0. Une
+  **entrée manuelle** ne plafonne jamais. Net de pertes = `× (1 − 0,30)`. `eauTendanceService` (série) et `eauBilanService` (conso du jour) sont **rebranchés** sur ce
+  helper, **bucket par jour LOCAL** (`bucketByLocalDay`). La projection anti-zéro hérite donc d'une base réaliste. **Hors périmètre / inchangés** : `computeBilan`, les
+  bilans persistés, le **NRW**, « CONSO RÉSEAU (PÉRIODE) » (restent bruts, sans plafond pompe).
 - **Centre d'alertes** (`/gestion-eau/alertes`, admin) : **génération idempotente** d'`eau_alertes` —
   `anomalie` (bilan non traité), `compteur_non_releve` (> `jours_sans_releve_alerte`), `bassin_critique` (< `bassin_seuil_critique_pct`),
   `fuite` suspectée (NRW ≥ 25 % + pertes > 0). Déduplication par `type`+`ref_id` non traité (rejouable sans empiler).

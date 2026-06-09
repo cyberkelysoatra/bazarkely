@@ -17,7 +17,8 @@ import {
   type NRWResult,
 } from '../utils/bilan';
 import { projeterConsoJour } from '../utils/projection';
-import { bucketByDay } from './eauTendanceService';
+import { calculerConsoEstimee } from '../utils/consoEstimee';
+import { bucketByLocalDay, localDayLabel } from './eauTendanceService';
 import {
   getConfig,
   seuilsFromConfig,
@@ -249,12 +250,11 @@ export async function getDashboardData(): Promise<DashboardData> {
   const config = await getConfig();
   const dim = dimensionsFromConfig(config);
 
-  const [relevesBassin, entrees, bilans, relevesCompteur, compteurs] = await Promise.all([
+  const [relevesBassin, entrees, bilans, relevesCompteur] = await Promise.all([
     eauDb.eau_releves_bassin.toArray() as Promise<ReleveBassinLocal[]>,
     eauDb.eau_entrees_bassin.toArray() as Promise<EntreeBassinLocal[]>,
     eauDb.eau_bilans.toArray() as Promise<BilanLocal[]>,
     eauDb.eau_releves_compteur.toArray() as Promise<ReleveCompteurLocal[]>,
-    eauDb.eau_compteurs.toArray() as Promise<CompteurLocal[]>,
   ]);
 
   // Dernier relevé de niveau
@@ -330,40 +330,29 @@ export async function getDashboardData(): Promise<DashboardData> {
     // Carve-out : 0 légitime si les compteurs n'ont pas tourné (aucune projection).
     consoJourSource = consoJourM3 > 0 ? 'mesuree' : 'zero_compteurs';
   } else {
-    const { seuilM3, seuilPct } = seuilsFromConfig(config);
-    const compteursActifs = compteurs.filter((c) => c.actif);
     const estimable = (debitCourantM3h != null && debitCourantM3h > 0) || entrees.length > 0;
 
-    // Série conso estimée/jour (NETTE des pertes réseau) sur tous les relevés : sert au
-    // cumul des intervalles du jour ET de base à la projection. Vide si non estimable.
-    const estimPoints: { ms: number; value: number }[] = [];
-    if (estimable) {
-      for (const r of relevesBassin) {
-        const result = computeBilan({
-          currentTimestamp: r.timestamp,
-          stockMesureM3: r.volume_m3,
-          relevesBassin: relevesBassin as ReleveBassinLite[],
-          entrees: entrees as EntreeLite[],
-          compteursActifs: compteursActifs as CompteurLite[],
-          relevesCompteur: relevesCompteur as ReleveCompteurLite[],
-          seuilM3,
-          seuilPct,
+    // Estimateur corrigé « pompe intermittente » — SOURCE UNIQUE partagée avec les
+    // tendances : plafonne les intervalles parqués au flotteur (où débit×Δt surestime).
+    const volumeFlotteurM3 = dim ? volumeMaxM3(dim) : null;
+    const intervalles = estimable
+      ? calculerConsoEstimee({
+          relevesBassin,
+          entrees,
           debitM3h: debitCourantM3h,
-        });
-        if (!result) continue;
-        estimPoints.push({
-          ms: new Date(r.timestamp).getTime(),
-          value: Math.max(0, result.consoReseauM3 - PERTE_RESEAU_DEFAUT_PCT * result.apportM3),
-        });
-      }
-    }
+          volumeFlotteurM3,
+          consoMoyenneHeureM3: autonomie.consoMoyenneHeureM3,
+          pertePct: PERTE_RESEAU_DEFAUT_PCT,
+        })
+      : [];
 
-    // Intervalles tombant AUJOURD'HUI (estimation par relevés du jour).
+    // Intervalles dont le jour LOCAL d'imputation = aujourd'hui.
+    const todayLabel = localDayLabel(new Date(nowMs));
     let somme = 0;
     let n = 0;
-    for (const p of estimPoints) {
-      if (p.ms >= startOfDay && p.ms <= endOfDay) {
-        somme += p.value;
+    for (const iv of intervalles) {
+      if (localDayLabel(new Date(iv.ms)) === todayLabel) {
+        somme += iv.consoNetteM3;
         n++;
       }
     }
@@ -375,7 +364,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     } else {
       // Anti-zéro : aucun relevé aujourd'hui → projeter plutôt qu'afficher 0.
       const proj = projeterConsoJour({
-        consoEstimeeParJour: bucketByDay(estimPoints),
+        consoEstimeeParJour: bucketByLocalDay(intervalles.map((iv) => ({ ms: iv.ms, value: iv.consoNetteM3 }))),
         consoMoyenneJourM3: autonomie.consoMoyenneJourM3,
         debitM3h: debitCourantM3h,
         pertePct: PERTE_RESEAU_DEFAUT_PCT,
