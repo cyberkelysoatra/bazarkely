@@ -8,6 +8,7 @@ import {
   Receipt, FileBarChart, Eye, FileDown, Bell, Download, BadgeCheck, CircleAlert, Settings,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
+import EauAide from './EauAide';
 import { EauIconButton, EauEmptyState } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
@@ -24,11 +25,12 @@ import {
   buildExportCsv,
   type FacturePreview,
 } from '../services/eauFactureService';
+import { listCouts } from '../services/eauElecCoutService';
 import { listCompteurs } from '../services/eauCompteurService';
-import { downloadFacturePdf } from '../utils/pdf';
+import { downloadFactureCombineePdf } from '../utils/pdf';
 import { downloadCsv } from '../utils/csv';
-import { fmtMontant, fmtM3, fmtDate } from '../utils/format';
-import type { ConfigLocal, FactureLocal, CompteurLocal } from '../types/gestionEau';
+import { fmtMontant, fmtM3, fmtKwh, fmtDate } from '../utils/format';
+import type { ConfigLocal, FactureLocal, CompteurLocal, ElecCoutLocal } from '../types/gestionEau';
 
 function toIsoStartOfDay(dateStr: string): string {
   return new Date(`${dateStr}T00:00:00`).toISOString();
@@ -38,6 +40,12 @@ function toIsoEndOfDay(dateStr: string): string {
 }
 function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+/** Libellé lisible d'un mois `YYYY-MM` (ex. « juin 2025 »). */
+function moisLabel(mois: string): string {
+  const [y, m] = mois.split('-').map(Number);
+  if (!y || !m) return mois;
+  return new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
 export default function EauFacturationPage() {
@@ -50,6 +58,8 @@ export default function EauFacturationPage() {
   const [previews, setPreviews] = useState<FacturePreview[] | null>(null);
   const [factures, setFactures] = useState<FactureLocal[]>([]);
   const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
+  const [couts, setCouts] = useState<ElecCoutLocal[]>([]);
+  const [coutMois, setCoutMois] = useState('');
   const [busy, setBusy] = useState(false);
   // Onglets internes du thème : Factures (génération + liste) · Rapports (exports).
   const [view, setView] = useState<'factures' | 'rapports'>('factures');
@@ -68,6 +78,10 @@ export default function EauFacturationPage() {
       setEnd(toDateInput(now));
       setStart(toDateInput(startD));
       setCompteurs(await listCompteurs());
+      const coutsList = await listCouts();
+      setCouts(coutsList);
+      // Par défaut : le mois de coûts le plus récent (liste déjà triée décroissant).
+      if (coutsList.length > 0) setCoutMois(coutsList[0].mois);
       await reloadFactures();
       setLoading(false);
     })();
@@ -103,7 +117,7 @@ export default function EauFacturationPage() {
     }
     setBusy(true);
     try {
-      const p = await previewFactures(toIsoStartOfDay(start), toIsoEndOfDay(end));
+      const p = await previewFactures(toIsoStartOfDay(start), toIsoEndOfDay(end), coutMois || null);
       setPreviews(p);
     } finally {
       setBusy(false);
@@ -114,7 +128,9 @@ export default function EauFacturationPage() {
     if (isReadOnly) return;
     setBusy(true);
     try {
-      const created = await genererFactures(toIsoStartOfDay(start), toIsoEndOfDay(end));
+      const created = await genererFactures(toIsoStartOfDay(start), toIsoEndOfDay(end), {
+        coutMois: coutMois || null,
+      });
       if (created.length === 0) {
         toast('Aucune facture générée (déjà facturé ou aucun relevé exploitable).', { icon: 'ℹ️' });
       } else {
@@ -142,7 +158,7 @@ export default function EauFacturationPage() {
 
   const exportPdf = async (f: FactureLocal) => {
     try {
-      await downloadFacturePdf({
+      await downloadFactureCombineePdf({
         facture: f,
         config,
         compteur: compteurs.find((c) => c.id === f.compteur_id) ?? null,
@@ -201,6 +217,30 @@ export default function EauFacturationPage() {
         </div>
       ) : view === 'factures' ? (
         <div className="space-y-4">
+          <EauAide
+            id={AIDE.factureCombinee.id}
+            quoi={AIDE.factureCombinee.quoi}
+            comment={AIDE.factureCombinee.comment}
+          />
+
+          {/* Garde-fou : pas de mois de coûts élec → l'électricité ne peut pas être facturée. */}
+          {couts.length === 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
+              <div className="font-semibold text-amber-800 mb-1">Aucun mois de coûts électricité</div>
+              <p className="text-amber-700">
+                Créez d’abord les coûts du mois (facture JIRAMA + gasoil + kWh produits) pour pouvoir
+                facturer l’électricité. Sans cela, seules les lignes d’eau seront facturées.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/gestion-eau/elec-couts')}
+                className="inline-flex items-center gap-1 mt-2 text-ahuvi-forest font-medium underline"
+              >
+                <Settings className="w-4 h-4" aria-hidden="true" /> Aller aux Coûts électricité
+              </button>
+            </div>
+          )}
+
           {/* Période */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-ahuvi-forest mb-3">Période</h2>
@@ -224,6 +264,22 @@ export default function EauFacturationPage() {
                 />
               </label>
             </div>
+            {couts.length > 0 && (
+              <label className="text-sm block mt-3">
+                <span className="block text-gray-600 mb-1">Mois de coûts électricité (prix du kWh)</span>
+                <select
+                  value={coutMois}
+                  onChange={(e) => setCoutMois(e.target.value)}
+                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                >
+                  {couts.map((c) => (
+                    <option key={c.id} value={c.mois}>
+                      {moisLabel(c.mois)} — {fmtMontant(c.prix_kwh, config?.devise)} / kWh
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="flex gap-2 mt-3">
               <EauIconButton icon={Eye} variant="secondary" onClick={runPreview} disabled={busy} className="flex-1 py-2.5">
                 Aperçu
@@ -242,14 +298,20 @@ export default function EauFacturationPage() {
               <h2 className="font-semibold text-ahuvi-forest mb-2">Aperçu</h2>
               <div className="space-y-1">
                 {previews.map((p) => (
-                  <div key={p.compteur.id} className="flex items-center justify-between text-sm py-1 border-b border-ahuvi-100 last:border-0">
-                    <span className="text-gray-800">{p.compteur.nom}</span>
-                    {p.skipRaison ? (
-                      <span className="text-gray-400 italic">{p.skipRaison}</span>
-                    ) : (
-                      <span className="text-gray-700">
-                        {fmtM3(p.conso)} → <strong>{fmtMontant(p.montant, config?.devise)}</strong>
-                      </span>
+                  <div key={p.compteur.id} className="text-sm py-1.5 border-b border-ahuvi-100 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-800 font-medium">{p.compteur.nom}</span>
+                      {p.skipRaison ? (
+                        <span className="text-gray-400 italic">{p.skipRaison}</span>
+                      ) : (
+                        <strong className="text-ahuvi-forest">{fmtMontant(p.montantTotal, config?.devise)}</strong>
+                      )}
+                    </div>
+                    {!p.skipRaison && (
+                      <div className="flex flex-wrap gap-x-4 text-xs text-gray-500 mt-0.5">
+                        <span>Eau : {p.conso != null ? `${fmtM3(p.conso)} · ${fmtMontant(p.montant, config?.devise)}` : '—'}</span>
+                        <span>Élec : {p.consoKwh != null ? `${fmtKwh(p.consoKwh)} · ${fmtMontant(p.montantElec, config?.devise)}` : '—'}</span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -273,7 +335,11 @@ export default function EauFacturationPage() {
                           {compteurNom(f.compteur_id)} · {fmtDate(f.periode_start)} → {fmtDate(f.periode_end)}
                         </div>
                         <div className="text-sm text-gray-700 mt-0.5">
-                          {fmtM3(f.conso_m3)} · <strong>{fmtMontant(f.montant, f.devise)}</strong>
+                          <strong>{fmtMontant(f.montant_total ?? f.montant, f.devise)}</strong>
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 text-xs text-gray-500 mt-0.5">
+                          {f.conso_m3 != null && <span>Eau : {fmtM3(f.conso_m3)} · {fmtMontant(f.montant, f.devise)}</span>}
+                          {f.conso_kwh != null && <span>Élec : {fmtKwh(f.conso_kwh)} · {fmtMontant(f.montant_elec, f.devise)}</span>}
                         </div>
                         {f.relance_count > 0 && (
                           <div className="text-xs text-rose-600 mt-0.5">Relances : {f.relance_count}</div>

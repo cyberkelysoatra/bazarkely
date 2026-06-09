@@ -8,24 +8,40 @@ import { pullTable, saveLocal, deleteLocal } from './eauSync';
 import { newId, nowIso } from '../utils/id';
 import { getConfig, saveConfig } from './eauConfigService';
 import { listCompteursActifs, listCompteurs } from './eauCompteurService';
-import { computeLigneFacture, formatNumeroFacture, filterByCompteurIds, type ReleveLite } from '../utils/facture';
+import {
+  computeLigneFacture,
+  computeLigneElec,
+  formatNumeroFacture,
+  filterByCompteurIds,
+  type ReleveLite,
+} from '../utils/facture';
+import { getCoutByMois } from './eauElecCoutService';
 import { fmtDate } from '../utils/format';
 import { toCsv } from '../utils/csv';
 import type {
   FactureLocal,
   FactureStatut,
   ReleveCompteurLocal,
+  ElecReleveLocal,
   CompteurLocal,
   BilanLocal,
 } from '../types/gestionEau';
 
-/** Aperçu (lecture seule) d'une ligne de facturation candidate. */
+/** Aperçu (lecture seule) d'une ligne de facturation candidate (eau + élec + total). */
 export interface FacturePreview {
   compteur: CompteurLocal;
+  // Volet EAU (inchangé)
   indexDebut: number | null;
   indexFin: number | null;
   conso: number | null;
   montant: number | null;
+  // Volet ÉLECTRICITÉ (null si aucun relevé élec exploitable ou pas de mois de coûts)
+  indexDebutElec: number | null;
+  indexFinElec: number | null;
+  consoKwh: number | null;
+  montantElec: number | null;
+  // Total = (montant eau ?? 0) + (montant élec ?? 0)
+  montantTotal: number | null;
   /** true si une facture existe déjà pour ce compteur sur cette période exacte. */
   dejaFacture: boolean;
   /** Raison de non-facturation (null si facturable). */
@@ -40,6 +56,22 @@ async function relevesDuCompteur(compteurId: string): Promise<ReleveLite[]> {
   return releves.map((r) => ({ index: r.index, timestamp: r.timestamp, rupture_index: r.rupture_index }));
 }
 
+/** Relevés ÉLECTRIQUES d'un compteur, normalisés en ReleveLite (kWh). */
+async function relevesElecDuCompteur(compteurId: string): Promise<ReleveLite[]> {
+  const releves = (await eauDb.eau_elec_releves_compteur
+    .where('compteur_id')
+    .equals(compteurId)
+    .toArray()) as ElecReleveLocal[];
+  return releves.map((r) => ({ index: r.index, timestamp: r.timestamp, rupture_index: r.rupture_index }));
+}
+
+/** Prix du kWh du mois de coûts choisi (`YYYY-MM`), ou null si aucun mois/aucun prix. */
+async function prixKwhDuMois(coutMois: string | null | undefined): Promise<number | null> {
+  if (!coutMois) return null;
+  const cout = await getCoutByMois(coutMois);
+  return cout?.prix_kwh ?? null;
+}
+
 /** A-t-on déjà une facture pour ce compteur sur cette période exacte ? */
 async function factureExistante(
   compteurId: string,
@@ -51,12 +83,19 @@ async function factureExistante(
 }
 
 /**
- * Aperçu lecture seule des factures qui seraient générées pour la période.
- * Ne crée rien. Skip si pas de tarif, pas de relevé, ou déjà facturé.
+ * Aperçu lecture seule des factures combinées (eau + élec) qui seraient générées.
+ * Ne crée rien. `coutMois` (`YYYY-MM`) choisit le prix du kWh appliqué au volet élec ;
+ * sans mois (ou mois sans prix) → pas de ligne élec. Skip si NI eau NI élec exploitable,
+ * ou déjà facturé.
  */
-export async function previewFactures(periodeStartIso: string, periodeEndIso: string): Promise<FacturePreview[]> {
+export async function previewFactures(
+  periodeStartIso: string,
+  periodeEndIso: string,
+  coutMois?: string | null
+): Promise<FacturePreview[]> {
   const config = await getConfig();
   const tarif = config?.tarif_m3 ?? 0;
+  const prixKwh = await prixKwhDuMois(coutMois);
   const compteurs = await listCompteursActifs();
   const startMs = new Date(periodeStartIso).getTime();
   const endMs = new Date(periodeEndIso).getTime();
@@ -65,18 +104,26 @@ export async function previewFactures(periodeStartIso: string, periodeEndIso: st
   for (const c of compteurs) {
     const releves = await relevesDuCompteur(c.id);
     const ligne = computeLigneFacture(releves, startMs, endMs, tarif);
+    const relevesElec = await relevesElecDuCompteur(c.id);
+    const ligneElec = prixKwh != null ? computeLigneElec(relevesElec, startMs, endMs, prixKwh) : null;
     const dejaFacture = await factureExistante(c.id, periodeStartIso, periodeEndIso);
 
     let skipRaison: string | null = null;
     if (dejaFacture) skipRaison = 'Déjà facturé sur cette période';
-    else if (!ligne) skipRaison = 'Aucun relevé exploitable sur la période';
+    else if (!ligne && !ligneElec) skipRaison = 'Aucun relevé exploitable sur la période';
 
+    const facturable = !!ligne || !!ligneElec;
     previews.push({
       compteur: c,
       indexDebut: ligne?.indexDebut ?? null,
       indexFin: ligne?.indexFin ?? null,
       conso: ligne?.conso ?? null,
       montant: ligne?.montant ?? null,
+      indexDebutElec: ligneElec?.indexDebut ?? null,
+      indexFinElec: ligneElec?.indexFin ?? null,
+      consoKwh: ligneElec?.conso ?? null,
+      montantElec: ligneElec?.montant ?? null,
+      montantTotal: facturable ? (ligne?.montant ?? 0) + (ligneElec?.montant ?? 0) : null,
       dejaFacture,
       skipRaison,
     });
@@ -91,12 +138,14 @@ export async function previewFactures(periodeStartIso: string, periodeEndIso: st
 export async function genererFactures(
   periodeStartIso: string,
   periodeEndIso: string,
-  opts?: { dateEcheanceIso?: string }
+  opts?: { coutMois?: string | null; dateEcheanceIso?: string }
 ): Promise<FactureLocal[]> {
   const config = await getConfig();
   if (!config) return [];
   const tarif = config.tarif_m3 ?? 0;
   const devise = config.devise || 'MGA';
+  const coutMois = opts?.coutMois ?? null;
+  const prixKwh = await prixKwhDuMois(coutMois);
   const startMs = new Date(periodeStartIso).getTime();
   const endMs = new Date(periodeEndIso).getTime();
 
@@ -111,26 +160,37 @@ export async function genererFactures(
     if (await factureExistante(c.id, periodeStartIso, periodeEndIso)) continue;
     const releves = await relevesDuCompteur(c.id);
     const ligne = computeLigneFacture(releves, startMs, endMs, tarif);
-    if (!ligne) continue; // pas de relevé exploitable → pas de facture erronée
+    const relevesElec = await relevesElecDuCompteur(c.id);
+    const ligneElec = prixKwh != null ? computeLigneElec(relevesElec, startMs, endMs, prixKwh) : null;
+    if (!ligne && !ligneElec) continue; // ni eau ni élec exploitable → pas de facture erronée
 
     seq += 1;
+    const montantTotal = (ligne?.montant ?? 0) + (ligneElec?.montant ?? 0);
     const facture: FactureLocal = {
       id: newId(),
       numero: formatNumeroFacture(seq),
       compteur_id: c.id,
       periode_start: periodeStartIso,
       periode_end: periodeEndIso,
-      index_debut: ligne.indexDebut,
-      index_fin: ligne.indexFin,
-      conso_m3: ligne.conso,
+      index_debut: ligne?.indexDebut ?? null,
+      index_fin: ligne?.indexFin ?? null,
+      conso_m3: ligne?.conso ?? null,
       tarif,
-      montant: ligne.montant,
+      montant: ligne?.montant ?? null,
       devise,
       statut: 'impaye',
       date_echeance: echeanceIso,
       paye_at: null,
       relance_count: 0,
       generated_at: nowIso(),
+      // Volet électrique (null si pas de ligne élec sur la période)
+      index_debut_elec: ligneElec?.indexDebut ?? null,
+      index_fin_elec: ligneElec?.indexFin ?? null,
+      conso_kwh: ligneElec?.conso ?? null,
+      prix_kwh: ligneElec ? prixKwh : null,
+      montant_elec: ligneElec?.montant ?? null,
+      cout_mois: ligneElec ? coutMois : null,
+      montant_total: montantTotal,
     };
     created.push(await saveLocal('eau_factures', facture));
   }

@@ -18,7 +18,7 @@ import { listCompteurs } from '../services/eauCompteurService';
 import { getDernierReleveCompteur, historiqueConsoCompteur } from '../services/eauReleveService';
 import { getDernierReleveElec, historiqueConsoElec } from '../services/eauElecReleveService';
 import { getConfig } from '../services/eauConfigService';
-import { downloadFacturePdf } from '../utils/pdf';
+import { downloadFactureCombineePdf } from '../utils/pdf';
 import { fmtMontant, fmtDate, fmtM3, fmtKwh } from '../utils/format';
 import type { FactureLocal, CompteurLocal, ConfigLocal } from '../types/gestionEau';
 
@@ -94,7 +94,7 @@ export default function EauClientPage() {
 
   const exportPdf = async (f: FactureLocal) => {
     try {
-      await downloadFacturePdf({
+      await downloadFactureCombineePdf({
         facture: f,
         config,
         compteur: compteurs.find((c) => c.id === f.compteur_id) ?? null,

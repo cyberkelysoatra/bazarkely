@@ -66,6 +66,44 @@ export function computeLigneFacture(
   return { indexDebut, indexFin, conso, montant };
 }
 
+export interface LigneElec {
+  indexDebut: number;
+  indexFin: number;
+  /** Consommation électrique en kWh sur la période. */
+  conso: number;
+  /** Montant électrique = conso × prix_kwh. */
+  montant: number;
+}
+
+/**
+ * Calcule la ligne ÉLECTRIQUE (kWh) d'un compteur sur la période [startMs, endMs].
+ * Même logique exacte que `computeLigneFacture` (eau) mais en kWh × `prixKwh`.
+ * Retourne `null` (→ pas de ligne élec) si aucun relevé ≤ fin, ou si une rupture
+ * d'index existe dans la période (conso non fiable). `indexDebut` vaut 0 si aucun
+ * relevé n'existe avant le début (premier cycle).
+ */
+export function computeLigneElec(
+  releves: ReleveLite[],
+  startMs: number,
+  endMs: number,
+  prixKwh: number
+): LigneElec | null {
+  const indexFin = dernierIndexAvant(releves, endMs);
+  if (indexFin == null) return null; // aucun relevé élec exploitable
+
+  const ruptureDansPeriode = releves.some((r) => {
+    const ms = toMs(r.timestamp);
+    return ms > startMs && ms <= endMs && r.rupture_index === true;
+  });
+  if (ruptureDansPeriode) return null;
+
+  const indexDebutBrut = dernierIndexAvant(releves, startMs);
+  const indexDebut = indexDebutBrut == null ? 0 : indexDebutBrut;
+  const conso = Math.max(0, indexFin - indexDebut);
+  const montant = conso * (prixKwh > 0 ? prixKwh : 0);
+  return { indexDebut, indexFin, conso, montant };
+}
+
 /** Numéro de facture séquentiel zéro-paddé : 1 → "F-000001". */
 export function formatNumeroFacture(seq: number): string {
   return `F-${String(Math.max(0, Math.floor(seq))).padStart(6, '0')}`;

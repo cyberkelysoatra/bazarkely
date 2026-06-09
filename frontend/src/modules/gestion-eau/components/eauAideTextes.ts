@@ -92,6 +92,12 @@ export const AIDE: Record<string, AideTexte> = {
     comment:
       'Choisissez la période → les factures se calculent (conso × tarif) ; marquez payé/impayé ; exportez en PDF/CSV.',
   },
+  factureCombinee: {
+    id: 'factureCombinee',
+    quoi: 'Facturer ensemble l’eau et l’électricité sur une même facture.',
+    comment:
+      'Choisissez la période ET le mois de coûts électricité (qui fixe le prix du kWh). Chaque facture additionne la ligne eau (conso × tarif/m³) et la ligne électricité (conso × prix du kWh). Une villa sans relevé d’un côté n’est facturée que pour l’autre. Le PDF affiche les deux tableaux, le détail du calcul du prix du kWh et le montant en toutes lettres.',
+  },
   elecCouts: {
     id: 'elecCouts',
     quoi: "Enregistrer chaque mois le coût de l'électricité de la centrale pour en déduire le prix d'un kWh, qui servira à facturer l'électricité avec l'eau.",
