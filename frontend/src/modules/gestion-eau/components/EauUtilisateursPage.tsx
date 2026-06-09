@@ -108,7 +108,7 @@ export default function EauUtilisateursPage() {
   return (
     <EauPageShell
       title="Utilisateurs"
-      subtitle="Rôles & comptes clients (admin)"
+      subtitle="Rôles & comptes propriétaires (admin)"
       aide={AIDE.utilisateurs}
       actions={
         isReadOnly ? (
@@ -119,7 +119,7 @@ export default function EauUtilisateursPage() {
             variant="primary"
             onClick={() => { setShowForm((v) => !v); setNewCode(null); }}
           >
-            Compte client
+            Compte propriétaire
           </EauIconButton>
         )
       }
@@ -137,7 +137,7 @@ export default function EauUtilisateursPage() {
               </div>
               <div className="text-3xl font-bold tracking-widest text-emerald-700 my-2 select-all">{newCode}</div>
               <p className="text-xs text-emerald-700">
-                Transmettez ce code au client. Il pourra l’utiliser sur la page d’accueil
+                Transmettez ce code au propriétaire. Il pourra l’utiliser sur la page d’accueil
                 (« J’ai un code ») après connexion avec Google pour activer son compte.
               </p>
               <button
@@ -155,7 +155,7 @@ export default function EauUtilisateursPage() {
             <div className="rounded-xl border border-ahuvi-200 bg-ahuvi-50/50 p-4 shadow-soft space-y-3">
               <h2 className="font-semibold text-ahuvi-forest flex items-center gap-1.5">
                 <UserPlus className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-                Nouveau compte client
+                Nouveau compte propriétaire
               </h2>
               <label className="text-sm block">
                 <span className="block text-gray-600 mb-1">Nom *</span>
@@ -243,10 +243,10 @@ export default function EauUtilisateursPage() {
           <div>
             <h2 className="font-semibold text-gray-800 mb-2 flex items-center gap-1.5">
               <Users className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
-              Comptes clients ({comptes.length})
+              Comptes propriétaires ({comptes.length})
             </h2>
             {comptes.length === 0 ? (
-              <EauEmptyState icon={Users} title="Aucun compte client." />
+              <EauEmptyState icon={Users} title="Aucun compte propriétaire." />
             ) : (
               <div className="space-y-1">
                 {comptes.map((c) => (

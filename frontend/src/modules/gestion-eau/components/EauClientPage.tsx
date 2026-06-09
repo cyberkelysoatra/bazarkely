@@ -127,7 +127,7 @@ export default function EauClientPage() {
             ? 'Situation du bassin'
             : 'Ma consommation'
         }
-        subtitle={active === 'bassin' ? 'Espace propriétaire' : 'Espace client'}
+        subtitle={active === 'bassin' ? 'Espace propriétaire' : 'Espace propriétaire'}
         aide={active === 'bassin' ? AIDE.proprietaireBassin : AIDE.client}
       >
       {active === 'bassin' ? (

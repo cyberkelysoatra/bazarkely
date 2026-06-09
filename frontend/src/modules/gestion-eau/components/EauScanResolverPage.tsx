@@ -107,7 +107,7 @@ export default function EauScanResolverPage() {
           <EauEmptyState
             icon={SearchX}
             title="QR inconnu"
-            hint={`Ce ${outcome.type === 'client' ? 'QR client' : 'QR compteur'} n’existe pas (ou pas encore synchronisé).`}
+            hint={`Ce ${outcome.type === 'client' ? 'QR propriétaire' : 'QR compteur'} n’existe pas (ou pas encore synchronisé).`}
             action={
               <EauIconButton icon={ChevronLeft} variant="ghost" onClick={() => navigate('/gestion-eau')}>
                 Retour au module

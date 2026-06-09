@@ -24,8 +24,8 @@ const ACTION_LABEL: Record<string, string> = {
 
 const SCAN_RESULT_LABEL: Record<string, string> = {
   saisie_compteur: 'Saisie compteur',
-  fiche_client: 'Fiche client',
-  mon_espace: 'Espace client',
+  fiche_client: 'Fiche propriétaire',
+  mon_espace: 'Espace propriétaire',
   refus_non_destine: 'Refusé (non destiné)',
   code_introuvable: 'Code introuvable',
   redir_mission: 'Page mission',
@@ -135,7 +135,7 @@ export default function EauAuditPage() {
                     <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(s.timestamp)}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
-                    {s.type === 'compteur' ? compteurNom(s.compteur_id) : 'Client'}
+                    {s.type === 'compteur' ? compteurNom(s.compteur_id) : 'Propriétaire'}
                     {s.emplacement ? ` · ${s.emplacement}` : ''}
                     {s.role ? ` · ${s.role}` : ''}
                     {s.code ? ` · ${s.code}` : ''}

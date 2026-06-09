@@ -103,7 +103,7 @@ export default function EauRelevesPage() {
             </div>
             <h2 className="font-semibold text-ahuvi-forest">Scanner un QR</h2>
             <p className="text-sm text-gray-500">
-              Scannez le QR d’un compteur pour saisir son index directement, ou le QR d’un client pour voir sa fiche.
+              Scannez le QR d’un compteur pour saisir son index directement, ou le QR d’un propriétaire pour voir sa fiche.
             </p>
             {!isReadOnly && (
               <EauIconButton icon={Camera} variant="primary" onClick={() => setScannerOpen(true)} className="mx-auto">

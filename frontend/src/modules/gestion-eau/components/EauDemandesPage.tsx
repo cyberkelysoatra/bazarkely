@@ -222,7 +222,7 @@ export default function EauDemandesPage() {
     }
     if (!iPhone.replace(/\D/g, '')) { toast.error('Numéro WhatsApp requis'); return; }
     if (!rAdmin && !rReleveur && !rClient && !rPromoteur) { toast.error('Choisissez au moins un rôle'); return; }
-    if (rClient && iCompteurs.size === 0) { toast.error('Choisissez au moins un compteur pour un client'); return; }
+    if (rClient && iCompteurs.size === 0) { toast.error('Choisissez au moins un compteur pour un propriétaire'); return; }
     setBusy(true);
     try {
       const flags = { role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient, role_promoteur: rPromoteur };
@@ -319,7 +319,7 @@ export default function EauDemandesPage() {
       {inv.role_admin && <Badge icon={ShieldCheck} tone="gold">Admin</Badge>}
       {inv.role_releveur && <Badge icon={ClipboardList} tone="olive">Releveur</Badge>}
       {inv.role_promoteur && <Badge icon={Eye} tone="teal">Promoteur</Badge>}
-      {inv.role_client && <Badge icon={Users} tone="teal">Client{inv.compteur_ids?.length ? ` · ${inv.compteur_ids.length} compteur(s)` : ''}</Badge>}
+      {inv.role_client && <Badge icon={Users} tone="teal">Propriétaire{inv.compteur_ids?.length ? ` · ${inv.compteur_ids.length} compteur(s)` : ''}</Badge>}
     </div>
   );
 
@@ -659,7 +659,7 @@ export default function EauDemandesPage() {
                     <input type="checkbox" checked={rClient} onChange={(e) => setRClient(e.target.checked)}
                       className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500" />
                     <Users className="w-4 h-4 text-ahuvi-olive" aria-hidden="true" />
-                    <span className="text-gray-700">Client</span>
+                    <span className="text-gray-700">Propriétaire</span>
                   </label>
                   <label className="flex items-center gap-1.5">
                     <input type="checkbox" checked={rPromoteur} onChange={(e) => setRPromoteur(e.target.checked)}
@@ -671,7 +671,7 @@ export default function EauDemandesPage() {
               </div>
               {rClient && (
                 <div className="text-sm">
-                  <span className="block text-gray-600 mb-1">Compteurs visibles (client) *</span>
+                  <span className="block text-gray-600 mb-1">Compteurs visibles (propriétaire) *</span>
                   {compteurs.length === 0 ? (
                     <p className="text-xs text-gray-400">Aucun compteur. Créez-en d’abord.</p>
                   ) : (
@@ -873,7 +873,7 @@ export default function EauDemandesPage() {
                             </label>
                           </div>
                           <div className="text-sm">
-                            <span className="block text-gray-600 mb-1">Compteurs visibles (client)</span>
+                            <span className="block text-gray-600 mb-1">Compteurs visibles (propriétaire)</span>
                             {compteurs.length === 0 ? (
                               <p className="text-xs text-gray-400">Aucun compteur.</p>
                             ) : (

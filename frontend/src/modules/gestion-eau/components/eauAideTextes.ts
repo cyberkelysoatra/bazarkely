@@ -55,7 +55,7 @@ export const AIDE: Record<string, AideTexte> = {
     id: 'scan',
     quoi: 'Aller droit au but avec un QR.',
     comment:
-      'Scannez le QR collé sur un compteur → la saisie de ce compteur s’ouvre. Un client qui scanne son propre QR voit sa page.',
+      'Scannez le QR collé sur un compteur → la saisie de ce compteur s’ouvre. Un propriétaire qui scanne son propre QR voit sa page.',
   },
   anomalies: {
     id: 'anomalies',
@@ -96,7 +96,7 @@ export const AIDE: Record<string, AideTexte> = {
     id: 'utilisateurs',
     quoi: 'Gérer les accès.',
     comment:
-      'Cochez Administrateur/Releveur ; créez un compte client (avec compteurs + code d’enrôlement) ; les demandes d’accès se valident dans l’onglet Demandes.',
+      'Cochez Administrateur/Releveur ; créez un compte propriétaire (avec compteurs + code d’enrôlement) ; les demandes d’accès se valident dans l’onglet Demandes.',
   },
   demandes: {
     id: 'demandes',
@@ -107,7 +107,7 @@ export const AIDE: Record<string, AideTexte> = {
     id: 'invitations',
     quoi: 'Inviter quelqu’un de deux façons : par email (vous connaissez son adresse Google) ou par lien WhatsApp (vous n’avez que son numéro). Dans les deux cas son accès s’ouvre tout seul à sa connexion. Vous gérez aussi ici les demandes d’accès reçues.',
     comment:
-      'Choisissez l’onglet « Email » ou « WhatsApp ». • Email : renseignez l’adresse Google ; ⚠️ la personne DOIT se connecter avec EXACTEMENT cette adresse. • WhatsApp : renseignez juste le numéro et la durée de validité du lien ; l’app crée un lien d’invitation unique « gestion-eau.../i/... » — la personne l’ouvre, voit le niveau du bassin, puis se connecte avec LE COMPTE GOOGLE DE SON CHOIX (aucune adresse imposée). Dans les deux cas, choisissez le rôle (Administrateur / Releveur / Client — pour un client, ses compteurs) et appuyez sur « Envoyer sur WhatsApp » : un message tout prêt s’ouvre. Vous pouvez aussi « Copier le lien ». Plus bas, suivez les invitations envoyées (renvoyer / révoquer) et les demandes d’accès à valider.',
+      'Choisissez l’onglet « Email » ou « WhatsApp ». • Email : renseignez l’adresse Google ; ⚠️ la personne DOIT se connecter avec EXACTEMENT cette adresse. • WhatsApp : renseignez juste le numéro et la durée de validité du lien ; l’app crée un lien d’invitation unique « gestion-eau.../i/... » — la personne l’ouvre, voit le niveau du bassin, puis se connecte avec LE COMPTE GOOGLE DE SON CHOIX (aucune adresse imposée). Dans les deux cas, choisissez le rôle (Administrateur / Releveur / Propriétaire — pour un propriétaire, ses compteurs) et appuyez sur « Envoyer sur WhatsApp » : un message tout prêt s’ouvre. Vous pouvez aussi « Copier le lien ». Plus bas, suivez les invitations envoyées (renvoyer / révoquer) et les demandes d’accès à valider.',
   },
   annonces: {
     id: 'annonces',

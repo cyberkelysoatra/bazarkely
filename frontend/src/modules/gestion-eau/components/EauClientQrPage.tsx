@@ -48,7 +48,7 @@ export default function EauClientQrPage({ userId }: { userId: string | null }) {
     return (
       <EauEmptyState
         icon={AlertTriangle}
-        title="Aucun compte client associé"
+        title="Aucun compte propriétaire associé"
         hint="Contactez l’administrateur."
       />
     );
@@ -60,7 +60,7 @@ export default function EauClientQrPage({ userId }: { userId: string | null }) {
         Présentez ce QR au releveur. Il ouvre votre fiche de consommation et vos factures.
       </p>
       {dataUrl ? (
-        <img src={dataUrl} alt="Mon QR client" className="w-56 h-56 rounded-xl border border-gray-200 shadow-soft" />
+        <img src={dataUrl} alt="Mon QR propriétaire" className="w-56 h-56 rounded-xl border border-gray-200 shadow-soft" />
       ) : (
         <div className="w-56 h-56 rounded-xl bg-gray-100" />
       )}

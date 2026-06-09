@@ -305,7 +305,7 @@ export function invitationRoleLabel(flags: RoleFlags): string {
   if (flags.role_admin) parts.push('Administrateur');
   if (flags.role_releveur) parts.push('Releveur');
   if (flags.role_promoteur) parts.push('Promoteur');
-  if (flags.role_client) parts.push('Client');
+  if (flags.role_client) parts.push('Propriétaire');
   return parts.join(' / ') || 'utilisateur';
 }
 

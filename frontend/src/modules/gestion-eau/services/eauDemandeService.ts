@@ -114,7 +114,7 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   if (v.compteur_ids.length > 0) {
     await ensureActivatedClientForUser(
       demande.user_id,
-      demande.nom || demande.email || 'Client',
+      demande.nom || demande.email || 'Propriétaire',
       v.compteur_ids,
       v.traitee_par
     );
