@@ -17,6 +17,8 @@ import type {
   EntreeBassinLocal,
   BilanLocal,
   DebitTestLocal,
+  ElecReleveLocal,
+  ElecCoutLocal,
   FactureLocal,
   ConfigLocal,
   RoleLocal,
@@ -37,6 +39,8 @@ export class GestionEauDB extends Dexie {
   eau_entrees_bassin!: Table<EntreeBassinLocal, string>;
   eau_bilans!: Table<BilanLocal, string>;
   eau_debit_tests!: Table<DebitTestLocal, string>;
+  eau_elec_releves_compteur!: Table<ElecReleveLocal, string>;
+  eau_elec_couts!: Table<ElecCoutLocal, string>;
   eau_factures!: Table<FactureLocal, string>;
   eau_config!: Table<ConfigLocal, string>;
   eau_roles!: Table<RoleLocal, string>;
@@ -94,6 +98,14 @@ export class GestionEauDB extends Dexie {
     this.version(5).stores({
       eau_demandes_acces: 'id, user_id, statut',
     });
+
+    // v6 — Socle ÉLECTRICITÉ (facture combinée eau+élec, Phase 1) : relevés de compteur
+    // électrique (kWh) + coûts mensuels de la centrale. Additif : Dexie reporte
+    // automatiquement les stores inchangés (aucune perte sur les tables existantes).
+    this.version(6).stores({
+      eau_elec_releves_compteur: 'id, compteur_id, timestamp, [compteur_id+timestamp]',
+      eau_elec_couts: 'id, mois',
+    });
   }
 }
 
@@ -108,6 +120,8 @@ export const EAU_TABLES = [
   'eau_entrees_bassin',
   'eau_bilans',
   'eau_debit_tests',
+  'eau_elec_releves_compteur',
+  'eau_elec_couts',
   'eau_factures',
   'eau_config',
   'eau_roles',

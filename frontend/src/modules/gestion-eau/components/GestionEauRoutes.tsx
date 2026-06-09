@@ -29,6 +29,8 @@ const EauAlertesPage = React.lazy(() => import('./EauAlertesPage'));
 const EauRapportsPage = React.lazy(() => import('./EauRapportsPage'));
 const EauAnnoncesPage = React.lazy(() => import('./EauAnnoncesPage'));
 const EauAuditPage = React.lazy(() => import('./EauAuditPage'));
+// Phase 1 élec — coûts électricité du mois (secondaire, menu HeaderEauActions).
+const EauElecCoutsPage = React.lazy(() => import('./EauElecCoutsPage'));
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -145,6 +147,15 @@ export default function GestionEauRoutes() {
           element={
             <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur']}>
               <EauConfigPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        {/* Phase 1 élec — Coûts électricité du mois : admin (écriture), promoteur/releveur (lecture). */}
+        <Route
+          path="elec-couts"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur', 'promoteur']}>
+              <EauElecCoutsPage />
             </EauRoleProtectedRoute>
           }
         />

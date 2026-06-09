@@ -21,6 +21,7 @@ import {
   ClipboardList,
   TrendingUp,
   FileText,
+  Zap,
   IdCard,
   LogOut,
   RefreshCw,
@@ -52,6 +53,7 @@ const SECONDARY_LINKS: MenuLink[] = [
   { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin', 'promoteur'] },
   { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin', 'promoteur'] },
   // Paramétrage
+  { label: 'Coûts électricité', path: '/gestion-eau/elec-couts', icon: Zap, roles: ['admin', 'releveur', 'promoteur'] },
   { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin', 'promoteur'] },
   { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin', 'promoteur'] },
   { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'] },

@@ -86,6 +86,12 @@ export const AIDE: Record<string, AideTexte> = {
     comment:
       'Choisissez la période → les factures se calculent (conso × tarif) ; marquez payé/impayé ; exportez en PDF/CSV.',
   },
+  elecCouts: {
+    id: 'elecCouts',
+    quoi: "Enregistrer chaque mois le coût de l'électricité de la centrale pour en déduire le prix d'un kWh, qui servira à facturer l'électricité avec l'eau.",
+    comment:
+      "Pour chaque mois, saisissez : (A) la facture JIRAMA, (B) le gasoil du groupe électrogène, (C) le nombre total de kWh produits. L'application calcule alors (D) le prix d'un kWh = (A + B) ÷ C. Si le total de kWh n'est pas encore connu (C = 0), le prix n'est pas calculé. Vous pouvez modifier ou supprimer un mois ; ré-enregistrer le même mois met simplement à jour ses chiffres (pas de doublon).",
+  },
   config: {
     id: 'config',
     quoi: 'Régler le bassin (hauteur flotteur = arrêt des pompes, trop-plein = sécurité), le tarif, les seuils d’alerte et la zone de la carte.',

@@ -124,6 +124,47 @@ export interface DebitTestRow {
 }
 export type DebitTestLocal = DebitTestRow & LocalMeta;
 
+// ──────────────────── eau_elec_releves_compteur (Phase 1 élec) ────────────────────
+/**
+ * Relevé d'index d'un compteur ÉLECTRIQUE (kWh). Miroir de `ReleveCompteurRow`
+ * (même logique rupture/aberrant), table dédiée pour ne pas mélanger eau et élec.
+ * La saisie complète arrive en Phase 2 ; la table est posée dès la Phase 1.
+ */
+export interface ElecReleveRow {
+  id: string;
+  compteur_id: string;
+  index: number;
+  rupture_index: boolean;
+  aberrant_confirme: boolean;
+  timestamp: string;
+  agent_id: string | null;
+  note: string | null;
+  photo_url: string | null;
+  created_at: string | null;
+}
+export type ElecReleveLocal = ElecReleveRow & LocalMeta;
+
+// ───────────────────────── eau_elec_couts (Phase 1 élec) ─────────────────────────
+/**
+ * Coûts d'électricité mensuels de la centrale (mutualisés) : facture JIRAMA (A),
+ * gasoil du groupe électrogène (B), production totale en kWh (C). Le prix du kWh
+ * (D) en découle : `prix_kwh = (total_jirama + total_gasoil) / total_kwh` quand
+ * `total_kwh > 0`, sinon null. Sert de base au calcul du montant élec d'une facture.
+ */
+export interface ElecCoutRow {
+  id: string;
+  /** Mois facturé au format `YYYY-MM` (unique). */
+  mois: string;
+  total_jirama: number;
+  total_gasoil: number;
+  total_kwh: number;
+  prix_kwh: number | null;
+  devise: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecCoutLocal = ElecCoutRow & LocalMeta;
+
 // ────────────────────────────── eau_factures ─────────────────────────────
 export type FactureStatut = 'paye' | 'impaye';
 
@@ -144,6 +185,17 @@ export interface FactureRow {
   paye_at: string | null;
   relance_count: number;
   generated_at: string | null;
+  // Facture combinée eau + électricité (Phase 1 élec) : volet électrique. Tous
+  // nullables → rétrocompatibles avec les factures eau existantes.
+  index_debut_elec: number | null;
+  index_fin_elec: number | null;
+  conso_kwh: number | null;
+  prix_kwh: number | null;
+  montant_elec: number | null;
+  /** Mois de référence (`YYYY-MM`) du coût élec appliqué (FK logique vers `eau_elec_couts.mois`). */
+  cout_mois: string | null;
+  /** Montant total = montant (eau) + montant_elec. */
+  montant_total: number | null;
 }
 export type FactureLocal = FactureRow & LocalMeta;
 
