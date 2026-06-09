@@ -1,6 +1,7 @@
 /** Facturation /gestion-eau/facturation (admin) : période → factures numérotées,
  *  statut payé/impayé, relances, export PDF par compteur + CSV global. */
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import {
@@ -40,6 +41,7 @@ function toDateInput(d: Date): string {
 }
 
 export default function EauFacturationPage() {
+  const navigate = useNavigate();
   const { isReadOnly } = useGestionEau();
   const [config, setConfig] = useState<ConfigLocal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -189,9 +191,13 @@ export default function EauFacturationPage() {
               <li key={f}>{f}</li>
             ))}
           </ul>
-          <a href="/gestion-eau/config" className="inline-flex items-center gap-1 mt-2 text-ahuvi-forest font-medium underline">
+          <button
+            type="button"
+            onClick={() => navigate('/gestion-eau/config')}
+            className="inline-flex items-center gap-1 mt-2 text-ahuvi-forest font-medium underline"
+          >
             <Settings className="w-4 h-4" aria-hidden="true" /> Aller à la configuration
-          </a>
+          </button>
         </div>
       ) : view === 'factures' ? (
         <div className="space-y-4">
