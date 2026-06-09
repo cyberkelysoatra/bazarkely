@@ -158,16 +158,26 @@ export async function downloadFacturePdf(ctx: FacturePdfContext): Promise<void> 
 /** Chemin du logo AHUVI (paysage ~3:1) servi par Netlify ; absent → repli texte. */
 const AHUVI_LOGO_URL = '/ahuvi-logo.png';
 
-/** Nombre fr-FR avec un nombre de décimales fixe (séparateurs français). */
+/**
+ * Remplace les espaces fines insécables (U+202F) et insécables (U+00A0) — séparateurs
+ * de milliers de `toLocaleString('fr-FR')` — par une espace normale. Ces caractères sont
+ * absents de la police Helvetica standard : jsPDF mesure mal leur largeur, ce qui décale
+ * l'alignement à droite et fait déborder/tronquer le texte au bord droit de la page.
+ */
+function pdfSafe(s: string): string {
+  return s.replace(/[  ]/g, ' ');
+}
+
+/** Nombre fr-FR avec un nombre de décimales fixe (séparateurs normalisés pour jsPDF). */
 function fmtNb(v: number | null | undefined, digits = 2): string {
   if (v == null || Number.isNaN(v)) return '—';
-  return v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return pdfSafe(v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits }));
 }
 
 /** Montant fr-FR + devise avec décimales (PU / totaux de ligne lisibles). */
 function fmtAr(v: number | null | undefined, devise: string, digits = 2): string {
   if (v == null || Number.isNaN(v)) return '—';
-  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${devise}`;
+  return `${fmtNb(v, digits)} ${devise}`;
 }
 
 /** « V04 » / « LODGE_V01 » → « VILLA N°4 » ; sinon le nom brut. */
@@ -345,7 +355,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
     yR += 5;
   }
   doc.text(
-    `Période : ${fmtDate(facture.periode_start)} → ${fmtDate(facture.periode_end)}`,
+    `Période : ${fmtDate(facture.periode_start)} au ${fmtDate(facture.periode_end)}`,
     right,
     yR,
     { align: 'right' }
@@ -464,7 +474,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.text('TOTAL À PAYER', left + 4, y + 9);
-  doc.text(fmtMontant(total, devise), right - 4, y + 9, { align: 'right' });
+  doc.text(pdfSafe(fmtMontant(total, devise)), right - 4, y + 9, { align: 'right' });
   doc.setTextColor(0);
   y += 18;
 
