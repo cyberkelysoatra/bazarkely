@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
-import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert } from 'lucide-react';
+import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert, Waves } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import EauClientQrPage from './EauClientQrPage';
+import EauProprietaireBassinPage from './EauProprietaireBassinPage';
 import { useGestionEau } from '../context/GestionEauContext';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
@@ -32,7 +33,8 @@ export default function EauClientPage() {
   const navigate = useNavigate();
   // Onglet piloté par l'URL (cohérent avec les 2 boutons du footer : Ma conso / Mes factures).
   const { tab } = useParams<{ tab?: string }>();
-  const active = tab === 'factures' ? 'factures' : tab === 'qr' ? 'qr' : 'conso';
+  const active =
+    tab === 'factures' ? 'factures' : tab === 'qr' ? 'qr' : tab === 'bassin' ? 'bassin' : 'conso';
   const [loading, setLoading] = useState(true);
   const [vues, setVues] = useState<CompteurVue[]>([]);
   const [factures, setFactures] = useState<FactureLocal[]>([]);
@@ -103,21 +105,34 @@ export default function EauClientPage() {
               ? '/gestion-eau/client/factures'
               : k === 'qr'
               ? '/gestion-eau/client/qr'
+              : k === 'bassin'
+              ? '/gestion-eau/client/bassin'
               : '/gestion-eau/client'
           )
         }
         tabs={[
           { key: 'conso', label: 'Ma conso', icon: Droplet },
+          { key: 'bassin', label: 'Le bassin', icon: Waves },
           { key: 'factures', label: 'Mes factures', icon: Receipt },
           { key: 'qr', label: 'Mon QR', icon: QrCode },
         ]}
       />
       <EauPageShell
-        title={active === 'factures' ? 'Mes factures' : active === 'qr' ? 'Mon QR' : 'Ma consommation'}
-        subtitle="Espace client"
-        aide={AIDE.client}
+        title={
+          active === 'factures'
+            ? 'Mes factures'
+            : active === 'qr'
+            ? 'Mon QR'
+            : active === 'bassin'
+            ? 'Situation du bassin'
+            : 'Ma consommation'
+        }
+        subtitle={active === 'bassin' ? 'Espace propriétaire' : 'Espace client'}
+        aide={active === 'bassin' ? AIDE.proprietaireBassin : AIDE.client}
       >
-      {active === 'qr' ? (
+      {active === 'bassin' ? (
+        <EauProprietaireBassinPage />
+      ) : active === 'qr' ? (
         <EauClientQrPage userId={userId} />
       ) : loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>

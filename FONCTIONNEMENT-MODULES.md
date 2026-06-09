@@ -423,7 +423,7 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 ### 👥 Rôles (cumulables — un même utilisateur peut être plusieurs à la fois)
 - **admin** : tout (config, facturation, CRUD compteurs, comptes/rôles, demandes, saisies, anomalies, tableau de bord)
 - **releveur** : saisies bassin + compteur, anomalies, tableau de bord
-- **client** : tableau de bord + **espace client** (ma conso + mes factures de mes seuls compteurs assignés). Rôle dérivé d'un `eau_comptes_client` lié au `user_id`.
+- **client** (= **Propriétaire**) : **espace propriétaire** = ma conso + mes factures de mes seuls compteurs assignés + **« Le bassin »** *(v3.46.0)* = vue **lecture seule** de la situation du bassin commun (niveau, % remplissage, autonomie estimée, conso du jour, courbe niveau 30 j). Rôle dérivé d'un `eau_comptes_client` lié au `user_id`. **RLS** : helper `eau_is_client()` + 5 policies SELECT `_sel_client` ouvrent la **lecture** des tables bassin (`eau_releves_bassin`, `eau_entrees_bassin`, `eau_bilans`, `eau_debit_tests`, `eau_config`) au propriétaire ; **aucune policy d'écriture** ne le concerne (écriture refusée serveur). Écran `EauProprietaireBassinPage` (onglet `/gestion-eau/client/bassin`) réutilise `getDashboardData()`/`getTendances()`. Voir `RAPPORT-PROPRIETAIRE-1-vue-bassin.md`.
 - **promoteur** *(Phase 2 frontend, v3.44.0)* : **lecture TOTALE** de tous les écrans métier ET admin (dont **toutes les factures**), mais **aucune écriture** — la seule exception est le **réglage des seuils d'alerte** dans la Configuration (via la RPC `eau_set_alert_thresholds`). Colonne `eau_roles.promoteur` (attribuée par l'admin dans *Utilisateurs & rôles*). Côté UI, le contexte expose `isReadOnly = promoteur && !admin && !releveur` (un admin/releveur cumulant promoteur **garde** l'écriture) : chaque écran masque/désactive ses contrôles d'écriture, garde ses handlers (`if (isReadOnly) return;`) et affiche un repère « Lecture seule (promoteur) ». Filet serveur = RLS Phase 1 (lecture-all + RPC seuils, voir `RAPPORT-PROMOTEUR-1-rls.md`).
 - **Premier admin = propriétaire** : le tout premier utilisateur qui ouvre le module
   (quand `eau_roles` ne contient aucun admin) devient automatiquement admin.
@@ -441,7 +441,7 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 | `/gestion-eau/facturation` (Factures · Rapports) | ✅ | ❌ | ❌ | 👁️ lecture (toutes factures) |
 | `/gestion-eau/config`, `/utilisateurs`, `/demandes` | ✅ | ❌ | ❌ | 👁️ lecture (+ seuils d'alerte éditables en Config) |
 | `/gestion-eau/alertes`, `/annonces`, `/audit` (Phase 3-4) | ✅ | ❌ | ❌ | 👁️ lecture |
-| `/gestion-eau/client` (Ma conso · Mes factures · QR) — **SES compteurs** | ✅ (supervision) | ❌ | ✅ | ❌ |
+| `/gestion-eau/client` (Ma conso · **Le bassin** · Mes factures · QR) — **SES compteurs** + bassin commun en lecture | ✅ (supervision) | ❌ | ✅ | ❌ |
 
 - **Cumul de rôles** = **union** des accès. **Garde** : `EauRoleProtectedRoute allowedRoles={…}` sur chaque route ;
   un accès URL direct non autorisé **redirige vers l'écran d'accueil du rôle** (client → `/gestion-eau/client`, sinon `/gestion-eau`), sans boucle.

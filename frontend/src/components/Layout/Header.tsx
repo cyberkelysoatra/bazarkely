@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
@@ -58,7 +58,7 @@ const Header = () => {
 
   // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
   const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt,
+    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves,
   };
   const eauNavItems = GESTION_EAU_NAV_ITEMS.filter(
     (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])

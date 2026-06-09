@@ -1,7 +1,7 @@
 import { useEffect, useRef, useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from '../../constants';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves } from 'lucide-react';
 import { useModuleSwitcher } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -36,7 +36,8 @@ const iconMap = {
   Network,
   FileText,
   Droplet,
-  Receipt
+  Receipt,
+  Waves
 };
 
 const BottomNav = () => {

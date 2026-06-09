@@ -158,6 +158,7 @@ export const GESTION_EAU_NAV_ITEMS = [
   { path: '/gestion-eau/compteurs', icon: 'Network', label: 'Compteurs', roles: ['admin', 'promoteur'] as const },
   { path: '/gestion-eau/facturation', icon: 'FileText', label: 'Facturation', roles: ['admin', 'promoteur'] as const },
   { path: '/gestion-eau/client', icon: 'Droplet', label: 'Ma conso', roles: ['client'] as const },
+  { path: '/gestion-eau/client/bassin', icon: 'Waves', label: 'Le bassin', roles: ['client'] as const },
   { path: '/gestion-eau/client/factures', icon: 'Receipt', label: 'Mes factures', roles: ['client'] as const }
 ] as const;
 

@@ -125,6 +125,11 @@ export const AIDE: Record<string, AideTexte> = {
     comment:
       'Consultez vos compteurs et téléchargez vos factures ; votre QR ouvre directement cette page.',
   },
+  proprietaireBassin: {
+    id: 'proprietaire-bassin',
+    quoi: "Voir l'état du bassin commun : niveau d'eau, remplissage, autonomie estimée et consommation.",
+    comment: "Écran en lecture seule : vous consultez la situation du bassin, sans rien saisir ni modifier.",
+  },
   accueil: {
     id: 'accueil',
     quoi: 'Rejoindre l’application.',
