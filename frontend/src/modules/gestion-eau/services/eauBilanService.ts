@@ -333,14 +333,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     const estimable = (debitCourantM3h != null && debitCourantM3h > 0) || entrees.length > 0;
 
     // Estimateur corrigé « pompe intermittente » — SOURCE UNIQUE partagée avec les
-    // tendances : plafonne les intervalles parqués au flotteur (où débit×Δt surestime).
-    const volumeFlotteurM3 = dim ? volumeMaxM3(dim) : null;
+    // tendances : conso observée sur les vidages, estimée (taux de base) sur les montées.
     const intervalles = estimable
       ? calculerConsoEstimee({
           relevesBassin,
           entrees,
           debitM3h: debitCourantM3h,
-          volumeFlotteurM3,
           consoMoyenneHeureM3: autonomie.consoMoyenneHeureM3,
           pertePct: PERTE_RESEAU_DEFAUT_PCT,
         })

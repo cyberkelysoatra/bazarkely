@@ -6,7 +6,7 @@
  * ne fait que charger l'instantané Dexie et appeler ces fonctions.
  */
 import { eauDb } from '../db/gestionEauDb';
-import { getConfig, dimensionsFromConfig } from './eauConfigService';
+import { getConfig } from './eauConfigService';
 import { getDebitCourantM3h, estimerAutonomie } from './eauBassinService';
 import {
   consoCompteurSurIntervalle,
@@ -15,7 +15,6 @@ import {
 } from '../utils/bilan';
 import { projeterConsoJour, type ProjectionResult } from '../utils/projection';
 import { calculerConsoEstimee } from '../utils/consoEstimee';
-import { volumeMaxM3 } from '../utils/bassin';
 import type {
   BilanLocal,
   ReleveBassinLocal,
@@ -188,8 +187,6 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
   const debitDisponible = debitM3h != null && debitM3h > 0;
   // Non calculable sans débit ET sans aucune entrée manuelle → série vide.
   const estimable = debitDisponible || entrees.length > 0;
-  const dim = dimensionsFromConfig(config);
-  const volumeFlotteurM3 = dim ? volumeMaxM3(dim) : null;
   const periodeJoursAuto = config?.periode_facturation_jours ?? 30;
   const { consoMoyenneHeureM3 } = estimerAutonomie({
     stockActuelM3: null,
@@ -206,7 +203,6 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
         relevesBassin,
         entrees,
         debitM3h,
-        volumeFlotteurM3,
         consoMoyenneHeureM3,
         pertePct: PERTE_RESEAU_DEFAUT_PCT,
       })
