@@ -258,9 +258,9 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - `/gestion-eau/compteurs` — **Thème Compteurs** : onglets **Liste (CRUD + QR + géoloc lat/lng) · Carte** (Carte **livrée Phase 3**) (admin)
 - `/gestion-eau/scan` — **Résolveur de scan QR PUBLIC** : applique la matrice de rôle (compteur → saisie directe ; client → fiche/son espace) + **journalise** le scan (Phase 3)
 - `/gestion-eau/facturation` — **Thème Facturation** : onglets **Factures · Rapports** (admin) — Phase 2
-- `/gestion-eau/client` + `/gestion-eau/client/factures` + `/gestion-eau/client/qr` — **Espace client** : onglets **Ma conso · Mes factures · Mon QR** (Mon QR **livré Phase 3**) (client/admin)
+- `/gestion-eau/client` + `/gestion-eau/client/factures` + `/gestion-eau/client/qr` — **Espace propriétaire** : onglets **Ma conso · Mes factures · Mon QR** (Mon QR **livré Phase 3**) (client/admin)
 - `/gestion-eau/config` — **Configuration** (admin) — *menu en haut à droite*
-- `/gestion-eau/utilisateurs` — **Rôles + comptes clients (code d'enrôlement)** (admin) — *menu en haut à droite*
+- `/gestion-eau/utilisateurs` — **Rôles + comptes propriétaires (code d'enrôlement)** (admin) — *menu en haut à droite*
 - `/gestion-eau/demandes` — **Demandes d'accès à valider/refuser** (admin) — *menu en haut à droite*
 - Anciennes routes `saisie-bassin` / `saisie-compteur` / `anomalies` → **redirigent** vers `/releves` / `/suivi` (compatibilité).
 
@@ -271,7 +271,7 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   Le violet BazarKELY et le header Construction restent **inchangés**.
 - **Navigation principale = BottomNav (mobile) + nav desktop du header**, avec des **boutons THÉMATIQUES ≤ 6, filtrés par rôle**
   (`GESTION_EAU_NAV_ITEMS` dans `constants/`) : **Admin (5)** Tableau de bord · Relevés · Suivi · Compteurs · Facturation —
-  **Releveur (3)** Tableau de bord · Relevés · Suivi — **Client (2)** Ma conso · Mes factures.
+  **Releveur (3)** Tableau de bord · Relevés · Suivi — **Propriétaire (2)** Ma conso · Mes factures.
   Chaque bouton-thème **regroupe ses sous-écrans** via des **onglets internes** (composant `EauTabs`).
 - **Écrans secondaires** (pilotage **Tendances · Alertes · Rapports · Annonces · Audit** *(Phase 4, activés)* + paramétrage **Configuration · Utilisateurs & rôles · Demandes d'accès**)
   → **menu en haut à droite** (`header/HeaderEauActions.tsx`), filtré par rôle, avec **badges** (alertes non lues + file `_dirty` « N en attente de sync »). La nav interne historique (`EauNav`) **n'est plus la barre principale**.
@@ -388,9 +388,9 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - **Export PDF** par facture (en-tête copro + logo, période, conso, tarif, montant, statut) ; **export CSV global** (relevés + bilans + factures).
 - Génération **idempotente** : un compteur déjà facturé sur la même période exacte est ignoré ; un compteur sans relevé exploitable n'est pas facturé.
 
-### 🪪 Comptes clients & enrôlement (Phase 2)
-- L'admin crée un **compte client** (nom, contact, **compteurs visibles**) → un **code d'enrôlement** unique est généré et affiché (à transmettre).
-- Le client, sur `/gestion-eau/accueil`, fait **« J'ai un code »** → connexion **Google** + saisie du code → le compte est **lié** (`user_id`) et **activé** (`actif=true`) ; le rôle `client` devient effectif.
+### 🪪 Comptes propriétaires & enrôlement (Phase 2)
+- L'admin crée un **compte propriétaire** (nom, contact, **compteurs visibles**) → un **code d'enrôlement** unique est généré et affiché (à transmettre).
+- Le propriétaire, sur `/gestion-eau/accueil`, fait **« J'ai un code »** → connexion **Google** + saisie du code → le compte est **lié** (`user_id`) et **activé** (`actif=true`) ; le rôle `client` devient effectif.
 - Sans code : **« Demander un accès »** → Google → crée une `eau_demandes_acces` `en_attente` ; l'admin la **valide** (rôles + compteurs visibles) ou la **refuse** depuis `/gestion-eau/demandes`.
 - L'enrôlement est mémorisé avant la redirection Google (localStorage) puis **traité au retour** par `GestionEauProvider` (quel que soit l'écran d'atterrissage).
 
@@ -401,13 +401,13 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 
 **Canal EMAIL (par correspondance d'adresse Google) — Phases 1 & 2 :**
 - **Octroi automatique au 1er login (Phase 1)** : l'admin pré-enregistre une invitation (email Google + rôles cumulables admin/releveur/client + compteurs visibles si client). À la **première connexion Google** de la personne **avec cette adresse exacte**, la RPC `eau_claim_invitation()` attribue le(s) rôle(s) **sans validation manuelle** (et crée/active son compte client + compteurs si `role_client`), puis marque l'invitation `acceptee`. Idempotent.
-- **Formulaire (onglet Email)** : nom (optionnel), **email Google** (requis), **numéro WhatsApp** (requis), rôles **Administrateur / Releveur** (cumulables) + option **Client** → **multiselect compteurs**.
+- **Formulaire (onglet Email)** : nom (optionnel), **email Google** (requis), **numéro WhatsApp** (requis), rôles **Administrateur / Releveur** (cumulables) + option **Propriétaire** → **multiselect compteurs**.
 - À la création, bouton **« Envoyer sur WhatsApp »** (+ **« Copier le message »**) : ouvre **wa.me** avec un **message FR** contenant le **lien profond** selon le rôle et l'**email exact**, en insistant sur l'usage de **CETTE adresse Google**. Numéro **normalisé** malgache (`0XXXXXXXXX` → `261XXXXXXXXX`).
 - **Liste « Invitations par email »** (en attente / acceptées ; révoquées masquées) : **Renvoyer le WhatsApp**, **Copier**, **Révoquer**. Ré-inviter le même email en attente **met à jour** l'invitation (pas de doublon).
 
 **Canal LIEN WhatsApp (par JETON, compte Google au choix) — Phases 1, 2 (vitrine), 4 (UI admin) :**
 - **Principe** : l'admin **n'a que le numéro** (pas l'email). On crée une invitation portant un **jeton unguessable** (`createWhatsappInvitation`, offline-first) et une **date d'expiration** (7/30/90 j ou illimité). Le **lien `https://1sakely.org/i/<token>`** (page vitrine publique, Phase 2) enrôle au 1er login via la RPC `eau_claim_invitation_by_token()` — **quel que soit le compte Google choisi** (aucune adresse imposée). Usage unique, idempotent même user, refus si jeton inconnu/expiré/déjà accepté.
-- **Formulaire (onglet WhatsApp)** : **numéro WhatsApp** (requis), nom (optionnel), rôles cumulables (Admin/Releveur/Client, **≥1 compteur si client**), **délai de validité** (7/30/90 j ou illimité).
+- **Formulaire (onglet WhatsApp)** : **numéro WhatsApp** (requis), nom (optionnel), rôles cumulables (Admin/Releveur/Propriétaire, **≥1 compteur si propriétaire**), **délai de validité** (7/30/90 j ou illimité).
 - À la création, **bandeau de confirmation** affichant le **lien `/i/<token>`** + **« Envoyer sur WhatsApp »** (wa.me, **message FR centré sur le lien** — c'est lui qui porte **l'aperçu image** côté WhatsApp), **« Copier le lien »**, **« Copier le message »**. Helpers purs `buildWhatsappInviteMessage` / `buildWhatsappInviteUrl`.
 - **Liste « Invitations par lien WhatsApp »** (filtre `invite_channel === 'whatsapp'`, tri En attente < Acceptée < Expirée) : icône de rôle, nom/numéro, badges, **statut** (En attente / Acceptée le… / **Expirée** si `expires_at < now`), **expiration affichée** ; actions **Renvoyer WhatsApp** (régénère le wa.me **avec le même jeton**), **Copier le lien**, **Révoquer** (si en attente, confirmation).
 - **Limite (aperçu image)** : l'aperçu visuel du lien dans WhatsApp dépend du **cache de scraping** de WhatsApp/Facebook ; il peut mettre quelques minutes à apparaître la 1ʳᵉ fois, ou rester un simple lien texte selon le client. Le lien reste fonctionnel dans tous les cas.
