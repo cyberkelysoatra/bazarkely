@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText,
+  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData, type ConsoJourSource } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
-import { fmtM3, fmtPct } from '../utils/format';
+import { getElecKpiData, type ElecKpiData } from '../services/eauElecReleveService';
+import { fmtM3, fmtPct, fmtKwh } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
 /**
@@ -122,20 +123,28 @@ export default function EauDashboard() {
   const goSaisieBassin = (bt: 'niveau' | 'entree' | 'debit' = 'niveau') =>
     navigate(`/gestion-eau/releves?tab=bassin&bt=${bt}`);
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
+  // Sous-onglet « Électricité » des Relevés (saisie d'index kWh).
+  const goSaisieElec = () => navigate('/gestion-eau/releves?tab=elec');
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [conso, setConso] = useState<SeriePoint[]>([]);
   const [niveau, setNiveau] = useState<SeriePoint[]>([]);
+  const [elecKpi, setElecKpi] = useState<ElecKpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [d, t] = await Promise.all([getDashboardData(), getTendances({ fenetreJours: 30 })]);
+      const [d, t, e] = await Promise.all([
+        getDashboardData(),
+        getTendances({ fenetreJours: 30 }),
+        getElecKpiData(),
+      ]);
       if (alive) {
         setData(d);
         setConso(t.consoParJour);
         setNiveau(t.niveauBassin);
+        setElecKpi(e);
         setLoading(false);
       }
     })();
@@ -143,6 +152,22 @@ export default function EauDashboard() {
       alive = false;
     };
   }, []);
+
+  /** Texte d'aide sous la valeur de la carte KPI électricité selon l'état des relevés. */
+  const elecHint = (): React.ReactNode => {
+    if (!elecKpi || elecKpi.totalReleves === 0)
+      return 'Aucun relevé électrique — appuyez pour saisir un index';
+    if (elecKpi.consoRecenteKwh == null)
+      return "En attente d'un 2ᵉ relevé pour calculer la consommation";
+    return (
+      <>
+        Dernière conso · {elecKpi.nbCompteursReleves} compteur{elecKpi.nbCompteursReleves > 1 ? 's' : ''}
+        {elecKpi.dernierReleveDate && (
+          <span className="text-gray-400"> · relevé du {fmtDate(elecKpi.dernierReleveDate)}</span>
+        )}
+      </>
+    );
+  };
 
   return (
     <EauPageShell title="Gestion Eau" subtitle="Tableau de bord du bassin et des compteurs" aide={AIDE.dashboard}>
@@ -247,6 +272,17 @@ export default function EauDashboard() {
               />
             </div>
           </div>
+
+          {/* KPI électricité : conso kWh récente (somme des dernières consos par compteur).
+              Carte cliquable → sous-onglet « Électricité » des Relevés (navigation interne). */}
+          <EauStatCard
+            icon={Zap}
+            tone="gold"
+            label="Conso électrique"
+            value={elecKpi?.consoRecenteKwh != null ? fmtKwh(elecKpi.consoRecenteKwh) : '—'}
+            hint={elecHint()}
+            onClick={goSaisieElec}
+          />
 
           <div>
             <Card

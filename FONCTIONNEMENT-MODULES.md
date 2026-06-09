@@ -248,7 +248,8 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 ### 📍 Pages concernées (préfixe `/gestion-eau`)
 - `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
 - `/gestion-eau` — **Tableau de bord** opérationnel (admin/releveur ; le client est redirigé vers son espace)
-- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Compteur · Bassin · Tournée · Scan** (Tournée/Scan **livrés Phase 3**) (releveur/admin)
+- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Compteur · Électricité · Bassin · Tournée · Scan** (Électricité = saisie d'index kWh, **sous-onglet `?tab=elec`** ; Tournée/Scan **livrés Phase 3**) (releveur/admin)
+- `/gestion-eau/elec-couts` — **Coûts électricité du mois** : saisie mensuelle JIRAMA + gasoil + kWh produits → **prix du kWh** (admin) — *menu en haut à droite (icône Zap)*
 - `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans · Tendances** (Tendances **livré Phase 4**) (releveur/admin)
 - `/gestion-eau/tendances` — **Tendances (pilotage)** : graphiques conso/niveau/NRW/top consommateurs/zone (Phase 4) (releveur/admin) — *menu en haut à droite*
 - `/gestion-eau/alertes` — **Centre d'alertes** : génération + notifications + suivi lu/traité (Phase 4) (admin) — *menu en haut à droite*
@@ -388,6 +389,17 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 - **Export PDF** par facture (en-tête copro + logo, période, conso, tarif, montant, statut) ; **export CSV global** (relevés + bilans + factures).
 - Génération **idempotente** : un compteur déjà facturé sur la même période exacte est ignoré ; un compteur sans relevé exploitable n'est pas facturé.
 
+### ⚡ Sous-système Électricité (4 phases, jusqu'à v3.46.x)
+La copropriété distribue aussi de l'**électricité** (centrale = JIRAMA + groupe électrogène). L'objectif du sous-système est de **facturer l'électricité SUR LA MÊME facture que l'eau**, à partir d'un prix du kWh recalculé chaque mois.
+
+- **Relevés d'index électriques (kWh)** — `/gestion-eau/releves` → onglet **Électricité** (`?tab=elec`), releveur/admin. **Mêmes compteurs que l'eau** (`eau_compteurs`) ; table dédiée `eau_elec_releves_compteur` (kWh). Logique **strictement miroir** de l'eau : `conso = index relevé − index précédent`, **rupture d'index** (nouvel index < précédent → conso d'intervalle = 0, compteur remis à zéro/remplacé), **détection d'aberrant** (par rapport à la moyenne historique), **photo** optionnelle, offline-first (Dexie d'abord, upsert idempotent par id client). **Cas limite blindé** : un **index identique au précédent** (conso = 0) est une absence d'usage **légitime** → **jamais** signalé « aberrant bas ».
+- **Coûts électricité du mois (A/B/C → D)** — `/gestion-eau/elec-couts` (admin ; promoteur/releveur en lecture seule), table `eau_elec_couts`, **un mois `YYYY-MM` = unique** (upsert idempotent par mois, pas de doublon). Saisie : **(A)** facture JIRAMA, **(B)** gasoil du groupe, **(C)** kWh produits → **(D) prix du kWh = (A + B) ÷ C**, calculé en direct. Si **C = 0**, le prix n'est pas calculé (`null`).
+- **Facture combinée eau + électricité** — `/gestion-eau/facturation`. Après la période, on choisit aussi le **mois de coûts électricité** (qui fixe le prix du kWh appliqué). Chaque facture additionne une **ligne EAU** (`conso m³ × tarif/m³`) et une **ligne ÉLECTRICITÉ** (`conso kWh × prix du kWh`), avec un **total général** (`montant_total`). **Cas limites** : une villa **sans relevé d'un côté** n'est facturée que pour l'autre ; **ni eau ni élec exploitable** → villa **skippée** (pas de facture à 0 erronée) ; **rupture d'index** dans la période → ligne **exclue** (conso non fiable) ; **aucun mois de coûts** → bandeau d'alerte + **lien interne** vers « Coûts électricité » et seules les lignes d'eau sont facturées.
+- **PDF de facture modernisé (charte AHUVI)** — en-tête **logo AHUVI** (`frontend/public/ahuvi-logo.png`, **dégradation propre en repli texte si absent**), propriétaire + villa, **deux tableaux** (électricité et eau, index début/fin, conso, prix unitaire), encadré **« calcul du prix du kWh »** (A/B/C/D pour la transparence), grand total et **montant en toutes lettres**. Le propriétaire retrouve **ce même PDF** dans son espace.
+- **Tableau de bord** — carte KPI **« Conso électrique »** (icône `Zap`, Phase 4) : somme des dernières consos d'intervalle par compteur (kWh), **état vide propre** si aucun relevé, **cliquable** vers le sous-onglet Électricité des Relevés (navigation interne).
+- **Espace propriétaire** — section **« Électricité »** (lecture seule) sous chaque compteur : dernier index kWh + historique de conso ; **état vide** si aucun relevé élec.
+- **Matrice d'accès élec** : relevés élec = **admin/releveur** (promoteur 👁️ lecture) ; coûts élec & facturation combinée = **admin** (promoteur 👁️ lecture) ; le **propriétaire** voit sa conso élec et ses factures combinées (ses seuls compteurs).
+
 ### 🪪 Comptes propriétaires & enrôlement (Phase 2)
 - L'admin crée un **compte propriétaire** (nom, contact, **compteurs visibles**) → un **code d'enrôlement** unique est généré et affiché (à transmettre).
 - Le propriétaire, sur `/gestion-eau/accueil`, fait **« J'ai un code »** → connexion **Google** + saisie du code → le compte est **lié** (`user_id`) et **activé** (`actif=true`) ; le rôle `client` devient effectif.
@@ -441,10 +453,11 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 |---|:---:|:---:|:---:|:---:|
 | `/gestion-eau/accueil`, `/gestion-eau/scan` | public | public | public | public |
 | `/gestion-eau` Tableau de bord | ✅ | ✅ | ❌ (→ son espace) | 👁️ lecture |
-| `/gestion-eau/releves` (Bassin/Compteur/Tournée/Scan) | ✅ | ✅ | ❌ | 👁️ lecture |
+| `/gestion-eau/releves` (Compteur/**Électricité**/Bassin/Tournée/Scan) | ✅ | ✅ | ❌ | 👁️ lecture |
 | `/gestion-eau/suivi` (Anomalies/Bilans · Tendances) | ✅ | ✅ | ❌ | 👁️ lecture |
 | `/gestion-eau/compteurs` (Liste CRUD+QR · Carte) | ✅ | ❌ | ❌ | 👁️ lecture |
-| `/gestion-eau/facturation` (Factures · Rapports) | ✅ | ❌ | ❌ | 👁️ lecture (toutes factures) |
+| `/gestion-eau/elec-couts` (Coûts électricité → prix du kWh) | ✅ | 👁️ lecture | ❌ | 👁️ lecture |
+| `/gestion-eau/facturation` (Factures **eau+élec** · Rapports) | ✅ | ❌ | ❌ | 👁️ lecture (toutes factures) |
 | `/gestion-eau/config`, `/utilisateurs`, `/demandes` | ✅ | ❌ | ❌ | 👁️ lecture (+ seuils d'alerte éditables en Config) |
 | `/gestion-eau/alertes`, `/annonces`, `/audit` (Phase 3-4) | ✅ | ❌ | ❌ | 👁️ lecture |
 | `/gestion-eau/client` (Ma conso · **Le bassin** · Mes factures · QR) — **SES compteurs** + bassin commun en lecture | ✅ (supervision) | ❌ | ✅ | ❌ |

@@ -58,7 +58,11 @@ export async function evaluerReleveElec(compteurId: string, nouvelIndex: number)
   const config = await getConfig();
   const facteur = facteurAberrantFromConfig(config);
   const hist = await historiqueConsoElec(compteurId);
-  const aberrant = ruptureIndex ? { aberrant: false, type: null } : detectAberrant(conso, moyenne(hist), facteur);
+  // Un index identique au précédent (conso = 0) est une absence de consommation
+  // LÉGITIME (logement vide, période sans usage), jamais une anomalie « trop basse ».
+  // On ne déclenche `detectAberrant` que pour une conso strictement positive.
+  const aberrant =
+    ruptureIndex || conso <= 0 ? { aberrant: false, type: null } : detectAberrant(conso, moyenne(hist), facteur);
 
   return { dernier, ruptureIndex, conso, aberrant };
 }
@@ -111,4 +115,66 @@ export async function deleteReleveElec(id: string): Promise<void> {
 /** Tire les relevés élec depuis Supabase (au montage / online). */
 export async function refreshElecReleves(online: boolean): Promise<void> {
   if (online) await pullTable('eau_elec_releves_compteur');
+}
+
+/** Synthèse électricité pour la carte KPI du tableau de bord. */
+export interface ElecKpiData {
+  /**
+   * Consommation électrique récente = somme, par compteur, de sa DERNIÈRE conso
+   * d'intervalle exploitable (kWh). `null` tant qu'aucun compteur n'a 2 relevés
+   * exploitables (un seul relevé ne donne pas encore de conso).
+   */
+  consoRecenteKwh: number | null;
+  /** Date du relevé élec le plus récent (ISO), ou null si aucun relevé. */
+  dernierReleveDate: string | null;
+  /** Nombre total de relevés élec (tous compteurs). */
+  totalReleves: number;
+  /** Nombre de compteurs ayant au moins un relevé élec. */
+  nbCompteursReleves: number;
+}
+
+/**
+ * Agrège les relevés élec (offline-first, lecture Dexie) pour la carte KPI du
+ * tableau de bord. Ne lève jamais : un état vide propre (`totalReleves = 0`,
+ * `consoRecenteKwh = null`) est renvoyé tant qu'il n'y a pas de relevé.
+ */
+export async function getElecKpiData(): Promise<ElecKpiData> {
+  const all = (await eauDb.eau_elec_releves_compteur.toArray()) as ElecReleveLocal[];
+  if (all.length === 0) {
+    return { consoRecenteKwh: null, dernierReleveDate: null, totalReleves: 0, nbCompteursReleves: 0 };
+  }
+
+  const byCompteur = new Map<string, ElecReleveLocal[]>();
+  let dernierReleveDate: string | null = null;
+  let dernierMs = -Infinity;
+  for (const r of all) {
+    const list = byCompteur.get(r.compteur_id);
+    if (list) list.push(r);
+    else byCompteur.set(r.compteur_id, [r]);
+    const ms = new Date(r.timestamp).getTime();
+    if (Number.isFinite(ms) && ms > dernierMs) {
+      dernierMs = ms;
+      dernierReleveDate = r.timestamp;
+    }
+  }
+
+  let consoRecenteKwh: number | null = null;
+  for (const list of byCompteur.values()) {
+    const sorted = list
+      .slice()
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const last = sorted[sorted.length - 1];
+    const prev = sorted[sorted.length - 2];
+    // Besoin de 2 relevés ; une rupture sur le dernier intervalle rend la conso non fiable.
+    if (prev && !last.rupture_index) {
+      consoRecenteKwh = (consoRecenteKwh ?? 0) + Math.max(0, last.index - prev.index);
+    }
+  }
+
+  return {
+    consoRecenteKwh,
+    dernierReleveDate,
+    totalReleves: all.length,
+    nbCompteursReleves: byCompteur.size,
+  };
 }
