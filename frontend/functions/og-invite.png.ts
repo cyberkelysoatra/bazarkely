@@ -3,8 +3,15 @@
  *
  * Portage de l'ancienne Netlify Edge Function `og-invite`. Référencée par og:image de
  * l'injecteur /i/* (_middleware). Génère un VRAI PNG (pas de SVG : non fiable sur
- * WhatsApp) via `workers-og` (Satori -> resvg-wasm, compatible runtime Workers), en
- * charte AHUVI (forest #364E30 / teal #10939F, accent or #C3C067).
+ * WhatsApp) via `@cf-wasm/og` (Satori -> resvg-wasm, variantes `legacy/workerd` à wasm
+ * inliné, pensées pour le runtime Cloudflare Workers/Pages), en charte AHUVI
+ * (forest #364E30 / teal #10939F, accent or #C3C067).
+ *
+ * Pourquoi `@cf-wasm/og` et plus `workers-og` : `workers-og` n'embarque AUCUNE police —
+ * sans police le rendu produit un flux VIDE (jamais d'exception), d'où le repli
+ * systématique observé en Phase 2. `@cf-wasm/og` embarque une police par défaut
+ * (Noto Sans latin) : le rendu riche s'initialise même si le chargement de la police
+ * Roboto échoue. Le markup HTML est converti en arbre via `@cf-wasm/og/html-to-react`.
  *
  * Contenu (textes FR figés) :
  *  - avec chiffres : gros « {fill_pct} % » + « Niveau du bassin » + pastille tendance ;
@@ -15,7 +22,8 @@
  *
  * Hors du tsconfig frontend (runtime Workers) : bundlé par Cloudflare, pas par `tsc --noEmit`.
  */
-import { ImageResponse } from 'workers-og';
+import { ImageResponse } from '@cf-wasm/og/workerd';
+import { t } from '@cf-wasm/og/html-to-react';
 
 const SUPABASE_URL_DEFAULT = 'https://ofzmwrzatcztoekrpvkj.supabase.co';
 const SUPABASE_ANON_KEY_DEFAULT =
@@ -71,9 +79,10 @@ function fallbackResponse(): Response {
 }
 
 /**
- * Police TTF pour Satori (workers-og n'embarque PAS de police par défaut : sans police,
- * le rendu produit un flux VIDE et non une exception). Récupérée à la volée (cache CDN),
- * timeout court. Échec -> null (le rendu retombera sur le PNG de repli embarqué).
+ * Police TTF Roboto Bold pour Satori (rendu fidèle à la charte). `@cf-wasm/og` embarque
+ * déjà une police par défaut (Noto Sans) : si ce chargement échoue (-> null), le rendu
+ * riche aboutit quand même avec la police par défaut. Récupérée à la volée (cache CDN),
+ * timeout court.
  */
 async function loadFont(): Promise<ArrayBuffer | null> {
   const controller = new AbortController();
@@ -144,16 +153,16 @@ export const onRequest = async (context: any): Promise<Response> => {
       </div>`;
 
     const font = await loadFont();
-    const options: any = { width: 1200, height: 630 };
+    const options: any = { width: 1200, height: 630, format: 'png' };
     if (font) {
       options.fonts = [{ name: 'Roboto', data: font, weight: 700, style: 'normal' }];
     }
 
-    // On BUFFÉRISE le rendu : workers-og renvoie un Response dont le flux est généré
-    // de façon asynchrone — une erreur de rendu (police/wasm) ne lève PAS à la
-    // construction mais produit un flux VIDE. En lisant l'arrayBuffer ici, l'échec
-    // devient attrapable et on peut retomber sur le PNG de repli (jamais de corps vide).
-    const rendered = new ImageResponse(markup, options);
+    // On BUFFÉRISE le rendu : `ImageResponse.async` renvoie un Response dont le flux PNG
+    // est généré de façon asynchrone. En lisant l'arrayBuffer ici, tout échec résiduel
+    // (wasm/police) devient attrapable et on retombe sur le PNG de repli embarqué (jamais
+    // de corps vide). Le markup HTML est converti en arbre satori via `t()`.
+    const rendered = await ImageResponse.async(t(markup), options);
     const buf = await rendered.arrayBuffer();
     if (!buf || buf.byteLength === 0) return fallbackResponse();
 
