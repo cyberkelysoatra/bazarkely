@@ -61,13 +61,36 @@ async function fetchStats(supabaseUrl: string, anonKey: string): Promise<Stats |
   }
 }
 
-/** PNG de repli embarqué (anti-500). */
+/** PNG de repli embarqué (anti-500 / anti-corps-vide), 1200x630 plein. */
 function fallbackResponse(): Response {
   const bytes = Uint8Array.from(atob(FALLBACK_PNG_B64), (c) => c.charCodeAt(0));
   return new Response(bytes, {
     status: 200,
     headers: { 'content-type': 'image/png', 'cache-control': CACHE },
   });
+}
+
+/**
+ * Police TTF pour Satori (workers-og n'embarque PAS de police par défaut : sans police,
+ * le rendu produit un flux VIDE et non une exception). Récupérée à la volée (cache CDN),
+ * timeout court. Échec -> null (le rendu retombera sur le PNG de repli embarqué).
+ */
+async function loadFont(): Promise<ArrayBuffer | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const resp = await fetch(
+      'https://unpkg.com/@expo-google-fonts/roboto@0.2.3/Roboto_700Bold.ttf',
+      { signal: controller.signal }
+    );
+    if (!resp.ok) return null;
+    const buf = await resp.arrayBuffer();
+    return buf && buf.byteLength > 0 ? buf : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function htmlEscape(s: string): string {
@@ -120,13 +143,26 @@ export const onRequest = async (context: any): Promise<Response> => {
         <div style="display:flex;justify-content:center;">${footer}</div>
       </div>`;
 
-    return new ImageResponse(markup, {
-      width: 1200,
-      height: 630,
-      headers: { 'cache-control': CACHE },
+    const font = await loadFont();
+    const options: any = { width: 1200, height: 630 };
+    if (font) {
+      options.fonts = [{ name: 'Roboto', data: font, weight: 700, style: 'normal' }];
+    }
+
+    // On BUFFÉRISE le rendu : workers-og renvoie un Response dont le flux est généré
+    // de façon asynchrone — une erreur de rendu (police/wasm) ne lève PAS à la
+    // construction mais produit un flux VIDE. En lisant l'arrayBuffer ici, l'échec
+    // devient attrapable et on peut retomber sur le PNG de repli (jamais de corps vide).
+    const rendered = new ImageResponse(markup, options);
+    const buf = await rendered.arrayBuffer();
+    if (!buf || buf.byteLength === 0) return fallbackResponse();
+
+    return new Response(buf, {
+      status: 200,
+      headers: { 'content-type': 'image/png', 'cache-control': CACHE },
     });
   } catch {
-    // Rendu indisponible (police/wasm) -> repli plein valide, jamais de 500.
+    // Rendu indisponible (police/wasm) -> repli plein valide, jamais de 500 ni de corps vide.
     return fallbackResponse();
   }
 };
