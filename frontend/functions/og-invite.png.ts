@@ -137,7 +137,7 @@ export const onRequest = async (context: any): Promise<Response> => {
       <div style="display:flex;justify-content:center;text-align:center;max-width:620px;font-size:34px;font-weight:600;">Rejoignez le suivi de l'eau de votre quartier</div>`;
 
     const markup = `
-      <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding:70px 80px;background:linear-gradient(135deg, #364E30 0%, #10939F 100%);color:#ffffff;font-family:sans-serif;">
+      <div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding:70px 80px;background:linear-gradient(135deg, #364E30 0%, #10939F 100%);color:#ffffff;font-family:'Roboto', sans-serif;">
         <div style="display:flex;justify-content:center;">${header}</div>
         <div style="display:flex;justify-content:center;flex-grow:1;">${center}</div>
         <div style="display:flex;justify-content:center;">${footer}</div>
