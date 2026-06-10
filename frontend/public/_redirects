@@ -1,0 +1,8 @@
+# Cloudflare Pages — repli SPA (équivalent du [[redirects]] /* -> /index.html de netlify.toml).
+#
+# Les Pages Functions (frontend/functions/**) sont évaluées AVANT ce repli :
+#   - /i/*            -> functions/i/_middleware.ts   (injection Open Graph)
+#   - /og-invite.png  -> functions/og-invite.png.ts   (image PNG 1200x630)
+#   - /api/ocr-receipt-> functions/api/ocr-receipt.ts  (OCR Google Vision)
+# Elles ne sont donc PAS avalées par ce catch-all SPA.
+/*    /index.html   200

@@ -1,0 +1,31 @@
+# Cloudflare Pages — en-têtes (équivalents des [[headers]] de netlify.toml).
+# Syntaxe Cloudflare : un motif de chemin, puis les en-têtes indentés de 2 espaces.
+
+# Sécurité — toutes les routes.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Assets hashés (immutables) — cache long.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Service Workers — jamais en cache + portée racine autorisée.
+/sw-custom.js
+  Cache-Control: max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+/sw.js
+  Cache-Control: max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+# Manifeste PWA — bon Content-Type + cache court.
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=86400
+
+# HTML — jamais en cache (revalidation systématique).
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate

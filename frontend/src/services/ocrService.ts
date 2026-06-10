@@ -1,8 +1,8 @@
 /**
  * ocrService — DEUX moteurs OCR avec bascule automatique online/offline.
  *
- *  • EN LIGNE → Google Cloud Vision (haute précision), via la Netlify Function
- *    `/.netlify/functions/ocr-receipt` (la clé reste serveur, jamais côté client).
+ *  • EN LIGNE → Google Cloud Vision (haute précision), via la Cloudflare Pages Function
+ *    `/api/ocr-receipt` (la clé reste serveur, jamais côté client).
  *  • HORS-LIGNE (ou échec/timeout Vision) → repli Tesseract.js (Phase 1), 100 % local,
  *    gratuit, sans réseau ni clé.
  *
@@ -55,8 +55,8 @@ export interface OcrResult {
   engine: OcrEngine;
 }
 
-/** Endpoint serveur (clé Google Vision cachée côté Netlify). */
-const OCR_FUNCTION_URL = '/.netlify/functions/ocr-receipt';
+/** Endpoint serveur (clé Google Vision cachée côté Cloudflare Pages Function). */
+const OCR_FUNCTION_URL = '/api/ocr-receipt';
 /** Délai max de l'appel en ligne avant repli Tesseract. */
 const ONLINE_TIMEOUT_MS = 12_000;
 
