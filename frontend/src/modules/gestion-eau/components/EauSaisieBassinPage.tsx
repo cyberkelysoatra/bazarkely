@@ -48,6 +48,10 @@ import type { BassinDimensions } from '../utils/bassin';
 
 type Tab = 'entree' | 'niveau' | 'debit';
 
+// Fenêtre glissante (ms) pendant laquelle un releveur peut corriger/supprimer un relevé de
+// bassin. Au-delà, seul l'admin agit. Borne alignée sur la RLS (`now() - interval '48 hours'`).
+const WINDOW_48H_MS = 48 * 60 * 60 * 1000;
+
 // Sous-onglet demandé via le deep-link `?bt=` (depuis les cartes bassin du tableau de bord).
 // Toute valeur absente ou invalide retombe sur 'niveau' (comportement par défaut historique).
 function parseBassinTab(bt: string | null): Tab {
@@ -108,10 +112,19 @@ export default function EauSaisieBassinPage() {
   const [tests, setTests] = useState<DebitTestLocal[]>([]);
   const [niveauSerie, setNiveauSerie] = useState<SeriePoint[]>([]);
 
-  // Section admin « Relevés récents » (édition / suppression + recalcul des bilans).
+  // Section « Relevés récents » (édition / suppression + recalcul des bilans).
+  // Admin = tous les relevés ; releveur pur = uniquement les relevés des dernières 48 h.
   const [relevesList, setRelevesList] = useState<ReleveBassinLocal[]>([]);
   const [editing, setEditing] = useState<{ id: string; hauteur: string; datetime: string } | null>(null);
   const [recomputing, setRecomputing] = useState(false);
+
+  // Releveur « pur » (sans admin) : édition/suppression bornées à la fenêtre 48 h glissantes
+  // (côté UI ET côté serveur via la RLS). Un admin — même cumulé releveur — n'est pas borné.
+  const isReleveurOnly = roles.releveur && !roles.admin;
+  // Liste affichée dans le panneau : complète pour l'admin, filtrée à 48 h pour le releveur pur.
+  const visibleReleves = isReleveurOnly
+    ? relevesList.filter((r) => Date.now() - new Date(r.timestamp).getTime() <= WINDOW_48H_MS)
+    : relevesList;
 
   // Réagit à un nouveau deep-link (?bt=) sans remonter le composant : un clic sur une
   // autre carte bassin du tableau de bord bascule le sous-onglet. Un changement manuel
@@ -133,11 +146,11 @@ export default function EauSaisieBassinPage() {
     })();
   }, []);
 
-  // Charge la liste des relevés récents dès que le rôle admin est confirmé.
+  // Charge la liste des relevés récents dès que le rôle admin ou releveur est confirmé.
   useEffect(() => {
-    if (!roles.admin) return;
+    if (!roles.admin && !roles.releveur) return;
     void listRecentRelevesBassin(30).then(setRelevesList);
-  }, [roles.admin]);
+  }, [roles.admin, roles.releveur]);
 
   // Rafraîchit conjointement la liste admin et la courbe de niveau après une opération.
   const refreshAdminData = async () => {
@@ -284,13 +297,13 @@ export default function EauSaisieBassinPage() {
       setNiveauDateTime('');
       const t = await getTendances({ fenetreJours: 30 });
       setNiveauSerie(t.niveauBassin);
-      if (roles.admin) setRelevesList(await listRecentRelevesBassin(30));
+      if (roles.admin || roles.releveur) setRelevesList(await listRecentRelevesBassin(30));
     } finally {
       setBusy(false);
     }
   };
 
-  // ── Actions admin sur un relevé ──
+  // ── Actions admin/releveur sur un relevé ──
   const saveEdit = async () => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     if (!editing) return;
@@ -302,6 +315,15 @@ export default function EauSaisieBassinPage() {
     if (!editing.datetime.trim() || isFuture(editing.datetime)) {
       toast.error('Date invalide (vide ou dans le futur)');
       return;
+    }
+    // Releveur pur : ne peut dater un relevé que dans les dernières 48 h (la RLS verrouille
+    // côté serveur, mais on bloque tôt côté UI pour un message clair).
+    if (isReleveurOnly) {
+      const ts = new Date(editing.datetime).getTime();
+      if (Date.now() - ts > WINDOW_48H_MS) {
+        toast.error('Un releveur ne peut dater un relevé que dans les dernières 48 h');
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -550,11 +572,12 @@ export default function EauSaisieBassinPage() {
               </div>
             </div>
 
-            {/* Section réservée à l'admin : édition / suppression d'un relevé + recalcul des bilans. */}
-            {roles.admin && (
+            {/* Section admin/releveur : édition / suppression d'un relevé + recalcul (admin seul). */}
+            {(roles.admin || roles.releveur) && (
               <details className="rounded-xl border border-ahuvi-200 bg-white shadow-soft">
                 <summary className="flex items-center gap-2 cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ahuvi-forest">
-                  <ListChecks className="w-4 h-4" aria-hidden="true" /> Relevés récents (admin)
+                  <ListChecks className="w-4 h-4" aria-hidden="true" />{' '}
+                  {isReleveurOnly ? 'Relevés récents — modifiables 48 h' : 'Relevés récents (admin)'}
                 </summary>
                 <div className="px-4 pb-4 space-y-3">
                   <p className="text-xs text-gray-500 leading-snug">
@@ -563,6 +586,13 @@ export default function EauSaisieBassinPage() {
                     relevé, les bilans concernés — celui de ce relevé et celui du relevé suivant —
                     sont recalculés automatiquement. Le bouton « Recalculer tous les bilans » refait
                     toute la série depuis le début (utile une fois pour les relevés importés).
+                    {isReleveurOnly && (
+                      <>
+                        {' '}En tant que releveur, vous ne pouvez corriger ou supprimer que les
+                        relevés des dernières 48 heures. Les relevés plus anciens ne s'affichent pas
+                        ici — demandez à un administrateur.
+                      </>
+                    )}
                   </p>
 
                   {!isOnline && (
@@ -571,11 +601,11 @@ export default function EauSaisieBassinPage() {
                     </div>
                   )}
 
-                  {relevesList.length === 0 ? (
+                  {visibleReleves.length === 0 ? (
                     <EauEmptyState icon={Ruler} title="Aucun relevé de niveau pour l'instant" />
                   ) : (
                     <ul className="space-y-2">
-                      {relevesList.map((r) => (
+                      {visibleReleves.map((r) => (
                         <li key={r.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
                           {editing?.id === r.id ? (
                             <div className="space-y-2">
@@ -597,6 +627,9 @@ export default function EauSaisieBassinPage() {
                                     type="datetime-local"
                                     value={editing.datetime}
                                     onChange={(e) => setEditing((prev) => (prev ? { ...prev, datetime: e.target.value } : prev))}
+                                    // Releveur pur : borne le sélecteur à [maintenant − 48 h ; maintenant].
+                                    min={isReleveurOnly ? isoToLocalInput(new Date(Date.now() - WINDOW_48H_MS).toISOString()) : undefined}
+                                    max={isReleveurOnly ? isoToLocalInput(new Date().toISOString()) : undefined}
                                     className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                                   />
                                 </label>
@@ -650,14 +683,17 @@ export default function EauSaisieBassinPage() {
                     </ul>
                   )}
 
-                  <button
-                    onClick={recomputeAll}
-                    disabled={recomputing || busy || !isOnline}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-50 text-sm font-medium py-2.5 rounded-lg"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} aria-hidden="true" />
-                    {recomputing ? 'Recalcul…' : 'Recalculer tous les bilans'}
-                  </button>
+                  {/* Recalcul global de toute la série : action lourde réservée à l'admin. */}
+                  {roles.admin && (
+                    <button
+                      onClick={recomputeAll}
+                      disabled={recomputing || busy || !isOnline}
+                      className="w-full inline-flex items-center justify-center gap-2 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-50 text-sm font-medium py-2.5 rounded-lg"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} aria-hidden="true" />
+                      {recomputing ? 'Recalcul…' : 'Recalculer tous les bilans'}
+                    </button>
+                  )}
                 </div>
               </details>
             )}
