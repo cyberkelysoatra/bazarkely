@@ -135,41 +135,68 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
   }, [availableModules]);
 
   /**
-   * Vérifie localStorage au premier chargement pour restaurer le module précédent
+   * Vérifie localStorage au premier chargement pour restaurer le module précédent.
+   *
+   * Reprise auto UNIQUEMENT depuis une adresse NEUTRE : la racine '/' (adresse
+   * réelle d'ouverture de la PWA, start_url) OU '/dashboard'. Jamais depuis une
+   * adresse profonde de module (/gestion-eau, /construction/...) : un lien, un
+   * signet, une notification ou un F5 maintiennent l'utilisateur exactement là
+   * où il est (invariant du verrou de navigation).
    */
   useEffect(() => {
-    // Ne vérifier localStorage qu'une seule fois au montage
-    if (!hasCheckedStorage.current) {
-      hasCheckedStorage.current = true;
-      const currentPath = location.pathname;
-      const savedModule = loadSavedModule();
-      
-      if (savedModule) {
-        // Vérifier si on est déjà dans le module sauvegardé (détection étendue)
-        const isInSavedModule = moduleIdForPath(currentPath) === savedModule.id;
+    // Une seule décision de reprise par session.
+    if (hasCheckedStorage.current) return;
 
-        // Auto-reprise du dernier module UNIQUEMENT depuis la racine neutre.
-        // Arriver directement sur une route explicite d'un autre module
-        // (/gestion-eau, /construction/...) — lien, signet ou F5 — n'y rebondit plus.
-        const isDefaultRoute = currentPath === '/dashboard';
+    const currentPath = location.pathname;
+    const isNeutralRoute = currentPath === '/' || currentPath === '/dashboard';
+    const isModuleRoute = MODULE_PREFIXES.some(m => currentPath.startsWith(m.prefix));
 
-        if (!isInSavedModule && isDefaultRoute) {
-          // Naviguer vers le module sauvegardé
-          navigate(savedModule.path);
-          setActiveModuleState(savedModule);
-          return;
-        }
+    // Timing one-shot : tant que l'URL n'est ni neutre ni une adresse de module
+    // (1er rendu transitoire au boot PWA), NE PAS consommer la garde — on
+    // ré-évaluera au rendu suivant quand l'URL se stabilise.
+    if (!isNeutralRoute && !isModuleRoute) return;
+
+    // Décision possible → figer définitivement la garde (anti-boucle).
+    hasCheckedStorage.current = true;
+
+    // Adresse profonde d'un module : on respecte l'adresse, aucune reprise.
+    if (isModuleRoute) return;
+
+    // Adresse neutre ('/' ou '/dashboard') : tenter la reprise du dernier module.
+    const savedModule = loadSavedModule();
+    if (savedModule) {
+      // Inutile de naviguer si on est déjà dans le module sauvegardé
+      // (ex: dernier module = BazarKELY et on est déjà sur '/dashboard').
+      const isInSavedModule = moduleIdForPath(currentPath) === savedModule.id;
+      if (!isInSavedModule) {
+        navigate(savedModule.path);
+        setActiveModuleState(savedModule);
       }
     }
   }, [loadSavedModule, navigate, location.pathname]);
 
   /**
-   * Met à jour le module actif en fonction de la route
+   * Met à jour le module actif en fonction de la route ET mémorise le dernier
+   * module dès qu'on y entre, par TOUT moyen (sélecteur, lien direct, URL).
    */
   useEffect(() => {
     const module = determineActiveModule();
     setActiveModuleState(module);
-  }, [determineActiveModule]);
+
+    // Persistance du dernier module. EXCEPTION : ne JAMAIS persister depuis la
+    // racine '/' — adresse de lancement transitoire qui résout vers 'bazarkely'
+    // (défaut) avant la redirection ; persister ici écraserait le vrai dernier
+    // module AVANT que l'effet de reprise ci-dessus ait pu le lire. La
+    // persistance se fait normalement sur l'adresse de destination réelle.
+    if (module && location.pathname !== '/') {
+      try {
+        localStorage.setItem(STORAGE_KEY, module.id);
+      } catch (error) {
+        // Gérer les erreurs localStorage (mode navigation privée, etc.)
+        console.warn('Erreur lors de la sauvegarde dans localStorage:', error);
+      }
+    }
+  }, [determineActiveModule, location.pathname]);
 
   /**
    * Bascule le mode switcher
