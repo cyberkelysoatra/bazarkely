@@ -148,25 +148,34 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
     if (hasCheckedStorage.current) return;
 
     const currentPath = location.pathname;
-    const isNeutralRoute = currentPath === '/' || currentPath === '/dashboard';
     const isModuleRoute = MODULE_PREFIXES.some(m => currentPath.startsWith(m.prefix));
 
-    // Timing one-shot : tant que l'URL n'est ni neutre ni une adresse de module
-    // (1er rendu transitoire au boot PWA), NE PAS consommer la garde — on
-    // ré-évaluera au rendu suivant quand l'URL se stabilise.
-    if (!isNeutralRoute && !isModuleRoute) return;
+    // La racine '/' (start_url de la PWA) est une adresse de LANCEMENT
+    // TRANSITOIRE : AppLayout la redirige immédiatement vers '/dashboard' via
+    // <Navigate to="/dashboard" replace>. Tenter une reprise directement sur '/'
+    // entre en concurrence avec cette redirection (course perdue) ; pire, figer
+    // la garde ici empêcherait toute reprise ultérieure. On NE consomme donc PAS
+    // la garde sur '/' : l'effet retentera de façon déterministe sur '/dashboard'
+    // (adresse stable, sans redirection concurrente) — cf. §5.2.
+    if (currentPath === '/') return;
 
-    // Décision possible → figer définitivement la garde (anti-boucle).
+    // Toute autre adresse transitoire non éligible et non-module : idem, on
+    // attend que l'URL se stabilise (ne pas griller la garde one-shot).
+    const isDashboard = currentPath === '/dashboard';
+    if (!isDashboard && !isModuleRoute) return;
+
+    // Adresse STABLE atteinte → figer définitivement la garde (anti-boucle).
     hasCheckedStorage.current = true;
 
-    // Adresse profonde d'un module : on respecte l'adresse, aucune reprise.
+    // Adresse profonde d'un module (lien, signet, notification, F5) : on respecte
+    // l'adresse, aucune reprise (invariant du verrou de navigation).
     if (isModuleRoute) return;
 
-    // Adresse neutre ('/' ou '/dashboard') : tenter la reprise du dernier module.
+    // '/dashboard' : reprise du dernier module utilisé.
     const savedModule = loadSavedModule();
     if (savedModule) {
-      // Inutile de naviguer si on est déjà dans le module sauvegardé
-      // (ex: dernier module = BazarKELY et on est déjà sur '/dashboard').
+      // Inutile de naviguer si le dernier module est déjà BazarKELY (on est
+      // déjà sur son tableau de bord '/dashboard') — évite toute boucle.
       const isInSavedModule = moduleIdForPath(currentPath) === savedModule.id;
       if (!isInSavedModule) {
         navigate(savedModule.path);
