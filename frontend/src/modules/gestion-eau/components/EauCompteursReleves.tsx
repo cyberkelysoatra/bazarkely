@@ -77,6 +77,10 @@ function sortGroup(card: ReleveCard): number {
  * une seule animation maison (requestAnimationFrame + ease-in-out cubique) avec cible
  * recalculée à chaque image (suit la barre d'adresse mobile / les changements de hauteur),
  * et respect de `prefers-reduced-motion`.
+ *
+ * ⚠️ Le shell Gestion Eau pose `scroll-behavior: smooth` sur <html> : un `window.scrollTo`
+ * sans option héritant de ce smooth, chaque image relancerait une animation native →
+ * mouvement net nul. On force donc `behavior: 'instant'` (on anime nous-mêmes l'easing).
  */
 function scrollElementUnderHeader(el: HTMLElement) {
   const getHeaderOffset = () => {
@@ -84,10 +88,11 @@ function scrollElementUnderHeader(el: HTMLElement) {
     return header ? header.getBoundingClientRect().height + 8 : 72;
   };
   const getTargetY = () => window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
+  const scrollInstant = (top: number) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
 
   const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) {
-    window.scrollTo({ top: getTargetY(), behavior: 'auto' });
+    scrollInstant(getTargetY());
     return;
   }
 
@@ -104,7 +109,7 @@ function scrollElementUnderHeader(el: HTMLElement) {
     const elapsed = now - startTime;
     const t = Math.min(1, elapsed / DURATION);
     const targetY = getTargetY(); // recalcul continu → auto-correction
-    window.scrollTo(0, startY + (targetY - startY) * easeInOutCubic(t));
+    scrollInstant(startY + (targetY - startY) * easeInOutCubic(t));
     const settled = Math.abs(targetY - window.scrollY) < 1;
     if (t < 1 || (!settled && elapsed < DURATION + GRACE)) {
       requestAnimationFrame(frame);
