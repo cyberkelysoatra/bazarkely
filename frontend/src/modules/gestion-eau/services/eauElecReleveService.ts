@@ -20,6 +20,25 @@ export async function relevesDuCompteurElec(compteurId: string): Promise<ElecRel
   return releves.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
+/**
+ * Tous les relevés élec groupés par compteur (chaque liste triée du plus ancien au plus
+ * récent). Une seule lecture Dexie pour alimenter la liste de cartes mixte eau/élec de la
+ * page Relevés v2. Offline-first (lecture locale uniquement).
+ */
+export async function relevesElecByCompteur(): Promise<Map<string, ElecReleveLocal[]>> {
+  const all = (await eauDb.eau_elec_releves_compteur.toArray()) as ElecReleveLocal[];
+  const map = new Map<string, ElecReleveLocal[]>();
+  for (const r of all) {
+    const list = map.get(r.compteur_id);
+    if (list) list.push(r);
+    else map.set(r.compteur_id, [r]);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+  return map;
+}
+
 /** Dernier relevé élec (index + date) d'un compteur, ou null. */
 export async function getDernierReleveElec(compteurId: string): Promise<ElecReleveLocal | null> {
   const releves = await relevesDuCompteurElec(compteurId);

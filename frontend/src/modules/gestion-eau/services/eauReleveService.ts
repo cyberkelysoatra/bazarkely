@@ -155,6 +155,25 @@ export async function getDernierReleveCompteur(compteurId: string): Promise<Rele
   return releves.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 }
 
+/**
+ * Tous les relevés de compteur groupés par compteur (chaque liste triée du plus ancien
+ * au plus récent). Une seule lecture Dexie pour alimenter une liste de cartes (page
+ * Relevés v2) sans N requêtes. Offline-first (lecture locale uniquement).
+ */
+export async function relevesByCompteur(): Promise<Map<string, ReleveCompteurLocal[]>> {
+  const all = (await eauDb.eau_releves_compteur.toArray()) as ReleveCompteurLocal[];
+  const map = new Map<string, ReleveCompteurLocal[]>();
+  for (const r of all) {
+    const list = map.get(r.compteur_id);
+    if (list) list.push(r);
+    else map.set(r.compteur_id, [r]);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+  return map;
+}
+
 /** Historique des consommations instantanées (>0) d'un compteur, du plus ancien au plus récent. */
 export async function historiqueConsoCompteur(compteurId: string): Promise<number[]> {
   const releves = (await eauDb.eau_releves_compteur
