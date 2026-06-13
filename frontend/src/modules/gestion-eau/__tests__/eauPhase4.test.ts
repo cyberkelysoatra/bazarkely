@@ -1,4 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Neutralise la seule chaîne d'import qui atteint la base BazarKELY lourde :
+// eauTendanceService → eauBassinService → notificationService → lib/database → `new BazarKELYDB()`.
+// Le mock global `dexie` (src/test/setup.ts) n'est pas compatible sous-classe : le constructeur
+// mocké renvoie un objet simple, donc `this` perd les méthodes de prototype de BazarKELYDB
+// (`this.initializeConnectionPool is not a function` au chargement). Les fonctions testées ici
+// sont PURES et n'appellent jamais notificationService — on remplace donc le module entier,
+// ce qui empêche l'exécution de son import de `lib/database`. (Test/setup only, aucun comportement
+// applicatif modifié.)
+vi.mock('../../../services/notificationService', () => ({ default: {} }));
+
 import { computeAlerteCandidates } from '../utils/alertes';
 import { isAnnonceActive } from '../services/eauAnnonceService';
 import { bucketByDay, consoCompteurPeriode } from '../services/eauTendanceService';

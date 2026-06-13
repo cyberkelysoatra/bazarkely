@@ -24,9 +24,10 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
     expect(l).not.toContain('Facturation');
   });
 
-  it('client seul voit ses 2 thèmes (Ma conso / Mes factures)', () => {
+  it('client seul voit ses 3 thèmes (Ma conso / Le bassin / Mes factures)', () => {
     const l = labels(r({ client: true }));
-    expect(l).toEqual(['Ma conso', 'Mes factures']);
+    // « Le bassin » (vue bassin lecture seule du propriétaire) ajouté en v3.46.0.
+    expect(l).toEqual(['Ma conso', 'Le bassin', 'Mes factures']);
   });
 
   it('promoteur (Phase 2) voit les 5 thèmes métier en lecture (comme admin), PAS les écrans propriétaire', () => {
