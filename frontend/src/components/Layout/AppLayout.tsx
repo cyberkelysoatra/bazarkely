@@ -237,6 +237,21 @@ const AppLayout = () => {
               }
             />
             
+            {/* OAuth : si des jetons capturés par main.tsx attendent d'être consommés, rendre
+                AuthPage MÊME quand isAuthenticated est (à tort) vrai. Sinon /auth tombe dans le
+                catch-all → Navigate /dashboard, AuthPage n'est jamais montée et la session n'est
+                jamais établie : c'est le cas d'un drapeau isAuthenticated périmé (session Supabase
+                expirée alors que le store persistait encore « connecté »). Cas normal (aucun jeton
+                en attente) : comportement inchangé (redirection /dashboard). */}
+            <Route
+              path="/auth"
+              element={
+                typeof window !== 'undefined' && sessionStorage.getItem('bazarkely-oauth-tokens')
+                  ? <AuthPage />
+                  : <Navigate to="/dashboard" replace />
+              }
+            />
+
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
