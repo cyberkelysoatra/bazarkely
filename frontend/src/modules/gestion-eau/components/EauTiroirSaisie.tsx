@@ -185,26 +185,50 @@ export default function EauTiroirSaisie({
 
   return (
     <div className="space-y-3 pt-1">
-      {/* Sélecteur de nature du relevé (eau / élec) — même compteur physique. */}
-      <div className="inline-flex rounded-lg border border-ahuvi-200 bg-white p-0.5 text-sm">
-        <button
-          type="button"
-          onClick={() => setFacet('eau')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
-            facet === 'eau' ? 'bg-ahuvi-teal text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
-          }`}
+      {/* Ligne du haut : sélecteur de nature (eau / élec) à gauche, déclencheur photo serré à droite. */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Sélecteur de nature du relevé (eau / élec) — même compteur physique. */}
+        <div className="inline-flex rounded-lg border border-ahuvi-200 bg-white p-0.5 text-sm">
+          <button
+            type="button"
+            onClick={() => setFacet('eau')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
+              facet === 'eau' ? 'bg-ahuvi-teal text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
+            }`}
+          >
+            <Droplet className="w-4 h-4" aria-hidden="true" /> Eau (m³)
+          </button>
+          <button
+            type="button"
+            onClick={() => setFacet('elec')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
+              facet === 'elec' ? 'bg-ahuvi-gold text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
+            }`}
+          >
+            <Zap className="w-4 h-4" aria-hidden="true" /> Élec (kWh)
+          </button>
+        </div>
+
+        {/* Déclencheur photo compact (icône seule) — remplace l'ancien bouton en pointillés ; ouvre l'appareil/galerie. */}
+        <label
+          className={`inline-flex flex-shrink-0 items-center justify-center w-10 h-10 rounded-lg border border-ahuvi-200 bg-white transition-colors ${
+            isReadOnly
+              ? 'text-gray-300 cursor-not-allowed'
+              : 'text-ahuvi-forest hover:bg-ahuvi-50 cursor-pointer'
+          } ${photoBusy ? 'animate-pulse' : ''}`}
+          title={photo ? 'Remplacer la photo du compteur' : 'Prendre / choisir une photo du compteur'}
+          aria-label={photo ? 'Remplacer la photo du compteur' : 'Prendre ou choisir une photo du compteur'}
         >
-          <Droplet className="w-4 h-4" aria-hidden="true" /> Eau (m³)
-        </button>
-        <button
-          type="button"
-          onClick={() => setFacet('elec')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
-            facet === 'elec' ? 'bg-ahuvi-gold text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
-          }`}
-        >
-          <Zap className="w-4 h-4" aria-hidden="true" /> Élec (kWh)
-        </button>
+          <Camera className="w-5 h-5" aria-hidden="true" />
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onPhotoChange}
+            className="hidden"
+            disabled={photoBusy || isReadOnly}
+          />
+        </label>
       </div>
 
       <div className="text-sm bg-gray-50 rounded-lg px-3 py-2 text-gray-700">
@@ -273,9 +297,10 @@ export default function EauTiroirSaisie({
         />
       </label>
 
-      <div className="text-sm">
-        <span className="block text-gray-600 mb-1">Photo du compteur (optionnel)</span>
-        {photo ? (
+      {/* Aperçu de la photo prise (la prise de vue se fait via l'icône en haut à droite). */}
+      {photo && (
+        <div className="text-sm">
+          <span className="block text-gray-600 mb-1">Photo du compteur</span>
           <div className="flex items-center gap-3">
             <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
             <div className="text-xs text-gray-500">
@@ -289,25 +314,8 @@ export default function EauTiroirSaisie({
               </button>
             </div>
           </div>
-        ) : (
-          <label
-            className={`flex items-center justify-center gap-2 w-full border border-dashed border-gray-300 rounded-lg py-3 text-gray-500 ${
-              isReadOnly ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'
-            }`}
-          >
-            <Camera className="w-4 h-4" aria-hidden="true" />
-            {photoBusy ? 'Traitement…' : 'Prendre / choisir une photo'}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onPhotoChange}
-              className="hidden"
-              disabled={photoBusy || isReadOnly}
-            />
-          </label>
-        )}
-      </div>
+        </div>
+      )}
 
       <button
         onClick={submit}
