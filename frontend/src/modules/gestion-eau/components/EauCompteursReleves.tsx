@@ -558,7 +558,21 @@ function Drawer({ children }: { children: ReactNode }) {
 }
 
 /** Brouillon d'édition d'un relevé (champs texte contrôlés). */
-type EditDraft = { index: string; note: string };
+type EditDraft = { index: string; note: string; datetime: string };
+
+/** ISO → valeur d'un `<input type="datetime-local">` (heure LOCALE, format YYYY-MM-DDTHH:mm). */
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** true si la saisie `datetime-local` est dans le futur (refusée, comme la saisie bassin). */
+function isFutureLocal(local: string): boolean {
+  const t = new Date(local).getTime();
+  return Number.isFinite(t) && t > Date.now();
+}
 
 /**
  * Tiroir Historique : mini-graphe + 6 derniers relevés (3 empilés, reste au scroll).
@@ -613,12 +627,12 @@ function HistoriqueDrawer({
   // Un changement existe dès qu'un champ diffère de sa valeur d'origine.
   const dirty = editing && rows.some((r) => {
     const d = drafts[r.id];
-    return d && (d.index !== String(r.index) || d.note !== r.note);
+    return d && (d.index !== String(r.index) || d.note !== r.note || d.datetime !== isoToLocalInput(r.date));
   });
 
   const enterEdit = () => {
     const seed: Record<string, EditDraft> = {};
-    for (const r of rows) seed[r.id] = { index: String(r.index), note: r.note };
+    for (const r of rows) seed[r.id] = { index: String(r.index), note: r.note, datetime: isoToLocalInput(r.date) };
     setDrafts(seed);
     setShowBilanAvis(false);
     setEditing(true);
@@ -635,11 +649,11 @@ function HistoriqueDrawer({
   const handleSave = async () => {
     if (saving) return;
     // Ne persister que les lignes réellement modifiées (index et/ou note).
-    const toSave: { id: string; patch: { index?: number; note?: string | null } }[] = [];
+    const toSave: { id: string; patch: { index?: number; note?: string | null; timestamp?: string } }[] = [];
     for (const r of rows) {
       const d = drafts[r.id];
       if (!d) continue;
-      const patch: { index?: number; note?: string | null } = {};
+      const patch: { index?: number; note?: string | null; timestamp?: string } = {};
       if (d.index !== String(r.index)) {
         const n = Number(d.index);
         if (!Number.isFinite(n)) {
@@ -649,6 +663,13 @@ function HistoriqueDrawer({
         patch.index = n;
       }
       if (d.note !== r.note) patch.note = d.note.trim() || null;
+      if (d.datetime !== isoToLocalInput(r.date)) {
+        if (!d.datetime.trim() || isFutureLocal(d.datetime)) {
+          toast.error(`Date invalide pour le relevé du ${fmtDate(r.date)}`);
+          return;
+        }
+        patch.timestamp = new Date(d.datetime).toISOString();
+      }
       if (Object.keys(patch).length > 0) toSave.push({ id: r.id, patch });
     }
     if (toSave.length === 0) {
@@ -754,15 +775,22 @@ function HistoriqueDrawer({
                 key={r.id}
                 className="rounded-lg border border-ahuvi-200 bg-white px-3 py-2 shadow-sm space-y-1.5"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-gray-600">{fmtDate(r.date)}</span>
+                <input
+                  type="datetime-local"
+                  value={drafts[r.id]?.datetime ?? isoToLocalInput(r.date)}
+                  onChange={(e) => setDraft(r.id, { datetime: e.target.value })}
+                  aria-label={`Date et heure du relevé du ${fmtDate(r.date)}`}
+                  className="w-full rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 flex-shrink-0">Index</span>
                   <input
                     type="text"
                     inputMode="decimal"
                     value={drafts[r.id]?.index ?? String(r.index)}
                     onChange={(e) => setDraft(r.id, { index: e.target.value })}
                     aria-label={`Index du relevé du ${fmtDate(r.date)}`}
-                    className="w-32 text-right rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                    className="flex-1 text-right rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                   />
                 </div>
                 <input
