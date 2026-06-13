@@ -4,7 +4,7 @@
  * Shell : 3 onglets thématiques (Compteurs · Bassin · Apports) + bouton Scan intégré DANS
  * la page. Aide dépliable + badge lecture seule conservés. Métaphore comptable filée :
  *   - Compteurs : index relevés = « dépenses » (KPI, recherche, chips, cartes à tiroirs).
- *   - Bassin    : niveau du bassin = « solde » (carte solde + saisie hauteur + tests débit).
+ *   - Bassin    : niveau du bassin = stock d'eau (carte stock + saisie hauteur + tests débit).
  *   - Apports   : entrées d'eau = « revenus » (KPI cumulé + ajout + liste).
  *
  * Deep-links préservés (NE PAS migrer le schéma — `EauDashboard`/`eauInvitationService`

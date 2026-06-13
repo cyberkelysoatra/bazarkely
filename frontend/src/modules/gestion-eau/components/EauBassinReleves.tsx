@@ -1,8 +1,8 @@
 /**
  * Onglet « Bassin » de la page Relevés v2 (façon Transactions).
  *
- * Métaphore comptable : le niveau du bassin = solde du compte (eau restante).
- *  - Carte « Solde du bassin » : niveau réel mesuré (+ % remplissage réf. flotteur),
+ * Métaphore comptable : le niveau du bassin = stock d'eau (eau restante).
+ *  - Carte « Stock d'eau du bassin » : niveau réel mesuré (+ % remplissage réf. flotteur),
  *    solde attendu (dernier bilan) et écart mesuré − attendu (ton d'alerte si anomalie).
  *  - Carte « Bassin » : dernier niveau (cm → m³) + date, tiroir « Saisir hauteur »
  *    (conversion live cm → m³, Enregistrer → addReleveBassin qui déclenche un bilan)
@@ -390,12 +390,12 @@ export default function EauBassinReleves({
     <div className="space-y-4">
       <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
 
-      {/* Carte « Solde du bassin » (métaphore compte : eau restante = solde). */}
+      {/* Carte « Stock d'eau du bassin » (métaphore compte : eau restante = stock d'eau). */}
       <div
         className={`rounded-xl border bg-white p-4 shadow-soft ${anomalie ? 'border-amber-300' : 'border-ahuvi-100'}`}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Solde du bassin</div>
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Stock d'eau du bassin</div>
           <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${anomalie ? 'bg-amber-100 text-amber-700' : 'bg-cyan-50 text-ahuvi-teal'}`}>
             <Waves className="w-5 h-5" aria-hidden="true" />
           </span>
@@ -426,7 +426,7 @@ export default function EauBassinReleves({
           </div>
         ) : (
           <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-            Solde de référence — le bilan (écart mesuré vs attendu) sera calculé au prochain relevé de niveau.
+            Stock de référence — le bilan (écart mesuré vs attendu) sera calculé au prochain relevé de niveau.
           </div>
         )}
       </div>
