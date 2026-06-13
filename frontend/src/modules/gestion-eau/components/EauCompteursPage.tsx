@@ -1,7 +1,7 @@
 /** CRUD compteurs /gestion-eau/compteurs (admin) : Liste (CRUD + QR + géoloc) · Carte. */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Save, X, Gauge, QrCode, Pencil, Trash2, MapPin, ListChecks, Map } from 'lucide-react';
+import { Plus, Save, X, Gauge, QrCode, NotebookPen, Trash2, MapPin, ListChecks, Map } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
@@ -276,8 +276,8 @@ export default function EauCompteursPage() {
                     </button>
                     {!isReadOnly && (
                       <>
-                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 text-ahuvi-olive hover:underline">
-                          <Pencil className="w-4 h-4" aria-hidden="true" /> Modifier
+                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 bg-blue-100 text-blue-700 hover:bg-blue-200">
+                          <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" /> Modifier
                         </button>
                         <button onClick={() => remove(c)} title="Supprimer" className="inline-flex items-center gap-1 text-rose-600 hover:underline">
                           <Trash2 className="w-4 h-4" aria-hidden="true" /> Suppr.
