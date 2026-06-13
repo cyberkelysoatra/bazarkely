@@ -261,10 +261,10 @@ export default function EauCompteursReleves({
     }
 
     if (targetId) {
+      // L'effet de scroll sur [openKey] alignera la carte sous le Header (cohérent
+      // avec l'ouverture manuelle), inutile de scrollIntoView ici.
       setOpenKey(`${targetId}:saisir`);
       if (preselectFacet) setForcedFacet({ id: targetId, facet: preselectFacet });
-      const el = cardRefs.current.get(targetId);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     onConsumePreselect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,17 +272,18 @@ export default function EauCompteursReleves({
 
   const toggle = (key: string) => {
     setForcedFacet(null); // un clic manuel reprend la nature « de tête » de la carte
-    setOpenKey((k) => {
-      const next = k === key ? null : key;
-      // À l'ouverture d'un tiroir (Saisir ou Historique), glisser la carte sous le Header.
-      if (next) {
-        const id = key.slice(0, key.lastIndexOf(':'));
-        const el = cardRefs.current.get(id);
-        if (el) requestAnimationFrame(() => requestAnimationFrame(() => scrollElementUnderHeader(el)));
-      }
-      return next;
-    });
+    setOpenKey((k) => (k === key ? null : key));
   };
+
+  // À l'ouverture d'un tiroir (Saisir ou Historique), glisser la carte sous le Header.
+  // Effet post-commit (et non side-effect dans l'updater de state) : les refs de carte
+  // sont garanties attachées ici, donc `cardRefs.current.get(id)` n'est jamais null.
+  useEffect(() => {
+    if (!openKey) return;
+    const id = openKey.slice(0, openKey.lastIndexOf(':'));
+    const el = cardRefs.current.get(id);
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => scrollElementUnderHeader(el)));
+  }, [openKey]);
 
   if (loading) {
     return <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>;
