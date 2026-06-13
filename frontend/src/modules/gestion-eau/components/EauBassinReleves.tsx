@@ -95,10 +95,13 @@ function dureeMinFromHeures(debut: string, fin: string): number | null {
 export default function EauBassinReleves({
   openIntent,
   onConsumeIntent,
+  creditsSlot,
 }: {
   /** Deep-link / raccourci : 'niveau' ouvre le tiroir Saisir hauteur, 'debit' ouvre la section Tests. */
   openIntent: 'niveau' | 'debit' | null;
   onConsumeIntent: () => void;
+  /** Contenu « crédits » (entrées d'eau) inséré entre la carte Bassin et la section Tests de débit. */
+  creditsSlot?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { roles, isReadOnly } = useGestionEau();
@@ -681,6 +684,9 @@ export default function EauBassinReleves({
           </Drawer>
         )}
       </div>
+
+      {/* Crédits (entrées d'eau) injectés par le parent : carte Apports avant les Tests de débit. */}
+      {creditsSlot}
 
       {/* Section repliable « Tests de débit ». */}
       <div ref={debitRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">

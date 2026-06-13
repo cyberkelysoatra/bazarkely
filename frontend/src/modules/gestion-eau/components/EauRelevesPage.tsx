@@ -1,23 +1,26 @@
 /**
  * Page-thème « Relevés » (/gestion-eau/releves) — refonte « façon Transactions ».
  *
- * Shell : 3 onglets thématiques (Compteurs · Bassin · Apports) + bouton Scan intégré DANS
- * la page. Aide dépliable + badge lecture seule conservés. Métaphore comptable filée :
- *   - Compteurs : index relevés = « dépenses » (KPI, recherche, chips, cartes à tiroirs).
- *   - Bassin    : niveau du bassin = stock d'eau (carte stock + saisie hauteur + tests débit).
- *   - Apports   : entrées d'eau = « revenus » (KPI cumulé + ajout + liste).
+ * Shell : 2 onglets thématiques (Compteurs · Source) + bouton Scan intégré DANS la page.
+ * Aide dépliable + badge lecture seule conservés. Métaphore comptable filée :
+ *   - Compteurs : index relevés = « débits » (eau qui sort : KPI, recherche, chips, cartes).
+ *   - Source    : crédit + solde — l'eau qui entre (apports ponctuels + tests de débit/pompe)
+ *                 et le « Stock d'eau du bassin » (solde). Fusionne les ex-onglets
+ *                 Bassin + Apports : carte Stock → carte Bassin → Apports → Tests de débit →
+ *                 section admin « Relevés récents ».
  *
  * Deep-links préservés (NE PAS migrer le schéma — `EauDashboard`/`eauInvitationService`
- * émettent toujours `?tab=…&bt=…`) :
+ * émettent toujours `?tab=…&bt=…` ; la page re-route vers les 2 onglets) :
  *   - `?tab=compteur&c=<id>` (scan)     → Compteurs, saisie du compteur ouverte.
  *   - `?tab=elec`                       → Compteurs, saisie ouverte sur la nature « Élec ».
- *   - `?tab=bassin&bt=niveau`           → Bassin, tiroir « Saisir hauteur » ouvert.
- *   - `?tab=bassin&bt=debit`            → Bassin, section « Tests de débit » ouverte.
- *   - `?tab=bassin&bt=entree`           → Apports, tiroir « Ajouter un apport » ouvert.
+ *   - `?tab=bassin&bt=niveau`           → Source, tiroir « Saisir hauteur » ouvert.
+ *   - `?tab=bassin&bt=debit`            → Source, section « Tests de débit » ouverte.
+ *   - `?tab=bassin&bt=entree`           → Source, tiroir « Ajouter un apport » ouvert.
+ *   - `?tab=apports`                    → Source, tiroir « Ajouter un apport » ouvert.
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Gauge, Waves, Sprout, ScanLine, Plus } from 'lucide-react';
+import { Gauge, Droplet, Waves, ScanLine, Plus } from 'lucide-react';
 import EauTabs from './EauTabs';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
@@ -31,15 +34,14 @@ import { parseScanText, buildInternalScanPath } from '../utils/scanUrl';
 import type { ReleveFacet } from './EauTiroirSaisie';
 import toast from 'react-hot-toast';
 
-type TabKey = 'compteurs' | 'bassin' | 'apports';
+type TabKey = 'compteurs' | 'source';
 
-/** Onglet initial à partir de la query (deep-links historiques). */
+/** Onglet initial à partir de la query (deep-links historiques re-routés vers 2 onglets). */
 function initialTab(params: URLSearchParams): TabKey {
   if (params.get('c')) return 'compteurs';
   const t = params.get('tab');
-  const bt = params.get('bt');
-  if (t === 'apports') return 'apports';
-  if (t === 'bassin') return bt === 'entree' ? 'apports' : 'bassin';
+  // 'bassin' (niveau/debit/entree) et 'apports' → onglet Source (crédit + solde).
+  if (t === 'apports' || t === 'bassin') return 'source';
   // 'compteur', 'compteurs', 'elec', 'tournee', null → onglet Compteurs.
   return 'compteurs';
 }
@@ -72,18 +74,17 @@ export default function EauRelevesPage() {
       setPreselect(null);
       setPreselectFacet('elec');
     } else if (t === 'bassin') {
+      setTab('source');
       if (bt === 'entree') {
-        setTab('apports');
         setApportsAutoOpen(true);
       } else if (bt === 'debit') {
-        setTab('bassin');
         setBassinIntent('debit');
       } else {
-        setTab('bassin');
         setBassinIntent('niveau');
       }
     } else if (t === 'apports') {
-      setTab('apports');
+      setTab('source');
+      setApportsAutoOpen(true);
     } else if (t) {
       setTab('compteurs');
     }
@@ -102,11 +103,11 @@ export default function EauRelevesPage() {
   // Raccourcis bas : basculent d'onglet ET déclenchent l'intention d'ouverture (set après
   // changeTab → dernière écriture gagnante dans le même cycle React).
   const goSaisirBassin = () => {
-    changeTab('bassin');
+    changeTab('source');
     setBassinIntent('niveau');
   };
   const goAjouterApport = () => {
-    changeTab('apports');
+    changeTab('source');
     setApportsAutoOpen(true);
   };
 
@@ -133,8 +134,7 @@ export default function EauRelevesPage() {
         onChange={(k) => changeTab(k as TabKey)}
         tabs={[
           { key: 'compteurs', label: 'Compteurs', icon: Gauge },
-          { key: 'bassin', label: 'Bassin', icon: Waves },
-          { key: 'apports', label: 'Apports', icon: Sprout },
+          { key: 'source', label: 'Source', icon: Droplet },
         ]}
       />
 
@@ -156,14 +156,18 @@ export default function EauRelevesPage() {
           />
         </div>
       )}
-      {tab === 'bassin' && (
+      {tab === 'source' && (
         <div className={WRAP}>
-          <EauBassinReleves openIntent={bassinIntent} onConsumeIntent={() => setBassinIntent(null)} />
-        </div>
-      )}
-      {tab === 'apports' && (
-        <div className={WRAP}>
-          <EauApportsReleves autoOpenAdd={apportsAutoOpen} onConsumeAutoOpen={() => setApportsAutoOpen(false)} />
+          <EauBassinReleves
+            openIntent={bassinIntent}
+            onConsumeIntent={() => setBassinIntent(null)}
+            creditsSlot={
+              <EauApportsReleves
+                autoOpenAdd={apportsAutoOpen}
+                onConsumeAutoOpen={() => setApportsAutoOpen(false)}
+              />
+            }
+          />
         </div>
       )}
 

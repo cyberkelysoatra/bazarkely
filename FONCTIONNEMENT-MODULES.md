@@ -248,7 +248,7 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
 ### 📍 Pages concernées (préfixe `/gestion-eau`)
 - `/gestion-eau/accueil` — **Page mission PUBLIQUE** (sans connexion) : présentation, installation PWA, « J'ai un code » / « Demander un accès » (Phase 2)
 - `/gestion-eau` — **Tableau de bord** opérationnel (admin/releveur ; le client est redirigé vers son espace)
-- `/gestion-eau/releves` — **Thème Relevés** : onglets internes **Compteur · Électricité · Bassin · Tournée · Scan** (Électricité = saisie d'index kWh, **sous-onglet `?tab=elec`** ; Tournée/Scan **livrés Phase 3**) (releveur/admin)
+- `/gestion-eau/releves` — **Thème Relevés** : **2 onglets internes (v3.52.0)** — **Compteurs** (les débits : index eau/élec, recherche, période, cartes ; Électricité = saisie d'index kWh via **`?tab=elec`** ; Scan QR intégré à l'onglet) et **Source** (le crédit + le solde, **fusion des ex-onglets Bassin + Apports**) (releveur/admin). **Ordre vertical de l'onglet Source** : carte « Stock d'eau du bassin » (solde + écart) → carte « Bassin » (Saisir hauteur / Historique) → **l'eau qui rentre** : Apports (KPI cumulé, Ajouter un apport, liste) puis section repliable **Tests de débit** (débit pompes) → section admin « Relevés récents » (édition/suppression + Recalculer tous les bilans). Deep-links inchangés (le schéma `?tab=bassin&bt=niveau|debit|entree` et `?tab=apports` est re-routé vers l'onglet Source).
 - `/gestion-eau/elec-couts` — **Coûts électricité du mois** : saisie mensuelle JIRAMA + gasoil + kWh produits → **prix du kWh** (admin) — *menu en haut à droite (icône Zap)*
 - `/gestion-eau/suivi` — **Thème Suivi** : onglets **Anomalies/Bilans · Tendances** (Tendances **livré Phase 4**) (releveur/admin)
 - `/gestion-eau/tendances` — **Tendances (pilotage)** : graphiques conso/niveau/NRW/top consommateurs/zone (Phase 4) (releveur/admin) — *menu en haut à droite*
@@ -352,7 +352,7 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   **Déductions centralisées** (service unique `eauBassinService`, logique pure `utils/bassin.ts`) affichées en lecture seule :
   `S = L×l` (surface), **volume utile** `= S×Hf` (100 % de remplissage), **volume sécurité** `= S×Htp`, **m³/cm** `= S×0,01`,
   `Stock(niveau) = S × niveau_cm/100`. *Ex. 14×7×2,50 → 98 m², 245 m³, 0,98 m³/cm ; trop-plein 2,90 → 284,2 m³.*
-- **Tests de débit des pompes « vanne fermée »** (`/gestion-eau/releves` → onglet **Bassin** → mode **Débit**, releveur/admin) :
+- **Tests de débit des pompes « vanne fermée »** (`/gestion-eau/releves` → onglet **Source** → section **Tests de débit**, releveur/admin) :
   on saisit **niveau début/fin (cm) + durée (min)** → **Q_in (m³/h)** `= S × (Δniveau/100) ÷ (durée/60)` (aperçu avant validation).
   **Historique** des tests + **débit courant** (le plus récent) **mis en évidence** ; **écart %** vs le test précédent ;
   **alerte « débit instable »** si écart > seuil (déf. **15 %**). Nouvelle table **`eau_debit_tests`** (offline-first, sync idempotente).
@@ -361,7 +361,7 @@ Partager ≠ Demander remboursement. Ce sont 2 actions distinctes :
   **Conso réseau** `= Apport − Δstock` (ce qui est sorti vers le réseau) ; **Pertes** `= Conso réseau − Σ compteurs` ;
   **NRW %** `= Pertes / Conso réseau × 100`. **Bilans enrichis** (`apport_m3`, `conso_reseau_m3`, `pertes_m3`, `debit_m3h_utilise`).
   L'**anomalie** d'un bilan = écart de stock (héritage) **OU** pertes/NRW réseau au-delà des seuils `seuil_m3`/`seuil_pct`.
-- **Édition / suppression d'un relevé de niveau (admin, v3.41.0)** (`/gestion-eau/releves` → onglet **Bassin** → mode **Niveau** →
+- **Édition / suppression d'un relevé de niveau (admin, v3.41.0)** (`/gestion-eau/releves` → onglet **Source** →
   section dépliable **« Relevés récents (admin) »**, visible **admin uniquement**) : liste des 30 derniers relevés (date/hauteur/volume).
   **Modifier** (hauteur et/ou date-heure → `updateReleveBassin`, volume recalculé via la config) ou **supprimer** (`deleteReleveBassin`)
   un relevé **recalcule automatiquement les bilans « voisins »**. Comme un bilan compare **deux relevés consécutifs** (précédent → courant),
