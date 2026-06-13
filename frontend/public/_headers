@@ -26,6 +26,17 @@
   Content-Type: application/manifest+json
   Cache-Control: public, max-age=86400
 
+# Document d'entrée SPA — jamais servi périmé (revalidation systématique).
+# La vraie page d'entrée est la racine `/` (start_url PWA) et les routes SPA (sans
+# extension `.html`, servies via `_redirects /* /index.html 200`) : sans ces règles,
+# l'edge Cloudflare peut servir un index.html périmé (ancien bundle index-<hash>.js).
+# `no-cache` = revalidation systématique (PAS `no-store`, qui couperait l'offline).
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
 # HTML — jamais en cache (revalidation systématique).
 /*.html
   Cache-Control: public, max-age=0, must-revalidate

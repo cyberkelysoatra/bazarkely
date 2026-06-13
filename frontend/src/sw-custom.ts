@@ -6,7 +6,7 @@
  * Ce fichier est utilisé comme SW principal avec Vite PWA en mode injectManifest
  */
 
-import { precacheAndRoute, createHandlerBoundToURL, cleanupOutdatedCaches } from 'workbox-precaching';
+import { precacheAndRoute, matchPrecache, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 import { cacheNames } from 'workbox-core';
@@ -425,9 +425,27 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Complète la purge manuelle de l'événement `activate` ci-dessus.
 cleanupOutdatedCaches();
 
-// Navigation fallback pour SPA
-const handler = createHandlerBoundToURL('/index.html');
-const navigationRoute = new NavigationRoute(handler, {
+// Navigation SPA : « réseau d'abord » avec repli offline sur le précache.
+// EN LIGNE → on récupère l'index.html FRAIS depuis le réseau (qui, grâce au no-cache de
+// la racine dans public/_headers, contourne un éventuel index.html périmé en cache edge
+// Cloudflare) → l'utilisateur a toujours le dernier bundle index-<hash>.js sans purge.
+// HORS-LIGNE / réseau en échec ou trop lent (timeout 3 s) → repli sur l'index.html
+// PRÉCACHÉ (matchPrecache) → l'app charge toujours offline (le « Scan ticket » Tesseract,
+// précaché séparément, reste utilisable). Remplace l'ancien handler « cache d'abord »
+// (createHandlerBoundToURL) qui servait l'index.html précaché avant le réseau, donc périmé
+// tant que le nouveau SW n'avait pas activé son précache.
+const navigationHandler = new NetworkFirst({
+  cacheName: 'html-cache',
+  networkTimeoutSeconds: 3,
+  plugins: [
+    {
+      // Réseau ET cache runtime indisponibles (1ʳᵉ visite offline) → index.html précaché.
+      handlerDidError: async () =>
+        (await matchPrecache('/index.html')) || Response.error(),
+    },
+  ],
+});
+const navigationRoute = new NavigationRoute(navigationHandler, {
   denylist: [
     /^\/api\/.*/i,
     /^\/supabase\/.*/i,
