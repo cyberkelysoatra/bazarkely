@@ -17,6 +17,7 @@ function emptyConfig(): ConfigLocal {
     bassin_hauteur_max_m: null,
     bassin_hauteur_flotteur_m: null,
     bassin_hauteur_trop_plein_m: null,
+    bassin_band_flotteur_cm: null,
     debit_ecart_max_pct: null,
     tarif_m3: null,
     devise: 'MGA',
@@ -83,6 +84,16 @@ export function dimensionsFromConfig(config: ConfigLocal | null): BassinDimensio
     return { longueurM: bassin_longueur_m, largeurM: bassin_largeur_m, hauteurMaxM: hauteurRef };
   }
   return null;
+}
+
+/**
+ * Bande d'hystérésis du flotteur en MÈTRES (modèle d'apport Phase 3). Garde-fou :
+ * config absente/incomplète → repli sur la valeur métier par défaut 10 cm (0,10 m),
+ * jamais de plantage ni de bande nulle/négative.
+ */
+export function bandFlotteurMFromConfig(config: ConfigLocal | null): number {
+  const cm = config?.bassin_band_flotteur_cm;
+  return cm != null && cm > 0 ? cm / 100 : 0.1;
 }
 
 /** Seuil d'écart de débit (%) au-delà duquel un test est jugé instable (déf. 15). */

@@ -67,6 +67,31 @@ function isoToLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Minutes depuis minuit d'une saisie `<input type="time">` (HH:MM), ou null si vide/invalide. */
+function timeToMinutes(hhmm: string): number | null {
+  if (!hhmm.trim()) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/**
+ * Durée (min) entre une heure de début et de fin (`HH:MM`). Gère le passage de minuit
+ * (test de nuit) : si la fin est « avant » le début, on suppose le lendemain (+24 h).
+ * Retourne null si l'une des heures est absente/invalide ou si la durée est nulle.
+ */
+function dureeMinFromHeures(debut: string, fin: string): number | null {
+  const a = timeToMinutes(debut);
+  const b = timeToMinutes(fin);
+  if (a == null || b == null) return null;
+  let diff = b - a;
+  if (diff < 0) diff += 24 * 60; // passage de minuit
+  return diff > 0 ? diff : null;
+}
+
 export default function EauBassinReleves({
   openIntent,
   onConsumeIntent,
@@ -97,10 +122,11 @@ export default function EauBassinReleves({
   const [niveauNote, setNiveauNote] = useState('');
   const [niveauDateTime, setNiveauDateTime] = useState('');
 
-  // Test de débit
+  // Test de débit : hauteur début/fin (cm) + heure début/fin (durée dérivée).
   const [debitDebutCm, setDebitDebutCm] = useState('');
   const [debitFinCm, setDebitFinCm] = useState('');
-  const [debitDureeMin, setDebitDureeMin] = useState('');
+  const [debitHeureDebut, setDebitHeureDebut] = useState('');
+  const [debitHeureFin, setDebitHeureFin] = useState('');
   const [debitNote, setDebitNote] = useState('');
 
   // Édition admin/releveur
@@ -159,15 +185,20 @@ export default function EauBassinReleves({
     return hauteurCmToVolumeM3(h, dim);
   }, [hauteurCm, dim]);
 
-  // Aperçu live du débit (Q_in).
+  // Durée dérivée des heures de début/fin (min), null tant que la saisie est incomplète.
+  const debitDureeMin = useMemo(
+    () => dureeMinFromHeures(debitHeureDebut, debitHeureFin),
+    [debitHeureDebut, debitHeureFin]
+  );
+
+  // Aperçu live du débit (Q_in) — durée dérivée des heures.
   const debitPreview = useMemo(() => {
     if (surface == null) return null;
-    if ([debitDebutCm, debitFinCm, debitDureeMin].some((s) => s.trim() === '')) return null;
+    if (debitDebutCm.trim() === '' || debitFinCm.trim() === '' || debitDureeMin == null) return null;
     const d = Number(debitDebutCm);
     const f = Number(debitFinCm);
-    const dur = Number(debitDureeMin);
-    if (![d, f, dur].every(Number.isFinite)) return null;
-    return computeDebit({ niveauDebutCm: d, niveauFinCm: f, dureeMin: dur, surfaceM2: surface });
+    if (![d, f].every(Number.isFinite)) return null;
+    return computeDebit({ niveauDebutCm: d, niveauFinCm: f, dureeMin: debitDureeMin, surfaceM2: surface });
   }, [debitDebutCm, debitFinCm, debitDureeMin, surface]);
 
   const flotteurCm = useMemo(() => {
@@ -246,12 +277,16 @@ export default function EauBassinReleves({
       toast.error("Configurez les dimensions du bassin d'abord");
       return;
     }
+    if (debitDureeMin == null) {
+      toast.error("Renseignez l'heure de début et de fin (fin après début)");
+      return;
+    }
     setBusy(true);
     try {
       const res = await addDebitTest({
         niveau_debut_cm: Number(debitDebutCm),
         niveau_fin_cm: Number(debitFinCm),
-        duree_min: Number(debitDureeMin),
+        duree_min: debitDureeMin,
         note: debitNote || null,
         agent_id: getCurrentUserIdSync(),
       });
@@ -262,7 +297,8 @@ export default function EauBassinReleves({
       );
       setDebitDebutCm('');
       setDebitFinCm('');
-      setDebitDureeMin('');
+      setDebitHeureDebut('');
+      setDebitHeureFin('');
       setDebitNote('');
       setTests(await listDebitTests());
       setDash(await getDashboardData());
@@ -588,25 +624,41 @@ export default function EauBassinReleves({
                     </span>
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-2">
-                  <label className="text-sm block">
-                    <span className="block text-gray-600 mb-1">Début (cm)</span>
-                    <input type="number" inputMode="decimal" step="0.1" value={debitDebutCm}
-                      onChange={(e) => setDebitDebutCm(e.target.value)} disabled={surface == null || isReadOnly}
-                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 150" />
-                  </label>
-                  <label className="text-sm block">
-                    <span className="block text-gray-600 mb-1">Fin (cm)</span>
-                    <input type="number" inputMode="decimal" step="0.1" value={debitFinCm}
-                      onChange={(e) => setDebitFinCm(e.target.value)} disabled={surface == null || isReadOnly}
-                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 160" />
-                  </label>
-                  <label className="text-sm block">
-                    <span className="block text-gray-600 mb-1">Durée (min)</span>
-                    <input type="number" inputMode="decimal" step="1" value={debitDureeMin}
-                      onChange={(e) => setDebitDureeMin(e.target.value)} disabled={surface == null || isReadOnly}
-                      className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 60" />
-                  </label>
+                {/* Saisie par hauteur + heure (début / fin) — la durée est dérivée automatiquement. */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-sm block">
+                      <span className="block text-gray-600 mb-1">Hauteur début (cm)</span>
+                      <input type="number" inputMode="decimal" step="0.1" value={debitDebutCm}
+                        onChange={(e) => setDebitDebutCm(e.target.value)} disabled={surface == null || isReadOnly}
+                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 150" />
+                    </label>
+                    <label className="text-sm block">
+                      <span className="block text-gray-600 mb-1">Heure début</span>
+                      <input type="time" value={debitHeureDebut}
+                        onChange={(e) => setDebitHeureDebut(e.target.value)} disabled={surface == null || isReadOnly}
+                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" />
+                    </label>
+                    <label className="text-sm block">
+                      <span className="block text-gray-600 mb-1">Hauteur fin (cm)</span>
+                      <input type="number" inputMode="decimal" step="0.1" value={debitFinCm}
+                        onChange={(e) => setDebitFinCm(e.target.value)} disabled={surface == null || isReadOnly}
+                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 160" />
+                    </label>
+                    <label className="text-sm block">
+                      <span className="block text-gray-600 mb-1">Heure fin</span>
+                      <input type="time" value={debitHeureFin}
+                        onChange={(e) => setDebitHeureFin(e.target.value)} disabled={surface == null || isReadOnly}
+                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" />
+                    </label>
+                  </div>
+                  {debitDureeMin != null ? (
+                    <div className="text-xs text-gray-500">Durée déduite : <strong>{debitDureeMin} min</strong></div>
+                  ) : (
+                    (debitHeureDebut.trim() !== '' || debitHeureFin.trim() !== '') && (
+                      <div className="text-xs text-amber-700">Renseignez les deux heures (fin après début).</div>
+                    )
+                  )}
                 </div>
                 {debitFinAuDessusFlotteur && (
                   <div className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">

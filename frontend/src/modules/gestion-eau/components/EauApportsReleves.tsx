@@ -11,15 +11,17 @@
  */
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Sprout, Plus, Save, CalendarClock, ArrowDownToLine } from 'lucide-react';
+import { Sprout, Plus, Save, CalendarClock, ArrowDownToLine, Gauge } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { useGestionEau } from '../context';
 import { addEntreeBassin, listEntreesBassin, refreshReleves } from '../services/eauReleveService';
+import { getDashboardData } from '../services/eauBilanService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
+import { isApportDebitMode } from '../utils/bilan';
 import { fmtM3, fmtDate } from '../utils/format';
-import type { EntreeBassinLocal } from '../types/gestionEau';
+import type { BilanLocal, EntreeBassinLocal } from '../types/gestionEau';
 
 const PERIODE_KEY = 'ahuvi_releves_periode';
 const PERIODES = [
@@ -53,6 +55,7 @@ export default function EauApportsReleves({
 }) {
   const { isReadOnly } = useGestionEau();
   const [entrees, setEntrees] = useState<EntreeBassinLocal[]>([]);
+  const [dernierBilan, setDernierBilan] = useState<BilanLocal | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [periode, setPeriode] = useState<PeriodeKey>(() => {
@@ -73,6 +76,7 @@ export default function EauApportsReleves({
 
   const load = async () => {
     setEntrees(await listEntreesBassin());
+    setDernierBilan((await getDashboardData()).dernierBilan);
   };
 
   useEffect(() => {
@@ -116,6 +120,23 @@ export default function EauApportsReleves({
 
   // 6 derniers apports (déjà triés décroissant par listEntreesBassin).
   const recents = useMemo(() => entrees.slice(0, 6), [entrees]);
+
+  // Apport ESTIMÉ du dernier bilan (modèle « flotteur », plafonné au flotteur). Affiché
+  // seulement quand il provient de l'estimation (pas d'une entrée manuelle déjà listée
+  // au-dessus). Libellé : « réaliste (flotteur) » ou repli « (débit) ».
+  const apportEstime = useMemo(() => {
+    const b = dernierBilan;
+    if (!b || b.apport_m3 == null) return null;
+    // Une entrée manuelle (apport == entrees_m3 > 0) est déjà comptée dans la liste.
+    const estManuel = (b.entrees_m3 ?? 0) > 0 && Math.abs((b.apport_m3 ?? 0) - (b.entrees_m3 ?? 0)) < 1e-6;
+    if (estManuel) return null;
+    const debit = isApportDebitMode(b);
+    return {
+      valeur: b.apport_m3,
+      debit,
+      date: b.timestamp,
+    };
+  }, [dernierBilan]);
 
   const submit = async () => {
     if (isReadOnly || busy) return;
@@ -163,6 +184,21 @@ export default function EauApportsReleves({
         value={fmtM3(cumulPeriodeM3)}
         hint="Eau entrée dans le bassin sur la période"
       />
+
+      {/* Apport estimé du dernier bilan (modèle flotteur, plafonné). */}
+      {apportEstime && (
+        <EauStatCard
+          icon={Gauge}
+          tone="teal"
+          label="Apport estimé · dernier bilan"
+          value={fmtM3(apportEstime.valeur)}
+          hint={
+            apportEstime.debit
+              ? `Estimation (débit) — ${fmtDate(apportEstime.date)}`
+              : `Estimation réaliste tenant compte de l'arrêt au flotteur — ${fmtDate(apportEstime.date)}`
+          }
+        />
+      )}
 
       {/* Chips de période (partagées avec l'onglet Compteurs). */}
       <div className="flex gap-2">

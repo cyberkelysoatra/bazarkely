@@ -23,8 +23,15 @@ import {
   getConfig,
   seuilsFromConfig,
   dimensionsFromConfig,
+  bandFlotteurMFromConfig,
 } from './eauConfigService';
-import { getDebitCourantM3h, estimerAutonomie, type AutonomieEstimee } from './eauBassinService';
+import {
+  getDebitCourantM3h,
+  estimerAutonomie,
+  surfaceFromConfig,
+  bassinModelFromConfig,
+  type AutonomieEstimee,
+} from './eauBassinService';
 import { tauxRemplissage, volumeMaxM3 } from '../utils/bassin';
 import type {
   BilanLocal,
@@ -53,6 +60,11 @@ export async function computeAndSaveBilan(current: {
   ]);
 
   const { seuilM3, seuilPct } = seuilsFromConfig(config);
+  // Modèle d'apport « flotteur » (Phase 3) : surface + hauteur flotteur + bande,
+  // injectés depuis la config (garde-fous internes : bande déf. 0,10 m si absente).
+  const surfaceM2 = surfaceFromConfig(config);
+  const hauteurFlotteurM = bassinModelFromConfig(config)?.hauteurFlotteurM ?? null;
+  const bandFlotteurM = bandFlotteurMFromConfig(config);
 
   const result = computeBilan({
     currentTimestamp: current.timestamp,
@@ -64,6 +76,9 @@ export async function computeAndSaveBilan(current: {
     seuilM3,
     seuilPct,
     debitM3h,
+    surfaceM2,
+    hauteurFlotteurM,
+    bandFlotteurM,
   });
 
   if (!result) return null;

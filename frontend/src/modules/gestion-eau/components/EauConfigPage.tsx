@@ -35,6 +35,7 @@ const NUM_FIELDS: { key: keyof ConfigLocal; label: string; step?: string; hint?:
   { key: 'bassin_largeur_m', label: 'Largeur bassin (m)', step: '0.01' },
   { key: 'bassin_hauteur_flotteur_m', label: 'Hauteur flotteur (m)', step: '0.01', hint: 'Arrêt pompes — plafond opérationnel' },
   { key: 'bassin_hauteur_trop_plein_m', label: 'Hauteur trop-plein (m)', step: '0.01', hint: 'Sécurité (≥ flotteur)' },
+  { key: 'bassin_band_flotteur_cm', label: 'Bande flotteur (cm)', step: '1', hint: 'Redémarrage pompe sous le flotteur (déf. 10)' },
   { key: 'debit_ecart_max_pct', label: 'Écart débit max (%)', step: '1', hint: 'Alerte si test instable (déf. 15)' },
   { key: 'tarif_m3', label: 'Tarif / m³', step: '1' },
   { key: 'seuil_pct', label: 'Seuil anomalie (%)', step: '0.1', hint: 'Écart toléré en %' },

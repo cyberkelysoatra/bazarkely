@@ -23,9 +23,17 @@ export const PERTE_RESEAU_DEFAUT_PCT = 0.30; // 30 %
  * `débit × Δt` (qui suppose une marche continue) surestime l'apport réel sur un
  * intervalle. On pondère l'apport estimé par débit par ce facteur. Valeur prudente par
  * défaut (≈ 50 % du temps), à exposer en configuration admin ultérieurement.
- * Constante CANONIQUE du module (réutilisée par utils/projection.ts qui la ré-exporte).
+ *
+ * SOURCE UNIQUE de vérité de la « fraction de marche / plafond pompe » du module :
+ *  - utils/projection.ts et utils/consoEstimee.ts la RÉ-EXPORTENT (jamais de doublon) ;
+ *  - le modèle d'apport « flotteur » (cf. `estimerApportFlotteur`) ne s'en sert plus
+ *    que comme REPLI documenté quand aucun niveau n'est exploitable — le plafond
+ *    physique réel étant désormais le volume au flotteur `V_flotteur = surface × Hf`.
  */
 export const FRACTION_POMPE = 0.5;
+
+/** Petite tolérance numérique pour comparer des volumes (m³). */
+const EPS_M3 = 1e-6;
 
 export function toMs(t: TS): number {
   if (typeof t === 'number') return t;
@@ -94,6 +102,156 @@ export function consoCompteurSurIntervalle(
   return conso > 0 ? conso : 0;
 }
 
+// ─────────────────────────── Modèle d'apport « flotteur » ───────────────────────────
+/**
+ * Mode d'estimation de l'apport retenu sur l'intervalle (pilote le libellé UI) :
+ *  - 'override'        : apport imposé manuellement (correction).
+ *  - 'entrees'         : somme des entrées manuelles saisies sur l'intervalle.
+ *  - 'mesure'          : bilan de matière exact (Δstock + conso métrée), pompe = simple compensation.
+ *  - 'mesure_plafonnee': idem, mais borné par le remplissage au flotteur (V_flotteur − stockPrev).
+ *  - 'debit'           : repli — aucun signal de niveau exploitable → débit × Δt × FRACTION_POMPE.
+ *  - 'debit_plafonne'  : idem repli, mais borné au remplissage flotteur.
+ *  - 'aucun'           : ni apport mesurable, ni débit → 0.
+ */
+export type ApportMode =
+  | 'override'
+  | 'entrees'
+  | 'mesure'
+  | 'mesure_plafonnee'
+  | 'debit'
+  | 'debit_plafonne'
+  | 'aucun';
+
+export interface EstimerApportInput {
+  /** Volume du bassin au relevé précédent (m³). */
+  stockPrev: number;
+  /** Volume mesuré du bassin au relevé courant (m³). */
+  stockMesure: number;
+  /** Consommation métrée des compteurs sur l'intervalle (m³). */
+  consoM3: number;
+  /** Durée de l'intervalle (heures). */
+  dtHours: number;
+  /** Débit courant des pompes (m³/h) ou null. */
+  debitM3h: number | null;
+  /** Somme des entrées manuelles de l'intervalle (m³). */
+  entreesM3: number;
+  /** Apport manuel imposé (m³) ou null. */
+  apportOverrideM3: number | null;
+  /** Surface au sol du bassin (m²) ou null si inconnue. */
+  surfaceM2: number | null;
+  /** Hauteur du flotteur (m) ou null si inconnue. */
+  hauteurFlotteurM: number | null;
+  /** Bande d'hystérésis du flotteur (m) — défaut 0,10. */
+  bandFlotteurM: number | null;
+}
+
+export interface EstimerApportResult {
+  /** Apport retenu sur l'intervalle (m³). */
+  apportM3: number;
+  /** Débit courant utilisé (m³/h) ou null si repli sur niveaux/override/entrées. */
+  debitM3hUtilise: number | null;
+  /** Mode d'estimation retenu (pilote le libellé UI). */
+  mode: ApportMode;
+}
+
+/**
+ * Estime l'apport d'eau (les « revenus ») sur un intervalle selon le modèle PHYSIQUE
+ * « flotteur ». La pompe est intermittente : elle remplit jusqu'au flotteur puis
+ * s'arrête, et repart ~`band` cm plus bas. Conséquence : `débit × Δt` (marche continue)
+ * SURESTIME l'apport. On préfère donc le BILAN DE MATIÈRE exact :
+ *
+ *   apport = max(0, Δstock + conso métrée)   (la pompe n'a fait que compenser)
+ *
+ * borné par le remplissage possible jusqu'au flotteur (`V_flotteur − stockPrev`) — la
+ * pompe ne peut pas remplir au-delà du flotteur. Quand le niveau ne donne AUCUN signal
+ * (bassin plat sans compteur, Δstock = 0 & conso = 0) mais qu'un débit est connu, on
+ * retombe sur `débit × Δt × FRACTION_POMPE`, lui aussi plafonné au remplissage flotteur.
+ *
+ * Priorité (inchangée) : override > entrées manuelles > estimation (mesuré → repli débit).
+ * Fonction PURE : tous les paramètres (surface, flotteur, bande) sont injectés.
+ */
+export function estimerApportFlotteur(input: EstimerApportInput): EstimerApportResult {
+  const {
+    stockPrev, stockMesure, consoM3, dtHours, debitM3h, entreesM3, apportOverrideM3,
+    surfaceM2, hauteurFlotteurM, bandFlotteurM,
+  } = input;
+  // Bande d'hystérésis : repli sur 0,10 m si absente/invalide (garde-fou, jamais de plantage).
+  const bandM = bandFlotteurM != null && bandFlotteurM > 0 ? bandFlotteurM : 0.1;
+
+  // 1. Override manuel imposé (correction explicite).
+  if (apportOverrideM3 != null && apportOverrideM3 >= 0) {
+    return { apportM3: apportOverrideM3, debitM3hUtilise: null, mode: 'override' };
+  }
+  // 2. Entrées manuelles saisies sur l'intervalle (mode « Entrée »).
+  if (entreesM3 > 0) {
+    return { apportM3: entreesM3, debitM3hUtilise: null, mode: 'entrees' };
+  }
+
+  // Plafond physique : volume au flotteur (V_flotteur), volume de redémarrage (V_bas =
+  // surface × (Hf − band)) et remplissage encore possible jusqu'au flotteur.
+  const vFlotteur =
+    surfaceM2 != null && surfaceM2 > 0 && hauteurFlotteurM != null && hauteurFlotteurM > 0
+      ? surfaceM2 * hauteurFlotteurM
+      : null;
+  const vBas =
+    vFlotteur != null && surfaceM2 != null && hauteurFlotteurM != null
+      ? surfaceM2 * Math.max(0, hauteurFlotteurM - bandM)
+      : null;
+  const capRemplissage = vFlotteur != null ? Math.max(0, vFlotteur - stockPrev) : null;
+
+  const deltaStock = stockMesure - stockPrev;
+  // 3. Bilan de matière : l'apport a compensé la variation de stock + la conso métrée.
+  const massBalance = Math.max(0, deltaStock + consoM3);
+
+  if (massBalance > EPS_M3) {
+    // Signal de niveau/conso exploitable → mode mesuré, borné au flotteur.
+    if (capRemplissage != null && massBalance > capRemplissage + EPS_M3) {
+      return { apportM3: capRemplissage, debitM3hUtilise: debitM3h ?? null, mode: 'mesure_plafonnee' };
+    }
+    return { apportM3: massBalance, debitM3hUtilise: debitM3h ?? null, mode: 'mesure' };
+  }
+
+  // 4. Aucun signal de niveau (Δstock ≤ 0 & conso 0). Si le niveau a BAISSÉ, la pompe
+  //    était à l'arrêt → apport 0. Si le niveau est PLAT et qu'un débit est connu, la
+  //    pompe a pu compenser une conso non observée → repli débit × Δt × FRACTION_POMPE,
+  //    plafonné au remplissage flotteur (jamais au-delà de V_flotteur − stockPrev).
+  //    Quand le flotteur est connu, on n'attribue ce repli que si le bassin est DANS la
+  //    bande de régulation (stockPrev ≥ V_bas) — c'est là que le flotteur fait cycler la
+  //    pompe ; un bassin plat nettement sous la bande est ambigu → apport 0 (anti-sur-estim.).
+  const dansBandeRegulation = vBas == null || stockPrev >= vBas - EPS_M3;
+  if (deltaStock >= -EPS_M3 && dansBandeRegulation && debitM3h != null && debitM3h > 0 && dtHours > 0) {
+    const apportDebit = debitM3h * dtHours * FRACTION_POMPE;
+    if (capRemplissage != null && apportDebit > capRemplissage + EPS_M3) {
+      return { apportM3: capRemplissage, debitM3hUtilise: debitM3h, mode: 'debit_plafonne' };
+    }
+    return { apportM3: apportDebit, debitM3hUtilise: debitM3h, mode: 'debit' };
+  }
+
+  // 5. Rien d'exploitable → aucun apport connu.
+  return { apportM3: 0, debitM3hUtilise: null, mode: 'aucun' };
+}
+
+/**
+ * Ré-déduit, depuis un bilan déjà calculé/stocké, si l'apport vient du REPLI DÉBIT
+ * (true) ou du bilan de matière « mesuré » (false). En mode mesuré l'apport ne dépasse
+ * jamais le bilan de matière `max(0, Δstock + conso)` (il en est le min avec le plafond
+ * flotteur) ; le repli débit n'est déclenché que lorsque ce bilan vaut 0 et produit un
+ * apport > 0 → la comparaison est un discriminant fiable, sans persister le mode.
+ */
+export function isApportDebitMode(bilan: {
+  apport_m3?: number | null;
+  stock_mesure?: number | null;
+  stock_prev?: number | null;
+  conso_m3?: number | null;
+}): boolean {
+  const apport = bilan.apport_m3 ?? 0;
+  const massBalance = Math.max(
+    0,
+    (bilan.stock_mesure ?? 0) - (bilan.stock_prev ?? 0) + (bilan.conso_m3 ?? 0)
+  );
+  return apport > massBalance + EPS_M3;
+}
+
 export interface ComputeBilanInput {
   /** Timestamp du relevé de niveau courant. */
   currentTimestamp: TS;
@@ -117,6 +275,13 @@ export interface ComputeBilanInput {
   debitM3h?: number | null;
   /** Apport manuel imposé pour l'intervalle (m³) — prioritaire sur le débit. */
   apportOverrideM3?: number | null;
+  // ── Modèle d'apport « flotteur » (Phase 3, injectés depuis la config) ──
+  /** Surface au sol du bassin (m²), pour le plafond `V_flotteur`. null si inconnue. */
+  surfaceM2?: number | null;
+  /** Hauteur du flotteur (m) — plafond opérationnel. null si inconnue. */
+  hauteurFlotteurM?: number | null;
+  /** Bande d'hystérésis du flotteur (m) — défaut 0,10 si absent. */
+  bandFlotteurM?: number | null;
 }
 
 export interface BilanResult {
@@ -131,10 +296,12 @@ export interface BilanResult {
   ecartPct: number;
   anomalie: boolean;
   // ── Modèle « bassin/débit » (additif) ──
-  /** Apport sur l'intervalle (m³) : override | débit×Δt | Σ entrées (repli). */
+  /** Apport sur l'intervalle (m³) : override | entrées | flotteur (mesuré/plafonné) | débit. */
   apportM3: number;
-  /** Débit courant utilisé (m³/h) ou null si repli sur entrées/override. */
+  /** Débit courant utilisé (m³/h) ou null si repli sur entrées/override/niveaux. */
   debitM3hUtilise: number | null;
+  /** Mode d'estimation de l'apport retenu (pilote le libellé UI). */
+  apportMode: ApportMode;
   /** Conso vers le réseau = apport − Δstock (m³). */
   consoReseauM3: number;
   /** Pertes = conso réseau − conso compteurs (m³). */
@@ -181,28 +348,24 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
 
   const stockMesure = input.stockMesureM3;
 
-  // ── Apport sur l'intervalle (modèle « bassin/débit ») ──
-  //   priorité : override explicite > Σ entrées manuelles de l'intervalle (mode « Entrée »)
-  //              > débit courant × Δt > 0 (repli). Une saisie manuelle prime donc toujours
-  //              sur l'estimation par débit, et l'absence des deux retombe sur l'historique.
+  // ── Apport sur l'intervalle (modèle d'apport « flotteur », Phase 3) ──
+  //   La pompe étant intermittente (arrêt au flotteur), on n'utilise plus `débit × Δt`
+  //   (marche continue, surestime) : l'apport est le BILAN DE MATIÈRE exact (Δstock +
+  //   conso métrée), borné au remplissage flotteur ; repli documenté sur le débit
+  //   plafonné quand aucun niveau n'est exploitable. Priorité override > entrées > estimation.
   const dtHours = (tMs - tPrevMs) / 3_600_000;
-  let apportM3: number;
-  let debitM3hUtilise: number | null = null;
-  if (input.apportOverrideM3 != null && input.apportOverrideM3 >= 0) {
-    apportM3 = input.apportOverrideM3;
-  } else if (entreesM3 > 0) {
-    apportM3 = entreesM3; // override manuel : volume(s) saisi(s) pour l'intervalle
-  } else if (input.debitM3h != null && input.debitM3h > 0) {
-    // Pompe INTERMITTENTE (se coupe au flotteur) → `débit × Δt` (marche continue)
-    // surestime l'apport. On pondère par la fraction de temps de marche effective.
-    // Faute de capteur de temps de pompe, c'est l'approximation retenue (cf. rapport
-    // « conso-plafond-pompe »). N'impacte QUE l'estimation par débit (override/entrées
-    // manuelles inchangés). consoReseau = apport − Δstock devient ainsi réaliste.
-    apportM3 = input.debitM3h * dtHours * FRACTION_POMPE;
-    debitM3hUtilise = input.debitM3h;
-  } else {
-    apportM3 = entreesM3; // = 0 : ni entrées, ni débit → aucun apport connu
-  }
+  const { apportM3, debitM3hUtilise, mode: apportMode } = estimerApportFlotteur({
+    stockPrev,
+    stockMesure,
+    consoM3,
+    dtHours,
+    debitM3h: input.debitM3h ?? null,
+    entreesM3,
+    apportOverrideM3: input.apportOverrideM3 ?? null,
+    surfaceM2: input.surfaceM2 ?? null,
+    hauteurFlotteurM: input.hauteurFlotteurM ?? null,
+    bandFlotteurM: input.bandFlotteurM ?? null,
+  });
 
   // Stock attendu basé sur l'apport (≡ entrées quand aucun débit/override → rétrocompatible).
   const stockAttendu = stockPrev + apportM3 - consoM3;
@@ -230,6 +393,7 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
     anomalie,
     apportM3,
     debitM3hUtilise,
+    apportMode,
     consoReseauM3,
     pertesM3,
     nrwReseauPct,

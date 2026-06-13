@@ -71,25 +71,24 @@ describe('test de débit (Q_in) — critère #3', () => {
   });
 });
 
-describe('conso réseau / pertes / NRW réseau — critère #4', () => {
+describe('conso réseau / pertes / NRW réseau — modèle flotteur (Phase 3)', () => {
   // tPrev = t0, t = t0 + 2h. stockPrev 100, stockMesure 105 → Δstock +5.
-  // Δt 2h car l'apport par débit est pondéré par FRACTION_POMPE (0,5) : débit×2h×0,5
-  // = débit×1h → les valeurs ci-dessous restent identiques à la version « marche continue 1h ».
   const t0 = 1_000_000;
   const t1 = t0 + 7_200_000; // +2 h
   const relevesBassin: ReleveBassinLite[] = [
     { volume_m3: 100, timestamp: t0 },
     { volume_m3: 105, timestamp: t1 },
   ];
-  const entrees: EntreeLite[] = []; // aucun apport manuel → on s'appuie sur le débit
+  const entrees: EntreeLite[] = []; // aucun apport manuel
 
-  it('Q_in 9,8 m³/h, Δt 2h × fraction pompe 0,5 → apport 9,8 ; conso réseau 4,8 ; pertes 1,8 ; NRW 37,5 %', () => {
+  it('niveaux + conso métrée → apport = bilan de matière (Δstock + conso), pertes = 0', () => {
+    // Modèle flotteur : la pompe ne fait que compenser → apport = Δstock(5) + conso(3) = 8,
+    // et NON débit×Δt (qui surestimerait). consoReseau = apport − Δstock = conso → pertes 0.
     const r = computeBilan({
       currentTimestamp: t1,
       stockMesureM3: 105,
       relevesBassin,
       entrees,
-      // un compteur ayant consommé 3 m³ sur l'intervalle
       compteursActifs: [{ id: 'c1', actif: true }],
       relevesCompteur: [
         { compteur_id: 'c1', index: 0, rupture_index: false, timestamp: t0 - 1000 },
@@ -100,30 +99,35 @@ describe('conso réseau / pertes / NRW réseau — critère #4', () => {
       debitM3h: 9.8,
     })!;
     expect(r).not.toBeNull();
-    expect(r.debitM3hUtilise).toBeCloseTo(9.8, 6);
-    expect(r.apportM3).toBeCloseTo(9.8, 6);
-    expect(r.consoM3).toBe(3); // compteurs
-    expect(r.consoReseauM3).toBeCloseTo(4.8, 6); // 9.8 − (105 − 100)
-    expect(r.pertesM3).toBeCloseTo(1.8, 6); // 4.8 − 3
-    expect(r.nrwReseauPct).toBeCloseTo(37.5, 4); // 1.8 / 4.8 × 100
+    expect(r.apportMode).toBe('mesure');
+    expect(r.apportM3).toBeCloseTo(8, 6); // 5 + 3 (pas 9,8 = débit×Δt×0,5)
+    expect(r.consoM3).toBe(3);
+    expect(r.consoReseauM3).toBeCloseTo(3, 6); // 8 − 5
+    expect(r.pertesM3).toBeCloseTo(0, 6); // 3 − 3
+    expect(r.stockAttendu).toBeCloseTo(105, 6); // bilan bouclé → écart 0
+    expect(r.ecartM3).toBeCloseTo(0, 6);
   });
 
-  it('anomalie réseau si pertes dépassent le seuil m³', () => {
+  it('anomalie réseau via repli débit (niveau plat, aucun compteur, pertes réelles)', () => {
+    // Plat (Δstock 0) + aucun compteur → repli débit : apport = 9,8×2×0,5 = 9,8 ;
+    // consoReseau 9,8 ; pertes 9,8 > seuil 1 → anomalie réseau.
     const r = computeBilan({
       currentTimestamp: t1,
-      stockMesureM3: 105,
+      stockMesureM3: 100, // plat
       relevesBassin,
       entrees,
       compteursActifs: [],
       relevesCompteur: [],
-      seuilM3: 1, // pertes 4.8 > 1 → anomalie réseau
+      seuilM3: 1,
       seuilPct: 1000,
       debitM3h: 9.8,
     })!;
+    expect(r.apportMode).toBe('debit');
+    expect(r.pertesM3).toBeGreaterThan(1);
     expect(r.anomalieReseau).toBe(true);
   });
 
-  it('rétrocompatibilité : sans débit, apport = entrées manuelles (critère #8)', () => {
+  it('rétrocompatibilité : entrées manuelles prioritaires sur le débit (critère c)', () => {
     const r = computeBilan({
       currentTimestamp: t1,
       stockMesureM3: 105,
@@ -133,16 +137,18 @@ describe('conso réseau / pertes / NRW réseau — critère #4', () => {
       relevesCompteur: [],
       seuilM3: 100,
       seuilPct: 100,
+      debitM3h: 9.8, // ignoré : les entrées priment
     })!;
+    expect(r.apportMode).toBe('entrees');
     expect(r.apportM3).toBe(20);
     expect(r.debitM3hUtilise).toBeNull();
     expect(r.entreesM3).toBe(20);
   });
 
-  it('apport par débit PONDÉRÉ par FRACTION_POMPE (pompe intermittente, pas de marche continue)', () => {
+  it('repli débit PONDÉRÉ par FRACTION_POMPE quand le niveau est plat sans compteur', () => {
     const r = computeBilan({
       currentTimestamp: t1,
-      stockMesureM3: 100, // Δstock 0 → consoReseau = apport
+      stockMesureM3: 100, // Δstock 0 (plat) → repli débit
       relevesBassin,
       entrees,
       compteursActifs: [],
@@ -151,10 +157,25 @@ describe('conso réseau / pertes / NRW réseau — critère #4', () => {
       seuilPct: 1000,
       debitM3h: 10,
     })!;
-    // Δt 2h : apport = 10 × 2 × FRACTION_POMPE(0,5) = 10 (et NON 20 = marche continue).
-    expect(r.apportM3).toBeCloseTo(10 * 2 * FRACTION_POMPE, 6);
-    expect(r.apportM3).toBeCloseTo(10, 6);
-    expect(r.consoReseauM3).toBeCloseTo(10, 6); // apport − Δstock(0)
+    expect(r.apportMode).toBe('debit');
+    expect(r.apportM3).toBeCloseTo(10 * 2 * FRACTION_POMPE, 6); // 10
+    expect(r.consoReseauM3).toBeCloseTo(10, 6);
+  });
+
+  it('niveau qui BAISSE sans compteur → pompe à l’arrêt, apport 0 (pas de repli débit)', () => {
+    const r = computeBilan({
+      currentTimestamp: t1,
+      stockMesureM3: 90, // baisse de 10 → vidage, pompe off
+      relevesBassin,
+      entrees,
+      compteursActifs: [],
+      relevesCompteur: [],
+      seuilM3: 1000,
+      seuilPct: 1000,
+      debitM3h: 10, // présent mais NON utilisé (le niveau a baissé)
+    })!;
+    expect(r.apportMode).toBe('aucun');
+    expect(r.apportM3).toBe(0);
   });
 });
 

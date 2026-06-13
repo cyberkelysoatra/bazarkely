@@ -209,6 +209,12 @@ export interface ConfigRow {
   bassin_hauteur_flotteur_m: number | null;
   /** Hauteur du trop-plein (m) — sécurité, atteinte seulement si flotteurs défaillants. */
   bassin_hauteur_trop_plein_m: number | null;
+  /**
+   * Bande d'hystérésis du flotteur (cm) : profondeur sous le flotteur à laquelle la
+   * pompe redémarre (Phase 3, modèle d'apport « flotteur »). Défaut métier 10 cm.
+   * Sert à reconnaître le régime de régulation et à borner l'apport estimé.
+   */
+  bassin_band_flotteur_cm: number | null;
   /** Écart % max entre deux tests de débit au-delà duquel on alerte « débit instable » (déf. 15). */
   debit_ecart_max_pct: number | null;
   tarif_m3: number | null;
