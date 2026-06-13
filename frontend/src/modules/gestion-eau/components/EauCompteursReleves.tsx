@@ -721,21 +721,19 @@ function HistoriqueDrawer({
               type="button"
               onClick={dirty ? handleSave : editing ? cancelEdit : enterEdit}
               disabled={saving}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                 dirty
                   ? 'bg-ahuvi-forest text-white hover:bg-ahuvi-forest/90'
-                  : editing
-                    ? 'bg-ahuvi-100 text-ahuvi-forest hover:bg-ahuvi-200'
-                    : 'bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
               }`}
             >
               {dirty ? (
                 <>
-                  <Save className="w-4 h-4" aria-hidden="true" /> ENREGISTRER
+                  <Save className="w-3.5 h-3.5" aria-hidden="true" /> ENREGISTRER
                 </>
               ) : (
                 <>
-                  <Pencil className="w-4 h-4" aria-hidden="true" /> MODIFIER
+                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> MODIFIER
                 </>
               )}
             </button>
