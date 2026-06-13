@@ -6,6 +6,19 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.42.0 - 2026-06-08 (Session S93 — Gestion Eau : invitation par LIEN, ÉVO 2/3 — vitrine « lien déjà utilisé »)
+
+### 🪧 Page de présentation pour un lien d'invitation déjà utilisé — VALIDÉ EN PROD (visuel)
+
+- `EauVitrinePage` (`/i/:token`) devient une page à **deux visages** selon l'état public du jeton (`getInvitationTokenState`, ÉVO 1) :
+  - **Lien valide** → écran d'inscription **inchangé** (chiffres + 3 bénéfices + « Continuer avec Google »).
+  - **Lien mort** (`used`/`expired`/`revoked`/`unknown` + hors-ligne) → **vitrine marketing AHUVI** : bandeau « déjà utilisé », hero « Itampolo Resort · Nosy Be », 2 blocs texte, 4 astuces, 3 photos du domaine, puis **fiche « Demander un accès »** (nom/WhatsApp/fonction requis ; email/message optionnels).
+- Submit de la fiche : enregistre l'intention d'enrôlement (`intent: 'demande'` enrichie) + deep-link de retour `/gestion-eau/accueil` + **retire le jeton mort** (jamais de claim) → connexion Google → `processPendingEnrollment` crée la demande.
+- **3 photos** câblées (`ahuvi-golf-practice.jpg` / `ahuvi-residences.jpg` / `ahuvi-villa-piscine.jpg`) avec dégradation déterministe (icône de repère en couche de base tant que la photo n'a pas chargé).
+- Étapes : v3.40.0 (vitrine + fiche), v3.40.1 (dégradation déterministe des photos), v3.42.0 (vraies photos). Reste : validation E2E interactive (Google → demande admin) par JOEL.
+
+---
+
 ## Version 3.36.0 - 2026-06-08 (Session S92 — Gestion Eau : invitation par LIEN WhatsApp / jeton, Phase 4 — UI admin)
 
 ### 🔗 Inviter par lien WhatsApp (2ᵉ canal, sans connaître l'adresse Google) — VALIDÉ E2E EN PROD

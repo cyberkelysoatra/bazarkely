@@ -21,7 +21,7 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import {
-  Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, History, Activity,
+  Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, History, Activity,
   ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
@@ -893,7 +893,7 @@ export default function EauBassinReleves({
                         <button onClick={() => setEditing({ id: r.id, hauteur: String(r.hauteur_cm), datetime: isoToLocalInput(r.timestamp) })}
                           disabled={busy || !isOnline || isReadOnly} aria-label="Modifier le relevé"
                           className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-700 hover:bg-blue-100 disabled:opacity-40">
-                          <Pencil className="w-4 h-4" aria-hidden="true" />
+                          <NotebookPen className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <button onClick={() => removeReleve(r)} disabled={busy || !isOnline || isReadOnly} aria-label="Supprimer le relevé"
                           className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-40">

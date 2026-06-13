@@ -13,7 +13,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import {
-  Droplet, Zap, Pencil, Search, Gauge, CalendarDays, BarChart3, Save, Info, ScanLine,
+  Droplet, Zap, Pencil, NotebookPen, Search, Gauge, CalendarDays, BarChart3, Info, ScanLine,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
@@ -722,45 +722,8 @@ function HistoriqueDrawer({
 
   return (
     <div className="pt-3 space-y-2">
-      {/* Sélecteur eau/élec (gauche) + action admin MODIFIER/ENREGISTRER (droite). */}
-      {(selecteur || isAdmin) && (
-        <div className="flex items-center justify-between gap-2">
-          <div>{selecteur}</div>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={dirty ? handleSave : editing ? cancelEdit : enterEdit}
-              disabled={saving}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                dirty
-                  ? 'bg-ahuvi-forest text-white hover:bg-ahuvi-forest/90'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              }`}
-            >
-              {dirty ? (
-                <>
-                  <Save className="w-3.5 h-3.5" aria-hidden="true" /> ENREGISTRER
-                </>
-              ) : (
-                <>
-                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> MODIFIER
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Avis post-enregistrement : un index modifié change le stock du bassin. */}
-      {showBilanAvis && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
-          <span>
-            Index modifié. Pensez à lancer <strong>« Recalculer tous les bilans »</strong> (onglet Bassin)
-            pour mettre à jour le stock du bassin et les écarts.
-          </span>
-        </div>
-      )}
+      {/* Sélecteur eau/élec en haut ; l'action admin MODIFIER/ENREGISTRER est déplacée tout en bas du tiroir. */}
+      {selecteur && <div>{selecteur}</div>}
 
       {histo.length > 0 && (
         <div className="rounded-lg border border-ahuvi-100 bg-ahuvi-50/40 p-2">
@@ -830,6 +793,43 @@ function HistoriqueDrawer({
           )}
         </div>
       </div>
+
+      {/* Action admin déplacée tout en bas du tiroir (sous la liste) : avis post-enregistrement + bouton. */}
+      {isAdmin && (
+        <>
+          {showBilanAvis && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                Index modifié. Pensez à lancer <strong>« Recalculer tous les bilans »</strong> (onglet Bassin)
+                pour mettre à jour le stock du bassin et les écarts.
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={dirty ? handleSave : editing ? cancelEdit : enterEdit}
+              disabled={saving}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                dirty
+                  ? 'bg-ahuvi-forest text-white hover:bg-ahuvi-forest/90'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              }`}
+            >
+              {dirty ? (
+                <>
+                  <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" /> ENREGISTRER
+                </>
+              ) : (
+                <>
+                  <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" /> MODIFIER
+                </>
+              )}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

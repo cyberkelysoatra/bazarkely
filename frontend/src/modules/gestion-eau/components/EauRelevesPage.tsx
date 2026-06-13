@@ -138,17 +138,6 @@ export default function EauRelevesPage() {
         ]}
       />
 
-      {/* Bouton Scan intégré à la page (hors header partagé), en haut à droite du contenu. */}
-      <div className={`${WRAP} flex justify-end -mt-1 mb-1`}>
-        <button
-          type="button"
-          onClick={() => setScannerOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ahuvi-teal text-white text-sm font-medium shadow-soft hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
-        >
-          <ScanLine className="w-4 h-4" aria-hidden="true" /> Scan
-        </button>
-      </div>
-
       {/* L'aide générale « Relevés » couvre l'onglet Compteurs ; Bassin/Apports portent la leur. */}
       {tab === 'compteurs' && (
         <EauAide id={AIDE.releves.id} quoi={AIDE.releves.quoi} comment={AIDE.releves.comment} className={WRAP} />
@@ -159,6 +148,7 @@ export default function EauRelevesPage() {
           <EauCompteursReleves
             preselect={preselect}
             preselectFacet={preselectFacet}
+            onScan={() => setScannerOpen(true)}
             onConsumePreselect={() => {
               setPreselect(null);
               setPreselectFacet(null);
