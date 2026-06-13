@@ -417,6 +417,27 @@ function CompteurCard({
   const saisirKey = `${cp.id}:saisir`;
   const histoKey = `${cp.id}:histo`;
 
+  // Crayon compact (sans texte) : ouvre/ferme le tiroir Saisir. stopPropagation pour ne
+  // pas déclencher le clic-carte qui ouvrirait l'Historique.
+  const pencilButton = (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle(saisirKey);
+      }}
+      disabled={isReadOnly}
+      aria-label="Saisir un relevé"
+      className={`flex-shrink-0 w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors ${
+        openKey === saisirKey
+          ? 'bg-ahuvi-forest text-white'
+          : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
+      }`}
+    >
+      <Pencil className="w-4 h-4" aria-hidden="true" />
+    </button>
+  );
+
   return (
     <div
       ref={registerRef}
@@ -460,9 +481,14 @@ function CompteurCard({
               )}
             </div>
           </div>
+        </div>
 
-          {!never && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
+        {/* Ligne d'infos + crayon compact de saisie. Le crayon est SŒUR du résumé cliquable
+            (jamais imbriqué) : clic crayon → tiroir Saisir, clic carte → Historique.
+            never (aucun relevé) : pas de ligne d'infos, crayon seul à droite pour le 1ᵉʳ relevé. */}
+        {!never ? (
+          <div className="mt-1.5 flex items-start gap-2">
+            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
               <span className="inline-flex items-center gap-1">
                 <TypeIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 {headline === 'eau' ? 'Eau' : 'Élec'}
@@ -478,28 +504,11 @@ function CompteurCard({
                 </span>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Saisir uniquement (Historique = clic sur la carte). stopPropagation pour ne
-            pas déclencher le clic-carte qui ouvrirait aussi l'Historique. */}
-        <div className="mt-2.5">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(saisirKey);
-            }}
-            disabled={isReadOnly}
-            className={`w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-              openKey === saisirKey
-                ? 'bg-ahuvi-forest text-white'
-                : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
-            }`}
-          >
-            <Pencil className="w-4 h-4" aria-hidden="true" /> Saisir
-          </button>
-        </div>
+            {pencilButton}
+          </div>
+        ) : (
+          <div className="mt-1.5 flex justify-end">{pencilButton}</div>
+        )}
       </div>
 
       {openKey === saisirKey && (

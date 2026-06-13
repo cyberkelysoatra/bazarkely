@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 import {
   Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, History, Activity,
-  ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown,
+  ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
@@ -116,6 +116,8 @@ export default function EauBassinReleves({
   // Accordéon de la carte Bassin (un seul tiroir à la fois) + sections repliables.
   const [openDrawer, setOpenDrawer] = useState<'saisir' | 'histo' | null>(null);
   const [debitOpen, setDebitOpen] = useState(false);
+  // Tiroir « comprendre cette situation » sous la carte Stock d'eau (présentationnel).
+  const [explainOpen, setExplainOpen] = useState(false);
 
   // Saisie niveau
   const [hauteurCm, setHauteurCm] = useState('');
@@ -386,13 +388,83 @@ export default function EauBassinReleves({
   const bilan = dash?.dernierBilan ?? null;
   const anomalie = !!bilan?.anomalie;
 
+  // « Comprendre cette situation » : un seul cas (A→F) selon bilan null / anomalie / signe
+  // de l'écart. Textes français validés (à reprendre tels quels) ; ton = couleur + icône.
+  const EPS = 0.05; // m³ — marge « pile poil »
+  const explain: { tone: string; Icon: typeof Info; title: string; text: string; advice: string } = (() => {
+    if (bilan === null) {
+      return {
+        tone: 'text-gray-700',
+        Icon: Info,
+        title: 'Votre point de départ',
+        text: "C'est le premier relevé : il sert de référence, il n'y a encore rien à comparer. Dès le prochain relevé de niveau, l'app saura dire si le bassin tient ses comptes.",
+        advice: 'Refaites un relevé de niveau au prochain passage pour lancer le suivi.',
+      };
+    }
+    const ecart = bilan.ecart_m3 ?? 0;
+    if (bilan.anomalie) {
+      return ecart < 0
+        ? {
+            tone: 'text-rose-700',
+            Icon: AlertTriangle,
+            title: "Il manque de l'eau",
+            text: "Il manque nettement plus d'eau que ce que la consommation explique. C'est typiquement le signe d'une fuite sur le réseau, d'une vanne restée ouverte… ou d'un relevé erroné.",
+            advice: "Vérifiez d'abord le relevé, puis inspectez le réseau (fuite, vanne) sans tarder.",
+          }
+        : {
+            tone: 'text-amber-700',
+            Icon: AlertTriangle,
+            title: "Beaucoup plus d'eau que prévu",
+            text: "Il reste bien plus d'eau qu'attendu. Le plus souvent, un apport n'a pas été enregistré (remplissage, pluie, pompe) ou un relevé est faux.",
+            advice: "Vérifiez les relevés récents et notez tout remplissage qui n'aurait pas été saisi.",
+          };
+    }
+    if (Math.abs(ecart) <= EPS) {
+      return {
+        tone: 'text-emerald-700',
+        Icon: Info,
+        title: 'Tout colle',
+        text: "Le niveau réel tombe juste sur ce qui était attendu. Ce qui est entré par la pompe, moins ce qui a été consommé, correspond pile au niveau mesuré : le bassin tient parfaitement ses comptes.",
+        advice: 'Rien à faire — continuez vos relevés au rythme habituel.',
+      };
+    }
+    if (ecart > EPS) {
+      return {
+        tone: 'text-emerald-700',
+        Icon: Info,
+        title: 'Un peu plus que prévu',
+        text: "Il reste un peu plus d'eau que ce qu'on attendait. Bonne nouvelle : soit on a consommé moins, soit la pompe a rempli un peu plus généreusement. L'écart reste petit, rien d'inquiétant.",
+        advice: "Profitez-en, mais gardez un œil sur les prochains relevés au cas où l'écart se creuse.",
+      };
+    }
+    // ecart < -EPS
+    return {
+      tone: 'text-amber-700',
+      Icon: AlertTriangle,
+      title: 'Un peu moins que prévu',
+      text: "Il reste un peu moins d'eau que prévu, mais l'écart est encore dans la marge normale. Ça arrive : petite surconsommation, évaporation, ou un relevé un brin imprécis. Pas d'alerte pour l'instant.",
+      advice: "Surveillez le prochain relevé : si l'écart grandit, c'est le moment de chercher une fuite.",
+    };
+  })();
+
   return (
     <div className="space-y-4">
       <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
 
-      {/* Carte « Stock d'eau du bassin » (métaphore compte : eau restante = stock d'eau). */}
+      {/* Carte « Stock d'eau du bassin » (métaphore compte : eau restante = stock d'eau).
+          Cliquable → déplie un tiroir « comprendre cette situation » sous les chiffres. */}
       <div
-        className={`rounded-xl border bg-white p-4 shadow-soft ${anomalie ? 'border-amber-300' : 'border-ahuvi-100'}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={explainOpen}
+        onClick={() => setExplainOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExplainOpen((o) => !o);
+          }
+        }}
+        className={`cursor-pointer rounded-xl border bg-white p-4 shadow-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400 ${anomalie ? 'border-amber-300' : 'border-ahuvi-100'}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Stock d'eau du bassin</div>
@@ -428,6 +500,28 @@ export default function EauBassinReleves({
           <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
             Stock de référence — le bilan (écart mesuré vs attendu) sera calculé au prochain relevé de niveau.
           </div>
+        )}
+
+        {/* Affordance « icône d'abord » : la carte est cliquable pour comprendre la situation. */}
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1.5">
+            <Info className="w-4 h-4" aria-hidden="true" /> Comprendre cette situation
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${explainOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </div>
+
+        {/* Tiroir explicatif (un seul cas affiché) — sous les chiffres, dans la même carte. */}
+        {explainOpen && (
+          <Drawer>
+            <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 space-y-1.5">
+              <div className={`font-semibold ${explain.tone}`}>{explain.title}</div>
+              <p>{explain.text}</p>
+              <p className="flex items-start gap-1.5">
+                <explain.Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${explain.tone}`} aria-hidden="true" />
+                <span>{explain.advice}</span>
+              </p>
+            </div>
+          </Drawer>
         )}
       </div>
 
