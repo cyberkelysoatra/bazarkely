@@ -255,6 +255,24 @@ export async function addReleveCompteur(input: {
   return saveLocal('eau_releves_compteur', record);
 }
 
+/**
+ * Modifie un relevé de compteur EAU (admin) — merge partiel, upsert idempotent.
+ * Miroir de `updateReleveElec` (côté élec) et de `updateReleveBassin` : on conserve
+ * l'id client, on écrit Dexie d'abord (offline-first) puis push best-effort via
+ * `saveLocal` (`_dirty`, `withTimeout`). La conso d'intervalle se recalcule à la
+ * lecture (les index sont la seule source). Ne touche PAS aux bilans (hors périmètre :
+ * lancer « Recalculer tous les bilans » pour propager l'écart au stock du bassin).
+ */
+export async function updateReleveCompteur(
+  id: string,
+  patch: Partial<Omit<ReleveCompteurLocal, 'id'>>
+): Promise<ReleveCompteurLocal | null> {
+  const current = (await eauDb.eau_releves_compteur.get(id)) as ReleveCompteurLocal | undefined;
+  if (!current) return null;
+  const merged: ReleveCompteurLocal = { ...current, ...patch, id };
+  return saveLocal('eau_releves_compteur', merged);
+}
+
 export async function refreshReleves(online: boolean): Promise<void> {
   if (online) {
     await pullTable('eau_entrees_bassin');
