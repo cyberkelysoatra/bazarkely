@@ -33,6 +33,18 @@ export async function addEntreeBassin(input: {
   return saveLocal('eau_entrees_bassin', record);
 }
 
+/**
+ * Toutes les entrées (apports) du bassin, plus récentes d'abord. Lecture Dexie
+ * unique (offline-first) — alimente le KPI cumulé + la liste de cartes de l'onglet
+ * Apports (page Relevés v2) sans N requêtes.
+ */
+export async function listEntreesBassin(): Promise<EntreeBassinLocal[]> {
+  const all = (await eauDb.eau_entrees_bassin.toArray()) as EntreeBassinLocal[];
+  return all
+    .slice()
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
 // ─────────────────────── Relevé de niveau (→ bilan) ───────────────────────
 /**
  * Enregistre un relevé de niveau (hauteur cm + volume m³ déjà converti) PUIS

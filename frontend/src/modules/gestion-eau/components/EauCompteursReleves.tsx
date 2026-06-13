@@ -72,10 +72,18 @@ function sortGroup(card: ReleveCard): number {
 
 export default function EauCompteursReleves({
   preselect,
+  preselectFacet,
   onConsumePreselect,
 }: {
   /** Compteur à préselectionner (deep-link `?c=` depuis un scan) → ouvre sa saisie. */
   preselect: string | null;
+  /**
+   * Nature à ouvrir par défaut dans le tiroir Saisir. Deep-link `?tab=elec` (carte
+   * « Conso électrique » du tableau de bord) : si `preselect` est absent, on cible le
+   * compteur dont le dernier relevé élec est le plus récent (sinon la 1ʳᵉ carte) et on
+   * ouvre sa saisie sur la nature « Élec ».
+   */
+  preselectFacet?: ReleveFacet | null;
   onConsumePreselect: () => void;
 }) {
   const { isReadOnly } = useGestionEau();
@@ -97,6 +105,8 @@ export default function EauCompteursReleves({
   const [loading, setLoading] = useState(true);
   // Tiroir ouvert : `${compteurId}:saisir` | `${compteurId}:histo` | null (un seul à la fois).
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // Nature forcée du tiroir Saisir pour le compteur ciblé par un deep-link élec.
+  const [forcedFacet, setForcedFacet] = useState<{ id: string; facet: ReleveFacet } | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const load = async () => {
@@ -180,22 +190,42 @@ export default function EauCompteursReleves({
     return total;
   }, [eauMap, periode]);
 
-  // Préselection (scan) : dès que les cartes sont chargées, ouvre la saisie du compteur ciblé.
+  // Préselection : dès que les cartes sont chargées, ouvre la saisie du compteur ciblé.
+  //  - `?c=<id>` (scan)   → ce compteur, nature « de tête ».
+  //  - `?tab=elec`        → compteur au relevé élec le plus récent (sinon 1ʳᵉ carte), nature « Élec ».
   useEffect(() => {
-    if (!preselect || loading) return;
-    const exists = cards.some((c) => c.item.compteur.id === preselect);
-    if (!exists) {
-      onConsumePreselect();
-      return;
+    if (loading || (!preselect && !preselectFacet)) return;
+
+    let targetId: string | null =
+      preselect && cards.some((c) => c.item.compteur.id === preselect) ? preselect : null;
+
+    if (!targetId && preselectFacet === 'elec') {
+      let bestMs = -Infinity;
+      for (const [id, list] of elecMap) {
+        if (list.length === 0 || !cards.some((c) => c.item.compteur.id === id)) continue;
+        const ms = new Date(list[list.length - 1].timestamp).getTime();
+        if (ms > bestMs) {
+          bestMs = ms;
+          targetId = id;
+        }
+      }
+      if (!targetId) targetId = visibleCards[0]?.item.compteur.id ?? null;
     }
-    setOpenKey(`${preselect}:saisir`);
-    const el = cardRefs.current.get(preselect);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (targetId) {
+      setOpenKey(`${targetId}:saisir`);
+      if (preselectFacet) setForcedFacet({ id: targetId, facet: preselectFacet });
+      const el = cardRefs.current.get(targetId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     onConsumePreselect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselect, loading, cards]);
+  }, [preselect, preselectFacet, loading, cards]);
 
-  const toggle = (key: string) => setOpenKey((k) => (k === key ? null : key));
+  const toggle = (key: string) => {
+    setForcedFacet(null); // un clic manuel reprend la nature « de tête » de la carte
+    setOpenKey((k) => (k === key ? null : key));
+  };
 
   if (loading) {
     return <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>;
@@ -274,8 +304,10 @@ export default function EauCompteursReleves({
               openKey={openKey}
               onToggle={toggle}
               isReadOnly={isReadOnly}
+              forcedFacet={forcedFacet?.id === card.item.compteur.id ? forcedFacet.facet : null}
               onSaved={async () => {
                 setOpenKey(null);
+                setForcedFacet(null);
                 await load();
               }}
               registerRef={(el) => cardRefs.current.set(card.item.compteur.id, el)}
@@ -293,6 +325,7 @@ function CompteurCard({
   openKey,
   onToggle,
   isReadOnly,
+  forcedFacet,
   onSaved,
   registerRef,
 }: {
@@ -300,6 +333,8 @@ function CompteurCard({
   openKey: string | null;
   onToggle: (key: string) => void;
   isReadOnly: boolean;
+  /** Nature imposée pour le tiroir Saisir (deep-link élec), sinon null = nature « de tête ». */
+  forcedFacet: ReleveFacet | null;
   onSaved: () => void;
   registerRef: (el: HTMLDivElement | null) => void;
 }) {
@@ -395,14 +430,14 @@ function CompteurCard({
       {openKey === saisirKey && (
         <Drawer>
           <div className="px-3 pb-3 border-t border-ahuvi-100">
-            <EauTiroirSaisie compteur={cp} defaultFacet={headline} onSaved={onSaved} />
+            <EauTiroirSaisie compteur={cp} defaultFacet={forcedFacet ?? headline} onSaved={onSaved} />
           </div>
         </Drawer>
       )}
       {openKey === histoKey && (
         <Drawer>
           <div className="px-3 pb-3 border-t border-ahuvi-100">
-            <HistoriqueDrawer releves={releves} facet={headline} />
+            <HistoriqueDrawer card={card} />
           </div>
         </Drawer>
       )}
@@ -428,8 +463,16 @@ function Drawer({ children }: { children: ReactNode }) {
   );
 }
 
-/** Tiroir Historique : mini-graphe + 6 derniers relevés (3 empilés, reste au scroll). */
-function HistoriqueDrawer({ releves, facet }: { releves: AnyReleve[]; facet: ReleveFacet }) {
+/**
+ * Tiroir Historique : mini-graphe + 6 derniers relevés (3 empilés, reste au scroll).
+ * Pour un compteur dual (relevés eau ET élec), un sélecteur eau/élec permet de
+ * consulter les deux séries — même affordance que le tiroir Saisir.
+ */
+function HistoriqueDrawer({ card }: { card: ReleveCard }) {
+  const { eau, elec, hasEau, hasElec, headline } = card;
+  const [facet, setFacet] = useState<ReleveFacet>(headline);
+  const dual = hasEau && hasElec;
+  const releves: AnyReleve[] = facet === 'eau' ? eau : elec;
   const fmt = facet === 'eau' ? fmtM3 : fmtKwh;
 
   // Lignes (date, index, conso) calculées sur la série COMPLÈTE, puis 6 dernières affichées.
@@ -454,12 +497,44 @@ function HistoriqueDrawer({ releves, facet }: { releves: AnyReleve[]; facet: Rel
     [rows]
   );
 
+  // Sélecteur eau/élec — affiché seulement pour un compteur dual (les deux séries présentes).
+  const selecteur = dual ? (
+    <div className="inline-flex rounded-lg border border-ahuvi-200 bg-white p-0.5 text-sm">
+      <button
+        type="button"
+        onClick={() => setFacet('eau')}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
+          facet === 'eau' ? 'bg-ahuvi-teal text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
+        }`}
+      >
+        <Droplet className="w-4 h-4" aria-hidden="true" /> Eau
+      </button>
+      <button
+        type="button"
+        onClick={() => setFacet('elec')}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
+          facet === 'elec' ? 'bg-ahuvi-gold text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
+        }`}
+      >
+        <Zap className="w-4 h-4" aria-hidden="true" /> Élec
+      </button>
+    </div>
+  ) : null;
+
   if (releves.length === 0) {
-    return <div className="pt-3 text-sm text-gray-400 text-center">Aucun relevé pour ce compteur.</div>;
+    return (
+      <div className="pt-3 space-y-2">
+        {selecteur}
+        <div className="text-sm text-gray-400 text-center py-2">
+          Aucun relevé {facet === 'eau' ? 'eau' : 'élec'} pour ce compteur.
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="pt-3 space-y-2">
+      {selecteur}
       {histo.length > 0 && (
         <div className="rounded-lg border border-ahuvi-100 bg-ahuvi-50/40 p-2">
           <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
