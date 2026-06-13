@@ -13,7 +13,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import {
-  Droplet, Zap, Pencil, Search, Gauge, CalendarDays, BarChart3, Save, Info,
+  Droplet, Zap, Pencil, Search, Gauge, CalendarDays, BarChart3, Save, Info, ScanLine,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
@@ -122,6 +122,7 @@ export default function EauCompteursReleves({
   preselect,
   preselectFacet,
   onConsumePreselect,
+  onScan,
 }: {
   /** Compteur à préselectionner (deep-link `?c=` depuis un scan) → ouvre sa saisie. */
   preselect: string | null;
@@ -133,6 +134,8 @@ export default function EauCompteursReleves({
    */
   preselectFacet?: ReleveFacet | null;
   onConsumePreselect: () => void;
+  /** Ouvre le scanner QR (bouton Scan intégré à la rangée de chips de période). */
+  onScan: () => void;
 }) {
   const { isReadOnly, roles } = useGestionEau();
   const [items, setItems] = useState<TourneeItem[]>([]);
@@ -328,8 +331,8 @@ export default function EauCompteursReleves({
         />
       </div>
 
-      {/* Chips de période. */}
-      <div className="flex gap-2">
+      {/* Chips de période (à gauche) + bouton Scan (poussé à droite via ml-auto). */}
+      <div className="flex gap-2 items-center">
         {PERIODES.map((p) => (
           <button
             key={p.key}
@@ -344,6 +347,13 @@ export default function EauCompteursReleves({
             {p.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={onScan}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ahuvi-teal text-white text-sm font-medium shadow-soft hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+        >
+          <ScanLine className="w-4 h-4" aria-hidden="true" /> Scan
+        </button>
       </div>
 
       {/* Liste de cartes. */}
@@ -487,7 +497,7 @@ function CompteurCard({
             (jamais imbriqué) : clic crayon → tiroir Saisir, clic carte → Historique.
             never (aucun relevé) : pas de ligne d'infos, crayon seul à droite pour le 1ᵉʳ relevé. */}
         {!never ? (
-          <div className="mt-1.5 flex items-start gap-2">
+          <div className="mt-1.5 flex items-end gap-2">
             <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500">
               <span className="inline-flex items-center gap-1">
                 <TypeIcon className="w-3.5 h-3.5" aria-hidden="true" />
