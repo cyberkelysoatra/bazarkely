@@ -184,8 +184,8 @@ export default function EauConfigPage() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+        <div className="space-y-4 animate-fade-in">
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
               <Gauge className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
               Dimensions & tarif
@@ -231,7 +231,7 @@ export default function EauConfigPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
               <Building2 className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
               Copropriété
@@ -260,7 +260,7 @@ export default function EauConfigPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-gray-800 mb-1 flex items-center gap-1.5">
               <Map className="w-5 h-5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
               Zone carte (hors-ligne)

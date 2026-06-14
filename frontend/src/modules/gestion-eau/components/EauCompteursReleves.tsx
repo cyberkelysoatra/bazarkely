@@ -486,7 +486,7 @@ function CompteurCard({
                   Aucun relevé
                 </span>
               ) : (
-                <div className={`text-2xl font-bold ${headline === 'eau' ? 'text-ahuvi-teal' : 'text-[#8a8836]'}`}>
+                <div className={`text-2xl font-bold ${headline === 'eau' ? 'text-ahuvi-teal' : 'text-ahuvi-gold-700'}`}>
                   {dernier ? dernier.index.toLocaleString('fr-FR') : '—'}
                 </div>
               )}
@@ -510,7 +510,7 @@ function CompteurCard({
               <span>{conso == null ? '—' : `+${fmt(conso)}`}</span>
               {/* Repère de l'autre nature présente sur ce même compteur. */}
               {headline === 'eau' && hasElec && (
-                <span className="inline-flex items-center gap-0.5 text-[#8a8836]">
+                <span className="inline-flex items-center gap-0.5 text-ahuvi-gold-700">
                   <Zap className="w-3 h-3" aria-hidden="true" /> élec aussi
                 </span>
               )}

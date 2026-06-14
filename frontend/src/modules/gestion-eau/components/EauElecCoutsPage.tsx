@@ -250,7 +250,7 @@ export default function EauElecCoutsPage() {
           hint="Ajoutez un mois (facture JIRAMA, gasoil, kWh produits) pour calculer le prix du kWh."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 animate-fade-in">
           {couts.map((c) => (
             <div
               key={c.id}

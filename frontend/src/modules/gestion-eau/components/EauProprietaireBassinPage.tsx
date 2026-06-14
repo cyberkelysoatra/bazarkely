@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Waves, Droplet, Percent, Hourglass } from 'lucide-react';
-import { EauStatCard, EauEmptyState } from './EauUi';
+import { EauStatCard, EauEmptyState, EauChartCard, EAU_CHART } from './EauUi';
 import { getDashboardData, type DashboardData } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { fmtM3, fmtPct } from '../utils/format';
@@ -64,7 +64,7 @@ export default function EauProprietaireBassinPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Cartes KPI — iconographie « icône d'abord » (charte AHUVI). */}
       <div className="grid grid-cols-2 gap-3">
         <EauStatCard
@@ -98,29 +98,29 @@ export default function EauProprietaireBassinPage() {
       </div>
 
       {/* Courbe du niveau du bassin (volume mesuré) — animation désactivée (cf. v3.43.1). */}
-      <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-          <Waves className="w-4 h-4 text-ahuvi-teal" aria-hidden="true" /> Niveau du bassin (30 j)
-        </div>
-        {niveau.length === 0 ? (
-          <div className="text-xs text-gray-400 py-6 text-center">Historique disponible après plusieurs relevés.</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={niveau}>
-              <XAxis dataKey="label" hide />
-              <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#10939F"
-                fill="#10939F"
-                fillOpacity={0.2}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+      <EauChartCard
+        title="Niveau du bassin (30 j)"
+        icon={Waves}
+        empty={niveau.length === 0}
+        emptyIcon={Waves}
+        emptyTitle="Historique à venir"
+        emptyHint="Disponible après plusieurs relevés."
+      >
+        <ResponsiveContainer width="100%" height={150}>
+          <AreaChart data={niveau}>
+            <XAxis dataKey="label" hide />
+            <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={EAU_CHART.teal}
+              fill={EAU_CHART.teal}
+              fillOpacity={0.2}
+              isAnimationActive={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </EauChartCard>
     </div>
   );
 }

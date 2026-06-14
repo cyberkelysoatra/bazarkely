@@ -40,7 +40,9 @@ const TONE_CONTAINER: Record<EauTone, string> = {
 const TONE_VALUE: Record<EauTone, string> = {
   forest: 'text-ahuvi-forest',
   olive: 'text-ahuvi-olive',
-  gold: 'text-ahuvi-gold',
+  // VALEUR or = encre assombrie accessible (contraste ≥ 4,5:1 sur blanc). Les SURFACES et
+  // ICÔNES or restent #9D9B4B (cf. TONE_CONTAINER.gold) — seul le texte passe à gold-700.
+  gold: 'text-ahuvi-gold-700',
   teal: 'text-ahuvi-teal',
   neutral: 'text-gray-800',
   amber: 'text-amber-700',

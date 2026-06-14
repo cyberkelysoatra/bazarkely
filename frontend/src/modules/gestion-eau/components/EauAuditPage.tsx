@@ -101,7 +101,7 @@ export default function EauAuditPage() {
           ) : (
             <div className="space-y-1.5">
               {auditFiltered.map((a) => (
-                <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
+                <div key={a.id} className="rounded-lg border border-ahuvi-100 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
                   <EauListIcon icon={ScrollText} tone="forest" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -125,7 +125,7 @@ export default function EauAuditPage() {
         ) : (
           <div className="space-y-1.5">
             {scansFiltered.map((s) => (
-              <div key={s.id} className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
+              <div key={s.id} className="rounded-lg border border-ahuvi-100 bg-white p-2.5 shadow-soft flex items-start gap-2.5">
                 <EauListIcon icon={s.type === 'compteur' ? Gauge : User} tone={s.type === 'compteur' ? 'teal' : 'olive'} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">

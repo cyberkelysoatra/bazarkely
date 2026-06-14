@@ -439,7 +439,7 @@ export default function EauDemandesPage() {
               {/* Lignes éditables */}
               <div className="space-y-2">
                 {batch.map((c, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-lg p-2.5 space-y-2">
+                  <div key={i} className="bg-white border border-ahuvi-100 rounded-lg p-2.5 space-y-2">
                     <div className="flex items-center gap-2">
                       <input
                         value={c.nom}
@@ -675,7 +675,7 @@ export default function EauDemandesPage() {
                   {compteurs.length === 0 ? (
                     <p className="text-xs text-gray-400">Aucun compteur. Créez-en d’abord.</p>
                   ) : (
-                    <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-lg bg-white divide-y">
+                    <div className="max-h-44 overflow-y-auto border border-ahuvi-100 rounded-lg bg-white divide-y">
                       {compteurs.map((c) => (
                         <label key={c.id} className="flex items-center gap-2 px-3 py-2">
                           <input type="checkbox" checked={iCompteurs.has(c.id)} onChange={() => toggleInviteCompteur(c.id)}
@@ -709,7 +709,7 @@ export default function EauDemandesPage() {
                   const accepted = inv.statut === 'acceptee';
                   const expired = !accepted && isExpired(inv);
                   return (
-                    <div key={inv.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                    <div key={inv.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3 min-w-0">
                           <EauListIcon icon={inv.role_admin ? ShieldCheck : inv.role_client ? Users : ClipboardList}
@@ -774,7 +774,7 @@ export default function EauDemandesPage() {
                 {emailInvites.map((inv) => {
                   const accepted = inv.statut === 'acceptee';
                   return (
-                    <div key={inv.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                    <div key={inv.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3 min-w-0">
                           <EauListIcon icon={inv.role_admin ? ShieldCheck : inv.role_client ? Users : ClipboardList}
@@ -831,7 +831,7 @@ export default function EauDemandesPage() {
                   const draft = draftFor(d.id);
                   const open = openId === d.id;
                   return (
-                    <div key={d.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                    <div key={d.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3 min-w-0">
                           <EauListIcon icon={UserPlus} tone="olive" />
@@ -877,7 +877,7 @@ export default function EauDemandesPage() {
                             {compteurs.length === 0 ? (
                               <p className="text-xs text-gray-400">Aucun compteur.</p>
                             ) : (
-                              <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y">
+                              <div className="max-h-40 overflow-y-auto border border-ahuvi-100 rounded-lg divide-y">
                                 {compteurs.map((c) => (
                                   <label key={c.id} className="flex items-center gap-2 px-3 py-2">
                                     <input type="checkbox" checked={draft.compteurs.has(c.id)}
@@ -950,7 +950,7 @@ function Badge({ icon: Icon, tone, children }: {
   children: ReactNode;
 }) {
   const cls = tone === 'gold'
-    ? 'bg-[#f4f2dd] text-[#8a8836]'
+    ? 'bg-ahuvi-gold/15 text-ahuvi-gold-700'
     : tone === 'teal'
       ? 'bg-cyan-50 text-ahuvi-teal'
       : 'bg-ahuvi-100 text-ahuvi-olive';

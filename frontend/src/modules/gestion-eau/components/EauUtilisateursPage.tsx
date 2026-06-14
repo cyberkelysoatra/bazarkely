@@ -127,7 +127,7 @@ export default function EauUtilisateursPage() {
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-fade-in">
           {/* Code d'enrôlement généré */}
           {newCode && (
             <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4">
@@ -172,7 +172,7 @@ export default function EauUtilisateursPage() {
                 {compteurs.length === 0 ? (
                   <p className="text-xs text-gray-400">Aucun compteur. Créez-en d’abord.</p>
                 ) : (
-                  <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-lg bg-white divide-y">
+                  <div className="max-h-44 overflow-y-auto border border-ahuvi-100 rounded-lg bg-white divide-y">
                     {compteurs.map((c) => (
                       <label key={c.id} className="flex items-center gap-2 px-3 py-2">
                         <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleCompteur(c.id)}
@@ -202,7 +202,7 @@ export default function EauUtilisateursPage() {
             ) : (
               <div className="space-y-1">
                 {roles.map((r) => (
-                  <div key={r.user_id} className="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-start gap-2.5">
+                  <div key={r.user_id} className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-start gap-2.5">
                     <EauListIcon
                       icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : Users}
                       tone={r.admin ? 'gold' : r.releveur ? 'olive' : r.promoteur ? 'teal' : 'neutral'}
@@ -250,7 +250,7 @@ export default function EauUtilisateursPage() {
             ) : (
               <div className="space-y-1">
                 {comptes.map((c) => (
-                  <div key={c.id} className="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center gap-2.5">
+                  <div key={c.id} className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-center gap-2.5">
                     <EauListIcon icon={Gauge} tone="teal" />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900 text-sm">{c.nom}</div>

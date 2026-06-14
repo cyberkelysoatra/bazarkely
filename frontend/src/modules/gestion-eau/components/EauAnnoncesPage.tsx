@@ -150,7 +150,11 @@ export default function EauAnnoncesPage() {
             <h2 className="font-semibold text-ahuvi-forest font-ahuvi-body">
               {draft.id ? 'Modifier l’annonce' : 'Nouvelle annonce'}
             </h2>
-            <button onClick={() => setDraft(null)} aria-label="Fermer" className="text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setDraft(null)}
+              aria-label="Fermer"
+              className="inline-flex items-center justify-center w-11 h-11 -m-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-ahuvi-50 transition-colors"
+            >
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
@@ -238,12 +242,12 @@ export default function EauAnnoncesPage() {
           }
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 animate-fade-in">
           {annonces.map((a) => {
             const active = isAnnonceActive(a);
             const opt = TYPE_OPTIONS.find((o) => o.value === a.type);
             return (
-              <div key={a.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-soft">
+              <div key={a.id} className="rounded-lg border border-ahuvi-100 bg-white p-3 shadow-soft">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex items-start gap-3">
                     <EauListIcon icon={Megaphone} tone="olive" />
@@ -282,11 +286,19 @@ export default function EauAnnoncesPage() {
                       </button>
                     )}
                     {!isReadOnly && (
-                      <div className="flex gap-2">
-                        <button onClick={() => openEdit(a)} aria-label="Modifier" className="text-gray-400 hover:text-ahuvi-olive">
+                      <div className="flex gap-1 -mr-1">
+                        <button
+                          onClick={() => openEdit(a)}
+                          aria-label="Modifier"
+                          className="inline-flex items-center justify-center w-11 h-11 rounded-lg text-gray-400 hover:text-ahuvi-olive hover:bg-ahuvi-50 transition-colors"
+                        >
                           <Pencil className="w-4 h-4" aria-hidden="true" />
                         </button>
-                        <button onClick={() => remove(a)} aria-label="Supprimer" className="text-gray-400 hover:text-rose-600">
+                        <button
+                          onClick={() => remove(a)}
+                          aria-label="Supprimer"
+                          className="inline-flex items-center justify-center w-11 h-11 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
                           <Trash2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>

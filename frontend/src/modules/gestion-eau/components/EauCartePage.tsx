@@ -8,7 +8,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 import { Map as MapIcon, Download, AlertTriangle, MapPin, Gauge } from 'lucide-react';
-import { EauListIcon } from './EauUi';
+import { EauListIcon, EAU_CHART } from './EauUi';
 import { listCompteurs } from '../services/eauCompteurService';
 import { getConfig } from '../services/eauConfigService';
 import {
@@ -97,7 +97,7 @@ export default function EauCartePage() {
       if (c.lat == null || c.lng == null) continue;
       const icon = L.divIcon({
         className: '',
-        html: `<div style="background:#364E30;color:#fff;border:2px solid #fff;border-radius:9999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 3px rgba(0,0,0,.4)">💧</div>`,
+        html: `<div style="background:${EAU_CHART.forest};color:#fff;border:2px solid #fff;border-radius:9999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 3px rgba(0,0,0,.4)">💧</div>`,
         iconSize: [22, 22],
         iconAnchor: [11, 11],
       });

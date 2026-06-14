@@ -302,7 +302,7 @@ export default function EauTiroirSaisie({
         <div className="text-sm">
           <span className="block text-gray-600 mb-1">Photo du compteur</span>
           <div className="flex items-center gap-3">
-            <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+            <img src={photo} alt="Relevé" className="w-20 h-20 object-cover rounded-lg border border-ahuvi-100" />
             <div className="text-xs text-gray-500">
               <div>≈ {dataUrlSizeKo(photo)} Ko</div>
               <button

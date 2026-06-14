@@ -89,7 +89,7 @@ export default function EauRapportsPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft mb-4">
+      <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft mb-4">
         <label className="text-sm block">
           <span className="flex items-center gap-1.5 text-gray-600 mb-1">
             <CalendarClock className="w-4 h-4 text-ahuvi-olive flex-shrink-0" aria-hidden="true" />
@@ -110,7 +110,7 @@ export default function EauRapportsPage() {
       ) : !rapport ? (
         <div className="text-gray-400 text-sm py-8 text-center">Aucune donnée.</div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-fade-in">
           <div className="grid grid-cols-2 gap-2">
             <EauStatCard icon={Droplet} label="Entrées" value={fmtM3(rapport.entreesM3)} tone="forest" />
             <EauStatCard icon={Gauge} label="Consommation" value={fmtM3(rapport.consoM3)} tone="teal" />

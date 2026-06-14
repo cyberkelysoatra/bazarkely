@@ -66,6 +66,9 @@ export default {
           forest: '#364E30',
           olive: '#4C6D40',
           gold: '#9D9B4B',
+          // Encre or accessible (texte) : assombrie pour contraste ≥ 4,5:1 sur blanc (≈ 5,37:1).
+          // `gold` (#9D9B4B) reste pour surfaces/icônes/séries de graphes ; `gold-700` = TEXTE or.
+          'gold-700': '#6f6d33',
           'gold-light': '#C3C067',
           teal: '#10939F',
           50: '#f4f6f2',
