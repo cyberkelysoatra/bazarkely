@@ -21,7 +21,7 @@ import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import {
-  Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, History, Activity,
+  Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, Activity,
   ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
@@ -528,10 +528,24 @@ export default function EauBassinReleves({
         )}
       </div>
 
-      {/* Carte « Bassin » : dernier niveau + tiroirs Saisir / Historique. */}
+      {/* Carte « Bassin » (façon cartes Compteurs) : résumé cliquable → tiroir Historique,
+          crayon compact → tiroir Saisir hauteur. */}
       <div ref={bassinCardRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
         <div className="p-3">
-          <div className="flex items-start justify-between gap-2">
+          {/* Résumé cliquable → ouvre/ferme le tiroir Historique (accessible clavier). */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={openDrawer === 'histo'}
+            onClick={() => setOpenDrawer((k) => (k === 'histo' ? null : 'histo'))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
+              }
+            }}
+            className="cursor-pointer rounded-lg -m-1 p-1 transition-colors hover:bg-ahuvi-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400"
+          >
             <div className="flex items-start gap-2 min-w-0">
               <EauListIcon icon={Ruler} tone="teal" />
               <div className="min-w-0">
@@ -549,29 +563,24 @@ export default function EauBassinReleves({
             </div>
           </div>
 
-          <div className="mt-2.5 flex gap-2">
+          {/* Crayon compact de saisie (SŒUR du résumé, jamais imbriqué) : clic crayon →
+              tiroir Saisir, clic carte → Historique. stopPropagation par sécurité. */}
+          <div className="mt-1.5 flex justify-end">
             <button
               type="button"
-              onClick={() => setOpenDrawer((k) => (k === 'saisir' ? null : 'saisir'))}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenDrawer((k) => (k === 'saisir' ? null : 'saisir'));
+              }}
               disabled={isReadOnly || !dim}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              aria-label="Saisir une hauteur"
+              className={`flex-shrink-0 w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors ${
                 openDrawer === 'saisir'
                   ? 'bg-ahuvi-forest text-white'
                   : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
               }`}
             >
-              <Pencil className="w-4 h-4" aria-hidden="true" /> Saisir hauteur
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpenDrawer((k) => (k === 'histo' ? null : 'histo'))}
-              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                openDrawer === 'histo'
-                  ? 'bg-ahuvi-forest text-white'
-                  : 'bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50'
-              }`}
-            >
-              <History className="w-4 h-4" aria-hidden="true" /> Historique
+              <Pencil className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
