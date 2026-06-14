@@ -28,6 +28,7 @@ import EauCompteursReleves from './EauCompteursReleves';
 import EauBassinReleves from './EauBassinReleves';
 import EauApportsReleves from './EauApportsReleves';
 import EauQrScanner from './EauQrScanner';
+import { EauShortcut } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { useGestionEau } from '../context';
 import { parseScanText, buildInternalScanPath } from '../utils/scanUrl';
@@ -173,36 +174,12 @@ export default function EauRelevesPage() {
 
       {/* Raccourcis (rangée de 3, façon cartes-raccourcis Transactions). */}
       <div className={`${WRAP} mt-5 grid grid-cols-3 gap-2`}>
-        <RaccourciButton icon={ScanLine} label="Scanner" onClick={() => setScannerOpen(true)} />
-        <RaccourciButton icon={Waves} label="Saisir bassin" onClick={goSaisirBassin} />
-        <RaccourciButton icon={Plus} label="Ajouter apport" onClick={goAjouterApport} />
+        <EauShortcut icon={ScanLine} label="Scanner" onClick={() => setScannerOpen(true)} />
+        <EauShortcut icon={Waves} label="Saisir bassin" onClick={goSaisirBassin} />
+        <EauShortcut icon={Plus} label="Ajouter apport" onClick={goAjouterApport} />
       </div>
 
       {scannerOpen && <EauQrScanner onResult={onScanResult} onClose={() => setScannerOpen(false)} />}
     </div>
-  );
-}
-
-/** Bouton-raccourci (icône en pastille + libellé court). */
-function RaccourciButton({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: typeof Waves;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-ahuvi-200 bg-white px-2 py-3 text-center hover:bg-ahuvi-50 transition-colors"
-    >
-      <span className="w-9 h-9 rounded-xl bg-ahuvi-100 text-ahuvi-forest flex items-center justify-center">
-        <Icon className="w-4 h-4" aria-hidden="true" />
-      </span>
-      <span className="text-xs font-medium text-ahuvi-forest leading-tight">{label}</span>
-    </button>
   );
 }

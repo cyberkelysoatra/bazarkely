@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import EauAide from './EauAide';
-import { EauIconButton, EauEmptyState } from './EauUi';
+import { EauIconButton, EauEmptyState, EAU_CHART } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
@@ -242,7 +242,7 @@ export default function EauFacturationPage() {
           )}
 
           {/* Période */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-ahuvi-forest mb-3">Période</h2>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm">
@@ -327,7 +327,7 @@ export default function EauFacturationPage() {
             ) : (
               <div className="space-y-2">
                 {factures.map((f) => (
-                  <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                  <div key={f.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="font-medium text-gray-900">{f.numero}</div>
@@ -402,11 +402,11 @@ export default function EauFacturationPage() {
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={parPeriode}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={EAU_CHART.grid} />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip formatter={(v: number) => fmtMontant(v, config?.devise)} />
-                  <Bar dataKey="montant" name="Montant" fill="#9D9B4B" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="montant" name="Montant" fill={EAU_CHART.gold} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -421,17 +421,17 @@ export default function EauFacturationPage() {
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={parPeriode}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={EAU_CHART.grid} />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={32} />
                   <Tooltip formatter={(v: number) => fmtM3(v)} />
-                  <Bar dataKey="conso" name="Conso" fill="#4C6D40" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="conso" name="Conso" fill={EAU_CHART.olive} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-soft">
+          <div className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft">
             <h2 className="font-semibold text-ahuvi-forest mb-1">Export CSV global</h2>
             <p className="text-sm text-gray-600 mb-3">
               Relevés, bilans et factures de la copropriété, dans un seul fichier .csv.

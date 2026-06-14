@@ -15,7 +15,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import {
   Droplet, Zap, Pencil, NotebookPen, Search, Gauge, CalendarDays, BarChart3, Info, ScanLine,
 } from 'lucide-react';
-import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
+import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
 import { relevesByCompteur, refreshReleves, updateReleveCompteur } from '../services/eauReleveService';
@@ -327,6 +327,7 @@ export default function EauCompteursReleves({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher un compteur…"
+          aria-label="Rechercher un compteur"
           className="w-full pl-9 rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
         />
       </div>
@@ -757,7 +758,7 @@ function HistoriqueDrawer({
               <Tooltip formatter={(val: number) => fmt(val)} labelFormatter={() => ''} />
               <Bar
                 dataKey="value"
-                fill={facet === 'eau' ? '#0E7490' : '#B8860B'}
+                fill={facet === 'eau' ? EAU_CHART.teal : EAU_CHART.elec}
                 radius={[2, 2, 0, 0]}
                 isAnimationActive={false}
               />
@@ -805,7 +806,7 @@ function HistoriqueDrawer({
             ) : (
               <div
                 key={r.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm"
+                className="flex items-center justify-between gap-2 rounded-lg border border-ahuvi-100 bg-white px-3 py-2 shadow-sm"
               >
                 <span className="text-sm text-gray-600">{fmtDate(r.date)}</span>
                 <span className="flex items-center gap-3">
@@ -842,7 +843,7 @@ function HistoriqueDrawer({
               className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
                 dirty
                   ? 'bg-ahuvi-forest text-white hover:bg-ahuvi-forest/90'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50'
               }`}
             >
               {dirty ? (

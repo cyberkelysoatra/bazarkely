@@ -27,7 +27,9 @@ export type EauTone = 'forest' | 'olive' | 'gold' | 'teal' | 'neutral' | 'amber'
 const TONE_CONTAINER: Record<EauTone, string> = {
   forest: 'bg-ahuvi-100 text-ahuvi-forest',
   olive: 'bg-ahuvi-100 text-ahuvi-olive',
-  gold: 'bg-[#f4f2dd] text-[#8a8836]',
+  // gold/teal adossés aux tokens AHUVI (plus d'hex arbitraires) : or = accent marque,
+  // teal = eau. Le conteneur reste clair (token /15 ou cyan-50) pour porter l'icône.
+  gold: 'bg-ahuvi-gold/15 text-ahuvi-gold',
   teal: 'bg-cyan-50 text-ahuvi-teal',
   neutral: 'bg-gray-100 text-gray-500',
   amber: 'bg-amber-100 text-amber-700',
@@ -38,13 +40,29 @@ const TONE_CONTAINER: Record<EauTone, string> = {
 const TONE_VALUE: Record<EauTone, string> = {
   forest: 'text-ahuvi-forest',
   olive: 'text-ahuvi-olive',
-  gold: 'text-[#8a8836]',
+  gold: 'text-ahuvi-gold',
   teal: 'text-ahuvi-teal',
   neutral: 'text-gray-800',
   amber: 'text-amber-700',
   rose: 'text-rose-700',
   emerald: 'text-emerald-700',
 };
+
+/**
+ * Tokens de couleurs de GRAPHES (recharts) — SOURCE UNIQUE du module. Toute série
+ * (Area/Line/Bar) doit puiser ici : vert/olive/or = marque, teal = eau, rose = perte/danger,
+ * `elec` = accent or pour l'électricité (remplace l'ancien #B8860B), `grid` = quadrillage.
+ */
+export const EAU_CHART = {
+  forest: '#364E30',
+  olive: '#4C6D40',
+  gold: '#9D9B4B',
+  goldLight: '#C3C067',
+  teal: '#10939F',
+  rose: '#b91c1c',
+  elec: '#9D9B4B',
+  grid: '#e6ebe1',
+} as const;
 
 /**
  * Carte KPI : icône (conteneur teinté AHUVI) + libellé + valeur.
@@ -229,5 +247,152 @@ export function EauListIcon({ icon: Icon, tone = 'neutral' }: { icon: LucideIcon
     >
       <Icon className="w-4 h-4" aria-hidden="true" />
     </span>
+  );
+}
+
+/**
+ * Carte générique surélevée AHUVI (coque réutilisable). `interactive` (ou `onClick`)
+ * active l'état survol ; quand `onClick` est fourni, la carte devient un `role="button"`
+ * pilotable au clavier (Enter / Espace). `className` se compose via twMerge (un
+ * `border-*`/`bg-*` passé en prop écrase la base — pratique pour un ton d'alerte).
+ */
+export function EauCard({
+  interactive,
+  onClick,
+  className,
+  children,
+  ...rest
+}: {
+  interactive?: boolean;
+  onClick?: () => void;
+  className?: string;
+  children: React.ReactNode;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick'>) {
+  const clickable = !!onClick;
+  return (
+    <div
+      {...rest}
+      onClick={onClick}
+      role={clickable ? 'button' : rest.role}
+      tabIndex={clickable ? 0 : rest.tabIndex}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : rest.onKeyDown
+      }
+      className={cn(
+        'rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
+        (interactive || clickable) && 'hover:border-ahuvi-300 hover:shadow-md transition',
+        clickable && 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Carte de graphe : coque `EauCard` + rangée titre (AHUVI forêt) + `subtitle?` + slot
+ * graphe (`children`). `empty` rend un `EauEmptyState` à la place du graphe (état vide).
+ * `icon`/`action`/`onClick` sont additifs (icône de titre, lien d'action à droite, carte
+ * cliquable) — pour reproduire les mini-graphes cliquables sans dupliquer de markup.
+ */
+export function EauChartCard({
+  title,
+  subtitle,
+  icon: Icon,
+  action,
+  empty,
+  emptyIcon,
+  emptyTitle,
+  emptyHint,
+  interactive,
+  onClick,
+  className,
+  children,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  icon?: LucideIcon;
+  action?: React.ReactNode;
+  empty?: boolean;
+  emptyIcon?: LucideIcon;
+  emptyTitle?: string;
+  emptyHint?: React.ReactNode;
+  interactive?: boolean;
+  onClick?: () => void;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const EmptyIcon = emptyIcon ?? Icon;
+  return (
+    <EauCard interactive={interactive} onClick={onClick} className={className}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-ahuvi-forest font-ahuvi-body">
+            {Icon && <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
+            <span className="truncate">{title}</span>
+          </div>
+          {subtitle && <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div>}
+        </div>
+        {action && <div className="flex-shrink-0">{action}</div>}
+      </div>
+      {empty && EmptyIcon ? (
+        <EauEmptyState icon={EmptyIcon} title={emptyTitle ?? 'Aucune donnée'} hint={emptyHint} className="py-6" />
+      ) : (
+        children
+      )}
+    </EauCard>
+  );
+}
+
+/** Titre de section : `<h3>` AHUVI (Playfair) avec icône optionnelle en pastille. */
+export function EauSectionTitle({
+  icon,
+  children,
+  className,
+}: {
+  icon?: LucideIcon;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <h3 className={cn('flex items-center gap-2 text-base font-ahuvi-display text-ahuvi-forest', className)}>
+      {icon && <EauListIcon icon={icon} tone="forest" />}
+      <span className="min-w-0">{children}</span>
+    </h3>
+  );
+}
+
+/** Bouton-raccourci : pastille d'icône AHUVI + libellé court (rangée de raccourcis). */
+export function EauShortcut({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-ahuvi-200 bg-white px-2 py-3 text-center transition-colors hover:bg-ahuvi-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <span className="w-9 h-9 rounded-xl bg-ahuvi-100 text-ahuvi-forest flex items-center justify-center">
+        <Icon className="w-4 h-4" aria-hidden="true" />
+      </span>
+      <span className="text-xs font-medium text-ahuvi-forest font-ahuvi-body leading-tight">{label}</span>
+    </button>
   );
 }

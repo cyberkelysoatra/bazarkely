@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, Tooltip, XAxis } from 'recharts';
 import { Droplet, Receipt, QrCode, FileDown, Gauge, AlertTriangle, BadgeCheck, CircleAlert, Waves, Zap } from 'lucide-react';
 import EauPageShell from './EauPageShell';
-import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
+import { EauIconButton, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import EauTabs from './EauTabs';
 import EauClientQrPage from './EauClientQrPage';
@@ -160,7 +160,7 @@ export default function EauClientPage() {
             <h2 className="font-semibold text-gray-800 mb-2">Mes compteurs</h2>
             <div className="grid grid-cols-1 gap-2">
               {vues.map((v) => (
-                <div key={v.compteur.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft">
+                <div key={v.compteur.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft">
                   <div className="flex items-center gap-2">
                     <EauListIcon icon={Gauge} tone="teal" />
                     <div className="font-medium text-gray-900">{v.compteur.nom}</div>
@@ -179,7 +179,7 @@ export default function EauClientPage() {
                         <BarChart data={v.consos}>
                           <XAxis dataKey="i" hide />
                           <Tooltip formatter={(val: number) => fmtM3(val)} labelFormatter={() => ''} />
-                          <Bar dataKey="value" fill="#4C6D40" radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          <Bar dataKey="value" fill={EAU_CHART.olive} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -209,7 +209,7 @@ export default function EauClientPage() {
                               <BarChart data={v.elecConsos}>
                                 <XAxis dataKey="i" hide />
                                 <Tooltip formatter={(val: number) => fmtKwh(val)} labelFormatter={() => ''} />
-                                <Bar dataKey="value" fill="#B8860B" radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                                <Bar dataKey="value" fill={EAU_CHART.elec} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
@@ -234,7 +234,7 @@ export default function EauClientPage() {
             ) : (
               <div className="space-y-2">
                 {factures.map((f) => (
-                  <div key={f.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-soft flex items-center justify-between gap-2">
+                  <div key={f.id} className="bg-white border border-ahuvi-100 rounded-lg p-3 shadow-soft flex items-center justify-between gap-2">
                     <div className="flex items-start gap-2 min-w-0">
                       <EauListIcon icon={Receipt} tone="olive" />
                       <div className="min-w-0">

@@ -24,7 +24,7 @@ import {
   Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, Activity,
   ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info,
 } from 'lucide-react';
-import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
+import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { useGestionEau } from '../context';
@@ -664,7 +664,7 @@ export default function EauBassinReleves({
                     <LineChart data={niveauChart}>
                       <XAxis dataKey="x" tick={{ fontSize: 10 }} />
                       <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                      <Line type="monotone" dataKey="value" stroke="#10939F" dot={false} strokeWidth={2} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="value" stroke={EAU_CHART.teal} dot={false} strokeWidth={2} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -677,7 +677,7 @@ export default function EauBassinReleves({
                     {relevesList.slice(0, 6).map((r) => (
                       <div
                         key={r.id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-ahuvi-100 bg-white px-3 py-2 shadow-sm"
                       >
                         <span className="text-sm text-gray-600">{fmtDate(r.timestamp)}</span>
                         <span className="flex items-center gap-3">
@@ -806,11 +806,11 @@ export default function EauBassinReleves({
                   </div>
                   <ResponsiveContainer width="100%" height={130}>
                     <BarChart data={debitChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={EAU_CHART.grid} />
                       <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                       <YAxis tick={{ fontSize: 10 }} width={32} />
                       <Tooltip formatter={(v: number) => `${v.toFixed(1)} m³/h`} />
-                      <Bar dataKey="debit" name="Débit" fill="#10939F" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="debit" name="Débit" fill={EAU_CHART.teal} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                   <ul className="space-y-2 mt-3">
@@ -907,7 +907,7 @@ export default function EauBassinReleves({
                         </div>
                         <button onClick={() => setEditing({ id: r.id, hauteur: String(r.hauteur_cm), datetime: isoToLocalInput(r.timestamp) })}
                           disabled={busy || !isOnline || isReadOnly} aria-label="Modifier le relevé"
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-700 hover:bg-blue-100 disabled:opacity-40">
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-40">
                           <NotebookPen className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <button onClick={() => removeReleve(r)} disabled={busy || !isOnline || isReadOnly} aria-label="Supprimer le relevé"

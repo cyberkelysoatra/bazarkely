@@ -191,7 +191,7 @@ export default function EauCartePage() {
             {compteurs.map((c) => {
               const geoloc = c.lat != null && c.lng != null;
               return (
-                <div key={c.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                <div key={c.id} className="flex items-center gap-2 bg-white border border-ahuvi-100 rounded-lg px-3 py-2">
                   <EauListIcon icon={geoloc ? MapPin : Gauge} tone={geoloc ? 'forest' : 'neutral'} />
                   <div className="min-w-0">
                     <div className="font-medium text-gray-900 truncate">{c.nom}</div>
@@ -207,7 +207,7 @@ export default function EauCartePage() {
         </div>
       ) : (
         <>
-          <div ref={mapElRef} className="w-full h-[60vh] rounded-xl overflow-hidden border border-gray-200" />
+          <div ref={mapElRef} className="w-full h-[60vh] rounded-xl overflow-hidden border border-ahuvi-100" />
           <div className="text-xs text-gray-500">
             {geolocalises.length}/{compteurs.length} compteur(s) géolocalisé(s). Renseignez lat/lng dans la fiche compteur (onglet Liste).
           </div>

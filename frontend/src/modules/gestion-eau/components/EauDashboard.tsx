@@ -6,7 +6,7 @@ import {
   TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
-import { EauStatCard } from './EauUi';
+import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
 import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData, type ConsoJourSource } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
@@ -50,65 +50,41 @@ function fmtAutonomie(heures: number | null): string {
   return `${j} j ${h} h`;
 }
 
-function Card({
+/**
+ * En-tête de carte titrée du tableau de bord : libellé majuscule + icône optionnelle
+ * (cliquable → `onIconClick`, ex. « saisir »). Extrait pour les cartes non-graphe
+ * (« Dernier bilan ») qui s'appuient sur la coque centralisée `EauCard`.
+ */
+function CardHeader({
   title,
   icon: Icon,
-  children,
-  tone,
-  onClick,
   onIconClick,
   iconAriaLabel,
 }: {
   title: string;
   icon?: typeof ScrollText;
-  children: React.ReactNode;
-  tone?: 'ok' | 'warn';
-  onClick?: () => void;
   onIconClick?: () => void;
   iconAriaLabel?: string;
 }) {
-  const ring =
-    tone === 'warn' ? 'border-amber-300 bg-amber-50' : tone === 'ok' ? 'border-emerald-300 bg-emerald-50' : 'border-ahuvi-100 bg-white';
-  const interactiveProps = onClick
-    ? {
-        role: 'button' as const,
-        tabIndex: 0,
-        onClick,
-        onKeyDown: (e: React.KeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick();
-          }
-        },
-      }
-    : {};
   return (
-    <div
-      {...interactiveProps}
-      className={`rounded-xl border p-4 shadow-soft ${ring} ${
-        onClick ? 'cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300' : ''
-      }`}
-    >
-      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-        {Icon &&
-          (onIconClick ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onIconClick();
-              }}
-              aria-label={iconAriaLabel}
-              className="rounded cursor-pointer hover:text-ahuvi-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
-            >
-              <Icon className="w-4 h-4" aria-hidden="true" />
-            </button>
-          ) : (
+    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+      {Icon &&
+        (onIconClick ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onIconClick();
+            }}
+            aria-label={iconAriaLabel}
+            className="rounded cursor-pointer hover:text-ahuvi-forest focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+          >
             <Icon className="w-4 h-4" aria-hidden="true" />
-          ))}
-        {title}
-      </div>
-      <div className="mt-1">{children}</div>
+          </button>
+        ) : (
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        ))}
+      {title}
     </div>
   );
 }
@@ -285,14 +261,23 @@ export default function EauDashboard() {
           />
 
           <div>
-            <Card
-              title="Dernier bilan"
-              icon={ScrollText}
-              tone={data?.dernierBilan ? (data.dernierBilan.anomalie ? 'warn' : 'ok') : undefined}
+            <EauCard
               onClick={goSuivi}
-              onIconClick={() => goSaisieBassin('niveau')}
-              iconAriaLabel="Saisir un relevé bassin"
+              className={
+                data?.dernierBilan
+                  ? data.dernierBilan.anomalie
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-emerald-300 bg-emerald-50'
+                  : undefined
+              }
             >
+              <CardHeader
+                title="Dernier bilan"
+                icon={ScrollText}
+                onIconClick={() => goSaisieBassin('niveau')}
+                iconAriaLabel="Saisir un relevé bassin"
+              />
+              <div className="mt-1">
               {data?.dernierBilan ? (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -317,83 +302,62 @@ export default function EauDashboard() {
                   Aucun bilan pour l'instant. Saisissez deux relevés de niveau pour générer un bilan.
                 </div>
               )}
-            </Card>
+              </div>
+            </EauCard>
           </div>
 
           {/* Mini-graphique : consommation des 30 derniers jours → toute la zone renvoie vers Tendances. */}
-          <div
-            role="button"
-            tabIndex={0}
+          <EauChartCard
+            icon={Droplet}
+            title="Conso (30 j)"
             onClick={goTendances}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                goTendances();
-              }
-            }}
-            className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+            action={
+              <Link
+                to="/gestion-eau/tendances"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
+              >
+                <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
+              </Link>
+            }
+            empty={conso.length === 0}
+            emptyIcon={Droplet}
+            emptyTitle="Pas encore de bilan."
           >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  <Droplet className="w-4 h-4" aria-hidden="true" /> Conso (30 j)
-                </div>
-                <Link
-                  to="/gestion-eau/tendances"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
-                >
-                  <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
-                </Link>
-              </div>
-              {conso.length === 0 ? (
-                <div className="text-sm text-gray-400 py-4 text-center">Pas encore de bilan.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={90}>
-                  <AreaChart data={conso}>
-                    <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                    <Area type="monotone" dataKey="value" stroke="#4C6D40" fill="#4C6D40" fillOpacity={0.2} isAnimationActive={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-          </div>
+            <ResponsiveContainer width="100%" height={90}>
+              <AreaChart data={conso}>
+                <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
+                <Area type="monotone" dataKey="value" stroke={EAU_CHART.olive} fill={EAU_CHART.olive} fillOpacity={0.2} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </EauChartCard>
 
           {/* Mini-graphique : niveau du bassin (volume mesuré) → toute la zone renvoie vers Tendances. */}
-          <div
-            role="button"
-            tabIndex={0}
+          <EauChartCard
+            icon={Waves}
+            title="Niveau du bassin"
             onClick={goTendances}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                goTendances();
-              }
-            }}
-            className="rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+            action={
+              <Link
+                to="/gestion-eau/tendances"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
+              >
+                <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
+              </Link>
+            }
+            empty={niveau.length === 0}
+            emptyIcon={Waves}
+            emptyTitle="Pas encore de relevé de niveau."
           >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  <Waves className="w-4 h-4" aria-hidden="true" /> Niveau du bassin
-                </div>
-                <Link
-                  to="/gestion-eau/tendances"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-xs text-ahuvi-olive hover:underline"
-                >
-                  <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Tendances
-                </Link>
-              </div>
-              {niveau.length === 0 ? (
-                <div className="text-sm text-gray-400 py-4 text-center">Pas encore de relevé de niveau.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={90}>
-                  <AreaChart data={niveau}>
-                    <XAxis dataKey="label" hide />
-                    <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                    <Area type="monotone" dataKey="value" stroke="#10939F" fill="#10939F" fillOpacity={0.2} isAnimationActive={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-          </div>
+            <ResponsiveContainer width="100%" height={90}>
+              <AreaChart data={niveau}>
+                <XAxis dataKey="label" hide />
+                <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
+                <Area type="monotone" dataKey="value" stroke={EAU_CHART.teal} fill={EAU_CHART.teal} fillOpacity={0.2} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </EauChartCard>
         </div>
       )}
     </EauPageShell>

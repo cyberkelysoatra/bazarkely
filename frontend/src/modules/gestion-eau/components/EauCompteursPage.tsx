@@ -252,7 +252,7 @@ export default function EauCompteursPage() {
               {list.map((c) => (
                 <div
                   key={c.id}
-                  className="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center justify-between"
+                  className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <EauListIcon icon={Gauge} tone={c.actif ? 'teal' : 'neutral'} />
@@ -276,7 +276,7 @@ export default function EauCompteursPage() {
                     </button>
                     {!isReadOnly && (
                       <>
-                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 bg-blue-100 text-blue-700 hover:bg-blue-200">
+                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50">
                           <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" /> Modifier
                         </button>
                         <button onClick={() => remove(c)} title="Supprimer" className="inline-flex items-center gap-1 text-rose-600 hover:underline">

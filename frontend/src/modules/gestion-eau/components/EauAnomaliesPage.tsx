@@ -72,7 +72,7 @@ export default function EauAnomaliesPage() {
             <div
               key={b.id}
               className={`rounded-xl border p-3 shadow-soft ${
-                b.anomalie ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'
+                b.anomalie ? 'border-amber-300 bg-amber-50' : 'border-ahuvi-100 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
