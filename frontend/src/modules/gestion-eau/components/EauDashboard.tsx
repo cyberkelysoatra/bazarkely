@@ -182,6 +182,13 @@ export default function EauDashboard() {
   /** Sous-titre standard d'une carte de flux : cumul m³ + fenêtre. */
   const cumulSub = (cumul: number | null | undefined) => `${fmtM3(cumul ?? 0)} ${winSub}`;
 
+  // Eau non comptée sur la fenêtre courante = sortie réseau − conso comptée (mêmes fenêtres
+  // que les cartes Conso du réseau / Conso au compteur), + sa part de la conso du réseau.
+  // null si débit inconnu (sortie nulle) ; valeur négative aberrante traitée à l'affichage.
+  const eauNonCompteeM3 = flux?.consoReseauM3 != null ? flux.consoReseauM3 - flux.consoM3 : null;
+  const eauNonCompteePct =
+    eauNonCompteeM3 != null && flux?.consoReseauM3 ? (eauNonCompteeM3 / flux.consoReseauM3) * 100 : null;
+
   const baseSelector = (
     <label className="inline-flex items-center gap-1.5 rounded-lg border border-ahuvi-200 bg-white px-2 py-1.5 text-xs font-ahuvi-body text-ahuvi-forest shadow-soft transition-colors hover:border-ahuvi-300 focus-within:border-ahuvi-300 focus-within:ring-2 focus-within:ring-ahuvi-300">
       <CalendarRange className="w-3.5 h-3.5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
@@ -298,13 +305,22 @@ export default function EauDashboard() {
                 icon={Percent}
                 tone="amber"
                 label="Eau non comptée"
-                value={data?.nrwReseauPeriode && data.nrwReseauPeriode.nrwPct >= 0 ? fmtPct(data.nrwReseauPeriode.nrwPct) : '—'}
+                value={eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? fmtM3h(rate(eauNonCompteeM3)) : '—'}
                 hint={
-                  data?.nrwReseauPeriode && data.nrwReseauPeriode.nrwPct >= 0
-                    ? `${fmtM3(data.nrwReseauPeriode.pertesM3)} non comptés sur la période`
-                    : data?.nrwReseauPeriode
-                      ? 'Sortie sous le compteur — vérifier le débit'
-                      : 'Débit des pompes requis (test de débit)'
+                  eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? (
+                    <>
+                      {fmtM3(eauNonCompteeM3)} hors compteur
+                      {eauNonCompteePct != null && (
+                        <span className="block text-gray-400">
+                          {fmtPct(eauNonCompteePct)} de la conso du réseau
+                        </span>
+                      )}
+                    </>
+                  ) : flux?.consoReseauM3 == null ? (
+                    'Débit des pompes requis (test de débit)'
+                  ) : (
+                    'Sortie sous le compteur — vérifier le débit'
+                  )
                 }
                 onClick={goSuivi}
                 onIconClick={goSaisieCompteur}
