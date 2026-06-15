@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, Zap, CalendarRange,
+  TrendingUp, Droplet, GlassWater, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, Zap, CalendarRange,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
@@ -199,7 +199,7 @@ export default function EauDashboard() {
             {/* Colonne gauche : cartes dont l'icône ouvre la saisie BASSIN. */}
             <div className="flex flex-col gap-3">
               <EauStatCard
-                icon={Droplet}
+                icon={GlassWater}
                 tone="teal"
                 label="Stock actuel"
                 value={fmtM3(data?.stockActuelM3 ?? null)}
