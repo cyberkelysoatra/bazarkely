@@ -235,7 +235,7 @@ export default function EauDashboard() {
               <EauStatCard
                 icon={Gauge}
                 tone="forest"
-                label="Débit pompes en marche"
+                label="Pompes en marche"
                 value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
                 hint="Apport des pompes"
                 onClick={goTendances}
