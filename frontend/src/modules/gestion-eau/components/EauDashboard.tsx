@@ -303,7 +303,16 @@ export default function EauDashboard() {
                 tone="amber"
                 label="Autonomie estimée"
                 value={fmtAutonomie(data?.autonomie.autonomieHeures ?? null)}
-                hint={data?.autonomie.consoMoyenneJourM3 ? `${fmtM3(data.autonomie.consoMoyenneJourM3)}/j` : 'Conso moyenne inconnue'}
+                hint={
+                  data?.autonomie.consoMoyenneJourM3 ? (
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span>{fmtM3(data.autonomie.consoMoyenneJourM3)}/j</span>
+                      <span className="text-gray-400">{fmtM3h(data.autonomie.consoMoyenneHeureM3)}</span>
+                    </span>
+                  ) : (
+                    'Conso moyenne inconnue'
+                  )
+                }
                 onClick={goTendances}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"
