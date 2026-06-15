@@ -187,11 +187,17 @@ export default function EauBassinReleves({
 
   // Dès qu'un tiroir de la carte Bassin s'ouvre (crayon « Saisir » ou résumé « Historique »,
   // peu importe la cause), faire remonter la carte sous le Header. Pas de défilement à la
-  // fermeture (openDrawer null). rAF pour que la position de la carte soit déjà à jour.
+  // fermeture (openDrawer null). rAF pour que la position de la carte soit déjà à jour ;
+  // ré-assertion différée (~360 ms) pour absorber un éventuel décalage tardif de mise en page
+  // au chargement initial via deep-link (bandeau d'annonce du Header chargé après coup).
   useEffect(() => {
     if (!openDrawer) return;
-    const id = requestAnimationFrame(() => scrollBassinUnderHeader());
-    return () => cancelAnimationFrame(id);
+    const raf = requestAnimationFrame(() => scrollBassinUnderHeader());
+    const t = setTimeout(() => scrollBassinUnderHeader(), 360);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openDrawer]);
 
