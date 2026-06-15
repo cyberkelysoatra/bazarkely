@@ -282,7 +282,16 @@ export default function EauDashboard() {
                 icon={Droplet}
                 tone="olive"
                 label="Conso au compteur"
-                value={fmtM3h(rate(flux?.consoM3))}
+                value={
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span>{fmtM3h(rate(flux?.consoM3))}</span>
+                    {eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 && eauNonCompteePct != null && (
+                      <span className="text-sm font-medium text-gray-400" title="Part non comptée de la conso du réseau">
+                        {fmtPct(eauNonCompteePct)}
+                      </span>
+                    )}
+                  </span>
+                }
                 hint={
                   <>
                     {cumulSub(flux?.consoM3)}
@@ -307,20 +316,11 @@ export default function EauDashboard() {
                 label="Eau non comptée"
                 value={eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? fmtM3h(rate(eauNonCompteeM3)) : '—'}
                 hint={
-                  eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? (
-                    <>
-                      {fmtM3(eauNonCompteeM3)} hors compteur
-                      {eauNonCompteePct != null && (
-                        <span className="block text-gray-400">
-                          {fmtPct(eauNonCompteePct)} de la conso du réseau
-                        </span>
-                      )}
-                    </>
-                  ) : flux?.consoReseauM3 == null ? (
-                    'Débit des pompes requis (test de débit)'
-                  ) : (
-                    'Sortie sous le compteur — vérifier le débit'
-                  )
+                  eauNonCompteeM3 != null && eauNonCompteeM3 >= 0
+                    ? `${fmtM3(eauNonCompteeM3)} hors compteur`
+                    : flux?.consoReseauM3 == null
+                      ? 'Débit des pompes requis (test de débit)'
+                      : 'Sortie sous le compteur — vérifier le débit'
                 }
                 onClick={goSuivi}
                 onIconClick={goSaisieCompteur}
