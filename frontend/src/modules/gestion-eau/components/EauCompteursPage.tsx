@@ -47,8 +47,10 @@ export default function EauCompteursPage() {
   const [qrCompteur, setQrCompteur] = useState<CompteurLocal | null>(null);
 
   // Panneau de création (haut) + cartes (édition inline) : refs pour glisser sous le Header.
+  // NB : `Map` est importé de lucide-react (icône de l'onglet « Carte ») → on évite le
+  // global Map ici (collision d'identifiant) en indexant les refs par un objet simple.
   const newFormRef = useRef<HTMLDivElement | null>(null);
-  const cardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const reload = async () => setList(await listCompteurs());
 
@@ -103,7 +105,7 @@ export default function EauCompteursPage() {
   // → refs garanties attachées). Création = panneau du haut ; édition = carte ciblée.
   useEffect(() => {
     if (!formMode) return;
-    const el = formMode.kind === 'new' ? newFormRef.current : cardRefs.current.get(formMode.id);
+    const el = formMode.kind === 'new' ? newFormRef.current : cardRefs.current[formMode.id];
     if (el) requestAnimationFrame(() => requestAnimationFrame(() => scrollElementUnderHeader(el)));
   }, [formMode]);
 
@@ -201,7 +203,9 @@ export default function EauCompteursPage() {
               {list.map((c) => (
                 <Fragment key={c.id}>
                   <div
-                    ref={(el) => cardRefs.current.set(c.id, el)}
+                    ref={(el) => {
+                      cardRefs.current[c.id] = el;
+                    }}
                     className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3 min-w-0">
