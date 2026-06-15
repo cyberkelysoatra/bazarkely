@@ -1,9 +1,9 @@
 /** Tableau de bord /gestion-eau : stock, entrées/conso du jour, dernier bilan, NRW + mini-graphe. */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, GlassWater, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, Zap, CalendarRange,
+  TrendingUp, Droplet, GlassWater, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, Zap, CalendarRange, Check,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
@@ -103,6 +103,26 @@ export default function EauDashboard() {
     }
   };
 
+  // Menu déroulant custom (remplace le <select> natif, non animable) : ouverture/fermeture
+  // pilotées + fermeture au clic extérieur / Échap. Animation façon iOS (cf. baseSelector).
+  const [baseMenuOpen, setBaseMenuOpen] = useState(false);
+  const baseMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!baseMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (baseMenuRef.current && !baseMenuRef.current.contains(e.target as Node)) setBaseMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setBaseMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [baseMenuOpen]);
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -165,22 +185,57 @@ export default function EauDashboard() {
   const consoCompteurPct =
     flux?.consoReseauM3 ? (flux.consoM3 / flux.consoReseauM3) * 100 : null;
 
+  const currentBaseLabel = BASE_HORAIRE_OPTIONS.find((o) => o.key === base)?.label ?? '';
+  // Courbe d'ouverture façon iOS (ease-out-expo) : démarrage vif puis arrivée douce, sans rebond.
+  const IOS_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
   const baseSelector = (
-    <label className="inline-flex items-center gap-1.5 rounded-lg border border-ahuvi-200 bg-white px-2 py-1.5 text-xs font-ahuvi-body text-ahuvi-forest shadow-soft transition-colors hover:border-ahuvi-300 focus-within:border-ahuvi-300 focus-within:ring-2 focus-within:ring-ahuvi-300">
-      <CalendarRange className="w-3.5 h-3.5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
-      <select
-        value={base}
-        onChange={(e) => changeBase(e.target.value as BaseHoraire)}
+    <div ref={baseMenuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setBaseMenuOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={baseMenuOpen}
         aria-label="Base horaire des débits"
-        className="appearance-none cursor-pointer border-0 bg-transparent font-medium text-ahuvi-forest focus:outline-none focus:ring-0"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-ahuvi-200 bg-white px-2 py-1.5 text-xs font-ahuvi-body font-medium text-ahuvi-forest shadow-soft transition-colors hover:border-ahuvi-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
       >
-        {BASE_HORAIRE_OPTIONS.map((o) => (
-          <option key={o.key} value={o.key}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        <CalendarRange className="w-3.5 h-3.5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+        <span>{currentBaseLabel}</span>
+      </button>
+
+      {/* Menu déroulant animé (toujours monté pour la transition ; ouverture/fermeture par classes). */}
+      <div
+        role="listbox"
+        aria-label="Base horaire des débits"
+        style={{ transitionTimingFunction: IOS_EASE }}
+        className={`absolute right-0 z-30 mt-1.5 min-w-[10.5rem] origin-top-right rounded-xl border border-ahuvi-100 bg-white p-1 shadow-lg transition-[opacity,transform] duration-200 motion-reduce:transition-none ${
+          baseMenuOpen
+            ? 'pointer-events-auto opacity-100 scale-100 translate-y-0'
+            : 'pointer-events-none opacity-0 scale-95 -translate-y-1'
+        }`}
+      >
+        {BASE_HORAIRE_OPTIONS.map((o) => {
+          const selected = base === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              onClick={() => {
+                changeBase(o.key);
+                setBaseMenuOpen(false);
+              }}
+              className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
+                selected ? 'bg-ahuvi-50 text-ahuvi-forest' : 'text-gray-600 hover:bg-ahuvi-50 hover:text-ahuvi-forest'
+              }`}
+            >
+              {o.label}
+              {selected && <Check className="w-3.5 h-3.5 flex-shrink-0 text-ahuvi-forest" aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 
   return (
