@@ -262,7 +262,7 @@ export default function EauDashboard() {
               <EauStatCard
                 icon={Waves}
                 tone="teal"
-                label={`Conso réseau ${winSuffix}`}
+                label="Conso du réseau"
                 value={flux?.consoReseauM3 != null ? fmtM3h(rate(flux.consoReseauM3)) : '—'}
                 hint={flux?.consoReseauM3 != null ? cumulSub(flux.consoReseauM3) : 'Sortie vers le réseau'}
                 onClick={goTendances}
@@ -274,7 +274,7 @@ export default function EauDashboard() {
               <EauStatCard
                 icon={Droplet}
                 tone="olive"
-                label={`Conso ${winSuffix}`}
+                label="Conso au compteur"
                 value={fmtM3h(rate(flux?.consoM3))}
                 hint={
                   <>
