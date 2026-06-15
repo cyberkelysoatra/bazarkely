@@ -3,16 +3,24 @@ import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap,
+  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap, CalendarRange, ChevronDown,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
 import { AIDE } from './eauAideTextes';
-import { getDashboardData, type DashboardData, type ConsoJourSource } from '../services/eauBilanService';
+import { getDashboardData, type DashboardData, type ConsoJourSource, type BaseHoraire } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { getElecKpiData, type ElecKpiData } from '../services/eauElecReleveService';
-import { fmtM3, fmtPct, fmtKwh } from '../utils/format';
+import { fmtM3, fmtPct, fmtKwh, fmtM3h, fmtKw } from '../utils/format';
 import { fmtDate } from '../utils/format';
+
+/** Base horaire mémorisée (localStorage) + libellés associés. */
+const BASE_KEY = 'eau_dashboard_base_horaire';
+const BASE_HORAIRE_OPTIONS: { key: BaseHoraire; label: string }[] = [
+  { key: 'jour', label: 'Depuis minuit' },
+  { key: 'h24', label: 'Sur 24 h' },
+  { key: 'periode', label: 'Sur la période' },
+];
 
 /**
  * Libellé discret sous « Conso du jour » selon l'origine du chiffre. Une absence de
@@ -108,6 +116,20 @@ export default function EauDashboard() {
   const [elecKpi, setElecKpi] = useState<ElecKpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Base horaire des débits (m³/h) — choix mémorisé, défaut « depuis minuit ».
+  const [base, setBase] = useState<BaseHoraire>(() => {
+    const saved = localStorage.getItem(BASE_KEY);
+    return saved === 'h24' || saved === 'periode' ? saved : 'jour';
+  });
+  const changeBase = (b: BaseHoraire) => {
+    setBase(b);
+    try {
+      localStorage.setItem(BASE_KEY, b);
+    } catch {
+      /* stockage indisponible (mode privé) — sans gravité */
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -137,7 +159,8 @@ export default function EauDashboard() {
       return "En attente d'un 2ᵉ relevé pour calculer la consommation";
     return (
       <>
-        Dernière conso · {elecKpi.nbCompteursReleves} compteur{elecKpi.nbCompteursReleves > 1 ? 's' : ''}
+        Dernière conso · {fmtKwh(elecKpi.consoRecenteKwh)} · {elecKpi.nbCompteursReleves} compteur
+        {elecKpi.nbCompteursReleves > 1 ? 's' : ''}
         {elecKpi.dernierReleveDate && (
           <span className="text-gray-400"> · relevé du {fmtDate(elecKpi.dernierReleveDate)}</span>
         )}
@@ -145,8 +168,46 @@ export default function EauDashboard() {
     );
   };
 
+  // ── Dérivés « base horaire » : fenêtre sélectionnée, débit moyen m³/h et libellés ──
+  const flux = data?.flux[base];
+  /** Convertit un cumul (m³) en débit moyen m³/h sur la fenêtre courante. */
+  const rate = (cumul: number | null | undefined): number | null => {
+    if (cumul == null || !flux || flux.heures <= 0) return null;
+    return cumul / flux.heures;
+  };
+  // Suffixe de libellé de carte + texte du sous-titre (cumul) selon la fenêtre.
+  const winSuffix = base === 'jour' ? 'du jour' : base === 'h24' ? '(24 h)' : '(période)';
+  const winSub =
+    base === 'jour' ? 'depuis minuit' : base === 'h24' ? 'sur 24 h' : `sur ${data?.periodeJours ?? 30} j`;
+  /** Sous-titre standard d'une carte de flux : cumul m³ + fenêtre. */
+  const cumulSub = (cumul: number | null | undefined) => `${fmtM3(cumul ?? 0)} ${winSub}`;
+
+  const baseSelector = (
+    <label className="inline-flex items-center gap-1.5 rounded-lg border border-ahuvi-200 bg-white px-2 py-1.5 text-xs font-ahuvi-body text-ahuvi-forest shadow-soft transition-colors hover:border-ahuvi-300 focus-within:border-ahuvi-300 focus-within:ring-2 focus-within:ring-ahuvi-300">
+      <CalendarRange className="w-3.5 h-3.5 text-ahuvi-forest flex-shrink-0" aria-hidden="true" />
+      <select
+        value={base}
+        onChange={(e) => changeBase(e.target.value as BaseHoraire)}
+        aria-label="Base horaire des débits"
+        className="appearance-none cursor-pointer bg-transparent font-medium text-ahuvi-forest focus:outline-none focus:ring-0"
+      >
+        {BASE_HORAIRE_OPTIONS.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="-ml-0.5 w-3.5 h-3.5 text-ahuvi-olive flex-shrink-0 pointer-events-none" aria-hidden="true" />
+    </label>
+  );
+
   return (
-    <EauPageShell title="Gestion Eau" subtitle="Tableau de bord du bassin et des compteurs" aide={AIDE.dashboard}>
+    <EauPageShell
+      title="Gestion Eau"
+      subtitle="Tableau de bord du bassin et des compteurs"
+      aide={AIDE.dashboard}
+      actions={baseSelector}
+    >
       {loading ? (
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
@@ -173,20 +234,9 @@ export default function EauDashboard() {
               />
 
               <EauStatCard
-                icon={ArrowDownToLine}
-                tone="emerald"
-                label="Entrées du jour"
-                value={fmtM3(data?.entreesJourM3 ?? 0)}
-                onClick={goTendances}
-                onIconClick={() => goSaisieBassin('entree')}
-                iconAriaLabel="Saisir une entrée d'eau (bassin)"
-                hideChevron
-              />
-
-              <EauStatCard
                 icon={Gauge}
                 tone="forest"
-                label="Débit courant"
+                label="Débit source"
                 value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
                 hint="Apport des pompes"
                 onClick={goTendances}
@@ -194,16 +244,47 @@ export default function EauDashboard() {
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
               />
+
+              <EauStatCard
+                icon={ArrowDownToLine}
+                tone="emerald"
+                label={`Entrées ${winSuffix}`}
+                value={fmtM3h(rate(flux?.entreesM3))}
+                hint={cumulSub(flux?.entreesM3)}
+                onClick={goTendances}
+                onIconClick={() => goSaisieBassin('entree')}
+                iconAriaLabel="Saisir une entrée d'eau (bassin)"
+                hideChevron
+              />
             </div>
 
             {/* Colonne droite : cartes dont l'icône ouvre la saisie COMPTEUR. */}
             <div className="flex flex-col gap-3">
               <EauStatCard
+                icon={Waves}
+                tone="teal"
+                label={`Conso réseau ${winSuffix}`}
+                value={flux?.consoReseauM3 != null ? fmtM3h(rate(flux.consoReseauM3)) : '—'}
+                hint={flux?.consoReseauM3 != null ? cumulSub(flux.consoReseauM3) : 'Sortie vers le réseau'}
+                onClick={goTendances}
+                onIconClick={goSaisieCompteur}
+                iconAriaLabel="Saisir un relevé compteur"
+                hideChevron
+              />
+
+              <EauStatCard
                 icon={Droplet}
                 tone="olive"
-                label="Conso du jour"
-                value={fmtM3(data?.consoJourM3 ?? 0)}
-                hint={consoJourHint(data?.consoJourSource)}
+                label={`Conso ${winSuffix}`}
+                value={fmtM3h(rate(flux?.consoM3))}
+                hint={
+                  <>
+                    {cumulSub(flux?.consoM3)}
+                    {base === 'jour' && consoJourHint(data?.consoJourSource) && (
+                      <span className="block">{consoJourHint(data?.consoJourSource)}</span>
+                    )}
+                  </>
+                }
                 onClick={goTendances}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"
@@ -218,18 +299,6 @@ export default function EauDashboard() {
                 value={data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
                 hint={`Pertes : ${data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}`}
                 onClick={goSuivi}
-                onIconClick={goSaisieCompteur}
-                iconAriaLabel="Saisir un relevé compteur"
-                hideChevron
-              />
-
-              <EauStatCard
-                icon={Waves}
-                tone="teal"
-                label="Conso réseau (période)"
-                value={data?.consoReseauPeriodeM3 != null ? fmtM3(data.consoReseauPeriodeM3) : '—'}
-                hint="Sortie vers le réseau"
-                onClick={goTendances}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"
                 hideChevron
@@ -255,7 +324,7 @@ export default function EauDashboard() {
             icon={Zap}
             tone="gold"
             label="Conso électrique"
-            value={elecKpi?.consoRecenteKwh != null ? fmtKwh(elecKpi.consoRecenteKwh) : '—'}
+            value={elecKpi?.consoRecenteKw != null ? fmtKw(elecKpi.consoRecenteKw) : '—'}
             hint={elecHint()}
             onClick={goSaisieElec}
           />
