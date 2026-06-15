@@ -203,7 +203,7 @@ export default function EauDashboard() {
   return (
     <EauPageShell
       title="Gestion Eau"
-      subtitle="Tableau de bord du bassin et des compteurs"
+      subtitle="Tableau de bord"
       aide={AIDE.dashboard}
       actions={baseSelector}
     >
