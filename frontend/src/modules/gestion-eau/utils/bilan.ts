@@ -102,6 +102,31 @@ export function consoCompteurSurIntervalle(
   return conso > 0 ? conso : 0;
 }
 
+// ─────────────────────────── Arrêts de pompe (temps de marche) ───────────────────────────
+/** Période pendant laquelle les pompes étaient à l'arrêt (sous-ensemble de eau_arrets_pompe). */
+export interface ArretPompeLite {
+  timestamp_debut: TS;
+  timestamp_fin: TS;
+}
+
+/**
+ * Heures d'arrêt des pompes chevauchant l'intervalle ]tPrevMs, tMs]. Somme des
+ * recouvrements (un arrêt qui déborde de l'intervalle n'est compté que pour sa part
+ * dans l'intervalle). Sert à déduire le temps de marche réel = Δt − Σ arrêts
+ * (modèle réseau « débit × temps de marche », Phase 2).
+ */
+export function heuresArretSurIntervalle(arrets: ArretPompeLite[], tPrevMs: number, tMs: number): number {
+  let ms = 0;
+  for (const a of arrets) {
+    const d = toMs(a.timestamp_debut);
+    const f = toMs(a.timestamp_fin);
+    if (!Number.isFinite(d) || !Number.isFinite(f) || f <= d) continue;
+    const overlap = Math.min(f, tMs) - Math.max(d, tPrevMs);
+    if (overlap > 0) ms += overlap;
+  }
+  return ms / 3_600_000;
+}
+
 // ─────────────────────────── Modèle d'apport « flotteur » ───────────────────────────
 /**
  * Mode d'estimation de l'apport retenu sur l'intervalle (pilote le libellé UI) :
@@ -275,6 +300,12 @@ export interface ComputeBilanInput {
   debitM3h?: number | null;
   /** Apport manuel imposé pour l'intervalle (m³) — prioritaire sur le débit. */
   apportOverrideM3?: number | null;
+  /**
+   * Arrêts de pompe connus (modèle réseau Phase 2). Le temps de marche réel sur
+   * l'intervalle = Δt − Σ arrêts ; sert au calcul de la sortie réseau « débit × temps
+   * de marche ». Vide/absent → pompe supposée en marche tout l'intervalle.
+   */
+  arrets?: ArretPompeLite[];
   // ── Modèle d'apport « flotteur » (Phase 3, injectés depuis la config) ──
   /** Surface au sol du bassin (m²), pour le plafond `V_flotteur`. null si inconnue. */
   surfaceM2?: number | null;
@@ -302,13 +333,21 @@ export interface BilanResult {
   debitM3hUtilise: number | null;
   /** Mode d'estimation de l'apport retenu (pilote le libellé UI). */
   apportMode: ApportMode;
-  /** Conso vers le réseau = apport − Δstock (m³). */
-  consoReseauM3: number;
-  /** Pertes = conso réseau − conso compteurs (m³). */
-  pertesM3: number;
-  /** NRW réseau = pertes / conso réseau × 100 (%). */
-  nrwReseauPct: number;
-  /** Anomalie selon le modèle réseau (pertes > seuilM3 OU NRW% > seuilPct). */
+  /**
+   * Sortie réelle du bassin vers le réseau (m³) = apport réseau − Δstock, où l'apport
+   * réseau = débit × temps de marche (indépendant des compteurs). `null` si le débit
+   * est inconnu (aucun test de débit) ou si le calcul est incohérent (≤ 0).
+   */
+  consoReseauM3: number | null;
+  /**
+   * Eau non comptée (m³) = sortie réseau − conso métrée aux compteurs. Inclut la conso
+   * NON encore comptée (compteurs partiels, golf, communs) + les pertes réelles ; n'est
+   * un vrai « NRW » que lorsque tous les usages seront comptés. `null` si sortie inconnue.
+   */
+  pertesM3: number | null;
+  /** Eau non comptée / sortie réseau × 100 (%). `null` si sortie inconnue. */
+  nrwReseauPct: number | null;
+  /** Anomalie selon le modèle réseau (réservé Phase 3 ; NON utilisé comme drapeau d'anomalie). */
   anomalieReseau: boolean;
 }
 
@@ -374,11 +413,40 @@ export function computeBilan(input: ComputeBilanInput): BilanResult | null {
   const ecartPct = (Math.abs(ecartM3) / denom) * 100;
   const anomalie = Math.abs(ecartM3) > input.seuilM3 || ecartPct > input.seuilPct;
 
-  // Conso réseau / pertes / NRW réseau.
-  const consoReseauM3 = apportM3 - (stockMesure - stockPrev);
-  const pertesM3 = consoReseauM3 - consoM3;
-  const nrwReseauPct = consoReseauM3 > 0 ? (pertesM3 / consoReseauM3) * 100 : 0;
-  const anomalieReseau = pertesM3 > input.seuilM3 || nrwReseauPct > input.seuilPct;
+  // ── Sortie réseau / eau non comptée (modèle « débit × temps de marche », Phase 2) ──
+  // La sortie réelle du bassin se déduit d'un apport mesuré INDÉPENDAMMENT des compteurs
+  // (sinon le NRW serait circulaire = 0). Priorité override > entrées manuelles > débit ×
+  // temps de marche (Δt − arrêts de pompe saisis ; PLUS de plafond flotteur — la pompe
+  // peut cycler/tourner en continu sur l'intervalle). Découplé du bilan de matière `apportM3`
+  // (qui reste pour stock attendu / écart / anomalie).
+  const deltaStock = stockMesure - stockPrev;
+  const arretsHours = heuresArretSurIntervalle(input.arrets ?? [], tPrevMs, tMs);
+  const tempsMarcheHours = Math.max(0, dtHours - arretsHours);
+  let apportReseauM3: number | null;
+  if (input.apportOverrideM3 != null && input.apportOverrideM3 >= 0) {
+    apportReseauM3 = input.apportOverrideM3;
+  } else if (entreesM3 > 0) {
+    apportReseauM3 = entreesM3;
+  } else if (input.debitM3h != null && input.debitM3h > 0) {
+    apportReseauM3 = input.debitM3h * tempsMarcheHours;
+  } else {
+    apportReseauM3 = null; // ni apport mesuré, ni débit → sortie inconnue
+  }
+  // Sortie = apport − Δstock. Inconnue si apport inconnu ; null si ≤ 0 (incohérent :
+  // le bassin a monté de plus que l'apport mesuré → pas de NRW exploitable).
+  let consoReseauM3: number | null = apportReseauM3 != null ? apportReseauM3 - deltaStock : null;
+  if (consoReseauM3 != null && consoReseauM3 <= EPS_M3) consoReseauM3 = null;
+  // Eau non comptée = sortie − conso métrée (peut être < 0 si le débit sous-estime ;
+  // l'affichage le borne en Phase 3). `null` si sortie inconnue.
+  const pertesM3: number | null = consoReseauM3 != null ? consoReseauM3 - consoM3 : null;
+  const nrwReseauPct: number | null =
+    consoReseauM3 != null && consoReseauM3 > 0 && pertesM3 != null
+      ? (pertesM3 / consoReseauM3) * 100
+      : null;
+  const anomalieReseau =
+    pertesM3 != null &&
+    nrwReseauPct != null &&
+    (pertesM3 > input.seuilM3 || nrwReseauPct > input.seuilPct);
 
   return {
     timestamp: tMs,

@@ -14,6 +14,7 @@ import {
   type EntreeLite,
   type ReleveCompteurLite,
   type CompteurLite,
+  type ArretPompeLite,
   type NRWResult,
 } from '../utils/bilan';
 import { projeterConsoJour } from '../utils/projection';
@@ -50,13 +51,14 @@ export async function computeAndSaveBilan(current: {
   timestamp: string;
   volume_m3: number;
 }): Promise<BilanLocal | null> {
-  const [config, relevesBassin, entrees, compteurs, relevesCompteur, debitM3h] = await Promise.all([
+  const [config, relevesBassin, entrees, compteurs, relevesCompteur, debitM3h, arrets] = await Promise.all([
     getConfig(),
     eauDb.eau_releves_bassin.toArray() as Promise<ReleveBassinLocal[]>,
     eauDb.eau_entrees_bassin.toArray() as Promise<EntreeBassinLocal[]>,
     eauDb.eau_compteurs.toArray() as Promise<CompteurLocal[]>,
     eauDb.eau_releves_compteur.toArray() as Promise<ReleveCompteurLocal[]>,
     getDebitCourantM3h(),
+    eauDb.eau_arrets_pompe.toArray() as Promise<ArretPompeLite[]>,
   ]);
 
   const { seuilM3, seuilPct } = seuilsFromConfig(config);
@@ -79,6 +81,7 @@ export async function computeAndSaveBilan(current: {
     surfaceM2,
     hauteurFlotteurM,
     bandFlotteurM,
+    arrets,
   });
 
   if (!result) return null;
@@ -94,8 +97,10 @@ export async function computeAndSaveBilan(current: {
     stock_mesure: result.stockMesure,
     ecart_m3: result.ecartM3,
     ecart_pct: result.ecartPct,
-    // Anomalie = écart de stock (héritage) OU pertes/NRW réseau (nouveau modèle).
-    anomalie: result.anomalie || result.anomalieReseau,
+    // Anomalie = écart de stock (mesuré vs attendu) UNIQUEMENT. L'« eau non comptée »
+    // (modèle réseau) n'est PLUS une anomalie : elle est structurelle (compteurs partiels,
+    // golf/communs non comptés) — cf. chantier « débit × temps de marche », Phase 2.
+    anomalie: result.anomalie,
     traitee: false,
     commentaire: null,
     apport_m3: result.apportM3,
@@ -235,6 +240,21 @@ export type ConsoJourSource =
   | 'projection_debit'
   | 'zero_compteurs';
 
+/** Base temporelle de conversion en m³/h choisie sur le tableau de bord. */
+export type BaseHoraire = 'jour' | 'h24' | 'periode';
+
+/** Cumuls de flux sur une fenêtre temporelle + sa durée, pour l'affichage en m³/h. */
+export interface FluxFenetre {
+  /** Volume entré dans le bassin (m³) cumulé sur la fenêtre. */
+  entreesM3: number;
+  /** Consommation (m³) cumulée sur la fenêtre — estimée/projetée pour la fenêtre « jour ». */
+  consoM3: number;
+  /** Consommation réseau (m³) cumulée sur la fenêtre, null si aucun bilan réseau dessus. */
+  consoReseauM3: number | null;
+  /** Durée de la fenêtre en heures (écoulée depuis minuit pour « jour »). */
+  heures: number;
+}
+
 export interface DashboardData {
   /** Dernier relevé de niveau (volume mesuré) ou null. */
   stockActuelM3: number | null;
@@ -258,6 +278,10 @@ export interface DashboardData {
   nrwReseauPeriode: NRWResult | null;
   /** Autonomie estimée (stock ÷ conso horaire moyenne). */
   autonomie: AutonomieEstimee;
+  /** Durée de la période de facturation (jours), pour libeller la base « période ». */
+  periodeJours: number;
+  /** Cumuls de flux par fenêtre temporelle, pour l'affichage en m³/h au tableau de bord. */
+  flux: Record<BaseHoraire, FluxFenetre>;
 }
 
 /** Agrégats du tableau de bord (jour courant + NRW sur la période de facturation). */
@@ -401,6 +425,33 @@ export async function getDashboardData(): Promise<DashboardData> {
     }
   }
 
+  // ── Cumuls de flux par fenêtre (pour l'affichage en m³/h, base horaire pilotée par l'UI) ──
+  // Une fenêtre = cumul des entrées/conso/conso-réseau sur [start, now] + sa durée en heures.
+  // « jour » = depuis minuit local (durée écoulée) ; « h24 » = 24 h glissantes ; « periode » =
+  // toute la période de facturation. La conso « jour » réutilise l'estimation anti-zéro ci-dessus.
+  const fluxPour = (startMs: number, endMs: number, heures: number): FluxFenetre => {
+    const entreesM3 = entrees.reduce((acc, e) => {
+      const ms = new Date(e.timestamp).getTime();
+      return ms >= startMs && ms <= endMs ? acc + e.volume_m3 : acc;
+    }, 0);
+    const bs = bilans.filter((b) => {
+      const ms = new Date(b.timestamp).getTime();
+      return ms >= startMs && ms <= endMs;
+    });
+    const consoM3 = bs.reduce((acc, b) => acc + (b.conso_m3 ?? 0), 0);
+    const aReseau = bs.some((b) => b.conso_reseau_m3 != null);
+    const consoReseauM3 = aReseau ? bs.reduce((acc, b) => acc + (b.conso_reseau_m3 ?? 0), 0) : null;
+    return { entreesM3, consoM3, consoReseauM3, heures };
+  };
+
+  const heuresJour = Math.max((nowMs - startOfDay) / 3_600_000, 0);
+  const flux: Record<BaseHoraire, FluxFenetre> = {
+    // Conso « jour » écrasée par l'estimation/projection anti-zéro (cohérente : prorata du jour).
+    jour: { ...fluxPour(startOfDay, nowMs, heuresJour), consoM3: consoJourAffichee },
+    h24: fluxPour(nowMs - 24 * 60 * 60 * 1000, nowMs, 24),
+    periode: fluxPour(nrwStart, nowMs, periodeJours * 24),
+  };
+
   return {
     stockActuelM3,
     volumeMaxM3: dim ? volumeMaxM3(dim) : null,
@@ -415,5 +466,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     consoReseauPeriodeM3: aDuReseau ? consoReseauPeriodeM3 : null,
     nrwReseauPeriode,
     autonomie,
+    periodeJours,
+    flux,
   };
 }

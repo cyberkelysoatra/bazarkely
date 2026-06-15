@@ -102,9 +102,12 @@ describe('conso réseau / pertes / NRW réseau — modèle flotteur (Phase 3)', 
     expect(r.apportMode).toBe('mesure');
     expect(r.apportM3).toBeCloseTo(8, 6); // 5 + 3 (pas 9,8 = débit×Δt×0,5)
     expect(r.consoM3).toBe(3);
-    expect(r.consoReseauM3).toBeCloseTo(3, 6); // 8 − 5
-    expect(r.pertesM3).toBeCloseTo(0, 6); // 3 − 3
-    expect(r.stockAttendu).toBeCloseTo(105, 6); // bilan bouclé → écart 0
+    // Sortie réseau = modèle « débit × temps de marche » (Phase 2), DÉCOUPLÉE du bilan de
+    // matière : apport réseau = débit 9,8 × Δt 2 h = 19,6 (aucun arrêt) ; sortie = 19,6 −
+    // Δstock 5 = 14,6 ; eau non comptée = 14,6 − conso métrée 3 = 11,6 (≠ 0 : conso non comptée).
+    expect(r.consoReseauM3).toBeCloseTo(14.6, 6);
+    expect(r.pertesM3).toBeCloseTo(11.6, 6);
+    expect(r.stockAttendu).toBeCloseTo(105, 6); // bilan de matière bouclé → écart 0 (inchangé)
     expect(r.ecartM3).toBeCloseTo(0, 6);
   });
 
@@ -158,8 +161,10 @@ describe('conso réseau / pertes / NRW réseau — modèle flotteur (Phase 3)', 
       debitM3h: 10,
     })!;
     expect(r.apportMode).toBe('debit');
-    expect(r.apportM3).toBeCloseTo(10 * 2 * FRACTION_POMPE, 6); // 10
-    expect(r.consoReseauM3).toBeCloseTo(10, 6);
+    expect(r.apportM3).toBeCloseTo(10 * 2 * FRACTION_POMPE, 6); // 10 (apport mass-balance, FRACTION_POMPE)
+    // Sortie réseau = débit 10 × temps de marche 2 h − Δstock 0 = 20 (sans FRACTION_POMPE :
+    // modèle « débit × temps de marche » réel, pas le repli pondéré du bilan de matière).
+    expect(r.consoReseauM3).toBeCloseTo(20, 6);
   });
 
   it('niveau qui BAISSE sans compteur → pompe à l’arrêt, apport 0 (pas de repli débit)', () => {
@@ -176,6 +181,63 @@ describe('conso réseau / pertes / NRW réseau — modèle flotteur (Phase 3)', 
     })!;
     expect(r.apportMode).toBe('aucun');
     expect(r.apportM3).toBe(0);
+  });
+
+  it('arrêts de pompe déduits du temps de marche (Phase 2)', () => {
+    // Plat (Δstock 0), débit 10 m³/h, Δt 2 h, mais un arrêt d'1 h dans l'intervalle →
+    // temps de marche = 1 h → apport réseau = 10 × 1 = 10 → sortie = 10 − 0 = 10
+    // (sans arrêt ce serait 20 : cf. test précédent).
+    const r = computeBilan({
+      currentTimestamp: t1,
+      stockMesureM3: 100,
+      relevesBassin,
+      entrees,
+      compteursActifs: [],
+      relevesCompteur: [],
+      seuilM3: 1000,
+      seuilPct: 1000,
+      debitM3h: 10,
+      arrets: [{ timestamp_debut: t0 + 1_800_000, timestamp_fin: t0 + 5_400_000 }], // 1 h
+    })!;
+    expect(r.consoReseauM3).toBeCloseTo(10, 6);
+  });
+
+  it('arrêt couvrant tout l’intervalle → temps de marche 0 → sortie inconnue (null)', () => {
+    const r = computeBilan({
+      currentTimestamp: t1,
+      stockMesureM3: 100, // plat
+      relevesBassin,
+      entrees,
+      compteursActifs: [],
+      relevesCompteur: [],
+      seuilM3: 1000,
+      seuilPct: 1000,
+      debitM3h: 10,
+      arrets: [{ timestamp_debut: t0 - 1000, timestamp_fin: t1 + 1000 }], // couvre ]t0,t1]
+    })!;
+    expect(r.consoReseauM3).toBeNull(); // apport réseau 0 → sortie 0 → null
+    expect(r.pertesM3).toBeNull();
+  });
+
+  it('aucun débit connu → sortie réseau inconnue (null), pas de NRW aberrant', () => {
+    const r = computeBilan({
+      currentTimestamp: t1,
+      stockMesureM3: 105,
+      relevesBassin,
+      entrees, // aucun apport manuel
+      compteursActifs: [{ id: 'c1', actif: true }],
+      relevesCompteur: [
+        { compteur_id: 'c1', index: 0, rupture_index: false, timestamp: t0 - 1000 },
+        { compteur_id: 'c1', index: 3, rupture_index: false, timestamp: t1 - 1000 },
+      ],
+      seuilM3: 100,
+      seuilPct: 100,
+      // debitM3h omis → aucun apport mesuré indépendant → sortie réseau inconnue
+    })!;
+    expect(r.consoReseauM3).toBeNull();
+    expect(r.pertesM3).toBeNull();
+    expect(r.nrwReseauPct).toBeNull();
+    expect(r.anomalieReseau).toBe(false);
   });
 });
 
