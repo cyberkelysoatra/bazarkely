@@ -23,8 +23,8 @@ describe('mapImportedContacts — mapping & filtrage des contacts', () => {
       { name: ['Rakoto'], tel: ['0341234567'], email: ['rakoto@gmail.com'] },
       { name: ['Sans email'], tel: ['0327654321'] },
     ]);
-    expect(res.contacts[0]).toEqual({ nom: 'Rakoto', phone: '0341234567', email: 'rakoto@gmail.com' });
-    expect(res.contacts[1]).toEqual({ nom: 'Sans email', phone: '0327654321', email: null });
+    expect(res.contacts[0]).toMatchObject({ nom: 'Rakoto', phone: '0341234567', email: 'rakoto@gmail.com' });
+    expect(res.contacts[1]).toMatchObject({ nom: 'Sans email', phone: '0327654321', email: null });
     expect(res.ignored).toBe(0);
   });
 
@@ -38,6 +38,16 @@ describe('mapImportedContacts — mapping & filtrage des contacts', () => {
     expect(mapImportedContacts(null)).toEqual({ contacts: [], ignored: 0 });
     expect(mapImportedContacts(undefined)).toEqual({ contacts: [], ignored: 0 });
     expect(mapImportedContacts([])).toEqual({ contacts: [], ignored: 0 });
+  });
+
+  it('attribue un _id stable et unique à chaque ligne (clé React)', () => {
+    const res = mapImportedContacts([
+      { name: ['A'], tel: ['0341234567'] },
+      { name: ['B'], tel: ['0327654321'] },
+    ]);
+    expect(res.contacts[0]._id).toBeTruthy();
+    expect(res.contacts[1]._id).toBeTruthy();
+    expect(res.contacts[0]._id).not.toBe(res.contacts[1]._id);
   });
 
   it('contact sans nom mais avec numéro est retenu (nom vide)', () => {

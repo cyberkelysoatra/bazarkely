@@ -5,7 +5,7 @@
 import { supabase, withTimeout } from '../../../lib/supabase';
 import { eauDb } from '../db/gestionEauDb';
 import { pullTable, saveLocal, deleteLocal } from './eauSync';
-import { newId } from '../utils/id';
+import { deterministicUuid } from '../utils/id';
 import {
   computeBilan,
   computeNRW,
@@ -87,7 +87,10 @@ export async function computeAndSaveBilan(current: {
   if (!result) return null;
 
   const bilan: BilanLocal = {
-    id: newId(),
+    // Id DÉTERMINISTE dérivé de l'instant du relevé déclencheur : un relevé donné produit
+    // toujours le même id de bilan → l'upsert par PK réécrit la même ligne à chaque
+    // reconstruction (recomputeAllBilans idempotent, plus de doublons à chaque run).
+    id: deterministicUuid(`bilan:${new Date(result.timestamp).getTime()}`),
     timestamp: new Date(result.timestamp).toISOString(),
     timestamp_prev: result.timestampPrev != null ? new Date(result.timestampPrev).toISOString() : null,
     stock_prev: result.stockPrev,

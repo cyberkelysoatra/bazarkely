@@ -46,7 +46,7 @@ import {
 import { hauteurCmToVolumeM3 } from '../utils/bassin';
 import { computeDebit } from '../utils/debit';
 import { getCurrentUserIdSync } from '../services/eauAuth';
-import { fmtM3, fmtPct, fmtDate } from '../utils/format';
+import { fmtM3, fmtPct, fmtDate, fmtM3h } from '../utils/format';
 import type { ConfigLocal, DebitTestLocal, ReleveBassinLocal, ArretPompeLocal } from '../types/gestionEau';
 import type { BassinDimensions } from '../utils/bassin';
 
@@ -841,7 +841,7 @@ export default function EauBassinReleves({
             <Gauge className="w-4 h-4" aria-hidden="true" /> Tests de débit
             {dash?.debitCourantM3h != null && (
               <span className="text-xs font-medium text-ahuvi-olive bg-ahuvi-50 rounded-full px-2 py-0.5">
-                courant {dash.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h
+                courant {fmtM3h(dash.debitCourantM3h)}
               </span>
             )}
           </span>

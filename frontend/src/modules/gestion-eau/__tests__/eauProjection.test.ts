@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { projeterConsoJour, FRACTION_POMPE } from '../utils/projection';
-import { PERTE_RESEAU_DEFAUT_PCT } from '../utils/bilan';
+import { projeterConsoJour } from '../utils/projection';
+import { PERTE_RESEAU_DEFAUT_PCT, FRACTION_POMPE } from '../utils/bilan';
 
 const PERTE = PERTE_RESEAU_DEFAUT_PCT; // 0.30
 

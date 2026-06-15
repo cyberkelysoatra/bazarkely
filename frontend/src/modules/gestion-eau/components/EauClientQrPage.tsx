@@ -23,12 +23,17 @@ export default function EauClientQrPage({ userId }: { userId: string | null }) {
         setLoading(false);
         return;
       }
-      const c = await getCompteClientForUser(userId);
-      setCompte(c);
-      if (c?.code_qr) {
-        setDataUrl(await qrToJpegDataUrl(buildScanUrl('client', c.code_qr), 320));
+      try {
+        const c = await getCompteClientForUser(userId);
+        setCompte(c);
+        if (c?.code_qr) {
+          setDataUrl(await qrToJpegDataUrl(buildScanUrl('client', c.code_qr), 320));
+        }
+      } catch (e) {
+        console.warn('⚠️ [EauClientQr] chargement échoué:', (e as any)?.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [userId]);
 

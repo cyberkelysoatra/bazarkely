@@ -59,12 +59,24 @@ export const EAU_CHART = {
   forest: '#364E30',
   olive: '#4C6D40',
   gold: '#9D9B4B',
-  goldLight: '#C3C067',
   teal: '#10939F',
   rose: '#b91c1c',
   elec: '#9D9B4B',
   grid: '#e6ebe1',
 } as const;
+
+/**
+ * Style d'un onglet « segmenté » (contrôle à 2-3 options pleine largeur dans un formulaire,
+ * charte AHUVI) : pilule active vert forêt, inactive blanche bordée. Brique PARTAGÉE pour
+ * éviter de réimplémenter le markup d'onglet localement (cf. EauDemandesPage). Distinct de
+ * `<EauTabs>` qui pilote la navigation INTER-vues d'une page-thème (pills `rounded-full`).
+ */
+export function eauSegmentTabClass(active: boolean): string {
+  return cn(
+    'flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors',
+    active ? 'bg-ahuvi-forest text-white border-ahuvi-forest' : 'bg-white text-ahuvi-forest border-ahuvi-200 hover:bg-ahuvi-50',
+  );
+}
 
 /**
  * Carte KPI : icône (conteneur teinté AHUVI) + libellé + valeur.

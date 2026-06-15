@@ -53,39 +53,48 @@ export default function EauClientPage() {
         setLoading(false);
         return;
       }
-      const compte = await getCompteClientForUser(userId);
-      const ids = compte?.compteur_ids ?? [];
-      setConfig(await getConfig());
+      try {
+        const compte = await getCompteClientForUser(userId);
+        const ids = compte?.compteur_ids ?? [];
+        setConfig(await getConfig());
 
-      if (!compte || ids.length === 0) {
-        setAucunCompteur(true);
+        if (!compte || ids.length === 0) {
+          setAucunCompteur(true);
+          return;
+        }
+
+        const allCompteurs = await listCompteurs();
+        const mine = allCompteurs.filter((c) => ids.includes(c.id));
+        setCompteurs(mine);
+
+        // Lectures Dexie parallélisées : par compteur (4 lectures en // ) ET sur tous
+        // les compteurs (// ) — au lieu d'une cascade séquentielle (D-3).
+        const vuesData: CompteurVue[] = await Promise.all(
+          mine.map(async (c) => {
+            const [dernier, hist, elecDernier, elecHist] = await Promise.all([
+              getDernierReleveCompteur(c.id),
+              historiqueConsoCompteur(c.id),
+              getDernierReleveElec(c.id),
+              historiqueConsoElec(c.id),
+            ]);
+            return {
+              compteur: c,
+              dernierIndex: dernier?.index ?? null,
+              dernierReleveDate: dernier?.timestamp ?? null,
+              consos: hist.slice(-12).map((value, i) => ({ i: i + 1, value })),
+              elecDernierIndex: elecDernier?.index ?? null,
+              elecDernierDate: elecDernier?.timestamp ?? null,
+              elecConsos: elecHist.slice(-12).map((value, i) => ({ i: i + 1, value })),
+            };
+          })
+        );
+        setVues(vuesData);
+        setFactures(await getFacturesForCompteurs(ids));
+      } catch (e) {
+        console.warn('⚠️ [EauClient] chargement échoué:', (e as any)?.message);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const allCompteurs = await listCompteurs();
-      const mine = allCompteurs.filter((c) => ids.includes(c.id));
-      setCompteurs(mine);
-
-      const vuesData: CompteurVue[] = [];
-      for (const c of mine) {
-        const dernier = await getDernierReleveCompteur(c.id);
-        const hist = await historiqueConsoCompteur(c.id);
-        const elecDernier = await getDernierReleveElec(c.id);
-        const elecHist = await historiqueConsoElec(c.id);
-        vuesData.push({
-          compteur: c,
-          dernierIndex: dernier?.index ?? null,
-          dernierReleveDate: dernier?.timestamp ?? null,
-          consos: hist.slice(-12).map((value, i) => ({ i: i + 1, value })),
-          elecDernierIndex: elecDernier?.index ?? null,
-          elecDernierDate: elecDernier?.timestamp ?? null,
-          elecConsos: elecHist.slice(-12).map((value, i) => ({ i: i + 1, value })),
-        });
-      }
-      setVues(vuesData);
-      setFactures(await getFacturesForCompteurs(ids));
-      setLoading(false);
     })();
   }, [userId]);
 

@@ -134,20 +134,25 @@ function FicheClient({ clientId, nom }: { clientId: string; nom: string }) {
 
   useEffect(() => {
     (async () => {
-      const compte = await getCompteClient(clientId);
-      const ids = compte?.compteur_ids ?? [];
-      const all = await listCompteurs();
-      const mine = all.filter((c) => ids.includes(c.id));
-      const data = [];
-      for (const c of mine) {
-        const d = await getDernierReleveCompteur(c.id);
-        data.push({ compteur: c, index: d?.index ?? null, date: d?.timestamp ?? null });
+      try {
+        const compte = await getCompteClient(clientId);
+        const ids = compte?.compteur_ids ?? [];
+        const all = await listCompteurs();
+        const mine = all.filter((c) => ids.includes(c.id));
+        const data = [];
+        for (const c of mine) {
+          const d = await getDernierReleveCompteur(c.id);
+          data.push({ compteur: c, index: d?.index ?? null, date: d?.timestamp ?? null });
+        }
+        setRows(data);
+        const factures = await getFacturesForCompteurs(ids);
+        setFacturesCount(factures.length);
+        setImpayes(factures.filter((f) => f.statut === 'impaye').length);
+      } catch (e) {
+        console.warn('⚠️ [EauScanResolver] chargement fiche client échoué:', (e as any)?.message);
+      } finally {
+        setLoading(false);
       }
-      setRows(data);
-      const factures = await getFacturesForCompteurs(ids);
-      setFacturesCount(factures.length);
-      setImpayes(factures.filter((f) => f.statut === 'impaye').length);
-      setLoading(false);
     })();
   }, [clientId]);
 

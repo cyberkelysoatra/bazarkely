@@ -178,9 +178,11 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         claimedTokenId = await claimPendingTokenInvitation(online).catch(() => null);
       }
 
-      // Rafraîchit config + données de base en arrière-plan (best-effort).
+      // Rafraîchit config + données de base en arrière-plan (best-effort). On EXCLUT
+      // `eau_roles`/`eau_comptes_client` : `ensureRolesBootstrap` (ci-dessous) les tire
+      // déjà — une seule fois — évitant le double pull concurrent au démarrage (B-3).
       void refreshConfig(online).catch(() => {});
-      void pullAll().catch(() => {});
+      void pullAll(['eau_roles', 'eau_comptes_client']).catch(() => {});
 
       // Bootstrap propriétaire + lecture des rôles effectifs (avec retry du pull à froid).
       const { roles: effective, confirmed } = await ensureRolesBootstrap(id, online);

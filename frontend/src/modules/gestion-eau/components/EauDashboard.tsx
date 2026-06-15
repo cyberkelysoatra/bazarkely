@@ -11,7 +11,7 @@ import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData, type BaseHoraire } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
 import { getElecKpiData, type ElecKpiData } from '../services/eauElecReleveService';
-import { fmtM3, fmtPct, fmtKwh, fmtM3h, fmtKw } from '../utils/format';
+import { fmtM3, fmtPct, fmtKwh, fmtM3h, fmtKw, fmtAutonomie } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
 /** Base horaire mémorisée (localStorage) + libellés associés. */
@@ -21,15 +21,6 @@ const BASE_HORAIRE_OPTIONS: { key: BaseHoraire; label: string }[] = [
   { key: 'h24', label: 'Sur 24 h' },
   { key: 'periode', label: 'Sur la période' },
 ];
-
-/** Formate une autonomie en heures → « 2 j 4 h » ou « 5 h » (— si indéfinie). */
-function fmtAutonomie(heures: number | null): string {
-  if (heures == null || !Number.isFinite(heures)) return '—';
-  if (heures < 24) return `${heures.toFixed(1)} h`;
-  const j = Math.floor(heures / 24);
-  const h = Math.round(heures - j * 24);
-  return `${j} j ${h} h`;
-}
 
 /**
  * En-tête de carte titrée du tableau de bord : libellé majuscule + icône optionnelle
@@ -126,17 +117,22 @@ export default function EauDashboard() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [d, t, e] = await Promise.all([
-        getDashboardData(),
-        getTendances({ fenetreJours: 30 }),
-        getElecKpiData(),
-      ]);
-      if (alive) {
-        setData(d);
-        setConso(t.consoParJour);
-        setNiveau(t.niveauBassin);
-        setElecKpi(e);
-        setLoading(false);
+      try {
+        const [d, t, e] = await Promise.all([
+          getDashboardData(),
+          getTendances({ fenetreJours: 30 }),
+          getElecKpiData(),
+        ]);
+        if (alive) {
+          setData(d);
+          setConso(t.consoParJour);
+          setNiveau(t.niveauBassin);
+          setElecKpi(e);
+        }
+      } catch (err) {
+        console.warn('⚠️ [EauDashboard] chargement échoué:', (err as any)?.message);
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => {
@@ -274,7 +270,7 @@ export default function EauDashboard() {
                 icon={Gauge}
                 tone="forest"
                 label="Pompes en marche"
-                value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
+                value={fmtM3h(data?.debitCourantM3h)}
                 hint="Débit entrant"
                 onClick={goTendances}
                 onIconClick={() => goSaisieBassin('debit')}

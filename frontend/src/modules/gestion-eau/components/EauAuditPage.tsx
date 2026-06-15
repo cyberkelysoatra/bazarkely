@@ -41,11 +41,16 @@ export default function EauAuditPage() {
 
   useEffect(() => {
     (async () => {
-      const [a, s, c] = await Promise.all([listAudit(), listScans(), listCompteurs()]);
-      setAudit(a);
-      setScans(s);
-      setCompteurs(c);
-      setLoading(false);
+      try {
+        const [a, s, c] = await Promise.all([listAudit(), listScans(), listCompteurs()]);
+        setAudit(a);
+        setScans(s);
+        setCompteurs(c);
+      } catch (e) {
+        console.warn('⚠️ [EauAudit] chargement échoué:', (e as any)?.message);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

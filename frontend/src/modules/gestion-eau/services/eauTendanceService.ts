@@ -115,7 +115,12 @@ export function bucketByLocalDay(points: { ms: number; value: number }[]): Serie
     .sort((a, b) => a.ms - b.ms);
 }
 
-/** Regroupe une liste {ms,value} par jour (somme), trié croissant. */
+/**
+ * Regroupe une liste {ms,value} par jour UTC (somme), trié croissant.
+ * @deprecated Utiliser `bucketByLocalDay` : le regroupement UTC désaligne les séries
+ * à Madagascar (UTC+3) — un point entre 00:00 et 03:00 locale est rattaché à la veille.
+ * Conservé uniquement pour le test historique qui le cible directement.
+ */
 export function bucketByDay(points: { ms: number; value: number }[]): SeriePoint[] {
   const map = new Map<string, { ms: number; value: number }>();
   for (const p of points) {
@@ -170,8 +175,10 @@ export async function getTendances(opts?: { fenetreJours?: number }): Promise<Te
   const endMs = Date.now();
   const startMs = endMs - fenetreJours * MS_PER_DAY;
 
-  // Conso par jour (bilans dans la fenêtre)
-  const consoParJour = bucketByDay(
+  // Conso par jour (bilans dans la fenêtre) — jour LOCAL (Madagascar UTC+3) pour
+  // s'aligner sur la série « conso estimée » (bucketByLocalDay) et éviter le décalage
+  // d'un jour des points horodatés entre 00:00 et 03:00 locale.
+  const consoParJour = bucketByLocalDay(
     bilans
       .filter((b) => {
         const ms = new Date(b.timestamp).getTime();

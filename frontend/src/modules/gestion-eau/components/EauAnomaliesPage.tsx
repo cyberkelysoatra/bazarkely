@@ -9,6 +9,7 @@ import EauPageShell from './EauPageShell';
 import { EauListIcon, EauEmptyState, EauIconButton } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { useGestionEau } from '../context';
+import { eauIsOnline } from '../utils/online';
 import { AIDE } from './eauAideTextes';
 import { listBilans, markBilanTraitee, refreshBilans } from '../services/eauBilanService';
 import { fmtM3, fmtPct, fmtDate } from '../utils/format';
@@ -26,9 +27,14 @@ export default function EauAnomaliesPage() {
 
   useEffect(() => {
     (async () => {
-      await refreshBilans(navigator.onLine);
-      await reload();
-      setLoading(false);
+      try {
+        await refreshBilans(eauIsOnline());
+        await reload();
+      } catch (e) {
+        console.warn('⚠️ [EauAnomalies] chargement échoué:', (e as any)?.message);
+      } finally {
+        setLoading(false);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

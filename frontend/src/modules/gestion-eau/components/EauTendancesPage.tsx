@@ -136,10 +136,13 @@ export default function EauTendancesPage() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const d = await getTendances();
-      if (alive) {
-        setData(d);
-        setLoading(false);
+      try {
+        const d = await getTendances();
+        if (alive) setData(d);
+      } catch (e) {
+        console.warn('⚠️ [EauTendances] chargement échoué:', (e as any)?.message);
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => {

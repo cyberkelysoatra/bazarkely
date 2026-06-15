@@ -18,6 +18,7 @@ import {
 import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
+import { eauIsOnline } from '../utils/online';
 import { relevesByCompteur, refreshReleves, updateReleveCompteur } from '../services/eauReleveService';
 import { relevesElecByCompteur, refreshElecReleves, updateReleveElec } from '../services/eauElecReleveService';
 import { refreshCompteurs } from '../services/eauCompteurService';
@@ -136,7 +137,7 @@ export default function EauCompteursReleves({
       await load();
       if (alive) setLoading(false);
       // Rafraîchit en arrière-plan si en ligne (non bloquant), puis recharge.
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
+      if (eauIsOnline()) {
         await Promise.allSettled([refreshCompteurs(true), refreshReleves(true), refreshElecReleves(true)]);
         if (alive) await load();
       }

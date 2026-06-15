@@ -9,11 +9,20 @@ export const FUITE_NRW_PCT = 25;
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// Clés d'idempotence en jour/mois LOCAL (Madagascar UTC+3). Avec toISOString (UTC),
+// autour de minuit local la clé bascule trop tôt/tard → déduplication erronée des
+// alertes (doublon ou alerte manquante). Le format de chaîne reste identique
+// (YYYY-MM-DD / YYYY-MM) pour rester comparable aux ref_id déjà stockés.
 export function dayKey(d = new Date()): string {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // YYYY-MM-DD (local)
 }
 export function monthKey(d = new Date()): string {
-  return d.toISOString().slice(0, 7); // YYYY-MM
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`; // YYYY-MM (local)
 }
 
 export interface AlerteCandidate {

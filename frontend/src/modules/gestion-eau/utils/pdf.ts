@@ -3,10 +3,12 @@
  * alourdir le bundle initial — réutilise le loader partagé pdfLoader.ts).
  * Mise en page A4 portrait, en-tête copropriété + logo optionnel, montants en MGA.
  */
+import type jsPDF from 'jspdf';
 import { loadJsPDF } from '../../../services/pdfLoader';
 import { fmtMontant, fmtM3, fmtDate } from './format';
 import { montantEnLettres } from './montantLettres';
 import { getCoutByMois } from '../services/eauElecCoutService';
+import { PDF_FOREST, PDF_OLIVE } from './pdfTheme';
 import type { FactureLocal, ConfigLocal, CompteurLocal } from '../types/gestionEau';
 
 export interface FacturePdfContext {
@@ -16,7 +18,7 @@ export interface FacturePdfContext {
 }
 
 /** Construit le document PDF d'une facture et le retourne (jsPDF). */
-export async function buildFacturePdf(ctx: FacturePdfContext): Promise<any> {
+export async function buildFacturePdf(ctx: FacturePdfContext): Promise<jsPDF> {
   const { facture, config, compteur } = ctx;
   const JsPDF = await loadJsPDF();
   const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -101,9 +103,9 @@ export async function buildFacturePdf(ctx: FacturePdfContext): Promise<any> {
     doc.line(left, y - 3, right, y - 3);
   }
 
-  // ── Montant total ──
+  // ── Montant total ── (accent VERT FORÊT AHUVI — plus de bleu, cf. charte)
   y += 4;
-  doc.setFillColor(14, 116, 144); // sky-700
+  doc.setFillColor(PDF_FOREST[0], PDF_FOREST[1], PDF_FOREST[2]);
   doc.rect(left, y, right - left, 14, 'F');
   doc.setTextColor(255);
   doc.setFont('helvetica', 'bold');
@@ -225,7 +227,7 @@ interface TableCol {
 
 /** Dessine un tableau bordé (en-tête grisé + lignes) et retourne le nouveau y. */
 function drawTable(
-  doc: any,
+  doc: jsPDF,
   x: number,
   y: number,
   cols: TableCol[],
@@ -277,7 +279,7 @@ function drawTable(
  * encadré de transparence A/B/C/D du coût élec, grand total + montant en toutes lettres.
  * Dégradation propre : facture eau-seule ou élec-seule → un seul tableau.
  */
-export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<any> {
+export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<jsPDF> {
   const { facture, config, compteur } = ctx;
   const JsPDF = await loadJsPDF();
   const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -285,7 +287,8 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
   const left = 18;
   const right = 192;
   const width = right - left; // 174mm
-  const accentSky: [number, number, number] = [14, 116, 144]; // sky-700
+  // Accent principal = VERT FORÊT AHUVI (charte « zéro bleu / teal = eau »).
+  const accent: [number, number, number] = PDF_FOREST;
   const devise = facture.devise || config?.devise || 'MGA';
   const hasElec = facture.conso_kwh != null;
   const hasEau = facture.conso_m3 != null;
@@ -306,7 +309,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
   if (!logo) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.setTextColor(accentSky[0], accentSky[1], accentSky[2]);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
     doc.text('RÊVE D’OR / AHUVI', left, y + 8);
     doc.setTextColor(0);
   }
@@ -321,7 +324,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
   doc.text(`Émise le ${fmtDate(facture.generated_at)}`, right, y + 16, { align: 'right' });
 
   y += 24;
-  doc.setDrawColor(accentSky[0], accentSky[1], accentSky[2]);
+  doc.setDrawColor(accent[0], accent[1], accent[2]);
   doc.setLineWidth(0.6);
   doc.line(left, y, right, y);
   doc.setLineWidth(0.2);
@@ -377,7 +380,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
   if (hasElec) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(accentSky[0], accentSky[1], accentSky[2]);
+    doc.setTextColor(accent[0], accent[1], accent[2]);
     doc.text('ÉLECTRICITÉ', left, y);
     doc.setTextColor(0);
     y += 3;
@@ -396,14 +399,14 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
           fmtNb(facture.montant_elec),
         ],
       ],
-      accentSky
+      accent
     );
     y += 8;
   }
 
   // ── Tableau EAU ──
   if (hasEau) {
-    const accentEau: [number, number, number] = [76, 109, 64]; // ahuvi-forest
+    const accentEau: [number, number, number] = PDF_OLIVE; // vert olive AHUVI
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(accentEau[0], accentEau[1], accentEau[2]);
@@ -432,7 +435,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
 
   // ── Encadré de transparence A/B/C/D (prix du kWh) ──
   if (hasElec && facture.cout_mois) {
-    let cout: any = null;
+    let cout: Awaited<ReturnType<typeof getCoutByMois>> = null;
     try {
       cout = await getCoutByMois(facture.cout_mois);
     } catch {
@@ -440,12 +443,12 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
     }
     if (cout) {
       const boxH = 33;
-      doc.setDrawColor(accentSky[0], accentSky[1], accentSky[2]);
-      doc.setFillColor(240, 248, 252);
+      doc.setDrawColor(accent[0], accent[1], accent[2]);
+      doc.setFillColor(240, 245, 238); // fond vert très clair (charte, plus de bleu)
       doc.roundedRect(left, y, width, boxH, 2, 2, 'FD');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.setTextColor(accentSky[0], accentSky[1], accentSky[2]);
+      doc.setTextColor(accent[0], accent[1], accent[2]);
       doc.text(`Calcul du prix du kWh — mois ${facture.cout_mois}`, left + 4, y + 6);
       doc.setTextColor(40);
       doc.setFont('helvetica', 'normal');
@@ -468,7 +471,7 @@ export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<a
 
   // ── GRAND TOTAL ──
   const total = facture.montant_total ?? (facture.montant ?? 0) + (facture.montant_elec ?? 0);
-  doc.setFillColor(accentSky[0], accentSky[1], accentSky[2]);
+  doc.setFillColor(accent[0], accent[1], accent[2]);
   doc.rect(left, y, width, 14, 'F');
   doc.setTextColor(255);
   doc.setFont('helvetica', 'bold');

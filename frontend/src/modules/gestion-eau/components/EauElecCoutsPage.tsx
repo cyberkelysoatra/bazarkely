@@ -20,6 +20,8 @@ import {
   deleteCout,
   computePrixKwh,
 } from '../services/eauElecCoutService';
+import { fmtMois } from '../utils/format';
+import { eauIsOnline } from '../utils/online';
 import type { ElecCoutLocal } from '../types/gestionEau';
 
 type FormState = {
@@ -43,13 +45,6 @@ const fmtNum = (v: number | null | undefined, digits = 0): string =>
     ? '—'
     : v.toLocaleString('fr-FR', { minimumFractionDigits: digits ? 2 : 0, maximumFractionDigits: digits || 0 });
 
-/** Libellé lisible d'un mois `YYYY-MM` (ex. « juin 2025 »). */
-function moisLabel(mois: string): string {
-  const [y, m] = mois.split('-').map(Number);
-  if (!y || !m) return mois;
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-}
 
 export default function EauElecCoutsPage() {
   const { isReadOnly } = useGestionEau();
@@ -67,7 +62,7 @@ export default function EauElecCoutsPage() {
 
   useEffect(() => {
     (async () => {
-      await reload(navigator.onLine);
+      await reload(eauIsOnline());
       setLoading(false);
     })();
   }, []);
@@ -121,7 +116,7 @@ export default function EauElecCoutsPage() {
         total_gasoil: num(form.total_gasoil),
         total_kwh: num(form.total_kwh),
       });
-      await reload(navigator.onLine);
+      await reload(eauIsOnline());
       toast.success(editingId ? 'Mois mis à jour' : 'Mois enregistré');
       cancel();
     } catch {
@@ -133,10 +128,10 @@ export default function EauElecCoutsPage() {
 
   const onDelete = async (c: ElecCoutLocal) => {
     if (isReadOnly) return;
-    if (!window.confirm(`Supprimer le coût de ${moisLabel(c.mois)} ?`)) return;
+    if (!window.confirm(`Supprimer le coût de ${fmtMois(c.mois)} ?`)) return;
     try {
       await deleteCout(c.id);
-      await reload(navigator.onLine);
+      await reload(eauIsOnline());
       toast.success('Mois supprimé');
     } catch {
       toast.error('Échec de la suppression');
@@ -260,7 +255,7 @@ export default function EauElecCoutsPage() {
                 <div className="min-w-0">
                   <div className="font-semibold text-ahuvi-forest capitalize flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-ahuvi-gold flex-shrink-0" aria-hidden="true" />
-                    {moisLabel(c.mois)}
+                    {fmtMois(c.mois)}
                   </div>
                   <div className="mt-1 text-sm text-gray-600 grid grid-cols-2 gap-x-3 gap-y-0.5">
                     <span>A — JIRAMA : <strong>{fmtNum(c.total_jirama)} {c.devise}</strong></span>
@@ -279,7 +274,7 @@ export default function EauElecCoutsPage() {
                       variant="secondary"
                       onClick={() => openEdit(c)}
                       className="text-xs px-2.5 py-1.5"
-                      aria-label={`Modifier ${moisLabel(c.mois)}`}
+                      aria-label={`Modifier ${fmtMois(c.mois)}`}
                     >
                       Modifier
                     </EauIconButton>
@@ -288,7 +283,7 @@ export default function EauElecCoutsPage() {
                       variant="danger"
                       onClick={() => onDelete(c)}
                       className="text-xs px-2.5 py-1.5"
-                      aria-label={`Supprimer ${moisLabel(c.mois)}`}
+                      aria-label={`Supprimer ${fmtMois(c.mois)}`}
                     >
                       Supprimer
                     </EauIconButton>

@@ -9,6 +9,7 @@ import { AIDE } from './eauAideTextes';
 import { getConfig, refreshConfig, saveConfig } from '../services/eauConfigService';
 import { bassinDeductions, isBassinModelComplete } from '../utils/bassin';
 import { fmtM3 } from '../utils/format';
+import { eauIsOnline } from '../utils/online';
 import { countTiles, clearTiles } from '../db/eauTiles';
 import { useGestionEau } from '../context';
 import { supabase, withTimeout } from '../../../lib/supabase';
@@ -81,7 +82,7 @@ export default function EauConfigPage() {
 
   useEffect(() => {
     (async () => {
-      const online = navigator.onLine;
+      const online = eauIsOnline();
       const cfg = (await refreshConfig(online)) ?? (await getConfig());
       applyConfig(cfg);
       setTileCount(await countTiles());
@@ -146,7 +147,7 @@ export default function EauConfigPage() {
     )) as any;
     if (error) throw error;
     // Re-tirer la config serveur pour rafraîchir l'affichage (source de vérité).
-    applyConfig(await refreshConfig(navigator.onLine));
+    applyConfig(await refreshConfig(eauIsOnline()));
   };
 
   const onSave = async () => {

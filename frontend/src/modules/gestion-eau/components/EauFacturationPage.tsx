@@ -29,7 +29,7 @@ import { listCouts } from '../services/eauElecCoutService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { downloadFactureCombineePdf } from '../utils/pdf';
 import { downloadCsv } from '../utils/csv';
-import { fmtMontant, fmtM3, fmtKwh, fmtDate } from '../utils/format';
+import { fmtMontant, fmtM3, fmtKwh, fmtDate, fmtMois } from '../utils/format';
 import type { ConfigLocal, FactureLocal, CompteurLocal, ElecCoutLocal } from '../types/gestionEau';
 
 function toIsoStartOfDay(dateStr: string): string {
@@ -40,12 +40,6 @@ function toIsoEndOfDay(dateStr: string): string {
 }
 function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10);
-}
-/** Libellé lisible d'un mois `YYYY-MM` (ex. « juin 2025 »). */
-function moisLabel(mois: string): string {
-  const [y, m] = mois.split('-').map(Number);
-  if (!y || !m) return mois;
-  return new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
 export default function EauFacturationPage() {
@@ -274,7 +268,7 @@ export default function EauFacturationPage() {
                 >
                   {couts.map((c) => (
                     <option key={c.id} value={c.mois}>
-                      {moisLabel(c.mois)} — {fmtMontant(c.prix_kwh, config?.devise)} / kWh
+                      {fmtMois(c.mois)} — {fmtMontant(c.prix_kwh, config?.devise)} / kWh
                     </option>
                   ))}
                 </select>

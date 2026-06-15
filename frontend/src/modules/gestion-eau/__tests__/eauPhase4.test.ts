@@ -12,7 +12,7 @@ vi.mock('../../../services/notificationService', () => ({ default: {} }));
 
 import { computeAlerteCandidates } from '../utils/alertes';
 import { isAnnonceActive } from '../services/eauAnnonceService';
-import { bucketByDay, consoCompteurPeriode } from '../services/eauTendanceService';
+import { bucketByDay, bucketByLocalDay, localDayLabel, consoCompteurPeriode } from '../services/eauTendanceService';
 import { targetReportKey, shouldProposeRapport } from '../services/eauRapportService';
 import { computeNRW } from '../utils/bilan';
 import type { AnnonceLocal, ReleveCompteurLocal } from '../types/gestionEau';
@@ -121,6 +121,28 @@ describe('bucketByDay — agrégation journalière', () => {
     expect(out[0].label).toBe('2026-06-10');
     expect(out[0].value).toBe(5);
     expect(out[1].value).toBe(5);
+  });
+});
+
+// A-1 — la série « conso métrée » doit utiliser le jour LOCAL (comme la conso estimée),
+// sinon à Madagascar (UTC+3) un point à 01:00 locale est rattaché à la veille (UTC).
+describe('bucketByLocalDay — agrégation par jour LOCAL (fuseau Madagascar)', () => {
+  it('range un point à 01:00 heure locale dans le jour local courant (pas la veille)', () => {
+    // Date locale arbitraire à 01:00 — son jour LOCAL est défini par localDayLabel.
+    const local0100 = new Date(2026, 5, 11, 1, 0, 0); // 11 juin 2026, 01:00 LOCAL
+    const ms = local0100.getTime();
+    const out = bucketByLocalDay([{ ms, value: 4 }]);
+    expect(out).toHaveLength(1);
+    expect(out[0].label).toBe(localDayLabel(local0100)); // = '2026-06-11' en local
+    expect(out[0].value).toBe(4);
+  });
+
+  it('somme deux points du même jour local horodatés de part et d’autre de minuit UTC', () => {
+    const a = new Date(2026, 5, 11, 1, 30, 0).getTime(); // 01:30 local
+    const b = new Date(2026, 5, 11, 23, 0, 0).getTime(); // 23:00 local (même jour local)
+    const out = bucketByLocalDay([{ ms: a, value: 2 }, { ms: b, value: 3 }]);
+    expect(out).toHaveLength(1);
+    expect(out[0].value).toBe(5);
   });
 });
 

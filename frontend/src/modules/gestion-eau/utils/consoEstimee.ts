@@ -19,8 +19,7 @@
  * basse (si la pompe tournait un peu, la conso réelle serait un peu supérieure), mais
  * c'est l'estimation observable la plus fiable et elle recale l'ordre de grandeur.
  */
-import { toMs } from './bilan';
-import { FRACTION_POMPE } from './projection';
+import { toMs, FRACTION_POMPE } from './bilan';
 
 export interface IntervalleConso {
   /** ms du relevé de fin de l'intervalle (= jour d'imputation). */

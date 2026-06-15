@@ -16,6 +16,7 @@ import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
 import { useGestionEau } from '../context';
+import { eauIsOnline } from '../utils/online';
 import { addEntreeBassin, listEntreesBassin, refreshReleves } from '../services/eauReleveService';
 import { getDashboardData } from '../services/eauBilanService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
@@ -84,7 +85,7 @@ export default function EauApportsReleves({
     (async () => {
       await load();
       if (alive) setLoading(false);
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
+      if (eauIsOnline()) {
         await refreshReleves(true);
         if (alive) await load();
       }

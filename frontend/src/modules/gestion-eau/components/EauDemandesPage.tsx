@@ -12,7 +12,7 @@ import {
   MessageCircle, Link as LinkIcon, CalendarClock, BookUser, Info, Eye,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
-import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
+import { EauEmptyState, EauIconButton, EauListIcon, eauSegmentTabClass } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { useGestionEau } from '../context';
 import { AIDE } from './eauAideTextes';
@@ -26,8 +26,8 @@ import { listCompteurs } from '../services/eauCompteurService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { mapImportedContacts, type ImportedContact, type RawWebContact } from '../utils/contactImport';
 import { fmtDate } from '../utils/format';
+import { eauIsOnline } from '../utils/online';
 import { showConfirm } from '../../../utils/dialogUtils';
-import { cn } from '../../../utils/cn';
 import type { DemandeAccesLocal, CompteurLocal, InvitationLocal } from '../types/gestionEau';
 
 interface DraftState {
@@ -84,7 +84,7 @@ export default function EauDemandesPage() {
   const reload = useCallback(async () => {
     setDemandes(await listDemandes({ statut: 'en_attente' }));
     setCompteurs(await listCompteurs());
-    const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+    const online = eauIsOnline();
     setInvitations(await refreshInvitations(online));
   }, []);
 
@@ -323,12 +323,6 @@ export default function EauDemandesPage() {
     </div>
   );
 
-  const tabClass = (active: boolean) =>
-    cn(
-      'flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors',
-      active ? 'bg-ahuvi-forest text-white border-ahuvi-forest' : 'bg-white text-ahuvi-forest border-ahuvi-200 hover:bg-ahuvi-50',
-    );
-
   return (
     <EauPageShell
       title="Invitations & demandes"
@@ -410,10 +404,10 @@ export default function EauDemandesPage() {
               <div className="text-sm">
                 <span className="block text-gray-600 mb-1">Rôle commun</span>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setBatchRole('releveur')} className={tabClass(batchRole === 'releveur')}>
+                  <button type="button" onClick={() => setBatchRole('releveur')} className={eauSegmentTabClass(batchRole === 'releveur')}>
                     <ClipboardList className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> Releveur
                   </button>
-                  <button type="button" onClick={() => setBatchRole('admin')} className={tabClass(batchRole === 'admin')}>
+                  <button type="button" onClick={() => setBatchRole('admin')} className={eauSegmentTabClass(batchRole === 'admin')}>
                     <ShieldCheck className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> Administrateur
                   </button>
                 </div>
@@ -439,7 +433,7 @@ export default function EauDemandesPage() {
               {/* Lignes éditables */}
               <div className="space-y-2">
                 {batch.map((c, i) => (
-                  <div key={i} className="bg-white border border-ahuvi-100 rounded-lg p-2.5 space-y-2">
+                  <div key={c._id} className="bg-white border border-ahuvi-100 rounded-lg p-2.5 space-y-2">
                     <div className="flex items-center gap-2">
                       <input
                         value={c.nom}
@@ -587,10 +581,10 @@ export default function EauDemandesPage() {
 
               {/* Onglets canal : Email (adresse Google) / WhatsApp (lien jeton) */}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setChannel('email')} className={tabClass(channel === 'email')}>
+                <button type="button" onClick={() => setChannel('email')} className={eauSegmentTabClass(channel === 'email')}>
                   <Mail className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> Email
                 </button>
-                <button type="button" onClick={() => setChannel('whatsapp')} className={tabClass(channel === 'whatsapp')}>
+                <button type="button" onClick={() => setChannel('whatsapp')} className={eauSegmentTabClass(channel === 'whatsapp')}>
                   <MessageCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> WhatsApp
                 </button>
               </div>

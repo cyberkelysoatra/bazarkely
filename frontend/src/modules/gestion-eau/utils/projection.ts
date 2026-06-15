@@ -12,9 +12,8 @@
 /**
  * Fraction de temps de marche effective de la pompe (elle se coupe au flotteur → jamais
  * 24 h/24). Sert ici à BORNER l'estimation par débit (dernier recours). Constante
- * CANONIQUE définie dans utils/bilan.ts, ré-exportée pour les importateurs existants.
+ * CANONIQUE définie dans utils/bilan.ts (source unique — importer de là, pas via ce module).
  */
-export { FRACTION_POMPE } from './bilan';
 import { FRACTION_POMPE } from './bilan';
 
 export interface ProjectionInput {

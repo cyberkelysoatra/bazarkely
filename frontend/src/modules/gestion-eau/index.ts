@@ -17,5 +17,6 @@ export { eauDb, EAU_TABLES } from './db/gestionEauDb';
 // Types
 export * from './types/gestionEau';
 
-// Services (namespaces)
-export * as services from './services';
+// NB : pas de barrel de services. Les composants importent chaque service par son chemin
+// direct (`./services/eauXxxService`) — plus lisible et tree-shakable ; l'ancien barrel
+// `./services` (namespaces) était incomplet et sans consommateur → abandonné (C-6).

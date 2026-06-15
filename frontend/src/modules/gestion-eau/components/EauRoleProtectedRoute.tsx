@@ -31,12 +31,25 @@ export default function EauRoleProtectedRoute({
       ? '/gestion-eau/client'
       : '/dashboard';
   const target = redirectTo ?? home;
+  const hasRequiredRole = allowedRoles.some((r) => roles[r]);
 
+  // ⚠️ Tous les hooks sont déclarés AVANT tout `return` conditionnel (Rules of Hooks) :
+  // sinon le nombre/ordre de hooks varie d'un rendu à l'autre → crash
+  // « Rendered more hooks than during the previous render ».
   useEffect(() => {
     if (!isLoading && !hasEauAccess) {
       toast.error('Accès refusé au module Gestion Eau', { duration: 4000, position: 'top-center' });
     }
   }, [hasEauAccess, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && hasEauAccess && !hasRequiredRole) {
+      toast.error("Vous n'avez pas les permissions nécessaires pour cette page", {
+        duration: 4000,
+        position: 'top-center',
+      });
+    }
+  }, [hasRequiredRole, isLoading, hasEauAccess]);
 
   if (isLoading) {
     return (
@@ -49,17 +62,6 @@ export default function EauRoleProtectedRoute({
   if (!hasEauAccess) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  const hasRequiredRole = allowedRoles.some((r) => roles[r]);
-
-  useEffect(() => {
-    if (!isLoading && hasEauAccess && !hasRequiredRole) {
-      toast.error("Vous n'avez pas les permissions nécessaires pour cette page", {
-        duration: 4000,
-        position: 'top-center',
-      });
-    }
-  }, [hasRequiredRole, isLoading, hasEauAccess]);
 
   if (!hasRequiredRole) {
     return <Navigate to={target} replace />;

@@ -11,6 +11,7 @@ import { Map as MapIcon, Download, AlertTriangle, MapPin, Gauge } from 'lucide-r
 import { EauListIcon, EAU_CHART } from './EauUi';
 import { listCompteurs } from '../services/eauCompteurService';
 import { getConfig } from '../services/eauConfigService';
+import { eauIsOnline } from '../utils/online';
 import {
   offlineTileLayer,
   boundsFromCenter,
@@ -44,7 +45,7 @@ export default function EauCartePage() {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [fallbackList, setFallbackList] = useState(false);
-  const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+  const online = eauIsOnline();
 
   // Chargement initial (données + décision carte/repli).
   useEffect(() => {

@@ -14,16 +14,7 @@ import { Waves, Droplet, Percent, Hourglass } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauChartCard, EAU_CHART } from './EauUi';
 import { getDashboardData, type DashboardData } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
-import { fmtM3, fmtPct } from '../utils/format';
-
-/** Formate une autonomie en heures → « 2 j 4 h » / « 5 h » (— si indéfinie). */
-function fmtAutonomie(heures: number | null): string {
-  if (heures == null || !Number.isFinite(heures) || heures <= 0) return '—';
-  const j = Math.floor(heures / 24);
-  const h = Math.round(heures % 24);
-  if (j > 0) return `${j} j ${h} h`;
-  return `${h} h`;
-}
+import { fmtM3, fmtPct, fmtAutonomie } from '../utils/format';
 
 export default function EauProprietaireBassinPage() {
   const [loading, setLoading] = useState(true);

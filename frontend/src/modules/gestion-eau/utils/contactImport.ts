@@ -22,10 +22,24 @@ export interface RawWebContact {
 
 /** Ligne d'invitation issue d'un contact (éditable avant création du lot). */
 export interface ImportedContact {
+  /** Identifiant stable de la ligne (clé React) — survit aux suppressions au milieu du lot. */
+  _id: string;
   nom: string;
   /** Numéro brut, lisible et éditable (normalisé à la création par le service). */
   phone: string;
   email: string | null;
+}
+
+/** Compteur monotone → garantit l'unicité du `_id` même si `crypto.randomUUID` est absent
+ *  ou renvoie une valeur constante (ex. environnement de test mocké). */
+let rowCounter = 0;
+
+/** Identifiant stable et unique pour une ligne importée (clé React). */
+function newRowId(): string {
+  rowCounter += 1;
+  const c = typeof crypto !== 'undefined' ? (crypto as any) : undefined;
+  const rand = c?.randomUUID ? c.randomUUID() : Math.random().toString(36).slice(2);
+  return `row-${rowCounter}-${rand}`;
 }
 
 export interface ContactImportResult {
@@ -49,6 +63,7 @@ export function mapImportedContacts(raw: RawWebContact[] | null | undefined): Co
       continue;
     }
     contacts.push({
+      _id: newRowId(),
       nom: (c?.name?.[0] ?? '').trim(),
       phone,
       email: (c?.email?.[0] ?? '').trim() || null,

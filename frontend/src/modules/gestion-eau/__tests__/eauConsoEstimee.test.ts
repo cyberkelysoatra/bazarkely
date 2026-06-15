@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculerConsoEstimee, consoBaseM3hOf, type ConsoEstimeeInput } from '../utils/consoEstimee';
-import { PERTE_RESEAU_DEFAUT_PCT } from '../utils/bilan';
-import { FRACTION_POMPE } from '../utils/projection';
+import { PERTE_RESEAU_DEFAUT_PCT, FRACTION_POMPE } from '../utils/bilan';
 
 const PERTE = PERTE_RESEAU_DEFAUT_PCT; // 0,30
 const H = 3_600_000;

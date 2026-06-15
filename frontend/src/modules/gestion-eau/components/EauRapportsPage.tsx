@@ -29,9 +29,14 @@ export default function EauRapportsPage() {
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
-    const r = await getRapportMensuel(y, m);
-    setRapport(r);
-    setLoading(false);
+    try {
+      const r = await getRapportMensuel(y, m);
+      setRapport(r);
+    } catch (e) {
+      console.warn('⚠️ [EauRapports] chargement échoué:', (e as any)?.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

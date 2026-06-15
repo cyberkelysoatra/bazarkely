@@ -27,6 +27,7 @@ import { supabase, withTimeout } from '../../../lib/supabase';
 import authService from '../../../services/authService';
 import { useAppStore } from '../../../stores/appStore';
 import { useGestionEau } from '../context';
+import { eauIsOnline } from '../utils/online';
 import {
   PENDING_TOKEN_KEY,
   getInvitationTokenState,
@@ -161,7 +162,7 @@ export default function EauVitrinePage() {
     let cancelled = false;
     (async () => {
       try {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (!eauIsOnline()) {
           if (!cancelled) setStatsLoaded(true);
           return;
         }

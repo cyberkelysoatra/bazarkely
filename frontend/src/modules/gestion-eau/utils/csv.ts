@@ -40,8 +40,8 @@ export function downloadCsv(filename: string, csv: string): void {
   triggerDownload(blob, filename.endsWith('.csv') ? filename : `${filename}.csv`);
 }
 
-/** Déclenche le téléchargement d'un Blob (helper générique). */
-export function triggerDownload(blob: Blob, filename: string): void {
+/** Déclenche le téléchargement d'un Blob (helper interne à ce module). */
+function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

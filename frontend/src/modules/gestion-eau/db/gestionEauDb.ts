@@ -32,6 +32,19 @@ import type {
   AnnonceLocal,
 } from '../types/gestionEau';
 
+/**
+ * Tombstone de suppression (local-only, JAMAIS synchronisé comme une table de données).
+ * Trace une ligne supprimée localement dont le DELETE serveur n'est pas encore confirmé,
+ * pour (a) rejouer la suppression au retour en ligne et (b) empêcher le pull de la
+ * « ressusciter » dans Dexie. PK déterministe `${table}:${pk_value}` → idempotent.
+ */
+export interface EauDeletion {
+  id: string;
+  table: string; // EauTableName
+  pk_value: string;
+  deleted_at: string;
+}
+
 export class GestionEauDB extends Dexie {
   eau_compteurs!: Table<CompteurLocal, string>;
   eau_qr_compteur!: Table<QrCompteurLocal, string>;
@@ -53,6 +66,8 @@ export class GestionEauDB extends Dexie {
   eau_alertes!: Table<AlerteLocal, string>;
   eau_audit!: Table<AuditLocal, string>;
   eau_annonces!: Table<AnnonceLocal, string>;
+  /** Tombstones de suppression (local-only, hors EAU_TABLES). */
+  eau_deletions!: Table<EauDeletion, string>;
 
   constructor() {
     super('GestionEauDB');
@@ -114,6 +129,14 @@ export class GestionEauDB extends Dexie {
     // Additif : Dexie reporte automatiquement les stores inchangés (aucune perte).
     this.version(7).stores({
       eau_arrets_pompe: 'id, timestamp_debut',
+    });
+
+    // v8 — Tombstones de suppression (offline-first) : trace les lignes supprimées
+    // localement dont le DELETE serveur n'est pas encore confirmé, pour rejeu idempotent
+    // au retour en ligne et anti-résurrection au pull. Store LOCAL-ONLY (hors EAU_TABLES,
+    // jamais poussé/tiré vers Supabase). Additif : Dexie reporte les stores inchangés.
+    this.version(8).stores({
+      eau_deletions: 'id, table',
     });
   }
 }

@@ -40,3 +40,22 @@ export function fmtDate(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 }
+
+/**
+ * Formate une autonomie en heures → « 2 j 4 h » (≥ 24 h) ou « 5,0 h » (< 24 h),
+ * « — » si indéfinie ou ≤ 0. Source unique (tableau de bord + espace propriétaire).
+ */
+export function fmtAutonomie(heures: number | null | undefined): string {
+  if (heures == null || !Number.isFinite(heures) || heures <= 0) return '—';
+  if (heures < 24) return `${heures.toFixed(1)} h`;
+  const j = Math.floor(heures / 24);
+  const h = Math.round(heures - j * 24);
+  return `${j} j ${h} h`;
+}
+
+/** Libellé lisible d'un mois `YYYY-MM` (ex. « juin 2025 ») ; renvoie l'entrée si invalide. */
+export function fmtMois(mois: string): string {
+  const [y, m] = mois.split('-').map(Number);
+  if (!y || !m) return mois;
+  return new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
