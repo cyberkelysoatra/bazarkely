@@ -222,6 +222,14 @@ Ainsi un envoi « expiré-mais-commité » et le rejeu de la file convergent sur
 
 ---
 
+### Drift modèle Dexie ↔ colonnes Supabase = synchro muette (corrigé 2026-06-13)
+
+**Problème :** ajouter un champ au modèle local Dexie d'une table **synchronisée** sans ajouter la colonne snake_case correspondante côté Supabase → la file `syncManager` échoue en **silence** : `PATCH/POST → 400` `{code:'PGRST204', "Could not find the '<col>' column ... in schema cache"}`, l'opération est rejouée (1/3) puis abandonnée, et **l'écriture offline n'atteint jamais le serveur** (invisible sur les autres appareils). Cas vécu : table `goals` sans `deadline` ni `is_savings_account` alors que `Goal` les porte.
+
+**Règle :** à chaque nouveau champ d'un modèle Dexie synchronisé, vérifier que la colonne existe côté Supabase. Diagnostic sans session (clé anon) : `GET /rest/v1/<table>?select=<col>&limit=1` → `400 "column ... does not exist"` si absente, `200 []` si présente (boucler sur les champs attendus). Fix = `ALTER TABLE public.<table> ADD COLUMN IF NOT EXISTS <col> <type>;` (idempotent, additif, aucun déploiement). Voir mémoire `project_goals_schema_drift_deadline`.
+
+---
+
 ### Flux OAuth Google — architecture à ne pas casser (résolu v3.5.9-10)
 
 **Séquence correcte :**
