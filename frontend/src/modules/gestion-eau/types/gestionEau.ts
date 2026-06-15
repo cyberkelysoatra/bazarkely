@@ -124,6 +124,25 @@ export interface DebitTestRow {
 }
 export type DebitTestLocal = DebitTestRow & LocalMeta;
 
+// ──────────────────────────── eau_arrets_pompe ────────────────────────────
+/**
+ * Arrêt de pompe saisi à la main : période pendant laquelle les pompes étaient
+ * À L'ARRÊT. Sert (Phase 2) à déduire le temps de marche réel sur un intervalle
+ * (temps écoulé − Σ arrêts) pour estimer l'apport « débit × temps de marche ». La
+ * saisie se fait au choix par DURÉE (+ date/heure de début) ou par HEURES début/fin ;
+ * on range toujours la forme canonique (début, fin) — `duree_min` = fin − début.
+ */
+export interface ArretPompeRow {
+  id: string;
+  timestamp_debut: string;
+  timestamp_fin: string;
+  duree_min: number;
+  agent_id: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+export type ArretPompeLocal = ArretPompeRow & LocalMeta;
+
 // ──────────────────── eau_elec_releves_compteur (Phase 1 élec) ────────────────────
 /**
  * Relevé d'index d'un compteur ÉLECTRIQUE (kWh). Miroir de `ReleveCompteurRow`

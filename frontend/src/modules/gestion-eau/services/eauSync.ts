@@ -22,6 +22,7 @@ const PK_BY_TABLE: Record<EauTableName, string> = {
   eau_entrees_bassin: 'id',
   eau_bilans: 'id',
   eau_debit_tests: 'id',
+  eau_arrets_pompe: 'id',
   eau_elec_releves_compteur: 'id',
   eau_elec_couts: 'id',
   eau_factures: 'id',

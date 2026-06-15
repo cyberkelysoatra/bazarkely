@@ -7,7 +7,7 @@
  * Les calculs purs vivent dans utils/bassin.ts et utils/debit.ts (testables).
  */
 import { eauDb } from '../db/gestionEauDb';
-import { saveLocal, pullTable } from './eauSync';
+import { saveLocal, pullTable, deleteLocal } from './eauSync';
 import { newId, nowIso } from '../utils/id';
 import {
   getConfig,
@@ -30,7 +30,7 @@ import {
 } from '../utils/debit';
 import notificationService from '../../../services/notificationService';
 import { getCurrentUserIdSync } from './eauAuth';
-import type { ConfigLocal, DebitTestLocal, AlerteLocal } from '../types/gestionEau';
+import type { ConfigLocal, DebitTestLocal, AlerteLocal, ArretPompeLocal } from '../types/gestionEau';
 
 // Ré-export des déductions d'autonomie (logique pure définie dans utils/bassin.ts).
 export { estimerAutonomie };
@@ -202,4 +202,62 @@ export async function addDebitTest(input: {
 export async function refreshDebitTests(online: boolean): Promise<DebitTestLocal[]> {
   if (online) await pullTable('eau_debit_tests');
   return listDebitTests();
+}
+
+// ───────────────────────────── Arrêts de pompe ─────────────────────────────
+// Phase 1 : SAISIE et stockage des périodes « pompes à l'arrêt » (offline-first,
+// synchronisées). Pas encore branchées sur le calcul des bilans — le temps de marche
+// réel (temps écoulé − Σ arrêts) sera exploité en Phase 2 (modèle réseau « débit ×
+// temps de marche »). Forme canonique = (début, fin) ISO ; `duree_min` = fin − début.
+
+/** Tous les arrêts de pompe, plus récents d'abord (par début). */
+export async function listArretsPompe(): Promise<ArretPompeLocal[]> {
+  const all = (await eauDb.eau_arrets_pompe.toArray()) as ArretPompeLocal[];
+  return all.sort(
+    (a, b) => new Date(b.timestamp_debut).getTime() - new Date(a.timestamp_debut).getTime()
+  );
+}
+
+/**
+ * Enregistre un arrêt de pompe (début + fin en ISO). Recalcule `duree_min` = fin − début
+ * (source unique de vérité, quelle que soit la façon de saisir côté UI). Jette si les
+ * dates sont invalides, si la fin n'est pas après le début, ou si le début est dans le futur.
+ */
+export async function addArretPompe(input: {
+  timestamp_debut: string;
+  timestamp_fin: string;
+  agent_id?: string | null;
+  note?: string | null;
+}): Promise<ArretPompeLocal> {
+  const debutMs = new Date(input.timestamp_debut).getTime();
+  const finMs = new Date(input.timestamp_fin).getTime();
+  if (!Number.isFinite(debutMs) || !Number.isFinite(finMs)) {
+    throw new Error("Dates d'arrêt invalides");
+  }
+  if (finMs <= debutMs) {
+    throw new Error('La fin doit être après le début');
+  }
+  if (debutMs > Date.now()) {
+    throw new Error('Un arrêt dans le futur est impossible');
+  }
+  const record: ArretPompeLocal = {
+    id: newId(),
+    timestamp_debut: new Date(debutMs).toISOString(),
+    timestamp_fin: new Date(finMs).toISOString(),
+    duree_min: (finMs - debutMs) / 60000,
+    agent_id: input.agent_id ?? null,
+    note: input.note ?? null,
+    created_at: nowIso(),
+  };
+  return saveLocal('eau_arrets_pompe', record);
+}
+
+/** Supprime un arrêt de pompe (local + Supabase best-effort). */
+export async function deleteArretPompe(id: string): Promise<void> {
+  await deleteLocal('eau_arrets_pompe', id);
+}
+
+export async function refreshArretsPompe(online: boolean): Promise<ArretPompeLocal[]> {
+  if (online) await pullTable('eau_arrets_pompe');
+  return listArretsPompe();
 }

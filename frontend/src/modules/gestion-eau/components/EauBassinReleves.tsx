@@ -23,7 +23,7 @@ import {
 } from 'recharts';
 import {
   Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, Activity,
-  ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info,
+  ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info, Power,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import EauAide from './EauAide';
@@ -32,7 +32,10 @@ import { useGestionEau } from '../context';
 import { useAppStore } from '../../../stores/appStore';
 import { showConfirm } from '../../../utils/dialogUtils';
 import { getConfig, dimensionsFromConfig } from '../services/eauConfigService';
-import { surfaceFromConfig, listDebitTests, addDebitTest } from '../services/eauBassinService';
+import {
+  surfaceFromConfig, listDebitTests, addDebitTest,
+  listArretsPompe, addArretPompe, deleteArretPompe,
+} from '../services/eauBassinService';
 import { getDashboardData, recomputeAllBilans, type DashboardData } from '../services/eauBilanService';
 import {
   addReleveBassin,
@@ -44,7 +47,7 @@ import { hauteurCmToVolumeM3 } from '../utils/bassin';
 import { computeDebit } from '../utils/debit';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { fmtM3, fmtPct, fmtDate } from '../utils/format';
-import type { ConfigLocal, DebitTestLocal, ReleveBassinLocal } from '../types/gestionEau';
+import type { ConfigLocal, DebitTestLocal, ReleveBassinLocal, ArretPompeLocal } from '../types/gestionEau';
 import type { BassinDimensions } from '../utils/bassin';
 
 // Fenêtre glissante (ms) — un releveur pur ne corrige/supprime que les relevés < 48 h
@@ -93,6 +96,18 @@ function dureeMinFromHeures(debut: string, fin: string): number | null {
   return diff > 0 ? diff : null;
 }
 
+/** Formate une durée en minutes → « 2 h 05 », « 45 min » ou « 1 j 3 h » (lecture humaine). */
+function fmtDuree(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return '—';
+  const totalMin = Math.round(min);
+  const j = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  if (j > 0) return `${j} j ${h} h`;
+  if (h > 0) return `${h} h ${String(m).padStart(2, '0')}`;
+  return `${m} min`;
+}
+
 export default function EauBassinReleves({
   openIntent,
   onConsumeIntent,
@@ -114,12 +129,14 @@ export default function EauBassinReleves({
   const [dash, setDash] = useState<DashboardData | null>(null);
   const [relevesList, setRelevesList] = useState<ReleveBassinLocal[]>([]);
   const [tests, setTests] = useState<DebitTestLocal[]>([]);
+  const [arrets, setArrets] = useState<ArretPompeLocal[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   // Accordéon de la carte Bassin (un seul tiroir à la fois) + sections repliables.
   const [openDrawer, setOpenDrawer] = useState<'saisir' | 'histo' | null>(null);
   const [debitOpen, setDebitOpen] = useState(false);
+  const [arretOpen, setArretOpen] = useState(false);
   // Tiroir « comprendre cette situation » sous la carte Stock d'eau (présentationnel).
   const [explainOpen, setExplainOpen] = useState(false);
 
@@ -135,11 +152,18 @@ export default function EauBassinReleves({
   const [debitHeureFin, setDebitHeureFin] = useState('');
   const [debitNote, setDebitNote] = useState('');
 
+  // Arrêt de pompe : saisie au choix par durée (+ début) ou par début/fin.
+  const [arretMode, setArretMode] = useState<'periode' | 'duree'>('periode');
+  const [arretDebut, setArretDebut] = useState(''); // datetime-local
+  const [arretFin, setArretFin] = useState(''); // datetime-local (mode période)
+  const [arretDureeMin, setArretDureeMin] = useState(''); // minutes (mode durée)
+  const [arretNote, setArretNote] = useState('');
+
   // Édition admin/releveur
   const [editing, setEditing] = useState<{ id: string; hauteur: string; datetime: string } | null>(null);
   const [recomputing, setRecomputing] = useState(false);
 
-  const bassinCardRef = useRef<HTMLDivElement | null>(null);
+  const releveRowRef = useRef<HTMLDivElement | null>(null);
   const debitRef = useRef<HTMLDivElement | null>(null);
 
   const isReleveurOnly = roles.releveur && !roles.admin;
@@ -154,6 +178,7 @@ export default function EauBassinReleves({
     setSurface(surfaceFromConfig(cfg));
     setDash(await getDashboardData());
     setTests(await listDebitTests());
+    setArrets(await listArretsPompe());
     if (roles.admin || roles.releveur) setRelevesList(await listRecentRelevesBassin(30));
   };
 
@@ -169,32 +194,34 @@ export default function EauBassinReleves({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles.admin, roles.releveur]);
 
-  // Amène le HAUT de la carte Bassin juste SOUS le Header sticky (et non centré, ni
-  // masqué). Mesure dynamiquement la hauteur réelle du header (~80 px, variable selon le
-  // module/la nav). Repli propre `block: 'start'` si le header est introuvable.
-  const scrollBassinUnderHeader = () => {
-    const card = bassinCardRef.current;
-    if (!card) return;
+  // Amène le HAUT de la LIGNE DU RELEVÉ (la zone cliquée : relevé + crayon) juste SOUS le
+  // Header sticky, pour que le tiroir qui se déploie dessous soit en pleine vue (le bloc
+  // Stock / Attendu / Écart passe au-dessus du Header). Mesure dynamiquement la hauteur
+  // réelle du header (~80 px, variable selon le module/la nav). Repli propre `block:'start'`
+  // si le header est introuvable.
+  const scrollReleveRowUnderHeader = () => {
+    const target = releveRowRef.current;
+    if (!target) return;
     const header = document.querySelector('header');
     if (!header) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     const headerH = header.getBoundingClientRect().height;
     const MARGIN = 8;
-    const top = card.getBoundingClientRect().top + window.scrollY - headerH - MARGIN;
+    const top = target.getBoundingClientRect().top + window.scrollY - headerH - MARGIN;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   };
 
-  // Dès qu'un tiroir de la carte Bassin s'ouvre (crayon « Saisir » ou résumé « Historique »,
-  // peu importe la cause), faire remonter la carte sous le Header. Pas de défilement à la
-  // fermeture (openDrawer null). rAF pour que la position de la carte soit déjà à jour ;
-  // ré-assertion différée (~360 ms) pour absorber un éventuel décalage tardif de mise en page
-  // au chargement initial via deep-link (bandeau d'annonce du Header chargé après coup).
+  // Dès qu'un tiroir de la carte Bassin s'ouvre (crayon « Saisir » ou clic « Historique »,
+  // peu importe la cause), faire remonter la LIGNE DU RELEVÉ sous le Header. Pas de défilement
+  // à la fermeture (openDrawer null). rAF pour que la position soit déjà à jour ; ré-assertion
+  // différée (~360 ms) pour absorber un éventuel décalage tardif de mise en page au chargement
+  // initial via deep-link (bandeau d'annonce du Header chargé après coup).
   useEffect(() => {
     if (!openDrawer) return;
-    const raf = requestAnimationFrame(() => scrollBassinUnderHeader());
-    const t = setTimeout(() => scrollBassinUnderHeader(), 360);
+    const raf = requestAnimationFrame(() => scrollReleveRowUnderHeader());
+    const t = setTimeout(() => scrollReleveRowUnderHeader(), 360);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(t);
@@ -265,6 +292,32 @@ export default function EauBassinReleves({
   );
 
   const dernierReleve = relevesList[0] ?? null;
+
+  // Arrêt de pompe : résout (début, fin) selon le mode de saisie. null tant que la
+  // saisie est incomplète/invalide ; `future` signale un début postérieur à maintenant.
+  const arretResolved = useMemo(() => {
+    if (!arretDebut.trim()) return null;
+    const debut = new Date(arretDebut);
+    if (Number.isNaN(debut.getTime())) return null;
+    let fin: Date;
+    if (arretMode === 'periode') {
+      if (!arretFin.trim()) return null;
+      const f = new Date(arretFin);
+      if (Number.isNaN(f.getTime())) return null;
+      fin = f;
+    } else {
+      const min = Number(arretDureeMin);
+      if (!Number.isFinite(min) || min <= 0) return null;
+      fin = new Date(debut.getTime() + min * 60000);
+    }
+    if (fin.getTime() <= debut.getTime()) return null;
+    return {
+      debutIso: debut.toISOString(),
+      finIso: fin.toISOString(),
+      dureeMin: (fin.getTime() - debut.getTime()) / 60000,
+      future: debut.getTime() > Date.now(),
+    };
+  }, [arretMode, arretDebut, arretFin, arretDureeMin]);
 
   const submitNiveau = async () => {
     if (isReadOnly) return;
@@ -343,6 +396,57 @@ export default function EauBassinReleves({
       setDash(await getDashboardData());
     } catch (e: any) {
       toast.error(e?.message ?? 'Test de débit invalide');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitArret = async () => {
+    if (isReadOnly) return;
+    if (!arretResolved) {
+      toast.error('Renseignez le début et la durée (ou la fin)');
+      return;
+    }
+    if (arretResolved.future) {
+      toast.error('Un arrêt dans le futur est impossible');
+      return;
+    }
+    setBusy(true);
+    try {
+      await addArretPompe({
+        timestamp_debut: arretResolved.debutIso,
+        timestamp_fin: arretResolved.finIso,
+        note: arretNote || null,
+        agent_id: getCurrentUserIdSync(),
+      });
+      toast.success(`Arrêt enregistré (${fmtDuree(arretResolved.dureeMin)})`);
+      setArretDebut('');
+      setArretFin('');
+      setArretDureeMin('');
+      setArretNote('');
+      setArrets(await listArretsPompe());
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Arrêt invalide');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeArret = async (a: ArretPompeLocal) => {
+    if (isReadOnly) return;
+    const ok = await showConfirm(
+      `Supprimer cet arrêt du ${fmtDate(a.timestamp_debut)} (${fmtDuree(a.duree_min)}) ?`,
+      'Arrêts de pompe',
+      { variant: 'danger', confirmText: 'Supprimer' }
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteArretPompe(a.id);
+      setArrets(await listArretsPompe());
+      toast.success('Arrêt supprimé');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Suppression impossible');
     } finally {
       setBusy(false);
     }
@@ -493,7 +597,6 @@ export default function EauBassinReleves({
           Intègre aussi la rangée relevé (→ Historique) et le crayon (→ Saisie) avec leurs
           tiroirs : c'est désormais la seule carte de tête de l'onglet Source. */}
       <div
-        ref={bassinCardRef}
         role="button"
         tabIndex={0}
         aria-expanded={explainOpen}
@@ -542,10 +645,33 @@ export default function EauBassinReleves({
           </div>
         )}
 
+        {/* Affordance « icône d'abord » : la carte est cliquable → tiroir « Comprendre cette
+            situation » (explication des chiffres ci-dessus). Placée juste sous le bilan. */}
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1.5">
+            <Info className="w-4 h-4" aria-hidden="true" /> Comprendre cette situation
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${explainOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </div>
+
+        {/* Tiroir explicatif (un seul cas affiché) — sous les chiffres, dans la même carte. */}
+        {explainOpen && (
+          <Drawer>
+            <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 space-y-1.5">
+              <div className={`font-semibold ${explain.tone}`}>{explain.title}</div>
+              <p>{explain.text}</p>
+              <p className="flex items-start gap-1.5">
+                <explain.Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${explain.tone}`} aria-hidden="true" />
+                <span>{explain.advice}</span>
+              </p>
+            </div>
+          </Drawer>
+        )}
+
         {/* Rangée relevé (fusion de l'ex-carte « Bassin ») : icône Règle + ligne de relevé brut
             cliquable → tiroir Historique, et crayon → tiroir Saisie. stopPropagation impératif
             pour ne pas déclencher « Comprendre » de la carte parente. */}
-        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+        <div ref={releveRowRef} className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
           <div
             role="button"
             tabIndex={0}
@@ -592,30 +718,8 @@ export default function EauBassinReleves({
           </button>
         </div>
 
-        {/* Affordance « icône d'abord » : la carte est cliquable pour comprendre la situation. */}
-        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
-          <span className="inline-flex items-center gap-1.5">
-            <Info className="w-4 h-4" aria-hidden="true" /> Comprendre cette situation
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${explainOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </div>
-
-        {/* Tiroir explicatif (un seul cas affiché) — sous les chiffres, dans la même carte. */}
-        {explainOpen && (
-          <Drawer>
-            <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 space-y-1.5">
-              <div className={`font-semibold ${explain.tone}`}>{explain.title}</div>
-              <p>{explain.text}</p>
-              <p className="flex items-start gap-1.5">
-                <explain.Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${explain.tone}`} aria-hidden="true" />
-                <span>{explain.advice}</span>
-              </p>
-            </div>
-          </Drawer>
-        )}
-
-        {/* Tiroirs « Saisir hauteur » et « Historique » (rapatriés de l'ex-carte Bassin) :
-            cohabitent avec le tiroir « Comprendre » dans cette unique carte. */}
+        {/* Tiroirs « Saisir hauteur » et « Historique » : déployés JUSTE sous la ligne du relevé
+            cliquée (le défilement cale cette ligne sous le Header). « Comprendre » passe en bas. */}
         {openDrawer === 'saisir' && (
           <Drawer>
             <div className="px-3 pb-3 border-t border-ahuvi-100 space-y-3 pt-3">
@@ -723,6 +827,7 @@ export default function EauBassinReleves({
             </div>
           </Drawer>
         )}
+
       </div>
 
       {/* Section repliable « Tests de débit » (juste sous la carte Stock, avant les Apports). */}
@@ -861,6 +966,171 @@ export default function EauBassinReleves({
                     ))}
                   </ul>
                 </div>
+              )}
+            </div>
+          </Drawer>
+        )}
+      </div>
+
+      {/* Section repliable « Arrêts de pompe » (Phase 1 : saisie/stockage, pas encore branchée au calcul). */}
+      <div className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setArretOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ahuvi-forest"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Power className="w-4 h-4" aria-hidden="true" /> Arrêts de pompe
+            {arrets.length > 0 && (
+              <span className="text-xs font-medium text-ahuvi-olive bg-ahuvi-50 rounded-full px-2 py-0.5">
+                {arrets.length} enregistré{arrets.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${arretOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+        {arretOpen && (
+          <Drawer>
+            <div className="px-4 pb-4 border-t border-ahuvi-100 pt-3 space-y-4">
+              <div className="space-y-3">
+                <div className="text-xs text-gray-500">
+                  Notez les périodes pendant lesquelles les pompes étaient À L'ARRÊT. Ce temps d'arrêt servira
+                  à estimer plus justement l'eau apportée (le reste du temps, la pompe tourne).
+                </div>
+
+                {!isReadOnly && (
+                  <>
+                    {/* Sélecteur de mode de saisie : début + fin, OU début + durée. */}
+                    <div className="inline-flex rounded-lg border border-ahuvi-200 overflow-hidden text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setArretMode('periode')}
+                        className={`px-3 py-1.5 font-medium ${arretMode === 'periode' ? 'bg-ahuvi-forest text-white' : 'bg-white text-ahuvi-forest hover:bg-ahuvi-50'}`}
+                      >
+                        Début / fin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArretMode('duree')}
+                        className={`px-3 py-1.5 font-medium border-l border-ahuvi-200 ${arretMode === 'duree' ? 'bg-ahuvi-forest text-white' : 'bg-white text-ahuvi-forest hover:bg-ahuvi-50'}`}
+                      >
+                        Durée
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm block">
+                        <span className="block text-gray-600 mb-1">Début de l'arrêt</span>
+                        <input
+                          type="datetime-local"
+                          value={arretDebut}
+                          onChange={(e) => setArretDebut(e.target.value)}
+                          className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                        />
+                      </label>
+                      {arretMode === 'periode' ? (
+                        <label className="text-sm block">
+                          <span className="block text-gray-600 mb-1">Fin de l'arrêt</span>
+                          <input
+                            type="datetime-local"
+                            value={arretFin}
+                            onChange={(e) => setArretFin(e.target.value)}
+                            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                          />
+                        </label>
+                      ) : (
+                        <label className="text-sm block">
+                          <span className="block text-gray-600 mb-1">Durée de l'arrêt (minutes)</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            step="1"
+                            min="1"
+                            value={arretDureeMin}
+                            onChange={(e) => setArretDureeMin(e.target.value)}
+                            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                            placeholder="ex : 120"
+                          />
+                        </label>
+                      )}
+
+                      {arretResolved ? (
+                        arretResolved.future ? (
+                          <div className="text-xs text-amber-700">Le début est dans le futur — impossible.</div>
+                        ) : (
+                          <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
+                            Arrêt : <strong>{fmtDuree(arretResolved.dureeMin)}</strong>
+                            <span className="text-ahuvi-teal/60"> · du {fmtDate(arretResolved.debutIso)} au {fmtDate(arretResolved.finIso)}</span>
+                          </div>
+                        )
+                      ) : (
+                        (arretDebut.trim() !== '' || arretFin.trim() !== '' || arretDureeMin.trim() !== '') && (
+                          <div className="text-xs text-amber-700">
+                            {arretMode === 'periode'
+                              ? 'Renseignez le début et la fin (fin après début).'
+                              : 'Renseignez le début et une durée (en minutes).'}
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    <label className="text-sm block">
+                      <span className="block text-gray-600 mb-1">Note (optionnel)</span>
+                      <input
+                        type="text"
+                        value={arretNote}
+                        onChange={(e) => setArretNote(e.target.value)}
+                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                        placeholder="ex : panne, maintenance, coupure"
+                      />
+                    </label>
+
+                    <button
+                      onClick={submitArret}
+                      disabled={busy || !arretResolved || arretResolved.future}
+                      className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
+                    >
+                      <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'arrêt
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Historique des arrêts saisis. */}
+              {arrets.length === 0 ? (
+                <EauEmptyState icon={Power} title="Aucun arrêt de pompe enregistré" />
+              ) : (
+                <ul className="space-y-2">
+                  {arrets.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border border-gray-100 bg-gray-50"
+                    >
+                      <EauListIcon icon={Power} tone="neutral" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-ahuvi-forest">{fmtDuree(a.duree_min)}</span>
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => removeArret(a)}
+                              disabled={busy}
+                              aria-label="Supprimer l'arrêt"
+                              title="Supprimer"
+                              className="text-gray-400 hover:text-rose-600 disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {fmtDate(a.timestamp_debut)} → {fmtDate(a.timestamp_fin)}
+                          {a.note ? ` · ${a.note}` : ''}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </Drawer>

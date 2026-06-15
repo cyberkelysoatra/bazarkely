@@ -17,6 +17,7 @@ import type {
   EntreeBassinLocal,
   BilanLocal,
   DebitTestLocal,
+  ArretPompeLocal,
   ElecReleveLocal,
   ElecCoutLocal,
   FactureLocal,
@@ -39,6 +40,7 @@ export class GestionEauDB extends Dexie {
   eau_entrees_bassin!: Table<EntreeBassinLocal, string>;
   eau_bilans!: Table<BilanLocal, string>;
   eau_debit_tests!: Table<DebitTestLocal, string>;
+  eau_arrets_pompe!: Table<ArretPompeLocal, string>;
   eau_elec_releves_compteur!: Table<ElecReleveLocal, string>;
   eau_elec_couts!: Table<ElecCoutLocal, string>;
   eau_factures!: Table<FactureLocal, string>;
@@ -106,6 +108,13 @@ export class GestionEauDB extends Dexie {
       eau_elec_releves_compteur: 'id, compteur_id, timestamp, [compteur_id+timestamp]',
       eau_elec_couts: 'id, mois',
     });
+
+    // v7 — Arrêts de pompe (saisie des périodes pompe à l'arrêt) : sert au temps de
+    // marche réel pour l'apport « débit × temps de marche » (modèle réseau, Phase 2).
+    // Additif : Dexie reporte automatiquement les stores inchangés (aucune perte).
+    this.version(7).stores({
+      eau_arrets_pompe: 'id, timestamp_debut',
+    });
   }
 }
 
@@ -120,6 +129,7 @@ export const EAU_TABLES = [
   'eau_entrees_bassin',
   'eau_bilans',
   'eau_debit_tests',
+  'eau_arrets_pompe',
   'eau_elec_releves_compteur',
   'eau_elec_couts',
   'eau_factures',

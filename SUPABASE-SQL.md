@@ -93,6 +93,22 @@ create table if not exists eau_debit_tests (
   created_at timestamptz default now()
 );
 
+-- Arrêts de pompe (saisie manuelle des périodes pompe à l'arrêt) — modèle réseau Phase 2
+-- (temps de marche = temps écoulé − Σ arrêts). RLS calquée sur eau_debit_tests :
+-- SELECT admin/releveur (+ promoteur), INSERT/UPDATE admin/releveur, DELETE admin.
+create table if not exists eau_arrets_pompe (
+  id text primary key,
+  timestamp_debut timestamptz not null,
+  timestamp_fin timestamptz not null,
+  duree_min numeric not null,
+  agent_id text,
+  note text,
+  created_at timestamptz
+);
+create index if not exists idx_eau_arrets_pompe_debut on eau_arrets_pompe (timestamp_debut);
+-- alter table eau_arrets_pompe enable row level security;
+-- policies eau_arrets_pompe_{sel,sel_promoteur,ins,upd,del} (cf. v3.58.0, déjà exécutées en prod).
+
 create table if not exists eau_factures (
   id text primary key,
   numero text,
