@@ -52,6 +52,15 @@ const Header = () => {
   const isEauModule = location.pathname.startsWith('/gestion-eau')
     || activeModule?.id === 'gestion-eau';
 
+  // Couleur de la barre d'état système (status bar mobile) alignée sur le header du module.
+  // La meta theme-color ne supporte qu'une couleur SOLIDE (pas d'alpha/translucide côté OS) :
+  // on prend la teinte dominante du header eau (vert forêt AHUVI #364E30, début du dégradé
+  // from-ahuvi-forest/95) ; ailleurs on rétablit le violet BazarKELY (#3b0764).
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', isEauModule ? '#364E30' : '#3b0764');
+  }, [isEauModule]);
+
   // Rôles eau (cumulables) pour filtrer la nav desktop du module. useContext direct = sûr.
   const eauContextValue = useContext(GestionEauContext);
   const eauRoles = eauContextValue?.roles ?? null;
