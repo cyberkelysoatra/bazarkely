@@ -154,8 +154,8 @@ export const CONSTRUCTION_NAV_ITEMS = [
 export const GESTION_EAU_NAV_ITEMS = [
   { path: '/gestion-eau', icon: 'LayoutDashboard', label: 'Tableau de bord', roles: ['admin', 'releveur', 'promoteur'] as const },
   { path: '/gestion-eau/releves', icon: 'Gauge', label: 'Relevés', roles: ['admin', 'releveur', 'promoteur'] as const },
-  { path: '/gestion-eau/suivi', icon: 'TrendingUp', label: 'Suivi', roles: ['admin', 'releveur', 'promoteur'] as const },
   { path: '/gestion-eau/compteurs', icon: 'Network', label: 'Compteurs', roles: ['admin', 'promoteur'] as const },
+  { path: '/gestion-eau/suivi', icon: 'TrendingUp', label: 'Suivi', roles: ['admin', 'releveur', 'promoteur'] as const },
   { path: '/gestion-eau/facturation', icon: 'FileText', label: 'Facturation', roles: ['admin', 'promoteur'] as const },
   { path: '/gestion-eau/client', icon: 'Droplet', label: 'Ma conso', roles: ['client'] as const },
   { path: '/gestion-eau/client/bassin', icon: 'Waves', label: 'Le bassin', roles: ['client'] as const },

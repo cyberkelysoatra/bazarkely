@@ -150,6 +150,7 @@ export default function EauRelevesPage() {
             preselect={preselect}
             preselectFacet={preselectFacet}
             onScan={() => setScannerOpen(true)}
+            onNewCompteur={() => navigate('/gestion-eau/compteurs?new=1')}
             onConsumePreselect={() => {
               setPreselect(null);
               setPreselectFacet(null);

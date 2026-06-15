@@ -1,5 +1,6 @@
 /** CRUD compteurs /gestion-eau/compteurs (admin) : Liste (CRUD + QR + géoloc) · Carte. */
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus, Save, X, Gauge, QrCode, NotebookPen, Trash2, MapPin, ListChecks, Map } from 'lucide-react';
 import EauPageShell from './EauPageShell';
@@ -10,6 +11,7 @@ import EauQrCompteurManager from './EauQrCompteurManager';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { useGestionEau } from '../context/GestionEauContext';
+import { scrollElementUnderHeader } from '../utils/scrollUnderHeader';
 import {
   listCompteurs,
   createCompteur,
@@ -26,16 +28,27 @@ const emptyForm: CompteurInput = {
   nom: '', type: 'villa', proprietaire: '', zone: '', ordre: null, lat: null, lng: null, actif: true,
 };
 
+/**
+ * Ouverture unifiée du formulaire (un seul à la fois) :
+ *  - `{ kind: 'new' }`         → panneau de création EN HAUT de la liste.
+ *  - `{ kind: 'edit', id }`    → tiroir d'édition en accordéon SOUS la carte ciblée.
+ */
+type FormMode = { kind: 'new' } | { kind: 'edit'; id: string };
+
 export default function EauCompteursPage() {
   const { isReadOnly } = useGestionEau();
+  const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState<'liste' | 'carte'>('liste');
   const [list, setList] = useState<CompteurLocal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<CompteurLocal | null>(null);
+  const [formMode, setFormMode] = useState<FormMode | null>(null);
   const [form, setForm] = useState<CompteurInput>(emptyForm);
-  const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [qrCompteur, setQrCompteur] = useState<CompteurLocal | null>(null);
+
+  // Panneau de création (haut) + cartes (édition inline) : refs pour glisser sous le Header.
+  const newFormRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const reload = async () => setList(await listCompteurs());
 
@@ -48,14 +61,18 @@ export default function EauCompteursPage() {
 
   const openNew = () => {
     if (isReadOnly) return;
-    setEditing(null);
     setForm(emptyForm);
-    setShowForm(true);
+    setTab('liste');
+    setFormMode({ kind: 'new' });
   };
 
   const openEdit = (c: CompteurLocal) => {
     if (isReadOnly) return;
-    setEditing(c);
+    // Re-cliquer « Modifier » sur la même carte referme le tiroir.
+    if (formMode?.kind === 'edit' && formMode.id === c.id) {
+      setFormMode(null);
+      return;
+    }
     setForm({
       nom: c.nom,
       type: c.type,
@@ -66,8 +83,29 @@ export default function EauCompteursPage() {
       lng: c.lng,
       actif: c.actif,
     });
-    setShowForm(true);
+    setFormMode({ kind: 'edit', id: c.id });
   };
+
+  // Deep-link `?new=1` (bouton « Nouveau compteur » de la page Relevés) : ouvre la création
+  // au montage puis nettoie le paramètre (pas de ré-ouverture au prochain rendu).
+  useEffect(() => {
+    if (params.get('new') !== '1') return;
+    if (!isReadOnly) {
+      setForm(emptyForm);
+      setTab('liste');
+      setFormMode({ kind: 'new' });
+    }
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // À l'ouverture d'un formulaire, glisser son bord haut juste sous le Header (post-commit
+  // → refs garanties attachées). Création = panneau du haut ; édition = carte ciblée.
+  useEffect(() => {
+    if (!formMode) return;
+    const el = formMode.kind === 'new' ? newFormRef.current : cardRefs.current.get(formMode.id);
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => scrollElementUnderHeader(el)));
+  }, [formMode]);
 
   const save = async () => {
     if (isReadOnly) return;
@@ -77,15 +115,15 @@ export default function EauCompteursPage() {
     }
     setBusy(true);
     try {
-      if (editing) {
-        await updateCompteur(editing.id, form);
+      if (formMode?.kind === 'edit') {
+        await updateCompteur(formMode.id, form);
         toast.success('Compteur mis à jour');
       } else {
         await createCompteur(form);
         toast.success('Compteur créé');
       }
       await reload();
-      setShowForm(false);
+      setFormMode(null);
     } finally {
       setBusy(false);
     }
@@ -99,7 +137,17 @@ export default function EauCompteursPage() {
     toast.success('Compteur supprimé');
   };
 
-  const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
+  const formNode = (isEdit: boolean) => (
+    <CompteurForm
+      form={form}
+      setForm={setForm}
+      onSave={save}
+      onCancel={() => setFormMode(null)}
+      busy={busy}
+      isReadOnly={isReadOnly}
+      isEdit={isEdit}
+    />
+  );
 
   return (
     <div>
@@ -130,107 +178,8 @@ export default function EauCompteursPage() {
             )
           }
         >
-          {showForm && (
-            <div className="rounded-xl border border-ahuvi-200 bg-ahuvi-50/50 p-4 shadow-soft space-y-3 mb-4">
-              <h2 className="font-semibold text-ahuvi-forest">{editing ? 'Modifier' : 'Nouveau compteur'}</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm col-span-2">
-                  <span className="block text-gray-600 mb-1">Nom *</span>
-                  <input
-                    value={form.nom}
-                    onChange={(e) => setForm({ ...form, nom: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Type</span>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as CompteurType })}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  >
-                    {TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Zone</span>
-                  <input
-                    value={form.zone ?? ''}
-                    onChange={(e) => setForm({ ...form, zone: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Propriétaire</span>
-                  <input
-                    value={form.proprietaire ?? ''}
-                    onChange={(e) => setForm({ ...form, proprietaire: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Ordre</span>
-                  <input
-                    type="number"
-                    value={form.ordre ?? ''}
-                    onChange={(e) => setForm({ ...form, ordre: numOrNull(e.target.value) })}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Latitude</span>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    inputMode="decimal"
-                    value={form.lat ?? ''}
-                    onChange={(e) => setForm({ ...form, lat: numOrNull(e.target.value) })}
-                    placeholder="-13.41"
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm">
-                  <span className="block text-gray-600 mb-1">Longitude</span>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    inputMode="decimal"
-                    value={form.lng ?? ''}
-                    onChange={(e) => setForm({ ...form, lng: numOrNull(e.target.value) })}
-                    placeholder="48.27"
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                  />
-                </label>
-                <label className="text-sm flex items-center gap-2 col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={form.actif ?? true}
-                    onChange={(e) => setForm({ ...form, actif: e.target.checked })}
-                    className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500"
-                  />
-                  <span className="text-gray-600">Actif</span>
-                </label>
-              </div>
-              <div className="flex gap-2">
-                <EauIconButton
-                  icon={editing ? Save : Plus}
-                  variant="primary"
-                  onClick={save}
-                  disabled={busy || isReadOnly}
-                  className="flex-1"
-                >
-                  {editing ? 'Enregistrer' : 'Créer'}
-                </EauIconButton>
-                <EauIconButton icon={X} variant="secondary" onClick={() => setShowForm(false)}>
-                  Annuler
-                </EauIconButton>
-              </div>
-            </div>
-          )}
+          {/* Création : panneau EN HAUT de la liste. */}
+          {formMode?.kind === 'new' && <div ref={newFormRef}>{formNode(false)}</div>}
 
           {loading ? (
             <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
@@ -250,42 +199,72 @@ export default function EauCompteursPage() {
           ) : (
             <div className="space-y-1">
               {list.map((c) => (
-                <div
-                  key={c.id}
-                  className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <EauListIcon icon={Gauge} tone={c.actif ? 'teal' : 'neutral'} />
-                    <div className="min-w-0">
-                      <div className="font-medium text-gray-900 flex items-center gap-2">
-                        {c.nom}
-                        {!c.actif && <span className="text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">inactif</span>}
-                        {c.lat != null && c.lng != null && (
-                          <MapPin className="w-3.5 h-3.5 text-ahuvi-olive flex-shrink-0" aria-hidden="true" />
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {c.type} · {c.zone ?? 'sans zone'}
-                        {c.proprietaire ? ` · ${c.proprietaire}` : ''}
+                <Fragment key={c.id}>
+                  <div
+                    ref={(el) => cardRefs.current.set(c.id, el)}
+                    className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <EauListIcon icon={Gauge} tone={c.actif ? 'teal' : 'neutral'} />
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          {c.nom}
+                          {!c.actif && <span className="text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">inactif</span>}
+                          {c.lat != null && c.lng != null && (
+                            <MapPin className="w-3.5 h-3.5 text-ahuvi-olive flex-shrink-0" aria-hidden="true" />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {c.type} · {c.zone ?? 'sans zone'}
+                          {c.proprietaire ? ` · ${c.proprietaire}` : ''}
+                        </div>
                       </div>
                     </div>
+                    {/* Actions icône seule (bulle d'aide + aria-label pour le clavier / lecteurs d'écran). */}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => setQrCompteur(c)}
+                        title="Afficher le QR"
+                        aria-label="Afficher le QR"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-ahuvi-forest hover:bg-ahuvi-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+                      >
+                        <QrCode className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                      {!isReadOnly && (
+                        <>
+                          <button
+                            onClick={() => openEdit(c)}
+                            title="Modifier"
+                            aria-label="Modifier"
+                            aria-expanded={formMode?.kind === 'edit' && formMode.id === c.id}
+                            className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300 ${
+                              formMode?.kind === 'edit' && formMode.id === c.id
+                                ? 'bg-ahuvi-forest border-ahuvi-forest text-white'
+                                : 'bg-white border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50'
+                            }`}
+                          >
+                            <NotebookPen className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            onClick={() => remove(c)}
+                            title="Supprimer"
+                            aria-label="Supprimer"
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-rose-600 hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2 text-sm flex-shrink-0">
-                    <button onClick={() => setQrCompteur(c)} title="QR" className="inline-flex items-center gap-1 text-ahuvi-forest hover:underline">
-                      <QrCode className="w-4 h-4" aria-hidden="true" /> QR
-                    </button>
-                    {!isReadOnly && (
-                      <>
-                        <button onClick={() => openEdit(c)} title="Modifier" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50">
-                          <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" /> Modifier
-                        </button>
-                        <button onClick={() => remove(c)} title="Supprimer" className="inline-flex items-center gap-1 text-rose-600 hover:underline">
-                          <Trash2 className="w-4 h-4" aria-hidden="true" /> Suppr.
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+
+                  {/* Édition : tiroir en accordéon directement SOUS la carte cliquée. */}
+                  {formMode?.kind === 'edit' && formMode.id === c.id && (
+                    <Drawer>
+                      <div className="pt-2">{formNode(true)}</div>
+                    </Drawer>
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
@@ -293,6 +272,151 @@ export default function EauCompteursPage() {
       )}
 
       {qrCompteur && <EauQrCompteurManager compteur={qrCompteur} onClose={() => setQrCompteur(null)} />}
+    </div>
+  );
+}
+
+/** Conteneur accordéon : anime l'ouverture (0fr → 1fr) à l'aide d'une grille CSS. */
+function Drawer({ children }: { children: React.ReactNode }) {
+  const [grown, setGrown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setGrown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return (
+    <div
+      className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+        grown ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+      }`}
+    >
+      <div className="overflow-hidden min-h-0">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Formulaire compteur partagé (création en haut / édition inline sous la carte). Même
+ * `form`/`setForm`/`onSave`/`busy` que la page : la logique create/update offline-first
+ * (EauCompteursPage.save) est inchangée.
+ */
+function CompteurForm({
+  form,
+  setForm,
+  onSave,
+  onCancel,
+  busy,
+  isReadOnly,
+  isEdit,
+}: {
+  form: CompteurInput;
+  setForm: (f: CompteurInput) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  busy: boolean;
+  isReadOnly: boolean;
+  isEdit: boolean;
+}) {
+  const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
+
+  return (
+    <div className="rounded-xl border border-ahuvi-200 bg-ahuvi-50/50 p-4 shadow-soft space-y-3 mb-4">
+      <h2 className="font-semibold text-ahuvi-forest">{isEdit ? 'Modifier' : 'Nouveau compteur'}</h2>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="text-sm col-span-2">
+          <span className="block text-gray-600 mb-1">Nom *</span>
+          <input
+            value={form.nom}
+            onChange={(e) => setForm({ ...form, nom: e.target.value })}
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Type</span>
+          <select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value as CompteurType })}
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          >
+            {TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Zone</span>
+          <input
+            value={form.zone ?? ''}
+            onChange={(e) => setForm({ ...form, zone: e.target.value })}
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Propriétaire</span>
+          <input
+            value={form.proprietaire ?? ''}
+            onChange={(e) => setForm({ ...form, proprietaire: e.target.value })}
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Ordre</span>
+          <input
+            type="number"
+            value={form.ordre ?? ''}
+            onChange={(e) => setForm({ ...form, ordre: numOrNull(e.target.value) })}
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Latitude</span>
+          <input
+            type="number"
+            step="0.000001"
+            inputMode="decimal"
+            value={form.lat ?? ''}
+            onChange={(e) => setForm({ ...form, lat: numOrNull(e.target.value) })}
+            placeholder="-13.41"
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="block text-gray-600 mb-1">Longitude</span>
+          <input
+            type="number"
+            step="0.000001"
+            inputMode="decimal"
+            value={form.lng ?? ''}
+            onChange={(e) => setForm({ ...form, lng: numOrNull(e.target.value) })}
+            placeholder="48.27"
+            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+          />
+        </label>
+        <label className="text-sm flex items-center gap-2 col-span-2">
+          <input
+            type="checkbox"
+            checked={form.actif ?? true}
+            onChange={(e) => setForm({ ...form, actif: e.target.checked })}
+            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500"
+          />
+          <span className="text-gray-600">Actif</span>
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <EauIconButton
+          icon={isEdit ? Save : Plus}
+          variant="primary"
+          onClick={onSave}
+          disabled={busy || isReadOnly}
+          className="flex-1"
+        >
+          {isEdit ? 'Enregistrer' : 'Créer'}
+        </EauIconButton>
+        <EauIconButton icon={X} variant="secondary" onClick={onCancel}>
+          Annuler
+        </EauIconButton>
+      </div>
     </div>
   );
 }

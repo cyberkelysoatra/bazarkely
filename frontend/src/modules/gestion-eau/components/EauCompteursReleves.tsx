@@ -13,7 +13,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import {
-  Droplet, Zap, Pencil, NotebookPen, Search, Gauge, CalendarDays, BarChart3, Info, ScanLine,
+  Droplet, Zap, Pencil, NotebookPen, Search, Gauge, CalendarDays, BarChart3, Info, ScanLine, Network,
 } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
 import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
@@ -23,6 +23,7 @@ import { relevesElecByCompteur, refreshElecReleves, updateReleveElec } from '../
 import { refreshCompteurs } from '../services/eauCompteurService';
 import { useGestionEau } from '../context';
 import { fmtM3, fmtKwh, fmtDate } from '../utils/format';
+import { scrollElementUnderHeader } from '../utils/scrollUnderHeader';
 import type { ReleveCompteurLocal, ElecReleveLocal } from '../types/gestionEau';
 
 const PERIODE_KEY = 'ahuvi_releves_periode';
@@ -71,58 +72,12 @@ function sortGroup(card: ReleveCard): number {
   return card.item.releveAujourdhui ? 2 : 1;
 }
 
-/**
- * Fait glisser un élément pour que son bord HAUT vienne se placer juste sous le Header
- * partagé (sticky). Réplique le patron de TransactionsPage.toggleTransactionDrawer :
- * une seule animation maison (requestAnimationFrame + ease-in-out cubique) avec cible
- * recalculée à chaque image (suit la barre d'adresse mobile / les changements de hauteur),
- * et respect de `prefers-reduced-motion`.
- *
- * ⚠️ Le shell Gestion Eau pose `scroll-behavior: smooth` sur <html> : un `window.scrollTo`
- * sans option héritant de ce smooth, chaque image relancerait une animation native →
- * mouvement net nul. On force donc `behavior: 'instant'` (on anime nous-mêmes l'easing).
- */
-function scrollElementUnderHeader(el: HTMLElement) {
-  const getHeaderOffset = () => {
-    const header = document.querySelector('header');
-    return header ? header.getBoundingClientRect().height + 8 : 72;
-  };
-  const getTargetY = () => window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
-  const scrollInstant = (top: number) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
-
-  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (prefersReduced) {
-    scrollInstant(getTargetY());
-    return;
-  }
-
-  const startY = window.scrollY;
-  if (Math.abs(getTargetY() - startY) < 2) return; // déjà aligné
-
-  const DURATION = 500;
-  const GRACE = 250; // suit une bascule tardive (barre d'adresse mobile)
-  const easeInOutCubic = (t: number) =>
-    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const startTime = performance.now();
-
-  const frame = (now: number) => {
-    const elapsed = now - startTime;
-    const t = Math.min(1, elapsed / DURATION);
-    const targetY = getTargetY(); // recalcul continu → auto-correction
-    scrollInstant(startY + (targetY - startY) * easeInOutCubic(t));
-    const settled = Math.abs(targetY - window.scrollY) < 1;
-    if (t < 1 || (!settled && elapsed < DURATION + GRACE)) {
-      requestAnimationFrame(frame);
-    }
-  };
-  requestAnimationFrame(frame);
-}
-
 export default function EauCompteursReleves({
   preselect,
   preselectFacet,
   onConsumePreselect,
   onScan,
+  onNewCompteur,
 }: {
   /** Compteur à préselectionner (deep-link `?c=` depuis un scan) → ouvre sa saisie. */
   preselect: string | null;
@@ -136,6 +91,8 @@ export default function EauCompteursReleves({
   onConsumePreselect: () => void;
   /** Ouvre le scanner QR (bouton Scan intégré à la rangée de chips de période). */
   onScan: () => void;
+  /** Navigue vers la création d'un compteur (`/gestion-eau/compteurs?new=1`). */
+  onNewCompteur: () => void;
 }) {
   const { isReadOnly, roles } = useGestionEau();
   const [items, setItems] = useState<TourneeItem[]>([]);
@@ -354,6 +311,17 @@ export default function EauCompteursReleves({
           className="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ahuvi-teal text-white text-sm font-medium shadow-soft hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
         >
           <ScanLine className="w-4 h-4" aria-hidden="true" /> Scan
+        </button>
+        {/* Nouveau compteur (icône seule, style secondaire AHUVI — JAMAIS teal, réservé à l'eau).
+            Navigue vers /gestion-eau/compteurs?new=1 (ouverture du formulaire de création). */}
+        <button
+          type="button"
+          onClick={onNewCompteur}
+          title="Nouveau compteur"
+          aria-label="Nouveau compteur"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white text-ahuvi-forest border border-ahuvi-200 shadow-soft hover:bg-ahuvi-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300"
+        >
+          <Network className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
