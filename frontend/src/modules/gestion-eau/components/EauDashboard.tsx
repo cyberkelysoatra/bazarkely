@@ -290,13 +290,22 @@ export default function EauDashboard() {
                 hideChevron
               />
 
-              {/* NRW : modèle réseau (apport − Δstock − compteurs) si disponible, sinon ancien NRW. */}
+              {/* Eau non comptée = sortie réseau − conso comptée (modèle « débit × temps de
+                  marche »). Inclut la conso non comptée (golf, communs, villas sans compteur)
+                  + les pertes — PAS un « NRW » de pertes tant que tout n'est pas compté.
+                  Garde-fous : « — » si débit inconnu (sortie nulle) ou écart négatif aberrant. */}
               <EauStatCard
                 icon={Percent}
-                tone="rose"
-                label="NRW (période)"
-                value={data?.nrwReseauPeriode ? fmtPct(data.nrwReseauPeriode.nrwPct) : data?.nrwPeriode ? fmtPct(data.nrwPeriode.nrwPct) : '—'}
-                hint={`Pertes : ${data?.nrwReseauPeriode ? fmtM3(data.nrwReseauPeriode.pertesM3) : data?.nrwPeriode ? fmtM3(data.nrwPeriode.pertesM3) : '—'}`}
+                tone="amber"
+                label="Eau non comptée"
+                value={data?.nrwReseauPeriode && data.nrwReseauPeriode.nrwPct >= 0 ? fmtPct(data.nrwReseauPeriode.nrwPct) : '—'}
+                hint={
+                  data?.nrwReseauPeriode && data.nrwReseauPeriode.nrwPct >= 0
+                    ? `${fmtM3(data.nrwReseauPeriode.pertesM3)} non comptés sur la période`
+                    : data?.nrwReseauPeriode
+                      ? 'Sortie sous le compteur — vérifier le débit'
+                      : 'Débit des pompes requis (test de débit)'
+                }
                 onClick={goSuivi}
                 onIconClick={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"
