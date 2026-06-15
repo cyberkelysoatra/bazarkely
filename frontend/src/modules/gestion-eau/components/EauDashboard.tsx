@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap, CalendarRange, ChevronDown,
+  TrendingUp, Droplet, ArrowDownToLine, Gauge, Percent, Waves, Hourglass, ScrollText, Zap, CalendarRange,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
@@ -189,7 +189,7 @@ export default function EauDashboard() {
         value={base}
         onChange={(e) => changeBase(e.target.value as BaseHoraire)}
         aria-label="Base horaire des débits"
-        className="appearance-none cursor-pointer bg-transparent font-medium text-ahuvi-forest focus:outline-none focus:ring-0"
+        className="appearance-none cursor-pointer border-0 bg-transparent font-medium text-ahuvi-forest focus:outline-none focus:ring-0"
       >
         {BASE_HORAIRE_OPTIONS.map((o) => (
           <option key={o.key} value={o.key}>
@@ -197,7 +197,6 @@ export default function EauDashboard() {
           </option>
         ))}
       </select>
-      <ChevronDown className="-ml-0.5 w-3.5 h-3.5 text-ahuvi-olive flex-shrink-0 pointer-events-none" aria-hidden="true" />
     </label>
   );
 
