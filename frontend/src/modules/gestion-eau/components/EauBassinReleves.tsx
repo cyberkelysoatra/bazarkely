@@ -168,12 +168,39 @@ export default function EauBassinReleves({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles.admin, roles.releveur]);
 
+  // Amène le HAUT de la carte Bassin juste SOUS le Header sticky (et non centré, ni
+  // masqué). Mesure dynamiquement la hauteur réelle du header (~80 px, variable selon le
+  // module/la nav). Repli propre `block: 'start'` si le header est introuvable.
+  const scrollBassinUnderHeader = () => {
+    const card = bassinCardRef.current;
+    if (!card) return;
+    const header = document.querySelector('header');
+    if (!header) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const headerH = header.getBoundingClientRect().height;
+    const MARGIN = 8;
+    const top = card.getBoundingClientRect().top + window.scrollY - headerH - MARGIN;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  };
+
+  // Dès qu'un tiroir de la carte Bassin s'ouvre (crayon « Saisir » ou résumé « Historique »,
+  // peu importe la cause), faire remonter la carte sous le Header. Pas de défilement à la
+  // fermeture (openDrawer null). rAF pour que la position de la carte soit déjà à jour.
+  useEffect(() => {
+    if (!openDrawer) return;
+    const id = requestAnimationFrame(() => scrollBassinUnderHeader());
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDrawer]);
+
   // Deep-link / raccourci : ouvre le bon tiroir/section et défile jusqu'à lui.
   useEffect(() => {
     if (!openIntent || loading) return;
     if (openIntent === 'niveau') {
+      // Le défilement « haut sous le Header » est géré par l'effet sur openDrawer ci-dessus.
       setOpenDrawer('saisir');
-      requestAnimationFrame(() => bassinCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     } else if (openIntent === 'debit') {
       setDebitOpen(true);
       requestAnimationFrame(() => debitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -694,10 +721,7 @@ export default function EauBassinReleves({
         )}
       </div>
 
-      {/* Crédits (entrées d'eau) injectés par le parent : carte Apports avant les Tests de débit. */}
-      {creditsSlot}
-
-      {/* Section repliable « Tests de débit ». */}
+      {/* Section repliable « Tests de débit » (juste sous la carte Bassin, avant les Apports). */}
       <div ref={debitRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
         <button
           type="button"
@@ -838,6 +862,9 @@ export default function EauBassinReleves({
           </Drawer>
         )}
       </div>
+
+      {/* Crédits (entrées d'eau) injectés par le parent : carte Apports après les Tests de débit. */}
+      {creditsSlot}
 
       {/* Section admin/releveur : édition / suppression d'un relevé + recalcul des bilans. */}
       {(roles.admin || roles.releveur) && (

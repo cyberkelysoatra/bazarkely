@@ -176,29 +176,34 @@ export default function EauApportsReleves({
     <div className="space-y-4">
       <EauAide id={AIDE.bassinEntree.id} quoi={AIDE.bassinEntree.quoi} comment={AIDE.bassinEntree.comment} />
 
-      {/* KPI : apports cumulés sur la période. */}
-      <EauStatCard
-        icon={Sprout}
-        tone="emerald"
-        label={`Apports cumulés · ${PERIODES.find((p) => p.key === periode)!.label}`}
-        value={fmtM3(cumulPeriodeM3)}
-        hint="Eau entrée dans le bassin sur la période"
-      />
-
-      {/* Apport estimé du dernier bilan (modèle flotteur, plafonné). */}
-      {apportEstime && (
+      {/* KPI côte à côte (2 colonnes, hauteurs égales via h-full). Quand « Apport estimé »
+          est absent, « Apports cumulés » occupe toute la largeur (pas de demi-carte esseulée). */}
+      <div className={apportEstime ? 'grid grid-cols-2 gap-3' : ''}>
         <EauStatCard
-          icon={Gauge}
-          tone="teal"
-          label="Apport estimé · dernier bilan"
-          value={fmtM3(apportEstime.valeur)}
-          hint={
-            apportEstime.debit
-              ? `Estimation (débit) — ${fmtDate(apportEstime.date)}`
-              : `Estimation réaliste tenant compte de l'arrêt au flotteur — ${fmtDate(apportEstime.date)}`
-          }
+          icon={Sprout}
+          tone="emerald"
+          label={`Apports cumulés · ${PERIODES.find((p) => p.key === periode)!.label}`}
+          value={fmtM3(cumulPeriodeM3)}
+          hint="Eau entrée dans le bassin sur la période"
+          className="h-full"
         />
-      )}
+
+        {/* Apport estimé du dernier bilan (modèle flotteur, plafonné). */}
+        {apportEstime && (
+          <EauStatCard
+            icon={Gauge}
+            tone="teal"
+            label="Apport estimé · dernier bilan"
+            value={fmtM3(apportEstime.valeur)}
+            hint={
+              apportEstime.debit
+                ? `Estimation (débit) — ${fmtDate(apportEstime.date)}`
+                : `Estimation réaliste tenant compte de l'arrêt au flotteur — ${fmtDate(apportEstime.date)}`
+            }
+            className="h-full"
+          />
+        )}
+      </div>
 
       {/* Chips de période (partagées avec l'onglet Compteurs). */}
       <div className="flex gap-2">
