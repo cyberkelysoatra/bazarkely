@@ -2,11 +2,12 @@
  * Onglet « Bassin » de la page Relevés v2 (façon Transactions).
  *
  * Métaphore comptable : le niveau du bassin = stock d'eau (eau restante).
- *  - Carte « Stock d'eau du bassin » : niveau réel mesuré (+ % remplissage réf. flotteur),
- *    solde attendu (dernier bilan) et écart mesuré − attendu (ton d'alerte si anomalie).
- *  - Carte « Bassin » : dernier niveau (cm → m³) + date, tiroir « Saisir hauteur »
- *    (conversion live cm → m³, Enregistrer → addReleveBassin qui déclenche un bilan)
- *    + tiroir « Historique » (6 derniers niveaux + mini-courbe).
+ *  - Carte « Stock d'eau du bassin » (unique carte de tête) : niveau réel mesuré
+ *    (+ % remplissage réf. flotteur), solde attendu (dernier bilan) et écart mesuré − attendu
+ *    (ton d'alerte si anomalie) ; tiroir « Comprendre cette situation » au clic sur le corps ;
+ *    rangée relevé (dernier niveau cm → m³ + date) cliquable → tiroir « Historique »
+ *    (6 derniers niveaux + mini-courbe) ; crayon → tiroir « Saisir hauteur »
+ *    (conversion live cm → m³, Enregistrer → addReleveBassin qui déclenche un bilan).
  *  - Section repliable « Tests de débit » : débit courant mis en avant + liste + nouveau test.
  *  - Section repliable admin/releveur « Relevés récents » : édition/suppression + recalcul
  *    des bilans (feature v3.41.0 conservée — additif, ne pas régresser).
@@ -488,8 +489,11 @@ export default function EauBassinReleves({
       <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
 
       {/* Carte « Stock d'eau du bassin » (métaphore compte : eau restante = stock d'eau).
-          Cliquable → déplie un tiroir « comprendre cette situation » sous les chiffres. */}
+          Cliquable → déplie un tiroir « comprendre cette situation » sous les chiffres.
+          Intègre aussi la rangée relevé (→ Historique) et le crayon (→ Saisie) avec leurs
+          tiroirs : c'est désormais la seule carte de tête de l'onglet Source. */}
       <div
+        ref={bassinCardRef}
         role="button"
         tabIndex={0}
         aria-expanded={explainOpen}
@@ -538,6 +542,56 @@ export default function EauBassinReleves({
           </div>
         )}
 
+        {/* Rangée relevé (fusion de l'ex-carte « Bassin ») : icône Règle + ligne de relevé brut
+            cliquable → tiroir Historique, et crayon → tiroir Saisie. stopPropagation impératif
+            pour ne pas déclencher « Comprendre » de la carte parente. */}
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={openDrawer === 'histo'}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
+              }
+            }}
+            className="cursor-pointer rounded-lg -m-1 p-1 flex items-center gap-2 flex-1 min-w-0 transition-colors hover:bg-ahuvi-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400"
+          >
+            <EauListIcon icon={Ruler} tone="teal" />
+            <div className="text-sm text-gray-500 truncate">
+              {dernierReleve ? (
+                <>
+                  {dernierReleve.hauteur_cm} cm · {fmtM3(dernierReleve.volume_m3)} · {fmtDate(dernierReleve.timestamp)}
+                </>
+              ) : (
+                'Aucun relevé de niveau'
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenDrawer((k) => (k === 'saisir' ? null : 'saisir'));
+            }}
+            disabled={isReadOnly || !dim}
+            aria-label="Saisir une hauteur"
+            className={`flex-shrink-0 w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors ${
+              openDrawer === 'saisir'
+                ? 'bg-ahuvi-forest text-white'
+                : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+          >
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+
         {/* Affordance « icône d'abord » : la carte est cliquable pour comprendre la situation. */}
         <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
           <span className="inline-flex items-center gap-1.5">
@@ -559,65 +613,9 @@ export default function EauBassinReleves({
             </div>
           </Drawer>
         )}
-      </div>
 
-      {/* Carte « Bassin » (façon cartes Compteurs) : résumé cliquable → tiroir Historique,
-          crayon compact → tiroir Saisir hauteur. */}
-      <div ref={bassinCardRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
-        <div className="p-3">
-          {/* Résumé cliquable → ouvre/ferme le tiroir Historique (accessible clavier). */}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-expanded={openDrawer === 'histo'}
-            onClick={() => setOpenDrawer((k) => (k === 'histo' ? null : 'histo'))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
-              }
-            }}
-            className="cursor-pointer rounded-lg -m-1 p-1 transition-colors hover:bg-ahuvi-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400"
-          >
-            <div className="flex items-start gap-2 min-w-0">
-              <EauListIcon icon={Ruler} tone="teal" />
-              <div className="min-w-0">
-                <div className="font-semibold text-gray-900">Bassin</div>
-                <div className="text-sm text-gray-500">
-                  {dernierReleve ? (
-                    <>
-                      {dernierReleve.hauteur_cm} cm · {fmtM3(dernierReleve.volume_m3)} · {fmtDate(dernierReleve.timestamp)}
-                    </>
-                  ) : (
-                    'Aucun relevé de niveau'
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Crayon compact de saisie (SŒUR du résumé, jamais imbriqué) : clic crayon →
-              tiroir Saisir, clic carte → Historique. stopPropagation par sécurité. */}
-          <div className="mt-1.5 flex justify-end">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenDrawer((k) => (k === 'saisir' ? null : 'saisir'));
-              }}
-              disabled={isReadOnly || !dim}
-              aria-label="Saisir une hauteur"
-              className={`flex-shrink-0 w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors ${
-                openDrawer === 'saisir'
-                  ? 'bg-ahuvi-forest text-white'
-                  : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
-              }`}
-            >
-              <Pencil className="w-4 h-4" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
+        {/* Tiroirs « Saisir hauteur » et « Historique » (rapatriés de l'ex-carte Bassin) :
+            cohabitent avec le tiroir « Comprendre » dans cette unique carte. */}
         {openDrawer === 'saisir' && (
           <Drawer>
             <div className="px-3 pb-3 border-t border-ahuvi-100 space-y-3 pt-3">
@@ -727,7 +725,7 @@ export default function EauBassinReleves({
         )}
       </div>
 
-      {/* Section repliable « Tests de débit » (juste sous la carte Bassin, avant les Apports). */}
+      {/* Section repliable « Tests de débit » (juste sous la carte Stock, avant les Apports). */}
       <div ref={debitRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
         <button
           type="button"
