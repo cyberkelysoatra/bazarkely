@@ -237,7 +237,7 @@ export default function EauDashboard() {
                 tone="forest"
                 label="Pompes en marche"
                 value={data?.debitCourantM3h != null ? `${data.debitCourantM3h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m³/h` : '—'}
-                hint="Apport des pompes"
+                hint="Débit entrant"
                 onClick={goTendances}
                 onIconClick={() => goSaisieBassin('debit')}
                 iconAriaLabel="Saisir un relevé bassin"
