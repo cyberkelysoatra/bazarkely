@@ -161,6 +161,9 @@ export default function EauDashboard() {
   const eauNonCompteeM3 = flux?.consoReseauM3 != null ? flux.consoReseauM3 - flux.consoM3 : null;
   const eauNonCompteePct =
     eauNonCompteeM3 != null && flux?.consoReseauM3 ? (eauNonCompteeM3 / flux.consoReseauM3) * 100 : null;
+  // Part comptée = conso compteur ÷ conso du réseau (complément de l'eau non comptée → ~100 % à deux).
+  const consoCompteurPct =
+    flux?.consoReseauM3 ? (flux.consoM3 / flux.consoReseauM3) * 100 : null;
 
   const baseSelector = (
     <label className="inline-flex items-center gap-1.5 rounded-lg border border-ahuvi-200 bg-white px-2 py-1.5 text-xs font-ahuvi-body text-ahuvi-forest shadow-soft transition-colors hover:border-ahuvi-300 focus-within:border-ahuvi-300 focus-within:ring-2 focus-within:ring-ahuvi-300">
@@ -255,7 +258,16 @@ export default function EauDashboard() {
                 icon={Droplet}
                 tone="olive"
                 label="Conso au compteur"
-                value={fmtM3h(rate(flux?.consoM3))}
+                value={
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span>{fmtM3h(rate(flux?.consoM3))}</span>
+                    {consoCompteurPct != null && (
+                      <span className="text-sm font-medium text-gray-400" title="Part de la conso du réseau">
+                        {fmtPct(consoCompteurPct)}
+                      </span>
+                    )}
+                  </span>
+                }
                 hint={cumulSub(flux?.consoM3)}
                 onClick={goTendances}
                 onIconClick={goSaisieCompteur}
