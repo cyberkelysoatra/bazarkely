@@ -144,6 +144,12 @@ export interface ElecKpiData {
    * exploitables (un seul relevé ne donne pas encore de conso).
    */
   consoRecenteKwh: number | null;
+  /**
+   * Puissance moyenne récente (kW = kWh/h) = somme, par compteur, de sa dernière conso
+   * d'intervalle divisée par la durée réelle de cet intervalle. `null` si aucune durée
+   * exploitable (intervalle de durée nulle ou aucun 2ᵉ relevé).
+   */
+  consoRecenteKw: number | null;
   /** Date du relevé élec le plus récent (ISO), ou null si aucun relevé. */
   dernierReleveDate: string | null;
   /** Nombre total de relevés élec (tous compteurs). */
@@ -160,7 +166,7 @@ export interface ElecKpiData {
 export async function getElecKpiData(): Promise<ElecKpiData> {
   const all = (await eauDb.eau_elec_releves_compteur.toArray()) as ElecReleveLocal[];
   if (all.length === 0) {
-    return { consoRecenteKwh: null, dernierReleveDate: null, totalReleves: 0, nbCompteursReleves: 0 };
+    return { consoRecenteKwh: null, consoRecenteKw: null, dernierReleveDate: null, totalReleves: 0, nbCompteursReleves: 0 };
   }
 
   const byCompteur = new Map<string, ElecReleveLocal[]>();
@@ -178,6 +184,7 @@ export async function getElecKpiData(): Promise<ElecKpiData> {
   }
 
   let consoRecenteKwh: number | null = null;
+  let consoRecenteKw: number | null = null;
   for (const list of byCompteur.values()) {
     const sorted = list
       .slice()
@@ -186,12 +193,17 @@ export async function getElecKpiData(): Promise<ElecKpiData> {
     const prev = sorted[sorted.length - 2];
     // Besoin de 2 relevés ; une rupture sur le dernier intervalle rend la conso non fiable.
     if (prev && !last.rupture_index) {
-      consoRecenteKwh = (consoRecenteKwh ?? 0) + Math.max(0, last.index - prev.index);
+      const dKwh = Math.max(0, last.index - prev.index);
+      consoRecenteKwh = (consoRecenteKwh ?? 0) + dKwh;
+      // Puissance moyenne = énergie ÷ durée réelle de l'intervalle (heures).
+      const dH = (new Date(last.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3_600_000;
+      if (dH > 0) consoRecenteKw = (consoRecenteKw ?? 0) + dKwh / dH;
     }
   }
 
   return {
     consoRecenteKwh,
+    consoRecenteKw,
     dernierReleveDate,
     totalReleves: all.length,
     nbCompteursReleves: byCompteur.size,

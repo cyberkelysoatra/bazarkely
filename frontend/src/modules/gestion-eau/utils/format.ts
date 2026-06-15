@@ -10,6 +10,18 @@ export function fmtKwh(v: number | null | undefined, digits = 0): string {
   return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits })} kWh`;
 }
 
+/** Débit en m³ par heure (échelle horaire du tableau de bord). */
+export function fmtM3h(v: number | null | undefined, digits = 1): string {
+  if (v == null || Number.isNaN(v) || !Number.isFinite(v)) return '—';
+  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits })} m³/h`;
+}
+
+/** Puissance moyenne en kW (= kWh/h). */
+export function fmtKw(v: number | null | undefined, digits = 1): string {
+  if (v == null || Number.isNaN(v) || !Number.isFinite(v)) return '—';
+  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: digits })} kW`;
+}
+
 export function fmtPct(ratioOrPct: number | null | undefined, opts?: { isRatio?: boolean; digits?: number }): string {
   if (ratioOrPct == null || Number.isNaN(ratioOrPct)) return '—';
   const pct = opts?.isRatio ? ratioOrPct * 100 : ratioOrPct;

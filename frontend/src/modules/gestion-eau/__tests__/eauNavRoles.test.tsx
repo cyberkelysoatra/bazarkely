@@ -14,7 +14,7 @@ const labels = (roles: EauRoles) => filterEauNavByRoles(roles).map((i) => i.labe
 describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes, cumulable)', () => {
   it('admin voit les 5 thèmes d’administration', () => {
     const l = labels(r({ admin: true }));
-    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Suivi', 'Compteurs', 'Facturation']);
+    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Compteurs', 'Suivi', 'Facturation']);
   });
 
   it('releveur voit les 3 thèmes opérationnels, PAS compteurs/facturation', () => {
@@ -32,7 +32,7 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
 
   it('promoteur (Phase 2) voit les 5 thèmes métier en lecture (comme admin), PAS les écrans propriétaire', () => {
     const l = labels(r({ promoteur: true }));
-    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Suivi', 'Compteurs', 'Facturation']);
+    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Compteurs', 'Suivi', 'Facturation']);
     expect(l).not.toContain('Ma conso');
     expect(l).not.toContain('Mes factures');
   });
@@ -44,7 +44,7 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
 
   it('cumul admin+releveur voit les thèmes admin (releveur n’ajoute rien)', () => {
     const l = labels(r({ admin: true, releveur: true }));
-    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Suivi', 'Compteurs', 'Facturation']);
+    expect(l).toEqual(['Tableau de bord', 'Relevés', 'Compteurs', 'Suivi', 'Facturation']);
   });
 
   it('chaque rôle réel reste ≤ 6 items (contrainte BottomNav ; le cumul atypique est tronqué côté UI)', () => {
