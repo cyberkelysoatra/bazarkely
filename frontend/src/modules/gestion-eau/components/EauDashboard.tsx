@@ -282,16 +282,7 @@ export default function EauDashboard() {
                 icon={Droplet}
                 tone="olive"
                 label="Conso au compteur"
-                value={
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span>{fmtM3h(rate(flux?.consoM3))}</span>
-                    {eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 && eauNonCompteePct != null && (
-                      <span className="text-sm font-medium text-gray-400" title="Part non comptée de la conso du réseau">
-                        {fmtPct(eauNonCompteePct)}
-                      </span>
-                    )}
-                  </span>
-                }
+                value={fmtM3h(rate(flux?.consoM3))}
                 hint={
                   <>
                     {cumulSub(flux?.consoM3)}
@@ -314,7 +305,20 @@ export default function EauDashboard() {
                 icon={Percent}
                 tone="amber"
                 label="Eau non comptée"
-                value={eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? fmtM3h(rate(eauNonCompteeM3)) : '—'}
+                value={
+                  eauNonCompteeM3 != null && eauNonCompteeM3 >= 0 ? (
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span>{fmtM3h(rate(eauNonCompteeM3))}</span>
+                      {eauNonCompteePct != null && (
+                        <span className="text-sm font-medium text-gray-400" title="Part de la conso du réseau">
+                          {fmtPct(eauNonCompteePct)}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    '—'
+                  )
+                }
                 hint={
                   eauNonCompteeM3 != null && eauNonCompteeM3 >= 0
                     ? `${fmtM3(eauNonCompteeM3)} hors compteur`
