@@ -20,7 +20,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Gauge, Droplet, Waves, ScanLine, Plus } from 'lucide-react';
+import { Gauge, Droplet, GlassWater, ScanLine, ArrowDownToLine } from 'lucide-react';
 import EauTabs from './EauTabs';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
@@ -176,8 +176,11 @@ export default function EauRelevesPage() {
       {/* Raccourcis (rangée de 3, façon cartes-raccourcis Transactions). */}
       <div className={`${WRAP} mt-5 grid grid-cols-3 gap-2`}>
         <EauShortcut icon={ScanLine} label="Scanner" onClick={() => setScannerOpen(true)} />
-        <EauShortcut icon={Waves} label="Saisir bassin" onClick={goSaisirBassin} />
-        <EauShortcut icon={Plus} label="Ajouter apport" onClick={goAjouterApport} />
+        {/* Icônes alignées sur les cartes de saisie « Source » (cohérence visuelle, point 5) :
+            Saisir bassin = GlassWater (carte « Stock actuel »), Ajouter apport = ArrowDownToLine
+            (carte « Entrées d'eau »). */}
+        <EauShortcut icon={GlassWater} label="Saisir bassin" onClick={goSaisirBassin} />
+        <EauShortcut icon={ArrowDownToLine} label="Ajouter apport" onClick={goAjouterApport} />
       </div>
 
       {scannerOpen && <EauQrScanner onResult={onScanResult} onClose={() => setScannerOpen(false)} />}

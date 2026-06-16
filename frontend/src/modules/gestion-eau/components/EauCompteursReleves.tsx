@@ -745,22 +745,24 @@ function HistoriqueDrawer({
                 key={r.id}
                 className="rounded-lg border border-ahuvi-200 bg-white px-3 py-2 shadow-sm space-y-1.5"
               >
-                <input
-                  type="datetime-local"
-                  value={drafts[r.id]?.datetime ?? isoToLocalInput(r.date)}
-                  onChange={(e) => setDraft(r.id, { datetime: e.target.value })}
-                  aria-label={`Date et heure du relevé du ${fmtDate(r.date)}`}
-                  className="w-full rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                />
+                {/* Date et index sur une SEULE ligne (date flexible, index étroit aligné à
+                    droite) — l'étiquette « Index » passe en placeholder pour tenir à 412 px. */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 flex-shrink-0">Index</span>
+                  <input
+                    type="datetime-local"
+                    value={drafts[r.id]?.datetime ?? isoToLocalInput(r.date)}
+                    onChange={(e) => setDraft(r.id, { datetime: e.target.value })}
+                    aria-label={`Date et heure du relevé du ${fmtDate(r.date)}`}
+                    className="flex-1 min-w-0 rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                  />
                   <input
                     type="text"
                     inputMode="decimal"
                     value={drafts[r.id]?.index ?? String(r.index)}
                     onChange={(e) => setDraft(r.id, { index: e.target.value })}
+                    placeholder="Index"
                     aria-label={`Index du relevé du ${fmtDate(r.date)}`}
-                    className="flex-1 text-right rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
+                    className="w-24 flex-shrink-0 text-right rounded-md border-gray-300 text-sm py-1 focus:border-ahuvi-500 focus:ring-ahuvi-500"
                   />
                 </div>
                 <input

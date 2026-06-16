@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Camera, Save, AlertTriangle, Flag, Trash2, Droplet, Zap } from 'lucide-react';
+import { Camera, Save, AlertTriangle, Flag, Trash2, Droplet, Zap, CalendarClock } from 'lucide-react';
 import { useGestionEau } from '../context';
 import {
   evaluerReleveCompteur,
@@ -26,6 +26,7 @@ import {
 } from '../services/eauElecReleveService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { showConfirm } from '../../../utils/dialogUtils';
+import { toIsoOrUndefined, isFuture } from '../utils/dateInput';
 import { fmtM3, fmtKwh, fmtDate } from '../utils/format';
 import { compressImageFile, dataUrlSizeKo } from '../utils/photo';
 import type { CompteurLocal } from '../types/gestionEau';
@@ -54,6 +55,7 @@ export default function EauTiroirSaisie({
   const { isReadOnly } = useGestionEau();
   const [facet, setFacet] = useState<ReleveFacet>(defaultFacet);
   const [indexStr, setIndexStr] = useState('');
+  const [dateTime, setDateTime] = useState('');
   const [note, setNote] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -68,6 +70,7 @@ export default function EauTiroirSaisie({
   useEffect(() => {
     let alive = true;
     setIndexStr('');
+    setDateTime('');
     setNote('');
     setPhoto(null);
     setEvalState(null);
@@ -135,6 +138,10 @@ export default function EauTiroirSaisie({
       toast.error('Index invalide');
       return;
     }
+    if (isFuture(dateTime)) {
+      toast.error('Date dans le futur impossible');
+      return;
+    }
     const evRaw =
       facet === 'eau'
         ? await evaluerReleveCompteur(compteur.id, n)
@@ -169,6 +176,7 @@ export default function EauTiroirSaisie({
         note: note || null,
         photo_url: photo,
         agent_id: getCurrentUserIdSync(),
+        timestamp: toIsoOrUndefined(dateTime),
       };
       if (facet === 'eau') await addReleveCompteur(payload);
       else await addReleveElec(payload);
@@ -177,6 +185,9 @@ export default function EauTiroirSaisie({
           ? "Relevé enregistré (rupture d'index)"
           : `Relevé enregistré — conso ${fmt(evRaw.conso)}`
       );
+      setIndexStr('');
+      setDateTime('');
+      setNote('');
       onSaved();
     } finally {
       setBusy(false);
@@ -243,20 +254,41 @@ export default function EauTiroirSaisie({
         )}
       </div>
 
-      <label className="text-sm block">
-        <span className="block text-gray-600 mb-1">Nouvel index ({unit})</span>
-        <input
-          type="number"
-          inputMode="decimal"
-          step="0.001"
-          value={indexStr}
-          onChange={(e) => setIndexStr(e.target.value)}
-          disabled={isReadOnly}
-          className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-          placeholder={`Index relevé (${unit})`}
-          autoFocus
-        />
-      </label>
+      {/* Nouvel index + Date/heure sur une SEULE ligne (deux colonnes). L'aide « vide =
+          maintenant » passe sous la ligne. Date optionnelle (modèle EauApportsReleves). */}
+      <div>
+        <div className="flex gap-2">
+          <label className="text-sm block flex-1 min-w-0">
+            <span className="block text-gray-600 mb-1">Nouvel index ({unit})</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.001"
+              value={indexStr}
+              onChange={(e) => setIndexStr(e.target.value)}
+              disabled={isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              placeholder={`Index (${unit})`}
+              autoFocus
+            />
+          </label>
+          <label className="text-sm block flex-1 min-w-0">
+            <span className="flex items-center gap-1.5 text-gray-600 mb-1">
+              <CalendarClock className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> Date
+            </span>
+            <input
+              type="datetime-local"
+              value={dateTime}
+              onChange={(e) => setDateTime(e.target.value)}
+              disabled={isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+            />
+          </label>
+        </div>
+        <span className="block text-xs text-gray-500 mt-1">
+          Laisser vide = maintenant. Renseigner pour saisir un relevé passé.
+        </span>
+      </div>
 
       {evalState && (
         <div className="space-y-1">

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAppStore } from '../../stores/appStore'
 
 // Critical pages - keep static imports (critical path)
@@ -144,6 +144,12 @@ const FamilyRoutes: React.FC = () => {
 
 const AppLayout = () => {
   const { isAuthenticated } = useAppStore()
+  const location = useLocation()
+
+  // Module Gestion Eau : on relâche `overscroll-behavior` (rebond élastique iOS) là où le
+  // reste de l'app le verrouille (`overscroll-none`). Strictement gated eau → Cœur &
+  // Construction conservent `overscroll-none` (aucun changement de défilement pour eux).
+  const isEauModule = location.pathname.startsWith('/gestion-eau')
 
   if (!isAuthenticated) {
     return (
@@ -161,7 +167,7 @@ const AppLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col overscroll-none">
+    <div className={`min-h-screen flex flex-col ${isEauModule ? 'overscroll-y-auto' : 'overscroll-none'}`}>
       <Header />
       {/* Remonte chaque page en haut à l'ouverture (alignement homogène sous l'en-tête) */}
       <ScrollToTop />
