@@ -9,11 +9,12 @@
  * Offline-first : `addEntreeBassin` écrit Dexie d'abord (upsert idempotent par id) ;
  * la liste se relit localement. Désactivé en lecture seule (promoteur).
  */
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Sprout, Plus, Save, CalendarClock, ArrowDownToLine, Gauge } from 'lucide-react';
 import { EauStatCard, EauEmptyState, EauListIcon } from './EauUi';
 import EauAide from './EauAide';
+import EauDrawer from './EauDrawer';
 import { AIDE } from './eauAideTextes';
 import { useGestionEau } from '../context';
 import { eauIsOnline } from '../utils/online';
@@ -21,6 +22,7 @@ import { addEntreeBassin, listEntreesBassin, refreshReleves } from '../services/
 import { getDashboardData } from '../services/eauBilanService';
 import { getCurrentUserIdSync } from '../services/eauAuth';
 import { isApportDebitMode } from '../utils/bilan';
+import { toIsoOrUndefined, isFuture } from '../utils/dateInput';
 import { fmtM3, fmtDate } from '../utils/format';
 import type { BilanLocal, EntreeBassinLocal } from '../types/gestionEau';
 
@@ -31,20 +33,6 @@ const PERIODES = [
   { key: '1an', days: 365, label: '1 an' },
 ] as const;
 type PeriodeKey = (typeof PERIODES)[number]['key'];
-
-// Convertit la valeur d'un <input datetime-local> en ISO, ou undefined si vide.
-function toIsoOrUndefined(local: string): string | undefined {
-  if (!local.trim()) return undefined;
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-
-// true si la valeur saisie est dans le futur.
-function isFuture(local: string): boolean {
-  if (!local.trim()) return false;
-  const t = new Date(local).getTime();
-  return Number.isFinite(t) && t > Date.now();
-}
 
 export default function EauApportsReleves({
   autoOpenAdd,
@@ -239,7 +227,7 @@ export default function EauApportsReleves({
           <Plus className="w-4 h-4" aria-hidden="true" /> Ajouter un apport
         </button>
         {addOpen && (
-          <Drawer>
+          <EauDrawer>
             <div className="px-3 pb-3 border-t border-ahuvi-100 space-y-3 pt-3">
               <label className="text-sm block">
                 <span className="block text-gray-600 mb-1">Volume entré (m³)</span>
@@ -288,7 +276,7 @@ export default function EauApportsReleves({
                 <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'apport
               </button>
             </div>
-          </Drawer>
+          </EauDrawer>
         )}
       </div>
 
@@ -323,24 +311,6 @@ export default function EauApportsReleves({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/** Conteneur accordéon : anime l'ouverture (0fr → 1fr) à l'aide d'une grille CSS. */
-function Drawer({ children }: { children: ReactNode }) {
-  const [grown, setGrown] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setGrown(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  return (
-    <div
-      className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-        grown ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-      }`}
-    >
-      <div className="overflow-hidden min-h-0">{children}</div>
     </div>
   );
 }

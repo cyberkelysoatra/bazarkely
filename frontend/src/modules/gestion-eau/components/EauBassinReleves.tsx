@@ -9,104 +9,26 @@
  *    (6 derniers niveaux + mini-courbe) ; crayon → tiroir « Saisir hauteur »
  *    (conversion live cm → m³, Enregistrer → addReleveBassin qui déclenche un bilan).
  *  - Section repliable « Tests de débit » : débit courant mis en avant + liste + nouveau test.
+ *  - Section repliable « Arrêts de pompe » : saisie période/durée + liste.
  *  - Section repliable admin/releveur « Relevés récents » : édition/suppression + recalcul
  *    des bilans (feature v3.41.0 conservée — additif, ne pas régresser).
  *
  * Transpose EauSaisieBassinPage SANS toucher au calcul des bilans (utils/bilan.ts, Phase 3).
  * Offline-first ; deep-link `?bt=niveau|debit` piloté par le parent (openIntent).
+ *
+ * Découpé (v3.62.0) : ce composant n'orchestre plus que les refs, le défilement sous le
+ * Header, le deep-link et l'agencement. Les données + actions vivent dans `useBassinReleves`,
+ * les écrans dans `bassin/*` (carte Stock, saisie, tests de débit, arrêts, historique admin).
  */
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
-import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-} from 'recharts';
-import {
-  Waves, Ruler, Gauge, Save, AlertTriangle, Settings, Pencil, NotebookPen, Activity,
-  ListChecks, Trash2, RefreshCw, ChevronDown, TrendingUp, TrendingDown, Info, Power,
-} from 'lucide-react';
-import { EauStatCard, EauEmptyState, EauListIcon, EAU_CHART } from './EauUi';
+import { ReactNode, useEffect, useRef } from 'react';
+import { AlertTriangle, Info } from 'lucide-react';
 import EauAide from './EauAide';
 import { AIDE } from './eauAideTextes';
-import { useGestionEau } from '../context';
-import { useAppStore } from '../../../stores/appStore';
-import { showConfirm } from '../../../utils/dialogUtils';
-import { getConfig, dimensionsFromConfig } from '../services/eauConfigService';
-import {
-  surfaceFromConfig, listDebitTests, addDebitTest,
-  listArretsPompe, addArretPompe, deleteArretPompe,
-} from '../services/eauBassinService';
-import { getDashboardData, recomputeAllBilans, type DashboardData } from '../services/eauBilanService';
-import {
-  addReleveBassin,
-  listRecentRelevesBassin,
-  updateReleveBassin,
-  deleteReleveBassin,
-} from '../services/eauReleveService';
-import { hauteurCmToVolumeM3 } from '../utils/bassin';
-import { computeDebit } from '../utils/debit';
-import { getCurrentUserIdSync } from '../services/eauAuth';
-import { fmtM3, fmtPct, fmtDate, fmtM3h } from '../utils/format';
-import type { ConfigLocal, DebitTestLocal, ReleveBassinLocal, ArretPompeLocal } from '../types/gestionEau';
-import type { BassinDimensions } from '../utils/bassin';
-
-// Fenêtre glissante (ms) — un releveur pur ne corrige/supprime que les relevés < 48 h
-// (borne alignée sur la RLS). Un admin (même cumulé releveur) n'est pas borné.
-const WINDOW_48H_MS = 48 * 60 * 60 * 1000;
-
-function toIsoOrUndefined(local: string): string | undefined {
-  if (!local.trim()) return undefined;
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
-}
-function isFuture(local: string): boolean {
-  if (!local.trim()) return false;
-  const t = new Date(local).getTime();
-  return Number.isFinite(t) && t > Date.now();
-}
-function isoToLocalInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** Minutes depuis minuit d'une saisie `<input type="time">` (HH:MM), ou null si vide/invalide. */
-function timeToMinutes(hhmm: string): number | null {
-  if (!hhmm.trim()) return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) return null;
-  return h * 60 + min;
-}
-
-/**
- * Durée (min) entre une heure de début et de fin (`HH:MM`). Gère le passage de minuit
- * (test de nuit) : si la fin est « avant » le début, on suppose le lendemain (+24 h).
- * Retourne null si l'une des heures est absente/invalide ou si la durée est nulle.
- */
-function dureeMinFromHeures(debut: string, fin: string): number | null {
-  const a = timeToMinutes(debut);
-  const b = timeToMinutes(fin);
-  if (a == null || b == null) return null;
-  let diff = b - a;
-  if (diff < 0) diff += 24 * 60; // passage de minuit
-  return diff > 0 ? diff : null;
-}
-
-/** Formate une durée en minutes → « 2 h 05 », « 45 min » ou « 1 j 3 h » (lecture humaine). */
-function fmtDuree(min: number): string {
-  if (!Number.isFinite(min) || min <= 0) return '—';
-  const totalMin = Math.round(min);
-  const j = Math.floor(totalMin / 1440);
-  const h = Math.floor((totalMin % 1440) / 60);
-  const m = totalMin % 60;
-  if (j > 0) return `${j} j ${h} h`;
-  if (h > 0) return `${h} h ${String(m).padStart(2, '0')}`;
-  return `${m} min`;
-}
+import { useBassinReleves } from './bassin/useBassinReleves';
+import BassinStockCard, { type ExplainInfo } from './bassin/BassinStockCard';
+import TestsDebit from './bassin/TestsDebit';
+import ArretsPompe from './bassin/ArretsPompe';
+import BassinHistoriqueAdmin from './bassin/BassinHistoriqueAdmin';
 
 export default function EauBassinReleves({
   openIntent,
@@ -119,80 +41,12 @@ export default function EauBassinReleves({
   /** Contenu « crédits » (entrées d'eau) inséré entre la carte Bassin et la section Tests de débit. */
   creditsSlot?: ReactNode;
 }) {
-  const navigate = useNavigate();
-  const { roles, isReadOnly } = useGestionEau();
-  const isOnline = useAppStore((s) => s.isOnline);
-
-  const [config, setConfig] = useState<ConfigLocal | null>(null);
-  const [dim, setDim] = useState<BassinDimensions | null>(null);
-  const [surface, setSurface] = useState<number | null>(null);
-  const [dash, setDash] = useState<DashboardData | null>(null);
-  const [relevesList, setRelevesList] = useState<ReleveBassinLocal[]>([]);
-  const [tests, setTests] = useState<DebitTestLocal[]>([]);
-  const [arrets, setArrets] = useState<ArretPompeLocal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-
-  // Accordéon de la carte Bassin (un seul tiroir à la fois) + sections repliables.
-  const [openDrawer, setOpenDrawer] = useState<'saisir' | 'histo' | null>(null);
-  const [debitOpen, setDebitOpen] = useState(false);
-  const [arretOpen, setArretOpen] = useState(false);
-  // Tiroir « comprendre cette situation » sous la carte Stock d'eau (présentationnel).
-  const [explainOpen, setExplainOpen] = useState(false);
-
-  // Saisie niveau
-  const [hauteurCm, setHauteurCm] = useState('');
-  const [niveauNote, setNiveauNote] = useState('');
-  const [niveauDateTime, setNiveauDateTime] = useState('');
-
-  // Test de débit : hauteur début/fin (cm) + heure début/fin (durée dérivée).
-  const [debitDebutCm, setDebitDebutCm] = useState('');
-  const [debitFinCm, setDebitFinCm] = useState('');
-  const [debitHeureDebut, setDebitHeureDebut] = useState('');
-  const [debitHeureFin, setDebitHeureFin] = useState('');
-  const [debitNote, setDebitNote] = useState('');
-
-  // Arrêt de pompe : saisie au choix par durée (+ début) ou par début/fin.
-  const [arretMode, setArretMode] = useState<'periode' | 'duree'>('periode');
-  const [arretDebut, setArretDebut] = useState(''); // datetime-local
-  const [arretFin, setArretFin] = useState(''); // datetime-local (mode période)
-  const [arretDureeMin, setArretDureeMin] = useState(''); // minutes (mode durée)
-  const [arretNote, setArretNote] = useState('');
-
-  // Édition admin/releveur
-  const [editing, setEditing] = useState<{ id: string; hauteur: string; datetime: string } | null>(null);
-  const [recomputing, setRecomputing] = useState(false);
+  const b = useBassinReleves();
 
   const releveRowRef = useRef<HTMLDivElement | null>(null);
   const debitRef = useRef<HTMLDivElement | null>(null);
 
-  const isReleveurOnly = roles.releveur && !roles.admin;
-  const visibleReleves = isReleveurOnly
-    ? relevesList.filter((r) => Date.now() - new Date(r.timestamp).getTime() <= WINDOW_48H_MS)
-    : relevesList;
-
-  const loadCore = async () => {
-    const cfg = await getConfig();
-    setConfig(cfg);
-    setDim(dimensionsFromConfig(cfg));
-    setSurface(surfaceFromConfig(cfg));
-    setDash(await getDashboardData());
-    setTests(await listDebitTests());
-    setArrets(await listArretsPompe());
-    if (roles.admin || roles.releveur) setRelevesList(await listRecentRelevesBassin(30));
-  };
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      await loadCore();
-      if (alive) setLoading(false);
-    })();
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roles.admin, roles.releveur]);
+  const { openDrawer, setOpenDrawer, setDebitOpen, loading, bilan } = b;
 
   // Amène le HAUT de la LIGNE DU RELEVÉ (la zone cliquée : relevé + crayon) juste SOUS le
   // Header sticky, pour que le tiroir qui se déploie dessous soit en pleine vue (le bloc
@@ -243,296 +97,14 @@ export default function EauBassinReleves({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openIntent, loading]);
 
-  // Aperçu live volume (cm → m³) avant validation.
-  const volumePreview = useMemo(() => {
-    if (!dim) return null;
-    const h = Number(hauteurCm);
-    if (!Number.isFinite(h) || hauteurCm.trim() === '') return null;
-    return hauteurCmToVolumeM3(h, dim);
-  }, [hauteurCm, dim]);
-
-  // Durée dérivée des heures de début/fin (min), null tant que la saisie est incomplète.
-  const debitDureeMin = useMemo(
-    () => dureeMinFromHeures(debitHeureDebut, debitHeureFin),
-    [debitHeureDebut, debitHeureFin]
-  );
-
-  // Aperçu live du débit (Q_in) — durée dérivée des heures.
-  const debitPreview = useMemo(() => {
-    if (surface == null) return null;
-    if (debitDebutCm.trim() === '' || debitFinCm.trim() === '' || debitDureeMin == null) return null;
-    const d = Number(debitDebutCm);
-    const f = Number(debitFinCm);
-    if (![d, f].every(Number.isFinite)) return null;
-    return computeDebit({ niveauDebutCm: d, niveauFinCm: f, dureeMin: debitDureeMin, surfaceM2: surface });
-  }, [debitDebutCm, debitFinCm, debitDureeMin, surface]);
-
-  const flotteurCm = useMemo(() => {
-    const f = config?.bassin_hauteur_flotteur_m ?? config?.bassin_hauteur_max_m;
-    return f != null && f > 0 ? f * 100 : null;
-  }, [config]);
-  const debitFinAuDessusFlotteur =
-    flotteurCm != null && debitFinCm.trim() !== '' && Number(debitFinCm) > flotteurCm;
-
-  // Historique des tests (du plus ancien au plus récent) pour le graphe en barres.
-  const debitChartData = useMemo(
-    () => [...tests].reverse().map((t) => ({ label: fmtDate(t.timestamp).slice(0, 5), debit: t.debit_m3h })),
-    [tests]
-  );
-
-  // Mini-courbe de niveau (6 derniers relevés, du plus ancien au plus récent).
-  const niveauChart = useMemo(
-    () =>
-      relevesList
-        .slice(0, 6)
-        .slice()
-        .reverse()
-        .map((r) => ({ x: fmtDate(r.timestamp).slice(0, 5), value: r.volume_m3 })),
-    [relevesList]
-  );
-
-  const dernierReleve = relevesList[0] ?? null;
-
-  // Arrêt de pompe : résout (début, fin) selon le mode de saisie. null tant que la
-  // saisie est incomplète/invalide ; `future` signale un début postérieur à maintenant.
-  const arretResolved = useMemo(() => {
-    if (!arretDebut.trim()) return null;
-    const debut = new Date(arretDebut);
-    if (Number.isNaN(debut.getTime())) return null;
-    let fin: Date;
-    if (arretMode === 'periode') {
-      if (!arretFin.trim()) return null;
-      const f = new Date(arretFin);
-      if (Number.isNaN(f.getTime())) return null;
-      fin = f;
-    } else {
-      const min = Number(arretDureeMin);
-      if (!Number.isFinite(min) || min <= 0) return null;
-      fin = new Date(debut.getTime() + min * 60000);
-    }
-    if (fin.getTime() <= debut.getTime()) return null;
-    return {
-      debutIso: debut.toISOString(),
-      finIso: fin.toISOString(),
-      dureeMin: (fin.getTime() - debut.getTime()) / 60000,
-      future: debut.getTime() > Date.now(),
-    };
-  }, [arretMode, arretDebut, arretFin, arretDureeMin]);
-
-  const submitNiveau = async () => {
-    if (isReadOnly) return;
-    if (!dim) {
-      toast.error("Configurez le bassin d'abord");
-      return;
-    }
-    const h = Number(hauteurCm);
-    if (!Number.isFinite(h) || h < 0) {
-      toast.error('Hauteur invalide');
-      return;
-    }
-    if (isFuture(niveauDateTime)) {
-      toast.error('Date dans le futur impossible');
-      return;
-    }
-    const volume = hauteurCmToVolumeM3(h, dim);
-    setBusy(true);
-    try {
-      const { bilan } = await addReleveBassin({
-        hauteur_cm: h,
-        volume_m3: volume,
-        note: niveauNote || null,
-        agent_id: getCurrentUserIdSync(),
-        timestamp: toIsoOrUndefined(niveauDateTime),
-      });
-      if (bilan) {
-        toast.success(
-          bilan.anomalie
-            ? `Relevé enregistré — ⚠️ anomalie détectée (écart ${fmtM3(bilan.ecart_m3)})`
-            : `Relevé enregistré — bilan OK (écart ${fmtM3(bilan.ecart_m3)})`
-        );
-      } else {
-        toast.success('Relevé enregistré (référence initiale — pas de bilan)');
-      }
-      setHauteurCm('');
-      setNiveauNote('');
-      setNiveauDateTime('');
-      setOpenDrawer(null);
-      await loadCore();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitDebit = async () => {
-    if (isReadOnly) return;
-    if (surface == null) {
-      toast.error("Configurez les dimensions du bassin d'abord");
-      return;
-    }
-    if (debitDureeMin == null) {
-      toast.error("Renseignez l'heure de début et de fin (fin après début)");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await addDebitTest({
-        niveau_debut_cm: Number(debitDebutCm),
-        niveau_fin_cm: Number(debitFinCm),
-        duree_min: debitDureeMin,
-        note: debitNote || null,
-        agent_id: getCurrentUserIdSync(),
-      });
-      toast.success(
-        res.instable
-          ? `Test enregistré : ${res.test.debit_m3h.toFixed(1)} m³/h — ⚠️ débit instable (écart ${res.ecartPct?.toFixed(0)} %)`
-          : `Test enregistré : débit courant ${res.test.debit_m3h.toFixed(1)} m³/h`
-      );
-      setDebitDebutCm('');
-      setDebitFinCm('');
-      setDebitHeureDebut('');
-      setDebitHeureFin('');
-      setDebitNote('');
-      setTests(await listDebitTests());
-      setDash(await getDashboardData());
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Test de débit invalide');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitArret = async () => {
-    if (isReadOnly) return;
-    if (!arretResolved) {
-      toast.error('Renseignez le début et la durée (ou la fin)');
-      return;
-    }
-    if (arretResolved.future) {
-      toast.error('Un arrêt dans le futur est impossible');
-      return;
-    }
-    setBusy(true);
-    try {
-      await addArretPompe({
-        timestamp_debut: arretResolved.debutIso,
-        timestamp_fin: arretResolved.finIso,
-        note: arretNote || null,
-        agent_id: getCurrentUserIdSync(),
-      });
-      toast.success(`Arrêt enregistré (${fmtDuree(arretResolved.dureeMin)})`);
-      setArretDebut('');
-      setArretFin('');
-      setArretDureeMin('');
-      setArretNote('');
-      setArrets(await listArretsPompe());
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Arrêt invalide');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const removeArret = async (a: ArretPompeLocal) => {
-    if (isReadOnly) return;
-    const ok = await showConfirm(
-      `Supprimer cet arrêt du ${fmtDate(a.timestamp_debut)} (${fmtDuree(a.duree_min)}) ?`,
-      'Arrêts de pompe',
-      { variant: 'danger', confirmText: 'Supprimer' }
-    );
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await deleteArretPompe(a.id);
-      setArrets(await listArretsPompe());
-      toast.success('Arrêt supprimé');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Suppression impossible');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // ── Actions admin/releveur sur un relevé ──
-  const saveEdit = async () => {
-    if (isReadOnly || !editing) return;
-    const h = Number(editing.hauteur);
-    if (!Number.isFinite(h) || h < 0) {
-      toast.error('Hauteur invalide');
-      return;
-    }
-    if (!editing.datetime.trim() || isFuture(editing.datetime)) {
-      toast.error('Date invalide (vide ou dans le futur)');
-      return;
-    }
-    if (isReleveurOnly && Date.now() - new Date(editing.datetime).getTime() > WINDOW_48H_MS) {
-      toast.error('Un releveur ne peut dater un relevé que dans les dernières 48 h');
-      return;
-    }
-    setBusy(true);
-    try {
-      await updateReleveBassin({ id: editing.id, hauteur_cm: h, timestamp: new Date(editing.datetime).toISOString() });
-      setEditing(null);
-      await loadCore();
-      toast.success('Relevé modifié — bilans recalculés');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Modification impossible');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const removeReleve = async (r: ReleveBassinLocal) => {
-    if (isReadOnly) return;
-    const ok = await showConfirm(
-      `Supprimer ce relevé du ${fmtDate(r.timestamp)} (${r.hauteur_cm} cm) ? Les bilans seront recalculés.`,
-      'Relevés',
-      { variant: 'danger', confirmText: 'Supprimer' }
-    );
-    if (!ok) return;
-    setBusy(true);
-    try {
-      await deleteReleveBassin(r.id);
-      if (editing?.id === r.id) setEditing(null);
-      await loadCore();
-      toast.success('Relevé supprimé — bilans recalculés');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Suppression impossible');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const recomputeAll = async () => {
-    if (isReadOnly) return;
-    const ok = await showConfirm(
-      'Recalculer TOUS les bilans depuis le début ? Utile pour générer les bilans des relevés importés. Les bilans déjà « traités » repasseront en « non traité ».',
-      'Bilans',
-      { confirmText: 'Recalculer' }
-    );
-    if (!ok) return;
-    setRecomputing(true);
-    try {
-      await recomputeAllBilans();
-      await loadCore();
-      toast.success('Bilans recalculés');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Recalcul impossible');
-    } finally {
-      setRecomputing(false);
-    }
-  };
-
   if (loading) {
     return <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>;
   }
 
-  const bilan = dash?.dernierBilan ?? null;
-  const anomalie = !!bilan?.anomalie;
-
   // « Comprendre cette situation » : un seul cas (A→F) selon bilan null / anomalie / signe
   // de l'écart. Textes français validés (à reprendre tels quels) ; ton = couleur + icône.
   const EPS = 0.05; // m³ — marge « pile poil »
-  const explain: { tone: string; Icon: typeof Info; title: string; text: string; advice: string } = (() => {
+  const explain: ExplainInfo = (() => {
     if (bilan === null) {
       return {
         tone: 'text-gray-700',
@@ -592,664 +164,72 @@ export default function EauBassinReleves({
     <div className="space-y-4">
       <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
 
-      {/* Carte « Stock d'eau du bassin » (métaphore compte : eau restante = stock d'eau).
-          Cliquable → déplie un tiroir « comprendre cette situation » sous les chiffres.
-          Intègre aussi la rangée relevé (→ Historique) et le crayon (→ Saisie) avec leurs
-          tiroirs : c'est désormais la seule carte de tête de l'onglet Source. */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={explainOpen}
-        onClick={() => setExplainOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setExplainOpen((o) => !o);
-          }
-        }}
-        className={`cursor-pointer rounded-xl border bg-white p-4 shadow-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400 ${anomalie ? 'border-amber-300' : 'border-ahuvi-100'}`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Stock d'eau du bassin</div>
-          <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${anomalie ? 'bg-amber-100 text-amber-700' : 'bg-cyan-50 text-ahuvi-teal'}`}>
-            <Waves className="w-5 h-5" aria-hidden="true" />
-          </span>
-        </div>
-        <div className="mt-2 text-2xl font-bold text-ahuvi-teal">{fmtM3(dash?.stockActuelM3 ?? null)}</div>
-        <div className="text-sm text-gray-500 mt-0.5">
-          Remplissage : {dash?.tauxRemplissage != null ? fmtPct(dash.tauxRemplissage, { isRatio: true }) : '—'}
-          {dash?.volumeMaxM3 != null && <span className="text-gray-400"> / {fmtM3(dash.volumeMaxM3)}</span>}
-        </div>
-
-        {bilan ? (
-          <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-gray-500">Attendu (dernier bilan)</div>
-              <div className="font-semibold text-gray-800">{fmtM3(bilan.stock_attendu)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">Écart mesuré − attendu</div>
-              <div className={`font-semibold inline-flex items-center gap-1 ${anomalie ? 'text-amber-700' : 'text-emerald-700'}`}>
-                {(bilan.ecart_m3 ?? 0) < 0 ? (
-                  <TrendingDown className="w-4 h-4" aria-hidden="true" />
-                ) : (
-                  <TrendingUp className="w-4 h-4" aria-hidden="true" />
-                )}
-                {fmtM3(bilan.ecart_m3)} ({fmtPct(bilan.ecart_pct)})
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-            Stock de référence — le bilan (écart mesuré vs attendu) sera calculé au prochain relevé de niveau.
-          </div>
-        )}
-
-        {/* Affordance « icône d'abord » : la carte est cliquable → tiroir « Comprendre cette
-            situation » (explication des chiffres ci-dessus). Placée juste sous le bilan. */}
-        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
-          <span className="inline-flex items-center gap-1.5">
-            <Info className="w-4 h-4" aria-hidden="true" /> Comprendre cette situation
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${explainOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </div>
-
-        {/* Tiroir explicatif (un seul cas affiché) — sous les chiffres, dans la même carte. */}
-        {explainOpen && (
-          <Drawer>
-            <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700 space-y-1.5">
-              <div className={`font-semibold ${explain.tone}`}>{explain.title}</div>
-              <p>{explain.text}</p>
-              <p className="flex items-start gap-1.5">
-                <explain.Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${explain.tone}`} aria-hidden="true" />
-                <span>{explain.advice}</span>
-              </p>
-            </div>
-          </Drawer>
-        )}
-
-        {/* Rangée relevé (fusion de l'ex-carte « Bassin ») : icône Règle + ligne de relevé brut
-            cliquable → tiroir Historique, et crayon → tiroir Saisie. stopPropagation impératif
-            pour ne pas déclencher « Comprendre » de la carte parente. */}
-        <div ref={releveRowRef} className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
-          <div
-            role="button"
-            tabIndex={0}
-            aria-expanded={openDrawer === 'histo'}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpenDrawer((k) => (k === 'histo' ? null : 'histo'));
-              }
-            }}
-            className="cursor-pointer rounded-lg -m-1 p-1 flex items-center gap-2 flex-1 min-w-0 transition-colors hover:bg-ahuvi-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-400"
-          >
-            <EauListIcon icon={Ruler} tone="teal" />
-            <div className="text-sm text-gray-500 truncate">
-              {dernierReleve ? (
-                <>
-                  {dernierReleve.hauteur_cm} cm · {fmtM3(dernierReleve.volume_m3)} · {fmtDate(dernierReleve.timestamp)}
-                </>
-              ) : (
-                'Aucun relevé de niveau'
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenDrawer((k) => (k === 'saisir' ? null : 'saisir'));
-            }}
-            disabled={isReadOnly || !dim}
-            aria-label="Saisir une hauteur"
-            className={`flex-shrink-0 w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors ${
-              openDrawer === 'saisir'
-                ? 'bg-ahuvi-forest text-white'
-                : 'bg-ahuvi-50 text-ahuvi-forest hover:bg-ahuvi-100 disabled:opacity-50 disabled:cursor-not-allowed'
-            }`}
-          >
-            <Pencil className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Tiroirs « Saisir hauteur » et « Historique » : déployés JUSTE sous la ligne du relevé
-            cliquée (le défilement cale cette ligne sous le Header). « Comprendre » passe en bas. */}
-        {openDrawer === 'saisir' && (
-          <Drawer>
-            <div className="px-3 pb-3 border-t border-ahuvi-100 space-y-3 pt-3">
-              {!dim && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                  <span>
-                    Configurez le bassin d'abord (dimensions L × l × hauteur).{' '}
-                    <button className="inline-flex items-center gap-1 underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
-                      <Settings className="w-3.5 h-3.5" aria-hidden="true" /> Configurer
-                    </button>
-                  </span>
-                </div>
-              )}
-              <label className="text-sm block">
-                <span className="block text-gray-600 mb-1">Hauteur mesurée (cm)</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.1"
-                  value={hauteurCm}
-                  onChange={(e) => setHauteurCm(e.target.value)}
-                  disabled={!dim || isReadOnly}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
-                  placeholder="ex : 180"
-                  autoFocus
-                />
-              </label>
-              {volumePreview != null && (
-                <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
-                  Volume correspondant : <strong>{fmtM3(volumePreview)}</strong>
-                </div>
-              )}
-              <label className="text-sm block">
-                <span className="block text-gray-600 mb-1">Note (optionnel)</span>
-                <input
-                  type="text"
-                  value={niveauNote}
-                  onChange={(e) => setNiveauNote(e.target.value)}
-                  disabled={!dim || isReadOnly}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
-                />
-              </label>
-              <label className="text-sm block">
-                <span className="block text-gray-600 mb-1">Date et heure du relevé (optionnel)</span>
-                <input
-                  type="datetime-local"
-                  value={niveauDateTime}
-                  onChange={(e) => setNiveauDateTime(e.target.value)}
-                  disabled={!dim || isReadOnly}
-                  className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
-                />
-                <span className="block text-xs text-gray-500 mt-1">
-                  Laisser vide = maintenant. Renseigner pour saisir un relevé passé.
-                </span>
-              </label>
-              <button
-                onClick={submitNiveau}
-                disabled={busy || !dim || hauteurCm.trim() === '' || isReadOnly}
-                className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl"
-              >
-                <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer le relevé (déclenche un bilan)
-              </button>
-            </div>
-          </Drawer>
-        )}
-
-        {openDrawer === 'histo' && (
-          <Drawer>
-            <div className="px-3 pb-3 border-t border-ahuvi-100 pt-3 space-y-2">
-              {niveauChart.length > 0 && (
-                <div className="rounded-lg border border-ahuvi-100 bg-ahuvi-50/40 p-2">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
-                    <Waves className="w-3.5 h-3.5" aria-hidden="true" /> Niveau mesuré (m³)
-                  </div>
-                  <ResponsiveContainer width="100%" height={90}>
-                    <LineChart data={niveauChart}>
-                      <XAxis dataKey="x" tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(v: number) => fmtM3(v)} labelFormatter={() => ''} />
-                      <Line type="monotone" dataKey="value" stroke={EAU_CHART.teal} dot={false} strokeWidth={2} isAnimationActive={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              {relevesList.length === 0 ? (
-                <div className="pt-1 text-sm text-gray-400 text-center">Aucun relevé de niveau.</div>
-              ) : (
-                <div className="max-h-[8.5rem] overflow-y-auto pr-1">
-                  <div className="space-y-1">
-                    {relevesList.slice(0, 6).map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-ahuvi-100 bg-white px-3 py-2 shadow-sm"
-                      >
-                        <span className="text-sm text-gray-600">{fmtDate(r.timestamp)}</span>
-                        <span className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-gray-900">{r.hauteur_cm} cm</span>
-                          <span className="text-xs text-gray-500 w-20 text-right">{fmtM3(r.volume_m3)}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Drawer>
-        )}
-
-      </div>
+      {/* Carte « Stock d'eau du bassin » : seule carte de tête de l'onglet Source. */}
+      <BassinStockCard
+        dash={b.dash}
+        bilan={b.bilan}
+        anomalie={b.anomalie}
+        explain={explain}
+        explainOpen={b.explainOpen}
+        setExplainOpen={b.setExplainOpen}
+        openDrawer={b.openDrawer}
+        setOpenDrawer={b.setOpenDrawer}
+        releveRowRef={releveRowRef}
+        dernierReleve={b.dernierReleve}
+        niveauChart={b.niveauChart}
+        relevesList={b.relevesList}
+        isReadOnly={b.isReadOnly}
+        dim={b.dim}
+        busy={b.busy}
+        onSubmitNiveau={b.submitNiveau}
+      />
 
       {/* Section repliable « Tests de débit » (juste sous la carte Stock, avant les Apports). */}
-      <div ref={debitRef} className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setDebitOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ahuvi-forest"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Gauge className="w-4 h-4" aria-hidden="true" /> Tests de débit
-            {dash?.debitCourantM3h != null && (
-              <span className="text-xs font-medium text-ahuvi-olive bg-ahuvi-50 rounded-full px-2 py-0.5">
-                courant {fmtM3h(dash.debitCourantM3h)}
-              </span>
-            )}
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${debitOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </button>
-        {debitOpen && (
-          <Drawer>
-            <div className="px-4 pb-4 border-t border-ahuvi-100 pt-3 space-y-4">
-              <div className="space-y-3">
-                <div className="text-xs text-gray-500">
-                  Test « vanne fermée » : fermez la sortie, relevez le niveau au début et à la fin, notez la durée —
-                  le débit d'apport Q_in est déduit automatiquement.
-                </div>
-                {surface == null && (
-                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                    <span>
-                      Configurez les dimensions du bassin (L × l) d'abord.{' '}
-                      <button className="inline-flex items-center gap-1 underline font-medium" onClick={() => navigate('/gestion-eau/config')}>
-                        <Settings className="w-3.5 h-3.5" aria-hidden="true" /> Configurer
-                      </button>
-                    </span>
-                  </div>
-                )}
-                {/* Saisie par hauteur + heure (début / fin) — la durée est dérivée automatiquement. */}
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-sm block">
-                      <span className="block text-gray-600 mb-1">Hauteur début (cm)</span>
-                      <input type="number" inputMode="decimal" step="0.1" value={debitDebutCm}
-                        onChange={(e) => setDebitDebutCm(e.target.value)} disabled={surface == null || isReadOnly}
-                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 150" />
-                    </label>
-                    <label className="text-sm block">
-                      <span className="block text-gray-600 mb-1">Heure début</span>
-                      <input type="time" value={debitHeureDebut}
-                        onChange={(e) => setDebitHeureDebut(e.target.value)} disabled={surface == null || isReadOnly}
-                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" />
-                    </label>
-                    <label className="text-sm block">
-                      <span className="block text-gray-600 mb-1">Hauteur fin (cm)</span>
-                      <input type="number" inputMode="decimal" step="0.1" value={debitFinCm}
-                        onChange={(e) => setDebitFinCm(e.target.value)} disabled={surface == null || isReadOnly}
-                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" placeholder="ex : 160" />
-                    </label>
-                    <label className="text-sm block">
-                      <span className="block text-gray-600 mb-1">Heure fin</span>
-                      <input type="time" value={debitHeureFin}
-                        onChange={(e) => setDebitHeureFin(e.target.value)} disabled={surface == null || isReadOnly}
-                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" />
-                    </label>
-                  </div>
-                  {debitDureeMin != null ? (
-                    <div className="text-xs text-gray-500">Durée déduite : <strong>{debitDureeMin} min</strong></div>
-                  ) : (
-                    (debitHeureDebut.trim() !== '' || debitHeureFin.trim() !== '') && (
-                      <div className="text-xs text-amber-700">Renseignez les deux heures (fin après début).</div>
-                    )
-                  )}
-                </div>
-                {debitFinAuDessusFlotteur && (
-                  <div className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                    ⚠️ Le niveau final dépasse la hauteur du flotteur — test au-delà du plafond opérationnel.
-                  </div>
-                )}
-                {debitPreview != null &&
-                  (debitPreview.valid ? (
-                    <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
-                      Débit d'apport Q_in : <strong>{debitPreview.debitM3h.toFixed(1)} m³/h</strong>
-                      <span className="text-ahuvi-teal/60"> ({fmtM3(debitPreview.volumeM3)} en {debitDureeMin} min)</span>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-rose-700 bg-rose-50 rounded-lg px-3 py-2">{debitPreview.error}</div>
-                  ))}
-                <label className="text-sm block">
-                  <span className="block text-gray-600 mb-1">Note (optionnel)</span>
-                  <input type="text" value={debitNote} onChange={(e) => setDebitNote(e.target.value)} disabled={surface == null || isReadOnly}
-                    className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100" />
-                </label>
-                {!isReadOnly && (
-                  <button onClick={submitDebit} disabled={busy || surface == null || !debitPreview?.valid}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
-                    <Save className="w-4 h-4" aria-hidden="true" /> Nouveau test de débit
-                  </button>
-                )}
-              </div>
+      <TestsDebit
+        surface={b.surface}
+        isReadOnly={b.isReadOnly}
+        busy={b.busy}
+        debitOpen={b.debitOpen}
+        setDebitOpen={b.setDebitOpen}
+        debitRef={debitRef}
+        tests={b.tests}
+        debitChartData={b.debitChartData}
+        debitCourantM3h={b.dash?.debitCourantM3h}
+        flotteurCm={b.flotteurCm}
+        onSubmit={b.submitDebit}
+      />
 
-              {/* Historique des tests + débit courant mis en avant. */}
-              {tests.length === 0 ? (
-                <EauEmptyState icon={Gauge} title="Aucun test de débit pour l'instant" />
-              ) : (
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Activity className="w-3.5 h-3.5" aria-hidden="true" /> Débit mesuré (m³/h)
-                  </div>
-                  <ResponsiveContainer width="100%" height={130}>
-                    <BarChart data={debitChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={EAU_CHART.grid} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} width={32} />
-                      <Tooltip formatter={(v: number) => `${v.toFixed(1)} m³/h`} />
-                      <Bar dataKey="debit" name="Débit" fill={EAU_CHART.teal} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <ul className="space-y-2 mt-3">
-                    {tests.map((t, i) => (
-                      <li key={t.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${i === 0 ? 'border-ahuvi-300 bg-ahuvi-50' : 'border-gray-100 bg-gray-50'}`}>
-                        <EauListIcon icon={Gauge} tone={i === 0 ? 'teal' : 'neutral'} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-ahuvi-teal">
-                              {t.debit_m3h.toFixed(1)} m³/h
-                              {i === 0 && <span className="ml-2 text-[10px] uppercase tracking-wide text-ahuvi-olive">débit courant</span>}
-                            </span>
-                            {t.ecart_pct != null && <span className="text-xs text-gray-500">écart {t.ecart_pct.toFixed(0)} %</span>}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {fmtDate(t.timestamp)} · {t.niveau_debut_cm}→{t.niveau_fin_cm} cm en {t.duree_min} min
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </Drawer>
-        )}
-      </div>
-
-      {/* Section repliable « Arrêts de pompe » (Phase 1 : saisie/stockage, pas encore branchée au calcul). */}
-      <div className="rounded-xl border border-ahuvi-100 bg-white shadow-soft overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setArretOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-ahuvi-forest"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Power className="w-4 h-4" aria-hidden="true" /> Arrêts de pompe
-            {arrets.length > 0 && (
-              <span className="text-xs font-medium text-ahuvi-olive bg-ahuvi-50 rounded-full px-2 py-0.5">
-                {arrets.length} enregistré{arrets.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${arretOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </button>
-        {arretOpen && (
-          <Drawer>
-            <div className="px-4 pb-4 border-t border-ahuvi-100 pt-3 space-y-4">
-              <div className="space-y-3">
-                <div className="text-xs text-gray-500">
-                  Notez les périodes pendant lesquelles les pompes étaient À L'ARRÊT. Ce temps d'arrêt servira
-                  à estimer plus justement l'eau apportée (le reste du temps, la pompe tourne).
-                </div>
-
-                {!isReadOnly && (
-                  <>
-                    {/* Sélecteur de mode de saisie : début + fin, OU début + durée. */}
-                    <div className="inline-flex rounded-lg border border-ahuvi-200 overflow-hidden text-sm">
-                      <button
-                        type="button"
-                        onClick={() => setArretMode('periode')}
-                        className={`px-3 py-1.5 font-medium ${arretMode === 'periode' ? 'bg-ahuvi-forest text-white' : 'bg-white text-ahuvi-forest hover:bg-ahuvi-50'}`}
-                      >
-                        Début / fin
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setArretMode('duree')}
-                        className={`px-3 py-1.5 font-medium border-l border-ahuvi-200 ${arretMode === 'duree' ? 'bg-ahuvi-forest text-white' : 'bg-white text-ahuvi-forest hover:bg-ahuvi-50'}`}
-                      >
-                        Durée
-                      </button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm block">
-                        <span className="block text-gray-600 mb-1">Début de l'arrêt</span>
-                        <input
-                          type="datetime-local"
-                          value={arretDebut}
-                          onChange={(e) => setArretDebut(e.target.value)}
-                          className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                        />
-                      </label>
-                      {arretMode === 'periode' ? (
-                        <label className="text-sm block">
-                          <span className="block text-gray-600 mb-1">Fin de l'arrêt</span>
-                          <input
-                            type="datetime-local"
-                            value={arretFin}
-                            onChange={(e) => setArretFin(e.target.value)}
-                            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                          />
-                        </label>
-                      ) : (
-                        <label className="text-sm block">
-                          <span className="block text-gray-600 mb-1">Durée de l'arrêt (minutes)</span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            step="1"
-                            min="1"
-                            value={arretDureeMin}
-                            onChange={(e) => setArretDureeMin(e.target.value)}
-                            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                            placeholder="ex : 120"
-                          />
-                        </label>
-                      )}
-
-                      {arretResolved ? (
-                        arretResolved.future ? (
-                          <div className="text-xs text-amber-700">Le début est dans le futur — impossible.</div>
-                        ) : (
-                          <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
-                            Arrêt : <strong>{fmtDuree(arretResolved.dureeMin)}</strong>
-                            <span className="text-ahuvi-teal/60"> · du {fmtDate(arretResolved.debutIso)} au {fmtDate(arretResolved.finIso)}</span>
-                          </div>
-                        )
-                      ) : (
-                        (arretDebut.trim() !== '' || arretFin.trim() !== '' || arretDureeMin.trim() !== '') && (
-                          <div className="text-xs text-amber-700">
-                            {arretMode === 'periode'
-                              ? 'Renseignez le début et la fin (fin après début).'
-                              : 'Renseignez le début et une durée (en minutes).'}
-                          </div>
-                        )
-                      )}
-                    </div>
-
-                    <label className="text-sm block">
-                      <span className="block text-gray-600 mb-1">Note (optionnel)</span>
-                      <input
-                        type="text"
-                        value={arretNote}
-                        onChange={(e) => setArretNote(e.target.value)}
-                        className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500"
-                        placeholder="ex : panne, maintenance, coupure"
-                      />
-                    </label>
-
-                    <button
-                      onClick={submitArret}
-                      disabled={busy || !arretResolved || arretResolved.future}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl"
-                    >
-                      <Save className="w-4 h-4" aria-hidden="true" /> Enregistrer l'arrêt
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Historique des arrêts saisis. */}
-              {arrets.length === 0 ? (
-                <EauEmptyState icon={Power} title="Aucun arrêt de pompe enregistré" />
-              ) : (
-                <ul className="space-y-2">
-                  {arrets.map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border border-gray-100 bg-gray-50"
-                    >
-                      <EauListIcon icon={Power} tone="neutral" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-ahuvi-forest">{fmtDuree(a.duree_min)}</span>
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => removeArret(a)}
-                              disabled={busy}
-                              aria-label="Supprimer l'arrêt"
-                              title="Supprimer"
-                              className="text-gray-400 hover:text-rose-600 disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {fmtDate(a.timestamp_debut)} → {fmtDate(a.timestamp_fin)}
-                          {a.note ? ` · ${a.note}` : ''}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </Drawer>
-        )}
-      </div>
+      {/* Section repliable « Arrêts de pompe ». */}
+      <ArretsPompe
+        isReadOnly={b.isReadOnly}
+        busy={b.busy}
+        arretOpen={b.arretOpen}
+        setArretOpen={b.setArretOpen}
+        arrets={b.arrets}
+        onSubmit={b.submitArret}
+        onRemove={b.removeArret}
+      />
 
       {/* Crédits (entrées d'eau) injectés par le parent : carte Apports après les Tests de débit. */}
       {creditsSlot}
 
       {/* Section admin/releveur : édition / suppression d'un relevé + recalcul des bilans. */}
-      {(roles.admin || roles.releveur) && (
-        <details className="rounded-xl border border-ahuvi-200 bg-white shadow-soft">
-          <summary className="flex items-center gap-2 cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ahuvi-forest">
-            <ListChecks className="w-4 h-4" aria-hidden="true" />{' '}
-            {isReleveurOnly ? 'Relevés récents — modifiables 48 h' : 'Relevés récents (admin)'}
-          </summary>
-          <div className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-gray-500 leading-snug">
-              Un bilan compare deux relevés qui se suivent (niveau précédent → niveau actuel) pour estimer la
-              consommation et les pertes. Quand vous modifiez ou supprimez un relevé, les bilans concernés sont
-              recalculés automatiquement. Le bouton « Recalculer tous les bilans » refait toute la série depuis
-              le début (utile une fois pour les relevés importés).
-              {isReleveurOnly && (
-                <> En tant que releveur, vous ne pouvez corriger ou supprimer que les relevés des dernières 48 heures.</>
-              )}
-            </p>
-
-            {!isOnline && (
-              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Connectez-vous pour corriger un relevé.
-              </div>
-            )}
-
-            {visibleReleves.length === 0 ? (
-              <EauEmptyState icon={Ruler} title="Aucun relevé de niveau pour l'instant" />
-            ) : (
-              <ul className="space-y-2">
-                {visibleReleves.map((r) => (
-                  <li key={r.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm">
-                    {editing?.id === r.id ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="block">
-                            <span className="block text-xs text-gray-600 mb-1">Hauteur (cm)</span>
-                            <input type="number" inputMode="decimal" step="0.1" value={editing.hauteur}
-                              onChange={(e) => setEditing((prev) => (prev ? { ...prev, hauteur: e.target.value } : prev))}
-                              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500" />
-                          </label>
-                          <label className="block">
-                            <span className="block text-xs text-gray-600 mb-1">Date et heure</span>
-                            <input type="datetime-local" value={editing.datetime}
-                              onChange={(e) => setEditing((prev) => (prev ? { ...prev, datetime: e.target.value } : prev))}
-                              min={isReleveurOnly ? isoToLocalInput(new Date(Date.now() - WINDOW_48H_MS).toISOString()) : undefined}
-                              max={isReleveurOnly ? isoToLocalInput(new Date().toISOString()) : undefined}
-                              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500" />
-                          </label>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={saveEdit} disabled={busy}
-                            className="inline-flex items-center gap-1.5 bg-ahuvi-forest hover:bg-ahuvi-800 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg">
-                            <Save className="w-3.5 h-3.5" aria-hidden="true" /> Enregistrer
-                          </button>
-                          <button onClick={() => setEditing(null)} disabled={busy}
-                            className="inline-flex items-center gap-1.5 bg-white border border-ahuvi-200 text-ahuvi-forest text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50">
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <EauListIcon icon={Ruler} tone="teal" />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-800">{r.hauteur_cm} cm · {fmtM3(r.volume_m3)}</div>
-                          <div className="text-xs text-gray-500">{fmtDate(r.timestamp)}</div>
-                        </div>
-                        <button onClick={() => setEditing({ id: r.id, hauteur: String(r.hauteur_cm), datetime: isoToLocalInput(r.timestamp) })}
-                          disabled={busy || !isOnline || isReadOnly} aria-label="Modifier le relevé"
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-40">
-                          <NotebookPen className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                        <button onClick={() => removeReleve(r)} disabled={busy || !isOnline || isReadOnly} aria-label="Supprimer le relevé"
-                          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-40">
-                          <Trash2 className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {roles.admin && (
-              <button onClick={recomputeAll} disabled={recomputing || busy || !isOnline || isReadOnly}
-                className="w-full inline-flex items-center justify-center gap-2 bg-white border border-ahuvi-200 text-ahuvi-forest hover:bg-ahuvi-50 disabled:opacity-50 text-sm font-medium py-2.5 rounded-lg">
-                <RefreshCw className={`w-4 h-4 ${recomputing ? 'animate-spin' : ''}`} aria-hidden="true" />
-                {recomputing ? 'Recalcul…' : 'Recalculer tous les bilans'}
-              </button>
-            )}
-          </div>
-        </details>
+      {(b.roles.admin || b.roles.releveur) && (
+        <BassinHistoriqueAdmin
+          roles={b.roles}
+          isReleveurOnly={b.isReleveurOnly}
+          isReadOnly={b.isReadOnly}
+          isOnline={b.isOnline}
+          busy={b.busy}
+          recomputing={b.recomputing}
+          visibleReleves={b.visibleReleves}
+          editing={b.editing}
+          setEditing={b.setEditing}
+          saveEdit={b.saveEdit}
+          removeReleve={b.removeReleve}
+          recomputeAll={b.recomputeAll}
+        />
       )}
-    </div>
-  );
-}
-
-/** Conteneur accordéon : anime l'ouverture (0fr → 1fr) à l'aide d'une grille CSS. */
-function Drawer({ children }: { children: ReactNode }) {
-  const [grown, setGrown] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setGrown(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  return (
-    <div
-      className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-        grown ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-      }`}
-    >
-      <div className="overflow-hidden min-h-0">{children}</div>
     </div>
   );
 }
