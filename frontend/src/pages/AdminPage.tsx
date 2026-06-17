@@ -17,7 +17,6 @@ import {
   Trophy
 } from 'lucide-react';
 import adminService from '../services/adminService';
-import adminCleanupService from '../services/adminCleanupService';
 import type { AdminUser } from '../services/adminService';
 import { useAppStore } from '../stores/appStore';
 
@@ -37,13 +36,6 @@ const AdminPage = () => {
     totalGoals: number;
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showCleanupPanel, setShowCleanupPanel] = useState(false);
-  const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [cleanupStats, setCleanupStats] = useState<{
-    totalOrphaned: number;
-    lastCleanup: string | null;
-    systemHealthy: boolean;
-  } | null>(null);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Fonction pour générer des messages d'erreur spécifiques
@@ -136,74 +128,11 @@ const AdminPage = () => {
       setUsers(usersResponse.data || []);
       setStats(statsResponse.data || null);
 
-      // Charger les statistiques de nettoyage
-      await loadCleanupStats();
-
     } catch (error) {
       console.error('❌ Erreur lors du chargement des données:', error);
       setError(getErrorMessage(error, 'chargement des données'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadCleanupStats = async () => {
-    try {
-      setCleanupLoading(true);
-      const statsResponse = await adminCleanupService.getCleanupStats();
-      
-      if (statsResponse.success && statsResponse.data) {
-        setCleanupStats({
-          totalOrphaned: statsResponse.data.total_orphaned,
-          lastCleanup: new Date().toISOString(),
-          systemHealthy: statsResponse.data.cleanup_system_healthy
-        });
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors du chargement des statistiques de nettoyage:', error);
-    } finally {
-      setCleanupLoading(false);
-    }
-  };
-
-  const handleCleanupOrphans = async () => {
-    try {
-      setCleanupLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      const cleanupResponse = await adminCleanupService.cleanupOrphanedAuthUsers();
-
-      if (!cleanupResponse.success) {
-        setError(getErrorMessage(cleanupResponse.error, 'nettoyage des utilisateurs orphelins'));
-        return;
-      }
-
-      const result = cleanupResponse.data;
-      if (result?.cleanup_summary) {
-        const { successful_deletions, failed_deletions } = result.cleanup_summary;
-        
-        if (successful_deletions > 0) {
-          setSuccess(`${successful_deletions} utilisateurs orphelins nettoyés avec succès`);
-        }
-        
-        if (failed_deletions > 0) {
-          setError(`${failed_deletions} échecs de nettoyage. Vérifiez les logs pour plus de détails.`);
-        }
-        
-        if (successful_deletions === 0 && failed_deletions === 0) {
-          setSuccess('Aucun utilisateur orphelin trouvé. Système propre !');
-        }
-      }
-
-      // Recharger les statistiques
-      await loadCleanupStats();
-      
-    } catch (error) {
-      console.error('❌ Erreur lors du nettoyage:', error);
-      setError(getErrorMessage(error, 'nettoyage des utilisateurs orphelins'));
-    } finally {
-      setCleanupLoading(false);
     }
   };
 
@@ -547,113 +476,6 @@ const AdminPage = () => {
             })
           )}
         </div>
-      </div>
-
-      {/* Panneau de Nettoyage des Utilisateurs Orphelins */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <button
-            onClick={() => setShowCleanupPanel(!showCleanupPanel)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Nettoyage des Utilisateurs Orphelins
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Gestion des entrées auth.users sans données publiques correspondantes
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {cleanupStats && (
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    {cleanupStats.totalOrphaned} orphelins
-                  </div>
-                  <div className={`text-xs ${cleanupStats.systemHealthy ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {cleanupStats.systemHealthy ? 'Système sain' : 'Nettoyage recommandé'}
-                  </div>
-                </div>
-              )}
-              <RefreshCw className={`w-4 h-4 text-gray-400 transition-transform ${showCleanupPanel ? 'rotate-180' : ''}`} />
-            </div>
-          </button>
-        </div>
-
-        {showCleanupPanel && (
-          <div className="p-4 space-y-4">
-            {/* Information Box */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-yellow-800 mb-1">
-                    Qu'est-ce qu'un utilisateur orphelin ?
-                  </p>
-                  <p className="text-yellow-700">
-                    Un utilisateur orphelin est une entrée dans auth.users qui n'a pas de données 
-                    correspondantes dans public.users. Cela peut arriver lors de suppressions partielles 
-                    dues à des limitations de permissions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Statistiques */}
-            {cleanupStats && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-sm text-gray-600">Utilisateurs Orphelins</div>
-                  <div className="text-2xl font-bold text-gray-900">{cleanupStats.totalOrphaned}</div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-sm text-gray-600">État du Système</div>
-                  <div className={`text-sm font-medium ${cleanupStats.systemHealthy ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {cleanupStats.systemHealthy ? '✅ Sain' : '⚠️ Nettoyage requis'}
-                  </div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="text-sm text-gray-600">Dernière Vérification</div>
-                  <div className="text-sm text-gray-900">
-                    {cleanupStats.lastCleanup ? new Date(cleanupStats.lastCleanup).toLocaleString('fr-FR') : 'Jamais'}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Boutons d'Action */}
-            <div className="flex space-x-3">
-              <button
-                onClick={loadCleanupStats}
-                disabled={cleanupLoading}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-4 h-4 ${cleanupLoading ? 'animate-spin' : ''}`} />
-                <span>Vérifier Orphelins</span>
-              </button>
-              
-              <button
-                onClick={handleCleanupOrphans}
-                disabled={cleanupLoading}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{cleanupLoading ? 'Nettoyage...' : 'Nettoyer Maintenant'}</span>
-              </button>
-            </div>
-
-            {/* Message d'Information */}
-            <div className="text-xs text-gray-500 text-center">
-              Le nettoyage automatique s'exécute après chaque suppression d'utilisateur. 
-              Utilisez ce panneau pour un nettoyage manuel ou une vérification.
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Modal de confirmation de suppression */}
