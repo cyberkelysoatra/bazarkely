@@ -58,20 +58,35 @@ export default function BassinSaisie({
             </span>
           </div>
         )}
-        <label className="text-sm block">
-          <span className="block text-gray-600 mb-1">Hauteur mesurée (cm)</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            value={hauteurCm}
-            onChange={(e) => setHauteurCm(e.target.value)}
-            disabled={!dim || isReadOnly}
-            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
-            placeholder="ex : 180"
-            autoFocus
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-3 items-start">
+          <label className="text-sm">
+            <span className="block text-gray-600 mb-1">Hauteur mesurée (cm)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              value={hauteurCm}
+              onChange={(e) => setHauteurCm(e.target.value)}
+              disabled={!dim || isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
+              placeholder="ex : 180"
+              autoFocus
+            />
+          </label>
+          <label className="text-sm">
+            <span className="block text-gray-600 mb-1">Date et heure du relevé (optionnel)</span>
+            <input
+              type="datetime-local"
+              value={niveauDateTime}
+              onChange={(e) => setNiveauDateTime(e.target.value)}
+              disabled={!dim || isReadOnly}
+              className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
+            />
+            <span className="block text-xs text-gray-500 mt-1">
+              Laisser vide = maintenant. Renseigner pour saisir un relevé passé.
+            </span>
+          </label>
+        </div>
         {volumePreview != null && (
           <div className="text-sm text-ahuvi-teal bg-cyan-50 rounded-lg px-3 py-2">
             Volume correspondant : <strong>{fmtM3(volumePreview)}</strong>
@@ -86,19 +101,6 @@ export default function BassinSaisie({
             disabled={!dim || isReadOnly}
             className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
           />
-        </label>
-        <label className="text-sm block">
-          <span className="block text-gray-600 mb-1">Date et heure du relevé (optionnel)</span>
-          <input
-            type="datetime-local"
-            value={niveauDateTime}
-            onChange={(e) => setNiveauDateTime(e.target.value)}
-            disabled={!dim || isReadOnly}
-            className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
-          />
-          <span className="block text-xs text-gray-500 mt-1">
-            Laisser vide = maintenant. Renseigner pour saisir un relevé passé.
-          </span>
         </label>
         <button
           onClick={submit}
