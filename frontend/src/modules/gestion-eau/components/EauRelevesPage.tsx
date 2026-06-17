@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Gauge, Droplet, GlassWater, ScanLine, ArrowDownToLine } from 'lucide-react';
 import EauTabs from './EauTabs';
-import EauAide from './EauAide';
+import { useAideState, AideToggleButton, AidePanel } from './EauAide';
 import { AIDE } from './eauAideTextes';
 import EauCompteursReleves from './EauCompteursReleves';
 import EauBassinReleves from './EauBassinReleves';
@@ -53,6 +53,7 @@ export default function EauRelevesPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { isReadOnly } = useGestionEau();
+  const aide = useAideState(AIDE.releves.id);
   const [tab, setTab] = useState<TabKey>(() => initialTab(params));
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
   const [preselectFacet, setPreselectFacet] = useState<ReleveFacet | null>(null);
@@ -137,11 +138,23 @@ export default function EauRelevesPage() {
           { key: 'compteurs', label: 'Compteurs', icon: Gauge },
           { key: 'source', label: 'Source', icon: Droplet },
         ]}
+        rightSlot={
+          tab === 'compteurs' ? (
+            <AideToggleButton
+              open={aide.open}
+              onClick={aide.toggle}
+              controls={`eau-aide-panel-${AIDE.releves.id}`}
+            />
+          ) : undefined
+        }
       />
 
-      {/* L'aide générale « Relevés » couvre l'onglet Compteurs ; Bassin/Apports portent la leur. */}
+      {/* L'aide générale « Relevés » couvre l'onglet Compteurs ; Bassin/Apports portent la leur.
+          Bouton ⓘ remonté dans la barre d'onglets (rightSlot) ; ici, le panneau seul sous la barre. */}
       {tab === 'compteurs' && (
-        <EauAide id={AIDE.releves.id} quoi={AIDE.releves.quoi} comment={AIDE.releves.comment} className={WRAP} />
+        <div className={WRAP}>
+          <AidePanel id={AIDE.releves.id} quoi={AIDE.releves.quoi} comment={AIDE.releves.comment} open={aide.open} />
+        </div>
       )}
 
       {tab === 'compteurs' && (

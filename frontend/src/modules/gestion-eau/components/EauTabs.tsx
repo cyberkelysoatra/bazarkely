@@ -17,7 +17,7 @@
  * EauBassinReleves) qui visent le BAS de cette barre collante (= Header + onglets) plutôt
  * que le bas du Header seul — sinon les cartes se calent derrière les onglets.
  */
-import { useLayoutEffect, useState, type ComponentType } from 'react';
+import { useLayoutEffect, useState, type ComponentType, type ReactNode } from 'react';
 
 /** Repli de hauteur du Header (px) si la mesure échoue — ordre de grandeur observé. */
 const HEADER_FALLBACK_PX = 80;
@@ -38,10 +38,13 @@ export default function EauTabs({
   tabs,
   active,
   onChange,
+  rightSlot,
 }: {
   tabs: EauTabDef[];
   active: string;
   onChange: (key: string) => void;
+  /** Emplacement optionnel à droite de la nav, sur la même ligne (ex. bouton ⓘ Aide). */
+  rightSlot?: ReactNode;
 }) {
   // Hauteur réelle du Header partagé (sticky top-0) → `top` du bandeau collant. Suivie en
   // continu (ResizeObserver) car un bandeau d'annonce peut faire varier la hauteur. On
@@ -64,8 +67,8 @@ export default function EauTabs({
       className="sticky z-40 mb-3 border-b border-white/40 bg-white/50 backdrop-blur-md"
       style={{ top: headerH }}
     >
-      <div className="max-w-3xl mx-auto px-3">
-        <nav className="flex gap-2 overflow-x-auto py-2" aria-label="Onglets de la section">
+      <div className="max-w-3xl mx-auto px-3 flex items-center gap-2">
+        <nav className="flex gap-2 overflow-x-auto py-2 flex-1 min-w-0" aria-label="Onglets de la section">
         {tabs.map((t) => {
           const isActive = active === t.key;
           return (
@@ -93,6 +96,7 @@ export default function EauTabs({
           );
         })}
         </nav>
+        {rightSlot && <div className="flex-shrink-0">{rightSlot}</div>}
       </div>
     </div>
   );
