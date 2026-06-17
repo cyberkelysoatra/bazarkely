@@ -29,6 +29,7 @@ import BassinStockCard, { type ExplainInfo } from './bassin/BassinStockCard';
 import TestsDebit from './bassin/TestsDebit';
 import ArretsPompe from './bassin/ArretsPompe';
 import BassinHistoriqueAdmin from './bassin/BassinHistoriqueAdmin';
+import { getEauCalageOffset } from '../utils/scrollUnderHeader';
 
 export default function EauBassinReleves({
   openIntent,
@@ -48,22 +49,16 @@ export default function EauBassinReleves({
 
   const { openDrawer, setOpenDrawer, setDebitOpen, loading, bilan } = b;
 
-  // Amène le HAUT de la LIGNE DU RELEVÉ (la zone cliquée : relevé + crayon) juste SOUS le
-  // Header sticky, pour que le tiroir qui se déploie dessous soit en pleine vue (le bloc
-  // Stock / Attendu / Écart passe au-dessus du Header). Mesure dynamiquement la hauteur
-  // réelle du header (~80 px, variable selon le module/la nav). Repli propre `block:'start'`
-  // si le header est introuvable.
+  // Amène le HAUT de la LIGNE DU RELEVÉ (la zone cliquée : relevé + crayon) juste SOUS la
+  // barre d'onglets collante (= Header + onglets), pour que le tiroir qui se déploie dessous
+  // soit en pleine vue (le bloc Stock / Attendu / Écart passe au-dessus). Le calage vise le
+  // BAS de `[data-eau-sticky-tabs]` si présent (sinon le bas du Header) via getEauCalageOffset
+  // — sinon la carte se retrouverait masquée derrière les onglets (v3.64.0).
   const scrollReleveRowUnderHeader = () => {
     const target = releveRowRef.current;
     if (!target) return;
-    const header = document.querySelector('header');
-    if (!header) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    const headerH = header.getBoundingClientRect().height;
-    const MARGIN = 8;
-    const top = target.getBoundingClientRect().top + window.scrollY - headerH - MARGIN;
+    const offset = getEauCalageOffset(8);
+    const top = target.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   };
 

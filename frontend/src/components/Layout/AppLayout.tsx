@@ -56,6 +56,7 @@ import { FamilyProvider } from '../../contexts/FamilyContext'
 
 // Gestion Eau module (offline-first) — garde d'accès + routes internes
 import GestionEauRoute from '../../modules/gestion-eau/components/GestionEauRoute'
+import { useEauRubberBand } from '../../modules/gestion-eau/utils/useEauRubberBand'
 const GestionEauRoutes = React.lazy(() => import('../../modules/gestion-eau/components/GestionEauRoutes'))
 
 // Construction POC Components - Lazy Loading for Code Splitting
@@ -150,6 +151,11 @@ const AppLayout = () => {
   // reste de l'app le verrouille (`overscroll-none`). Strictement gated eau → Cœur &
   // Construction conservent `overscroll-none` (aucun changement de défilement pour eux).
   const isEauModule = location.pathname.startsWith('/gestion-eau')
+
+  // Rebond élastique « rubber-band » prononcé, UNIQUEMENT sur les pages Eau et appareils
+  // tactiles. Translate le <main> (jamais le Header, frère de <main> → toujours épinglé) ;
+  // transform retiré au repos → sticky des onglets intégralement restauré. Voir le hook.
+  useEauRubberBand(isEauModule && isAuthenticated)
 
   if (!isAuthenticated) {
     return (

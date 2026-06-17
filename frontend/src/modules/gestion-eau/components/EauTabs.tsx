@@ -7,8 +7,15 @@
  * z-50) et y reste pendant le défilement, le contenu passant DESSOUS. Le `top` suit la
  * hauteur réelle du Header (variable : un bandeau d'annonce peut s'ajouter) via un
  * ResizeObserver ; repli propre ~80 px si le Header est introuvable. z-40 < z-50 du Header
- * → les onglets passent sous le Header, jamais par-dessus. Fond opaque pleine largeur +
- * séparateur bas pour que le contenu défilant ne transparaisse pas à travers les pilules.
+ * → les onglets passent sous le Header, jamais par-dessus.
+ *
+ * Glassmorphisme (v3.64.0) : le FOND de la barre est en verre dépoli ~50 % (`bg-white/50
+ * backdrop-blur-md`) → le contenu de la page se voit défiler, flouté, derrière la barre.
+ * Seules les PILULES restent pleines/nettes (actif vert forêt, inactif blanc bordé).
+ *
+ * `data-eau-sticky-tabs` : repère stable pour les aides de calage (scrollUnderHeader /
+ * EauBassinReleves) qui visent le BAS de cette barre collante (= Header + onglets) plutôt
+ * que le bas du Header seul — sinon les cartes se calent derrière les onglets.
  */
 import { useLayoutEffect, useState, type ComponentType } from 'react';
 
@@ -53,7 +60,8 @@ export default function EauTabs({
 
   return (
     <div
-      className="sticky z-40 mb-3 border-b border-ahuvi-100 bg-white/95 backdrop-blur-sm"
+      data-eau-sticky-tabs
+      className="sticky z-40 mb-3 border-b border-white/40 bg-white/50 backdrop-blur-md"
       style={{ top: headerH }}
     >
       <div className="max-w-3xl mx-auto px-3">

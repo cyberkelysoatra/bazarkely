@@ -13,11 +13,27 @@
  * (ouverture du formulaire « Nouveau compteur » + tiroir d'édition inline) — logique
  * strictement iso-comportement.
  */
+
+/**
+ * Offset de calage, en px depuis le haut du viewport (v3.64.0).
+ * Depuis que la barre d'onglets `EauTabs` est collante SOUS le Header, une carte calée
+ * « sous le Header » se retrouve masquée derrière les onglets. On vise donc le BAS de la
+ * barre d'onglets collante `[data-eau-sticky-tabs]` si elle est présente et visible — son
+ * `getBoundingClientRect().bottom` vaut déjà Header + onglets (elle est collée sous le
+ * Header) — sinon repli sur le bas du Header (pages sans onglets). `margin` ≈ 8 px.
+ */
+export function getEauCalageOffset(margin = 8): number {
+  const tabs = document.querySelector('[data-eau-sticky-tabs]') as HTMLElement | null;
+  if (tabs) {
+    const r = tabs.getBoundingClientRect();
+    if (r.height > 0 && r.bottom > 0) return r.bottom + margin;
+  }
+  const header = document.querySelector('header');
+  return header ? header.getBoundingClientRect().height + margin : 72;
+}
+
 export function scrollElementUnderHeader(el: HTMLElement) {
-  const getHeaderOffset = () => {
-    const header = document.querySelector('header');
-    return header ? header.getBoundingClientRect().height + 8 : 72;
-  };
+  const getHeaderOffset = () => getEauCalageOffset(8);
   const getTargetY = () => window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
   const scrollInstant = (top: number) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
 
