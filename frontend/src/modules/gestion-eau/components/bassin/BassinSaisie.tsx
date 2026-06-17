@@ -74,7 +74,7 @@ export default function BassinSaisie({
             />
           </label>
           <label className="text-sm">
-            <span className="block text-gray-600 mb-1">Date et heure du relevé (optionnel)</span>
+            <span className="block text-gray-600 mb-1">Date du relevé (optionnel)</span>
             <input
               type="datetime-local"
               value={niveauDateTime}
@@ -83,7 +83,7 @@ export default function BassinSaisie({
               className="w-full rounded-lg border-gray-300 focus:border-ahuvi-500 focus:ring-ahuvi-500 disabled:bg-gray-100"
             />
             <span className="block text-xs text-gray-500 mt-1">
-              Laisser vide = maintenant. Renseigner pour saisir un relevé passé.
+              Laisser vide = maintenant.
             </span>
           </label>
         </div>
