@@ -54,6 +54,7 @@ export default function EauRelevesPage() {
   const navigate = useNavigate();
   const { isReadOnly } = useGestionEau();
   const aide = useAideState(AIDE.releves.id);
+  const aideSource = useAideState(AIDE.bassinNiveau.id);
   const [tab, setTab] = useState<TabKey>(() => initialTab(params));
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
   const [preselectFacet, setPreselectFacet] = useState<ReleveFacet | null>(null);
@@ -145,7 +146,13 @@ export default function EauRelevesPage() {
               onClick={aide.toggle}
               controls={`eau-aide-panel-${AIDE.releves.id}`}
             />
-          ) : undefined
+          ) : (
+            <AideToggleButton
+              open={aideSource.open}
+              onClick={aideSource.toggle}
+              controls={`eau-aide-panel-${AIDE.bassinNiveau.id}`}
+            />
+          )
         }
       />
 
@@ -171,6 +178,17 @@ export default function EauRelevesPage() {
           />
         </div>
       )}
+      {tab === 'source' && (
+        <div className={WRAP}>
+          <AidePanel
+            id={AIDE.bassinNiveau.id}
+            quoi={AIDE.bassinNiveau.quoi}
+            comment={AIDE.bassinNiveau.comment}
+            open={aideSource.open}
+          />
+        </div>
+      )}
+
       {tab === 'source' && (
         <div className={WRAP}>
           <EauBassinReleves

@@ -22,8 +22,6 @@
  */
 import { ReactNode, useEffect, useRef } from 'react';
 import { AlertTriangle, Info } from 'lucide-react';
-import EauAide from './EauAide';
-import { AIDE } from './eauAideTextes';
 import { useBassinReleves } from './bassin/useBassinReleves';
 import BassinStockCard, { type ExplainInfo } from './bassin/BassinStockCard';
 import TestsDebit from './bassin/TestsDebit';
@@ -157,8 +155,6 @@ export default function EauBassinReleves({
 
   return (
     <div className="space-y-4">
-      <EauAide id={AIDE.bassinNiveau.id} quoi={AIDE.bassinNiveau.quoi} comment={AIDE.bassinNiveau.comment} />
-
       {/* Carte « Stock d'eau du bassin » : seule carte de tête de l'onglet Source. */}
       <BassinStockCard
         dash={b.dash}
