@@ -13,6 +13,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+import EauWaterFill from './EauWaterFill';
 
 export type LucideIcon = React.ComponentType<{
   className?: string;
@@ -88,6 +89,8 @@ export function eauSegmentTabClass(active: boolean): string {
  *                      avec stopPropagation → on évite un <button> imbriqué dans un <button>.
  *   - `iconAriaLabel`: libellé accessible du bouton-icône.
  *   - `hideChevron`  : masque le ChevronRight même quand `onClick` est fourni.
+ *   - `fillRatio`    : si nombre (0..1), rend un fond d'eau animé AHUVI (EauWaterFill) DERRIÈRE
+ *                      le contenu, à ce niveau ; `null`/`undefined` → rendu strictement inchangé.
  */
 export function EauStatCard({
   icon: Icon,
@@ -99,6 +102,7 @@ export function EauStatCard({
   onIconClick,
   iconAriaLabel,
   hideChevron,
+  fillRatio,
   className,
 }: {
   icon: LucideIcon;
@@ -110,22 +114,27 @@ export function EauStatCard({
   onIconClick?: () => void;
   iconAriaLabel?: string;
   hideChevron?: boolean;
+  fillRatio?: number | null;
   className?: string;
 }) {
   const interactive = !!onClick;
   // Si l'icône a sa propre action, on ne peut pas imbriquer 2 <button> → corps = div role=button.
   const useDivRole = !!onIconClick;
   const showChevron = interactive && !hideChevron;
+  const hasFill = fillRatio != null;
 
   const baseClass = cn(
     'w-full text-left rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
     interactive && 'cursor-pointer hover:border-ahuvi-300 hover:shadow-md transition-colors',
     interactive && 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ahuvi-300',
+    hasFill && 'relative overflow-hidden',
     className,
   );
 
   const inner = (
     <>
+      {hasFill && <EauWaterFill ratio={fillRatio as number} />}
+      <div className="relative z-10">
       <div className="flex items-start justify-between gap-2">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
         <div className="flex items-center gap-1">
@@ -158,8 +167,9 @@ export function EauStatCard({
           {showChevron && <ChevronRight className="w-4 h-4 text-gray-300" aria-hidden="true" />}
         </div>
       </div>
-      <div className={cn('mt-2 text-2xl font-bold', TONE_VALUE[tone])}>{value}</div>
-      {hint && <div className="text-sm text-gray-500 mt-0.5">{hint}</div>}
+        <div className={cn('mt-2 text-2xl font-bold', TONE_VALUE[tone])}>{value}</div>
+        {hint && <div className="text-sm text-gray-500 mt-0.5">{hint}</div>}
+      </div>
     </>
   );
 

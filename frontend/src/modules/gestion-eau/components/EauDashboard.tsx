@@ -264,6 +264,7 @@ export default function EauDashboard() {
                 onIconClick={() => goSaisieBassin('niveau')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
+                fillRatio={data?.tauxRemplissage ?? null}
               />
 
               <EauStatCard
