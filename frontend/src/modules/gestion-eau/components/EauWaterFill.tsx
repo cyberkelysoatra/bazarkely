@@ -40,23 +40,30 @@ const WAVES: WaveSpec[] = [
 // `p-4` avant le texte) → aucun chevauchement du contenu ni de l'icône, contraste des textes intact.
 // `cx`/`w` en px (positions fixes, hors viewBox SVG étiré). `period` = pas du motif de gouttes ;
 // l'écoulement = translation de la couche de reflets d'exactement `period` px (boucle sans couture).
+// Chaque colonne est COUPÉE à la ligne d'eau vivante : son conteneur a `top:0` et une `height`
+// remise à jour à chaque frame = `surfaceY %` (hauteur sèche au-dessus de la surface). Sous les
+// vagues, plus de colonne → l'eau « se déverse » dans le bassin (la chute visible raccourcit
+// quand le niveau monte). `overflow-hidden` rogne déjà les reflets en bas de la zone sèche.
 type StreamSpec = { cx: number; w: number; period: number; duration: number };
 const STREAMS: StreamSpec[] = [
-  { cx: 5, w: 3, period: 24, duration: 2600 },
-  { cx: 11, w: 3, period: 20, duration: 3100 },
+  { cx: 5, w: 3, period: 24, duration: 2100 },
+  { cx: 11, w: 3, period: 20, duration: 2500 },
 ];
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-/** Dégradé répété de gouttes claires (reflets) le long d'une colonne — visible sur blanc ET sur teal. */
+/** Dégradé répété de gouttes claires (reflets) le long d'une colonne — visible sur blanc ET sur teal.
+ *  Goutte nettement marquée (pic ~0,9, flancs dégradés) pour que la chute se PERÇOIVE clairement
+ *  sans clignoter (un seul segment clair par période, le reste transparent). */
 function streamHighlight(period: number): string {
   return (
     `repeating-linear-gradient(180deg,` +
     ` rgba(255,255,255,0) 0px,` +
-    ` rgba(255,255,255,0) ${period - 14}px,` +
-    ` rgba(255,255,255,0.5) ${period - 11}px,` +
-    ` rgba(255,255,255,0.72) ${period - 9}px,` +
-    ` rgba(255,255,255,0) ${period - 5}px,` +
+    ` rgba(255,255,255,0) ${period - 16}px,` +
+    ` rgba(255,255,255,0.55) ${period - 12}px,` +
+    ` rgba(255,255,255,0.9) ${period - 9}px,` +
+    ` rgba(255,255,255,0.55) ${period - 6}px,` +
+    ` rgba(255,255,255,0) ${period - 2}px,` +
     ` rgba(255,255,255,0) ${period}px)`
   );
 }
@@ -91,6 +98,8 @@ export default function EauWaterFill({
   const bodyRef = useRef<SVGRectElement>(null);
   const waveRefs = useRef<Array<SVGPathElement | null>>([]);
   const streamRefs = useRef<Array<HTMLDivElement | null>>([]);
+  // Conteneurs des colonnes : leur hauteur est recoupée à la surface de l'eau à chaque frame.
+  const streamBoxRefs = useRef<Array<HTMLDivElement | null>>([]);
   const levelRef = useRef(0);
   const targetRef = useRef(target);
   const rafRef = useRef<number | null>(null);
@@ -109,6 +118,13 @@ export default function EauWaterFill({
       bodyRef.current?.setAttribute('height', String(VB_H - surfaceY));
       WAVES.forEach((spec, i) => {
         waveRefs.current[i]?.setAttribute('d', wavePath(level, spec, reduce ? 0 : phase * spec.speed));
+      });
+      // Couper chaque colonne à la ligne d'eau : zone sèche = `surfaceY %` de la hauteur de carte
+      // (VB_H = 100 → surfaceY est directement un pourcentage). Sous la surface, height→0 : la
+      // colonne disparaît dans le bassin. Quand le niveau monte, surfaceY baisse → chute raccourcie.
+      const dryPct = `${surfaceY.toFixed(2)}%`;
+      streamBoxRefs.current.forEach((el) => {
+        if (el) el.style.height = dryPct;
       });
     };
 
@@ -192,8 +208,11 @@ export default function EauWaterFill({
       {STREAMS.map((s, i) => (
         <div
           key={`stream-${i}`}
-          className="absolute top-0 bottom-0 overflow-hidden"
-          style={{ left: `${s.cx - s.w / 2}px`, width: `${s.w}px`, borderRadius: '9999px' }}
+          ref={(el) => {
+            streamBoxRefs.current[i] = el;
+          }}
+          className="absolute top-0 overflow-hidden"
+          style={{ left: `${s.cx - s.w / 2}px`, width: `${s.w}px`, height: '0%', borderRadius: '9999px' }}
         >
           {/* Corps « plus marqué » (opacité soutenue) — vert d'eau AHUVI, jamais de bleu. */}
           <div className="absolute inset-0" style={{ backgroundColor: EAU_CHART.eauFill, opacity: 0.58 }} />
@@ -231,12 +250,14 @@ export default function EauWaterFill({
           style={{ top: `${(1 - (flotteurFraction as number)) * 100}%` }}
         >
           <div style={{ borderTop: `1px dashed ${EAU_CHART.eauFill}`, opacity: 0.7 }} />
-          {/* Étiquette posée SOUS le trait et reculée vers la gauche : le conteneur d'icône occupe
-              ~64 px depuis le bord droit (48 px d'icône + 16 px de padding) → `right: 4.5rem` (72 px)
-              garde la pastille entièrement à gauche de l'icône à toute largeur, côté droit. */}
+          {/* Étiquette posée JUSTE sous le trait (top 2px, sans le chevaucher) et rapprochée de
+              l'icône. L'icône est un bouton `md:w-12` (48 px) + `p-4` (16 px) → occupe 64 px depuis
+              le bord droit au breakpoint md. `right: 4.25rem` (68 px) place le bord droit de la
+              pastille à 4 px à gauche de l'icône au PLUS étroit (md, 48 px) → jamais de chevauchement
+              à aucune largeur, jeu de sécurité conservé (vérifié en navigateur). */}
           <span
             className="absolute rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
-            style={{ fontSize: '10px', right: '4.5rem', top: '4px' }}
+            style={{ fontSize: '10px', right: '4.25rem', top: '2px' }}
           >
             100%
           </span>
