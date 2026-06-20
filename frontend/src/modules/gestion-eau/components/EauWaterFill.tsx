@@ -32,8 +32,8 @@ type WaveSpec = { amp: number; cycles: number; speed: number; opacity: number };
 // Opacités calibrées pour garder le texte lisible (contraste WCAG ≥ 4,5:1) là où corps + 2 vagues
 // se cumulent sous la surface : encres AHUVI ≥ 4,88:1 sur le fond résultant.
 const WAVES: WaveSpec[] = [
-  { amp: 4, cycles: 1.3, speed: 0.45, opacity: 0.22 },
-  { amp: 5.5, cycles: 1.8, speed: -0.7, opacity: 0.3 },
+  { amp: 1.33, cycles: 1.3, speed: 0.45, opacity: 0.22 },
+  { amp: 1.83, cycles: 1.8, speed: -0.7, opacity: 0.3 },
 ];
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
