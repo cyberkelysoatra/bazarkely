@@ -61,6 +61,9 @@ export const EAU_CHART = {
   olive: '#4C6D40',
   gold: '#9D9B4B',
   teal: '#10939F',
+  // `eauFill` = « vert d'eau » (moins bleu que teal), dédié au calque d'eau animé des cartes
+  // KPI (EauWaterFill). `teal` reste la couleur EAU des graphes (séries recharts).
+  eauFill: '#149E8C',
   rose: '#b91c1c',
   elec: '#9D9B4B',
   grid: '#e6ebe1',
@@ -89,8 +92,11 @@ export function eauSegmentTabClass(active: boolean): string {
  *                      avec stopPropagation → on évite un <button> imbriqué dans un <button>.
  *   - `iconAriaLabel`: libellé accessible du bouton-icône.
  *   - `hideChevron`  : masque le ChevronRight même quand `onClick` est fourni.
- *   - `fillRatio`    : si nombre (0..1), rend un fond d'eau animé AHUVI (EauWaterFill) DERRIÈRE
- *                      le contenu, à ce niveau ; `null`/`undefined` → rendu strictement inchangé.
+ *   - `waterFraction`: si nombre, rend un fond d'eau animé AHUVI (EauWaterFill) DERRIÈRE le
+ *                      contenu, à ce niveau (fraction de hauteur de carte, non plafonnée) ;
+ *                      `null`/`undefined` → rendu strictement inchangé. Active aussi des encres
+ *                      renforcées (contraste ≥ 4,5:1) pour rester lisible sur l'eau.
+ *   - `flotteurFraction` / `tropPleinFraction` : repères dessinés par EauWaterFill (cf. ce composant).
  */
 export function EauStatCard({
   icon: Icon,
@@ -102,7 +108,9 @@ export function EauStatCard({
   onIconClick,
   iconAriaLabel,
   hideChevron,
-  fillRatio,
+  waterFraction,
+  flotteurFraction,
+  tropPleinFraction,
   className,
 }: {
   icon: LucideIcon;
@@ -114,14 +122,16 @@ export function EauStatCard({
   onIconClick?: () => void;
   iconAriaLabel?: string;
   hideChevron?: boolean;
-  fillRatio?: number | null;
+  waterFraction?: number | null;
+  flotteurFraction?: number | null;
+  tropPleinFraction?: number | null;
   className?: string;
 }) {
   const interactive = !!onClick;
   // Si l'icône a sa propre action, on ne peut pas imbriquer 2 <button> → corps = div role=button.
   const useDivRole = !!onIconClick;
   const showChevron = interactive && !hideChevron;
-  const hasFill = fillRatio != null;
+  const hasFill = waterFraction != null;
 
   const baseClass = cn(
     'w-full text-left rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
@@ -133,10 +143,16 @@ export function EauStatCard({
 
   const inner = (
     <>
-      {hasFill && <EauWaterFill ratio={fillRatio as number} />}
+      {hasFill && (
+        <EauWaterFill
+          waterFraction={waterFraction as number}
+          flotteurFraction={flotteurFraction}
+          tropPleinFraction={tropPleinFraction}
+        />
+      )}
       <div className="relative z-10">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
+        <div className={cn('text-xs font-medium uppercase tracking-wide', hasFill ? 'text-gray-700' : 'text-gray-500')}>{label}</div>
         <div className="flex items-center gap-1">
           {onIconClick ? (
             <button
@@ -167,8 +183,8 @@ export function EauStatCard({
           {showChevron && <ChevronRight className="w-4 h-4 text-gray-300" aria-hidden="true" />}
         </div>
       </div>
-        <div className={cn('mt-2 text-2xl font-bold', TONE_VALUE[tone])}>{value}</div>
-        {hint && <div className="text-sm text-gray-500 mt-0.5">{hint}</div>}
+        <div className={cn('mt-2 text-2xl font-bold', hasFill ? 'text-ahuvi-forest' : TONE_VALUE[tone])}>{value}</div>
+        {hint && <div className={cn('text-sm mt-0.5', hasFill ? 'text-gray-700' : 'text-gray-500')}>{hint}</div>}
       </div>
     </>
   );

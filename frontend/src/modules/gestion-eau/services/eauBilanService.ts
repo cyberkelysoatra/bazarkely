@@ -285,6 +285,18 @@ export interface DashboardData {
   periodeJours: number;
   /** Cumuls de flux par fenêtre temporelle, pour l'affichage en m³/h au tableau de bord. */
   flux: Record<BaseHoraire, FluxFenetre>;
+  // ── Calibrage du calque d'eau de la carte « Stock actuel » (coupe verticale du bassin) ──
+  /**
+   * Fraction de la HAUTEUR de carte occupée par l'eau = stock / (S × hauteurTop), où
+   * S = L × l et hauteurTop = sommet physique (max ?? trop-plein ?? flotteur). NON plafonnée
+   * (un niveau > flotteur fait monter l'eau au-dessus du trait 100 %). `null` si config
+   * incomplète. Distinct de `tauxRemplissage` (plafonné [0,1], réservé au TEXTE).
+   */
+  bassinWaterFraction: number | null;
+  /** Fraction de hauteur du trait flotteur (100 %) = Hf / hauteurTop. `null` si indisponible. */
+  bassinFlotteurFraction: number | null;
+  /** Fraction de hauteur du trait trop-plein = Htp / hauteurTop. `null` si indisponible. */
+  bassinTropPleinFraction: number | null;
 }
 
 /** Agrégats du tableau de bord (jour courant + NRW sur la période de facturation). */
@@ -455,10 +467,38 @@ export async function getDashboardData(): Promise<DashboardData> {
     periode: fluxPour(nrwStart, nowMs, periodeJours * 24),
   };
 
+  // Calibrage du calque d'eau à partir de la config RÉELLE (aucune valeur en dur).
+  // hauteurTop = sommet de la carte = hauteur physique (repli trop-plein → flotteur).
+  const hauteurTop =
+    config?.bassin_hauteur_max_m ??
+    config?.bassin_hauteur_trop_plein_m ??
+    config?.bassin_hauteur_flotteur_m ??
+    null;
+  const surfaceSol =
+    config?.bassin_longueur_m != null && config?.bassin_largeur_m != null
+      ? config.bassin_longueur_m * config.bassin_largeur_m
+      : null;
+  const topOk = hauteurTop != null && hauteurTop > 0;
+  const bassinWaterFraction =
+    stockActuelM3 != null && surfaceSol != null && surfaceSol > 0 && topOk
+      ? stockActuelM3 / (surfaceSol * (hauteurTop as number))
+      : null;
+  const bassinFlotteurFraction =
+    config?.bassin_hauteur_flotteur_m != null && config.bassin_hauteur_flotteur_m > 0 && topOk
+      ? config.bassin_hauteur_flotteur_m / (hauteurTop as number)
+      : null;
+  const bassinTropPleinFraction =
+    config?.bassin_hauteur_trop_plein_m != null && config.bassin_hauteur_trop_plein_m > 0 && topOk
+      ? config.bassin_hauteur_trop_plein_m / (hauteurTop as number)
+      : null;
+
   return {
     stockActuelM3,
     volumeMaxM3: dim ? volumeMaxM3(dim) : null,
     tauxRemplissage: dim && stockActuelM3 != null ? tauxRemplissage(stockActuelM3, dim) : null,
+    bassinWaterFraction,
+    bassinFlotteurFraction,
+    bassinTropPleinFraction,
     entreesJourM3,
     consoJourM3: consoJourAffichee,
     consoJourEstimee,

@@ -257,14 +257,16 @@ export default function EauDashboard() {
                 hint={
                   <>
                     Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
-                    {data?.volumeMaxM3 != null && <span className="text-gray-400"> / {fmtM3(data.volumeMaxM3)}</span>}
+                    {data?.volumeMaxM3 != null && <span className="text-gray-700"> / {fmtM3(data.volumeMaxM3)}</span>}
                   </>
                 }
                 onClick={goTendances}
                 onIconClick={() => goSaisieBassin('niveau')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
-                fillRatio={data?.tauxRemplissage ?? null}
+                waterFraction={data?.bassinWaterFraction ?? data?.tauxRemplissage ?? null}
+                flotteurFraction={data?.bassinFlotteurFraction ?? null}
+                tropPleinFraction={data?.bassinTropPleinFraction ?? null}
               />
 
               <EauStatCard
