@@ -36,7 +36,30 @@ const WAVES: WaveSpec[] = [
   { amp: 1.83, cycles: 1.8, speed: -0.7, opacity: 0.3 },
 ];
 
+// Deux fines colonnes d'eau qui s'écoulent dans la GOUTTIÈRE gauche de la carte (les 16 px de
+// `p-4` avant le texte) → aucun chevauchement du contenu ni de l'icône, contraste des textes intact.
+// `cx`/`w` en px (positions fixes, hors viewBox SVG étiré). `period` = pas du motif de gouttes ;
+// l'écoulement = translation de la couche de reflets d'exactement `period` px (boucle sans couture).
+type StreamSpec = { cx: number; w: number; period: number; duration: number };
+const STREAMS: StreamSpec[] = [
+  { cx: 5, w: 3, period: 24, duration: 2600 },
+  { cx: 11, w: 3, period: 20, duration: 3100 },
+];
+
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Dégradé répété de gouttes claires (reflets) le long d'une colonne — visible sur blanc ET sur teal. */
+function streamHighlight(period: number): string {
+  return (
+    `repeating-linear-gradient(180deg,` +
+    ` rgba(255,255,255,0) 0px,` +
+    ` rgba(255,255,255,0) ${period - 14}px,` +
+    ` rgba(255,255,255,0.5) ${period - 11}px,` +
+    ` rgba(255,255,255,0.72) ${period - 9}px,` +
+    ` rgba(255,255,255,0) ${period - 5}px,` +
+    ` rgba(255,255,255,0) ${period}px)`
+  );
+}
 
 /** Path SVG d'une vague : ligne sinusoïdale en surface puis remplissage jusqu'au bas. */
 function wavePath(level: number, spec: WaveSpec, phase: number): string {
@@ -67,6 +90,7 @@ export default function EauWaterFill({
 
   const bodyRef = useRef<SVGRectElement>(null);
   const waveRefs = useRef<Array<SVGPathElement | null>>([]);
+  const streamRefs = useRef<Array<HTMLDivElement | null>>([]);
   const levelRef = useRef(0);
   const targetRef = useRef(target);
   const rafRef = useRef<number | null>(null);
@@ -118,6 +142,29 @@ export default function EauWaterFill({
     };
   }, []);
 
+  // Écoulement vertical continu des 2 colonnes (Web Animations API, auto-contenu, nettoyé au démontage).
+  // `prefers-reduced-motion: reduce` → gouttes posées statiques (aucune animation déclenchée).
+  useEffect(() => {
+    const reduce =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    const anims = STREAMS.map((s, i) => {
+      const el = streamRefs.current[i];
+      if (!el || typeof el.animate !== 'function') return null;
+      return el.animate(
+        [{ transform: 'translateY(0px)' }, { transform: `translateY(${s.period}px)` }],
+        { duration: s.duration, iterations: Infinity, easing: 'linear' },
+      );
+    });
+
+    return () => {
+      anims.forEach((a) => a?.cancel());
+    };
+  }, []);
+
   // Traits de repère (overlay HTML non déformé) : tracés seulement si fournis ET strictement < 1
   // (à 1, le repère = haut de carte → inutile de le tracer).
   const showFlotteur = flotteurFraction != null && flotteurFraction > 0 && flotteurFraction < 1;
@@ -141,6 +188,30 @@ export default function EauWaterFill({
         ))}
       </svg>
 
+      {/* Deux colonnes d'eau qui coulent dans la gouttière gauche (entre le bord et le texte `p-4`). */}
+      {STREAMS.map((s, i) => (
+        <div
+          key={`stream-${i}`}
+          className="absolute top-0 bottom-0 overflow-hidden"
+          style={{ left: `${s.cx - s.w / 2}px`, width: `${s.w}px`, borderRadius: '9999px' }}
+        >
+          {/* Corps « plus marqué » (opacité soutenue) — vert d'eau AHUVI, jamais de bleu. */}
+          <div className="absolute inset-0" style={{ backgroundColor: EAU_CHART.eauFill, opacity: 0.58 }} />
+          {/* Reflets clairs qui descendent (lisibles sur blanc comme sur teal). */}
+          <div
+            ref={(el) => {
+              streamRefs.current[i] = el;
+            }}
+            className="absolute left-0 right-0"
+            style={{
+              top: `-${s.period}px`,
+              height: `calc(100% + ${s.period * 2}px)`,
+              background: streamHighlight(s.period),
+            }}
+          />
+        </div>
+      ))}
+
       {/* Trait trop-plein (discret) — sous le flotteur dans le DOM pour passer dessous visuellement. */}
       {showTropPlein && (
         <div
@@ -160,9 +231,12 @@ export default function EauWaterFill({
           style={{ top: `${(1 - (flotteurFraction as number)) * 100}%` }}
         >
           <div style={{ borderTop: `1px dashed ${EAU_CHART.eauFill}`, opacity: 0.7 }} />
+          {/* Étiquette posée SOUS le trait et reculée vers la gauche : le conteneur d'icône occupe
+              ~64 px depuis le bord droit (48 px d'icône + 16 px de padding) → `right: 4.5rem` (72 px)
+              garde la pastille entièrement à gauche de l'icône à toute largeur, côté droit. */}
           <span
-            className="absolute right-1 -top-2 rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
-            style={{ fontSize: '10px' }}
+            className="absolute rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
+            style={{ fontSize: '10px', right: '4.5rem', top: '4px' }}
           >
             100%
           </span>
