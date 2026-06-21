@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.66.10';
-export const APP_VERSION_NAME = 'Module Eau, carte Stock actuel : le pourcentage de remplissage flottant ondule desormais en rythme avec les vagues, comme pose sur l eau (il epouse la crete de la vague dominante).';
+export const APP_VERSION = '3.66.11';
+export const APP_VERSION_NAME = 'Module Eau, carte Stock actuel : la montee/descente du pourcentage flottant est ralentie (÷1,5) pour un mouvement plus doux ; les vagues gardent leur vitesse.';
 export const LAST_UPDATED = '2026-06-22';
 export const APP_BUILD_DATE = '2026-06-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.11',
+    date: '2026-06-22',
+    description:
+      'Module Eau, carte Stock actuel : ondulation de l etiquette % ralentie ÷1,5 (vagues inchangees).',
+    changes: [
+      'EauWaterFill.tsx : LABEL_WAVE_SLOWDOWN = 1.5 → le phase*speed de l etiquette est divise par 1,5 (montee/descente plus douce) ; les vagues gardent leur vitesse (leger decalage assume).',
+      'constants/appVersion.ts + package.json : version 3.66.11 + note FR',
+    ],
+  },
   {
     version: '3.66.10',
     date: '2026-06-22',

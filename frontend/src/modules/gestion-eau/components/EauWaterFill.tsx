@@ -44,6 +44,9 @@ const LABEL_WAVE_K = (LABEL_WAVE.cycles * 2 * Math.PI) / VB_W;
 // Abscisse (unités viewBox 0→100) représentative de l'étiquette, côté droit (right: 4.25rem). Constante :
 // seul `phase` (le temps) fait bouger l'ondulation → aucune mesure de largeur de carte par frame (zéro reflow).
 const X_LABEL = 85;
+// Ralentissement PROPRE à l'étiquette : le `phase·speed` de la houle est divisé par ce facteur pour
+// l'étiquette uniquement → son montée/descente est plus douce que les vagues (léger décalage assumé).
+const LABEL_WAVE_SLOWDOWN = 1.5;
 
 // Deux fines colonnes d'eau qui s'écoulent dans la GOUTTIÈRE gauche de la carte (les 16 px de
 // `p-4` avant le texte) → aucun chevauchement du contenu ni de l'icône, contraste des textes intact.
@@ -143,7 +146,9 @@ export default function EauWaterFill({
       // plus le MÊME décalage sinusoïdal que la vague dominante à X_LABEL (`amp·sin(k·x + phase·speed)`,
       // en unités viewBox = % de hauteur de carte → directement additionnable). En `reduce`, waveOffset=0
       // (mouvement interdit). Clamp anti-rognage [0,100] : la houle ne fait jamais sortir l'étiquette.
-      const waveOffset = reduce ? 0 : LABEL_WAVE.amp * Math.sin(LABEL_WAVE_K * X_LABEL + phase * LABEL_WAVE.speed);
+      const waveOffset = reduce
+        ? 0
+        : LABEL_WAVE.amp * Math.sin(LABEL_WAVE_K * X_LABEL + (phase * LABEL_WAVE.speed) / LABEL_WAVE_SLOWDOWN);
       const labelTop = Math.max(0, Math.min(VB_H, surfaceY + waveOffset));
       if (waterLabelRef.current) waterLabelRef.current.style.top = `${labelTop.toFixed(2)}%`;
     };
