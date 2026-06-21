@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.66.11';
-export const APP_VERSION_NAME = 'Module Eau, carte Stock actuel : la montee/descente du pourcentage flottant est ralentie (÷1,5) pour un mouvement plus doux ; les vagues gardent leur vitesse.';
+export const APP_VERSION = '3.66.12';
+export const APP_VERSION_NAME = 'Module Eau : un clic sur la carte « Stock actuel » du tableau de bord ouvre desormais la page Releves sur l onglet « Source » (consultation simple).';
 export const LAST_UPDATED = '2026-06-22';
 export const APP_BUILD_DATE = '2026-06-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.12',
+    date: '2026-06-22',
+    description:
+      'Module Eau, tableau de bord : clic carte « Stock actuel » → page Releves onglet « Source ».',
+    changes: [
+      'EauDashboard.tsx : carte « Stock actuel » onClick = goSource (/gestion-eau/releves?tab=source) au lieu de goTendances ; l icone garde la saisie bassin.',
+      'EauRelevesPage.tsx : nouveau deep-link ?tab=source → onglet Source en consultation simple (aucun tiroir ouvert) ; initialTab + useEffect mis a jour.',
+      'constants/appVersion.ts + package.json : version 3.66.12 + note FR',
+    ],
+  },
   {
     version: '3.66.11',
     date: '2026-06-22',

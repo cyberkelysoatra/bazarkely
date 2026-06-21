@@ -70,6 +70,8 @@ export default function EauDashboard() {
   // (EauSaisieBassinPage lit `bt` : niveau/entree/debit). Absent → Niveau par défaut.
   const goSaisieBassin = (bt: 'niveau' | 'entree' | 'debit' = 'niveau') =>
     navigate(`/gestion-eau/releves?tab=bassin&bt=${bt}`);
+  // Onglet « Source » des Relevés en simple consultation (sans ouvrir de tiroir de saisie).
+  const goSource = () => navigate('/gestion-eau/releves?tab=source');
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
   // Sous-onglet « Électricité » des Relevés (saisie d'index kWh).
   const goSaisieElec = () => navigate('/gestion-eau/releves?tab=elec');
@@ -255,7 +257,7 @@ export default function EauDashboard() {
                 label="Stock actuel"
                 value={fmtM3(data?.stockActuelM3 ?? null)}
                 hint={`Remplissage Max : ${fmtM3(data?.volumeMaxM3 ?? null)}`}
-                onClick={goTendances}
+                onClick={goSource}
                 onIconClick={() => goSaisieBassin('niveau')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron

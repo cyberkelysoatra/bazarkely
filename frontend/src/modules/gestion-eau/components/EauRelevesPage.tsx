@@ -13,6 +13,7 @@
  * émettent toujours `?tab=…&bt=…` ; la page re-route vers les 2 onglets) :
  *   - `?tab=compteur&c=<id>` (scan)     → Compteurs, saisie du compteur ouverte.
  *   - `?tab=elec`                       → Compteurs, saisie ouverte sur la nature « Élec ».
+ *   - `?tab=source`                     → Source, simple consultation (aucun tiroir ouvert).
  *   - `?tab=bassin&bt=niveau`           → Source, tiroir « Saisir hauteur » ouvert.
  *   - `?tab=bassin&bt=debit`            → Source, section « Tests de débit » ouverte.
  *   - `?tab=bassin&bt=entree`           → Source, tiroir « Ajouter un apport » ouvert.
@@ -41,8 +42,8 @@ type TabKey = 'compteurs' | 'source';
 function initialTab(params: URLSearchParams): TabKey {
   if (params.get('c')) return 'compteurs';
   const t = params.get('tab');
-  // 'bassin' (niveau/debit/entree) et 'apports' → onglet Source (crédit + solde).
-  if (t === 'apports' || t === 'bassin') return 'source';
+  // 'source' (consultation simple), 'bassin' (niveau/debit/entree) et 'apports' → onglet Source.
+  if (t === 'source' || t === 'apports' || t === 'bassin') return 'source';
   // 'compteur', 'compteurs', 'elec', 'tournee', null → onglet Compteurs.
   return 'compteurs';
 }
@@ -88,6 +89,11 @@ export default function EauRelevesPage() {
     } else if (t === 'apports') {
       setTab('source');
       setApportsAutoOpen(true);
+    } else if (t === 'source') {
+      // Consultation simple de l'onglet Source : aucun tiroir/section ouvert d'office.
+      setTab('source');
+      setBassinIntent(null);
+      setApportsAutoOpen(false);
     } else if (t) {
       setTab('compteurs');
     }
