@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.66.9';
-export const APP_VERSION_NAME = 'Module Eau, carte Stock actuel : le volume maximum du bassin est affiche sous la valeur (Remplissage Max : 245 m3) et le pourcentage de remplissage flotte desormais sur la ligne de flottaison du fond anime, montant et descendant avec le niveau.';
-export const LAST_UPDATED = '2026-06-21';
-export const APP_BUILD_DATE = '2026-06-21';
+export const APP_VERSION = '3.66.10';
+export const APP_VERSION_NAME = 'Module Eau, carte Stock actuel : le pourcentage de remplissage flottant ondule desormais en rythme avec les vagues, comme pose sur l eau (il epouse la crete de la vague dominante).';
+export const LAST_UPDATED = '2026-06-22';
+export const APP_BUILD_DATE = '2026-06-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.10',
+    date: '2026-06-22',
+    description:
+      'Module Eau, carte Stock actuel : l etiquette % flottante ondule avec les vagues (vague dominante).',
+    changes: [
+      'EauWaterFill.tsx : paint() ajoute un decalage sinusoidal (LABEL_WAVE = vague dominante WAVES[1], meme formule amp*sin(k*X_LABEL + phase*speed)) au top de l etiquette % ; clamp anti-rognage [0,100] ; aucune ondulation en prefers-reduced-motion.',
+      'constants/appVersion.ts + package.json : version 3.66.10 + note FR',
+    ],
+  },
   {
     version: '3.66.9',
     date: '2026-06-21',

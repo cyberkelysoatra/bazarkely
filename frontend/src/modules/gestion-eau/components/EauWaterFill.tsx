@@ -36,6 +36,15 @@ const WAVES: WaveSpec[] = [
   { amp: 1.83, cycles: 1.8, speed: -0.7, opacity: 0.3 },
 ];
 
+// Vague DOMINANTE (la plus opaque/visible) sur laquelle l'étiquette % « flotte » : on réutilise sa
+// formule exacte (`amp·sin(k·x + phase·speed)`) à l'abscisse de l'étiquette, donc la crête réellement
+// perçue soulève le « 70,4 % ». `k` précalculé (ne dépend que de cycles, jamais du temps).
+const LABEL_WAVE = WAVES[1];
+const LABEL_WAVE_K = (LABEL_WAVE.cycles * 2 * Math.PI) / VB_W;
+// Abscisse (unités viewBox 0→100) représentative de l'étiquette, côté droit (right: 4.25rem). Constante :
+// seul `phase` (le temps) fait bouger l'ondulation → aucune mesure de largeur de carte par frame (zéro reflow).
+const X_LABEL = 85;
+
 // Deux fines colonnes d'eau qui s'écoulent dans la GOUTTIÈRE gauche de la carte (les 16 px de
 // `p-4` avant le texte) → aucun chevauchement du contenu ni de l'icône, contraste des textes intact.
 // `cx`/`w` en px (positions fixes, hors viewBox SVG étiré). `period` = pas du motif de gouttes ;
@@ -130,8 +139,13 @@ export default function EauWaterFill({
       streamBoxRefs.current.forEach((el) => {
         if (el) el.style.height = dryPct;
       });
-      // L'étiquette % « flotte » sur la ligne d'eau : son centre suit la surface vivante.
-      if (waterLabelRef.current) waterLabelRef.current.style.top = dryPct;
+      // L'étiquette % « flotte » ET ondule sur la houle : son centre suit la surface MOYENNE (surfaceY)
+      // plus le MÊME décalage sinusoïdal que la vague dominante à X_LABEL (`amp·sin(k·x + phase·speed)`,
+      // en unités viewBox = % de hauteur de carte → directement additionnable). En `reduce`, waveOffset=0
+      // (mouvement interdit). Clamp anti-rognage [0,100] : la houle ne fait jamais sortir l'étiquette.
+      const waveOffset = reduce ? 0 : LABEL_WAVE.amp * Math.sin(LABEL_WAVE_K * X_LABEL + phase * LABEL_WAVE.speed);
+      const labelTop = Math.max(0, Math.min(VB_H, surfaceY + waveOffset));
+      if (waterLabelRef.current) waterLabelRef.current.style.top = `${labelTop.toFixed(2)}%`;
     };
 
     if (reduce) {
