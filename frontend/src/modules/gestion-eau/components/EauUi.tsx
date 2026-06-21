@@ -109,6 +109,7 @@ export function EauStatCard({
   iconAriaLabel,
   hideChevron,
   waterFraction,
+  waterLabel,
   flotteurFraction,
   tropPleinFraction,
   className,
@@ -123,6 +124,7 @@ export function EauStatCard({
   iconAriaLabel?: string;
   hideChevron?: boolean;
   waterFraction?: number | null;
+  waterLabel?: string | null;
   flotteurFraction?: number | null;
   tropPleinFraction?: number | null;
   className?: string;
@@ -146,6 +148,7 @@ export function EauStatCard({
       {hasFill && (
         <EauWaterFill
           waterFraction={waterFraction as number}
+          waterLabel={waterLabel}
           flotteurFraction={flotteurFraction}
           tropPleinFraction={tropPleinFraction}
         />

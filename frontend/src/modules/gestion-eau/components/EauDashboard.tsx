@@ -254,17 +254,13 @@ export default function EauDashboard() {
                 tone="teal"
                 label="Stock actuel"
                 value={fmtM3(data?.stockActuelM3 ?? null)}
-                hint={
-                  <>
-                    Remplissage : {data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : '—'}
-                    {data?.volumeMaxM3 != null && <span className="text-gray-700"> / {fmtM3(data.volumeMaxM3)}</span>}
-                  </>
-                }
+                hint={`Remplissage Max : ${fmtM3(data?.volumeMaxM3 ?? null)}`}
                 onClick={goTendances}
                 onIconClick={() => goSaisieBassin('niveau')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
                 waterFraction={data?.bassinWaterFraction ?? data?.tauxRemplissage ?? null}
+                waterLabel={data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : null}
                 flotteurFraction={data?.bassinFlotteurFraction ?? null}
                 tropPleinFraction={data?.bassinTropPleinFraction ?? null}
               />

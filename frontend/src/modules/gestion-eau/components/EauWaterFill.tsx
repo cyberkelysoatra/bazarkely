@@ -83,11 +83,13 @@ function wavePath(level: number, spec: WaveSpec, phase: number): string {
 
 export default function EauWaterFill({
   waterFraction,
+  waterLabel,
   flotteurFraction,
   tropPleinFraction,
   className,
 }: {
   waterFraction: number;
+  waterLabel?: string | null;
   flotteurFraction?: number | null;
   tropPleinFraction?: number | null;
   className?: string;
@@ -100,6 +102,8 @@ export default function EauWaterFill({
   const streamRefs = useRef<Array<HTMLDivElement | null>>([]);
   // Conteneurs des colonnes : leur hauteur est recoupée à la surface de l'eau à chaque frame.
   const streamBoxRefs = useRef<Array<HTMLDivElement | null>>([]);
+  // Étiquette « % flottante » : son `top` est recalé sur la surface vivante à chaque frame.
+  const waterLabelRef = useRef<HTMLDivElement>(null);
   const levelRef = useRef(0);
   const targetRef = useRef(target);
   const rafRef = useRef<number | null>(null);
@@ -126,6 +130,8 @@ export default function EauWaterFill({
       streamBoxRefs.current.forEach((el) => {
         if (el) el.style.height = dryPct;
       });
+      // L'étiquette % « flotte » sur la ligne d'eau : son centre suit la surface vivante.
+      if (waterLabelRef.current) waterLabelRef.current.style.top = dryPct;
     };
 
     if (reduce) {
@@ -185,6 +191,7 @@ export default function EauWaterFill({
   // (à 1, le repère = haut de carte → inutile de le tracer).
   const showFlotteur = flotteurFraction != null && flotteurFraction > 0 && flotteurFraction < 1;
   const showTropPlein = tropPleinFraction != null && tropPleinFraction > 0 && tropPleinFraction < 1;
+  const showWaterLabel = waterLabel != null && waterLabel !== '';
 
   return (
     <div aria-hidden className={cn('absolute inset-0 pointer-events-none overflow-hidden', className)}>
@@ -260,6 +267,20 @@ export default function EauWaterFill({
             style={{ fontSize: '10px', right: '4.25rem', top: '2px' }}
           >
             100%
+          </span>
+        </div>
+      )}
+
+      {/* Étiquette % « flottant sur l'eau » : suit la ligne de flotaison vivante (top recalé à
+          chaque frame dans paint()), centrée sur la surface (translateY -50 %). Mêmes alignement
+          (right: 4.25rem), taille (10px) et style de pastille que le repère « 100 % » au-dessus. */}
+      {showWaterLabel && (
+        <div ref={waterLabelRef} className="absolute left-0 right-0" style={{ top: '100%' }}>
+          <span
+            className="absolute rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
+            style={{ fontSize: '10px', right: '4.25rem', top: 0, transform: 'translateY(-50%)' }}
+          >
+            {waterLabel}
           </span>
         </div>
       )}
