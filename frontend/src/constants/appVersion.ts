@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.66.13';
-export const APP_VERSION_NAME = 'Module Eau, tableau de bord : la carte « Pompes en marche » affiche une chute d eau descendante dont l intensite suit le debit ; un clic ouvre les Releves (onglet Source) cale sur le bloc « Debit mesure ».';
+export const APP_VERSION = '3.66.14';
+export const APP_VERSION_NAME = 'Correctif : EauFlowFill ne lit plus EAU_CHART au niveau module (import circulaire EauUi ↔ EauFlowFill = TDZ « Cannot access before initialization » qui plantait la carte « Pompes en marche ») ; lecture deferree au runtime, comme EauWaterFill.';
 export const LAST_UPDATED = '2026-06-23';
 export const APP_BUILD_DATE = '2026-06-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.14',
+    date: '2026-06-23',
+    description:
+      'Fix crash carte « Pompes en marche » : EauFlowFill lisait EAU_CHART au niveau module → TDZ via import circulaire EauUi ↔ EauFlowFill. Lecture EAU_RGB deferree dans l effet (runtime).',
+    changes: [
+      'EauFlowFill.tsx : suppression du const EAU_RGB au niveau module ; calcul deplace dans useEffect (runtime) → plus de ReferenceError « Cannot access EAU_CHART before initialization ».',
+      'constants/appVersion.ts + package.json : version 3.66.14 + note FR',
+    ],
+  },
   {
     version: '3.66.13',
     date: '2026-06-23',

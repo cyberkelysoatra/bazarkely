@@ -63,8 +63,6 @@ function rgbOf(hex: string): string {
   return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
 }
 
-const EAU_RGB = rgbOf(EAU_CHART.eauFill);
-
 export default function EauFlowFill({
   flowFraction,
   className,
@@ -89,6 +87,12 @@ export default function EauFlowFill({
     if (!canvas || !wrap) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // EAU_RGB dérivé ICI (au runtime), JAMAIS au niveau module : EauUi ↔ EauFlowFill forment un
+    // import circulaire, donc lire EAU_CHART au chargement du module = TDZ « Cannot access 'EAU_CHART'
+    // before initialization » → crash du composant. À l'exécution de l'effet, EauUi est pleinement
+    // initialisé (même discipline qu'EauWaterFill, qui ne lit EAU_CHART qu'au runtime).
+    const EAU_RGB = rgbOf(EAU_CHART.eauFill);
 
     const reduce =
       typeof window !== 'undefined' &&
