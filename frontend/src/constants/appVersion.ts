@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.66.15';
-export const APP_VERSION_NAME = 'Module Eau : un clic sur la carte « Pompes en marche » cale desormais le HAUT de la section « Tests de debit » entiere juste sous les onglets (titre visible), au lieu du bloc « Debit mesure » interne.';
+export const APP_VERSION = '3.66.16';
+export const APP_VERSION_NAME = 'Module Eau : l icone de la carte « Pompes en marche » (?tab=bassin&bt=debit) cale aussi le HAUT de la section « Tests de debit » juste sous les onglets (au lieu d un centrage) ; icone et corps de carte font desormais le meme calage.';
 export const LAST_UPDATED = '2026-06-23';
 export const APP_BUILD_DATE = '2026-06-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.16',
+    date: '2026-06-23',
+    description:
+      'Module Eau : l icone « Pompes en marche » (intention debit, ?tab=bassin&bt=debit) cale le HAUT de la section « Tests de debit » sous les onglets, comme le clic corps. Fin du scrollIntoView centre.',
+    changes: [
+      'EauBassinReleves.tsx : fusion des intentions debit et debitFocus → meme calage scrollElementUnderHeader(debitRef) (titre de section visible) ; l intention debit ne fait plus de scrollIntoView({block:center}).',
+      'constants/appVersion.ts + package.json : version 3.66.16 + note FR',
+    ],
+  },
   {
     version: '3.66.15',
     date: '2026-06-23',
