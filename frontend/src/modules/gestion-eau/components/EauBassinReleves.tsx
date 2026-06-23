@@ -92,14 +92,15 @@ export default function EauBassinReleves({
       setDebitOpen(true);
       requestAnimationFrame(() => debitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     } else if (openIntent === 'debitFocus') {
-      // Révéler la section Tests de débit puis caler le HAUT du bloc « Débit mesuré (m³/h) » juste
-      // sous la barre d'onglets collante. Ancre = `[data-eau-debit-mesure]` (présente si des tests
-      // existent), repli = haut de la section Tests (debitRef). rAF pour position à jour + ré-assertion
-      // différée (~360 ms) pour absorber un décalage tardif (montage Recharts, bandeau d'annonce).
+      // Révéler la section Tests de débit puis caler le HAUT de la SECTION ENTIÈRE (debitRef = la
+      // carte « Tests de débit ») juste sous la barre d'onglets collante → son titre reste visible
+      // en tête (retour JOEL S98 : viser la section, pas le bloc « Débit mesuré » interne, sinon le
+      // titre passe au-dessus). rAF pour position à jour + ré-assertion différée (~360 ms) pour
+      // absorber un décalage tardif de mise en page (montage Recharts de la carte Stock, bandeau
+      // d'annonce du Header).
       setDebitOpen(true);
       const focusDebit = () => {
-        const el = (document.querySelector('[data-eau-debit-mesure]') as HTMLElement | null) ?? debitRef.current;
-        if (el) scrollElementUnderHeader(el);
+        if (debitRef.current) scrollElementUnderHeader(debitRef.current);
       };
       requestAnimationFrame(focusDebit);
       setTimeout(focusDebit, 360);

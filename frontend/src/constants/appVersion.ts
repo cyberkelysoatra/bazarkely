@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.66.14';
-export const APP_VERSION_NAME = 'Correctif : EauFlowFill ne lit plus EAU_CHART au niveau module (import circulaire EauUi ↔ EauFlowFill = TDZ « Cannot access before initialization » qui plantait la carte « Pompes en marche ») ; lecture deferree au runtime, comme EauWaterFill.';
+export const APP_VERSION = '3.66.15';
+export const APP_VERSION_NAME = 'Module Eau : un clic sur la carte « Pompes en marche » cale desormais le HAUT de la section « Tests de debit » entiere juste sous les onglets (titre visible), au lieu du bloc « Debit mesure » interne.';
 export const LAST_UPDATED = '2026-06-23';
 export const APP_BUILD_DATE = '2026-06-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.15',
+    date: '2026-06-23',
+    description:
+      'Module Eau : clic carte « Pompes en marche » → calage sur le HAUT de la section « Tests de debit » (debitRef), titre visible, au lieu du bloc « Debit mesure » interne.',
+    changes: [
+      'EauBassinReleves.tsx : intention debitFocus cale scrollElementUnderHeader(debitRef) (section entiere) au lieu de [data-eau-debit-mesure] (bloc interne).',
+      'bassin/TestsDebit.tsx : suppression de l ancre data-eau-debit-mesure devenue inutile.',
+      'constants/appVersion.ts + package.json : version 3.66.15 + note FR',
+    ],
+  },
   {
     version: '3.66.14',
     date: '2026-06-23',

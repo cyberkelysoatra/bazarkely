@@ -182,9 +182,7 @@ export default function TestsDebit({
             {tests.length === 0 ? (
               <EauEmptyState icon={Gauge} title="Aucun test de débit pour l'instant" />
             ) : (
-              // `data-eau-debit-mesure` : ancre de calage visée par la carte « Pompes en marche »
-              // (corps cliqué → onglet Source, ce bloc se cale juste sous la barre d'onglets).
-              <div data-eau-debit-mesure>
+              <div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
                   <Activity className="w-3.5 h-3.5" aria-hidden="true" /> Débit mesuré (m³/h)
                 </div>
