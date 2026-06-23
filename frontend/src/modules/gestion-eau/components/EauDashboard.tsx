@@ -82,9 +82,6 @@ export default function EauDashboard() {
     navigate(`/gestion-eau/releves?tab=bassin&bt=${bt}`);
   // Onglet « Source » des Relevés en simple consultation (sans ouvrir de tiroir de saisie).
   const goSource = () => navigate('/gestion-eau/releves?tab=source');
-  // Onglet « Source » + intention « focus débit » : révèle la section Tests de débit et cale le
-  // bloc « Débit mesuré (m³/h) » sous la barre d'onglets (distinct de l'icône → saisie débit).
-  const goSourceDebit = () => navigate('/gestion-eau/releves?tab=source&focus=debit');
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
   // Sous-onglet « Électricité » des Relevés (saisie d'index kWh).
   const goSaisieElec = () => navigate('/gestion-eau/releves?tab=elec');
@@ -286,7 +283,7 @@ export default function EauDashboard() {
                 label="Pompes en marche"
                 value={fmtM3h(data?.debitCourantM3h)}
                 hint="Débit entrant"
-                onClick={goSourceDebit}
+                onClick={goSource}
                 onIconClick={() => goSaisieBassin('debit')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron

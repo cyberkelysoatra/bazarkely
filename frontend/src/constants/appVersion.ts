@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.66.16';
-export const APP_VERSION_NAME = 'Module Eau : l icone de la carte « Pompes en marche » (?tab=bassin&bt=debit) cale aussi le HAUT de la section « Tests de debit » juste sous les onglets (au lieu d un centrage) ; icone et corps de carte font desormais le meme calage.';
+export const APP_VERSION = '3.66.17';
+export const APP_VERSION_NAME = 'Module Eau, carte « Pompes en marche » : le CORPS ouvre les Releves onglet Source (simple consultation) ; l ICONE ouvre la section « Tests de debit » et cale son haut sous les onglets.';
 export const LAST_UPDATED = '2026-06-23';
 export const APP_BUILD_DATE = '2026-06-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.17',
+    date: '2026-06-23',
+    description:
+      'Module Eau : separation des 2 clics de la carte « Pompes en marche » — corps = onglet Source simple, icone = section Tests de debit calee sous les onglets. Suppression du chemin focus=debit/debitFocus.',
+    changes: [
+      'EauDashboard.tsx : carte « Pompes en marche » onClick corps = goSource (?tab=source) ; icone garde goSaisieBassin(debit) ; suppression de goSourceDebit.',
+      'EauRelevesPage.tsx : suppression du traitement ?focus=debit (intention debitFocus) ; onglet Source = consultation simple ; union ramenee a niveau|debit.',
+      'EauBassinReleves.tsx : suppression de l intention debitFocus ; seule debit ouvre+cale la section Tests de debit (scrollElementUnderHeader(debitRef)).',
+      'constants/appVersion.ts + package.json : version 3.66.17 + note FR',
+    ],
+  },
   {
     version: '3.66.16',
     date: '2026-06-23',

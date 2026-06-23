@@ -36,13 +36,12 @@ export default function EauBassinReleves({
 }: {
   /**
    * Deep-link / raccourci :
-   *   - 'niveau'                ouvre le tiroir « Saisir hauteur »,
-   *   - 'debit' / 'debitFocus'  ouvrent la section Tests de débit et CALENT son HAUT (titre visible)
-   *                             juste sous la barre d'onglets. 'debit' = icône carte « Pompes »
-   *                             (?tab=bassin&bt=debit) ; 'debitFocus' = clic corps de la carte
-   *                             (?tab=source&focus=debit). Comportement identique (retour JOEL S98).
+   *   - 'niveau'  ouvre le tiroir « Saisir hauteur »,
+   *   - 'debit'   ouvre la section Tests de débit et CALE son HAUT (titre visible) juste sous la
+   *               barre d'onglets collante (icône carte « Pompes en marche » → ?tab=bassin&bt=debit).
+   * (Le CORPS de la carte « Pompes » mène, lui, à l'onglet Source en simple consultation, sans intent.)
    */
-  openIntent: 'niveau' | 'debit' | 'debitFocus' | null;
+  openIntent: 'niveau' | 'debit' | null;
   onConsumeIntent: () => void;
   /** Contenu « crédits » (entrées d'eau) inséré entre la carte Bassin et la section Tests de débit. */
   creditsSlot?: ReactNode;
@@ -89,15 +88,14 @@ export default function EauBassinReleves({
     if (openIntent === 'niveau') {
       // Le défilement « haut sous le Header » est géré par l'effet sur openDrawer ci-dessus.
       setOpenDrawer('saisir');
-    } else if (openIntent === 'debit' || openIntent === 'debitFocus') {
-      // Icône carte « Pompes en marche » (?tab=bassin&bt=debit → 'debit') ET clic corps de la carte
-      // (?tab=source&focus=debit → 'debitFocus') : révéler la section Tests de débit puis caler le
-      // HAUT de la SECTION ENTIÈRE (debitRef = la carte « Tests de débit », dont le 1er enfant est le
-      // bouton-titre) juste sous la barre d'onglets collante → son titre reste visible en tête (retour
-      // JOEL S98 : viser la section, PAS le bloc « Débit mesuré » interne, sinon le titre passe au-
-      // dessus ; et PAS un scrollIntoView centré). rAF pour position à jour + ré-assertion différée
-      // (~360 ms) pour absorber un décalage tardif de mise en page (montage Recharts de la carte
-      // Stock, bandeau d'annonce du Header).
+    } else if (openIntent === 'debit') {
+      // Icône carte « Pompes en marche » (?tab=bassin&bt=debit) : révéler la section Tests de débit
+      // puis caler le HAUT de la SECTION ENTIÈRE (debitRef = la carte « Tests de débit », dont le 1er
+      // enfant est le bouton-titre) juste sous la barre d'onglets collante → son titre reste visible
+      // en tête (retour JOEL S98 : viser la section, PAS le bloc « Débit mesuré » interne, sinon le
+      // titre passe au-dessus ; et PAS un scrollIntoView centré). rAF pour position à jour +
+      // ré-assertion différée (~360 ms) pour absorber un décalage tardif de mise en page (montage
+      // Recharts de la carte Stock, bandeau d'annonce du Header).
       setDebitOpen(true);
       const focusDebit = () => {
         if (debitRef.current) scrollElementUnderHeader(debitRef.current);
