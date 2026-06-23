@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.66.12';
-export const APP_VERSION_NAME = 'Module Eau : un clic sur la carte « Stock actuel » du tableau de bord ouvre desormais la page Releves sur l onglet « Source » (consultation simple).';
-export const LAST_UPDATED = '2026-06-22';
-export const APP_BUILD_DATE = '2026-06-22';
+export const APP_VERSION = '3.66.13';
+export const APP_VERSION_NAME = 'Module Eau, tableau de bord : la carte « Pompes en marche » affiche une chute d eau descendante dont l intensite suit le debit ; un clic ouvre les Releves (onglet Source) cale sur le bloc « Debit mesure ».';
+export const LAST_UPDATED = '2026-06-23';
+export const APP_BUILD_DATE = '2026-06-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.13',
+    date: '2026-06-23',
+    description:
+      'Module Eau, tableau de bord : carte « Pompes en marche » = calque de chute d eau descendante (intensite ∝ debit) + clic → Releves onglet Source cale sur « Debit mesure ».',
+    changes: [
+      'EauFlowFill.tsx (NOUVEAU) : calque canvas de chute d eau descendante (filets + lame en bas), couleur EAU_CHART.eauFill, intensite pilotee par flowFraction [0..1], figee a 0, prefers-reduced-motion statique, rAF nettoye au demontage.',
+      'EauUi.tsx (PARTAGE) : EauStatCard gagne la prop flowFraction (symetrique de waterFraction, waterFraction prioritaire si les deux fournis) ; encres renforcees aussi sur flux.',
+      'EauDashboard.tsx (PARTAGE) : carte « Pompes en marche » → flowFraction = clamp01(debitCourantM3h / DEBIT_POMPES_NOMINAL_M3H=8) ; onClick corps = goSourceDebit (?tab=source&focus=debit), icone inchangee.',
+      'EauRelevesPage.tsx (PARTAGE) : ?focus=debit → onglet Source + intention debitFocus (distincte de bt=debit).',
+      'EauBassinReleves.tsx (PARTAGE) : intention debitFocus = setDebitOpen(true) + scrollElementUnderHeader([data-eau-debit-mesure] sinon debitRef), rAF + re-assertion 360 ms.',
+      'bassin/TestsDebit.tsx (PARTAGE) : ancre data-eau-debit-mesure sur le bloc « Debit mesure (m³/h) ».',
+      'constants/appVersion.ts + package.json : version 3.66.13 + note FR',
+    ],
+  },
   {
     version: '3.66.12',
     date: '2026-06-22',

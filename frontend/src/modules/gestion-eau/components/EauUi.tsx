@@ -14,6 +14,7 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import EauWaterFill from './EauWaterFill';
+import EauFlowFill from './EauFlowFill';
 
 export type LucideIcon = React.ComponentType<{
   className?: string;
@@ -97,6 +98,11 @@ export function eauSegmentTabClass(active: boolean): string {
  *                      `null`/`undefined` → rendu strictement inchangé. Active aussi des encres
  *                      renforcées (contraste ≥ 4,5:1) pour rester lisible sur l'eau.
  *   - `flotteurFraction` / `tropPleinFraction` : repères dessinés par EauWaterFill (cf. ce composant).
+ *   - `flowFraction` : si nombre, rend un fond de CHUTE D'EAU descendante AHUVI (EauFlowFill)
+ *                      DERRIÈRE le contenu, d'intensité ∝ à cette fraction [0..1] ; `null` →
+ *                      rendu inchangé. Symétrique de `waterFraction` (réutilisable sur d'autres
+ *                      cartes). Si les DEUX sont fournis, `waterFraction` est PRIORITAIRE (les
+ *                      deux calques ne coexistent jamais sur une même carte).
  */
 export function EauStatCard({
   icon: Icon,
@@ -112,6 +118,7 @@ export function EauStatCard({
   waterLabel,
   flotteurFraction,
   tropPleinFraction,
+  flowFraction,
   className,
 }: {
   icon: LucideIcon;
@@ -127,13 +134,17 @@ export function EauStatCard({
   waterLabel?: string | null;
   flotteurFraction?: number | null;
   tropPleinFraction?: number | null;
+  flowFraction?: number | null;
   className?: string;
 }) {
   const interactive = !!onClick;
   // Si l'icône a sa propre action, on ne peut pas imbriquer 2 <button> → corps = div role=button.
   const useDivRole = !!onIconClick;
   const showChevron = interactive && !hideChevron;
-  const hasFill = waterFraction != null;
+  // Un fond animé (eau qui monte OU chute d'eau) déclenche les encres renforcées.
+  const hasWater = waterFraction != null;
+  const hasFlow = !hasWater && flowFraction != null;
+  const hasFill = hasWater || hasFlow;
 
   const baseClass = cn(
     'w-full text-left rounded-xl border border-ahuvi-100 bg-white p-4 shadow-soft',
@@ -145,7 +156,7 @@ export function EauStatCard({
 
   const inner = (
     <>
-      {hasFill && (
+      {hasWater && (
         <EauWaterFill
           waterFraction={waterFraction as number}
           waterLabel={waterLabel}
@@ -153,6 +164,7 @@ export function EauStatCard({
           tropPleinFraction={tropPleinFraction}
         />
       )}
+      {hasFlow && <EauFlowFill flowFraction={flowFraction as number} />}
       <div className="relative z-10">
       <div className="flex items-start justify-between gap-2">
         <div className={cn('text-xs font-medium uppercase tracking-wide', hasFill ? 'text-gray-700' : 'text-gray-500')}>{label}</div>

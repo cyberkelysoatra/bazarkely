@@ -14,6 +14,16 @@ import { getElecKpiData, type ElecKpiData } from '../services/eauElecReleveServi
 import { fmtM3, fmtPct, fmtKwh, fmtM3h, fmtKw, fmtAutonomie } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
+/**
+ * Débit (m³/h) considéré comme « plein régime visuel » de la carte « Pompes en marche » :
+ * borne haute du calque de chute d'eau (EauFlowFill). Aucun débit nominal n'existe en données
+ * → constante fixe AJUSTABLE en un seul endroit. À ce débit (ou au-delà), l'animation est à
+ * intensité max ; à 0, elle est figée (pompes arrêtées).
+ */
+const DEBIT_POMPES_NOMINAL_M3H = 8;
+
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
 /** Base horaire mémorisée (localStorage) + libellés associés. */
 const BASE_KEY = 'eau_dashboard_base_horaire';
 const BASE_HORAIRE_OPTIONS: { key: BaseHoraire; label: string }[] = [
@@ -72,6 +82,9 @@ export default function EauDashboard() {
     navigate(`/gestion-eau/releves?tab=bassin&bt=${bt}`);
   // Onglet « Source » des Relevés en simple consultation (sans ouvrir de tiroir de saisie).
   const goSource = () => navigate('/gestion-eau/releves?tab=source');
+  // Onglet « Source » + intention « focus débit » : révèle la section Tests de débit et cale le
+  // bloc « Débit mesuré (m³/h) » sous la barre d'onglets (distinct de l'icône → saisie débit).
+  const goSourceDebit = () => navigate('/gestion-eau/releves?tab=source&focus=debit');
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
   // Sous-onglet « Électricité » des Relevés (saisie d'index kWh).
   const goSaisieElec = () => navigate('/gestion-eau/releves?tab=elec');
@@ -273,10 +286,11 @@ export default function EauDashboard() {
                 label="Pompes en marche"
                 value={fmtM3h(data?.debitCourantM3h)}
                 hint="Débit entrant"
-                onClick={goTendances}
+                onClick={goSourceDebit}
                 onIconClick={() => goSaisieBassin('debit')}
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
+                flowFraction={clamp01((data?.debitCourantM3h ?? 0) / DEBIT_POMPES_NOMINAL_M3H)}
               />
 
               <EauStatCard

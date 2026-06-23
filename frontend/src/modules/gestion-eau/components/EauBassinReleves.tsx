@@ -27,15 +27,21 @@ import BassinStockCard, { type ExplainInfo } from './bassin/BassinStockCard';
 import TestsDebit from './bassin/TestsDebit';
 import ArretsPompe from './bassin/ArretsPompe';
 import BassinHistoriqueAdmin from './bassin/BassinHistoriqueAdmin';
-import { getEauCalageOffset } from '../utils/scrollUnderHeader';
+import { getEauCalageOffset, scrollElementUnderHeader } from '../utils/scrollUnderHeader';
 
 export default function EauBassinReleves({
   openIntent,
   onConsumeIntent,
   creditsSlot,
 }: {
-  /** Deep-link / raccourci : 'niveau' ouvre le tiroir Saisir hauteur, 'debit' ouvre la section Tests. */
-  openIntent: 'niveau' | 'debit' | null;
+  /**
+   * Deep-link / raccourci :
+   *   - 'niveau'     ouvre le tiroir « Saisir hauteur »,
+   *   - 'debit'      ouvre la section Tests et la centre (icône carte « Pompes » → saisie débit),
+   *   - 'debitFocus' ouvre la section Tests puis CALE le bloc « Débit mesuré (m³/h) » sous la barre
+   *                  d'onglets (clic sur le CORPS de la carte « Pompes en marche »).
+   */
+  openIntent: 'niveau' | 'debit' | 'debitFocus' | null;
   onConsumeIntent: () => void;
   /** Contenu « crédits » (entrées d'eau) inséré entre la carte Bassin et la section Tests de débit. */
   creditsSlot?: ReactNode;
@@ -85,6 +91,18 @@ export default function EauBassinReleves({
     } else if (openIntent === 'debit') {
       setDebitOpen(true);
       requestAnimationFrame(() => debitRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    } else if (openIntent === 'debitFocus') {
+      // Révéler la section Tests de débit puis caler le HAUT du bloc « Débit mesuré (m³/h) » juste
+      // sous la barre d'onglets collante. Ancre = `[data-eau-debit-mesure]` (présente si des tests
+      // existent), repli = haut de la section Tests (debitRef). rAF pour position à jour + ré-assertion
+      // différée (~360 ms) pour absorber un décalage tardif (montage Recharts, bandeau d'annonce).
+      setDebitOpen(true);
+      const focusDebit = () => {
+        const el = (document.querySelector('[data-eau-debit-mesure]') as HTMLElement | null) ?? debitRef.current;
+        if (el) scrollElementUnderHeader(el);
+      };
+      requestAnimationFrame(focusDebit);
+      setTimeout(focusDebit, 360);
     }
     onConsumeIntent();
     // eslint-disable-next-line react-hooks/exhaustive-deps

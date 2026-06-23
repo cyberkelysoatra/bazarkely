@@ -59,7 +59,7 @@ export default function EauRelevesPage() {
   const [tab, setTab] = useState<TabKey>(() => initialTab(params));
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
   const [preselectFacet, setPreselectFacet] = useState<ReleveFacet | null>(null);
-  const [bassinIntent, setBassinIntent] = useState<'niveau' | 'debit' | null>(null);
+  const [bassinIntent, setBassinIntent] = useState<'niveau' | 'debit' | 'debitFocus' | null>(null);
   const [apportsAutoOpen, setApportsAutoOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -90,10 +90,12 @@ export default function EauRelevesPage() {
       setTab('source');
       setApportsAutoOpen(true);
     } else if (t === 'source') {
-      // Consultation simple de l'onglet Source : aucun tiroir/section ouvert d'office.
       setTab('source');
-      setBassinIntent(null);
       setApportsAutoOpen(false);
+      // `?focus=debit` (carte « Pompes en marche ») : révéler la section Tests de débit et caler le
+      // bloc « Débit mesuré (m³/h) » sous les onglets. Distinct de `?tab=bassin&bt=debit` (icône →
+      // saisie) qui passe par l'intention 'debit'. Sinon : consultation simple (aucun tiroir).
+      setBassinIntent(params.get('focus') === 'debit' ? 'debitFocus' : null);
     } else if (t) {
       setTab('compteurs');
     }
@@ -106,7 +108,8 @@ export default function EauRelevesPage() {
     setBassinIntent(null);
     setApportsAutoOpen(false);
     // Nettoie la query pour éviter de re-cibler au prochain rendu.
-    if (params.get('tab') || params.get('c') || params.get('bt')) setParams({}, { replace: true });
+    if (params.get('tab') || params.get('c') || params.get('bt') || params.get('focus'))
+      setParams({}, { replace: true });
   };
 
   // Raccourcis bas : basculent d'onglet ET déclenchent l'intention d'ouverture (set après
