@@ -105,6 +105,10 @@ export default function EauDashboard() {
       /* stockage indisponible (mode privé) — sans gravité */
     }
   };
+  // Drapeau EN MÉMOIRE (non persisté) : true dès que l'utilisateur choisit lui-même une
+  // option du menu pendant cette visite → la bascule auto vers « période » ne se déclenche
+  // plus. Se réinitialise à chaque rechargement (réévaluation à la visite suivante).
+  const userPickedBase = useRef(false);
 
   // Menu déroulant custom (remplace le <select> natif, non animable) : ouverture/fermeture
   // pilotées + fermeture au clic extérieur / Échap. Animation façon iOS (cf. baseSelector).
@@ -140,6 +144,19 @@ export default function EauDashboard() {
           setConso(t.consoParJour);
           setNiveau(t.niveauBassin);
           setElecKpi(e);
+          // Bascule auto vers « Sur la période » si la fenêtre « Depuis minuit » est vide
+          // (≥1 carte fenêtre nulle/0), sauf si l'utilisateur a déjà choisi une base à la main
+          // pendant cette visite. Évaluée une seule fois ici (chargement des données), aucune
+          // écriture localStorage (l'auto n'est pas mémorisée d'une visite à l'autre).
+          const j = d.flux.jour;
+          const jourVide =
+            j.entreesM3 === 0 ||
+            j.consoM3 === 0 ||
+            j.consoReseauM3 == null ||
+            j.consoReseauM3 === 0;
+          if (!userPickedBase.current && jourVide) {
+            setBase((prev) => (prev !== 'periode' ? 'periode' : prev));
+          }
         }
       } catch (err) {
         console.warn('⚠️ [EauDashboard] chargement échoué:', (err as any)?.message);
@@ -230,6 +247,7 @@ export default function EauDashboard() {
               role="option"
               aria-selected={selected}
               onClick={() => {
+                userPickedBase.current = true;
                 changeBase(o.key);
                 setBaseMenuOpen(false);
               }}

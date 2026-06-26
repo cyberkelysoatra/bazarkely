@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.66.17';
-export const APP_VERSION_NAME = 'Module Eau, carte « Pompes en marche » : le CORPS ouvre les Releves onglet Source (simple consultation) ; l ICONE ouvre la section « Tests de debit » et cale son haut sous les onglets.';
-export const LAST_UPDATED = '2026-06-23';
-export const APP_BUILD_DATE = '2026-06-23';
+export const APP_VERSION = '3.66.18';
+export const APP_VERSION_NAME = 'Module Eau, tableau de bord : bascule automatique de la base horaire vers « Sur la periode » quand la vue « Depuis minuit » est vide (≥1 carte fenetre nulle/0), tant que l utilisateur n a pas choisi de base a la main pendant la visite.';
+export const LAST_UPDATED = '2026-06-26';
+export const APP_BUILD_DATE = '2026-06-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.18',
+    date: '2026-06-26',
+    description:
+      'Module Eau, tableau de bord : auto-bascule de la base horaire vers « Sur la periode » si la fenetre « Depuis minuit » est vide, sauf choix manuel pendant la visite. Aucune ecriture localStorage pour l auto (non memorise d une visite a l autre).',
+    changes: [
+      'EauDashboard.tsx : drapeau en memoire userPickedBase (useRef) ; evaluation unique au chargement des donnees (apres setData) — fenetre jour vide (entreesM3/consoM3 === 0 ou consoReseauM3 null/0) → setBase(periode) via updater, sans changeBase ni localStorage.',
+      'EauDashboard.tsx : onClick des options du menu base passe userPickedBase.current = true (priorite absolue, duree = cette visite) avant changeBase.',
+      'constants/appVersion.ts + package.json : version 3.66.18 + note FR',
+    ],
+  },
   {
     version: '3.66.17',
     date: '2026-06-23',
