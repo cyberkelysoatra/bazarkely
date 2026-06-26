@@ -26,7 +26,7 @@ export type LucideIcon = React.ComponentType<{
 /** Teintes AHUVI pour les conteneurs d'icônes. `amber`/`rose` réservés au SENS (alerte/perte). */
 export type EauTone = 'forest' | 'olive' | 'gold' | 'teal' | 'neutral' | 'amber' | 'rose' | 'emerald';
 
-const TONE_CONTAINER: Record<EauTone, string> = {
+export const TONE_CONTAINER: Record<EauTone, string> = {
   forest: 'bg-ahuvi-100 text-ahuvi-forest',
   olive: 'bg-ahuvi-100 text-ahuvi-olive',
   // gold/teal adossés aux tokens AHUVI (plus d'hex arbitraires) : or = accent marque,
@@ -39,7 +39,7 @@ const TONE_CONTAINER: Record<EauTone, string> = {
   emerald: 'bg-emerald-100 text-emerald-700',
 };
 
-const TONE_VALUE: Record<EauTone, string> = {
+export const TONE_VALUE: Record<EauTone, string> = {
   forest: 'text-ahuvi-forest',
   olive: 'text-ahuvi-olive',
   // VALEUR or = encre assombrie accessible (contraste ≥ 4,5:1 sur blanc). Les SURFACES et

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
+import EauConsoFlipCard, { type ConsoFace } from './EauConsoFlipCard';
 import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData, type BaseHoraire } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
@@ -275,6 +276,27 @@ export default function EauDashboard() {
     tauxAffiche != null ? tauxAffiche * 100 : data?.tauxRemplissage != null ? data.tauxRemplissage * 100 : null;
   const hideFlotteurLabel = niveauPct != null && niveauPct > 84;
 
+  // Deux faces de la carte alternée « Conso du réseau » ↔ « Conso au compteur » : mêmes
+  // valeurs/format qu'avant (une fois l'animation split-flap terminée), simplement scindées
+  // en deux états affichés à tour de rôle (cf. EauConsoFlipCard).
+  const consoFaces: [ConsoFace, ConsoFace] = [
+    {
+      icon: Waves,
+      tone: 'teal',
+      title: 'Conso du réseau',
+      valueMain: flux?.consoReseauM3 != null ? fmtM3h(rate(flux.consoReseauM3)) : '—',
+      hint: flux?.consoReseauM3 != null ? cumulSub(flux.consoReseauM3) : 'Sortie vers le réseau',
+    },
+    {
+      icon: Droplet,
+      tone: 'olive',
+      title: 'Conso au compteur',
+      valueMain: fmtM3h(rate(flux?.consoM3)),
+      valuePct: consoCompteurPct != null ? fmtPct(consoCompteurPct) : undefined,
+      hint: cumulSub(flux?.consoM3),
+    },
+  ];
+
   return (
     <EauPageShell
       title="Gestion Eau"
@@ -335,37 +357,13 @@ export default function EauDashboard() {
 
             {/* Colonne droite : cartes dont l'icône ouvre la saisie COMPTEUR. */}
             <div className="flex flex-col gap-3">
-              <EauStatCard
-                icon={Waves}
-                tone="teal"
-                label="Conso du réseau"
-                value={flux?.consoReseauM3 != null ? fmtM3h(rate(flux.consoReseauM3)) : '—'}
-                hint={flux?.consoReseauM3 != null ? cumulSub(flux.consoReseauM3) : 'Sortie vers le réseau'}
-                onClick={goTendances}
-                onIconClick={goSaisieCompteur}
+              {/* Carte alternée (7 s, split-flap) : « Conso du réseau » ↔ « Conso au compteur ».
+                  Corps → Tendances ; icône → saisie compteur ; titre → bascule + reset 7 s. */}
+              <EauConsoFlipCard
+                faces={consoFaces}
+                onBody={goTendances}
+                onIcon={goSaisieCompteur}
                 iconAriaLabel="Saisir un relevé compteur"
-                hideChevron
-              />
-
-              <EauStatCard
-                icon={Droplet}
-                tone="olive"
-                label="Conso au compteur"
-                value={
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span>{fmtM3h(rate(flux?.consoM3))}</span>
-                    {consoCompteurPct != null && (
-                      <span className="text-sm font-medium text-gray-400" title="Part de la conso du réseau">
-                        {fmtPct(consoCompteurPct)}
-                      </span>
-                    )}
-                  </span>
-                }
-                hint={cumulSub(flux?.consoM3)}
-                onClick={goTendances}
-                onIconClick={goSaisieCompteur}
-                iconAriaLabel="Saisir un relevé compteur"
-                hideChevron
               />
 
               {/* Eau non comptée = sortie réseau − conso comptée (modèle « débit × temps de

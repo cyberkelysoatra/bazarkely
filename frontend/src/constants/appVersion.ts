@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.66.19';
-export const APP_VERSION_NAME = 'Module Eau, tableau de bord, carte « Stock actuel » : l etiquette de pourcentage du niveau d eau peut depasser 100 % (vrai ratio stock/volume max, non plafonne) ; au-dela de 84 %, la pastille « 100% » du flotteur est masquee (le trait pointille reste) pour eviter le chevauchement des deux etiquettes.';
+export const APP_VERSION = '3.66.20';
+export const APP_VERSION_NAME = 'Module Eau, tableau de bord : les cartes « Conso du reseau » et « Conso au compteur » fusionnent en UNE seule carte qui alterne automatiquement toutes les 7 s, avec une transition facon panneau d affichage de gare (split-flap) — chaque caractere (titre, valeur, sous-titre) defile jusqu a la bonne lettre et l icone se retourne (Waves <-> Droplet, teal <-> olive). Clic sur le titre = bascule immediate + relance du cycle ; clic corps = Tendances ; clic icone = saisie compteur.';
 export const LAST_UPDATED = '2026-06-26';
 export const APP_BUILD_DATE = '2026-06-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.20',
+    date: '2026-06-26',
+    description:
+      'Module Eau, tableau de bord : fusion des cartes « Conso du reseau » et « Conso au compteur » en une carte alternee (7 s) avec transition split-flap (panneau de gare) sur tout le contenu + retournement d icone.',
+    changes: [
+      'EauSplitFlap.tsx (nouveau) : brique de defilement caractere par caractere facon panneau de gare — chaque volet roule vers l avant (boucle circulaire) du caractere courant jusqu a la cible ; alphabet ordonne borne aux caracteres des deux faces ; largeur figee par spacer (zero tremblement) ; prefers-reduced-motion = changement direct ; un seul setInterval actif pendant la transition, nettoye.',
+      'EauConsoFlipCard.tsx (nouveau) : carte KPI a 2 faces qui alterne toutes les 7 s (en pause si onglet cache) ; titre = bouton de bascule instantanee + reset du cycle (stopPropagation, clavier, aria-label) ; corps = onClick (Tendances) ; icone = onIconClick (saisie compteur) avec retournement rotateY + glissement de tonalite teal <-> olive.',
+      'EauUi.tsx (partage) : export additif des tokens TONE_CONTAINER et TONE_VALUE (aucune signature changee).',
+      'EauDashboard.tsx : remplacement des 2 EauStatCard Conso du reseau / Conso au compteur par un seul EauConsoFlipCard (colonne droite = carte alternee, Eau non comptee, Autonomie) ; faces derivees des memes valeurs/format qu avant.',
+      'constants/appVersion.ts + package.json : version 3.66.20 + note FR',
+    ],
+  },
   {
     version: '3.66.19',
     date: '2026-06-26',
