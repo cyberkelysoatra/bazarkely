@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.66.18';
-export const APP_VERSION_NAME = 'Module Eau, tableau de bord : bascule automatique de la base horaire vers « Sur la periode » quand la vue « Depuis minuit » est vide (≥1 carte fenetre nulle/0), tant que l utilisateur n a pas choisi de base a la main pendant la visite.';
+export const APP_VERSION = '3.66.19';
+export const APP_VERSION_NAME = 'Module Eau, tableau de bord, carte « Stock actuel » : l etiquette de pourcentage du niveau d eau peut depasser 100 % (vrai ratio stock/volume max, non plafonne) ; au-dela de 84 %, la pastille « 100% » du flotteur est masquee (le trait pointille reste) pour eviter le chevauchement des deux etiquettes.';
 export const LAST_UPDATED = '2026-06-26';
 export const APP_BUILD_DATE = '2026-06-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.66.19',
+    date: '2026-06-26',
+    description:
+      'Module Eau, tableau de bord, carte « Stock actuel » : pourcentage du niveau d eau non plafonne (peut afficher > 100 %) + masquage de la pastille « 100% » du flotteur quand le niveau depasse 84 % (trait pointille conserve).',
+    changes: [
+      'EauDashboard.tsx : tauxAffiche = stockActuelM3 / volumeMaxM3 (NON plafonne) pour waterLabel ; data.tauxRemplissage et l utilitaire tauxRemplissage inchanges. hideFlotteurLabel = niveau > 84 %.',
+      'EauUi.tsx (partage) : prop additive hideFlotteurLabel sur EauStatCard, transmise a EauWaterFill.',
+      'EauWaterFill.tsx (partage) : prop additive hideFlotteurLabel — la pastille texte « 100% » n est rendue que si showFlotteur && !hideFlotteurLabel ; le trait pointille du flotteur reste dans tous les cas.',
+      'constants/appVersion.ts + package.json : version 3.66.19 + note FR',
+    ],
+  },
   {
     version: '3.66.18',
     date: '2026-06-26',

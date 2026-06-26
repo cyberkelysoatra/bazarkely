@@ -98,6 +98,8 @@ export function eauSegmentTabClass(active: boolean): string {
  *                      `null`/`undefined` → rendu strictement inchangé. Active aussi des encres
  *                      renforcées (contraste ≥ 4,5:1) pour rester lisible sur l'eau.
  *   - `flotteurFraction` / `tropPleinFraction` : repères dessinés par EauWaterFill (cf. ce composant).
+ *   - `hideFlotteurLabel` : masque la pastille texte « 100 % » du flotteur (le trait pointillé reste) —
+ *                      utile quand l'étiquette % flottante monte près du flotteur et la chevaucherait.
  *   - `flowFraction` : si nombre, rend un fond de CHUTE D'EAU descendante AHUVI (EauFlowFill)
  *                      DERRIÈRE le contenu, d'intensité ∝ à cette fraction [0..1] ; `null` →
  *                      rendu inchangé. Symétrique de `waterFraction` (réutilisable sur d'autres
@@ -118,6 +120,7 @@ export function EauStatCard({
   waterLabel,
   flotteurFraction,
   tropPleinFraction,
+  hideFlotteurLabel,
   flowFraction,
   className,
 }: {
@@ -134,6 +137,7 @@ export function EauStatCard({
   waterLabel?: string | null;
   flotteurFraction?: number | null;
   tropPleinFraction?: number | null;
+  hideFlotteurLabel?: boolean;
   flowFraction?: number | null;
   className?: string;
 }) {
@@ -162,6 +166,7 @@ export function EauStatCard({
           waterLabel={waterLabel}
           flotteurFraction={flotteurFraction}
           tropPleinFraction={tropPleinFraction}
+          hideFlotteurLabel={hideFlotteurLabel}
         />
       )}
       {hasFlow && <EauFlowFill flowFraction={flowFraction as number} />}

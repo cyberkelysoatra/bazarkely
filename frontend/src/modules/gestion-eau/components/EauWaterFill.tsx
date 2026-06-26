@@ -98,12 +98,16 @@ export default function EauWaterFill({
   waterLabel,
   flotteurFraction,
   tropPleinFraction,
+  hideFlotteurLabel,
   className,
 }: {
   waterFraction: number;
   waterLabel?: string | null;
   flotteurFraction?: number | null;
   tropPleinFraction?: number | null;
+  // Masque UNIQUEMENT la pastille texte « 100 % » du flotteur (le trait pointillé reste).
+  // Utile quand l'étiquette % flottante monte près du flotteur et la chevaucherait (> 84 %).
+  hideFlotteurLabel?: boolean;
   className?: string;
 }) {
   // Niveau dessiné borné à 1 (l'eau ne sort pas de la carte) ; le pilotage reste `waterFraction`.
@@ -280,13 +284,17 @@ export default function EauWaterFill({
               l'icône. L'icône est un bouton `md:w-12` (48 px) + `p-4` (16 px) → occupe 64 px depuis
               le bord droit au breakpoint md. `right: 4.25rem` (68 px) place le bord droit de la
               pastille à 4 px à gauche de l'icône au PLUS étroit (md, 48 px) → jamais de chevauchement
-              à aucune largeur, jeu de sécurité conservé (vérifié en navigateur). */}
-          <span
-            className="absolute rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
-            style={{ fontSize: '10px', right: '4.25rem', top: '2px' }}
-          >
-            100%
-          </span>
+              à aucune largeur, jeu de sécurité conservé (vérifié en navigateur).
+              Masquée quand `hideFlotteurLabel` (niveau > 84 %) → l'étiquette % flottante, qui arrive
+              à ce niveau, ne se dédouble plus avec cette pastille ; le trait pointillé ci-dessus reste. */}
+          {!hideFlotteurLabel && (
+            <span
+              className="absolute rounded bg-white/70 px-1 font-medium leading-none text-ahuvi-forest"
+              style={{ fontSize: '10px', right: '4.25rem', top: '2px' }}
+            >
+              100%
+            </span>
+          )}
         </div>
       )}
 

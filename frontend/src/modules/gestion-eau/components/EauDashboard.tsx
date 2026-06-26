@@ -264,6 +264,17 @@ export default function EauDashboard() {
     </div>
   );
 
+  // Taux AFFICHÉ (étiquette % flottante de la carte « Stock actuel ») : vrai ratio NON plafonné
+  // stock/volumeMax → peut dépasser 100 % (102 %, 103 %…). Distinct de `data.tauxRemplissage`
+  // (borné [0,1], réutilisé ailleurs — JAMAIS modifié ici). Même référence 100 % (volumeMaxM3).
+  const tauxAffiche =
+    data?.stockActuelM3 != null && data?.volumeMaxM3 ? data.stockActuelM3 / data.volumeMaxM3 : null;
+  // Au-delà de 84 %, l'étiquette % flottante arrive près du trait flotteur et chevauche sa
+  // pastille « 100 % » → on masque cette pastille texte (le trait pointillé reste).
+  const niveauPct =
+    tauxAffiche != null ? tauxAffiche * 100 : data?.tauxRemplissage != null ? data.tauxRemplissage * 100 : null;
+  const hideFlotteurLabel = niveauPct != null && niveauPct > 84;
+
   return (
     <EauPageShell
       title="Gestion Eau"
@@ -290,9 +301,10 @@ export default function EauDashboard() {
                 iconAriaLabel="Saisir un relevé bassin"
                 hideChevron
                 waterFraction={data?.bassinWaterFraction ?? data?.tauxRemplissage ?? null}
-                waterLabel={data?.tauxRemplissage != null ? fmtPct(data.tauxRemplissage, { isRatio: true }) : null}
+                waterLabel={tauxAffiche != null ? fmtPct(tauxAffiche, { isRatio: true }) : null}
                 flotteurFraction={data?.bassinFlotteurFraction ?? null}
                 tropPleinFraction={data?.bassinTropPleinFraction ?? null}
+                hideFlotteurLabel={hideFlotteurLabel}
               />
 
               <EauStatCard
