@@ -26,6 +26,7 @@ export interface User {
     recommendationHistory?: any[]; // RecommendationWithFeedback[] - défini dans useRecommendations.ts
     recommendationFeedback?: any[]; // Feedback[] - défini dans useRecommendations.ts
     themePreferences?: Record<string, number>; // Préférences de thèmes pour ML
+    moduleOrder?: string[]; // Ordre personnalisé des modules dans le sélecteur (synchronisé)
   };
   notificationPreferences?: NotificationSettings;
   // Extended profile fields for certification system

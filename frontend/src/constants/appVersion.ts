@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.66.20';
-export const APP_VERSION_NAME = 'Module Eau, tableau de bord : les cartes « Conso du reseau » et « Conso au compteur » fusionnent en UNE seule carte qui alterne automatiquement toutes les 7 s, avec une transition facon panneau d affichage de gare (split-flap) — chaque caractere (titre, valeur, sous-titre) defile jusqu a la bonne lettre et l icone se retourne (Waves <-> Droplet, teal <-> olive). Clic sur le titre = bascule immediate + relance du cycle ; clic corps = Tendances ; clic icone = saisie compteur.';
-export const LAST_UPDATED = '2026-06-26';
-export const APP_BUILD_DATE = '2026-06-26';
+export const APP_VERSION = '3.67.0';
+export const APP_VERSION_NAME = 'Selecteur de modules (barre du bas) : reorganisation par glisser-deposer, propre a chaque utilisateur et synchronisee. Un appui long sur un module ouvre le mode reorganisation (tous les modules visibles, l actif marque d un anneau) ou l on glisse les modules de gauche a droite ; l ordre est enregistre dans les preferences (offline-first + synchro Supabase, sans ecraser les autres reglages) et survit au rechargement. Tap court = bascule de module (inchange). Rangee defilante horizontalement, aide contextuelle en francais simple.';
+export const LAST_UPDATED = '2026-06-30';
+export const APP_BUILD_DATE = '2026-06-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.67.0',
+    date: '2026-06-30',
+    description:
+      'Selecteur de modules (BottomNav, shell partage) : reorganisation des modules par glisser-deposer, par utilisateur et synchronisee via preferences.moduleOrder.',
+    changes: [
+      'utils/moduleOrder.ts (nouveau) : helper pur orderModules(modules, savedOrder) — respecte l ordre sauvegarde, ignore un id disparu, ajoute les nouveaux modules a la fin. Test unitaire Vitest (6 cas).',
+      'BottomNav.tsx (partage) : mode switcher reordonne (ordre lu depuis user.preferences.moduleOrder), rangee defilante horizontale (flex-nowrap overflow-x-auto), appui long (~400 ms) pour entrer en reorganisation, glisser-deposer @dnd-kit (SortableContext horizontal), persistance optimiste local + synchro Supabase best-effort (fusion sans ecraser priorityAnswers), sortie par « Termine » ou clic exterieur. Aide contextuelle FR.',
+      'types/index.ts : ajout additif preferences.moduleOrder?: string[].',
+      'constants/appVersion.ts + package.json : version 3.67.0 + note FR',
+    ],
+  },
   {
     version: '3.66.20',
     date: '2026-06-26',
