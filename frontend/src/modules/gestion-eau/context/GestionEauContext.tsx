@@ -18,7 +18,8 @@ import {
   claimPendingTokenInvitation,
   invitationTargetPath,
 } from '../services/eauInvitationService';
-import type { EauRoles } from '../types/gestionEau';
+import type { EauRole, EauRoles, EauSimulatedClient } from '../types/gestionEau';
+import { SIMULATABLE_ROLES } from '../constants/simulationRoles';
 
 /**
  * État de la session Supabase vis-à-vis du module eau (Phase 1 — fondation identité) :
@@ -33,7 +34,27 @@ export type EauSessionStatus = 'checking' | 'valid' | 'needs-reauth' | 'mismatch
 
 interface GestionEauContextType {
   userId: string | null;
+  /**
+   * Rôles EFFECTIFS consommés par les gardes de route, le filtrage de nav et les
+   * écrans. En simulation (admin qui incarne un rôle), ne contient QUE le rôle
+   * simulé ; sinon = `realRoles`. Aucun consommateur n'a besoin de changer.
+   */
   roles: EauRoles;
+  /** Rôles RÉELS de l'utilisateur (jamais altérés par la simulation). */
+  realRoles: EauRoles;
+  /** true = un admin incarne actuellement un autre rôle (simulation active). */
+  isSimulating: boolean;
+  /** Rôle simulé courant (null hors simulation). Phase 1 : 'releveur' | 'promoteur'. */
+  simulatedRole: EauRole | null;
+  /** Client/villa simulé (réservé Phase 2). Toujours null en Phase 1. */
+  simulatedClient: EauSimulatedClient | null;
+  /**
+   * Incarner un rôle (admin uniquement). Sans effet si l'utilisateur réel n'est pas
+   * admin, ou si le rôle n'est pas simulable en Phase 1 (releveur/promoteur).
+   */
+  setSimulation: (role: EauRole, client?: EauSimulatedClient | null) => void;
+  /** Sortir de la simulation et revenir à l'app admin réelle. */
+  clearSimulation: () => void;
   /** Accès au module = au moins un rôle (admin OU releveur OU client OU promoteur). */
   hasEauAccess: boolean;
   /**
@@ -62,6 +83,29 @@ interface GestionEauContextType {
 }
 
 const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false, promoteur: false };
+
+// Persistance de la simulation de rôle (100 % frontend). Réservée à l'admin :
+// restaurée seulement après confirmation des rôles ET si l'utilisateur est admin,
+// purgée sinon et à la déconnexion. `SIM_CLIENT_KEY` est réservé à la Phase 2.
+const SIM_ROLE_KEY = 'eau_sim_role';
+const SIM_CLIENT_KEY = 'eau_sim_client';
+
+/**
+ * Rôles EFFECTIFS = si l'utilisateur réel est admin ET qu'un rôle est simulé, un
+ * objet où SEUL le rôle simulé est `true` ; sinon les rôles réels inchangés. La
+ * garde `real.admin` est un filet : un non-admin ne peut jamais « voir » autre chose.
+ */
+function computeEffectiveRoles(real: EauRoles, sim: EauRole | null): EauRoles {
+  if (real.admin && sim) {
+    return {
+      admin: sim === 'admin',
+      releveur: sim === 'releveur',
+      client: sim === 'client',
+      promoteur: sim === 'promoteur',
+    };
+  }
+  return real;
+}
 
 /** Notifie l'utilisateur du résultat d'un enrôlement traité au retour de Google. */
 function notifyEnrollment(res: Awaited<ReturnType<typeof processPendingEnrollment>>): void {
@@ -97,7 +141,12 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const storeUser = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
   const [userId, setUserId] = useState<string | null>(null);
-  const [roles, setRoles] = useState<EauRoles>(EMPTY_ROLES);
+  // Rôles RÉELS (résolus serveur/cache). Les rôles effectifs (avec simulation) sont
+  // dérivés au rendu — voir `computeEffectiveRoles`.
+  const [realRoles, setRealRoles] = useState<EauRoles>(EMPTY_ROLES);
+  // Simulation de rôle (admin uniquement, 100 % frontend). null = pas de simulation.
+  const [simulatedRole, setSimulatedRoleState] = useState<EauRole | null>(null);
+  const [simulatedClient, setSimulatedClient] = useState<EauSimulatedClient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<EauSessionStatus>('checking');
@@ -128,7 +177,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
           // Compte Google différent du compte connecté au shell → refuser.
           setSessionStatus('mismatch');
           setUserId(storeId);
-          setRoles(EMPTY_ROLES);
+          setRealRoles(EMPTY_ROLES);
           if (showSpinner) setIsLoading(false);
           return;
         }
@@ -143,7 +192,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         // En ligne sans session lisible (ou jamais établie hors-ligne) → ré-auth Google.
         setSessionStatus('needs-reauth');
         setUserId(storeId);
-        setRoles(EMPTY_ROLES);
+        setRealRoles(EMPTY_ROLES);
         if (showSpinner) setIsLoading(false);
         return;
       }
@@ -186,7 +235,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
 
       // Bootstrap propriétaire + lecture des rôles effectifs (avec retry du pull à froid).
       const { roles: effective, confirmed } = await ensureRolesBootstrap(id, online);
-      setRoles(effective);
+      setRealRoles(effective);
       setRolesConfirmed(confirmed);
 
       // Redirection post-claim (invitation vitrine WhatsApp) : un jeton vient d'être
@@ -205,7 +254,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     } catch (e: any) {
       console.error('❌ [GestionEau] Erreur chargement contexte:', e);
       setError(e?.message ?? 'Erreur de chargement du module Gestion Eau');
-      setRoles(EMPTY_ROLES);
+      setRealRoles(EMPTY_ROLES);
       // Erreur = état NON résolu : la garde affichera un écran d'attente, pas un rebond.
       setRolesConfirmed(false);
     } finally {
@@ -236,7 +285,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const refreshRoles = useCallback(async () => {
     if (!userId) return;
     const effective = await getRolesForUser(userId);
-    setRoles(effective);
+    setRealRoles(effective);
   }, [userId]);
 
   // Relance complète (session + bootstrap + pull rôles) avec spinner. Utilisé par
@@ -256,13 +305,125 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // ───────────────────────── Simulation de rôle (admin) ─────────────────────────
+  // Restauration au montage : SEULEMENT après confirmation fiable des rôles ET si
+  // l'utilisateur réel est admin. Pour un non-admin, on purge toute valeur résiduelle
+  // (défense en profondeur : la simulation ne doit jamais s'appliquer à un non-admin).
+  const simRestoredRef = useRef(false);
+  useEffect(() => {
+    if (!rolesConfirmed) return;
+    if (!realRoles.admin) {
+      if (simulatedRole !== null) setSimulatedRoleState(null);
+      try {
+        localStorage.removeItem(SIM_ROLE_KEY);
+        localStorage.removeItem(SIM_CLIENT_KEY);
+      } catch {
+        /* localStorage indisponible */
+      }
+      return;
+    }
+    if (simRestoredRef.current) return;
+    simRestoredRef.current = true;
+    try {
+      const stored = localStorage.getItem(SIM_ROLE_KEY) as EauRole | null;
+      if (stored && SIMULATABLE_ROLES.includes(stored)) {
+        setSimulatedRoleState(stored);
+      } else if (stored) {
+        localStorage.removeItem(SIM_ROLE_KEY);
+      }
+    } catch {
+      /* localStorage indisponible */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolesConfirmed, realRoles.admin]);
+
+  // Purge à la déconnexion (logout / SIGNED_OUT) : détectée par la transition
+  // « avait un utilisateur » → « plus d'utilisateur ». On ne purge PAS le null de boot
+  // (ref initialisée à false) pour ne pas effacer une simulation légitime avant le login.
+  const hadUserRef = useRef(false);
+  useEffect(() => {
+    const uid = storeUser?.id ?? null;
+    if (uid) {
+      hadUserRef.current = true;
+    } else if (hadUserRef.current) {
+      hadUserRef.current = false;
+      simRestoredRef.current = false;
+      setSimulatedRoleState(null);
+      setSimulatedClient(null);
+      try {
+        localStorage.removeItem(SIM_ROLE_KEY);
+        localStorage.removeItem(SIM_CLIENT_KEY);
+      } catch {
+        /* localStorage indisponible */
+      }
+    }
+  }, [storeUser?.id]);
+
+  // Incarner un rôle : réservé à l'admin réel + rôle simulable (Phase 1 : releveur/promoteur).
+  const setSimulation = useCallback(
+    (role: EauRole, client: EauSimulatedClient | null = null) => {
+      if (!realRoles.admin) {
+        console.warn('⚠️ [EauSim] Simulation réservée à l’administrateur. Ignoré.');
+        return;
+      }
+      if (!SIMULATABLE_ROLES.includes(role)) {
+        console.warn('⚠️ [EauSim] Rôle non simulable en Phase 1 :', role);
+        return;
+      }
+      setSimulatedRoleState(role);
+      setSimulatedClient(client);
+      try {
+        localStorage.setItem(SIM_ROLE_KEY, role);
+        if (client) localStorage.setItem(SIM_CLIENT_KEY, JSON.stringify(client));
+        else localStorage.removeItem(SIM_CLIENT_KEY);
+      } catch {
+        /* localStorage indisponible : la simulation reste en mémoire pour cette session */
+      }
+    },
+    [realRoles.admin]
+  );
+
+  const clearSimulation = useCallback(() => {
+    setSimulatedRoleState(null);
+    setSimulatedClient(null);
+    try {
+      localStorage.removeItem(SIM_ROLE_KEY);
+      localStorage.removeItem(SIM_CLIENT_KEY);
+    } catch {
+      /* localStorage indisponible */
+    }
+  }, []);
+
+  // Rôles EFFECTIFS (avec simulation) — consommés par les gardes/nav/écrans.
+  const roles = computeEffectiveRoles(realRoles, simulatedRole);
+  const isSimulating = !!simulatedRole && realRoles.admin;
+
   const hasEauAccess = roles.admin || roles.releveur || roles.client || roles.promoteur;
   // Promoteur « pur » = lecture seule. Un admin/releveur (même cumulé promoteur) écrit.
+  // Calculé sur les rôles EFFECTIFS → en simulation promoteur, l'admin passe en lecture seule.
   const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
 
   return (
     <GestionEauContext.Provider
-      value={{ userId, roles, hasEauAccess, isReadOnly, isLoading, error, sessionStatus, rolesConfirmed, refreshRoles, retryAccess, reauth }}
+      value={{
+        userId,
+        roles,
+        realRoles,
+        isSimulating,
+        simulatedRole,
+        simulatedClient,
+        setSimulation,
+        clearSimulation,
+        hasEauAccess,
+        isReadOnly,
+        isLoading,
+        error,
+        sessionStatus,
+        rolesConfirmed,
+        refreshRoles,
+        retryAccess,
+        reauth,
+      }}
     >
       {children}
     </GestionEauContext.Provider>

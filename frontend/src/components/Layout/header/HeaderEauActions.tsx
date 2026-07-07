@@ -26,11 +26,20 @@ import {
   LogOut,
   RefreshCw,
   ChevronRight,
+  Drama,
+  ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { useAppStore } from '../../../stores/appStore';
 import { useGestionEau } from '../../../modules/gestion-eau/context';
 import { countUnread } from '../../../modules/gestion-eau/services/eauAlerteService';
 import { countDirty } from '../../../modules/gestion-eau/services/eauSync';
+import { SIMULATION_ROLE_OPTIONS } from '../../../modules/gestion-eau/constants/simulationRoles';
+import {
+  useAideState,
+  AideToggleButton,
+  AidePanel,
+} from '../../../modules/gestion-eau/components/EauAide';
 import { APP_VERSION } from '../../../constants/appVersion';
 
 interface MenuLink {
@@ -64,11 +73,14 @@ const SECONDARY_LINKS: MenuLink[] = [
 export default function HeaderEauActions() {
   const navigate = useNavigate();
   const { logout, user } = useAppStore();
-  const { roles } = useGestionEau();
+  const { roles, realRoles, simulatedRole, isSimulating, setSimulation, clearSimulation } =
+    useGestionEau();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [dirty, setDirty] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  // Aide dépliable de la section « Simulation de rôle » (mémorisée par écran).
+  const simAide = useAideState('sim-role');
 
   useEffect(() => {
     if (!open) return;
@@ -141,6 +153,104 @@ export default function HeaderEauActions() {
               {dirty} en attente de synchronisation
             </div>
           )}
+          {/* 🎭 Simulation de rôle — ADMIN RÉEL uniquement. Reste TOUJOURS visible
+              (gate sur realRoles.admin, pas sur les rôles effectifs) pour que l'admin
+              puisse sortir de la simulation quel que soit le rôle incarné. */}
+          {realRoles?.admin && (
+            <div className="border-b border-ahuvi-100 bg-ahuvi-gold/5">
+              <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+                <Drama className="w-4 h-4 text-ahuvi-gold-700" />
+                <span className="text-xs font-bold uppercase tracking-wide text-ahuvi-forest font-ahuvi-body">
+                  Simulation de rôle
+                </span>
+                <span className="ml-auto">
+                  <AideToggleButton
+                    open={simAide.open}
+                    onClick={simAide.toggle}
+                    controls="eau-aide-panel-sim-role"
+                  />
+                </span>
+              </div>
+              <div className="px-3">
+                <AidePanel
+                  id="sim-role"
+                  open={simAide.open}
+                  quoi={
+                    <>
+                      Tu regardes l’app comme si tu étais ce rôle, avec exactement le même
+                      affichage que lui. Les chiffres restent les tiens (admin) tant que la
+                      Phase 2 n’est pas là.
+                    </>
+                  }
+                  comment={
+                    <>
+                      Choisis un rôle pour voir ses écrans et son menu. Les enregistrements
+                      s’appliquent pour de vrai. Clique « Revenir à Admin » pour sortir.
+                    </>
+                  }
+                />
+              </div>
+              <div className="py-1">
+                {/* Revenir à Admin (réel) — actif quand aucune simulation. */}
+                <button
+                  onClick={() => {
+                    clearSimulation();
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors font-ahuvi-body ${
+                    !isSimulating
+                      ? 'bg-ahuvi-forest/10 text-ahuvi-forest font-semibold'
+                      : 'text-ahuvi-800 hover:bg-ahuvi-50'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-ahuvi-forest" />
+                  <span className="flex-1 text-left">Revenir à Admin (réel)</span>
+                  {!isSimulating && <Check className="w-4 h-4 text-ahuvi-forest" />}
+                </button>
+
+                {SIMULATION_ROLE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const active = isSimulating && simulatedRole === opt.role;
+                  if (!opt.available) {
+                    // Réservé Phase 2 (ex. Propriétaire) : visible mais inactif.
+                    return (
+                      <div
+                        key={opt.role}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ahuvi-300 cursor-not-allowed font-ahuvi-body"
+                        aria-disabled="true"
+                        title="Disponible en Phase 2"
+                      >
+                        <Icon className="w-4 h-4 text-ahuvi-200" />
+                        <span className="flex-1 text-left">{opt.label}</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-ahuvi-100 text-ahuvi-olive">
+                          {opt.soon ?? 'Bientôt'}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      key={opt.role}
+                      onClick={() => {
+                        setSimulation(opt.role);
+                        setOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors font-ahuvi-body ${
+                        active
+                          ? 'bg-ahuvi-gold/15 text-ahuvi-gold-700 font-semibold'
+                          : 'text-ahuvi-800 hover:bg-ahuvi-50'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${active ? 'text-ahuvi-gold-700' : 'text-ahuvi-olive'}`} />
+                      <span className="flex-1 text-left">{opt.label}</span>
+                      {active && <Check className="w-4 h-4 text-ahuvi-gold-700" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {links.length > 0 && (
             <div className="py-1">
               {links.map((l) => {

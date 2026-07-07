@@ -423,3 +423,14 @@ export interface EauRoles {
   /** Promoteur (Phase 2) : lecture totale + seuils d'alerte ; aucune autre écriture. */
   promoteur: boolean;
 }
+
+/**
+ * Client simulé (Simulation de rôle — Phase 2) : la villa / le compte propriétaire
+ * dont l'admin emprunte la vue pour re-filtrer les données. Laissé `null` en Phase 1
+ * (seuls les rôles « larges » releveur/promoteur, sans données liées à une personne,
+ * sont simulables). Type posé dès maintenant pour accueillir la Phase 2 sans refonte.
+ */
+export interface EauSimulatedClient {
+  id: string;
+  nom: string;
+}

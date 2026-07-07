@@ -1,9 +1,10 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
 import { GESTION_EAU_NAV_ITEMS } from '../../constants';
+import { simulationRoleLabel } from '../../modules/gestion-eau/constants/simulationRoles';
 import { EauLogo } from '../../modules/gestion-eau/components';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
@@ -64,6 +65,11 @@ const Header = () => {
   // Rôles eau (cumulables) pour filtrer la nav desktop du module. useContext direct = sûr.
   const eauContextValue = useContext(GestionEauContext);
   const eauRoles = eauContextValue?.roles ?? null;
+  // Simulation de rôle (admin) : marque INTÉGRÉE au header (dans la barre de titre,
+  // jamais dans le corps de page). Cliquable → sortie immédiate de la simulation.
+  const eauIsSimulating = eauContextValue?.isSimulating ?? false;
+  const eauSimulatedRole = eauContextValue?.simulatedRole ?? null;
+  const eauClearSimulation = eauContextValue?.clearSimulation;
 
   // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
   const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -719,6 +725,27 @@ const Header = () => {
                   : 'Budget familial Madagascar'}
               </p>
             </div>
+            {/* 🎭 Marque de simulation de rôle (module Eau) — DANS la barre de titre,
+                à l'intérieur de la hauteur existante du header (frère du bloc titre,
+                comme le badge d'entreprise Construction : horizontal, n'ajoute AUCUNE
+                rangée ni hauteur → le corps de page ne bouge pas). Accent or AHUVI,
+                très visible ; cliquable → sortie immédiate de la simulation. */}
+            {isEauModule && eauIsSimulating && eauSimulatedRole && (
+              <button
+                type="button"
+                onClick={() => eauClearSimulation?.()}
+                data-eau-sim-badge
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ahuvi-gold text-white border border-ahuvi-gold-light shadow-md hover:bg-ahuvi-gold-light transition-colors font-ahuvi-body"
+                title="Simulation active — cliquez pour revenir à Admin (réel)"
+                aria-label={`Simulation du rôle ${simulationRoleLabel(eauSimulatedRole)} — cliquer pour revenir à Admin réel`}
+              >
+                <VenetianMask className="w-4 h-4 flex-shrink-0" aria-hidden />
+                <span className="text-xs font-semibold whitespace-nowrap">
+                  Simulation : {simulationRoleLabel(eauSimulatedRole)}
+                </span>
+              </button>
+            )}
+
             {/* Company name badge - Construction module only */}
             {isConstructionModule && constructionData?.activeCompany && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100/20 backdrop-blur-sm rounded-full border border-purple-300/30 shadow-sm">

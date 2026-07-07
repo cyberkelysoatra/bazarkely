@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.67.0';
-export const APP_VERSION_NAME = 'Selecteur de modules (barre du bas) : reorganisation par glisser-deposer, propre a chaque utilisateur et synchronisee. Un appui long sur un module ouvre le mode reorganisation (tous les modules visibles, l actif marque d un anneau) ou l on glisse les modules de gauche a droite ; l ordre est enregistre dans les preferences (offline-first + synchro Supabase, sans ecraser les autres reglages) et survit au rechargement. Tap court = bascule de module (inchange). Rangee defilante horizontalement, aide contextuelle en francais simple.';
-export const LAST_UPDATED = '2026-06-30';
-export const APP_BUILD_DATE = '2026-06-30';
+export const APP_VERSION = '3.68.0';
+export const APP_VERSION_NAME = 'Simulation de role (module Gestion Eau, Phase 1) : l administrateur peut incarner un autre role (Releveur ou Promoteur) et voir l app telle que ce role la voit — menus, ecrans, permissions. Le selecteur « 🎭 Simulation de role » vit dans le menu admin en haut a droite (visible admin uniquement). Une marque or tres visible apparait DANS la barre de titre (jamais dans le corps de page : hauteur du header inchangee, contenu a la meme place). La simulation persiste au rechargement (localStorage) et n est jamais restauree pour un non-admin. « Revenir a Admin (reel) » ou clic sur la marque = sortie immediate. Le role « Proprietaire » est visible mais desactive (Phase 2).';
+export const LAST_UPDATED = '2026-07-07';
+export const APP_BUILD_DATE = '2026-07-07';
 export const VERSION_HISTORY = [
+  {
+    version: '3.68.0',
+    date: '2026-07-07',
+    description:
+      'Simulation de role dans le module Gestion Eau (Phase 1) : l admin incarne Releveur/Promoteur pour etalonner visuellement le rendu de chaque role. 100 % frontend (aucune table, aucun SQL).',
+    changes: [
+      'GestionEauContext : rôles REELS (realRoles) vs EFFECTIFS (roles) — en simulation, roles ne contient QUE le rôle simulé ; gardes de route + filtrage de nav + isReadOnly s appuient sur les rôles effectifs sans changement côté consommateurs. setSimulation/clearSimulation, isSimulating, simulatedRole, simulatedClient (réservé Phase 2). Garde admin-only + persistance localStorage (eau_sim_role) restaurée après confirmation des rôles, purgée pour un non-admin et à la déconnexion. Offline-first préservé (getSession, jamais getUser).',
+      'constants/simulationRoles.ts (nouveau) : table de config des rôles simulables (Releveur, Promoteur ; Propriétaire = Phase 2 désactivé) + helper simulationRoleLabel.',
+      'HeaderEauActions : section « 🎭 Simulation de rôle » (admin réel uniquement) avec aide dépliable ; « Revenir à Admin (réel) » toujours accessible pour ne jamais rester bloqué.',
+      'Header.tsx (partagé, additif eau) : marque de simulation (chip or AHUVI + icône masque) INTÉGRÉE à la barre de titre, à hauteur constante — le corps de page ne bouge pas ; cliquable → sortie.',
+      'types/gestionEau.ts : type EauSimulatedClient (réservé Phase 2).',
+      'constants/appVersion.ts + package.json : version 3.68.0 + note FR',
+    ],
+  },
   {
     version: '3.67.0',
     date: '2026-06-30',
