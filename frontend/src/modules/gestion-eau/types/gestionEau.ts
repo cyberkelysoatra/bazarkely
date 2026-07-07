@@ -426,11 +426,17 @@ export interface EauRoles {
 
 /**
  * Client simulé (Simulation de rôle — Phase 2) : la villa / le compte propriétaire
- * dont l'admin emprunte la vue pour re-filtrer les données. Laissé `null` en Phase 1
- * (seuls les rôles « larges » releveur/promoteur, sans données liées à une personne,
- * sont simulables). Type posé dès maintenant pour accueillir la Phase 2 sans refonte.
+ * (`eau_comptes_client`) dont l'admin emprunte la vue pour re-filtrer les données.
+ * `null` hors simulation propriétaire. Porte le PÉRIMÈTRE DE DONNÉES (`compteurIds`)
+ * appliqué en mémoire à la surface propriétaire — aucune requête Supabase ajoutée.
  */
 export interface EauSimulatedClient {
+  /** id du compte client (`eau_comptes_client.id`). */
   id: string;
-  nom: string;
+  /** Utilisateur rattaché à la villa (peut être null si le compte n'est pas encore activé). */
+  userId: string | null;
+  /** Libellé lisible affiché dans la marque header et le sélecteur (nom de la villa). */
+  label: string;
+  /** Compteurs visibles de cette villa = périmètre exact des données affichées. */
+  compteurIds: string[];
 }

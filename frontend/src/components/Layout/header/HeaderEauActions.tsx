@@ -26,15 +26,26 @@ import {
   LogOut,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
   Drama,
   ShieldCheck,
   Check,
+  Search,
+  Home,
 } from 'lucide-react';
 import { useAppStore } from '../../../stores/appStore';
 import { useGestionEau } from '../../../modules/gestion-eau/context';
 import { countUnread } from '../../../modules/gestion-eau/services/eauAlerteService';
 import { countDirty } from '../../../modules/gestion-eau/services/eauSync';
+import { listComptesClient } from '../../../modules/gestion-eau/services/eauCompteClientService';
+import { listCompteurs } from '../../../modules/gestion-eau/services/eauCompteurService';
+import { EauEmptyState } from '../../../modules/gestion-eau/components/EauUi';
 import { SIMULATION_ROLE_OPTIONS } from '../../../modules/gestion-eau/constants/simulationRoles';
+import type {
+  CompteClientLocal,
+  CompteurLocal,
+  EauSimulatedClient,
+} from '../../../modules/gestion-eau/types/gestionEau';
 import {
   useAideState,
   AideToggleButton,
@@ -73,14 +84,80 @@ const SECONDARY_LINKS: MenuLink[] = [
 export default function HeaderEauActions() {
   const navigate = useNavigate();
   const { logout, user } = useAppStore();
-  const { roles, realRoles, simulatedRole, isSimulating, setSimulation, clearSimulation } =
-    useGestionEau();
+  const {
+    roles,
+    realRoles,
+    simulatedRole,
+    simulatedClient,
+    isSimulating,
+    setSimulation,
+    clearSimulation,
+  } = useGestionEau();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [dirty, setDirty] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   // Aide dépliable de la section « Simulation de rôle » (mémorisée par écran).
   const simAide = useAideState('sim-role');
+
+  // ── Sélecteur de villa (simulation « Propriétaire ») ──
+  // Sous-liste des comptes client ACTIFS, dépliée sous l'option Propriétaire, avec
+  // recherche. Chargée en mémoire (Dexie) à la première ouverture — aucune requête réseau.
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [comptes, setComptes] = useState<CompteClientLocal[]>([]);
+  const [compteurs, setCompteurs] = useState<CompteurLocal[]>([]);
+  const [comptesLoaded, setComptesLoaded] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+
+  useEffect(() => {
+    if (!clientPickerOpen || comptesLoaded) return;
+    let alive = true;
+    (async () => {
+      try {
+        const [cptes, cpts] = await Promise.all([listComptesClient(), listCompteurs()]);
+        if (!alive) return;
+        setComptes(cptes.filter((c) => c.actif));
+        setCompteurs(cpts);
+        setComptesLoaded(true);
+      } catch {
+        /* best-effort : lecture Dexie */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [clientPickerOpen, comptesLoaded]);
+
+  // Nom lisible d'un compteur (pour l'affichage du nombre + la recherche par compteur).
+  const compteurNom = (id: string) => compteurs.find((c) => c.id === id)?.nom ?? '';
+
+  // Filtrage recherche : nom de la villa, contact, ou nom d'un de ses compteurs.
+  const q = clientSearch.trim().toLowerCase();
+  const comptesFiltres = q
+    ? comptes.filter((c) => {
+        const hay = [
+          c.nom,
+          c.contact ?? '',
+          ...(c.compteur_ids ?? []).map(compteurNom),
+        ]
+          .join(' ')
+          .toLowerCase();
+        return hay.includes(q);
+      })
+    : comptes;
+
+  const selectVilla = (c: CompteClientLocal) => {
+    const client: EauSimulatedClient = {
+      id: c.id,
+      userId: c.user_id ?? null,
+      label: c.nom || 'Villa sans nom',
+      compteurIds: c.compteur_ids ?? [],
+    };
+    setSimulation('client', client);
+    setClientPickerOpen(false);
+    setClientSearch('');
+    setOpen(false);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -212,13 +289,13 @@ export default function HeaderEauActions() {
                   const Icon = opt.icon;
                   const active = isSimulating && simulatedRole === opt.role;
                   if (!opt.available) {
-                    // Réservé Phase 2 (ex. Propriétaire) : visible mais inactif.
+                    // Réservé à une phase ultérieure : visible mais inactif.
                     return (
                       <div
                         key={opt.role}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-ahuvi-300 cursor-not-allowed font-ahuvi-body"
                         aria-disabled="true"
-                        title="Disponible en Phase 2"
+                        title="Bientôt disponible"
                       >
                         <Icon className="w-4 h-4 text-ahuvi-200" />
                         <span className="flex-1 text-left">{opt.label}</span>
@@ -228,6 +305,109 @@ export default function HeaderEauActions() {
                       </div>
                     );
                   }
+
+                  // Propriétaire : le choix exige une VILLA → sous-liste dépliable (recherche).
+                  if (opt.role === 'client') {
+                    return (
+                      <div key={opt.role}>
+                        <button
+                          onClick={() => setClientPickerOpen((v) => !v)}
+                          aria-expanded={clientPickerOpen}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors font-ahuvi-body ${
+                            active
+                              ? 'bg-ahuvi-gold/15 text-ahuvi-gold-700 font-semibold'
+                              : 'text-ahuvi-800 hover:bg-ahuvi-50'
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 ${active ? 'text-ahuvi-gold-700' : 'text-ahuvi-olive'}`} />
+                          <span className="flex-1 text-left">
+                            {opt.label}
+                            {active && simulatedClient && (
+                              <span className="block text-[11px] font-normal text-ahuvi-gold-700/80 truncate max-w-[150px]">
+                                {simulatedClient.label}
+                              </span>
+                            )}
+                          </span>
+                          {active && <Check className="w-4 h-4 text-ahuvi-gold-700 flex-shrink-0" />}
+                          <ChevronDown
+                            className={`w-4 h-4 text-ahuvi-300 flex-shrink-0 transition-transform ${
+                              clientPickerOpen ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+
+                        {clientPickerOpen && (
+                          <div className="px-3 pb-2 bg-ahuvi-gold/5">
+                            <p className="text-[11px] text-ahuvi-olive italic px-1 pb-1.5 leading-snug">
+                              Tu vois l’application exactement comme ce propriétaire : seulement
+                              les compteurs de sa villa.
+                            </p>
+                            {/* Recherche (nom de villa / contact / compteur). */}
+                            <div className="relative mb-1.5">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ahuvi-300" />
+                              <input
+                                type="text"
+                                value={clientSearch}
+                                onChange={(e) => setClientSearch(e.target.value)}
+                                placeholder="Rechercher une villa…"
+                                className="w-full pl-8 pr-2 py-1.5 text-sm rounded-lg border border-ahuvi-200 bg-white text-ahuvi-800 placeholder-ahuvi-300 focus:outline-none focus:ring-2 focus:ring-ahuvi-gold/40 font-ahuvi-body"
+                              />
+                            </div>
+
+                            {!comptesLoaded ? (
+                              <div className="py-4 text-center text-xs text-ahuvi-300">Chargement…</div>
+                            ) : comptes.length === 0 ? (
+                              <EauEmptyState
+                                icon={Home}
+                                title="Aucun compte propriétaire actif"
+                                hint="Crée et active un compte client pour l’incarner."
+                                className="py-6"
+                              />
+                            ) : comptesFiltres.length === 0 ? (
+                              <div className="py-4 text-center text-xs text-ahuvi-300">
+                                Aucune villa ne correspond.
+                              </div>
+                            ) : (
+                              <div className="max-h-56 overflow-y-auto space-y-0.5">
+                                {comptesFiltres.map((c) => {
+                                  const villaActive = active && simulatedClient?.id === c.id;
+                                  const nbCompteurs = c.compteur_ids?.length ?? 0;
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      onClick={() => selectVilla(c)}
+                                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors font-ahuvi-body ${
+                                        villaActive
+                                          ? 'bg-ahuvi-gold/15 text-ahuvi-gold-700 font-semibold'
+                                          : 'text-ahuvi-800 hover:bg-white'
+                                      }`}
+                                    >
+                                      <Home
+                                        className={`w-4 h-4 flex-shrink-0 ${
+                                          villaActive ? 'text-ahuvi-gold-700' : 'text-ahuvi-olive'
+                                        }`}
+                                      />
+                                      <span className="flex-1 text-left min-w-0">
+                                        <span className="block truncate">{c.nom || 'Villa sans nom'}</span>
+                                        <span className="block text-[11px] font-normal text-ahuvi-400">
+                                          {nbCompteurs} compteur{nbCompteurs > 1 ? 's' : ''}
+                                          {c.contact ? ` · ${c.contact}` : ''}
+                                        </span>
+                                      </span>
+                                      {villaActive && (
+                                        <Check className="w-4 h-4 text-ahuvi-gold-700 flex-shrink-0" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
                     <button
                       key={opt.role}

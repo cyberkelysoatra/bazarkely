@@ -46,11 +46,19 @@ interface GestionEauContextType {
   isSimulating: boolean;
   /** Rôle simulé courant (null hors simulation). Phase 1 : 'releveur' | 'promoteur'. */
   simulatedRole: EauRole | null;
-  /** Client/villa simulé (réservé Phase 2). Toujours null en Phase 1. */
+  /** Villa/compte propriétaire simulé (Phase 2). Non-null uniquement en simulation `client`. */
   simulatedClient: EauSimulatedClient | null;
   /**
+   * Périmètre de données de la simulation « Propriétaire » : les `compteurIds` de la
+   * villa simulée quand `isSimulating && simulatedRole === 'client'`, sinon `null`.
+   * La surface propriétaire re-filtre ses lectures Dexie en mémoire sur ce périmètre
+   * (helper `filterByScope`). `null` = aucun filtrage (vue admin/releveur/promoteur).
+   */
+  dataScope: { compteurIds: string[] } | null;
+  /**
    * Incarner un rôle (admin uniquement). Sans effet si l'utilisateur réel n'est pas
-   * admin, ou si le rôle n'est pas simulable en Phase 1 (releveur/promoteur).
+   * admin, ou si le rôle n'est pas simulable. Le rôle `client` (Propriétaire) EXIGE un
+   * `client` (la villa) : appelé sans lui, l'appel est ignoré.
    */
   setSimulation: (role: EauRole, client?: EauSimulatedClient | null) => void;
   /** Sortir de la simulation et revenir à l'app admin réelle. */
@@ -89,6 +97,35 @@ const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false, pr
 // purgée sinon et à la déconnexion. `SIM_CLIENT_KEY` est réservé à la Phase 2.
 const SIM_ROLE_KEY = 'eau_sim_role';
 const SIM_CLIENT_KEY = 'eau_sim_client';
+
+/**
+ * Parse défensif de la villa simulée persistée (`eau_sim_client`). Valide la forme
+ * (`EauSimulatedClient`) — un JSON corrompu ou d'une version antérieure du type renvoie
+ * `null` (la simulation client ne sera pas restaurée plutôt que d'appliquer un périmètre
+ * incohérent). `compteurIds` filtré aux seules chaînes.
+ */
+function parseSimClient(raw: string | null): EauSimulatedClient | null {
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw);
+    if (
+      o &&
+      typeof o.id === 'string' &&
+      typeof o.label === 'string' &&
+      Array.isArray(o.compteurIds)
+    ) {
+      return {
+        id: o.id,
+        userId: typeof o.userId === 'string' ? o.userId : null,
+        label: o.label,
+        compteurIds: (o.compteurIds as unknown[]).filter((x): x is string => typeof x === 'string'),
+      };
+    }
+  } catch {
+    /* JSON invalide */
+  }
+  return null;
+}
 
 /**
  * Rôles EFFECTIFS = si l'utilisateur réel est admin ET qu'un rôle est simulé, un
@@ -327,7 +364,20 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     try {
       const stored = localStorage.getItem(SIM_ROLE_KEY) as EauRole | null;
       if (stored && SIMULATABLE_ROLES.includes(stored)) {
-        setSimulatedRoleState(stored);
+        if (stored === 'client') {
+          // Le rôle Propriétaire n'a de sens qu'avec sa villa (périmètre de données) :
+          // restaurer les deux ensemble, sinon purger (pas de simulation client « vide »).
+          const client = parseSimClient(localStorage.getItem(SIM_CLIENT_KEY));
+          if (client) {
+            setSimulatedRoleState('client');
+            setSimulatedClient(client);
+          } else {
+            localStorage.removeItem(SIM_ROLE_KEY);
+            localStorage.removeItem(SIM_CLIENT_KEY);
+          }
+        } else {
+          setSimulatedRoleState(stored);
+        }
       } else if (stored) {
         localStorage.removeItem(SIM_ROLE_KEY);
       }
@@ -367,7 +417,13 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         return;
       }
       if (!SIMULATABLE_ROLES.includes(role)) {
-        console.warn('⚠️ [EauSim] Rôle non simulable en Phase 1 :', role);
+        console.warn('⚠️ [EauSim] Rôle non simulable :', role);
+        return;
+      }
+      if (role === 'client' && !client) {
+        // Propriétaire sans villa = aucun périmètre de données → refuser (le sélecteur
+        // impose de choisir une villa avant d'appeler setSimulation('client', villa)).
+        console.warn('⚠️ [EauSim] Simulation « Propriétaire » sans villa choisie. Ignoré.');
         return;
       }
       setSimulatedRoleState(role);
@@ -403,6 +459,13 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   // Calculé sur les rôles EFFECTIFS → en simulation promoteur, l'admin passe en lecture seule.
   const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
 
+  // Périmètre de données de la simulation « Propriétaire » : compteurs de la villa simulée.
+  // Non-null uniquement quand un admin incarne le rôle `client` avec une villa choisie.
+  const dataScope =
+    isSimulating && simulatedRole === 'client' && simulatedClient
+      ? { compteurIds: simulatedClient.compteurIds }
+      : null;
+
   return (
     <GestionEauContext.Provider
       value={{
@@ -412,6 +475,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         isSimulating,
         simulatedRole,
         simulatedClient,
+        dataScope,
         setSimulation,
         clearSimulation,
         hasEauAccess,

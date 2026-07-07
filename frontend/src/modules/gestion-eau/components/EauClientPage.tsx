@@ -15,6 +15,7 @@ import { useGestionEau } from '../context/GestionEauContext';
 import { getCompteClientForUser } from '../services/eauCompteClientService';
 import { getFacturesForCompteurs } from '../services/eauFactureService';
 import { listCompteurs } from '../services/eauCompteurService';
+import { filterByScope, filterCompteursByScope } from '../utils/eauSimScope';
 import { getDernierReleveCompteur, historiqueConsoCompteur } from '../services/eauReleveService';
 import { getDernierReleveElec, historiqueConsoElec } from '../services/eauElecReleveService';
 import { getConfig } from '../services/eauConfigService';
@@ -34,7 +35,7 @@ interface CompteurVue {
 }
 
 export default function EauClientPage() {
-  const { userId } = useGestionEau();
+  const { userId, dataScope } = useGestionEau();
   const navigate = useNavigate();
   // Onglet piloté par l'URL (cohérent avec les 2 boutons du footer : Ma conso / Mes factures).
   const { tab } = useParams<{ tab?: string }>();
@@ -49,22 +50,39 @@ export default function EauClientPage() {
 
   useEffect(() => {
     (async () => {
-      if (!userId) {
+      // En simulation « Propriétaire » (dataScope non-null), le périmètre vient de la
+      // villa choisie par l'admin — PAS du compte client de l'admin (qui n'en a pas).
+      // Sinon, périmètre = compteurs du compte client de l'utilisateur réel.
+      if (!userId && !dataScope) {
         setLoading(false);
         return;
       }
+      setLoading(true);
+      setAucunCompteur(false);
       try {
-        const compte = await getCompteClientForUser(userId);
-        const ids = compte?.compteur_ids ?? [];
         setConfig(await getConfig());
 
-        if (!compte || ids.length === 0) {
+        let ids: string[];
+        if (dataScope) {
+          ids = dataScope.compteurIds;
+        } else {
+          const compte = userId ? await getCompteClientForUser(userId) : null;
+          ids = compte?.compteur_ids ?? [];
+          if (!compte) {
+            setAucunCompteur(true);
+            return;
+          }
+        }
+
+        if (ids.length === 0) {
           setAucunCompteur(true);
           return;
         }
 
+        const scope = { compteurIds: ids };
         const allCompteurs = await listCompteurs();
-        const mine = allCompteurs.filter((c) => ids.includes(c.id));
+        // Re-filtrage à la villa (défense en profondeur : jamais un compteur hors périmètre).
+        const mine = filterCompteursByScope(allCompteurs, scope);
         setCompteurs(mine);
 
         // Lectures Dexie parallélisées : par compteur (4 lectures en // ) ET sur tous
@@ -89,14 +107,18 @@ export default function EauClientPage() {
           })
         );
         setVues(vuesData);
-        setFactures(await getFacturesForCompteurs(ids));
+        // Factures scopées par compteur (le service filtre déjà sur `ids` ; le helper
+        // garantit qu'aucune facture hors périmètre ne subsiste).
+        const facturesAll = await getFacturesForCompteurs(ids);
+        setFactures(filterByScope(facturesAll, (f) => f.compteur_id, scope));
       } catch (e) {
         console.warn('⚠️ [EauClient] chargement échoué:', (e as any)?.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [userId]);
+    // Re-scoper quand la villa simulée change (dataScope) ou l'utilisateur réel.
+  }, [userId, dataScope?.compteurIds.join(',')]);
 
   const compteurNom = (id: string | null) =>
     (id && compteurs.find((c) => c.id === id)?.nom) || id || '—';

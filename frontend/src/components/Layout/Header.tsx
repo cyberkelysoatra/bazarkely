@@ -69,7 +69,16 @@ const Header = () => {
   // jamais dans le corps de page). Cliquable → sortie immédiate de la simulation.
   const eauIsSimulating = eauContextValue?.isSimulating ?? false;
   const eauSimulatedRole = eauContextValue?.simulatedRole ?? null;
+  const eauSimulatedClient = eauContextValue?.simulatedClient ?? null;
   const eauClearSimulation = eauContextValue?.clearSimulation;
+  // Libellé de la marque : « Simulation : <Rôle> », suffixé du nom de la villa en
+  // simulation Propriétaire (« Simulation : Propriétaire — Villa X »). Reste sur UNE
+  // ligne (frère du bloc titre) → n'ajoute aucune hauteur au header.
+  const eauSimLabel = eauSimulatedRole
+    ? `Simulation : ${simulationRoleLabel(eauSimulatedRole)}${
+        eauSimulatedRole === 'client' && eauSimulatedClient ? ` — ${eauSimulatedClient.label}` : ''
+      }`
+    : '';
 
   // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
   const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -735,13 +744,13 @@ const Header = () => {
                 type="button"
                 onClick={() => eauClearSimulation?.()}
                 data-eau-sim-badge
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ahuvi-gold text-white border border-ahuvi-gold-light shadow-md hover:bg-ahuvi-gold-light transition-colors font-ahuvi-body"
-                title="Simulation active — cliquez pour revenir à Admin (réel)"
-                aria-label={`Simulation du rôle ${simulationRoleLabel(eauSimulatedRole)} — cliquer pour revenir à Admin réel`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ahuvi-gold text-white border border-ahuvi-gold-light shadow-md hover:bg-ahuvi-gold-light transition-colors font-ahuvi-body max-w-[45vw] sm:max-w-xs"
+                title={`${eauSimLabel} — cliquez pour revenir à Admin (réel)`}
+                aria-label={`${eauSimLabel} — cliquer pour revenir à Admin réel`}
               >
                 <VenetianMask className="w-4 h-4 flex-shrink-0" aria-hidden />
-                <span className="text-xs font-semibold whitespace-nowrap">
-                  Simulation : {simulationRoleLabel(eauSimulatedRole)}
+                <span className="text-xs font-semibold whitespace-nowrap truncate">
+                  {eauSimLabel}
                 </span>
               </button>
             )}

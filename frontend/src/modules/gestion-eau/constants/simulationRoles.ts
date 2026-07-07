@@ -24,17 +24,18 @@ export interface SimulationRoleOption {
 }
 
 /**
- * Rôles réellement SIMULABLES via le sélecteur en Phase 1. Le contexte s'appuie
- * sur cette liste pour valider une valeur (restauration localStorage / setSimulation).
+ * Rôles réellement SIMULABLES via le sélecteur. Le contexte s'appuie sur cette liste
+ * pour valider une valeur (restauration localStorage / setSimulation). Le rôle `client`
+ * (Propriétaire) exige EN PLUS le choix d'une villa (cf. `EauSimulatedClient`).
  */
-export const SIMULATABLE_ROLES: EauRole[] = ['releveur', 'promoteur'];
+export const SIMULATABLE_ROLES: EauRole[] = ['releveur', 'promoteur', 'client'];
 
 /** Options présentées dans le sélecteur (l'ordre = ordre d'affichage). */
 export const SIMULATION_ROLE_OPTIONS: SimulationRoleOption[] = [
   { role: 'releveur', label: 'Releveur', icon: ClipboardList, available: true },
   { role: 'promoteur', label: 'Promoteur', icon: Eye, available: true },
-  // Phase 2 — vue « propriétaire » (choix d'une villa + re-filtrage des données).
-  { role: 'client', label: 'Propriétaire', icon: Home, available: false, soon: 'Phase 2' },
+  // Phase 2 — vue « propriétaire » : choix d'une villa + re-filtrage des données à ses compteurs.
+  { role: 'client', label: 'Propriétaire', icon: Home, available: true },
 ];
 
 /** Libellé court d'un rôle simulé (utilisé par la marque du header). */

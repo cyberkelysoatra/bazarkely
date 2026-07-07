@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.68.0';
-export const APP_VERSION_NAME = 'Simulation de role (module Gestion Eau, Phase 1) : l administrateur peut incarner un autre role (Releveur ou Promoteur) et voir l app telle que ce role la voit — menus, ecrans, permissions. Le selecteur « 🎭 Simulation de role » vit dans le menu admin en haut a droite (visible admin uniquement). Une marque or tres visible apparait DANS la barre de titre (jamais dans le corps de page : hauteur du header inchangee, contenu a la meme place). La simulation persiste au rechargement (localStorage) et n est jamais restauree pour un non-admin. « Revenir a Admin (reel) » ou clic sur la marque = sortie immediate. Le role « Proprietaire » est visible mais desactive (Phase 2).';
+export const APP_VERSION = '3.69.0';
+export const APP_VERSION_NAME = 'Simulation de role — Phase 2 (module Gestion Eau) : le role « Proprietaire » est active. L admin choisit une villa (compte client actif) dans une sous-liste recherchable, puis voit l espace proprietaire avec les donnees de CETTE villa uniquement (compteurs, releves, factures re-filtres cote app, en memoire, sur les compteurs de la villa — aucun SQL, aucune requete Supabase ajoutee). La marque or de la barre de titre nomme la villa (« Simulation : Proprietaire — <villa> ») sans changer la hauteur du header ni bouger le corps de page. La simulation (role + villa) persiste au rechargement (eau_sim_client) et n est jamais restauree pour un non-admin. Clic sur la marque = retour Admin complet.';
 export const LAST_UPDATED = '2026-07-07';
 export const APP_BUILD_DATE = '2026-07-07';
 export const VERSION_HISTORY = [
+  {
+    version: '3.69.0',
+    date: '2026-07-07',
+    description:
+      'Simulation de role Phase 2 : activation du role « Proprietaire » (choix d une villa + re-filtrage des donnees a ses compteurs). 100 % frontend, aucune ecriture, aucune requete Supabase ajoutee.',
+    changes: [
+      'GestionEauContext : expose dataScope ({ compteurIds } de la villa simulee, sinon null) ; simulatedClient renseigne a la selection et restaure au montage depuis eau_sim_client (parse defensif) ; setSimulation exige une villa pour le role client ; purge a la deconnexion/non-admin inchangee. computeEffectiveRoles gerait deja client → nav/gardes propagent automatiquement.',
+      'constants/simulationRoles.ts : option « Proprietaire » available:true ; SIMULATABLE_ROLES inclut « client ».',
+      'utils/eauSimScope.ts (nouveau) : helper pur filterByScope(rows, getCompteurId, scope) + filterCompteursByScope — re-filtre les lignes aux compteurs de la villa (identite si scope null).',
+      'HeaderEauActions (partage, additif eau) : sous-liste des comptes client ACTIFS depliable sous « Proprietaire », recherche (nom/contact/compteur), etat vide, aide FR ; selection → setSimulation(client, villa).',
+      'EauClientPage : perimetre issu de dataScope en simulation (au lieu du compte de l admin) ; compteurs + factures re-filtres via filterByScope ; re-scope quand la villa change.',
+      'Header.tsx (partage, additif eau) : marque enrichie « Simulation : Proprietaire — <villa> », toujours sur une ligne (hauteur header constante a 139px, corps de page inchange).',
+      'constants/appVersion.ts + package.json : version 3.69.0 + note FR',
+    ],
+  },
   {
     version: '3.68.0',
     date: '2026-07-07',
