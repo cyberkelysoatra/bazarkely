@@ -1,8 +1,12 @@
 /**
  * ReceiptScanButton — point d'entrée « Scanner un ticket » dans le flux Transactions.
  *
+ * Deux portes d'entrée vers le MÊME pipeline :
+ *   - « Scanner »  → input avec capture="environment" (appareil photo arrière direct)
+ *   - « Importer » → input sans capture (galerie / gestionnaire de fichiers du système)
+ *
  * Orchestre tout le flux HORS-LIGNE et gratuit (Phase 1) :
- *   capture caméra → pré-traitement → OCR Tesseract → parsing → décision
+ *   capture caméra ou image importée → pré-traitement → OCR Tesseract → parsing → décision
  *   (insertion directe si confiance haute & cohérent, sinon écran de revue) →
  *   création de la transaction (expense, montant = total) + lignes + trace markdown.
  *
@@ -10,7 +14,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { ScanLine, Camera, Info, Loader2 } from 'lucide-react';
+import { ScanLine, Camera, ImagePlus, Info, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Account, TransactionCategory } from '../../types';
 import transactionService from '../../services/transactionService';
@@ -53,12 +57,14 @@ const ReceiptScanButton = ({
   onCreated,
 }: ReceiptScanButtonProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [review, setReview] = useState<ReviewState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const openPicker = () => fileInputRef.current?.click();
+  const openGalleryPicker = () => galleryInputRef.current?.click();
 
   /** Crée la transaction (expense) + le ticket + les lignes, puis notifie le parent. */
   const createFromReceipt = async (args: {
@@ -102,10 +108,22 @@ const ReceiptScanButton = ({
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    // Référence capturée AVANT tout await : c'est l'input réellement à l'origine de
+    // l'événement (caméra ou galerie) qu'il faut vider, pas systématiquement le premier.
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     // Réinitialiser l'input pour autoriser le re-scan du même fichier
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    input.value = '';
     if (!file) return;
+
+    // Garde-fou : `accept` n'est qu'un filtre d'affichage, certains sélecteurs Android
+    // renvoient autre chose (PDF, document…). On refuse proprement, sans traitement.
+    if (!file.type.startsWith('image/')) {
+      toast.error(
+        'Choisissez une image (photo ou capture d’écran). Les fichiers PDF ne sont pas encore pris en charge.'
+      );
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -200,11 +218,21 @@ const ReceiptScanButton = ({
 
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+      {/* Porte 1 — appareil photo arrière direct (comportement historique, inchangé) */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        onChange={handleFile}
+        className="hidden"
+      />
+
+      {/* Porte 2 — galerie / fichiers du système : PAS d'attribut capture */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         onChange={handleFile}
         className="hidden"
       />
@@ -227,26 +255,40 @@ const ReceiptScanButton = ({
                 <Info className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-gray-600">Photographiez un reçu, les articles se remplissent tout seuls</p>
+            <p className="text-xs text-gray-600">Photographiez un reçu ou importez une image, les articles se remplissent tout seuls</p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={openPicker}
-          disabled={isProcessing}
-          className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" /> Lecture...
-            </>
-          ) : (
-            <>
-              <Camera className="w-4 h-4" /> Scanner
-            </>
-          )}
-        </button>
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openGalleryPicker}
+            disabled={isProcessing}
+            aria-label="Importer une photo enregistrée"
+            title="Importer une photo enregistrée"
+            className="inline-flex items-center justify-center gap-2 min-w-[40px] h-10 px-2 sm:px-3 bg-white border border-purple-300 text-purple-700 rounded-lg font-medium hover:bg-purple-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <ImagePlus className="w-4 h-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Importer</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={isProcessing}
+            className="inline-flex items-center justify-center gap-2 h-10 px-3 sm:px-4 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Lecture...
+              </>
+            ) : (
+              <>
+                <Camera className="w-4 h-4" /> Scanner
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {showHelp && (
@@ -265,6 +307,12 @@ const ReceiptScanButton = ({
               Touchez «&nbsp;Scanner&nbsp;», prenez le ticket bien à plat et bien éclairé. Vérifiez les
               lignes proposées (vous pouvez corriger un prix, ajouter ou retirer une ligne), choisissez
               le compte et la catégorie, puis validez. La dépense enregistrée vaut le total du ticket.
+            </p>
+            <p>
+              Vous pouvez aussi toucher «&nbsp;Importer&nbsp;» pour choisir une photo ou une capture
+              d'écran déjà enregistrée sur le téléphone&nbsp;: un reçu reçu par WhatsApp, la capture
+              d'un paiement Mvola ou Orange Money, une photo de ticket prise plus tôt. La lecture se
+              fait ensuite exactement de la même manière.
             </p>
           </div>
         </div>

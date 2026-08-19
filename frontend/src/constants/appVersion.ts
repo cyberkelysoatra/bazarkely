@@ -1,8 +1,36 @@
-export const APP_VERSION = '3.69.0';
-export const APP_VERSION_NAME = 'Simulation de role — Phase 2 (module Gestion Eau) : le role « Proprietaire » est active. L admin choisit une villa (compte client actif) dans une sous-liste recherchable, puis voit l espace proprietaire avec les donnees de CETTE villa uniquement (compteurs, releves, factures re-filtres cote app, en memoire, sur les compteurs de la villa — aucun SQL, aucune requete Supabase ajoutee). La marque or de la barre de titre nomme la villa (« Simulation : Proprietaire — <villa> ») sans changer la hauteur du header ni bouger le corps de page. La simulation (role + villa) persiste au rechargement (eau_sim_client) et n est jamais restauree pour un non-admin. Clic sur la marque = retour Admin complet.';
-export const LAST_UPDATED = '2026-07-07';
-export const APP_BUILD_DATE = '2026-07-07';
+export const APP_VERSION = '3.71.0';
+export const APP_VERSION_NAME = 'Scanner un ticket : deuxieme porte d entree « Importer ». Jusqu ici le bouton « Scanner » ouvrait DIRECTEMENT l appareil photo arriere (attribut capture) et il etait impossible de choisir une image deja enregistree sur le telephone. Un bouton secondaire « Importer » (icone ImagePlus, a gauche du bouton violet, libelle visible a partir de sm, icone seule 40x40 en dessous) ouvre desormais le selecteur de fichiers/galerie du systeme et envoie l image dans EXACTEMENT le meme pipeline (pre-traitement, OCR Google Vision puis repli Tesseract, parsing, insertion directe ou ecran de revue). Utile pour les captures d ecran Mvola/Orange Money et les recus recus par WhatsApp. Le chemin camera est inchange. Ajouts : reinitialisation de l input reellement a l origine de l evenement (re-selection du meme fichier possible sur les deux portes), garde-fou de type (un fichier non-image est refuse avec un message clair, le PDF n est pas encore pris en charge), textes d aide mis a jour, test anti-regression Vitest ReceiptScanButton.test.tsx (2 inputs, un seul avec capture). Aucune dependance ajoutee, module Gestion Eau non touche (son capture=environment reste volontaire).';
+export const LAST_UPDATED = '2026-08-20';
+export const APP_BUILD_DATE = '2026-08-20';
 export const VERSION_HISTORY = [
+  {
+    version: '3.71.0',
+    date: '2026-08-20',
+    description:
+      'Scanner un ticket : ajout d une deuxieme porte d entree « Importer » (galerie / fichiers du systeme) vers le meme pipeline OCR. Le chemin camera existant est inchange.',
+    changes: [
+      'ReceiptScanButton.tsx : second <input type="file" accept="image/*"> SANS attribut capture (galleryInputRef), branche sur le meme handleFile que l input camera. L input camera (capture="environment") reste strictement inchange.',
+      'ReceiptScanButton.tsx : bouton secondaire « Importer » (lucide ImagePlus) a gauche du bouton violet « Scanner », dans un conteneur flex-shrink-0 gap-2. Variante discrete de la carte violette (bg-white, border-purple-300, text-purple-700, rounded-lg). Libelle visible a partir de sm, icone seule 40x40 en dessous (aria-label + title « Importer une photo enregistree »). Desactive pendant isProcessing comme le bouton « Scanner ».',
+      'ReceiptScanButton.tsx : handleFile reinitialise desormais l input REELLEMENT a l origine de l evenement (const input = e.currentTarget capture avant tout await) au lieu de fileInputRef en dur — la re-selection du meme fichier relance le traitement sur les deux portes.',
+      'ReceiptScanButton.tsx : garde-fou de type — un fichier dont file.type ne commence pas par image/ est refuse avec un message clair (« Choisissez une image (photo ou capture d ecran). Les fichiers PDF ne sont pas encore pris en charge. ») sans declencher isProcessing ni ecran de revue. accept n est qu un filtre d affichage cote systeme.',
+      'ReceiptScanButton.tsx : sous-titre de la carte « Photographiez un recu ou importez une image, les articles se remplissent tout seuls » + paragraphe d aide expliquant l import d une photo/capture deja enregistree (recu WhatsApp, capture Mvola/Orange Money).',
+      '__tests__/ReceiptScanButton.test.tsx (nouveau) : test anti-regression — exactement 2 inputs fichier, un seul avec capture="environment", accept="image/*" sur les deux, bouton accessible « Importer une photo enregistree ». Verifie par mutation qu il echoue si capture revient sur le second input.',
+      'constants/appVersion.ts + package.json : version 3.71.0',
+    ],
+  },
+  {
+    version: '3.70.0',
+    date: '2026-07-07',
+    description:
+      'Simulation de role Phase 3 : les reglages passent du menu deroulant (etroit) a une PAGE dediee au large. Application des choix au clic « Enregistrer » (brouillon local). Logique de simulation inchangee — seule l interface de reglage a bouge.',
+    changes: [
+      'EauSimulationPage.tsx (nouveau) : page dediee /gestion-eau/simulation — bouton « Retour » (haut gauche, navigate(-1)), aide FR depliable, choix du role (Admin reel / Releveur / Promoteur / Proprietaire, cartes EauCard aerees, source SIMULATION_ROLE_OPTIONS), liste des villas actives recherchable pour le Proprietaire (EauEmptyState si aucune), 2 boutons bas ANNULER (navigate(-1)) / ENREGISTRER (desactive si brouillon incomplet ou identique a l etat applique). ENREGISTRER applique via setSimulation/clearSimulation puis navigate(/gestion-eau). Aucune logique de simulation reimplementee.',
+      'GestionEauRoutes.tsx : route « simulation » → EauSimulationPage (lazy), sans EauRoleProtectedRoute (garde interne sur realRoles.admin : celui-ci gate sur les roles EFFECTIFS, ce qui rendrait la page injoignable pendant une simulation). Placee avant les redirections de compatibilite.',
+      'HeaderEauActions.tsx (partage, additif eau) : la section « Simulation de role » depliee (roles + recherche villa) est remplacee par UNE seule ligne « 🎭 Simulation de role » (sobre, sans etat, admin reel uniquement) qui ouvre la page. Retrait du code inline devenu inutile (etats sous-liste/recherche, imports orphelins) ; tsc --noEmit propre.',
+      'EauSimulationPage garde interne : spinner tant que les roles ne sont pas confirmes (jamais de rebond a froid) ; redirection /gestion-eau seulement sur refus confirme (!realRoles.admin). Header chip inchange (clic = retour Admin direct).',
+      'constants/appVersion.ts + package.json : version 3.70.0 + note FR',
+    ],
+  },
   {
     version: '3.69.0',
     date: '2026-07-07',
