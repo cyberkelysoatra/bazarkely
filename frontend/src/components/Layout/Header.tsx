@@ -665,7 +665,11 @@ const Header = () => {
         {/* FIX: Conditional flex layout - justify-between for both, but ml-auto on Role Badge in Construction for right alignment */}
         <div className="flex items-center justify-between">
           {/* Logo et titre (LEFT) */}
-          <div className="flex items-center space-x-4">
+          <div
+            className={`flex items-center min-w-0 ${
+              isEauModule && eauIsSimulating ? 'space-x-2 sm:space-x-4' : 'space-x-4'
+            }`}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation(); // Prevent event bubbling
@@ -689,7 +693,7 @@ const Header = () => {
                   setLogoRipple(false);
                 }, 600);
               }}
-              className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative"
+              className="cursor-pointer hover:opacity-80 transition-opacity duration-200 relative flex-shrink-0"
               aria-label="Basculer entre les modules"
               title="Cliquez pour changer de module"
             >
@@ -709,13 +713,19 @@ const Header = () => {
                 </div>
               )}
             </button>
-            <div>
+            <div
+              className={`min-w-0 overflow-hidden flex flex-col justify-center ${
+                isEauModule && eauIsSimulating ? 'min-h-[3.5rem] sm:min-h-0' : ''
+              }`}
+            >
               {/* Titre par module : AHUVI Eau (vert/or, Playfair) / 1saKELY / BazarKELY */}
               <h1
                 className={
                   isEauModule
-                    ? 'text-3xl font-bold text-white drop-shadow-lg font-ahuvi-display'
-                    : 'text-3xl font-bold text-white drop-shadow-lg'
+                    ? `font-bold text-white drop-shadow-lg font-ahuvi-display truncate ${
+                        eauIsSimulating ? 'text-2xl sm:text-3xl' : 'text-3xl'
+                      }`
+                    : 'text-3xl font-bold text-white drop-shadow-lg truncate'
                 }
               >
                 {isEauModule ? 'AHUVI Eau' : isConstructionModule ? '1saKELY' : 'BazarKELY'}
@@ -723,8 +733,8 @@ const Header = () => {
               <p
                 className={
                   isEauModule
-                    ? 'text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body whitespace-nowrap'
-                    : 'text-sm text-purple-100 font-medium drop-shadow-sm'
+                    ? `text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body truncate ${eauIsSimulating ? 'hidden sm:block' : ''}`
+                    : 'text-sm text-purple-100 font-medium drop-shadow-sm truncate'
                 }
               >
                 {isEauModule
@@ -744,12 +754,18 @@ const Header = () => {
                 type="button"
                 onClick={() => eauClearSimulation?.()}
                 data-eau-sim-badge
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ahuvi-gold text-white border border-ahuvi-gold-light shadow-md hover:bg-ahuvi-gold-light transition-colors font-ahuvi-body max-w-[45vw] sm:max-w-xs"
+                className="flex items-center gap-1 sm:gap-1.5 min-w-0 px-2 sm:px-3 py-1.5 rounded-full bg-ahuvi-gold text-ahuvi-900 border border-ahuvi-gold-light shadow-md hover:bg-ahuvi-gold-light transition-colors font-ahuvi-body max-w-[40vw] sm:max-w-xs md:max-w-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 title={`${eauSimLabel} — cliquez pour revenir à Admin (réel)`}
                 aria-label={`${eauSimLabel} — cliquer pour revenir à Admin réel`}
               >
                 <VenetianMask className="w-4 h-4 flex-shrink-0" aria-hidden />
-                <span className="text-xs font-semibold whitespace-nowrap truncate">
+                {/* Petit écran : libellé COURT (« Releveur ») — la phrase complète ne tient
+                    pas à côté du titre. À partir de `sm` : libellé complet. Les attributs
+                    title / aria-label portent TOUJOURS le libellé complet (accessibilité). */}
+                <span className="sm:hidden min-w-0 text-xs font-semibold truncate">
+                  {simulationRoleLabel(eauSimulatedRole)}
+                </span>
+                <span className="hidden sm:block min-w-0 text-xs font-semibold truncate">
                   {eauSimLabel}
                 </span>
               </button>
@@ -757,9 +773,9 @@ const Header = () => {
 
             {/* Company name badge - Construction module only */}
             {isConstructionModule && constructionData?.activeCompany && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100/20 backdrop-blur-sm rounded-full border border-purple-300/30 shadow-sm">
+              <div className="flex items-center gap-1.5 min-w-0 px-3 py-1.5 bg-purple-100/20 backdrop-blur-sm rounded-full border border-purple-300/30 shadow-sm">
                 <Building2 className="h-3.5 w-3.5 text-purple-200 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-medium text-white max-w-32 truncate">
+                <span className="text-xs sm:text-sm font-medium text-white min-w-0 max-w-[40vw] sm:max-w-32 truncate">
                   {constructionData?.activeCompany?.name || 'Entreprise'}
                 </span>
               </div>
@@ -826,7 +842,7 @@ const Header = () => {
           )}
 
           {/* Right side container - Role Badge (Construction) or Budget actions */}
-          <div className="flex items-center">
+          <div className="flex items-center flex-shrink-0">
             {/* Role Badge - Construction POC only - Aligned to right with ml-auto in Construction */}
             {isConstructionModule && constructionRole && (
               <div className="ml-auto relative role-badge-container">
