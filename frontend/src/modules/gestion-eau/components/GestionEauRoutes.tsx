@@ -23,6 +23,10 @@ const EauFacturationPage = React.lazy(() => import('./EauFacturationPage'));
 const EauUtilisateursPage = React.lazy(() => import('./EauUtilisateursPage'));
 const EauDemandesPage = React.lazy(() => import('./EauDemandesPage'));
 const EauClientPage = React.lazy(() => import('./EauClientPage'));
+// Simulation de rôle (Phase 3) — page dédiée. Garde interne sur `realRoles.admin`
+// (PAS d'EauRoleProtectedRoute : celui-ci gate sur les rôles EFFECTIFS, ce qui
+// rendrait la page injoignable pendant une simulation où admin effectif = false).
+const EauSimulationPage = React.lazy(() => import('./EauSimulationPage'));
 // Phase 4 — écrans de pilotage (secondaires, accessibles via le menu HeaderEauActions).
 const EauTendancesPage = React.lazy(() => import('./EauTendancesPage'));
 const EauAlertesPage = React.lazy(() => import('./EauAlertesPage'));
@@ -193,6 +197,11 @@ export default function GestionEauRoutes() {
             </EauRoleProtectedRoute>
           }
         />
+
+        {/* Simulation de rôle (Phase 3) — admin RÉEL uniquement (garde interne à la page).
+            Atteignable via la ligne du menu HeaderEauActions ou le deep-link ; NON exposée
+            dans BottomNav/nav. Reste accessible PENDANT une simulation (garde sur realRoles). */}
+        <Route path="simulation" element={<EauSimulationPage />} />
 
         {/* Compatibilité : anciennes routes Phase 1-2 → thèmes correspondants */}
         <Route path="saisie-bassin" element={<Navigate to="/gestion-eau/releves" replace />} />

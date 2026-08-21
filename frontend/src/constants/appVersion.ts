@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.71.0';
-export const APP_VERSION_NAME = 'Scanner un ticket : deuxieme porte d entree « Importer ». Jusqu ici le bouton « Scanner » ouvrait DIRECTEMENT l appareil photo arriere (attribut capture) et il etait impossible de choisir une image deja enregistree sur le telephone. Un bouton secondaire « Importer » (icone ImagePlus, a gauche du bouton violet, libelle visible a partir de sm, icone seule 40x40 en dessous) ouvre desormais le selecteur de fichiers/galerie du systeme et envoie l image dans EXACTEMENT le meme pipeline (pre-traitement, OCR Google Vision puis repli Tesseract, parsing, insertion directe ou ecran de revue). Utile pour les captures d ecran Mvola/Orange Money et les recus recus par WhatsApp. Le chemin camera est inchange. Ajouts : reinitialisation de l input reellement a l origine de l evenement (re-selection du meme fichier possible sur les deux portes), garde-fou de type (un fichier non-image est refuse avec un message clair, le PDF n est pas encore pris en charge), textes d aide mis a jour, test anti-regression Vitest ReceiptScanButton.test.tsx (2 inputs, un seul avec capture). Aucune dependance ajoutee, module Gestion Eau non touche (son capture=environment reste volontaire).';
-export const LAST_UPDATED = '2026-08-20';
-export const APP_BUILD_DATE = '2026-08-20';
+export const APP_VERSION = '3.72.0';
+export const APP_VERSION_NAME = 'Simulation de role (Gestion Eau) : les reglages quittent le menu deroulant, trop etroit, pour une PAGE dediee au large (/gestion-eau/simulation). Le menu admin du module eau n affiche plus qu une seule ligne sobre « Simulation de role » qui ouvre cette page. Sur la page : bouton « Retour » en haut a gauche, aide FR depliable, choix du role en cartes aerees (Admin reel / Releveur / Promoteur / Proprietaire), liste des villas actives RECHERCHABLE (nom, contact ou compteur) quand Proprietaire est choisi, et deux boutons en bas ANNULER / ENREGISTRER. Nouveaute de comportement : les choix vivent dans un brouillon local et ne s appliquent QU AU CLIC SUR ENREGISTRER — « Annuler » et « Retour » repartent sans rien appliquer, et ENREGISTRER reste desactive tant que le brouillon est incomplet (Proprietaire sans villa) ou identique a l etat deja applique. La logique de simulation elle-meme est inchangee (setSimulation / clearSimulation du contexte, roles effectifs, scoping proprietaire, persistance, marque doree du header et son clic de retour Admin). La page est gardee sur le role ADMIN REEL et non sur les roles effectifs : elle reste donc atteignable PENDANT une simulation. Code ecrit sous le numero 3.70.0 mais jamais mis en ligne sous ce numero : premiere mise en production avec la 3.72.0.';
+export const LAST_UPDATED = '2026-08-21';
+export const APP_BUILD_DATE = '2026-08-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.72.0',
+    date: '2026-08-21',
+    description:
+      'Simulation de role Phase 3 : les reglages passent du menu deroulant (etroit) a une PAGE dediee au large. Application des choix au clic « Enregistrer » (brouillon local). Logique de simulation inchangee — seule l interface de reglage a bouge.',
+    changes: [
+      'EauSimulationPage.tsx (nouveau) : page dediee /gestion-eau/simulation — bouton « Retour » (haut gauche, navigate(-1)), aide FR depliable, choix du role (Admin reel / Releveur / Promoteur / Proprietaire, cartes EauCard aerees, source SIMULATION_ROLE_OPTIONS), liste des villas actives recherchable pour le Proprietaire (EauEmptyState si aucune), 2 boutons bas ANNULER (navigate(-1)) / ENREGISTRER (desactive si brouillon incomplet ou identique a l etat applique). ENREGISTRER applique via setSimulation/clearSimulation puis navigate(/gestion-eau). Aucune logique de simulation reimplementee.',
+      'GestionEauRoutes.tsx : route « simulation » → EauSimulationPage (lazy), sans EauRoleProtectedRoute (garde interne sur realRoles.admin : celui-ci gate sur les roles EFFECTIFS, ce qui rendrait la page injoignable pendant une simulation). Placee avant les redirections de compatibilite.',
+      'HeaderEauActions.tsx (partage, additif eau) : la section « Simulation de role » depliee (roles + recherche villa) est remplacee par UNE seule ligne « 🎭 Simulation de role » (sobre, sans etat, admin reel uniquement) qui ouvre la page. Retrait du code inline devenu inutile (etats sous-liste/recherche, imports orphelins) ; tsc --noEmit propre.',
+      'EauSimulationPage garde interne : spinner tant que les roles ne sont pas confirmes (jamais de rebond a froid) ; redirection /gestion-eau seulement sur refus confirme (!realRoles.admin). Header chip inchange (clic = retour Admin direct).',
+      'Historique : ce lot avait ete ecrit et numerote 3.70.0 le 2026-07-07 mais n a JAMAIS ete commite ni mis en ligne sous ce numero (la production est passee de 3.69.0 a 3.71.0). Il est publie ici sous la 3.72.0 ; l ancienne entree 3.70.0, qui annoncait une version introuvable en ligne, a ete re-etiquetee plutot que dupliquee.',
+      'constants/appVersion.ts + package.json : version 3.72.0 + note FR',
+    ],
+  },
   {
     version: '3.71.0',
     date: '2026-08-20',
@@ -16,19 +30,6 @@ export const VERSION_HISTORY = [
       'ReceiptScanButton.tsx : sous-titre de la carte « Photographiez un recu ou importez une image, les articles se remplissent tout seuls » + paragraphe d aide expliquant l import d une photo/capture deja enregistree (recu WhatsApp, capture Mvola/Orange Money).',
       '__tests__/ReceiptScanButton.test.tsx (nouveau) : test anti-regression — exactement 2 inputs fichier, un seul avec capture="environment", accept="image/*" sur les deux, bouton accessible « Importer une photo enregistree ». Verifie par mutation qu il echoue si capture revient sur le second input.',
       'constants/appVersion.ts + package.json : version 3.71.0',
-    ],
-  },
-  {
-    version: '3.70.0',
-    date: '2026-07-07',
-    description:
-      'Simulation de role Phase 3 : les reglages passent du menu deroulant (etroit) a une PAGE dediee au large. Application des choix au clic « Enregistrer » (brouillon local). Logique de simulation inchangee — seule l interface de reglage a bouge.',
-    changes: [
-      'EauSimulationPage.tsx (nouveau) : page dediee /gestion-eau/simulation — bouton « Retour » (haut gauche, navigate(-1)), aide FR depliable, choix du role (Admin reel / Releveur / Promoteur / Proprietaire, cartes EauCard aerees, source SIMULATION_ROLE_OPTIONS), liste des villas actives recherchable pour le Proprietaire (EauEmptyState si aucune), 2 boutons bas ANNULER (navigate(-1)) / ENREGISTRER (desactive si brouillon incomplet ou identique a l etat applique). ENREGISTRER applique via setSimulation/clearSimulation puis navigate(/gestion-eau). Aucune logique de simulation reimplementee.',
-      'GestionEauRoutes.tsx : route « simulation » → EauSimulationPage (lazy), sans EauRoleProtectedRoute (garde interne sur realRoles.admin : celui-ci gate sur les roles EFFECTIFS, ce qui rendrait la page injoignable pendant une simulation). Placee avant les redirections de compatibilite.',
-      'HeaderEauActions.tsx (partage, additif eau) : la section « Simulation de role » depliee (roles + recherche villa) est remplacee par UNE seule ligne « 🎭 Simulation de role » (sobre, sans etat, admin reel uniquement) qui ouvre la page. Retrait du code inline devenu inutile (etats sous-liste/recherche, imports orphelins) ; tsc --noEmit propre.',
-      'EauSimulationPage garde interne : spinner tant que les roles ne sont pas confirmes (jamais de rebond a froid) ; redirection /gestion-eau seulement sur refus confirme (!realRoles.admin). Header chip inchange (clic = retour Admin direct).',
-      'constants/appVersion.ts + package.json : version 3.70.0 + note FR',
     ],
   },
   {
