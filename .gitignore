@@ -185,6 +185,9 @@ AGENT-*-DOCUMENTATION-VERIFICATION.md
 .claude/
 .cursor/skills/
 .github/skills/
+.cursor/agents/
+.github/agents/
+.impeccable/
 
 
 
