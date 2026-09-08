@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.73.0';
-export const APP_VERSION_NAME = 'Ecran d Administration : il montre enfin ce que font les gens. Nouveau bandeau d activite a six chiffres (inscrits, actifs 7 jours, actifs 30 jours, dormants, jamais revenus, fantomes), deux courbes mensuelles depuis octobre 2025 (inscriptions, transactions) et un tableau de retention par cohorte (M+1, M+2, M+3). La liste des utilisateurs affiche desormais le nombre de transactions, la date de la derniere transaction, la derniere connexion, la date de modification, et une pastille d etat (Actif, Dormant, Jamais revenu, Fantome) ; elle est triee par derniere transaction, de la plus recente a la plus ancienne — une transaction saisie est un acte volontaire, une connexion peut n etre qu un reveil technique. La porte d entree de l administration ne repose plus sur une adresse e-mail ecrite en dur : elle lit le role dans la base, avec l ancienne adresse en filet de securite si cette lecture echoue. Elle n interroge plus le reseau pour savoir qui vous etes (l application fonctionne hors ligne d abord) : identite lue dans la memoire de l application, puis dans la session locale. Et quand la session est morte cote serveur, l ecran le dit — « Session expiree, reconnecte-toi » avec un bouton — au lieu de renvoyer en silence vers l accueil, ce qui donnait l impression d un bug. Avertissement honnete : la date de derniere connexion n est PAS mise a jour a chaque connexion (14 comptes sur 16 ont la date de leur inscription) ; les dates inexploitables s affichent « inconnue » et un bandeau previent que les indicateurs de connexion sont a lire avec reserve. Le nombre de transactions et la date de la derniere transaction, eux, sont fiables. Tout est calcule cote serveur en heure de Madagascar (Indian/Antananarivo).';
+export const APP_VERSION = '3.74.0';
+export const APP_VERSION_NAME = 'Socle des SMS Orange Money (phase 1) : rien de visible a l ecran pour l instant, c est la plomberie. L application sait desormais lire un SMS d Orange Money et en extraire le sens : les 8 formulations rencontrees dans la vraie vie sont reconnues (virement depuis la banque, depot, envoi d argent, envoi a un nom, retrait, paiement chez un commerçant, achat de forfait, echec), malgre les accents qui vont et viennent, les majuscules changeantes et les espaces en trop. Un controle de coherence recolle les soldes annonces les uns aux autres et signale tout trou : sur les 50 SMS reels du 29 juillet au 6 septembre 2026, la chaine est intacte. Point delicat resolu : l operateur ne delivre pas toujours les SMS dans l ordre ou les operations ont eu lieu, donc le classement se fait sur la date inscrite dans le numero de transaction, jamais sur l ordre d arrivee. Cote serveur, une boite de reception recoit les SMS ; un meme SMS renvoye ou capte deux fois ne cree jamais de doublon, et un SMS de forme inconnue est conserve tel quel pour etude au lieu de faire echouer tout le lot. Chacun ne voit que ses propres SMS.';
 export const LAST_UPDATED = '2026-09-08';
 export const APP_BUILD_DATE = '2026-09-08';
 export const VERSION_HISTORY = [
+  {
+    version: '3.74.0',
+    date: '2026-09-08',
+    description:
+      "SMS Orange Money Phase 1 : parseur des 8 modeles, controle de chaine des soldes, table sms_inbox + RLS, Edge Function d ingestion idempotente. Aucune interface utilisateur.",
+    changes: [
+      "Parseur analyserSms() : 8 modeles reconnus sur les 50 SMS reels du corpus (PP_ENVOI 20, MP_MARCHAND 13, CI_BANQUE 10, CO_RETRAIT 3, CI_DEPOT 1, PP_NOMME 1, MP_OFFRE 1, ECHEC 1).",
+      "Normalisation obligatoire avant comparaison : minuscules, accents retires, espaces multiples reduits.",
+      "controlerChaine() : tri par l horodatage issu de la REFERENCE (jamais par ordre d arrivee) — 48 maillons verifies, 0 rupture. Test de mutation qui echoue si le tri revient a l ordre d arrivee.",
+      "SQL Supabase execute et verifie via REST : sms_inbox (17 colonnes), index unique (user_id, reference), sms_expediteurs_autorises (4 operateurs), sms_appareils (cle hachee SHA-256).",
+      "RLS active + force, revoke from anon, policies public avec auth.uid() = user_id. Isolation prouvee par test negatif en rollback.",
+      "Edge Function ingest-sms deployee : upsert idempotent sur (user_id, reference), SMS non reconnu conserve en etat non_reconnu, limites 100 SMS / 256 Ko.",
+      "Script scripts/rejeu-sms-corpus.ts : 50 SMS rejoues, 48 verifies, 0 rupture, 0 doublon cree au second envoi."
+    ]
+  },
   {
     version: '3.73.0',
     date: '2026-09-08',
