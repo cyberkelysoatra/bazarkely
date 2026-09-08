@@ -355,7 +355,14 @@ class TransactionService {
    * 3. Si online, sync vers Supabase
    * 4. Si offline ou échec, queue pour sync ultérieure
    */
-  async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>): Promise<Transaction | null> {
+  /**
+   * @param options.id  Identifiant impose au lieu d'un UUID tire au hasard.
+   *                    Sert aux ecritures REJOUABLES dont l'identifiant est
+   *                    derive de la source (ecriture automatique des SMS) :
+   *                    rejouer converge alors sur la meme ligne. Omis partout
+   *                    ailleurs -> comportement inchange (crypto.randomUUID()).
+   */
+  async createTransaction(userId: string, transactionData: Omit<Transaction, 'id' | 'createdAt' | 'userId'>, options?: { id?: string }): Promise<Transaction | null> {
     try {
       // Determine transaction currency from FORM TOGGLE (not /settings or account currency)
       // This is the currency the user selected in the transaction form
@@ -396,8 +403,8 @@ class TransactionService {
         console.log(`📱 [TransactionService] ✅ No conversion needed: form currency (${transactionCurrency}) matches account currency (${accountCurrency || 'multi-currency'})`);
       }
 
-      // Générer un UUID pour la transaction
-      const transactionId = crypto.randomUUID();
+      // Identifiant impose (ecriture rejouable) sinon UUID tire au hasard
+      const transactionId = options?.id ?? crypto.randomUUID();
       const now = new Date();
 
       // Créer l'objet Transaction complet

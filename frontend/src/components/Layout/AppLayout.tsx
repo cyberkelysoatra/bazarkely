@@ -41,6 +41,10 @@ const FamilyTransactionsPage = lazy(() => import('../../pages/FamilyTransactions
 const FamilyReimbursementsPage = lazy(() => import('../../pages/FamilyReimbursementsPage'))
 const LoansPage = lazy(() => import('../../pages/LoansPage'))
 
+// Module SMS : page brute des SMS non ecrits. Volontairement liee depuis NULLE PART
+// (aucun bouton, aucune entree de menu) — on y accede en tapant l'adresse.
+const SmsInboxPage = lazy(() => import('../../modules/sms-inbox/pages/SmsInboxPage'))
+
 // Analytics Pages - Lazy loaded
 const AdvancedAnalytics = lazy(() => import('../Analytics/AdvancedAnalytics'))
 const FinancialInsights = lazy(() => import('../Analytics/FinancialInsights'))
@@ -207,6 +211,9 @@ const AppLayout = () => {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
             <Route path="/app-version" element={<AppVersionPage />} />
+
+            {/* Route SMS — non referencee dans la navigation, volontairement */}
+            <Route path="/sms-inbox" element={<SmsInboxPage />} />
             
             {/* Admin Route - Protected */}
             <Route path="/admin" element={<AdminPage />} />

@@ -7,6 +7,11 @@ import App from './App.tsx'
 // Initialiser le système de chiffrement AES-256
 import './services/encryptionInit'
 
+// Ecriture automatique des transactions issues des SMS Mobile Money.
+// Travail de fond, sans aucune interface : le service s'abonne lui-meme a la
+// session et au retour du reseau.
+import { demarrerEcritureAutomatiqueSms } from './modules/sms-inbox/services/ecritureAutomatiqueService'
+
 // TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
 // import optimizationManager from './services/optimizationManager'
 // import safariCompatibility from './services/safariCompatibility'
@@ -35,6 +40,7 @@ const safariCompatibility = {
 // Initialize services (mocked temporarily)
 optimizationManager.initialize().catch(console.error)
 safariCompatibility.applyOptimizations()
+demarrerEcritureAutomatiqueSms()
 
 // CRITICAL: Capture OAuth tokens IMMEDIATELY before React renders
 // This prevents Service Worker or React Router from clearing the hash

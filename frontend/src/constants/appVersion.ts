@@ -1,8 +1,24 @@
-export const APP_VERSION = '3.74.0';
-export const APP_VERSION_NAME = 'Socle des SMS Orange Money (phase 1) : rien de visible a l ecran pour l instant, c est la plomberie. L application sait desormais lire un SMS d Orange Money et en extraire le sens : les 8 formulations rencontrees dans la vraie vie sont reconnues (virement depuis la banque, depot, envoi d argent, envoi a un nom, retrait, paiement chez un commerçant, achat de forfait, echec), malgre les accents qui vont et viennent, les majuscules changeantes et les espaces en trop. Un controle de coherence recolle les soldes annonces les uns aux autres et signale tout trou : sur les 50 SMS reels du 29 juillet au 6 septembre 2026, la chaine est intacte. Point delicat resolu : l operateur ne delivre pas toujours les SMS dans l ordre ou les operations ont eu lieu, donc le classement se fait sur la date inscrite dans le numero de transaction, jamais sur l ordre d arrivee. Cote serveur, une boite de reception recoit les SMS ; un meme SMS renvoye ou capte deux fois ne cree jamais de doublon, et un SMS de forme inconnue est conserve tel quel pour etude au lieu de faire echouer tout le lot. Chacun ne voit que ses propres SMS.';
+export const APP_VERSION = '3.75.0';
+export const APP_VERSION_NAME = "Le SMS cree la transaction, tout seul (phase 2). Quand un SMS d operation Mobile Money arrive, l ecriture correspondante apparait d elle-meme dans la page Transactions, sans que personne ait rien a saisir ni a valider. Deux conditions, et aucune tolerance : la formulation du SMS doit etre reconnue, et le solde annonce doit recoller exactement au solde precedent, aux frais pres. Si un seul de ces deux points manque, rien n est ecrit et le SMS reste de cote sans rien casser. Les frais font toujours une ligne a part, jamais fondus dans le montant, sinon les comptes ne tomberaient jamais juste. L operation atterrit toujours sur le compte de l operateur concerne, cree au besoin, jamais sur un compte bancaire. Le meme SMS relu dix fois ne cree jamais qu une seule ecriture, parce que le numero de l ecriture est deduit de la reference du SMS au lieu d etre tire au hasard. Sur les 50 SMS reels du corpus, 48 operations sont ecrites (71 lignes avec les frais) et 2 sont ecartees. Aucun ecran existant n a bouge.";
 export const LAST_UPDATED = '2026-09-08';
 export const APP_BUILD_DATE = '2026-09-08';
 export const VERSION_HISTORY = [
+  {
+    version: '3.75.0',
+    date: '2026-09-08',
+    description:
+      "SMS Orange Money Phase 2 : la transaction est ecrite automatiquement des qu un SMS est reconnu ET que son solde concorde. Aucun ecran existant modifie.",
+    changes: [
+      "Service ecritureAutomatiqueService : passe de fond declenchee au demarrage, a la connexion et au retour du reseau. Aucune interface, aucune navigation.",
+      "Decision deciderEcriture() pure et rejouable : modele reconnu et different d ECHEC, ET solde precedent +/- (montant + frais) EXACTEMENT egal au solde annonce. Aucune tolerance, aucun arrondi.",
+      "Frais > 0 : seconde transaction distincte, jamais fondue dans le montant principal.",
+      "Rattachement au compte de l operateur (orange_money / mvola / airtel_money), cree au besoin — jamais un compte bancaire.",
+      "Idempotence : identifiant de transaction derive de la reference du SMS (UUID v5), verifie contre le vecteur RFC 4122. Rejouer converge sur la meme ligne.",
+      "Page brute /sms-inbox listant les SMS non ecrits et leur motif. Liee depuis NULLE PART : aucun bouton, aucune entree de menu.",
+      "Corpus des 50 SMS : 48 operations ecrites (71 transactions dont 23 lignes de frais), 2 ecartes — 1 echec operateur, 1 ancre de chaine sans solde precedent.",
+      "48 tests (dont 10 d integration bout en bout). Compteur TypeScript inchange : 1984 avant, 1984 apres."
+    ]
+  },
   {
     version: '3.74.0',
     date: '2026-09-08',
