@@ -1,8 +1,34 @@
-export const APP_VERSION = '3.72.1';
-export const APP_VERSION_NAME = 'Correctif d affichage du bandeau du haut (header partage) : la pastille doree « Simulation » du module Gestion Eau ne depasse plus du bord droit de l ecran et le telephone ne glisse plus de gauche a droite. Cause : dans la barre de titre, aucun bloc n avait le droit de retrecir, donc le texte poussait la largeur de toute la page au-dela de l ecran (defilement horizontal parasite, en-tete et onglets collants qui sautent). Desormais : le bloc logo + titre peut se compacter, le logo et les boutons de droite restent intacts, et les textes trop longs se coupent proprement avec des points de suspension. Sur telephone PENDANT une simulation, la barre passe en mode compact : le sous-titre « Distribution & suivi d eau — Nosy Be » s efface, le titre « AHUVI Eau » est legerement reduit et la pastille n affiche que le role (« Releveur », « Promoteur », « Proprietaire »). A partir d une tablette, tout revient : sous-titre visible et pastille complete « Simulation : Proprietaire — Villa X ». Le survol de la pastille et sa lecture vocale annoncent toujours le libelle complet. La hauteur du bandeau ne bouge pas d un pixel entre les deux etats (le corps de la page ne saute plus). Le libelle de la pastille passe en encre vert foret sur le fond or pour un contraste conforme (4,8:1 au lieu de 2,9:1) et un anneau de mise au point apparait au clavier. Meme traitement preventif pour l etiquette d entreprise du module Construction (nom long = coupe propre, plus de debordement). Aucun changement de comportement : le clic sur la pastille sort toujours immediatement de la simulation.';
-export const LAST_UPDATED = '2026-08-22';
-export const APP_BUILD_DATE = '2026-08-22';
+export const APP_VERSION = '3.73.0';
+export const APP_VERSION_NAME = 'Ecran d Administration : il montre enfin ce que font les gens. Nouveau bandeau d activite a six chiffres (inscrits, actifs 7 jours, actifs 30 jours, dormants, jamais revenus, fantomes), deux courbes mensuelles depuis octobre 2025 (inscriptions, transactions) et un tableau de retention par cohorte (M+1, M+2, M+3). La liste des utilisateurs affiche desormais le nombre de transactions, la date de la derniere transaction, la derniere connexion, la date de modification, et une pastille d etat (Actif, Dormant, Jamais revenu, Fantome) ; elle est triee par derniere transaction, de la plus recente a la plus ancienne — une transaction saisie est un acte volontaire, une connexion peut n etre qu un reveil technique. La porte d entree de l administration ne repose plus sur une adresse e-mail ecrite en dur : elle lit le role dans la base, avec l ancienne adresse en filet de securite si cette lecture echoue. Elle n interroge plus le reseau pour savoir qui vous etes (l application fonctionne hors ligne d abord) : identite lue dans la memoire de l application, puis dans la session locale. Et quand la session est morte cote serveur, l ecran le dit — « Session expiree, reconnecte-toi » avec un bouton — au lieu de renvoyer en silence vers l accueil, ce qui donnait l impression d un bug. Avertissement honnete : la date de derniere connexion n est PAS mise a jour a chaque connexion (14 comptes sur 16 ont la date de leur inscription) ; les dates inexploitables s affichent « inconnue » et un bandeau previent que les indicateurs de connexion sont a lire avec reserve. Le nombre de transactions et la date de la derniere transaction, eux, sont fiables. Tout est calcule cote serveur en heure de Madagascar (Indian/Antananarivo).';
+export const LAST_UPDATED = '2026-09-08';
+export const APP_BUILD_DATE = '2026-09-08';
 export const VERSION_HISTORY = [
+  {
+    version: '3.73.0',
+    date: '2026-09-08',
+    description:
+      "Administration Phase 1 : bandeau d activite (6 indicateurs), 2 courbes mensuelles, retention par cohorte, liste utilisateurs enrichie et triee par derniere transaction, acces par users.role au lieu d un e-mail en dur, et fin de la redirection muette quand la session est expiree.",
+    changes: [
+      "SQL (Supabase) : users.role passe a 'admin' pour joelsoatra@gmail.com — verifie via REST AVANT toute modification de code.",
+      "SQL : nouvelle fonction admin_is_current_user_admin() (SECURITY DEFINER, lit users.role pour auth.uid()).",
+      "SQL : nouvelle RPC get_admin_activite() — 6 indicateurs, series mensuelles depuis octobre 2025 et cohortes M+1/M+2/M+3, calcules cote serveur au fuseau Indian/Antananarivo (jamais en UTC : 3 h d ecart faussent les journees). Renvoie aussi un diagnostic de fiabilite de last_login_at.",
+      "SQL : nouvelle RPC get_admin_utilisateurs() — utilisateurs + nombre de transactions + date de la derniere transaction + last_login_at + updated_at, triee par derniere transaction decroissante. Remplace get_all_users_admin cote client (fonction historique conservee intacte).",
+      "SQL : revoke execute ... from anon sur les 3 fonctions (un revoke from public ne suffit pas, Supabase accorde EXECUTE explicitement a anon) + grant to authenticated. Test negatif verifie : un non-admin recoit 'Access denied: admin only', l anonyme recoit 42501.",
+      "adminService.isAdmin() : lit users.role via withTimeout(5 s) ; si la lecture echoue ou est indisponible (hors ligne), filet de securite sur l adresse joelsoatra@gmail.com ; sinon refus. Plus aucune adresse en dur comme unique critere.",
+      "adminService : suppression de TOUS les supabase.auth.getUser() (fetch HTTP qui plante hors ligne). Nouvel helper getCurrentUserSafe() — store Zustand, puis getSession() (lecture localStorage), puis null.",
+      "adminService.getAccessState() : 'admin' / 'denied' / 'no-session', avec cache court de 15 s (la page l interrogeait 4 fois par chargement).",
+      "adminService : detection des refus serveur faute de jeton valide (42501 / permission denied / JWT) remontee comme SESSION_EXPIREE — l application paraissait connectee grace a son cache local alors que la session etait morte.",
+      "adminService : withTimeout() ajoute sur les requetes goals et transactions de l ecran admin (aucune requete DB sans delai maximal).",
+      "AdminPage : bandeau d activite (6 cartes), 2 courbes Recharts (isAnimationActive={false} sur chaque serie ET sur les info-bulles, obligatoire avec React 19 + Recharts 3) avec etat vide soigne, tableau de retention par cohorte avec ligne de totaux.",
+      "AdminPage : liste utilisateurs enrichie (nombre de transactions, derniere transaction, derniere connexion, date de modification) + pastille d etat Actif / Dormant / Jamais revenu / Fantome.",
+      "AdminPage : ecran « Session expiree, reconnecte-toi pour acceder a l administration » avec bouton de reconnexion, au lieu de la redirection muette vers /dashboard. La redirection reste pour un utilisateur identifie mais non admin.",
+      "AdminPage : mise en page revue pour 412 px (grilles 2 colonnes, min-w-0 + truncate, tableau de cohortes dans un conteneur a defilement horizontal propre) — aucun debordement horizontal du document.",
+      "Fiabilite de last_login_at VERIFIEE : la colonne n est ecrite par aucun code client ni par aucun declencheur ; 14 comptes sur 16 portent la date de leur inscription. Les dates inexploitables s affichent « inconnue » et un bandeau d avertissement l explique.",
+      "types/supabase.ts : declaration des 3 nouvelles fonctions RPC.",
+      "Aucun fichier partage de navigation ou d en-tete modifie (Header.tsx, BottomNav.tsx, ModuleSwitcherContext.tsx intacts).",
+      "constants/appVersion.ts + package.json : version 3.73.0 + note FR",
+    ],
+  },
   {
     version: '3.72.1',
     date: '2026-08-22',

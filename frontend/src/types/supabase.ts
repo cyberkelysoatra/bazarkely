@@ -479,6 +479,18 @@ export interface Database {
           total_goals: number
         }
       }
+      get_admin_utilisateurs: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_admin_activite: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_is_current_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       delete_user_admin: {
         Args: {
           target_user_id: string
