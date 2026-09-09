@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.75.0';
-export const APP_VERSION_NAME = "Le SMS cree la transaction, tout seul (phase 2). Quand un SMS d operation Mobile Money arrive, l ecriture correspondante apparait d elle-meme dans la page Transactions, sans que personne ait rien a saisir ni a valider. Deux conditions, et aucune tolerance : la formulation du SMS doit etre reconnue, et le solde annonce doit recoller exactement au solde precedent, aux frais pres. Si un seul de ces deux points manque, rien n est ecrit et le SMS reste de cote sans rien casser. Les frais font toujours une ligne a part, jamais fondus dans le montant, sinon les comptes ne tomberaient jamais juste. L operation atterrit toujours sur le compte de l operateur concerne, cree au besoin, jamais sur un compte bancaire. Le meme SMS relu dix fois ne cree jamais qu une seule ecriture, parce que le numero de l ecriture est deduit de la reference du SMS au lieu d etre tire au hasard. Sur les 50 SMS reels du corpus, 48 operations sont ecrites (71 lignes avec les frais) et 2 sont ecartees. Aucun ecran existant n a bouge.";
-export const LAST_UPDATED = '2026-09-08';
-export const APP_BUILD_DATE = '2026-09-08';
+export const APP_VERSION = '3.76.0';
+export const APP_VERSION_NAME = "Une seule ligne par operation, et plus jamais de doublon (phase 2 bis). Une operation Mobile Money ne fait plus qu UNE ligne dans la liste des transactions : son montant comprend desormais les frais, et le detail des frais se lit en ouvrant la fiche, avec le nom de l operateur. Avant, les frais faisaient une seconde ligne et la meme depense apparaissait deux fois. Surtout, si la depense a deja ete saisie a la main, le SMS ne cree plus rien : l application cherche, avant d ecrire, une transaction du meme jour dont le montant correspond au montant seul ou au montant frais compris, et qui ne vienne pas elle-meme d un SMS. Si elle en trouve une, elle s abstient et note le SMS comme doublon probable. Dans le doute on n ecrit pas : un manque se rattrape a la main, un doublon fausse les comptes en silence. Enfin, le tout premier SMS d un historique est desormais ecrit lui aussi : n ayant aucun solde precedent auquel se comparer, il etait ecarte a tort, et chaque rattrapage d historique perdait ainsi une operation reelle. Aucun ecran modifie, hormis l ajout des frais dans la fiche d une transaction.";
+export const LAST_UPDATED = '2026-09-09';
+export const APP_BUILD_DATE = '2026-09-09';
 export const VERSION_HISTORY = [
+  {
+    version: '3.76.0',
+    date: '2026-09-09',
+    description:
+      "SMS Orange Money Phase 2 bis : une seule transaction par operation (frais inclus, detailles dans transfer_fee) et garde anti-doublon avant toute ecriture.",
+    changes: [
+      "Une operation avec frais ne cree plus qu UNE transaction : amount = montant + frais, transfer_fee = frais. Plus aucune ligne « Frais - ... ».",
+      "Garde anti-doublon : avant d ecrire, recherche d une transaction du meme jour, au montant seul ou frais compris, non issue d un SMS. Si trouvee, rien n est ecrit et la ligne sms_inbox passe a doublon_probable.",
+      "La premiere ligne de la chaine des soldes est desormais ecrite : sa concordance est indeterminee, pas fausse.",
+      "TransactionDetailPage : ajout strictement additif d une ligne « Frais de transaction » avec l operateur d origine, hors edition.",
+      "transfer_fee n entre dans aucun calcul de solde ni de budget (verifie) : les frais ne sont comptes qu une fois, dans amount.",
+      "Script SQL idempotent de fusion des 23 lignes de frais deja ecrites par la v3.75.0 (supabase/migrations/2026-09-09-fusion-frais-sms.sql).",
+      "66 tests du module sms-inbox au vert."
+    ]
+  },
   {
     version: '3.75.0',
     date: '2026-09-08',

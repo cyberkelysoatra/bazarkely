@@ -22,6 +22,20 @@ import LoanTermsFields from '../components/Loans/LoanTermsFields';
 import { computeDailyRatePct, daysBetweenDates, type InterestMode, type InterestPeriod } from '../services/loanTerms';
 import ReceiptItemsCard from '../components/Receipt/ReceiptItemsCard';
 
+/**
+ * Operateur d'origine d'une operation, deduit du type de compte.
+ * Renvoie une chaine vide pour un compte qui n'est pas Mobile Money : il n'y a
+ * alors aucun operateur a nommer.
+ */
+const OPERATEUR_PAR_TYPE_DE_COMPTE: Partial<Record<Account['type'], string>> = {
+  orange_money: 'Orange Money',
+  mvola: 'MVola',
+  airtel_money: 'Airtel Money'
+};
+
+const operateurDuCompte = (compte: Account | null): string =>
+  (compte && OPERATEUR_PAR_TYPE_DE_COMPTE[compte.type]) || '';
+
 const TransactionDetailPage = () => {
   const navigate = useNavigate();
   const { transactionId } = useParams<{ transactionId: string }>();
@@ -1242,6 +1256,26 @@ const TransactionDetailPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Compte de destination</label>
                 <p className="text-gray-900">{targetAccount?.name || 'Compte inconnu'}</p>
+              </div>
+            )}
+
+            {/* Frais de transaction (v3.76.0)
+                Une operation Mobile Money ne fait qu'UNE ligne dans la liste :
+                son montant inclut les frais. Le detail se lit ici, et nulle
+                part ailleurs. Affichage seul, jamais en edition. */}
+            {!isEditing && !!transaction.transferFee && transaction.transferFee > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Frais de transaction
+                </label>
+                <p className="text-gray-900">
+                  {formatCurrency(transaction.transferFee)}
+                  {operateurDuCompte(account) && (
+                    <span className="text-gray-500 text-sm ml-2">
+                      • {operateurDuCompte(account)}
+                    </span>
+                  )}
+                </p>
               </div>
             )}
 

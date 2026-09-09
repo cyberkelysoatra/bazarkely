@@ -11,6 +11,10 @@
  *   1. le modele est reconnu et different de ECHEC ;
  *   2. le solde concorde : solde de la ligne precedente +/- (montant + frais)
  *      egale EXACTEMENT le solde annonce par le SMS.
+ *
+ * Exception a la condition 2 : la PREMIERE ligne de la chaine n'a aucun
+ * predecesseur. Sa concordance est indeterminee, pas fausse — elle ancre la
+ * chaine et est ecrite (v3.76.0).
  */
 
 import { analyserSms, type ModeleSms } from './parseurOrangeMoney'
@@ -142,15 +146,12 @@ export function deciderEcriture(lignes: LigneSms[]): DecisionEcriture {
   for (let i = 0; i < chaine.length; i++) {
     const operation = chaine[i]
 
-    // Le tout premier maillon n'a aucune ligne precedente : la concordance ne
-    // peut pas etre etablie. Sans tolerance, la condition manque -> pas d'ecriture.
+    // Le tout premier maillon n'a aucune ligne precedente : la concordance est
+    // INDETERMINEE, pas fausse. L'ecarter reviendrait a perdre une operation
+    // reelle a chaque rattrapage d'historique. Il ancre donc la chaine : il est
+    // ecrit, et son solde annonce sert de reference a la ligne suivante.
     if (i === 0) {
-      ecartes.push({
-        reference: operation.reference,
-        texteBrut: operation.texteBrut,
-        motif: 'solde non concordant',
-        detail: 'premiere ligne de la chaine : aucun solde precedent a confronter'
-      })
+      aEcrire.push(operation)
       continue
     }
 

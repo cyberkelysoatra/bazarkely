@@ -36,6 +36,7 @@ interface TransactionEcrite {
   category: string
   date: Date
   notes?: string
+  transferFee?: number
 }
 
 interface CompteCree {
@@ -46,11 +47,21 @@ interface CompteCree {
   balance: number
 }
 
+/** Une transaction deja presente cote serveur (saisie manuelle, par exemple). */
+interface TransactionExistante {
+  id: string
+  amount: number
+  date: string
+  notes: string | null
+}
+
 /** Etat partage entre les doublures et les assertions. */
 const monde = {
   userId: 'utilisateur-test',
   inbox: [] as LigneInbox[],
   transactions: new Map<string, TransactionEcrite>(),
+  /** Ce que la table `transactions` de Supabase contient DEJA. */
+  existantes: [] as TransactionExistante[],
   comptes: [] as CompteCree[],
   comptesCrees: 0
 }
@@ -98,6 +109,18 @@ vi.mock('../../../../lib/supabase', () => ({
       getSession: async () => ({ data: { session: { user: { id: monde.userId } } } })
     },
     from: (table: string) => {
+      // Garde anti-doublon : lecture des transactions deja presentes.
+      if (table === 'transactions') {
+        const chaine: any = {
+          select: () => chaine,
+          eq: () => chaine,
+          gte: () => chaine,
+          lte: () => chaine,
+          then: (resoudre: (v: unknown) => unknown) =>
+            Promise.resolve({ data: monde.existantes, error: null }).then(resoudre)
+        }
+        return chaine
+      }
       if (table !== 'sms_inbox') throw new Error(`table inattendue: ${table}`)
       const objet: any = {
         select: () => ({
@@ -132,7 +155,15 @@ vi.mock('../../../../lib/database', () => ({
       })
     },
     transactions: {
-      get: async (id: string) => monde.transactions.get(id)
+      get: async (id: string) => monde.transactions.get(id),
+      // Les transactions ecrites par les passes precedentes sont aussi des
+      // voisines : la garde doit pouvoir les lire sans jamais s'y meprendre
+      // (elles portent la marque `SMS `).
+      where: () => ({
+        equals: () => ({
+          toArray: async () => [...monde.transactions.values()]
+        })
+      })
     }
   }
 }))
@@ -170,6 +201,7 @@ describe('executerEcritureAutomatique — corpus des 50 SMS', () => {
   beforeEach(() => {
     chargerCorpusDansInbox()
     monde.transactions.clear()
+    monde.existantes = []
     monde.comptes = []
     monde.comptesCrees = 0
   })
@@ -179,39 +211,64 @@ describe('executerEcritureAutomatique — corpus des 50 SMS', () => {
 
     expect(bilan.ignore).toBeUndefined()
     expect(bilan.lignesLues).toBe(50)
-    expect(bilan.operationsEcrites).toBe(48)
-    expect(bilan.ecartees).toBe(2)
+    // 49 operations : les 48 d'avant, PLUS l'ancre de chaine desormais ecrite.
+    expect(bilan.operationsEcrites).toBe(49)
+    expect(bilan.ecartees).toBe(1) // seul le SMS d'echec reste ecarte
+    expect(bilan.doublons).toBe(0)
     expect(bilan.erreurs).toEqual([])
-    expect(monde.transactions.size).toBe(71)
+    // UNE seule transaction par operation, frais compris (v3.76.0).
+    expect(monde.transactions.size).toBe(49)
+  })
+
+  it('AC7 — la premiere ligne de la chaine est desormais ecrite', async () => {
+    await executerEcritureAutomatique()
+
+    // CO260729.1038.C39365 : aucun solde precedent, donc concordance
+    // indeterminee — plus jamais un motif d'abandon.
+    const ancre = [...monde.transactions.values()].filter(
+      (t) => t.notes === 'SMS CO260729.1038.C39365'
+    )
+    expect(ancre).toHaveLength(1)
+    expect(monde.inbox.find((l) => l.reference === 'CO260729.1038.C39365')?.etat).toBe('auto_ecrit')
   })
 
   it('AC3 — aucun SMS ecarte ne produit de transaction ni d erreur', async () => {
     await executerEcritureAutomatique()
 
     const ecrites = [...monde.transactions.values()]
-    // Le SMS d echec (OR260903ZQO043) et l ancre de chaine ne laissent aucune trace.
+    // Le SMS d echec (OR260903ZQO043) ne laisse aucune trace.
     expect(ecrites.some((t) => t.notes?.includes('OR260903ZQO043'))).toBe(false)
-    expect(ecrites.some((t) => t.notes?.includes('CO260729.1038.C39365'))).toBe(false)
 
     const ecartees = monde.inbox.filter((l) => l.etat === 'a_valider')
-    expect(ecartees).toHaveLength(2)
+    expect(ecartees).toHaveLength(1)
     expect(ecartees.every((l) => l.transaction_id === null)).toBe(true)
   })
 
-  it('AC4 — un SMS avec frais cree DEUX transactions distinctes', async () => {
+  it('AC1 — un SMS avec frais cree UNE SEULE transaction, frais inclus', async () => {
     await executerEcritureAutomatique()
 
-    // CO260729.1038.C39365 est l ancre : on prend un retrait plus loin dans la chaine.
-    const reference = 'CO260801.0732.C44491'
+    const reference = 'CO260801.0732.C44491' // retrait 60 000, frais 1 900
     const lignes = [...monde.transactions.values()].filter((t) => t.notes === `SMS ${reference}`)
 
-    expect(lignes).toHaveLength(2)
-    const principale = lignes.find((t) => !t.description.startsWith('Frais - '))!
-    const frais = lignes.find((t) => t.description.startsWith('Frais - '))!
+    expect(lignes).toHaveLength(1)
+    // Le total reellement debite, et le detail des frais a cote.
+    expect(lignes[0].amount).toBe(-61900)
+    expect(lignes[0].transferFee).toBe(1900)
+    // La description ne mentionne pas les frais.
+    expect(lignes[0].description).not.toMatch(/frais/i)
+  })
 
-    expect(principale.amount).toBe(-60000) // retrait = depense = montant negatif
-    expect(frais.amount).toBe(-1900) // frais jamais fondus dans le montant principal
-    expect(principale.id).not.toBe(frais.id)
+  it('AC2 — aucune transaction de frais n est creee, sur tout le corpus', async () => {
+    await executerEcritureAutomatique()
+
+    const lignesDeFrais = [...monde.transactions.values()].filter((t) =>
+      t.description.startsWith('Frais - ')
+    )
+    expect(lignesDeFrais).toHaveLength(0)
+
+    // Une transaction par operation ecrite : la liste affiche une seule ligne.
+    const references = new Set([...monde.transactions.values()].map((t) => t.notes))
+    expect(references.size).toBe(monde.transactions.size)
   })
 
   it('AC4bis — un SMS sans frais ne cree QU UNE transaction', async () => {
@@ -224,6 +281,7 @@ describe('executerEcritureAutomatique — corpus des 50 SMS', () => {
     expect(lignes).toHaveLength(1)
     expect(lignes[0].amount).toBeGreaterThan(0) // depot = recette = montant positif
     expect(lignes[0].type).toBe('income')
+    expect(lignes[0].transferFee).toBeUndefined() // aucun frais : rien a detailler
   })
 
   it('AC5 — rejouer l ecriture ne cree aucun doublon', async () => {
@@ -237,9 +295,94 @@ describe('executerEcritureAutomatique — corpus des 50 SMS', () => {
     const bilan = await executerEcritureAutomatique()
 
     expect(bilan.transactionsCreees).toBe(0)
-    expect(bilan.dejaEcrites).toBe(48)
-    expect(monde.transactions.size).toBe(71)
+    expect(bilan.dejaEcrites).toBe(49)
+    expect(bilan.doublons).toBe(0) // une ligne deja ecrite n'est pas son propre doublon
+    expect(monde.transactions.size).toBe(49)
     expect(new Set(monde.transactions.keys())).toEqual(apresPremierePasse)
+  })
+
+  it('AC5/AC6 — le cas reel : « Karate 3mois » deja saisi a la main', async () => {
+    // Le SMS PP260905.0925.B08754 : transfert 91 900 Ar + 500 Ar de frais,
+    // le 05/09/2026 a 09:25 (heure de Madagascar). JOEL avait deja saisi la
+    // meme depense a la main, frais compris : 92 400 Ar.
+    monde.existantes = [
+      {
+        id: 'saisie-manuelle-karate',
+        amount: -92400,
+        date: new Date('2026-09-05T10:00:00+03:00').toISOString(),
+        notes: null
+      }
+    ]
+
+    const bilan = await executerEcritureAutomatique()
+
+    expect(bilan.doublons).toBe(1)
+
+    // Rien n'a ete ecrit pour ce SMS.
+    const ecrites = [...monde.transactions.values()].filter(
+      (t) => t.notes === 'SMS PP260905.0925.B08754'
+    )
+    expect(ecrites).toHaveLength(0)
+
+    // La ligne est marquee et pointe vers la transaction deja existante.
+    const ligne = monde.inbox.find((l) => l.reference === 'PP260905.0925.B08754')!
+    expect(ligne.etat).toBe('doublon_probable')
+    expect(ligne.transaction_id).toBe('saisie-manuelle-karate')
+
+    // Le reste du corpus n'est pas affecte.
+    expect(bilan.operationsEcrites).toBe(48)
+  })
+
+  it('AC5 — un montant SANS les frais suffit aussi a reconnaitre le doublon', async () => {
+    monde.existantes = [
+      {
+        id: 'saisie-montant-seul',
+        amount: -91900, // le montant seul, frais non saisis
+        date: new Date('2026-09-05T14:30:00+03:00').toISOString(),
+        notes: null
+      }
+    ]
+
+    const bilan = await executerEcritureAutomatique()
+
+    expect(bilan.doublons).toBe(1)
+    expect(
+      monde.inbox.find((l) => l.reference === 'PP260905.0925.B08754')?.transaction_id
+    ).toBe('saisie-montant-seul')
+  })
+
+  it('AC5 — une transaction issue d un SMS ne peut JAMAIS prouver un doublon', async () => {
+    // Meme jour, meme montant, mais elle porte la marque `SMS ` : c'est une
+    // ecriture automatique, pas une saisie manuelle. Elle ne bloque rien.
+    monde.existantes = [
+      {
+        id: 'ecriture-sms-anterieure',
+        amount: -92400,
+        date: new Date('2026-09-05T09:25:00+03:00').toISOString(),
+        notes: 'SMS PP260905.0925.B08754'
+      }
+    ]
+
+    const bilan = await executerEcritureAutomatique()
+
+    expect(bilan.doublons).toBe(0)
+    expect(bilan.operationsEcrites).toBe(49)
+  })
+
+  it('AC5 — un montant identique un AUTRE jour ne bloque rien', async () => {
+    monde.existantes = [
+      {
+        id: 'autre-jour',
+        amount: -92400,
+        date: new Date('2026-09-04T09:25:00+03:00').toISOString(),
+        notes: null
+      }
+    ]
+
+    const bilan = await executerEcritureAutomatique()
+
+    expect(bilan.doublons).toBe(0)
+    expect(bilan.operationsEcrites).toBe(49)
   })
 
   it('AC6 — tout est rattache au compte Orange Money, jamais a un autre', async () => {
@@ -267,7 +410,7 @@ describe('executerEcritureAutomatique — corpus des 50 SMS', () => {
     await executerEcritureAutomatique()
 
     const ecrites = monde.inbox.filter((l) => l.etat === 'auto_ecrit')
-    expect(ecrites).toHaveLength(48)
+    expect(ecrites).toHaveLength(49)
     for (const ligne of ecrites) {
       expect(ligne.transaction_id).toBeTruthy()
       expect(monde.transactions.has(ligne.transaction_id!)).toBe(true)

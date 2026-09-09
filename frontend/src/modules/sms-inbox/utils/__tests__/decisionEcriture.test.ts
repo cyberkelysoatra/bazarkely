@@ -84,8 +84,11 @@ describe('deciderEcriture — corpus des 50 SMS reels', () => {
       expect(retenues.has(courant.reference)).toBe(attendu === courant.solde)
     }
 
-    // La toute premiere ligne n'a aucun predecesseur : jamais ecrite.
-    expect(retenues.has(reconnues[0].reference)).toBe(false)
+    // La toute premiere ligne n'a aucun predecesseur : sa concordance est
+    // INDETERMINEE, pas fausse. Elle ancre la chaine et EST ecrite (v3.76.0),
+    // sans quoi chaque rattrapage d'historique perdrait une operation reelle.
+    expect(retenues.has(reconnues[0].reference)).toBe(true)
+    expect(decision.ecartes.some((e) => e.reference === reconnues[0].reference)).toBe(false)
   })
 
   it('ne rejoue pas une ligne deja ecrite, mais la garde dans la chaine', () => {
