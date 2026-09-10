@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.76.0';
-export const APP_VERSION_NAME = "Une seule ligne par operation, et plus jamais de doublon (phase 2 bis). Une operation Mobile Money ne fait plus qu UNE ligne dans la liste des transactions : son montant comprend desormais les frais, et le detail des frais se lit en ouvrant la fiche, avec le nom de l operateur. Avant, les frais faisaient une seconde ligne et la meme depense apparaissait deux fois. Surtout, si la depense a deja ete saisie a la main, le SMS ne cree plus rien : l application cherche, avant d ecrire, une transaction du meme jour dont le montant correspond au montant seul ou au montant frais compris, et qui ne vienne pas elle-meme d un SMS. Si elle en trouve une, elle s abstient et note le SMS comme doublon probable. Dans le doute on n ecrit pas : un manque se rattrape a la main, un doublon fausse les comptes en silence. Enfin, le tout premier SMS d un historique est desormais ecrit lui aussi : n ayant aucun solde precedent auquel se comparer, il etait ecarte a tort, et chaque rattrapage d historique perdait ainsi une operation reelle. Aucun ecran modifie, hormis l ajout des frais dans la fiche d une transaction.";
-export const LAST_UPDATED = '2026-09-09';
-export const APP_BUILD_DATE = '2026-09-09';
+export const APP_VERSION = '3.77.0';
+export const APP_VERSION_NAME = "Ce qui est supprime ailleurs disparait enfin de cet appareil. Jusqu ici, l application savait ajouter et mettre a jour ce qui venait du serveur, mais elle ne retirait jamais une ligne qui n existait plus : une depense effacee sur le telephone restait affichee sur l ordinateur, indefiniment. Desormais, apres chaque mise a jour en ligne, l application compare ce qu elle a en local avec ce que le serveur lui a repondu, et met de cote ce qui a disparu. Rien n est jamais efface sec : les lignes retirees sont rangees dans une reserve locale, d ou elles peuvent etre remises en place. Cinq garde-fous evitent de retirer a tort : une ligne qui attend encore d etre envoyee est gardee, une ligne creee a l instant est gardee, une reponse du serveur arrivee incomplete ne declenche rien, une reponse vide ne vide jamais l appareil, et les remboursements ne sont compares que si leur pret l a ete. Les listes sont aussi lues par tranches, pour ne plus s arreter a mille lignes. Aucun ecran modifie.";
+export const LAST_UPDATED = '2026-09-10';
+export const APP_BUILD_DATE = '2026-09-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.77.0',
+    date: '2026-09-10',
+    description:
+      "Synchro descendante : les lignes supprimees cote serveur sont enfin retirees du cache local, via une mise en quarantaine reversible.",
+    changes: [
+      "Nouvel utilitaire partage lib/syncReconcile.ts : un seul point de comparaison local/serveur pour les 8 stores concernes (transactions, comptes, budgets, objectifs, recurrentes, prets, remboursements, periodes d interet).",
+      "Nouveau store Dexie syncQuarantine (base v18, migration additive) : une ligne retiree est archivee avec sa copie complete, jamais supprimee sechement. restoreFromQuarantine(id) la remet en place depuis la console.",
+      "Cinq protections obligatoires : P1 ligne presente dans la file d envoi (tout statut), P2 creation de moins de 60 s, P3 reponse serveur incomplete, P4 reponse serveur vide, P5 cascade prets vers remboursements et periodes.",
+      "Lectures paginees par .range(1000) : une reponse n est declaree complete que si toutes les pages ont repondu. Sans cela, Supabase s arretait silencieusement a 1000 lignes.",
+      "recurringTransactionService.getAll : ajout du withTimeout manquant sur la requete recurring_transactions, qui pouvait pendre sans jamais aboutir ni lever d erreur.",
+      "Aucune ecriture vers Supabase declenchee par la reconciliation : la quarantaine est strictement locale et n entre jamais dans la file de synchronisation.",
+      "28 tests Vitest sur syncReconcile (une regle par protection, idempotence, restauration, pagination de 2500 lignes)."
+    ]
+  },
   {
     version: '3.76.0',
     date: '2026-09-09',

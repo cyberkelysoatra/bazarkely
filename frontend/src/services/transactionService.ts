@@ -11,6 +11,7 @@ import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
+import { reconcileStore } from '../lib/syncReconcile';
 import { useAppStore } from '../stores/appStore';
 
 // Timeout par défaut pour les appels Supabase dans les services métier
@@ -221,13 +222,12 @@ class TransactionService {
    */
   private async refreshTransactionsFromSupabase(userId: string): Promise<void> {
     try {
-      const response = await withTimeout(
-        apiService.getTransactions(),
-        SUPABASE_TIMEOUT_MS,
-        'transactionService.refreshTransactionsFromSupabase'
-      );
+      // Lecture paginée : chaque page porte son propre timeout, donc pas de
+      // withTimeout global ici (il tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllTransactionsPaged();
       if (response.success && response.data) {
-        const supabaseTransactions = (response.data as any[]) || [];
+        const supabaseTransactions = response.data as any[];
         const transactions: Transaction[] = supabaseTransactions
           .filter((t: any) => t.user_id === userId)
           .map((t: any) => this.mapSupabaseToTransaction(t));
@@ -235,6 +235,20 @@ class TransactionService {
           await db.transactions.bulkPut(transactions);
           console.log(`📱 [TransactionService] 🔄 IndexedDB rafraîchi avec ${transactions.length} transaction(s) depuis Supabase (background)`);
         }
+
+        // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+        const localTransactions = await db.transactions
+          .where('userId')
+          .equals(userId)
+          .toArray();
+        await reconcileStore({
+          storeName: 'transactions',
+          localRows: localTransactions,
+          serverIds: transactions.map((t) => t.id),
+          fetchStartedAt,
+          fetchComplete: response.complete,
+          userId,
+        });
       }
     } catch (error) {
       // Erreur silencieuse — l'utilisateur a déjà ses données locales

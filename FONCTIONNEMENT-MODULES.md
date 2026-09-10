@@ -572,6 +572,30 @@ ajuste le solde du compte**. « Voir le ticket » affiche le markdown conservé.
 
 ---
 
+## 🔁 TRANSVERSE — SYNCHRO DESCENDANTE (suppressions serveur) — v3.77.0
+
+**S'applique à tous les modules ci-dessus qui lisent en offline-first.** Le cache local ne se
+contentait plus d'être en retard : il gardait indéfiniment des lignes que le serveur n'avait plus.
+
+- **Comportement attendu** : après chaque rafraîchissement **en ligne** d'un store, ce qui a disparu
+  côté serveur disparaît aussi de l'appareil, sans action de l'utilisateur et sans écran dédié.
+- **Jamais de suppression sèche** : la ligne est déplacée dans le store `syncQuarantine`
+  (base Dexie v18) avec sa copie complète. `restoreFromQuarantine('<store>:<id>')` la remet en place
+  (console uniquement, `window.bazarkelyRestoreFromQuarantine`).
+- **Portée** : `transactions`, `accounts`, `budgets`, `goals`, `recurringTransactions`,
+  `personalLoans`, `loanRepayments`, `loanInterestPeriods`.
+  **Hors périmètre** : module Gestion Eau (qui a son propre mécanisme de *tombstones*, voir
+  `modules/gestion-eau/services/eauSync.ts`), tables famille, reçus, notifications.
+- **Point d'entrée unique** : `lib/syncReconcile.ts` → `reconcileStore()`. **Ne jamais dupliquer**
+  la logique de comparaison dans un service.
+- **Cinq protections** (P1 file d'envoi tout statut, P2 création < 60 s, P3 réponse incomplète,
+  P4 réponse serveur vide, P5 cascade prêts → remboursements/périodes) : détail et raison d'être
+  dans `CLAUDE.md`, section « Synchro descendante : les suppressions serveur ».
+- **Lectures paginées** (`.range()` par 1000) : sans cela Supabase s'arrête silencieusement à 1000
+  lignes et une absence n'est plus interprétable.
+
+---
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

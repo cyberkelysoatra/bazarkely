@@ -5,6 +5,7 @@
  */
 
 import { supabase, db, handleSupabaseError, withTimeout } from '../lib/supabase';
+import { fetchAllPages } from '../lib/syncReconcile';
 import type { 
   User, Account, SupabaseTransaction, Budget, Goal, 
   UserInsert, AccountInsert, SupabaseTransactionInsert, BudgetInsert, GoalInsert,
@@ -42,6 +43,20 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+/**
+ * Réponse d'une lecture paginée complète. `complete` n'est vrai que si TOUTES
+ * les pages ont répondu sans erreur — c'est la seule preuve qu'une absence
+ * locale signifie vraiment « supprimé côté serveur » (protection P3).
+ */
+export interface PagedResponse<T = any> {
+  success: boolean;
+  data?: T[];
+  complete: boolean;
+  error?: string;
+  /** Utilisateur pour lequel la lecture a été faite (portée de comparaison). */
+  userId?: string;
 }
 
 class ApiService {
@@ -726,6 +741,89 @@ class ApiService {
     } catch (error) {
       return this.handleError(error, 'deleteReceiptItem');
     }
+  }
+
+  // === LECTURES COMPLÈTES PAGINÉES (réconciliation descendante) ===
+  // Supabase plafonne un select non borné à 1000 lignes : sans `.range()` on ne
+  // peut pas distinguer « le serveur n'a que ces lignes » de « le serveur en a
+  // renvoyé mille et s'est arrêté là ». Ces méthodes s'ajoutent aux lectures
+  // existantes (dont la signature ne change pas) et rapportent `complete`, seule
+  // preuve qu'on a bien tout reçu — condition de la mise en quarantaine (P3).
+  // Chaque page porte son propre timeout : ne PAS les rappeler sous un
+  // withTimeout global, qui tuerait une lecture multi-pages parfaitement saine.
+
+  private async fetchAllPagesFor<R>(
+    label: string,
+    buildQuery: (userId: string, from: number, to: number) => any,
+    timeoutMs = 8000
+  ): Promise<PagedResponse<R>> {
+    try {
+      const userId = await this.getCurrentUserId();
+      if (!userId) {
+        return { success: false, complete: false, error: 'Utilisateur non authentifié' };
+      }
+      const { rows, complete } = await fetchAllPages<R>((from, to) =>
+        withTimeout(buildQuery(userId, from, to), timeoutMs, label) as Promise<{
+          data: R[] | null;
+          error: any;
+        }>
+      );
+      return { success: true, data: rows, complete, userId };
+    } catch (error) {
+      return { ...this.handleError(error, label), complete: false };
+    }
+  }
+
+  async getAllTransactionsPaged(): Promise<PagedResponse<SupabaseTransaction>> {
+    return this.fetchAllPagesFor<SupabaseTransaction>(
+      'apiService.getAllTransactionsPaged',
+      (userId, from, to) =>
+        db.transactions()
+          .select(`
+            *,
+            accounts!transactions_account_id_fkey(name, type),
+            target_account:accounts!transactions_target_account_id_fkey(name, type)
+          `)
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .range(from, to)
+    );
+  }
+
+  async getAllAccountsPaged(): Promise<PagedResponse<Account>> {
+    return this.fetchAllPagesFor<Account>(
+      'apiService.getAllAccountsPaged',
+      (userId, from, to) =>
+        db.accounts()
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+    );
+  }
+
+  async getAllBudgetsPaged(): Promise<PagedResponse<Budget>> {
+    return this.fetchAllPagesFor<Budget>(
+      'apiService.getAllBudgetsPaged',
+      (userId, from, to) =>
+        db.budgets()
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+    );
+  }
+
+  async getAllGoalsPaged(): Promise<PagedResponse<Goal>> {
+    return this.fetchAllPagesFor<Goal>(
+      'apiService.getAllGoalsPaged',
+      (userId, from, to) =>
+        db.goals()
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+    );
   }
 }
 

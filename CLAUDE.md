@@ -140,12 +140,49 @@ git push origin main    # → Netlify déploie automatiquement
 
 **Problème :** `npm run build` (vite + esbuild) **transpile** mais ne fait **aucun contrôle de types strict**. Une référence à une variable/fonction supprimée (ex. `setDurationMonths('')` orphelin laissé dans un `useEffect` de reset après retrait de l'état) **passe le build sans erreur** puis **plante en production** (`ReferenceError` → ErrorBoundary, page cassée).
 
-**Règle :** **AVANT tout commit/déploiement**, lancer le vrai garde-fou :
+**Règle :** **AVANT tout commit/déploiement**, lancer le vrai garde-fou.
+
+### ⛔ CORRECTION IMPORTANTE (2026-09-08) : `npx tsc --noEmit` SEUL NE VÉRIFIE RIEN
+
+La version précédente de cette règle prescrivait `npx tsc --noEmit`. **C'était faux, et le garde-fou était inopérant depuis un moment.**
+
+`frontend/tsconfig.json` contient :
+
+```json
+{ "files": [], "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }] }
+```
+
+Avec `files: []` et des références de projet non construites, `npx tsc --noEmit` **ne compile aucun fichier** et sort en 0 quoi qu'il arrive. Il disait « propre » sans rien regarder.
+
+**Le vrai contrôle :**
+
 ```bash
 cd C:\bazarkely-2\frontend
-npx tsc --noEmit   # exit 0 = propre
+npx tsc --noEmit -p tsconfig.app.json
 ```
-C'est `tsc --noEmit` (pas `npm run build`) qui attrape les références orphelines après refactor, les imports/variables inutilisés et les erreurs de types. Quand on supprime un `useState`, grep TOUTES les occurrences (`x` ET `setX`, y compris resets/cleanups) puis `tsc --noEmit`.
+
+Il remonte **1983 lignes d'erreur préexistantes** (mesuré le 2026-09-08 par `grep -c "error TS"`). ⚠️ La ligne de résumé de `tsc` peut annoncer un total différent d'une unité : **c'est la méthode de comptage qui fait foi, pas le chiffre**. Comparer toujours deux mesures obtenues de la même façon. Le zéro erreur est donc hors d'atteinte tant que cette dette n'est pas purgée, et la règle devient une **comparaison de compteur** :
+
+```bash
+# AVANT de coder, relever la référence
+npx tsc --noEmit -p tsconfig.app.json 2>&1 | grep -c "error TS"
+
+# APRÈS : le compteur ne doit PAS avoir augmenté,
+# et aucune erreur ne doit porter sur un fichier du chantier en cours
+npx tsc --noEmit -p tsconfig.app.json 2>&1 | grep "error TS" | grep "<chemin du module>"
+```
+
+**Deux conditions de fin, toutes deux obligatoires :** compteur inchangé, **et** zéro erreur dans les fichiers touchés par le chantier.
+
+C'est ce contrôle (pas `npm run build`) qui attrape les références orphelines après refactor, les imports et variables inutilisés et les erreurs de types. Quand on supprime un `useState`, grep TOUTES les occurrences (`x` ET `setX`, y compris resets et cleanups) puis relancer le contrôle.
+
+⚠️ **Dette associée :** ces ~1983 erreurs rendent impossible toute vérification stricte. Candidat à un chantier d'assainissement dédié. Tant qu'il n'a pas eu lieu, la comparaison de compteur est la seule méthode fiable.
+
+### Piège d'encodage au transfert par presse-papiers (2026-09-08)
+
+En collant du code vers un éditeur de navigateur (tableau de bord Supabase, éditeur de fonction), `Get-Content -Raw` **sans** `-Encoding UTF8` lit l'UTF-8 comme de l'ANSI. La classe d'expression régulière `[\u0300-\u036f]` est devenue `[Ì€-Í¯]` : le retrait des accents aurait cessé de fonctionner **en silence** en production, sans erreur ni plantage.
+
+**Double parade :** toujours `-Encoding UTF8`, **et** écrire les fichiers sensibles en pur ASCII avec des séquences `\uXXXX` plutôt que des caractères littéraux.
 
 ### supabase.auth.getUser() plante en offline (résolu v3.12.1)
 
@@ -219,6 +256,41 @@ const { data, error } = await withTimeout(
 3. Ne **jamais** retirer l'id (`const { id, ...rest } = data`) avant un CREATE.
 
 Ainsi un envoi « expiré-mais-commité » et le rejeu de la file convergent sur la **même** ligne. **Un timeout n'est PAS un échec** — l'écriture a pu aboutir, donc toute écriture rejouable doit être idempotente. Chemins purement en ligne (sans file, id serveur) non concernés : `createFamilyGroup`, `joinFamilyGroup`, `reimbursementService.createReimbursementRequest`.
+
+---
+
+### Synchro descendante : les suppressions serveur (corrigé v3.77.0)
+
+**Problème :** toutes les fonctions de rafraîchissement « Supabase → IndexedDB » ne faisaient que
+`bulkPut` / `put`. Elles ajoutent et mettent à jour, mais **ne retirent jamais une ligne locale qui
+n'existe plus sur le serveur**. Une transaction supprimée sur le téléphone restait affichée sur
+l'ordinateur indéfiniment, et une correction faite directement en SQL ne redescendait jamais.
+Cas vécu (2026-09-10) : après la fusion SQL des 23 lignes « Frais - », le serveur était à 452
+transactions et l'appareil restait à 475, avec les frais comptés deux fois (693 841 au lieu de 712 791).
+
+**Règle :** tout rafraîchissement descendant **en ligne** doit, après son `bulkPut`, appeler
+`reconcileStore()` de `lib/syncReconcile.ts` — utilitaire **unique et partagé**, jamais de
+comparaison dupliquée dans un service. Une ligne locale de la portée absente de la réponse serveur
+part en **quarantaine** (store Dexie `syncQuarantine`, v18) : elle est **archivée avec sa copie
+complète**, jamais supprimée sèchement. `restoreFromQuarantine('<store>:<id>')` la remet en place
+depuis la console (exposée en `window.bazarkelyRestoreFromQuarantine`). `syncQuarantine` n'est
+**jamais** synchronisée vers Supabase, jamais mise dans `syncQueue`, jamais lue par un écran.
+
+**Cinq protections, toutes obligatoires** (ne jamais en retirer une) :
+1. **P1 file d'envoi** — l'id figure dans `syncQueue`, **quel que soit le statut** (`pending`,
+   `processing`, `failed`, tentatives épuisées) : l'écriture locale monte encore.
+2. **P2 création récente** — créée après `fetchStartedAt − 60 s` : née pendant la requête.
+3. **P3 réponse incomplète** — une page a échoué : on ne peut pas distinguer une absence d'un trou.
+4. **P4 réponse vide suspecte** — 0 ligne serveur alors que le local en a : session expirée, RLS,
+   incident. **On ne vide jamais un appareil sur une réponse vide.**
+5. **P5 cascade prêts** — un remboursement / une période n'est comparé que si son prêt parent est
+   revenu du serveur ; si le parent part en quarantaine, ses enfants suivent.
+
+**Corollaire pagination :** un `select` non borné est plafonné à **1000 lignes** par Supabase, sans
+erreur. Sans `.range()`, impossible de distinguer « le serveur n'a que ça » de « il s'est arrêté à
+mille ». Toute lecture qui alimente une réconciliation doit donc paginer et ne se déclarer
+`complete` que si **toutes** les pages ont répondu. Une page en échec ⇒ `bulkPut` quand même, mais
+**aucune** quarantaine (P3).
 
 ---
 

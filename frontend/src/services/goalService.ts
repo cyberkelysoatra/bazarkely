@@ -9,6 +9,7 @@ import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
+import { reconcileStore } from '../lib/syncReconcile';
 import { useAppStore } from '../stores/appStore';
 import apiService from './apiService';
 import transactionService from './transactionService';
@@ -230,11 +231,10 @@ class GoalService {
    */
   private async refreshGoalsFromSupabase(userId: string): Promise<void> {
     try {
-      const response = await withTimeout(
-        apiService.getGoals(),
-        SUPABASE_TIMEOUT_MS,
-        'goalService.refreshGoalsFromSupabase'
-      );
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllGoalsPaged();
       if (response.success && !response.error) {
         const supabaseGoals = (response.data as any[]) || [];
         const goals: Goal[] = supabaseGoals
@@ -244,6 +244,16 @@ class GoalService {
           await db.goals.bulkPut(goals);
           console.log(`🎯 [GoalService] 🔄 IndexedDB rafraîchi avec ${goals.length} goal(s) depuis Supabase (background)`);
         }
+
+        // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+        await reconcileStore({
+          storeName: 'goals',
+          localRows: await db.goals.where('userId').equals(userId).toArray(),
+          serverIds: goals.map((g) => g.id),
+          fetchStartedAt,
+          fetchComplete: response.complete,
+          userId,
+        });
       }
     } catch (error) {
       // Erreur silencieuse — l'utilisateur a déjà ses données locales
@@ -658,12 +668,11 @@ class GoalService {
       }
 
       console.log('🎯 [GoalService] 🔄 Synchronisation forcée depuis Supabase...');
-      const response = await withTimeout(
-        apiService.getGoals(),
-        SUPABASE_TIMEOUT_MS,
-        'goalService.syncGoalsFromSupabase'
-      );
-      
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllGoalsPaged();
+
       if (!response.success || response.error) {
         throw new Error(response.error || 'Erreur lors de la récupération depuis Supabase');
       }
@@ -680,6 +689,16 @@ class GoalService {
       } else {
         console.log('🎯 [GoalService] ℹ️ Aucun goal à synchroniser');
       }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      await reconcileStore({
+        storeName: 'goals',
+        localRows: await db.goals.where('userId').equals(userId).toArray(),
+        serverIds: goals.map((g) => g.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
     } catch (error) {
       console.error('🎯 [GoalService] ❌ Erreur lors de la synchronisation depuis Supabase:', error);
       throw error;

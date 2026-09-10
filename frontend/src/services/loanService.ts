@@ -9,6 +9,7 @@
 import { supabase, withTimeout } from '../lib/supabase';
 import { computeLoanLiveState } from './loanInterest';
 import { db } from '../lib/database';
+import { reconcileStore, fetchAllPages } from '../lib/syncReconcile';
 import { useAppStore } from '../stores/appStore';
 import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
@@ -296,20 +297,111 @@ async function queueLoanSyncOperation(
 // HELPERS — REFRESH BACKGROUND (Supabase → IndexedDB)
 // ============================================================================
 
-async function refreshLoansFromSupabase(userId: string): Promise<void> {
-  try {
-    const { data: loansData, error } = (await withTimeout(
+/**
+ * Lecture paginée des prêts de l'utilisateur (prêteur OU emprunteur).
+ * `complete` n'est vrai que si toutes les pages ont répondu : c'est la seule
+ * preuve qu'une absence locale vaut « supprimé côté serveur » (protection P3).
+ */
+async function fetchLoansPaged(userId: string, label: string) {
+  return fetchAllPages<any>((from, to) =>
+    withTimeout(
       supabase
         .from('personal_loans')
         .select('*')
         .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .range(from, to) as any,
       SUPABASE_TIMEOUT_MS,
-      'loanService.refreshLoansFromSupabase'
-    )) as any;
+      label
+    ) as Promise<{ data: any[] | null; error: any }>
+  );
+}
 
-    if (error || !loansData) {
-      console.warn(`${LOG_TAG} ⚠️ Refresh prêts échoué:`, error);
+/** Lecture paginée des lignes filles d'un ensemble de prêts. */
+async function fetchLoanChildrenPaged(table: string, loanIds: string[], label: string) {
+  if (loanIds.length === 0) return { rows: [] as any[], complete: true };
+  return fetchAllPages<any>((from, to) =>
+    withTimeout(
+      supabase.from(table).select('*').in('loan_id', loanIds).order('id').range(from, to) as any,
+      SUPABASE_TIMEOUT_MS,
+      label
+    ) as Promise<{ data: any[] | null; error: any }>
+  );
+}
+
+/**
+ * Réconcilie les prêts puis leurs lignes filles (P5).
+ * Les enfants ne sont comparés que si leur prêt parent est revenu du serveur ;
+ * si le parent part en quarantaine, ses enfants le suivent (cascade).
+ */
+async function reconcileLoanTree(params: {
+  userId: string;
+  fetchStartedAt: Date;
+  serverLoanIds: string[];
+  loansComplete: boolean;
+  serverRepaymentIds: string[];
+  repaymentsComplete: boolean;
+  serverPeriodIds: string[];
+  periodsComplete: boolean;
+}): Promise<void> {
+  const { userId, fetchStartedAt, serverLoanIds } = params;
+
+  // Portée locale relevée AVANT la réconciliation des prêts, sinon les enfants
+  // des prêts mis en quarantaine sortiraient de la portée sans être traités.
+  const localLoans = await getLocalLoansForUser(userId);
+  const localLoanIds = new Set(localLoans.map((l) => l.id));
+
+  const loansResult = await reconcileStore({
+    storeName: 'personalLoans',
+    localRows: localLoans,
+    serverIds: serverLoanIds,
+    fetchStartedAt,
+    fetchComplete: params.loansComplete,
+    userId,
+  });
+
+  const parentGate = {
+    getParentId: (row: { loanId?: string }) => row.loanId,
+    receivedParentIds: new Set(serverLoanIds),
+    quarantinedParentIds: new Set(loansResult.quarantinedIds),
+  };
+
+  const [localRepayments, localPeriods] = await Promise.all([
+    db.loanRepayments.toArray(),
+    db.loanInterestPeriods.toArray(),
+  ]);
+
+  await reconcileStore({
+    storeName: 'loanRepayments',
+    localRows: localRepayments.filter((r) => localLoanIds.has(r.loanId)),
+    serverIds: params.serverRepaymentIds,
+    fetchStartedAt,
+    fetchComplete: params.loansComplete && params.repaymentsComplete,
+    userId,
+    parentGate,
+  });
+
+  await reconcileStore({
+    storeName: 'loanInterestPeriods',
+    localRows: localPeriods.filter((p) => localLoanIds.has(p.loanId)),
+    serverIds: params.serverPeriodIds,
+    fetchStartedAt,
+    fetchComplete: params.loansComplete && params.periodsComplete,
+    userId,
+    parentGate,
+  });
+}
+
+async function refreshLoansFromSupabase(userId: string): Promise<void> {
+  try {
+    const fetchStartedAt = new Date();
+    const { rows: loansData, complete: loansComplete } = await fetchLoansPaged(
+      userId,
+      'loanService.refreshLoansFromSupabase'
+    );
+
+    if (!loansComplete && loansData.length === 0) {
+      console.warn(`${LOG_TAG} ⚠️ Refresh prêts échoué`);
       return;
     }
 
@@ -319,36 +411,39 @@ async function refreshLoansFromSupabase(userId: string): Promise<void> {
     }
 
     const loanIds = loans.map((l) => l.id);
+    let repayments: any[] = [];
+    let periods: any[] = [];
+    let repaymentsComplete = true;
+    let periodsComplete = true;
 
     if (loanIds.length > 0) {
-      const [{ data: repData }, { data: ipData }] = await Promise.all([
-        withTimeout(
-          supabase.from('loan_repayments').select('*').in('loan_id', loanIds),
-          SUPABASE_TIMEOUT_MS,
-          'loanService.refreshRepayments'
-        ) as Promise<any>,
-        withTimeout(
-          supabase.from('loan_interest_periods').select('*').in('loan_id', loanIds),
-          SUPABASE_TIMEOUT_MS,
-          'loanService.refreshInterestPeriods'
-        ) as Promise<any>,
+      const [repResult, ipResult] = await Promise.all([
+        fetchLoanChildrenPaged('loan_repayments', loanIds, 'loanService.refreshRepayments'),
+        fetchLoanChildrenPaged('loan_interest_periods', loanIds, 'loanService.refreshInterestPeriods'),
       ]);
 
-      if (repData) {
-        const repayments = (repData as any[]).map(mapRepaymentRow);
-        if (repayments.length > 0) {
-          await db.loanRepayments.bulkPut(repayments);
-        }
-      }
-      if (ipData) {
-        const periods = (ipData as any[]).map(mapInterestPeriodRow);
-        if (periods.length > 0) {
-          await db.loanInterestPeriods.bulkPut(periods);
-        }
-      }
+      repaymentsComplete = repResult.complete;
+      periodsComplete = ipResult.complete;
+      repayments = repResult.rows.map(mapRepaymentRow);
+      periods = ipResult.rows.map(mapInterestPeriodRow);
+
+      if (repayments.length > 0) await db.loanRepayments.bulkPut(repayments);
+      if (periods.length > 0) await db.loanInterestPeriods.bulkPut(periods);
     }
 
     console.log(`${LOG_TAG} 🔄 IndexedDB rafraîchi avec ${loans.length} prêt(s) (background)`);
+
+    // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+    await reconcileLoanTree({
+      userId,
+      fetchStartedAt,
+      serverLoanIds: loanIds,
+      loansComplete,
+      serverRepaymentIds: repayments.map((r) => r.id),
+      repaymentsComplete,
+      serverPeriodIds: periods.map((p) => p.id),
+      periodsComplete,
+    });
   } catch (error) {
     console.warn(`${LOG_TAG} ⚠️ Refresh background échoué (non bloquant):`, error);
   }
@@ -426,41 +521,40 @@ export async function getMyLoans(): Promise<LoanWithDetails[]> {
     // STEP 4: IndexedDB vide ET online → fetch Supabase synchrone (premier usage)
     console.log(`${LOG_TAG} 🌐 IndexedDB vide → fetch Supabase synchrone...`);
     try {
-      const { data: loansData, error: loansError } = (await withTimeout(
-        supabase
-          .from('personal_loans')
-          .select('*')
-          .or(`lender_user_id.eq.${userId},borrower_user_id.eq.${userId}`)
-          .order('created_at', { ascending: false }),
-        SUPABASE_TIMEOUT_MS,
+      const fetchStartedAt = new Date();
+      const { rows: loansData, complete: loansComplete } = await fetchLoansPaged(
+        userId,
         'loanService.getMyLoans/initial'
-      )) as any;
-      if (loansError) throw new Error(loansError.message);
+      );
       if (!loansData || loansData.length === 0) return [];
 
       const loans = (loansData as any[]).map(mapLoanRow);
       const loanIds = loans.map((l) => l.id);
 
-      const [{ data: repaymentsData }, { data: interestPeriodsData }] = await Promise.all([
-        withTimeout(
-          supabase.from('loan_repayments').select('*').in('loan_id', loanIds),
-          SUPABASE_TIMEOUT_MS,
-          'loanService.getMyLoans/repayments'
-        ) as Promise<any>,
-        withTimeout(
-          supabase.from('loan_interest_periods').select('*').in('loan_id', loanIds),
-          SUPABASE_TIMEOUT_MS,
-          'loanService.getMyLoans/periods'
-        ) as Promise<any>,
+      const [repResult, ipResult] = await Promise.all([
+        fetchLoanChildrenPaged('loan_repayments', loanIds, 'loanService.getMyLoans/repayments'),
+        fetchLoanChildrenPaged('loan_interest_periods', loanIds, 'loanService.getMyLoans/periods'),
       ]);
 
-      const repayments = ((repaymentsData as any[]) || []).map(mapRepaymentRow);
-      const periods = ((interestPeriodsData as any[]) || []).map(mapInterestPeriodRow);
+      const repayments = repResult.rows.map(mapRepaymentRow);
+      const periods = ipResult.rows.map(mapInterestPeriodRow);
 
       // Caching IndexedDB
       await db.personalLoans.bulkPut(loans);
       if (repayments.length > 0) await db.loanRepayments.bulkPut(repayments);
       if (periods.length > 0) await db.loanInterestPeriods.bulkPut(periods);
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      await reconcileLoanTree({
+        userId,
+        fetchStartedAt,
+        serverLoanIds: loanIds,
+        loansComplete,
+        serverRepaymentIds: repayments.map((r) => r.id),
+        repaymentsComplete: repResult.complete,
+        serverPeriodIds: periods.map((p) => p.id),
+        periodsComplete: ipResult.complete,
+      });
 
       const repByLoan = new Map<string, LoanRepayment[]>();
       for (const r of repayments) {

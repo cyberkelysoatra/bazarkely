@@ -4,7 +4,11 @@
  */
 
 import { db } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
+import { reconcileStore, fetchAllPages } from '../lib/syncReconcile';
+
+// Timeout par défaut pour les appels Supabase (cohérent avec les autres services)
+const SUPABASE_TIMEOUT_MS = 5000;
 import { getCurrentUserSafe } from './familyGroupService';
 import transactionService from './transactionService';
 import type {
@@ -297,37 +301,57 @@ class RecurringTransactionService {
 
       // Essayer de synchroniser avec Supabase si en ligne
       try {
-        const { data: supabaseRecurring, error } = await supabase
-          .from('recurring_transactions')
-          .select('*')
-          .eq('user_id', userId);
+        // Lecture paginée : chaque page porte son propre timeout. Cette requête
+        // n'en avait AUCUN — un `supabase.from()` peut pendre sans jamais ni
+        // aboutir ni lever d'erreur (piège connu du projet).
+        const fetchStartedAt = new Date();
+        const { rows: supabaseRecurring, complete } = await fetchAllPages<any>((from, to) =>
+          withTimeout(
+            supabase
+              .from('recurring_transactions')
+              .select('*')
+              .eq('user_id', userId)
+              .order('id')
+              .range(from, to) as any,
+            SUPABASE_TIMEOUT_MS,
+            'recurringTransactionService.getAll'
+          ) as Promise<{ data: any[] | null; error: any }>
+        );
 
-        if (!error && supabaseRecurring) {
-          // Convertir et mettre à jour IndexedDB
-          const converted = supabaseRecurring.map(supabaseRec => {
-            const convertedRec = toRecurringTransaction(supabaseRec);
-            // Ajouter targetAccountId si présent (pour les transferts)
-            if ((supabaseRec as any).target_account_id) {
-              (convertedRec as any).targetAccountId = (supabaseRec as any).target_account_id;
-            }
-            return convertedRec;
-          });
-          
-          // Synchroniser les deux sources
-          for (const remote of converted) {
-            const local = localRecurring.find(r => r.id === remote.id);
-            if (!local || new Date(remote.updatedAt) > new Date(local.updatedAt)) {
-              // Mettre à jour avec la version la plus récente
-              await db.recurringTransactions.put(remote);
-            }
+        // Convertir et mettre à jour IndexedDB
+        const converted = supabaseRecurring.map(supabaseRec => {
+          const convertedRec = toRecurringTransaction(supabaseRec);
+          // Ajouter targetAccountId si présent (pour les transferts)
+          if ((supabaseRec as any).target_account_id) {
+            (convertedRec as any).targetAccountId = (supabaseRec as any).target_account_id;
           }
+          return convertedRec;
+        });
 
-          // Retourner les données les plus récentes
-          return await db.recurringTransactions
-            .where('userId')
-            .equals(userId)
-            .toArray();
+        // Synchroniser les deux sources
+        for (const remote of converted) {
+          const local = localRecurring.find(r => r.id === remote.id);
+          if (!local || new Date(remote.updatedAt) > new Date(local.updatedAt)) {
+            // Mettre à jour avec la version la plus récente
+            await db.recurringTransactions.put(remote);
+          }
         }
+
+        // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+        await reconcileStore({
+          storeName: 'recurringTransactions',
+          localRows: await db.recurringTransactions.where('userId').equals(userId).toArray(),
+          serverIds: converted.map((r) => r.id),
+          fetchStartedAt,
+          fetchComplete: complete,
+          userId,
+        });
+
+        // Retourner les données les plus récentes
+        return await db.recurringTransactions
+          .where('userId')
+          .equals(userId)
+          .toArray();
       } catch (supabaseError) {
         console.warn('⚠️ Supabase non disponible, utilisation des données locales:', supabaseError);
       }

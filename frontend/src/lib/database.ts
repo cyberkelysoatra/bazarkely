@@ -29,6 +29,22 @@ import type {
 } from '../types/familyLocal';
 import type { ReceiptHeader, ReceiptItem } from '../types/receipt';
 
+/**
+ * Une ligne locale retirée de son store parce qu'elle a disparu du serveur.
+ * `id` est déterministe (`${storeName}:${recordId}`) : remettre la même ligne en
+ * quarantaine écrase l'entrée au lieu d'en empiler une seconde.
+ * Voir `lib/syncReconcile.ts`.
+ */
+export interface SyncQuarantineEntry {
+  id: string;
+  storeName: string;
+  recordId: string;
+  userId: string;
+  quarantinedAt: Date;
+  reason: 'absent-from-server';
+  record: any;
+}
+
 // Types pour les notifications
 interface NotificationData {
   id: string;
@@ -174,6 +190,12 @@ export class BazarKELYDB extends Dexie {
   // seul receiptMd (markdown léger) sert de trace dans transactionReceipts.
   transactionReceipts!: Table<ReceiptHeader>;
   transactionItems!: Table<ReceiptItem>;
+
+  // Quarantaine de synchronisation descendante (v18)
+  // Archive locale des lignes retirées d'un store parce qu'elles ont disparu du
+  // serveur. Jamais synchronisée vers Supabase, jamais lue par un écran :
+  // filet de sécurité pour ne jamais supprimer sèchement une donnée locale.
+  syncQuarantine!: Table<SyncQuarantineEntry>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -781,6 +803,18 @@ export class BazarKELYDB extends Dexie {
       console.log('🔄 [Database] Migrating to v17 - Adding receipt scan tables (transactionReceipts/transactionItems)');
       // Nouvelles tables vides : aucune transformation de données nécessaire.
       console.log('✅ [Database] Migration to v17 complete - Receipt scan tables ready');
+    });
+
+    // Version 18 - Quarantaine de synchronisation descendante
+    // Une seule table neuve : syncQuarantine. Migration additive minimale (delta
+    // Dexie, même schéma d'écriture que la v17) : tous les stores existants sont
+    // hérités des versions précédentes avec leurs index intacts, donc aucune
+    // perte de données. Table vide à la création, aucune transformation requise.
+    this.version(18).stores({
+      syncQuarantine: 'id, storeName, recordId, userId, quarantinedAt, [userId+storeName]'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v18 - Adding syncQuarantine table (server-side deletion reconciliation)');
+      console.log('✅ [Database] Migration to v18 complete - syncQuarantine ready');
     });
 
     // Initialiser le pool de connexions

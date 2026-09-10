@@ -9,6 +9,7 @@ import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
+import { reconcileStore } from '../lib/syncReconcile';
 import apiService from './apiService';
 
 // Timeout par défaut pour les appels Supabase dans les services métier
@@ -140,13 +141,12 @@ class BudgetService {
       }
 
       console.log('💰 [BudgetService] 🌐 IndexedDB vide, récupération depuis Supabase...');
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
       let response;
       try {
-        response = await withTimeout(
-          apiService.getBudgets(),
-          SUPABASE_TIMEOUT_MS,
-          'budgetService.getBudgets'
-        );
+        response = await apiService.getAllBudgetsPaged();
       } catch (timeoutError) {
         console.warn('💰 [BudgetService] ⚠️ Timeout/erreur Supabase, retour tableau vide:', timeoutError);
         return [];
@@ -172,6 +172,16 @@ class BudgetService {
           // Continuer même si la sauvegarde échoue
         }
       }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      await reconcileStore({
+        storeName: 'budgets',
+        localRows: await db.budgets.where('userId').equals(userId).toArray(),
+        serverIds: budgets.map((b) => b.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
 
       console.log(`💰 [BudgetService] ✅ ${budgets.length} budget(s) récupéré(s) depuis Supabase`);
       return budgets;
@@ -221,13 +231,12 @@ class BudgetService {
       }
 
       console.log('💰 [BudgetService] 🌐 IndexedDB vide, récupération depuis Supabase...');
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
       let response;
       try {
-        response = await withTimeout(
-          apiService.getBudgets(),
-          SUPABASE_TIMEOUT_MS,
-          'budgetService.getUserBudgets'
-        );
+        response = await apiService.getAllBudgetsPaged();
       } catch (timeoutError) {
         console.warn('💰 [BudgetService] ⚠️ Timeout/erreur Supabase, retour tableau vide:', timeoutError);
         return [];
@@ -251,6 +260,16 @@ class BudgetService {
           console.error('💰 [BudgetService] ❌ Erreur lors de la sauvegarde dans IndexedDB:', idbError);
         }
       }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      await reconcileStore({
+        storeName: 'budgets',
+        localRows: await db.budgets.where('userId').equals(userId).toArray(),
+        serverIds: budgets.map((b) => b.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
 
       return budgets;
     } catch (error) {

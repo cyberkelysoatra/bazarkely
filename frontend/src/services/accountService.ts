@@ -9,6 +9,7 @@ import type { SyncOperation, SyncPriority } from '../types';
 import { SYNC_PRIORITY } from '../types';
 import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
+import { reconcileStore } from '../lib/syncReconcile';
 import { useAppStore } from '../stores/appStore';
 import apiService from './apiService';
 
@@ -131,11 +132,10 @@ class AccountService {
       }
 
       console.log('🌐 IndexedDB vide, récupération depuis Supabase...');
-      const response = await withTimeout(
-        apiService.getAccounts(),
-        SUPABASE_TIMEOUT_MS,
-        'accountService.getAccounts'
-      );
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllAccountsPaged();
       if (!response.success || response.error) {
         console.error('❌ Erreur lors de la récupération des comptes depuis Supabase:', response.error);
         return [];
@@ -157,6 +157,20 @@ class AccountService {
           // Continuer même si la sauvegarde échoue
         }
       }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      const localAfterFetch = await db.accounts
+        .where('userId')
+        .equals(userId)
+        .toArray();
+      await reconcileStore({
+        storeName: 'accounts',
+        localRows: localAfterFetch,
+        serverIds: accounts.map((a) => a.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
 
       console.log(`✅ ${accounts.length} compte(s) récupéré(s) depuis Supabase`);
       return accounts;
