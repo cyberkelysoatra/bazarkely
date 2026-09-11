@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit, Trash2, Star, StarOff, Wallet, CreditCard, PiggyBank, Smartphone } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
@@ -29,6 +29,8 @@ const AccountDetailPage = () => {
     type: 'especes' as 'especes' | 'courant' | 'epargne' | 'orange_money' | 'mvola' | 'airtel_money',
     balance: 0
   });
+  /** Solde (en Ar) affiché à l'instant où l'édition a commencé — base de l'écart. */
+  const balanceAtEditStartRef = useRef(0);
 
   useEffect(() => {
     if (displayCurrency !== 'EUR') return;
@@ -68,6 +70,7 @@ const AccountDetailPage = () => {
           if (accountData) {
             console.log(`💰 Account loaded: ${accountData.name} (${accountData.type}): ${accountData.balance}`);
             setAccount(accountData);
+            balanceAtEditStartRef.current = accountData.balance;
             setEditData({
               name: accountData.name,
               type: accountData.type,
@@ -99,6 +102,9 @@ const AccountDetailPage = () => {
 
   const handleEdit = () => {
     if (account) {
+      // Solde AFFICHÉ au moment où la modification commence : c'est de lui que
+      // sera déduit l'écart à envoyer, jamais d'une valeur relue entre-temps.
+      balanceAtEditStartRef.current = account.balance;
       setEditData({
         name: account.name,
         type: account.type,
@@ -127,11 +133,25 @@ const AccountDetailPage = () => {
       if (displayCurrency === 'EUR') {
         console.log(`💱 Conversion EUR→MGA: ${editData.balance} € × ${exchangeRate} = ${balanceMGA} Ar`);
       }
-      const updatedAccount = await accountService.updateAccount(account.id, user.id, {
+
+      // Le nom et le type passent par une mise à jour classique — SANS le solde.
+      let updatedAccount = await accountService.updateAccount(account.id, user.id, {
         name: editData.name,
-        type: editData.type,
-        balance: balanceMGA
+        type: editData.type
       });
+
+      // Le solde, lui, n'est jamais écrit en valeur absolue : on envoie l'écart
+      // par rapport au solde AFFICHÉ au moment où la modification a commencé.
+      // Un autre appareil qui bouge ce compte entre-temps s'additionne au lieu
+      // d'être écrasé.
+      const delta = balanceMGA - balanceAtEditStartRef.current;
+      if (Math.abs(delta) > 1e-9) {
+        console.log(`💰 Ajustement manuel du solde: ${balanceAtEditStartRef.current} → ${balanceMGA} (écart ${delta})`);
+        const movedAccount = await accountService.applyBalanceMovement(account.id, user.id, delta, {
+          kind: 'ajustement'
+        });
+        if (movedAccount) updatedAccount = movedAccount;
+      }
 
       setAccount(updatedAccount);
       setIsEditing(false);

@@ -13,6 +13,60 @@ import { reconcileStore } from '../lib/syncReconcile';
 import { useAppStore } from '../stores/appStore';
 import apiService from './apiService';
 
+/**
+ * Comptes dont un mouvement de solde est en vol (RPC partie, réponse pas encore
+ * revenue). Le rafraîchissement de fond ne doit PAS réécrire leur solde pendant
+ * cette fenêtre : il lirait une valeur serveur d'avant le mouvement alors que
+ * le delta n'est pas encore dans la file, et écraserait l'affichage local.
+ */
+const inFlightMovementAccounts = new Map<string, number>();
+
+function markMovementInFlight(accountId: string): void {
+  inFlightMovementAccounts.set(accountId, (inFlightMovementAccounts.get(accountId) ?? 0) + 1);
+}
+
+function unmarkMovementInFlight(accountId: string): void {
+  const count = (inFlightMovementAccounts.get(accountId) ?? 1) - 1;
+  if (count <= 0) inFlightMovementAccounts.delete(accountId);
+  else inFlightMovementAccounts.set(accountId, count);
+}
+
+/** Charge d'un coup la file d'envoi et en extrait ce dont le refresh a besoin. */
+async function readSyncQueueState(): Promise<{
+  /** Somme des deltas encore en file, par compte (tous statuts). */
+  pendingDeltaByAccount: Map<string, number>;
+  /** Comptes portant une opération `accounts`/UPDATE encore en attente. */
+  pendingAccountUpdateIds: Set<string>;
+  /** Budgets portant une opération `budgets` encore en attente. */
+  pendingBudgetIds: Set<string>;
+}> {
+  const pendingDeltaByAccount = new Map<string, number>();
+  const pendingAccountUpdateIds = new Set<string>();
+  const pendingBudgetIds = new Set<string>();
+  try {
+    const operations = await db.syncQueue.toArray();
+    for (const operation of operations) {
+      const data = (operation as any)?.data;
+      if (operation.table_name === 'account_balance_movements') {
+        const accountId = data?.accountId;
+        const delta = Number(data?.delta);
+        if (typeof accountId === 'string' && Number.isFinite(delta)) {
+          pendingDeltaByAccount.set(accountId, (pendingDeltaByAccount.get(accountId) ?? 0) + delta);
+        }
+      } else if (operation.table_name === 'accounts' && operation.operation === 'UPDATE') {
+        if (typeof data?.id === 'string') pendingAccountUpdateIds.add(data.id);
+      } else if (operation.table_name === 'budgets') {
+        if (typeof data?.id === 'string') pendingBudgetIds.add(data.id);
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ [AccountService] Lecture de la file de synchronisation impossible:', error);
+  }
+  return { pendingDeltaByAccount, pendingAccountUpdateIds, pendingBudgetIds };
+}
+
+export { readSyncQueueState };
+
 // Timeout par défaut pour les appels Supabase dans les services métier
 // Cohérent avec authService et App.tsx (5s)
 const SUPABASE_TIMEOUT_MS = 5000;
@@ -58,6 +112,12 @@ class AccountService {
     }
   ): Promise<void> {
     try {
+      // Une UPDATE vide n'a plus rien à dire au serveur (cas typique : seul le
+      // solde avait changé, et il passe désormais par applyBalanceMovement).
+      if (operation === 'UPDATE' && Object.keys(data || {}).length === 0) {
+        console.log(`ℹ️ [AccountService] UPDATE vide pour ${accountId}, rien à mettre en file`);
+        return;
+      }
       const syncOp: SyncOperation = {
         id: crypto.randomUUID(),
         userId,
@@ -77,6 +137,198 @@ class AccountService {
     } catch (error) {
       console.error('❌ Erreur lors de l\'ajout à la queue de synchronisation:', error);
       // Ne pas faire échouer l'opération principale si la queue échoue
+    }
+  }
+
+  /**
+   * Met en file un MOUVEMENT de solde (jamais une valeur absolue).
+   * L'id du mouvement est conservé : le serveur ne l'appliquera qu'une seule
+   * fois, même si la file le rejoue dix fois (un timeout n'est pas un échec).
+   */
+  private async queueBalanceMovement(
+    userId: string,
+    movementId: string,
+    accountId: string,
+    delta: number,
+    kind: 'transaction' | 'ajustement',
+    sourceTransactionId?: string
+  ): Promise<void> {
+    try {
+      const syncOp: SyncOperation = {
+        id: crypto.randomUUID(),
+        userId,
+        operation: 'CREATE',
+        table_name: 'account_balance_movements',
+        data: { id: movementId, accountId, delta, kind, sourceTransactionId: sourceTransactionId ?? null },
+        timestamp: new Date(),
+        retryCount: 0,
+        status: 'pending',
+        priority: SYNC_PRIORITY.HIGH,
+        syncTag: 'bazarkely-sync',
+        expiresAt: null,
+      };
+      await db.syncQueue.add(syncOp);
+      console.log(`📦 [AccountService] Mouvement ${movementId} (${delta}) mis en file pour le compte ${accountId}`);
+    } catch (error) {
+      console.error('❌ [AccountService] Erreur lors de la mise en file du mouvement de solde:', error);
+    }
+  }
+
+  /**
+   * SEUL point d'entrée pour modifier un solde.
+   *
+   * L'appareil n'envoie jamais un total : il envoie un mouvement (+X / −X) muni
+   * d'un id client. Deux appareils qui bougent le même compte s'additionnent au
+   * lieu de s'écraser, et le rejeu d'un envoi « expiré-mais-commité » ne compte
+   * qu'une fois (fonction serveur `apply_balance_movement`, idempotente).
+   */
+  async applyBalanceMovement(
+    accountId: string,
+    userId: string,
+    delta: number,
+    opts: { kind: 'transaction' | 'ajustement'; sourceTransactionId?: string }
+  ): Promise<Account | null> {
+    const movementId = crypto.randomUUID();
+    try {
+      // STEP 1: appliquer le delta localement tout de suite (affichage instantané,
+      // hors ligne compris). C'est la copie locale qui fait foi pour l'écran.
+      const existingAccount = await db.accounts.get(accountId);
+      if (!existingAccount) {
+        console.error(`❌ [AccountService] Compte ${accountId} introuvable en local, mouvement abandonné`);
+        return null;
+      }
+      const localAccount: Account = { ...existingAccount, balance: existingAccount.balance + delta };
+      await db.accounts.put(localAccount);
+      console.log(
+        `💰 [AccountService] Mouvement local ${delta} sur ${accountId}: ${existingAccount.balance} → ${localAccount.balance}`
+      );
+
+      // STEP 2: hors ligne → file d'envoi, le même id sera rejoué.
+      if (!navigator.onLine) {
+        await this.queueBalanceMovement(userId, movementId, accountId, delta, opts.kind, opts.sourceTransactionId);
+        return localAccount;
+      }
+
+      // STEP 3: en ligne → appel direct de la fonction serveur.
+      markMovementInFlight(accountId);
+      try {
+        const { data, error } = (await withTimeout(
+          // La fonction est plus recente que les types generes du projet : cast assume.
+          (supabase.rpc as any)('apply_balance_movement', {
+            p_id: movementId,
+            p_account_id: accountId,
+            p_delta: delta,
+            p_kind: opts.kind,
+            p_source_transaction_id: opts.sourceTransactionId ?? null,
+          }) as any,
+          SUPABASE_TIMEOUT_MS,
+          'accountService.applyBalanceMovement'
+        )) as { data: number | null; error: any };
+
+        if (error) throw error;
+
+        // Solde serveur + tout ce qui attend encore de monter pour ce compte.
+        const serverBalance = Number(data);
+        if (!Number.isFinite(serverBalance)) {
+          throw new Error('apply_balance_movement: solde serveur illisible');
+        }
+        const { pendingDeltaByAccount } = await readSyncQueueState();
+        const reconciled: Account = {
+          ...localAccount,
+          balance: serverBalance + (pendingDeltaByAccount.get(accountId) ?? 0),
+        };
+        await db.accounts.put(reconciled);
+        console.log(`✅ [AccountService] Mouvement appliqué au serveur, solde ${reconciled.balance}`);
+        return reconciled;
+      } catch (rpcError) {
+        // Timeout / réseau / RLS : on met en file. Le serveur a PEUT-ÊTRE déjà
+        // appliqué le mouvement — c'est précisément pour cela que l'id est
+        // conservé : un rejeu ne le comptera pas deux fois.
+        console.warn('⚠️ [AccountService] Mouvement non confirmé par le serveur, mise en file:', rpcError);
+        await this.queueBalanceMovement(userId, movementId, accountId, delta, opts.kind, opts.sourceTransactionId);
+        return localAccount;
+      } finally {
+        unmarkMovementInFlight(accountId);
+      }
+    } catch (error) {
+      console.error('❌ [AccountService] Erreur lors de l\'application du mouvement de solde:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Rafraîchissement de fond « Supabase → IndexedDB » des comptes.
+   * Retour immédiat côté appelant : cette fonction est lancée sans être attendue.
+   * Un seul rafraîchissement en vol à la fois (les appels concurrents partagent
+   * la même promesse).
+   */
+  private accountsRefreshInFlight: Promise<void> | null = null;
+
+  async refreshAccountsFromSupabase(userId: string): Promise<void> {
+    if (this.accountsRefreshInFlight) return this.accountsRefreshInFlight;
+    this.accountsRefreshInFlight = this.doRefreshAccountsFromSupabase(userId).finally(() => {
+      this.accountsRefreshInFlight = null;
+    });
+    return this.accountsRefreshInFlight;
+  }
+
+  private async doRefreshAccountsFromSupabase(userId: string): Promise<void> {
+    try {
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllAccountsPaged();
+      if (!response.success || response.error) {
+        console.warn('⚠️ [AccountService] Rafraîchissement de fond échoué:', response.error);
+        return;
+      }
+
+      const serverAccounts: Account[] = ((response.data as any[]) || [])
+        .filter((a: any) => a.user_id === userId)
+        .map((a: any) => this.mapSupabaseToAccount(a));
+
+      const { pendingDeltaByAccount, pendingAccountUpdateIds } = await readSyncQueueState();
+
+      const merged: Account[] = [];
+      for (const serverAccount of serverAccounts) {
+        const local = await db.accounts.get(serverAccount.id);
+
+        // Un mouvement est en vol pour ce compte : la réponse serveur est déjà
+        // périmée et le delta n'est pas encore en file. On ne touche pas au solde.
+        if (local && inFlightMovementAccounts.has(serverAccount.id)) {
+          merged.push({ ...serverAccount, ...local });
+          continue;
+        }
+
+        const balance = serverAccount.balance + (pendingDeltaByAccount.get(serverAccount.id) ?? 0);
+
+        // Une modification de compte attend encore de monter : ses champs locaux
+        // (nom, type…) sont plus récents que ceux du serveur. Le solde, lui,
+        // vient toujours du serveur + les mouvements en attente.
+        if (local && pendingAccountUpdateIds.has(serverAccount.id)) {
+          merged.push({ ...serverAccount, ...local, balance });
+        } else {
+          merged.push({ ...serverAccount, balance });
+        }
+      }
+
+      if (merged.length > 0) {
+        await db.accounts.bulkPut(merged);
+        console.log(`🔄 [AccountService] ${merged.length} compte(s) rafraîchi(s) depuis Supabase (arrière-plan)`);
+      }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      const localAfterFetch = await db.accounts.where('userId').equals(userId).toArray();
+      await reconcileStore({
+        storeName: 'accounts',
+        localRows: localAfterFetch,
+        serverIds: serverAccounts.map((a) => a.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
+    } catch (error) {
+      console.warn('⚠️ [AccountService] Rafraîchissement de fond échoué (non bloquant):', error);
     }
   }
 
@@ -122,6 +374,16 @@ class AccountService {
 
       if (localAccounts.length > 0) {
         console.log(`✅ ${localAccounts.length} compte(s) récupéré(s) depuis IndexedDB`);
+
+        // Rafraîchissement de fond (fire-and-forget) si online : sans lui, un
+        // solde corrigé ailleurs ou une suppression serveur ne redescendaient
+        // jamais sur cet appareil.
+        if (navigator.onLine) {
+          this.refreshAccountsFromSupabase(userId).catch((err) => {
+            console.warn('⚠️ [AccountService] Refresh background échoué (non bloquant):', err);
+          });
+        }
+
         return localAccounts;
       }
 
@@ -346,6 +608,14 @@ class AccountService {
         return null;
       }
 
+      // Un solde ne se met JAMAIS à jour par une valeur absolue : le dernier
+      // appareil qui écrit écraserait les mouvements des autres. Le champ est
+      // ignoré côté serveur ET côté file — voir applyBalanceMovement().
+      if (accountData.balance !== undefined) {
+        console.warn('⚠️ updateAccount: balance ignored, use applyBalanceMovement');
+      }
+      const { balance: _ignoredBalance, ...syncableData } = accountData;
+
       // STEP 2: Mettre à jour IndexedDB immédiatement
       const updatedAccount: Account = {
         ...existingAccount,
@@ -362,7 +632,7 @@ class AccountService {
           const supabaseData: AccountUpdate = {};
           if (accountData.name !== undefined) supabaseData.name = accountData.name;
           if (accountData.type !== undefined) supabaseData.type = accountData.type;
-          if (accountData.balance !== undefined) supabaseData.balance = accountData.balance;
+          // `balance` volontairement absent : jamais de valeur absolue.
           // Support multi-currency: allow setting currency to null explicitly
           if (accountData.currency !== undefined) {
             supabaseData.currency = accountData.currency ?? null;
@@ -372,34 +642,42 @@ class AccountService {
           if ((accountData as any).isActive !== undefined) supabaseData.is_active = (accountData as any).isActive;
           if (accountData.displayOrder !== undefined) supabaseData.display_order = accountData.displayOrder;
 
+          // Rien d'autre que le solde n'a changé : il n'y a plus rien à envoyer.
+          if (Object.keys(supabaseData).length === 0) {
+            return updatedAccount;
+          }
+
           const response = await withTimeout(
             apiService.updateAccount(id, supabaseData),
             SUPABASE_TIMEOUT_MS,
             'accountService.updateAccount'
           );
           if (response.success && response.data) {
-            // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation)
+            // Mettre à jour IndexedDB avec les données Supabase (pour synchronisation),
+            // MAIS garder le solde local : il n'appartient qu'aux mouvements, et la
+            // réponse serveur peut précéder un mouvement encore en file.
             const supabaseAccount = this.mapSupabaseToAccount(response.data as any);
-            await db.accounts.put(supabaseAccount);
+            const synced: Account = { ...supabaseAccount, balance: updatedAccount.balance };
+            await db.accounts.put(synced);
             console.log('✅ Compte synchronisé avec Supabase');
-            return supabaseAccount;
+            return synced;
           } else {
             // Supabase retourne 0 lignes (RLS policy ou ligne manquante)
             // Ne pas bloquer - l'update IndexedDB a réussi, continuer avec le compte local
             console.warn('⚠️ Échec de la synchronisation Supabase (RLS ou ligne manquante), utilisation du compte IndexedDB');
-            await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+            await this.queueSyncOperation(userId, 'UPDATE', id, syncableData);
             return updatedAccount;
           }
         } catch (syncError) {
           // Erreur Supabase ne doit pas bloquer - l'update IndexedDB a réussi
           console.warn('⚠️ Erreur lors de la synchronisation Supabase (non-bloquant):', syncError);
-          await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+          await this.queueSyncOperation(userId, 'UPDATE', id, syncableData);
           return updatedAccount;
         }
       } else {
         // Mode offline, queue pour sync ultérieure
         console.log('📦 Mode offline, ajout à la queue de synchronisation');
-        await this.queueSyncOperation(userId, 'UPDATE', id, accountData);
+        await this.queueSyncOperation(userId, 'UPDATE', id, syncableData);
         return updatedAccount;
       }
     } catch (error) {

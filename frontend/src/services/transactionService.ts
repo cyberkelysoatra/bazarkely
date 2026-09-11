@@ -463,7 +463,7 @@ class TransactionService {
 
       // Mettre à jour le solde du compte (même en offline)
       try {
-        await this.updateAccountBalanceAfterTransaction(transaction.accountId, transaction.amount, userId);
+        await this.updateAccountBalanceAfterTransaction(transaction.accountId, transaction.amount, userId, transaction.id);
         console.log('📱 [TransactionService] ✅ Solde du compte mis à jour');
       } catch (balanceError) {
         console.error('📱 [TransactionService] ❌ Erreur lors de la mise à jour du solde:', balanceError);
@@ -763,7 +763,7 @@ class TransactionService {
       // donc restituer = balance -= amount.
       if (restoreBalance) {
         try {
-          await this.updateAccountBalanceAfterTransaction(transaction.accountId, -transaction.amount, userId);
+          await this.updateAccountBalanceAfterTransaction(transaction.accountId, -transaction.amount, userId, transaction.id);
           console.log(`📱 [TransactionService] 💰 Solde restitué au compte ${transaction.accountId} (montant ${-transaction.amount})`);
         } catch (balanceError) {
           console.error('📱 [TransactionService] ❌ Erreur lors de la restitution du solde:', balanceError);
@@ -1020,10 +1020,10 @@ class TransactionService {
       // Destination: crédit du montant converti dans sa devise
       try {
         console.log('🔍 Updating source account:', transferData.fromAccountId, 'with amount:', -Math.abs(transferData.amount));
-        await this.updateAccountBalanceAfterTransaction(transferData.fromAccountId, -Math.abs(transferData.amount), userId);
+        await this.updateAccountBalanceAfterTransaction(transferData.fromAccountId, -Math.abs(transferData.amount), userId, transactions[0].id);
         
         console.log('🔍 Updating destination account:', transferData.toAccountId, 'with amount:', Math.abs(targetAmount));
-        await this.updateAccountBalanceAfterTransaction(transferData.toAccountId, Math.abs(targetAmount), userId);
+        await this.updateAccountBalanceAfterTransaction(transferData.toAccountId, Math.abs(targetAmount), userId, transactions[1].id);
         
         console.log('✅ TRANSFER COMPLETE - Both account balances updated');
       } catch (balanceError) {
@@ -1039,29 +1039,31 @@ class TransactionService {
   }
 
   /**
-   * Mettre à jour le solde d'un compte après une transaction
+   * Mettre à jour le solde d'un compte après une transaction.
+   *
+   * N'envoie plus JAMAIS un total calculé sur la copie locale (le dernier
+   * appareil qui écrivait écrasait les mouvements des autres) : délègue à
+   * accountService.applyBalanceMovement, qui envoie un mouvement identifié et
+   * rejouable sans double comptage.
    */
-  private async updateAccountBalanceAfterTransaction(accountId: string, transactionAmount: number, userId: string): Promise<void> {
+  private async updateAccountBalanceAfterTransaction(
+    accountId: string,
+    transactionAmount: number,
+    userId: string,
+    sourceTransactionId?: string
+  ): Promise<void> {
     try {
-      console.log(`🔍 Mise à jour du solde pour le compte ${accountId} avec ${transactionAmount}`);
-      
-      // Récupérer le compte actuel
-      const account = await accountService.getAccount(accountId, userId);
-      if (!account) {
-        throw new Error(`Compte ${accountId} non trouvé`);
-      }
+      console.log(`🔍 Mouvement de solde pour le compte ${accountId}: ${transactionAmount}`);
 
-      // Calculer le nouveau solde
-      const newBalance = account.balance + transactionAmount;
-      console.log(`💰 Nouveau solde: ${account.balance} + ${transactionAmount} = ${newBalance}`);
-
-      // Mettre à jour le compte
-      const updatedAccount = await accountService.updateAccount(accountId, userId, { balance: newBalance });
+      const updatedAccount = await accountService.applyBalanceMovement(accountId, userId, transactionAmount, {
+        kind: 'transaction',
+        sourceTransactionId,
+      });
       if (!updatedAccount) {
         throw new Error(`Échec de la mise à jour du solde pour le compte ${accountId}`);
       }
 
-      console.log(`✅ Solde mis à jour: ${account.balance} → ${newBalance}`);
+      console.log(`✅ Solde mis à jour: ${updatedAccount.balance}`);
     } catch (error) {
       console.error(`❌ Erreur lors de la mise à jour du solde du compte ${accountId}:`, error);
       throw error;

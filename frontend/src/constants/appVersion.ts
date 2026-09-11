@@ -1,8 +1,25 @@
-export const APP_VERSION = '3.77.0';
-export const APP_VERSION_NAME = "Ce qui est supprime ailleurs disparait enfin de cet appareil. Jusqu ici, l application savait ajouter et mettre a jour ce qui venait du serveur, mais elle ne retirait jamais une ligne qui n existait plus : une depense effacee sur le telephone restait affichee sur l ordinateur, indefiniment. Desormais, apres chaque mise a jour en ligne, l application compare ce qu elle a en local avec ce que le serveur lui a repondu, et met de cote ce qui a disparu. Rien n est jamais efface sec : les lignes retirees sont rangees dans une reserve locale, d ou elles peuvent etre remises en place. Cinq garde-fous evitent de retirer a tort : une ligne qui attend encore d etre envoyee est gardee, une ligne creee a l instant est gardee, une reponse du serveur arrivee incomplete ne declenche rien, une reponse vide ne vide jamais l appareil, et les remboursements ne sont compares que si leur pret l a ete. Les listes sont aussi lues par tranches, pour ne plus s arreter a mille lignes. Aucun ecran modifie.";
-export const LAST_UPDATED = '2026-09-10';
-export const APP_BUILD_DATE = '2026-09-10';
+export const APP_VERSION = '3.78.0';
+export const APP_VERSION_NAME = "Les soldes de comptes ne se marchent plus dessus d un appareil a l autre, et les comptes comme les budgets se mettent enfin a jour tout seuls. Jusqu ici, chaque appareil envoyait au serveur un solde TOTAL calcule sur sa propre copie : le dernier qui ecrivait effacait les mouvements des autres, et une operation partie sous reseau lent pouvait etre comptee deux fois. Desormais un appareil n envoie plus jamais un total, il envoie un MOUVEMENT (plus X ou moins X) portant un numero unique ; le serveur ne l applique qu une seule fois, meme rejoue dix fois, et deux appareils qui bougent le meme compte s additionnent au lieu de s ecraser. Hors ligne, le solde bouge tout de suite a l ecran et le mouvement monte au retour du reseau. Les anciennes operations qui portaient encore un total sont nettoyees automatiquement. Les comptes et les budgets se rafraichissent maintenant en arriere-plan comme les operations : un solde corrige ailleurs ou une ligne supprimee sur un autre appareil redescend enfin ici. Aucun ecran modifie.";
+export const LAST_UPDATED = '2026-09-11';
+export const APP_BUILD_DATE = '2026-09-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.78.0',
+    date: '2026-09-11',
+    description:
+      "Soldes par mouvements idempotents : un appareil n envoie plus jamais un solde absolu, et comptes comme budgets se rafraichissent en arriere-plan.",
+    changes: [
+      "Nouvelle table Supabase account_balance_movements (RLS activee et forcee, aucune policy d ecriture, anon sans aucun droit) : le journal des mouvements de solde.",
+      "Nouvelle fonction serveur apply_balance_movement(id, compte, delta, genre, transaction) SECURITY DEFINER : verrou sur le compte, controle du proprietaire, et surtout idempotence par id — un meme mouvement rejoue n est applique qu une fois.",
+      "accountService.applyBalanceMovement : SEUL point d entree pour modifier un solde. Applique le delta en local immediatement (affichage instantane, hors ligne compris), puis appelle le serveur ; en cas de timeout ou d absence de reseau, met en file le MEME identifiant.",
+      "transactionService.updateAccountBalanceAfterTransaction, AccountDetailPage, TransactionDetailPage et receiptService passent tous par les mouvements : plus aucun calcul balance + montant suivi d un envoi de total.",
+      "accountService.updateAccount ne transmet plus jamais balance, ni a Supabase ni a la file ; un appelant qui en passe un est journalise et ignore cote serveur.",
+      "syncManager : rejeu des mouvements via la fonction serveur, echecs definitifs (compte d autrui, compte inexistant) non reessayes, et purge des operations HERITEES accounts/UPDATE portant encore un solde absolu.",
+      "accountService.getAccounts et budgetService.getBudgets/getUserBudgets : retour local immediat puis rafraichissement de fond dedoublonne, qui reecrit le solde serveur augmente des mouvements encore en attente et active enfin la reconciliation v3.77.0 sur ces deux stores.",
+      "Correction de donnee : le solde du compte CyberKELY, ecrase cote serveur par celui de BMOI, a ete retabli a 1 114 425,03.",
+      "16 tests Vitest sur les mouvements (idempotence, timeout, rejeu, file heritee, rafraichissement, budgets proteges)."
+    ]
+  },
   {
     version: '3.77.0',
     date: '2026-09-10',

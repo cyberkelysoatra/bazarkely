@@ -518,37 +518,41 @@ const TransactionDetailPage = () => {
         console.log('🔄 New amount for new account:', newAmount);
         
         // STEP 3: Update old account balance (reverse the original transaction)
-        const oldAccountNewBalance = oldAccount.balance + reverseAmount;
-        console.log('💰 Old account new balance after reverse:', oldAccountNewBalance);
-        
-        const oldAccountUpdate = await accountService.updateAccount(originalAccountId, user.id, {
-          balance: oldAccountNewBalance
-        });
-        
+        // Un MOUVEMENT, jamais un total : deux appareils qui bougent le même
+        // compte s'additionnent au lieu de s'écraser.
+        const oldAccountUpdate = await accountService.applyBalanceMovement(
+          originalAccountId,
+          user.id,
+          reverseAmount,
+          { kind: 'transaction', sourceTransactionId: transaction.id }
+        );
+
         if (!oldAccountUpdate) {
           throw new Error('Échec de la mise à jour du solde de l\'ancien compte');
         }
-        
+        console.log('💰 Old account balance after reverse:', oldAccountUpdate.balance);
+
         // STEP 4: Update new account balance (apply new transaction)
-        const newAccountNewBalance = newAccount.balance + newAmount;
-        console.log('💰 New account new balance after new transaction:', newAccountNewBalance);
-        
-        const newAccountUpdate = await accountService.updateAccount(editData.accountId, user.id, {
-          balance: newAccountNewBalance
-        });
-        
+        const newAccountUpdate = await accountService.applyBalanceMovement(
+          editData.accountId,
+          user.id,
+          newAmount,
+          { kind: 'transaction', sourceTransactionId: transaction.id }
+        );
+
         if (!newAccountUpdate) {
           // Rollback old account if new account update fails
           console.error('❌ Rolling back old account balance due to new account update failure');
-          await accountService.updateAccount(originalAccountId, user.id, {
-            balance: oldAccount.balance
+          await accountService.applyBalanceMovement(originalAccountId, user.id, -reverseAmount, {
+            kind: 'transaction',
+            sourceTransactionId: transaction.id
           });
           throw new Error('Échec de la mise à jour du solde du nouveau compte');
         }
-        
+
         console.log('✅ Balance adjustments completed successfully');
-        console.log('✅ Old account final balance:', oldAccountNewBalance);
-        console.log('✅ New account final balance:', newAccountNewBalance);
+        console.log('✅ Old account final balance:', oldAccountUpdate.balance);
+        console.log('✅ New account final balance:', newAccountUpdate.balance);
       }
       
       // STEP 5: Update transaction record with new accountId
@@ -558,17 +562,15 @@ const TransactionDetailPage = () => {
         // If account was changed, we need to rollback the balance changes
         if (accountChanged) {
           console.error('❌ Rolling back balance changes due to transaction update failure');
-          const oldAccount = await accountService.getAccount(originalAccountId, user.id);
-          const newAccount = await accountService.getAccount(editData.accountId, user.id);
-          
-          if (oldAccount && newAccount) {
-            await accountService.updateAccount(originalAccountId, user.id, {
-              balance: oldAccount.balance + transaction.amount
-            });
-            await accountService.updateAccount(editData.accountId, user.id, {
-              balance: newAccount.balance - updatedTransactionData.amount
-            });
-          }
+          // Annulation par mouvements inverses de ceux appliqués plus haut.
+          await accountService.applyBalanceMovement(originalAccountId, user.id, transaction.amount, {
+            kind: 'transaction',
+            sourceTransactionId: transaction.id
+          });
+          await accountService.applyBalanceMovement(editData.accountId, user.id, -updatedTransactionData.amount, {
+            kind: 'transaction',
+            sourceTransactionId: transaction.id
+          });
         }
         throw new Error('Échec de la mise à jour de la transaction');
       }

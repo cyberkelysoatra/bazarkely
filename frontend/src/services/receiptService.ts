@@ -395,13 +395,13 @@ class ReceiptService {
       await transactionService.updateTransaction(transactionId, { amount: newAmount });
 
       // Ajuster le solde du compte du delta (updateTransaction ne touche pas au solde).
+      // Un MOUVEMENT, jamais un total : le delta est déjà connu ici, et deux
+      // appareils qui bougent ce compte s'additionnent au lieu de s'écraser.
       try {
-        const account = await accountService.getAccount(tx.accountId, tx.userId);
-        if (account) {
-          await accountService.updateAccount(tx.accountId, tx.userId, {
-            balance: account.balance + delta,
-          });
-        }
+        await accountService.applyBalanceMovement(tx.accountId, tx.userId, delta, {
+          kind: 'transaction',
+          sourceTransactionId: transactionId,
+        });
       } catch (balanceError) {
         console.error('🧾 [ReceiptService] ❌ Erreur ajustement du solde:', balanceError);
       }

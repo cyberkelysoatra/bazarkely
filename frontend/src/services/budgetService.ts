@@ -11,6 +11,7 @@ import { db } from '../lib/database';
 import { supabase, withTimeout } from '../lib/supabase';
 import { reconcileStore } from '../lib/syncReconcile';
 import apiService from './apiService';
+import { readSyncQueueState } from './accountService';
 
 // Timeout par défaut pour les appels Supabase dans les services métier
 // Cohérent avec authService et App.tsx (5s)
@@ -73,6 +74,67 @@ class BudgetService {
   }
 
   /**
+   * Rafraîchissement de fond « Supabase → IndexedDB » des budgets.
+   * Lancé sans être attendu après un retour immédiat depuis IndexedDB : sans lui,
+   * un budget supprimé ou modifié ailleurs ne redescendait jamais sur cet appareil.
+   * Un seul rafraîchissement en vol à la fois.
+   */
+  private budgetsRefreshInFlight: Promise<void> | null = null;
+
+  async refreshBudgetsFromSupabase(userId: string): Promise<void> {
+    if (this.budgetsRefreshInFlight) return this.budgetsRefreshInFlight;
+    this.budgetsRefreshInFlight = this.doRefreshBudgetsFromSupabase(userId).finally(() => {
+      this.budgetsRefreshInFlight = null;
+    });
+    return this.budgetsRefreshInFlight;
+  }
+
+  private async doRefreshBudgetsFromSupabase(userId: string): Promise<void> {
+    try {
+      // Lecture paginée : chaque page porte son propre timeout (pas de
+      // withTimeout global, qui tuerait une lecture multi-pages saine).
+      const fetchStartedAt = new Date();
+      const response = await apiService.getAllBudgetsPaged();
+      if (!response.success || response.error) {
+        console.warn('💰 [BudgetService] ⚠️ Rafraîchissement de fond échoué:', response.error);
+        return;
+      }
+
+      const serverBudgets: Budget[] = ((response.data as any[]) || [])
+        .filter((b: any) => b.user_id === userId)
+        .map((b: any) => this.mapSupabaseToBudget(b));
+
+      // Un budget dont une écriture attend encore de monter n'est pas écrasé :
+      // la copie locale est plus récente que celle du serveur.
+      const { pendingBudgetIds } = await readSyncQueueState();
+      const toWrite = serverBudgets.filter((b) => !pendingBudgetIds.has(b.id));
+
+      if (toWrite.length > 0) {
+        await db.budgets.bulkPut(toWrite);
+        console.log(
+          `💰 [BudgetService] 🔄 ${toWrite.length} budget(s) rafraîchi(s) depuis Supabase (arrière-plan)` +
+            (toWrite.length !== serverBudgets.length
+              ? `, ${serverBudgets.length - toWrite.length} conservé(s) (écriture en attente)`
+              : '')
+        );
+      }
+
+      // Synchro descendante : retirer du cache local ce que le serveur n'a plus.
+      const localAfterFetch = await db.budgets.where('userId').equals(userId).toArray();
+      await reconcileStore({
+        storeName: 'budgets',
+        localRows: localAfterFetch,
+        serverIds: serverBudgets.map((b) => b.id),
+        fetchStartedAt,
+        fetchComplete: response.complete,
+        userId,
+      });
+    } catch (error) {
+      console.warn('💰 [BudgetService] ⚠️ Rafraîchissement de fond échoué (non bloquant):', error);
+    }
+  }
+
+  /**
    * Convertir un budget Supabase (snake_case) vers Budget (camelCase)
    */
   private mapSupabaseToBudget(supabaseBudget: any): Budget {
@@ -131,6 +193,14 @@ class BudgetService {
 
       if (localBudgets.length > 0) {
         console.log(`💰 [BudgetService] ✅ ${localBudgets.length} budget(s) récupéré(s) depuis IndexedDB`);
+        // Rafraîchissement de fond (fire-and-forget) si online : sans lui, un
+        // budget supprimé ou modifié ailleurs ne redescendait jamais ici.
+        if (navigator.onLine) {
+          this.refreshBudgetsFromSupabase(userId).catch((err) => {
+            console.warn('💰 [BudgetService] ⚠️ Refresh background échoué (non bloquant):', err);
+          });
+        }
+
         return localBudgets;
       }
 
@@ -221,6 +291,13 @@ class BudgetService {
 
       if (localBudgets.length > 0) {
         console.log(`💰 [BudgetService] ✅ ${localBudgets.length} budget(s) récupéré(s) depuis IndexedDB`);
+        // Rafraîchissement de fond (fire-and-forget) si online.
+        if (navigator.onLine) {
+          this.refreshBudgetsFromSupabase(userId).catch((err) => {
+            console.warn('💰 [BudgetService] ⚠️ Refresh background échoué (non bloquant):', err);
+          });
+        }
+
         return localBudgets;
       }
 

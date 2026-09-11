@@ -215,6 +215,8 @@ export interface SyncOperation {
   operation: 'CREATE' | 'UPDATE' | 'DELETE';
   table_name:
     | 'accounts'
+    /** Mouvement de solde (+X / −X) rejouable, jamais une valeur absolue. */
+    | 'account_balance_movements'
     | 'transactions'
     | 'budgets'
     | 'goals'

@@ -7,6 +7,51 @@ import { db } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import type { SyncOperation } from '../types';
 import { SYNC_PRIORITY } from '../types';
+import { readSyncQueueState } from './accountService';
+
+/**
+ * Marque une erreur comme DÉFINITIVE : la réessayer ne changera rien, elle ne
+ * doit pas consommer trois tentatives pour rien.
+ */
+const PERMANENT_FAILURE_FLAG = '__permanentSyncFailure';
+
+function markPermanent<T>(error: T): T {
+  try {
+    (error as any)[PERMANENT_FAILURE_FLAG] = true;
+  } catch {
+    /* erreur non extensible : on retombe simplement sur le rejeu normal */
+  }
+  return error;
+}
+
+function isPermanentFailure(error: any): boolean {
+  return !!error && error[PERMANENT_FAILURE_FLAG] === true;
+}
+
+/**
+ * Codes d'erreur serveur définitifs pour un mouvement de solde :
+ * 42501 = compte d'un autre utilisateur, P0002 = compte inexistant.
+ */
+function isPermanentMovementError(error: any): boolean {
+  const code = error?.code;
+  if (code === '42501' || code === 'P0002') return true;
+  const message = String(error?.message || '');
+  return /forbidden|not found/i.test(message);
+}
+
+/**
+ * Compteur des soldes absolus HÉRITÉS retirés de la file au rejeu.
+ * Exposé pour diagnostic (console) : `bazarkelyLegacyBalanceDrops()`.
+ */
+let legacyAbsoluteBalanceDropCount = 0;
+
+export function getLegacyAbsoluteBalanceDropCount(): number {
+  return legacyAbsoluteBalanceDropCount;
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).bazarkelyLegacyBalanceDrops = getLegacyAbsoluteBalanceDropCount;
+}
 
 /**
  * Convertit une chaîne camelCase en snake_case
@@ -459,6 +504,9 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'accounts':
         result = await processAccountOperation(operation);
         break;
+      case 'account_balance_movements':
+        result = await processBalanceMovementOperation(operation);
+        break;
       case 'budgets':
         result = await processBudgetOperation(operation);
         break;
@@ -523,8 +571,14 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
   } catch (error: any) {
     console.error(`🔄 [SyncManager] ❌ Erreur lors de la synchronisation de l'opération ${operation.id}:`, error);
 
-    // Incrémenter le compteur de tentatives
-    const newRetryCount = operation.retryCount + 1;
+    // Une erreur définitive (compte d'un autre utilisateur, compte inexistant)
+    // ne mérite pas trois tentatives : on la classe échouée tout de suite.
+    const permanent = isPermanentFailure(error);
+    const newRetryCount = permanent ? MAX_RETRIES : operation.retryCount + 1;
+
+    if (permanent) {
+      console.error(`🔄 [SyncManager] ⛔ Opération ${operation.id} rejetée définitivement, aucun nouvel essai`);
+    }
 
     if (newRetryCount >= MAX_RETRIES) {
       // Maximum de tentatives atteint, marquer comme échoué définitivement
@@ -610,6 +664,21 @@ async function processAccountOperation(operation: SyncOperation): Promise<{ erro
       }
       case 'UPDATE': {
         const { id, ...updateData } = data;
+        // Opérations HÉRITÉES : certaines files contiennent encore des UPDATE
+        // portant un solde ABSOLU, produits par les versions antérieures à
+        // v3.78.0. Les rejouer écraserait les mouvements des autres appareils —
+        // c'est exactement l'écrasement que ce chantier supprime. On retire le
+        // champ ; le solde est désormais porté par account_balance_movements.
+        if (Object.prototype.hasOwnProperty.call(updateData, 'balance')) {
+          delete (updateData as any).balance;
+          legacyAbsoluteBalanceDropCount++;
+          console.warn(`🧹 [syncManager] legacy absolute balance dropped for account ${id}`);
+        }
+        if (Object.keys(updateData).length === 0) {
+          // Il ne restait que le solde : plus rien à envoyer, opération traitée.
+          console.log(`🔄 [SyncManager] ℹ️ UPDATE compte ${id} vidée de son solde hérité, rien à envoyer`);
+          return null;
+        }
         // Convertir camelCase → snake_case pour Supabase
         const snakeCaseData = convertKeysToSnakeCase(updateData);
         const { error } = await supabase
@@ -629,6 +698,64 @@ async function processAccountOperation(operation: SyncOperation): Promise<{ erro
       default:
         return { error: new Error(`Opération non supportée: ${opType}`) };
     }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Rejeu d'un MOUVEMENT de solde mis en file.
+ *
+ * L'id d'origine est retransmis tel quel : la fonction serveur
+ * `apply_balance_movement` ne l'applique qu'une seule fois, quel que soit le
+ * nombre de rejeux (un timeout n'est pas un échec — l'envoi a pu aboutir).
+ */
+async function processBalanceMovementOperation(operation: SyncOperation): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+
+  if (opType !== 'CREATE') {
+    return { error: markPermanent(new Error(`Opération non supportée sur un mouvement de solde: ${opType}`)) };
+  }
+
+  try {
+    // La fonction est plus recente que les types generes du projet : cast assume.
+    const { data: newBalance, error } = await (supabase.rpc as any)('apply_balance_movement', {
+      p_id: data.id,
+      p_account_id: data.accountId,
+      p_delta: data.delta,
+      p_kind: data.kind || 'transaction',
+      p_source_transaction_id: data.sourceTransactionId ?? null,
+    });
+
+    if (error) {
+      // « forbidden » (42501) et « account not found » (P0002) sont définitifs :
+      // réessayer ne changera rien. Timeout et réseau, eux, restent rejouables.
+      if (isPermanentMovementError(error)) {
+        console.error(
+          `🔄 [SyncManager] ❌ Mouvement ${data.id} refusé définitivement (${error.code}): ${error.message}`
+        );
+        return { error: markPermanent(error) };
+      }
+      return { error };
+    }
+
+    // Le serveur fait foi : on réaligne la copie locale sur ce qu'il renvoie,
+    // augmenté de ce qui attend encore de monter pour ce compte.
+    try {
+      const serverBalance = Number(newBalance);
+      const account = await db.accounts.get(data.accountId);
+      if (account && Number.isFinite(serverBalance)) {
+        const { pendingDeltaByAccount } = await readSyncQueueState();
+        // Cette opération-ci est encore dans la file au moment du calcul : son
+        // delta est déjà compris dans le solde renvoyé, il faut le retrancher.
+        const stillPending = (pendingDeltaByAccount.get(data.accountId) ?? 0) - Number(data.delta || 0);
+        await db.accounts.put({ ...account, balance: serverBalance + stillPending });
+      }
+    } catch (localError) {
+      console.warn('🔄 [SyncManager] ⚠️ Réalignement local du solde impossible (non bloquant):', localError);
+    }
+
+    return null;
   } catch (error) {
     return { error };
   }

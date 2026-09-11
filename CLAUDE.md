@@ -259,6 +259,50 @@ Ainsi un envoi « expiré-mais-commité » et le rejeu de la file convergent sur
 
 ---
 
+### Soldes : toujours un MOUVEMENT, jamais une valeur absolue (corrigé v3.78.0)
+
+**Problème :** chaque appareil calculait `account.balance + montant` sur **sa** copie locale puis
+envoyait ce **total** via `accountService.updateAccount({ balance })`. Le rejeu de `syncQueue`
+renvoyait ce total tel quel, parfois des heures plus tard. Résultat : **le dernier qui écrit
+gagne**, et les mouvements des autres appareils sont perdus. Cas vécu (2026-09-10) : le compte
+CyberKELY avait reçu la valeur du compte BMOI (41 847,97 au lieu de 1 114 425,03).
+
+**Règle :** un appareil **n'envoie jamais un solde**. Il envoie un **mouvement** (+X / −X) muni d'un
+**id client**, et le serveur ne l'applique **qu'une seule fois**.
+
+- **Côté serveur :** table `public.account_balance_movements` (journal, RLS activée **et forcée**,
+  **aucune** policy d'écriture, `anon` sans aucun droit) + fonction
+  `public.apply_balance_movement(p_id, p_account_id, p_delta, p_kind, p_source_transaction_id)`,
+  `security definer` : verrou `for update` sur le compte, contrôle `user_id = auth.uid()`, puis
+  **court-circuit si `p_id` existe déjà** (idempotence). Seule voie d'écriture du solde.
+  ⚠️ Supabase accorde par défaut INSERT/UPDATE/DELETE à `authenticated` sur toute table neuve
+  (variante « table » du piège P7) : penser à `revoke` explicitement, pas seulement `from public`.
+- **Côté client :** `accountService.applyBalanceMovement(accountId, userId, delta, { kind, sourceTransactionId })`
+  est le **SEUL** point d'entrée. Il applique le delta **en local tout de suite** (affichage
+  instantané, hors ligne compris), puis appelle la fonction ; en cas de timeout ou d'absence de
+  réseau il met en file **le même id** (`table_name: 'account_balance_movements'`).
+  **Un timeout n'est PAS un échec** — c'est exactement pourquoi l'id est conservé.
+- **`updateAccount` ne transmet plus jamais `balance`** (ni à Supabase, ni à `syncQueue`). Un
+  appelant qui en passe un déclenche `⚠️ updateAccount: balance ignored, use applyBalanceMovement`.
+  Seule exception : `createAccount`, pour le solde **initial**.
+- **Solde local après réponse serveur** = `solde renvoyé + Σ des mouvements encore dans syncQueue`
+  pour ce compte. Sans cette somme, l'affichage reculerait à chaque rafraîchissement.
+
+**Pour tout futur code :** ne jamais écrire un solde calculé. Si vous connaissez l'écart, appelez
+`applyBalanceMovement`. Si vous ne connaissez qu'un total (saisie manuelle), envoyez
+`nouveau − affiché au début de la saisie`, en `kind: 'ajustement'`. `updateAccountBalance` et
+`updateAccountBalancePublic` restent des coquilles vides : ne pas les réactiver.
+
+**Corollaire — comptes et budgets rafraîchis en arrière-plan (v3.78.0).** `accountService.getAccounts`
+et `budgetService.getBudgets`/`getUserBudgets` rendaient la copie locale et ne relisaient **jamais**
+Supabase : la réconciliation branchée en v3.77.0 y était **dormante**. Elles suivent désormais le
+motif de `transactionService` (retour local immédiat + `refreshXFromSupabase` non bloquant,
+dédoublonné). Le rafraîchissement **ne réécrit pas** le solde d'un compte dont un mouvement est en
+vol, ni les champs locaux d'un compte portant une `accounts`/UPDATE en attente, ni un budget dont
+une écriture attend de monter.
+
+---
+
 ### Synchro descendante : les suppressions serveur (corrigé v3.77.0)
 
 **Problème :** toutes les fonctions de rafraîchissement « Supabase → IndexedDB » ne faisaient que

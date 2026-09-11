@@ -594,6 +594,38 @@ contentait plus d'être en retard : il gardait indéfiniment des lignes que le s
 - **Lectures paginées** (`.range()` par 1000) : sans cela Supabase s'arrête silencieusement à 1000
   lignes et une absence n'est plus interprétable.
 
+### Extension v3.78.0 — comptes et budgets enfin concernés
+
+Jusque-là, `accountService.getAccounts` et `budgetService.getBudgets`/`getUserBudgets` rendaient la
+copie locale **sans jamais relire Supabase** : la réconciliation y était branchée mais **dormante**
+(preuve mesurée : 8 comptes locaux contre 7 côté serveur). Ces trois lectures suivent désormais le
+motif `transactionService` — retour local immédiat, puis `refreshAccountsFromSupabase` /
+`refreshBudgetsFromSupabase` en arrière-plan, **dédoublonné** (un seul rafraîchissement en vol).
+La réconciliation des stores `accounts` et `budgets` est donc **active**.
+
+---
+
+## 🔁 TRANSVERSE — SOLDES PAR MOUVEMENTS — v3.78.0
+
+**Qui touche à un solde de compte ?** Un seul point d'entrée :
+`accountService.applyBalanceMovement(accountId, userId, delta, { kind, sourceTransactionId })`.
+
+| Appelant | Ce qu'il envoie |
+|---|---|
+| `transactionService` (création, restitution à la suppression, transfert ×2) | le montant de l'opération |
+| `TransactionDetailPage` (changement de compte + annulations) | l'écart, et son inverse en cas d'échec |
+| `AccountDetailPage` (saisie manuelle) | `saisi − affiché au début de l'édition`, `kind: 'ajustement'` |
+| `receiptService` (recalcul du total d'un ticket) | le delta du recalcul |
+| `accountService.createAccount` | **seul** endroit qui envoie encore un solde : la valeur initiale |
+
+Côté serveur : table `account_balance_movements` + fonction `apply_balance_movement`, idempotente
+par id de mouvement. Détail du mécanisme, garanties RLS et règles pour tout futur code : `CLAUDE.md`,
+section « Soldes : toujours un MOUVEMENT, jamais une valeur absolue ».
+
+`syncManager` rejoue les mouvements avec **l'id d'origine**, ne réessaie pas les refus définitifs
+(compte d'autrui, compte inexistant) et **retire le solde** des anciennes opérations
+`accounts`/UPDATE qui en portaient encore un.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
