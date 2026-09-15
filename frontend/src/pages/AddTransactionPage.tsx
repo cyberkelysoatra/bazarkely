@@ -14,6 +14,7 @@ import { validateRecurringData } from '../utils/recurringUtils';
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
 import { useFormatBalance } from '../hooks/useFormatBalance';
+import { useScrollToError } from '../hooks/useScrollToError';
 import { ACCOUNT_TYPES } from '../constants';
 import type { Account, TransactionCategory } from '../types';
 import type { RecurrenceFrequency } from '../types/recurring';
@@ -67,7 +68,7 @@ const AddTransactionPage = () => {
   const { formatBalance } = useFormatBalance();
   const [categories, setCategories] = useState<CategoryFromDB[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, errorRef, errorFlash } = useScrollToError();
 
   // État pour le ravitaillement de compte (solde insuffisant)
   const [insufficientBalanceContext, setInsufficientBalanceContext] = useState<{
@@ -402,8 +403,14 @@ const AddTransactionPage = () => {
     const isLoanCategory = ['loan', 'loan_received', 'loan_repayment', 'loan_repayment_received'].includes(formData.category);
     const descriptionRequired = !isLoanCategory;
     
-    if (!formData.amount || (descriptionRequired && !formData.description) || !formData.category || !formData.accountId) {
+    const missingFields: string[] = [];
+    if (!formData.amount) missingFields.push('montant');
+    if (descriptionRequired && !formData.description) missingFields.push('libellé');
+    if (!formData.category) missingFields.push('catégorie');
+    if (!formData.accountId) missingFields.push('compte');
+    if (missingFields.length > 0) {
       console.error('❌ Veuillez remplir tous les champs obligatoires');
+      setError(`❌ Champs obligatoires manquants : ${missingFields.join(', ')}.`);
       return;
     }
 
@@ -845,7 +852,13 @@ const AddTransactionPage = () => {
         <form onSubmit={handleSubmit} className="space-y-6" translate="no">
           {/* Message d'erreur */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+            <div
+              ref={errorRef}
+              tabIndex={-1}
+              role="alert"
+              aria-live="assertive"
+              className={`bg-red-50 border border-red-200 rounded-lg p-4 space-y-3 focus:outline-none scroll-mt-24 ${errorFlash ? 'animate-error-pulse' : ''}`}
+            >
               <p className="text-sm text-red-800">{error}</p>
               {insufficientBalanceContext && (
                 <button

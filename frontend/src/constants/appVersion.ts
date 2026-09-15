@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.78.0';
-export const APP_VERSION_NAME = "Les soldes de comptes ne se marchent plus dessus d un appareil a l autre, et les comptes comme les budgets se mettent enfin a jour tout seuls. Jusqu ici, chaque appareil envoyait au serveur un solde TOTAL calcule sur sa propre copie : le dernier qui ecrivait effacait les mouvements des autres, et une operation partie sous reseau lent pouvait etre comptee deux fois. Desormais un appareil n envoie plus jamais un total, il envoie un MOUVEMENT (plus X ou moins X) portant un numero unique ; le serveur ne l applique qu une seule fois, meme rejoue dix fois, et deux appareils qui bougent le meme compte s additionnent au lieu de s ecraser. Hors ligne, le solde bouge tout de suite a l ecran et le mouvement monte au retour du reseau. Les anciennes operations qui portaient encore un total sont nettoyees automatiquement. Les comptes et les budgets se rafraichissent maintenant en arriere-plan comme les operations : un solde corrige ailleurs ou une ligne supprimee sur un autre appareil redescend enfin ici. Aucun ecran modifie.";
-export const LAST_UPDATED = '2026-09-11';
-export const APP_BUILD_DATE = '2026-09-11';
+export const APP_VERSION = '3.79.0';
+export const APP_VERSION_NAME = "Quand un formulaire refuse d enregistrer, vous le voyez enfin. Sur Ajouter une depense et sur Transfert, le message d erreur s affichait tout en haut du formulaire, hors de l ecran, pendant que vous cliquiez sur Enregistrer tout en bas : on croyait que rien ne se passait. Desormais la page remonte toute seule jusqu au message, le centre a l ecran, l entoure d un double halo rouge et fait vibrer brievement le telephone. Un nouveau clic sans rien changer rejoue l effet. Si votre appareil demande de reduire les animations, la page saute directement au message, sans halo ni vibration. Et un formulaire incomplet ne reste plus muet : il nomme les champs qui manquent.";
+export const LAST_UPDATED = '2026-09-15';
+export const APP_BUILD_DATE = '2026-09-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.79.0',
+    date: '2026-09-15',
+    description:
+      "Les formulaires Depense et Transfert ramenent la vue sur leur message d erreur : fini le clic sur Enregistrer qui semble ne rien faire.",
+    changes: [
+      "Nouveau hook partage hooks/useScrollToError.ts : remplace l etat d erreur d une page ; a chaque erreur, defilement doux jusqu au bandeau centre a l ecran, focus sur le bandeau, double halo rouge ~1,4 s et courte vibration (Android).",
+      "Compteur de tentative : un second clic sur Enregistrer avec un message identique rejoue le defilement et le halo.",
+      "prefers-reduced-motion : saut instantane (behavior instant, car html porte scroll-behavior smooth), sans halo ni vibration.",
+      "tailwind.config.js : animation additive error-pulse (keyframes errorPulse).",
+      "AddTransactionPage : la validation des champs obligatoires, jusqu ici muette, affiche desormais les champs manquants (montant, libelle, categorie, compte).",
+      "AddTransactionPage et TransferPage : bandeau d erreur en role alert, aria-live assertive, focusable."
+    ]
+  },
   {
     version: '3.78.0',
     date: '2026-09-11',

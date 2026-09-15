@@ -101,7 +101,9 @@ export default {
         'slide-up': 'slideUp 0.3s ease-out',
         'bounce-soft': 'bounceSoft 0.6s ease-in-out',
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
-        'ripple': 'ripple 0.6s ease-out forwards'
+        'ripple': 'ripple 0.6s ease-out forwards',
+        // Deux halos rouges successifs sur un bandeau d'erreur de formulaire (useScrollToError)
+        'error-pulse': 'errorPulse 1.4s ease-out 1'
       },
       keyframes: {
         fadeIn: {
@@ -123,6 +125,13 @@ export default {
         ripple: {
           '0%': { transform: 'scale(0)', opacity: '0.5' },
           '100%': { transform: 'scale(2)', opacity: '0' }
+        },
+        errorPulse: {
+          '0%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.55)' },
+          '25%': { boxShadow: '0 0 0 10px rgba(239, 68, 68, 0)' },
+          '50%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0.55)' },
+          '75%': { boxShadow: '0 0 0 10px rgba(239, 68, 68, 0)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(239, 68, 68, 0)' }
         }
       }
     },

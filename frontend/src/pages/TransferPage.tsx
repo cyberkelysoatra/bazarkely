@@ -10,6 +10,7 @@ import recurringTransactionService from '../services/recurringTransactionService
 import { CurrencyInput } from '../components/Currency';
 import { useCurrency } from '../hooks/useCurrency';
 import { useFormatBalance } from '../hooks/useFormatBalance';
+import { useScrollToError } from '../hooks/useScrollToError';
 import RecurringConfigSection from '../components/RecurringConfig/RecurringConfigSection';
 import { validateRecurringData } from '../utils/recurringUtils';
 import { ACCOUNT_TYPES } from '../constants';
@@ -55,7 +56,7 @@ const TransferPage = () => {
   const [calculatedFees, setCalculatedFees] = useState<CalculatedFees | null>(null);
   const [includeWithdrawal, setIncludeWithdrawal] = useState(false);
   const [showFeeSettings, setShowFeeSettings] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, errorRef, errorFlash } = useScrollToError();
   
   // État pour les transferts récurrents
   const [isRecurring, setIsRecurring] = useState(false);
@@ -684,7 +685,13 @@ const TransferPage = () => {
           
           {/* Message d'erreur */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div
+              ref={errorRef}
+              tabIndex={-1}
+              role="alert"
+              aria-live="assertive"
+              className={`bg-red-50 border border-red-200 rounded-lg p-4 focus:outline-none scroll-mt-24 ${errorFlash ? 'animate-error-pulse' : ''}`}
+            >
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
