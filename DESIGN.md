@@ -10,6 +10,7 @@
 |---|---|
 | `frontend/src/modules/gestion-eau/**` | **AHUVI** (voir ci-dessous) |
 | `frontend/src/modules/construction-poc/**` | **Construction** (dette assumée) |
+| `frontend/src/modules/navy-ay/**` | **NAVY ay** (voir ci-dessous) |
 | tout le reste | **Cœur BazarKELY** |
 
 **Fichiers partagés** (`frontend/src/components/Layout/**`,
@@ -88,6 +89,28 @@ nouvelle) : la coquille d'en-tête hors module eau est en **violet** (`from-purp
 `to-purple-800/80`, `theme-color #3b0764`), tandis que la palette `primary` du thème est
 bleu/cyan. Les deux coexistent aujourd'hui ; ne pas « harmoniser » l'un vers l'autre sans
 chantier dédié.*
+
+---
+
+## Charte NAVY ay — module navy-ay (v3.80.0)
+
+Réseau de livraison de petits colis à Nosy Be par points relais (épiceries).
+
+| Rôle | Token Tailwind | Valeur |
+|---|---|---|
+| Jaune ylang-ylang (accent, surfaces) | `navyay-yellow` | `#E9B824` |
+| Anthracite (texte, surfaces fortes) | `navyay-charcoal` | `#2E2E2E` |
+
+- Fond **blanc** ; neutres = anthracite en opacité (`navyay-charcoal/75` minimum pour du texte).
+- **Texte sur jaune = anthracite, jamais blanc** (contraste insuffisant).
+- Le jaune ne sert **jamais de couleur de texte courant sur blanc** (≈ 1,9:1). Seule
+  exception : le mot « ay » du nom de marque (logo et titre d'en-tête), repris tel quel du logo.
+- Barre du bas : bouton actif **entier** en `bg-navyay-charcoal`, icône et libellé jaunes.
+- En-tête : fond blanc, filet jaune, titre « NAVY » anthracite + « ay » jaune, symbole du logo.
+- Logos : `frontend/public/navy-ay/A_profil.svg` (symbole) et `NAVYay_long_couleur.svg`
+  (logo long) ; repli texte si un fichier manque, jamais d'image cassée.
+- **Interdit** : tout bleu marine et toute référence nautique (malgré le nom « navy »).
+- Police : système (celle du cœur), aucune police nouvelle.
 
 ---
 

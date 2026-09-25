@@ -162,6 +162,11 @@ export const GESTION_EAU_NAV_ITEMS = [
   { path: '/gestion-eau/client/factures', icon: 'Receipt', label: 'Mes factures', roles: ['client'] as const }
 ] as const;
 
+// Navigation NAVY ay (livraison de petits colis à Nosy Be) — phase 0 : accueil seul.
+export const NAVY_AY_NAV_ITEMS = [
+  { path: '/navy', icon: 'Home', label: 'Accueil' }
+] as const;
+
 // Navigation analytics
 export const ANALYTICS_NAV_ITEMS = [
   { path: '/analytics', icon: 'BarChart3', label: 'Analytics' },

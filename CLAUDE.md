@@ -134,6 +134,31 @@ git push origin main    # → Netlify déploie automatiquement
 
 ---
 
+## Accès aux modules (v3.80.0)
+
+Quatre modules : `bazarkely` (budget), `construction`, `gestion-eau`, `navy-ay` (`/navy`).
+
+| Module | Visible dans le sélecteur / accessible |
+|---|---|
+| `navy-ay` | Tout compte connecté |
+| `bazarkely` | Si `users.preferences.modules` contient `bazarkely` (posé par le lien `/ouvrir/budget` ; tous les comptes existants au 2026-09-24 migrés en SQL) |
+| `gestion-eau` | Logique d'accès Eau existante (inchangée) |
+| `construction` | `hasConstructionAccess` (inchangé) |
+| admin (`role = 'admin'`) | Les quatre |
+
+- Règles pures : `modules/navy-ay/utils/moduleAccess.ts` (`resolveAccessibleModules`,
+  `pickStartModule`, `mergePreferences`, testées). Synchro : `modules/navy-ay/services/modulePrefsSync.ts`
+  (**seul** point d'écriture de `modules` / `lastModule` : patch idempotent, file locale
+  `bazarkely_prefs_pending`, relecture du serveur puis **fusion** — ne jamais écraser `moduleOrder`).
+- `preferences.modules` = **affichage + gardes d'interface uniquement**, jamais une sécurité.
+- **Démarrage à froid** : liste inconnue (cache antérieur, retour OAuth) = « non résolue » →
+  indicateur de chargement, puis accès laissé ouvert si le serveur ne répond pas. On ne
+  refuse le budget que sur une liste **confirmée** sans `bazarkely`.
+- Eau / Construction : ajoutés à la liste sur accès confirmé, retirés **uniquement** sur refus confirmé.
+- Nouvelle route du budget → la placer **dans** la route-garde `BudgetAccessRoute` d'`AppLayout`.
+
+---
+
 ## PIÈGES CONNUS — NE JAMAIS REPRODUIRE
 
 ### `npm run build` ne contrôle PAS les types (révélé S78, v3.16.25)

@@ -81,6 +81,12 @@ export default {
           700: '#364E30',
           800: '#2a3c26',
           900: '#22301f'
+        },
+        // NAVY ay — charte du module navy-ay UNIQUEMENT : jaune ylang-ylang + anthracite.
+        // Texte sur jaune = anthracite (jamais blanc). Interdit : bleu marine / nautique.
+        navyay: {
+          yellow: '#E9B824',
+          charcoal: '#2E2E2E'
         }
       },
       fontFamily: {

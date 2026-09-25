@@ -517,6 +517,45 @@ anomalies/fuites** (stock attendu vs niveau mesuré) + un indicateur **NRW**.
 
 ---
 
+## MODULE — NAVY ay (livraison de petits colis, Nosy Be) — Phase 0 « socle », v3.80.0
+
+### 🎯 Rôle
+Réseau de livraison de petits colis à Nosy Be par **points relais** : le colis est déposé
+dans une épicerie partenaire et retiré dans une autre épicerie près du destinataire.
+Phase 0 = **socle seulement** (accès aux modules, mémoire du dernier module, coquille et
+page d'accueil). Aucune fonction métier (colis, chauffeurs, épiciers) : phases suivantes.
+
+### 📍 Adresses
+- Identifiant `navy-ay`, préfixe **`/navy`**, dossier `frontend/src/modules/navy-ay/`.
+- **Adresse d'entrée publique : `1sakely.org/navy`**. Non connecté → écran de connexion
+  aux couleurs NAVY ay (logo long, accroche, bouton Google). Après connexion → `/navy`.
+- **Liens d'ouverture** (utilisables en QR code) :
+  - `/ouvrir/budget` → ajoute le budget aux modules du compte, puis `/dashboard` ;
+  - `/ouvrir/navy` → `/navy`.
+  Non connecté : connexion d'abord, puis retour automatique sur le lien.
+
+### 🔐 Accès aux modules (sélecteur + gardes d'interface)
+| Module | Qui le voit et peut y entrer |
+|---|---|
+| NAVY ay | Tout compte connecté, toujours |
+| Budget (BazarKELY) | Libre, mais seulement après un lien d'ouverture `/ouvrir/budget`. Tous les comptes existants au 2026-09-24 l'ont gardé |
+| Gestion Eau | Inchangé : si la logique d'accès Eau confirme l'accès |
+| Construction | Inchangé : si l'utilisateur appartient à une entreprise active |
+| Admin | Tous les modules |
+
+- Stockage : `users.preferences.modules` (liste) et `users.preferences.lastModule` (`{ id, at }`).
+- Un compte **sans** budget qui ouvre une page du budget est renvoyé sur `/navy`.
+- Ce n'est **pas** une barrière de sécurité : les données Eau / Construction / budget
+  restent protégées par les règles du serveur.
+
+### 🔁 Dernier module
+À l'ouverture de l'application (adresse `/` ou `/dashboard`), elle rouvre le **dernier
+module utilisé**, même après nettoyage du téléphone, mise à jour ou nouvel appareil (valeur
+enregistrée aussi sur le compte). Un lien direct ou un rafraîchissement garde toujours
+l'adresse en cours.
+
+---
+
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0
 
 ### 📍 Pages / composants concernés

@@ -1,8 +1,24 @@
-export const APP_VERSION = '3.79.0';
-export const APP_VERSION_NAME = "Quand un formulaire refuse d enregistrer, vous le voyez enfin. Sur Ajouter une depense et sur Transfert, le message d erreur s affichait tout en haut du formulaire, hors de l ecran, pendant que vous cliquiez sur Enregistrer tout en bas : on croyait que rien ne se passait. Desormais la page remonte toute seule jusqu au message, le centre a l ecran, l entoure d un double halo rouge et fait vibrer brievement le telephone. Un nouveau clic sans rien changer rejoue l effet. Si votre appareil demande de reduire les animations, la page saute directement au message, sans halo ni vibration. Et un formulaire incomplet ne reste plus muet : il nomme les champs qui manquent.";
-export const LAST_UPDATED = '2026-09-15';
-export const APP_BUILD_DATE = '2026-09-15';
+export const APP_VERSION = '3.80.0';
+export const APP_VERSION_NAME = "Un quatrieme module arrive : NAVY ay, l envoi de petits colis a Nosy Be par les epiceries du quartier. Il apparait dans le selecteur de modules avec son logo jaune et anthracite, et presente pour l instant le service ; les envois arriveront bientot. L application rouvre desormais toujours sur le dernier module utilise, meme apres un nettoyage du telephone, une mise a jour ou sur un nouvel appareil, car ce choix est aussi enregistre sur votre compte. Le selecteur ne montre plus que les modules auxquels votre compte a acces.";
+export const LAST_UPDATED = '2026-09-24';
+export const APP_BUILD_DATE = '2026-09-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.80.0',
+    date: '2026-09-24',
+    description:
+      "NAVY ay phase 0 : socle d acces aux modules, dernier module memorise sur le compte, coquille du module /navy et page d entree publique.",
+    changes: [
+      "Nouveau module navy-ay (/navy) : coquille (NavyRoute, NavyRoutes), page d accueil NavyHomePage (presentation, aide depliable, etat hors ligne), charte jaune ylang-ylang / anthracite (tokens Tailwind navyay).",
+      "Regles d acces aux modules (users.preferences.modules) : NAVY ay pour tout compte, budget apres le lien /ouvrir/budget, Eau et Construction selon leur logique existante, admin voit tout. Selecteur filtre.",
+      "Garde d interface du budget (BudgetAccessRoute) : un compte sans budget est renvoye sur /navy ; jamais de rejet sur un etat non confirme (demarrage a froid).",
+      "Dernier module (preferences.lastModule) : ecrit en local et sur le compte a chaque vrai changement de module, repris a l ouverture sur / ou /dashboard (le plus recent des deux).",
+      "Synchro des preferences idempotente (modulePrefsSync) : file locale, relecture du serveur puis fusion, sans jamais ecraser moduleOrder.",
+      "Liens d ouverture /ouvrir/budget et /ouvrir/navy ; ecran de connexion aux couleurs NAVY ay sur /navy.",
+      "SQL : les 16 comptes existants recoivent modules = [bazarkely].",
+      "15 tests Vitest sur les regles pures (acces, module de depart, fusion des preferences)."
+    ]
+  },
   {
     version: '3.79.0',
     date: '2026-09-15',

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import type { User } from '../types';
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Phone } from 'lucide-react';
 import { usePracticeTracking } from '../hooks/usePracticeTracking';
+import NavyAuthSkin, { isNavyAuthContext } from '../modules/navy-ay/components/NavyAuthSkin';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -329,6 +330,19 @@ const AuthPage = () => {
     setError(null);
     setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
   };
+
+  // NAVY ay (v3.80.0) : habillage de la page d'entrée publique /navy (et /ouvrir/navy).
+  // Même handler Google, même état : AUCUNE logique d'authentification ajoutée.
+  if (isNavyAuthContext()) {
+    return (
+      <NavyAuthSkin
+        onGoogleSignIn={handleGoogleSignIn}
+        isLoading={isLoading}
+        error={error ? (typeof error === 'string' ? error : String(error)) : null}
+        oauthInProgress={isLoading && window.location.hash.includes('access_token')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">

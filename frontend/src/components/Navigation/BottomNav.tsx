@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from '../../constants';
+import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS, NAVY_AY_NAV_ITEMS } from '../../constants';
+import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
+import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
 import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
@@ -27,6 +29,21 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 /**
+ * Icône d'un module dans le sélecteur : emoji, sauf NAVY ay (symbole du logo,
+ * repli « N » sur pastille jaune si le fichier manque).
+ */
+const ModuleIcon = ({ module }: { module: Module }) =>
+  module.id === 'navy-ay' ? (
+    <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>
+      <NavySymbol className="w-5 h-5 text-[11px]" rounded="rounded-md" />
+    </span>
+  ) : (
+    <span className="text-xl leading-none" role="img" aria-label={module.name}>
+      {module.icon}
+    </span>
+  );
+
+/**
  * Élément triable d'un module en mode « réorganiser » (glisser-déposer @dnd-kit).
  * L'élément entier sert de poignée de prise (listeners) ; un repère GripVertical
  * et l'anneau sur le module actif rendent l'affordance lisible.
@@ -50,9 +67,7 @@ const SortableModuleItem = ({ module, isActive }: { module: Module; isActive: bo
       aria-label={`Déplacer ${module.name}`}
     >
       <div className={`relative p-3 rounded-xl bg-slate-50 ${isActive ? 'ring-2 ring-blue-400' : ''}`}>
-        <span className="text-xl leading-none" role="img" aria-label={module.name}>
-          {module.icon}
-        </span>
+        <ModuleIcon module={module} />
         <GripVertical className="absolute -top-1 -right-1 w-3 h-3 text-slate-400" />
       </div>
       <span className="text-xs font-semibold mt-1 text-slate-600">{module.name}</span>
@@ -107,7 +122,12 @@ const BottomNav = () => {
   // localement et synchronisé via preferences.moduleOrder.
   const user = useAppStore((s) => s.user);
   const setUser = useAppStore((s) => s.setUser);
-  const orderedModules = orderModules(availableModules, user?.preferences?.moduleOrder);
+  // v3.80.0 : seuls les modules accessibles au compte (règles d'accès aux modules),
+  // dans l'ordre moduleOrder existant. Filtre d'AFFICHAGE uniquement (pas de sécurité).
+  const { accessible: accessibleModuleIds } = useModuleAccess();
+  const orderedModules = orderModules(availableModules, user?.preferences?.moduleOrder).filter(
+    (m) => accessibleModuleIds.includes(m.id)
+  );
 
   // Sous-mode « réorganiser » (glisser-déposer) du switcher.
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -183,7 +203,11 @@ const BottomNav = () => {
     const oldIndex = ids.indexOf(String(active.id));
     const newIndex = ids.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
-    persistModuleOrder(arrayMove(ids, oldIndex, newIndex));
+    // Les modules masqués (non accessibles) gardent leur rang en fin de liste.
+    const hidden = orderModules(availableModules, user?.preferences?.moduleOrder)
+      .map((m) => m.id)
+      .filter((id) => !ids.includes(id));
+    persistModuleOrder([...arrayMove(ids, oldIndex, newIndex), ...hidden]);
   };
   
   // Get user role for BCI access control (AGENT 11)
@@ -199,6 +223,8 @@ const BottomNav = () => {
   const eauContext = useContext(GestionEauContext);
   const eauRoles = eauContext?.roles ?? null;
   const isEauModule = activeModule?.id === 'gestion-eau';
+  // NAVY ay : barre anthracite / jaune (charte NAVY, jamais de bleu marine).
+  const isNavyModule = activeModule?.id === 'navy-ay';
 
   // Click-outside detection to exit switcher mode
   useEffect(() => {
@@ -251,6 +277,8 @@ const BottomNav = () => {
     let navItems: ReadonlyArray<{ path: string; icon: string; label: string }> =
       activeModule?.id === 'construction'
         ? CONSTRUCTION_NAV_ITEMS
+        : isNavyModule
+        ? NAVY_AY_NAV_ITEMS
         : isEauModule
         ? GESTION_EAU_NAV_ITEMS.filter(
             (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
@@ -292,10 +320,25 @@ const BottomNav = () => {
                 to={item.path}
                 end={exact}
                 className={({ isActive }) =>
-                  `mobile-nav-item ${isActive ? 'active' : ''}`
+                  isNavyModule
+                    ? 'mobile-nav-item !bg-transparent' // pas de halo bleu en NAVY ay (charte)
+                    : `mobile-nav-item ${isActive ? 'active' : ''}`
                 }
               >
-                {({ isActive }) => (
+                {({ isActive }) => isNavyModule ? (
+                  // NAVY ay : le bouton actif ENTIER est anthracite, icône et libellé jaunes
+                  // (jaune sur blanc = contraste insuffisant, donc jamais de libellé jaune hors pastille).
+                  <span
+                    className={`flex flex-col items-center rounded-2xl px-4 pt-2 pb-1.5 transition-all duration-300 ${
+                      isActive ? 'bg-navyay-charcoal shadow-lg' : 'hover:bg-navyay-yellow/15'
+                    }`}
+                  >
+                    <IconComponent className={`w-[18px] h-[18px] ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`} />
+                    <span className={`text-xs font-semibold mt-1 ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`}>
+                      {item.label}
+                    </span>
+                  </span>
+                ) : (
                   <>
                     <div className={`p-3 rounded-xl transition-all duration-300 ${isActive ? `${activeBg} shadow-lg scale-110` : `${hoverBg} hover:scale-105`}`}>
                       <IconComponent className={`w-[18px] h-[18px] transition-colors duration-200 ${isActive ? 'text-white' : 'text-slate-600'}`} />
@@ -387,9 +430,7 @@ const BottomNav = () => {
                 aria-label={`Sélectionner ${module.name}`}
               >
                 <div className="p-3 rounded-xl transition-all duration-300 hover:bg-blue-50 hover:scale-105">
-                  <span className="text-xl leading-none" role="img" aria-label={module.name}>
-                    {module.icon}
-                  </span>
+                  <ModuleIcon module={module} />
                 </div>
                 <span className="text-xs font-semibold mt-1 transition-colors duration-200 text-slate-600">
                   {module.name}

@@ -6,6 +6,8 @@ import { GestionEauContext } from '../../modules/gestion-eau/context';
 import { GESTION_EAU_NAV_ITEMS } from '../../constants';
 import { simulationRoleLabel } from '../../modules/gestion-eau/constants/simulationRoles';
 import { EauLogo } from '../../modules/gestion-eau/components';
+import { NavySymbol, NavyTitle } from '../../modules/navy-ay/components/NavyLogo';
+import { NAVY_AY_NAV_ITEMS } from '../../constants';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
 import apiService from '../../services/apiService';
@@ -53,14 +55,19 @@ const Header = () => {
   const isEauModule = location.pathname.startsWith('/gestion-eau')
     || activeModule?.id === 'gestion-eau';
 
+  // Détection module NAVY ay (v3.80.0) — même principe : pathname prioritaire, puis id.
+  // En-tête clair (le titre « NAVY » anthracite + « ay » jaune exige un fond blanc).
+  const isNavyModule = !isEauModule && !isConstructionModule
+    && (location.pathname.startsWith('/navy') || activeModule?.id === 'navy-ay');
+
   // Couleur de la barre d'état système (status bar mobile) alignée sur le header du module.
   // La meta theme-color ne supporte qu'une couleur SOLIDE (pas d'alpha/translucide côté OS) :
   // on prend la teinte dominante du header eau (vert forêt AHUVI #364E30, début du dégradé
   // from-ahuvi-forest/95) ; ailleurs on rétablit le violet BazarKELY (#3b0764).
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', isEauModule ? '#364E30' : '#3b0764');
-  }, [isEauModule]);
+    if (meta) meta.setAttribute('content', isEauModule ? '#364E30' : isNavyModule ? '#FFFFFF' : '#3b0764');
+  }, [isEauModule, isNavyModule]);
 
   // Rôles eau (cumulables) pour filtrer la nav desktop du module. useContext direct = sûr.
   const eauContextValue = useContext(GestionEauContext);
@@ -358,7 +365,7 @@ const Header = () => {
   
   useEffect(() => {
     // Skip budget check in Construction & Gestion Eau modules (optimization)
-    if (isConstructionModule || isEauModule) return;
+    if (isConstructionModule || isEauModule || isNavyModule) return;
 
     const checkUserBudgets = async () => {
       if (!user?.id) {
@@ -376,11 +383,11 @@ const Header = () => {
     };
     
     checkUserBudgets();
-  }, [user?.id, isConstructionModule, isEauModule]);
+  }, [user?.id, isConstructionModule, isEauModule, isNavyModule]);
 
   // Early return: Skip banner message generation in Construction module for performance optimization
   // Construction finale du tableau messages avec filtrage des undefined
-  const messages: InteractiveMessage[] = (isConstructionModule || isEauModule) ? [] : [
+  const messages: InteractiveMessage[] = (isConstructionModule || isEauModule || isNavyModule) ? [] : [
     ...baseMessages,
     ...(hasCompletedPriorityQuestions ? [] : [priorityQuestionMessage]),
     // Only show quiz message if not all financial questions are completed
@@ -658,6 +665,8 @@ const Header = () => {
       className={
         isEauModule
           ? 'backdrop-blur-md bg-gradient-to-r from-ahuvi-forest/95 to-ahuvi-olive/90 border-b border-ahuvi-gold/40 shadow-lg shadow-ahuvi-forest/20 sticky top-0 z-50 overscroll-none'
+          : isNavyModule
+          ? 'backdrop-blur-md bg-white/95 border-b border-navyay-yellow shadow-sm shadow-navyay-charcoal/10 sticky top-0 z-50 overscroll-none'
           : 'backdrop-blur-md bg-gradient-to-r from-purple-900/80 to-purple-800/80 border-b border-purple-300/50 shadow-lg shadow-purple-500/20 sticky top-0 z-50 overscroll-none'
       }
     >
@@ -704,6 +713,13 @@ const Header = () => {
                   )}
                   <EauLogo />
                 </div>
+              ) : isNavyModule ? (
+                <div className="w-12 h-12 rounded-xl overflow-hidden shadow-md ring-1 ring-navyay-charcoal/10 relative z-10 text-2xl">
+                  {logoRipple && (
+                    <span className="absolute inset-0 bg-navyay-yellow/40 rounded-xl animate-ping z-10" />
+                  )}
+                  <NavySymbol />
+                </div>
               ) : (
                 <div className="w-12 h-12 bg-white/40 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/50 relative z-10 overflow-hidden">
                   {logoRipple && (
@@ -725,20 +741,26 @@ const Header = () => {
                     ? `font-bold text-white drop-shadow-lg font-ahuvi-display truncate ${
                         eauIsSimulating ? 'text-2xl sm:text-3xl' : 'text-3xl'
                       }`
+                    : isNavyModule
+                    ? 'text-3xl font-bold truncate'
                     : 'text-3xl font-bold text-white drop-shadow-lg truncate'
                 }
               >
-                {isEauModule ? 'AHUVI Eau' : isConstructionModule ? '1saKELY' : 'BazarKELY'}
+                {isEauModule ? 'AHUVI Eau' : isNavyModule ? <NavyTitle /> : isConstructionModule ? '1saKELY' : 'BazarKELY'}
               </h1>
               <p
                 className={
                   isEauModule
                     ? `text-sm text-ahuvi-100 font-medium drop-shadow-sm font-ahuvi-body truncate ${eauIsSimulating ? 'hidden sm:block' : ''}`
+                    : isNavyModule
+                    ? 'text-sm text-navyay-charcoal/75 font-medium truncate'
                     : 'text-sm text-purple-100 font-medium drop-shadow-sm truncate'
                 }
               >
                 {isEauModule
                   ? "Distribution & suivi d'eau — Nosy Be"
+                  : isNavyModule
+                  ? 'Petits colis — Nosy Be'
                   : isConstructionModule
                   ? 'BTP Construction'
                   : 'Budget familial Madagascar'}
@@ -783,7 +805,7 @@ const Header = () => {
           </div>
 
           {/* BANNER (CENTER) - Desktop only inline, mobile stays below */}
-          {user && !isConstructionModule && !isEauModule && !location.pathname.includes('/construction') && (
+          {user && !isConstructionModule && !isEauModule && !isNavyModule && !location.pathname.includes('/construction') && (
             <div className="hidden lg:block lg:flex-1 lg:mx-4">
               <div className="text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
                 <div className="flex items-center justify-between flex-nowrap overflow-hidden">
@@ -938,18 +960,24 @@ const Header = () => {
           {/* Actions - Budget module only (hidden in Construction & Eau) */}
           {!isConstructionModule && !isEauModule && (
             <div className="flex items-center space-x-3">
-              {/* Level Badge */}
+              {/* Level Badge (budget uniquement : masqué en NAVY ay) */}
+              {!isNavyModule && (
               <LevelBadge
                 onClick={() => navigate('/certification')}
                 currentLevel={currentLevel}
                 levelName={currentLevel === 1 ? 'Débutant' : currentLevel === 2 ? 'Intermédiaire' : currentLevel === 3 ? 'Avancé' : currentLevel === 4 ? 'Expert' : 'Maître'}
                 totalScore={Math.min(115, (quizScore || 0) + (practiceScore || 0) + (profileScore || 0))}
               />
+              )}
 
               {/* Menu utilisateur */}
               <div className="relative">
               <div
-                className="user-menu-container flex items-center space-x-3 bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg cursor-pointer hover:bg-purple-500/50 transition-all duration-200"
+                className={
+                  isNavyModule
+                    ? 'user-menu-container flex items-center space-x-3 bg-navyay-charcoal rounded-xl p-1.5 border border-navyay-charcoal shadow-md cursor-pointer hover:bg-navyay-charcoal/90 transition-all duration-200'
+                    : 'user-menu-container flex items-center space-x-3 bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg cursor-pointer hover:bg-purple-500/50 transition-all duration-200'
+                }
                 onClick={handleMenuToggle}
               >
                 <div className="w-10 h-10 bg-white/50 rounded-full flex items-center justify-center border border-white/60">
@@ -960,14 +988,16 @@ const Header = () => {
                     <span className="text-white font-semibold text-sm">{user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase() : 'Utilisateur'}</span>
                   )}
                 </div>
-                <div className="text-purple-100">
+                <div className={isNavyModule ? 'text-navyay-yellow' : 'text-purple-100'}>
                   {isMenuOpen ? '▲' : '▼'}
                 </div>
               </div>
 
               {/* Menu déroulant des actions */}
               {isMenuOpen && (
-                <div className="dropdown-menu absolute top-full right-0 mt-2 bg-purple-500/80 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg z-50 min-w-[200px]">
+                <div className={`dropdown-menu absolute top-full right-0 mt-2 backdrop-blur-sm rounded-xl p-3 border shadow-lg z-50 min-w-[200px] ${
+                  isNavyModule ? 'bg-navyay-charcoal/95 border-navyay-charcoal' : 'bg-purple-500/80 border-purple-300/50'
+                }`}>
                   <div className="flex flex-col space-y-2">
                     {/* NEW USER IDENTIFICATION SECTION - Compte actif */}
                     <div className="bg-purple-400/20 border border-purple-300/30 rounded-lg p-3 mb-2">
@@ -1073,7 +1103,7 @@ const Header = () => {
         </div>
 
         {/* Mobile banner - visible only on mobile, same position as before */}
-        {user && !isConstructionModule && !isEauModule && !location.pathname.includes('/construction') && (
+        {user && !isConstructionModule && !isEauModule && !isNavyModule && !location.pathname.includes('/construction') && (
           <div className="mt-2 lg:hidden text-sm text-white bg-purple-500/40 backdrop-blur-sm rounded-xl p-3 border border-purple-300/50 shadow-lg">
             <div className="flex items-center justify-between flex-nowrap overflow-hidden">
               <div>
@@ -1157,8 +1187,29 @@ const Header = () => {
           </nav>
         )}
 
+        {/* LINE 2: Navigation Items (DESKTOP ONLY) — NAVY ay */}
+        {isNavyModule && (
+          <nav className="hidden lg:flex items-center justify-around mt-4">
+            {NAVY_AY_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end
+                className={({ isActive }) =>
+                  `flex flex-col items-center px-4 py-2 rounded-lg transition-colors ${
+                    isActive ? 'bg-navyay-charcoal text-navyay-yellow' : 'text-navyay-charcoal hover:bg-navyay-yellow/20'
+                  }`
+                }
+              >
+                <Home className="w-5 h-5 mb-1" />
+                <span className="text-xs">{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        )}
+
         {/* LINE 2: Navigation Items (DESKTOP ONLY) — BazarKELY */}
-        {!isConstructionModule && !isEauModule && (
+        {!isConstructionModule && !isEauModule && !isNavyModule && (
           <nav className="hidden lg:flex items-center justify-between mt-4">
             <NavLink
               to="/dashboard"
@@ -1242,7 +1293,7 @@ const Header = () => {
         return null;
       })()}
       */}
-      {!isConstructionModule && !isEauModule && showQuizPopup && (
+      {!isConstructionModule && !isEauModule && !isNavyModule && showQuizPopup && (
         <QuizQuestionPopup
           key={currentQuizId || 'quiz-popup'} // Force clean remount on each opening
           isOpen={showQuizPopup}

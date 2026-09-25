@@ -1,5 +1,11 @@
 import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+// NAVY ay (v3.80.0) : règles d'accès aux modules + coquille du module /navy
+import BudgetAccessRoute from '../../modules/navy-ay/components/BudgetAccessRoute'
+import ModuleAccessSync from '../../modules/navy-ay/components/ModuleAccessSync'
+import NavyRoute from '../../modules/navy-ay/components/NavyRoute'
+import OpenModulePage from '../../modules/navy-ay/components/OpenModulePage'
+const NavyRoutes = lazy(() => import('../../modules/navy-ay/components/NavyRoutes'))
 import { useAppStore } from '../../stores/appStore'
 
 // Critical pages - keep static imports (critical path)
@@ -179,12 +185,18 @@ const AppLayout = () => {
   return (
     <div className={`min-h-screen flex flex-col ${isEauModule ? 'overscroll-y-auto' : 'overscroll-none'}`}>
       <Header />
+      {/* Accès aux modules (v3.80.0) : synchro invisible de preferences.modules / lastModule */}
+      <ModuleAccessSync />
       {/* Remonte chaque page en haut à l'ouverture (alignement homogène sous l'en-tête) */}
       <ScrollToTop />
       {/* pt-2 : écart de 8px sous l'en-tête, identique pour toutes les pages */}
       <main className="flex-1 pb-20 pt-2 overscroll-y-auto touch-pan-y">
         <Suspense fallback={<PageLoader />}>
           <Routes>
+            {/* Garde du module budget (v3.80.0) : sans accès budget → /navy. Garde d'INTERFACE
+                seulement (les données restent protégées côté serveur). Pages transverses hors
+                garde : /app-version, /pwa-instructions. */}
+            <Route element={<BudgetAccessRoute />}>
             {/* Critical route - no Suspense needed (static import) */}
             <Route path="/dashboard" element={<DashboardPage />} />
             
@@ -210,17 +222,13 @@ const AppLayout = () => {
             <Route path="/education" element={<EducationPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
-            <Route path="/app-version" element={<AppVersionPage />} />
 
             {/* Route SMS — non referencee dans la navigation, volontairement */}
             <Route path="/sms-inbox" element={<SmsInboxPage />} />
-            
+
             {/* Admin Route - Protected */}
             <Route path="/admin" element={<AdminPage />} />
-            
-            {/* PWA Instructions Route */}
-            <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
-            
+
             {/* Certification Route */}
             <Route path="/certification" element={<CertificationPage />} />
             
@@ -232,7 +240,28 @@ const AppLayout = () => {
             <Route path="/analytics" element={<AdvancedAnalytics />} />
             <Route path="/insights" element={<FinancialInsights userId={useAppStore.getState().user?.id || ''} />} />
             <Route path="/reports" element={<ReportGenerator />} />
-            
+
+            {/* Family Routes - Wrapped with FamilyProvider */}
+            <Route path="/family/*" element={<FamilyRoutes />} />
+            </Route>
+
+            {/* Pages transverses (tous modules) : version / mise à jour, installation PWA */}
+            <Route path="/app-version" element={<AppVersionPage />} />
+            <Route path="/pwa-instructions" element={<PWAInstructionsPage />} />
+
+            {/* NAVY ay (v3.80.0) — tout compte connecté */}
+            <Route
+              path="/navy/*"
+              element={
+                <NavyRoute>
+                  <NavyRoutes />
+                </NavyRoute>
+              }
+            />
+
+            {/* Liens d'ouverture (et QR codes) : /ouvrir/budget, /ouvrir/navy */}
+            <Route path="/ouvrir/:target" element={<OpenModulePage />} />
+
             {/* Construction POC Routes - ConstructionProvider now mounted globally in App.tsx */}
             <Route
               path="/construction/*"
@@ -243,9 +272,6 @@ const AppLayout = () => {
               }
             />
             
-            {/* Family Routes - Wrapped with FamilyProvider */}
-            <Route path="/family/*" element={<FamilyRoutes />} />
-
             {/* Gestion Eau Routes - GestionEauProvider monté globalement dans App.tsx */}
             <Route
               path="/gestion-eau/*"
