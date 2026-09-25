@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.83.1';
+export const APP_VERSION = '3.83.2';
 export const APP_VERSION_NAME = "Notifications sur le telephone (socle). L application peut recevoir des notifications meme fermee : abonnement du navigateur quand on active les notifications, envoi par le serveur, un seul service worker.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.83.2',
+    date: '2026-09-26',
+    description:
+      "Web Push : notifications avec contenu reellement recues, et abonnement plus patient au demarrage.",
+    changes: [
+      "Fonction serveur send-push : le contenu des notifications est chiffre avec WebCrypto (norme RFC 8291). Le chiffrement de la bibliotheque web-push ne fonctionne pas sous Deno : Google acceptait le message mais Chrome le jetait sans rien dire.",
+      "Abonnement : jusqu a 15 s pour repondre au lieu de 5 s (au demarrage, la demande attend derriere une cinquantaine de synchronisations)."
+    ]
+  },
   {
     version: '3.83.1',
     date: '2026-09-26',

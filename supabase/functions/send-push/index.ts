@@ -19,6 +19,13 @@
 //   404 / 410        -> subscription is dead: row deleted
 //   other error      -> echecs_consecutifs + 1, row deleted beyond 5
 //   success          -> derniere_utilisation = now(), echecs_consecutifs = 0
+//
+// Library choice: `web-push` (npm, the reference Node implementation, millions of weekly
+// downloads) is used ONLY for VAPID (key generation + signed Authorization header).
+// Its payload encryption relies on node:crypto ECDH/HKDF, which does NOT produce a
+// decryptable message under the Deno runtime (verified 2026-09-26: FCM accepts it, Chrome
+// silently drops it, while an empty push is delivered). The payload is therefore
+// encrypted here with WebCrypto, following RFC 8291 (aes128gcm).
 
 import webpush from 'npm:web-push@3.6.7'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
@@ -112,6 +119,72 @@ interface Abonnement {
   echecs_consecutifs: number
 }
 
+const enc = new TextEncoder()
+
+function b64urlDecode(v: string): Uint8Array {
+  const b64 = v.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (v.length % 4)) % 4)
+  const raw = atob(b64)
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
+  return out
+}
+
+function concat(...parts: Uint8Array[]): Uint8Array {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
+  let o = 0
+  for (const p of parts) { out.set(p, o); o += p.length }
+  return out
+}
+
+async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, longueur: number): Promise<Uint8Array> {
+  const cle = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, cle, longueur * 8)
+  return new Uint8Array(bits)
+}
+
+/** RFC 8291 (aes128gcm) payload encryption with WebCrypto. */
+async function chiffrer(charge: string, p256dh: string, authSecret: string): Promise<Uint8Array> {
+  const uaPublic = b64urlDecode(p256dh)
+  const auth = b64urlDecode(authSecret)
+
+  const ephemere = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', ephemere.publicKey))
+  const uaCle = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+  const secretEcdh = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaCle }, ephemere.privateKey, 256))
+
+  const ikm = await hkdf(auth, secretEcdh, concat(enc.encode('WebPush: info\0'), uaPublic, asPublic), 32)
+  const sel = crypto.getRandomValues(new Uint8Array(16))
+  const cek = await hkdf(sel, ikm, enc.encode('Content-Encoding: aes128gcm\0'), 16)
+  const nonce = await hkdf(sel, ikm, enc.encode('Content-Encoding: nonce\0'), 12)
+
+  const cleAes = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt'])
+  const clair = concat(enc.encode(charge), new Uint8Array([2])) // 0x02 = last record, no padding
+  const chiffre = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, cleAes, clair))
+
+  const rs = new Uint8Array([0, 0, 0x10, 0]) // record size 4096
+  return concat(sel, rs, new Uint8Array([asPublic.length]), asPublic, chiffre)
+}
+
+/** Sends one push; returns the push service HTTP status. */
+async function envoyerPush(abo: Abonnement, charge: string, cfg: ConfigServeur): Promise<number> {
+  const audience = new URL(abo.endpoint).origin
+  const vapid = webpush.getVapidHeaders(audience, VAPID_SUBJECT, cfg.vapidPublic, cfg.vapidPrivate, 'aes128gcm')
+  const corps = await chiffrer(charge, abo.p256dh, abo.auth)
+  const reponse = await fetch(abo.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: vapid.Authorization,
+      TTL: String(60 * 60 * 24),
+      Urgency: 'normal',
+      'Content-Encoding': 'aes128gcm',
+      'Content-Type': 'application/octet-stream'
+    },
+    body: corps
+  })
+  await reponse.body?.cancel()
+  return reponse.status
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: EN_TETES })
 
@@ -162,40 +235,40 @@ Deno.serve(async (req: Request) => {
     return repondre({ erreur: 'lecture des abonnements impossible' }, 500)
   }
 
-  webpush.setVapidDetails(VAPID_SUBJECT, cfg.vapidPublic, cfg.vapidPrivate)
   const charge = JSON.stringify({ title: titre, body: corps, url })
 
   const bilan = { appelant, abonnements: abonnements?.length ?? 0, envoyes: 0, supprimes: 0, echecs: 0 }
 
   await Promise.all(
     ((abonnements ?? []) as Abonnement[]).map(async (abo) => {
+      let statut: number | null = null
       try {
-        await webpush.sendNotification(
-          { endpoint: abo.endpoint, keys: { p256dh: abo.p256dh, auth: abo.auth } },
-          charge,
-          { TTL: 60 * 60 * 24, urgency: 'normal' }
-        )
+        statut = await envoyerPush(abo, charge, cfg)
+      } catch (e) {
+        console.warn(`[send-push] network error for subscription ${abo.id}: ${(e as Error).message}`)
+      }
+
+      if (statut !== null && statut >= 200 && statut < 300) {
         bilan.envoyes++
         await client
           .from('push_subscriptions')
           .update({ derniere_utilisation: new Date().toISOString(), echecs_consecutifs: 0 })
           .eq('id', abo.id)
-      } catch (e) {
-        const statut = (e as { statusCode?: number }).statusCode
-        if (statut === 404 || statut === 410) {
-          bilan.supprimes++
-          await client.from('push_subscriptions').delete().eq('id', abo.id)
-          return
-        }
-        bilan.echecs++
-        const echecs = (abo.echecs_consecutifs ?? 0) + 1
-        console.warn(`[send-push] delivery failed (status ${statut ?? 'n/a'}) for subscription ${abo.id}`)
-        if (echecs > MAX_ECHECS) {
-          bilan.supprimes++
-          await client.from('push_subscriptions').delete().eq('id', abo.id)
-        } else {
-          await client.from('push_subscriptions').update({ echecs_consecutifs: echecs }).eq('id', abo.id)
-        }
+        return
+      }
+      if (statut === 404 || statut === 410) {
+        bilan.supprimes++
+        await client.from('push_subscriptions').delete().eq('id', abo.id)
+        return
+      }
+      bilan.echecs++
+      const echecs = (abo.echecs_consecutifs ?? 0) + 1
+      console.warn(`[send-push] delivery failed (status ${statut ?? 'n/a'}) for subscription ${abo.id}`)
+      if (echecs > MAX_ECHECS) {
+        bilan.supprimes++
+        await client.from('push_subscriptions').delete().eq('id', abo.id)
+      } else {
+        await client.from('push_subscriptions').update({ echecs_consecutifs: echecs }).eq('id', abo.id)
       }
     })
   )

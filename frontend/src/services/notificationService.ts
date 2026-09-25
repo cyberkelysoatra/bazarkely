@@ -213,7 +213,9 @@ class NotificationService {
           p_auth: json.keys?.auth,
           p_user_agent: navigator.userAgent
         }),
-        5000,
+        // Not urgent and idempotent (same row): a longer budget than usual, because at app
+        // start it queues behind ~50 sync requests (5 s timed out in prod on 2026-09-26).
+        15000,
         'push-subscribe'
       ) as any
       if (error) throw error
