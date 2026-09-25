@@ -12,7 +12,7 @@ import { NetworkFirst } from 'workbox-strategies';
 import { cacheNames } from 'workbox-core';
 
 // Écouter les messages pour activer la mise à jour (contrôlée par l'utilisateur)
-self.addEventListener('message', (event) => {
+self.addEventListener('message', (event: any) => {
   console.log('[SW] 📨 Message reçu:', event.data);
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -24,7 +24,7 @@ self.addEventListener('message', (event) => {
 // Événement install - mise à jour 100% AUTOMATIQUE : on active la nouvelle version sans
 // attendre (plus de bandeau ni de clic). Le rechargement de la page est déclenché côté
 // client sur `controllerchange` (voir useServiceWorkerUpdate) pour servir le code neuf.
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event: any) => {
   console.log('[SW] 📦 Installation d\'une nouvelle version — activation automatique');
   self.skipWaiting();
 });
@@ -33,7 +33,7 @@ self.addEventListener('install', (event) => {
 // On supprime tout cache d'une ANCIENNE version (pour ne jamais servir de résidus), en
 // conservant le précache courant, le cache runtime courant et l'api-cache. On ne touche
 // JAMAIS à IndexedDB/Dexie (données métier + file de synchronisation hors-ligne préservées).
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', (event: any) => {
   console.log('[SW] ✅ Service Worker activé');
   event.waitUntil(
     (async () => {
@@ -299,15 +299,8 @@ async function processOperation(operation: any): Promise<boolean> {
     
     // Récupérer le token d'authentification depuis IndexedDB
     // Le token est stocké dans IndexedDB par l'application principale
-    let authToken: string | null = null;
-    try {
-      const db = await openDatabase();
-      const tokenStore = 'auth_tokens'; // Store pour les tokens (à créer si nécessaire)
-      // Pour l'instant, on essaie de récupérer depuis localStorage via postMessage
-      // TODO: Implémenter le stockage du token dans IndexedDB
-    } catch (tokenError) {
-      console.warn('[SW] ⚠️ Impossible de récupérer le token, tentative sans auth');
-    }
+    // TODO: Implémenter le stockage du token dans IndexedDB (aucun token disponible ici)
+    const authToken: string | null = null;
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -413,8 +406,107 @@ self.addEventListener('sync', (event: any) => {
   }
 });
 
+// ---------------------------------------------------------------------------------
+// Notifications (Web Push phase 1) — moved here from the orphan public/sw-notifications.js,
+// which nothing ever registered (a scope has ONE service worker: this one).
+// ---------------------------------------------------------------------------------
+
+/** Relative in-app link only; anything else falls back to the given default. */
+function safeInAppUrl(value: unknown, fallback: string): string {
+  return typeof value === 'string' && /^\/(?!\/)/.test(value) ? value : fallback;
+}
+
+// Remote push. Must survive a missing or malformed payload: show a default message.
+self.addEventListener('push', (event: any) => {
+  let payload: any = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    try {
+      payload = { body: event.data?.text() };
+    } catch {
+      payload = {};
+    }
+  }
+  if (!payload || typeof payload !== 'object') payload = {};
+
+  const title = typeof payload.title === 'string' && payload.title.trim() ? payload.title : 'BazarKELY';
+  const body = typeof payload.body === 'string' && payload.body.trim()
+    ? payload.body
+    : 'Vous avez une nouvelle notification.';
+  const url = safeInAppUrl(payload.url ?? payload.data?.clickAction, '/');
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      tag: typeof payload.tag === 'string' ? payload.tag : undefined,
+      data: { clickAction: url, notificationId: payload.notificationId },
+      actions: [
+        { action: 'view', title: 'Voir' },
+        { action: 'dismiss', title: 'Ignorer' }
+      ]
+    } as NotificationOptions).catch((e: unknown) => console.error('[SW] ❌ showNotification failed:', e))
+  );
+});
+
+self.addEventListener('notificationclick', (event: any) => {
+  event.notification.close();
+  const action: string = event.action;
+  const data = event.notification.data || {};
+
+  if (action === 'dismiss') {
+    event.waitUntil(
+      self.clients.matchAll().then((clients: any[]) => {
+        clients.forEach((client: any) =>
+          client.postMessage({ type: 'NOTIFICATION_DISMISSED', notificationId: data.notificationId })
+        );
+      })
+    );
+    return;
+  }
+
+  const clickAction = safeInAppUrl(data.clickAction, '/dashboard');
+  event.waitUntil(
+    (async () => {
+      const windows: any[] = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of windows) {
+        client.postMessage({
+          type: 'NOTIFICATION_CLICK',
+          notificationId: data.notificationId,
+          action: action || 'view',
+          clickAction
+        });
+      }
+      const existing = windows.find((c: any) => c.url.startsWith(self.location.origin));
+      if (existing) {
+        await existing.focus();
+        try {
+          await existing.navigate(clickAction);
+        } catch {
+          // Uncontrolled window: navigate() rejects — focusing it is enough.
+        }
+        return;
+      }
+      await self.clients.openWindow(clickAction);
+    })()
+  );
+});
+
+self.addEventListener('notificationclose', (event: any) => {
+  const notificationId = event.notification.data?.notificationId;
+  event.waitUntil(
+    self.clients.matchAll().then((clients: any[]) => {
+      clients.forEach((client: any) => client.postMessage({ type: 'NOTIFICATION_CLOSED', notificationId }));
+    })
+  );
+});
+
 // Précharger et router les assets
-declare const self: ServiceWorkerGlobalScope & {
+// Typed loosely: the app tsconfig uses the DOM lib, whose ServiceWorkerGlobalScope lacks
+// addEventListener / clients / registration (the WebWorker lib cannot be mixed with DOM).
+declare const self: any & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
@@ -451,7 +543,6 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
     /^\/supabase\/.*/i,
     /\.(?:js|css|png|svg|ico|woff2?|ttf|eot|jpg|jpeg|gif|webp|json|xml|txt|pdf|zip)$/i,
     /^\/sw\.js$/i,
-    /^\/sw-notifications\.js$/i,
     /^\/workbox-.*\.js$/i,
     /^\/manifest\.json$/i,
     /^\/manifest\.webmanifest$/i

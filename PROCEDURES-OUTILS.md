@@ -137,6 +137,28 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Méthode de test sûre :** créer le déclencheur **dans** une transaction annulée, jouer les essais (P8), `rollback`, puis seulement l'appliquer. Création de compte simulée : `insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at) …` en `postgres` (le rôle `supabase_auth_admin` n'est pas accessible depuis l'outil SQL).
 - **Piège de test :** dans un bloc `do $$`, `r := r || (select … )` devient **NULL** si la sous-requête ne voit rien (RLS) → tout le compte rendu disparaît. Toujours `coalesce(…, '(none)')`.
 
+### P15 — Supprimer un fichier du stockage Supabase en SQL : impossible (2026-09-25, NAVY 1B)
+- **Symptôme :** `delete from storage.objects …` échoue, même en `postgres` ou dans une fonction `SECURITY DEFINER`.
+- **Cause :** déclencheur `protect_objects_delete` → `storage.protect_delete()` : Supabase impose l'API Storage (sinon fichier orphelin dans S3).
+- **Résolution :** la base **met en file** les chemins à supprimer (table + date d'échéance), l'appli d'un compte autorisé appelle `storage.remove(paths)` (règle `for delete` limitée aux chemins en file et échus), puis une fonction serveur **vérifie** l'absence réelle du fichier avant de le marquer purgé. `pg_cron` seul ne suffit pas (il faudrait une Edge Function avec la clé de service).
+- **Piège de sécurité associé :** un chemin de fichier écrit par le client doit être contrôlé (`{user_id}/{id}/…`, pas de `..`) AVANT d'être mis en file, sinon on fait supprimer le fichier d'un autre.
+
+### P16 — Deux sessions Claude dans le même dossier (2026-09-25)
+- **Symptôme :** `appVersion.ts`, `package.json` ou `_redirects` changent pendant la session sans raison ; `git status` montre des fichiers inconnus.
+- **Résolution :** `ListAgents` puis `SendMessage` pour se coordonner ; **jamais** `git add -A` ; chacun ajoute ses fichiers nommément ; laisser l'autre pousser d'abord puis bumper par-dessus. Un bump fait trop tôt doit être annulé pour ne pas embarquer la version de l'autre.
+
+### P17 — Test en production : l'état d'un écran disparaît tout seul (2026-09-25)
+- **Cause :** juste après un déploiement, le nouveau Service Worker s'active et la PWA **se recharge seule** (mise à jour automatique v3.43.0) : un formulaire à moitié rempli par script est perdu.
+- **Résolution :** attendre ~10 s après le premier chargement de la nouvelle version (ou recharger une fois) avant d'enchaîner un scénario ; découper les scripts (onglet caché = minuteries ralenties, P13).
+
+### P18 — Tester un service worker (push, notifications) en local (2026-09-26, Web Push phase 1)
+- **Symptôme 1 :** `npm run dev` n'enregistre **aucun** service worker (`getRegistrations()` vide) : impossible de tester `push` ou `pushManager.subscribe`.
+- **Résolution :** `npm run build` puis `npx vite preview --port 3000 --strictPort` → même origine `localhost:3000`, donc **même session** que le dev (localStorage par origine+port). Relancer `npm run dev` après.
+- **Symptôme 2 :** Chrome affiche une page vide sur `localhost:3000` alors que `curl http://127.0.0.1:3000` répond 200 ; `curl http://localhost:3000` répond **426 Upgrade Required**.
+- **Cause :** `vite.config.ts` fixe `hmr.port: 3000`. Un serveur de dev lancé sur 3001/3002 (autre session) ouvre son canal de rechargement sur `[::1]:3000`, et Chrome résout `localhost` en IPv6 d'abord.
+- **Résolution :** `netstat -ano | grep ":3000 "` → identifier le PID sur `[::1]:3000` (`Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'` pour la ligne de commande) et l'arrêter s'il appartient à une session inactive.
+- **Permission de notification :** la bulle « Autoriser » est dans l'interface de Chrome, hors de la page : ni un clic scripté ni l'extension ne peuvent la valider. JOEL doit cliquer (fenêtre du groupe Claude au premier plan, sinon la bulle n'apparaît pas).
+
 ---
 
 *Créé le 2026-06-04 (session module gestion-eau Phase 1). À enrichir au fil des sessions. Enrichi S88 (Phase 2 RLS) : P7–P9. Enrichi 2026-06-09 (Promoteur Phase 3 invitations) : P10–P11. Enrichi 2026-06-13 (correctif cache Cloudflare/SW v3.48.1) : P12. Enrichi 2026-09-15 : P13. Enrichi 2026-09-25 (faille users.role) : P14.*

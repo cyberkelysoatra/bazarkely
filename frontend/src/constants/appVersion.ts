@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.82.0';
-export const APP_VERSION_NAME = "NAVY ay : la carte. L operatrice dessine les zones de Nosy Be (Hell-Ville, Ambatoloaka...). L epicier place sa boutique sur la carte, verifiee ensuite sur place. Le chauffeur dit ou il va en touchant la carte et devient disponible pour 3 heures. Un partenaire valide peut demander a changer de vehicule ou de boutique. Refus definitif, fin de partenariat et suppression des pieces a echeance.";
-export const LAST_UPDATED = '2026-09-25';
-export const APP_BUILD_DATE = '2026-09-25';
+export const APP_VERSION = '3.83.0';
+export const APP_VERSION_NAME = "Notifications sur le telephone (socle). L application peut recevoir des notifications meme fermee : abonnement du navigateur quand on active les notifications, envoi par le serveur, un seul service worker.";
+export const LAST_UPDATED = '2026-09-26';
+export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.83.0',
+    date: '2026-09-26',
+    description:
+      "Web Push phase 1 : socle des notifications envoyees par le serveur, recues meme application fermee.",
+    changes: [
+      "Activer les notifications abonne aussi ce navigateur aux notifications a distance (table push_subscriptions, un seul abonnement par navigateur, ecriture sans doublon). La permission n est jamais demandee au lancement.",
+      "Un seul service worker : les gestionnaires push / clic / fermeture du fichier orphelin sw-notifications.js sont rapatries dans sw-custom.ts, le fichier est supprime. Message par defaut si la notification recue est vide ou abimee.",
+      "Fonction serveur send-push : reservee a un administrateur (role verifie sur le serveur) ou a l application elle-meme (secret interne). Abonnement mort (404/410) supprime, echecs repetes supprimes au-dela de 5.",
+      "notify_users() cote base : point d entree pour les evenements de l application (colis NAVY a venir), inaccessible aux comptes ordinaires. Cles et secret dans le coffre Supabase, jamais dans le code.",
+      "useNotifications rebranche sur le vrai service (permission, preferences, notification immediate) ; alertes budget / objectifs laissees coupees (elles se repeteraient a chaque ouverture du tableau de bord)."
+    ]
+  },
   {
     version: '3.82.0',
     date: '2026-09-25',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, BellOff, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { Bell, X, AlertCircle } from 'lucide-react'
 import notificationService from '../services/notificationService'
 
 interface NotificationPermissionRequestProps {
@@ -27,6 +27,11 @@ const NotificationPermissionRequest: React.FC<NotificationPermissionRequestProps
 
     if (supported) {
       setPermission(Notification.permission)
+      // Already granted earlier: silently (re)register this browser for remote push.
+      // No permission prompt here — that only happens on the user's click below.
+      if (Notification.permission === 'granted') {
+        void notificationService.ensurePushSubscription()
+      }
     }
   }, [])
 

@@ -20,7 +20,6 @@ export default defineConfig({
           /\.(?:js|css|png|svg|ico|woff2?|ttf|eot|jpg|jpeg|gif|webp|json|xml|txt|pdf|zip)$/i,
           // Service worker files
           /^\/sw\.js$/i,
-          /^\/sw-notifications\.js$/i,
           /^\/workbox-.*\.js$/i,
           // Manifest and other PWA files
           /^\/manifest\.json$/i,

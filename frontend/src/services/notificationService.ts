@@ -1,4 +1,33 @@
+import type { Table } from 'dexie'
 import { db } from '../lib/database'
+import { supabase, withTimeout } from '../lib/supabase'
+
+// VAPID PUBLIC key (public by design, like the anon key). The private half lives only in
+// Supabase Vault and is used by the `send-push` Edge Function.
+const VAPID_PUBLIC_KEY: string =
+  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+  'BCueEt0Afrm5pqbfJdFl1P0X6gBu09qaevQeUCbl_d9RKHdMJi9dm2g371nToX58U441iLURDpfHPl5DC_7JwDk'
+
+// db.notifications / db.notificationSettings are declared in lib/database.ts with older
+// copies of these interfaces; same stores, typed with the service's own definitions.
+const notificationsTable = (): Table<NotificationData, string> =>
+  db.notifications as unknown as Table<NotificationData, string>
+const settingsTable = (): Table<NotificationSettings, string> =>
+  db.notificationSettings as unknown as Table<NotificationSettings, string>
+
+function urlBase64ToUint8Array(base64: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4)
+  const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'))
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+  return bytes
+}
+
+function sameBytes(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false
+  const view = new Uint8Array(a)
+  return view.length === b.length && view.every((v, i) => v === b[i])
+}
 
 export interface NotificationData {
   id: string
@@ -124,10 +153,64 @@ class NotificationService {
       localStorage.setItem('bazarkely-notification-permission', this.permission)
       
       console.log(`🔔 Permission de notification: ${this.permission}`)
+
+      // Remote push: subscribe this browser. Never blocks nor breaks the permission flow.
+      if (this.permission === 'granted') {
+        void this.ensurePushSubscription()
+      }
       return this.permission
     } catch (error) {
       console.error('❌ Erreur lors de la demande de permission:', error)
       throw error
+    }
+  }
+
+  /**
+   * Abonne ce navigateur au Web Push et enregistre l'abonnement (upsert sur endpoint).
+   * Ne demande JAMAIS la permission : sans permission accordée, ne fait rien.
+   * Toute erreur est journalisée puis ignorée (le parcours continue).
+   */
+  async ensurePushSubscription(): Promise<boolean> {
+    try {
+      if (!this.isSupported || Notification.permission !== 'granted' || !('PushManager' in window)) {
+        return false
+      }
+      if (!navigator.onLine) return false
+
+      const registration = await withTimeout(navigator.serviceWorker.ready, 10000, 'push-sw-ready')
+      const serverKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+
+      let subscription = await registration.pushManager.getSubscription()
+      if (subscription && !sameBytes(subscription.options.applicationServerKey, serverKey)) {
+        // Subscribed with another key (older setup): unusable by send-push.
+        await subscription.unsubscribe()
+        subscription = null
+      }
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: serverKey
+        })
+      }
+
+      const json = subscription.toJSON()
+      const { error } = await withTimeout(
+        (supabase as any).rpc('push_subscribe', {
+          p_endpoint: json.endpoint,
+          p_p256dh: json.keys?.p256dh,
+          p_auth: json.keys?.auth,
+          p_user_agent: navigator.userAgent
+        }),
+        5000,
+        'push-subscribe'
+      ) as any
+      if (error) throw error
+
+      console.log('🔔 Abonnement push enregistré')
+      return true
+    } catch (error) {
+      console.warn('⚠️ Abonnement push impossible (non bloquant):', error)
+      return false
     }
   }
 
@@ -327,7 +410,7 @@ class NotificationService {
 
       // Récupérer les notifications envoyées dans les dernières 24h pour déduplication
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-      const recentNotifications = await db.notifications
+      const recentNotifications = await notificationsTable()
         .where('userId')
         .equals(userId)
         .and(n => n.timestamp >= yesterday)
@@ -483,7 +566,7 @@ class NotificationService {
     }
 
     // Marquer comme envoyée
-    await db.notifications.update(notification.id, { sent: true })
+    await notificationsTable().update(notification.id, { sent: true })
 
     // Enregistrer dans l'historique
     await this.recordNotificationHistory(notification)
@@ -522,7 +605,7 @@ class NotificationService {
     try {
       const user = await this.getCurrentUser()
       if (user) {
-        const settings = await db.notificationSettings.where('userId').equals(user.id).first()
+        const settings = await settingsTable().where('userId').equals(user.id).first()
         this.settings = settings || this.getDefaultSettings(user.id)
       }
     } catch (error) {
@@ -539,23 +622,23 @@ class NotificationService {
       const user = await this.getCurrentUser()
       if (!user) return false
 
-      const existingSettings = await db.notificationSettings.where('userId').equals(user.id).first()
+      const existingSettings = await settingsTable().where('userId').equals(user.id).first()
       
       if (existingSettings) {
-        await db.notificationSettings.update(existingSettings.id, {
+        await settingsTable().update(existingSettings.id, {
           ...settings,
           updatedAt: new Date()
         })
       } else {
         const newSettings: NotificationSettings = {
-          id: this.generateId(),
-          userId: user.id,
           ...this.getDefaultSettings(user.id),
           ...settings,
+          id: this.generateId(),
+          userId: user.id,
           createdAt: new Date(),
           updatedAt: new Date()
         }
-        await db.notificationSettings.add(newSettings)
+        await settingsTable().add(newSettings)
       }
 
       // Sauvegarder aussi dans localStorage
@@ -774,7 +857,7 @@ class NotificationService {
    * Sauvegarde une notification en base
    */
   private async saveNotification(notification: NotificationData): Promise<void> {
-    await db.notifications.add(notification)
+    await notificationsTable().add(notification)
   }
 
   /**

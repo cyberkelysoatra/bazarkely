@@ -32,7 +32,6 @@ export default defineConfig({
           /\.(?:js|css|png|svg|ico|woff2?|ttf|eot|jpg|jpeg|gif|webp|json|xml|txt|pdf|zip)$/i,
           // Service worker files
           /^\/sw\.js$/i,
-          /^\/sw-notifications\.js$/i,
           /^\/workbox-.*\.js$/i,
           // Manifest and other PWA files
           /^\/manifest\.json$/i,
@@ -46,13 +45,6 @@ export default defineConfig({
               cacheName: 'api-cache',
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 }
             }
-          }
-        ],
-        // Intégrer le service worker personnalisé pour les notifications
-        additionalManifestEntries: [
-          {
-            url: '/sw-notifications.js',
-            revision: null
           }
         ]
       },
