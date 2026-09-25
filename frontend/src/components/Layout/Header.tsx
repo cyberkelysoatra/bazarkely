@@ -7,7 +7,7 @@ import { GESTION_EAU_NAV_ITEMS } from '../../constants';
 import { simulationRoleLabel } from '../../modules/gestion-eau/constants/simulationRoles';
 import { EauLogo } from '../../modules/gestion-eau/components';
 import { NavySymbol, NavyTitle } from '../../modules/navy-ay/components/NavyLogo';
-import { NAVY_AY_NAV_ITEMS } from '../../constants';
+import { NavyDesktopNav, NavyHeaderSubtitle } from '../../modules/navy-ay/components/NavyHeaderParts';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
 import apiService from '../../services/apiService';
@@ -760,7 +760,7 @@ const Header = () => {
                 {isEauModule
                   ? "Distribution & suivi d'eau — Nosy Be"
                   : isNavyModule
-                  ? 'Petits colis — Nosy Be'
+                  ? <NavyHeaderSubtitle />
                   : isConstructionModule
                   ? 'BTP Construction'
                   : 'Budget familial Madagascar'}
@@ -1187,26 +1187,8 @@ const Header = () => {
           </nav>
         )}
 
-        {/* LINE 2: Navigation Items (DESKTOP ONLY) — NAVY ay */}
-        {isNavyModule && (
-          <nav className="hidden lg:flex items-center justify-around mt-4">
-            {NAVY_AY_NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end
-                className={({ isActive }) =>
-                  `flex flex-col items-center px-4 py-2 rounded-lg transition-colors ${
-                    isActive ? 'bg-navyay-charcoal text-navyay-yellow' : 'text-navyay-charcoal hover:bg-navyay-yellow/20'
-                  }`
-                }
-              >
-                <Home className="w-5 h-5 mb-1" />
-                <span className="text-xs">{item.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-        )}
+        {/* LINE 2: Navigation Items (DESKTOP ONLY) — NAVY ay (selon le rôle « Je suis ») */}
+        {isNavyModule && <NavyDesktopNav />}
 
         {/* LINE 2: Navigation Items (DESKTOP ONLY) — BazarKELY */}
         {!isConstructionModule && !isEauModule && !isNavyModule && (

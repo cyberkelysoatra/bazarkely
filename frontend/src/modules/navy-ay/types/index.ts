@@ -3,3 +3,4 @@
  * parcel / driver / grocer types come with the next phases.
  */
 export type { LastModule, PreferencesPatch, AccessUser } from '../utils/moduleAccess';
+export * from './partner';

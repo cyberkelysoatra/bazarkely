@@ -554,6 +554,64 @@ module utilisé**, même après nettoyage du téléphone, mise à jour ou nouvel
 enregistrée aussi sur le compte). Un lien direct ou un rafraîchissement garde toujours
 l'adresse en cours.
 
+### 👥 Phase 1A — profils partenaires et espace de l'opératrice (v3.81.0)
+
+**Rôles NAVY (cumulables sur un même compte)**
+| Rôle | Qui | Barre du bas |
+|---|---|---|
+| Client | Tout compte connecté | Accueil, Devenir partenaire (masqué quand les deux demandes existent) |
+| Épicier | Demande épicier **validée** | Mon épicerie, Mon QR |
+| Chauffeur | Demande chauffeur **validée** | Mon véhicule, Mon QR |
+| Opératrice | Ligne dans `navy_operators`, ou admin | Demandes (pastille = nombre en attente), Partenaires, Réglages |
+
+- Sélecteur **« Je suis »** dans l'en-tête (à la place du sous-titre, hauteur 89 px inchangée),
+  visible seulement si le compte a plus que « Client ». Choix mémorisé dans
+  `users.preferences.navyRole` (`{ id, at }`, même file idempotente que `lastModule`).
+- Gardes de route par rôle : refus **uniquement sur un état confirmé** (profil connu du serveur) ;
+  état inconnu → chargement, ou message clair hors ligne.
+
+**Circuit de validation**
+1. Le client choisit « Devenir épicier » ou « Devenir chauffeur », remplit le formulaire et
+   prend 4 photos (compressées sur le téléphone : côté long ≈ 1600 px, JPEG ≈ 0,7).
+2. Le brouillon est gardé sur le téléphone (base `NavyAyDB`) ; l'id de la demande est créé sur
+   le téléphone et réutilisé à chaque essai → aucun doublon. Sans réseau, la demande part
+   toute seule au retour du réseau.
+3. Statut **En attente** → l'opératrice ouvre le dossier (photos par liens signés de courte
+   durée) et **Valide** ou **Refuse** avec un motif (`navy_decide_partner`).
+4. Refusée → le client voit le motif, corrige et renvoie (même dossier, `navy_resubmit_partner`).
+5. Validée → le rôle apparaît dans « Je suis ». L'opératrice peut ensuite **Suspendre /
+   Réactiver** (motif obligatoire pour suspendre).
+
+**Réglages** : tarifs conseillés (`navy_settings`, 1 000 Ar minimum et 1 000 Ar par tranche de
+5 km par défaut ; dépôt / retrait épicier à fixer). Prix chauffeur = max(minimum, prix par
+tranche × tranches de 5 km entamées). Un tarif s'applique aux commandes suivantes seulement.
+
+**QR code personnel** : `https://1sakely.org/navy/p/<id du partenaire>`. Écran « Mon QR »
+(téléchargement PNG prêt à imprimer, immatriculation en gros pour un chauffeur). Page publique
+**sans connexion** : type, nom, et pour un chauffeur type de véhicule + immatriculation, via
+`navy_public_partner` (partenaire **validé** uniquement ; jamais de pièce, téléphone ou NIF).
+« Rejoindre NAVY ay » garde le parrain, enregistré une seule fois après connexion
+(`navy_referrals`, via `navy_record_referral`).
+
+**Matrice d'accès aux données (serveur, RLS activée et forcée)**
+| Donnée | Titulaire | Opératrice / admin | Autre compte | Anonyme |
+|---|---|---|---|---|
+| `navy_partners` (sa demande) | lit, crée, modifie champs descriptifs / tarifs / Ouvert-Fermé ; **jamais** le statut | lit tout ; décide par fonction | rien | rien |
+| Stockage privé `navy-documents` | son dossier `{user_id}/…` | lecture | rien | rien |
+| `navy_settings` | lecture | lecture + écriture | lecture | rien |
+| `navy_operators` | — | lecture ; ajout par `navy_designate_operator` | rien | rien |
+| `navy_referrals` | insertion par fonction, une fois | lecture | rien | rien |
+| Fiche publique du QR | `navy_public_partner` | idem | idem | idem (validé seulement) |
+
+**Durcissements** : après validation, les données vérifiées (noms, téléphone, NIF, plaque,
+véhicule, photos) sont **figées côté serveur** ; seuls Ouvert/Fermé et les tarifs restent
+modifiables. L'admin NAVY est reconnu par son **identité de connexion** (`auth.users`), pas par
+`users.role`, que tout compte peut encore modifier sur lui-même (faille préexistante, signalée).
+
+**Données personnelles sensibles** : les pièces d'identité, NIF, cartes statistiques et permis
+sont dans l'espace de stockage **privé** `navy-documents`, jamais public, affichés par liens
+signés. L'espace opératrice ne garde rien sur l'appareil.
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

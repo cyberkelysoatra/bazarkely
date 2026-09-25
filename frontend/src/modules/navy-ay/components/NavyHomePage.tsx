@@ -4,8 +4,13 @@
  * Charter: ylang-ylang yellow + charcoal, text on yellow = charcoal, no navy blue.
  */
 import { useId, useState } from 'react';
-import { ChevronDown, Clock, Info, PackagePlus, Store, Truck, WifiOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Clock, Info, PackagePlus, Smartphone, Store, Truck, UserPlus, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../hooks/useOnlineStatus';
+import { useAppStore } from '../../../stores/appStore';
+import { useNavyProfile } from '../services/navyProfileStore';
+import { KIND_LABELS } from '../utils/partnerRules';
+import { StatusBadge } from './ui/NavyUi';
 
 const STEPS = [
   {
@@ -29,6 +34,17 @@ export default function NavyHomePage() {
   const isOnline = useOnlineStatus();
   const [helpOpen, setHelpOpen] = useState(false);
   const helpId = useId();
+  const userId = useAppStore((st) => st.user?.id);
+  const profile = useNavyProfile();
+  const mine = profile.userId === userId;
+  // Phase 1A: the account's grocer / driver requests (sent, or kept on the phone).
+  const requests = (['epicier', 'chauffeur'] as const)
+    .map((kind) => ({
+      kind,
+      row: mine ? profile.partners.find((p) => p.kind === kind) : undefined,
+      queued: mine ? profile.drafts.some((d) => d.kind === kind && d.state === 'queued') : false,
+    }))
+    .filter((r) => r.row || r.queued);
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-6 space-y-4 text-navyay-charcoal selection:bg-navyay-yellow selection:text-navyay-charcoal">
@@ -56,6 +72,49 @@ export default function NavyHomePage() {
           </p>
         </div>
       </section>
+
+      {/* Mes demandes de partenaire (phase 1A) */}
+      {requests.length > 0 ? (
+        <section aria-labelledby="navy-my-requests" className="rounded-2xl bg-white border border-navyay-charcoal/10 px-4 py-4">
+          <h3 id="navy-my-requests" className="text-base font-semibold">Mes demandes de partenaire</h3>
+          <ul className="mt-3 space-y-2">
+            {requests.map(({ kind, row, queued }) => (
+              <li key={kind}>
+                <Link
+                  to={`/navy/demande/${kind}`}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-navyay-yellow/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow"
+                >
+                  {kind === 'epicier' ? <Store className="w-5 h-5 flex-shrink-0" aria-hidden="true" /> : <Truck className="w-5 h-5 flex-shrink-0" aria-hidden="true" />}
+                  <span className="flex-1 min-w-0 font-medium">{KIND_LABELS[kind]}</span>
+                  {queued ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-navyay-charcoal/10 px-2.5 py-1 text-xs font-semibold whitespace-nowrap">
+                      <Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
+                      Sur ce téléphone
+                    </span>
+                  ) : (
+                    row && <StatusBadge status={row.status} />
+                  )}
+                  <ChevronRight className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <Link
+          to="/navy/devenir"
+          className="flex items-center gap-3 rounded-2xl bg-white border border-navyay-charcoal/10 px-4 py-4 hover:bg-navyay-yellow/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow"
+        >
+          <span className="flex-shrink-0 w-11 h-11 rounded-xl bg-navyay-yellow text-navyay-charcoal flex items-center justify-center">
+            <UserPlus className="w-5 h-5" aria-hidden="true" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold">Vous avez une épicerie ou un véhicule ?</span>
+            <span className="block text-sm text-navyay-charcoal/75">Devenez partenaire NAVY ay et gagnez de l’argent en plus.</span>
+          </span>
+          <ChevronRight className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+        </Link>
+      )}
 
       {/* Comment ça marche : une frise reliée (l'ordre des étapes compte) */}
       <section aria-labelledby="navy-how" className="rounded-3xl bg-white border border-navyay-charcoal/10 px-5 pt-5 pb-2">

@@ -156,6 +156,9 @@ Quatre modules : `bazarkely` (budget), `construction`, `gestion-eau`, `navy-ay` 
   refuse le budget que sur une liste **confirmée** sans `bazarkely`.
 - Eau / Construction : ajoutés à la liste sur accès confirmé, retirés **uniquement** sur refus confirmé.
 - Nouvelle route du budget → la placer **dans** la route-garde `BudgetAccessRoute` d'`AppLayout`.
+- **Stockage privé `navy-documents` (v3.81.0) = DONNÉES PERSONNELLES SENSIBLES** (pièces d'identité, NIF,
+  permis des partenaires NAVY) : jamais public, lecture titulaire + opératrices, affichage par liens
+  signés de courte durée uniquement, rien de l'espace opératrice gardé sur l'appareil.
 
 ---
 

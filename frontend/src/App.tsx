@@ -27,6 +27,8 @@ const EauAccueilPage = React.lazy(() => import('./modules/gestion-eau/components
 const EauScanResolverPage = React.lazy(() => import('./modules/gestion-eau/components/EauScanResolverPage'));
 // Vitrine PUBLIQUE d'invitation par jeton /i/:token (capture le jeton + CTA Google)
 const EauVitrinePage = React.lazy(() => import('./modules/gestion-eau/components/EauVitrinePage'));
+// NAVY ay (v3.81.0) : fiche PUBLIQUE d'un partenaire derrière son QR code /navy/p/:id
+const NavyPublicPartnerPage = React.lazy(() => import('./modules/navy-ay/components/PublicPartnerPage'));
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -200,6 +202,15 @@ function App() {
                     element={
                       <Suspense fallback={<div className="min-h-screen" />}>
                         <EauVitrinePage />
+                      </Suspense>
+                    }
+                  />
+                  {/* NAVY ay : fiche publique du QR partenaire (sans connexion, données publiques seulement) */}
+                  <Route
+                    path="/navy/p/:id"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen" />}>
+                        <NavyPublicPartnerPage />
                       </Suspense>
                     }
                   />

@@ -114,6 +114,8 @@ export interface PreferencesPatch {
   addModules?: string[];
   removeModules?: string[];
   lastModule?: LastModule;
+  /** NAVY ay "Je suis" role (phase 1A), same most-recent-wins semantics as lastModule. */
+  navyRole?: LastModule;
 }
 
 /** Combine two patches (b is newer). Adding then removing the same id → removed, and vice versa. */
@@ -138,6 +140,8 @@ export function combinePatches(
   if (remove.size) out.removeModules = [...remove];
   const last = mostRecent(a?.lastModule, b?.lastModule);
   if (last) out.lastModule = last;
+  const role = mostRecent(a?.navyRole, b?.navyRole);
+  if (role) out.navyRole = role;
   return out;
 }
 
@@ -147,13 +151,14 @@ export function isEmptyPatch(p: PreferencesPatch | null | undefined): boolean {
     (!p.initModules?.length &&
       !p.addModules?.length &&
       !p.removeModules?.length &&
-      !p.lastModule)
+      !p.lastModule &&
+      !p.navyRole)
   );
 }
 
 /**
  * Merge a patch into a preferences object. NEVER drops an existing key
- * (moduleOrder, theme, unknown keys…): only `modules` and `lastModule` may change.
+ * (moduleOrder, theme, unknown keys…): only `modules`, `lastModule` and `navyRole` may change.
  *
  * @param authoritative true when `base` is the server copy. On a NON-authoritative
  *   (local) base whose `modules` is unresolved, add/remove are NOT applied: the list
@@ -186,6 +191,13 @@ export function mergePreferences(
       out.lastModule && typeof out.lastModule === 'object' ? out.lastModule : null;
     const last = mostRecent(current, patch.lastModule);
     if (last) out.lastModule = { id: last.id, at: last.at };
+  }
+
+  if (patch.navyRole) {
+    const current: LastModule | null =
+      out.navyRole && typeof out.navyRole === 'object' ? out.navyRole : null;
+    const role = mostRecent(current, patch.navyRole);
+    if (role) out.navyRole = { id: role.id, at: role.at };
   }
   return out;
 }

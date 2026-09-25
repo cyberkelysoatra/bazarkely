@@ -95,6 +95,9 @@ const MODULE_PREFIXES: { id: string; prefix: string }[] = [
 /** Liens d'ouverture (/ouvrir/budget, /ouvrir/navy) : adresses de passage, jamais un module. */
 const OPEN_LINK_PREFIX = '/ouvrir';
 
+/** Pages transverses (tous modules) : version / mise à jour, installation PWA. */
+const TRANSVERSE_PATHS = ['/app-version', '/pwa-instructions'];
+
 /** Attente max de la liste de modules du compte avant la reprise (ms). */
 const RESTORE_WAIT_MS = 6000;
 
@@ -260,6 +263,23 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
    */
   useEffect(() => {
     const module = determineActiveModule();
+
+    // v3.81.0 : pages transverses (/app-version, /pwa-instructions) pour un compte SANS
+    // accès budget confirmé → on garde le module précédent (sa barre, son en-tête) au lieu
+    // de basculer sur le budget par défaut, et on ne mémorise rien (adresse de passage).
+    if (TRANSVERSE_PATHS.includes(location.pathname)) {
+      const accessible = resolveAccessibleModules({ role: userRole, preferences: userPrefs }, null, null);
+      if (user && modulesResolved && !accessible.includes('bazarkely')) {
+        setActiveModuleState((prev) => {
+          if (prev && prev.id !== 'bazarkely') return prev;
+          const saved = loadSavedModule();
+          const fallbackId = saved && accessible.includes(saved.id) ? saved.id : 'navy-ay';
+          return availableModules.find((m) => m.id === fallbackId) ?? prev;
+        });
+        return;
+      }
+    }
+
     setActiveModuleState(module);
 
     // Persistance du dernier module. EXCEPTION : ne JAMAIS persister depuis la
@@ -291,6 +311,7 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
         if (currentUser?.id) queuePreferencesPatch(currentUser.id, { lastModule: last });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [determineActiveModule, location.pathname]);
 
   /**

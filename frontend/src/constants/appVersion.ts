@@ -1,8 +1,26 @@
-export const APP_VERSION = '3.80.0';
-export const APP_VERSION_NAME = "Un quatrieme module arrive : NAVY ay, l envoi de petits colis a Nosy Be par les epiceries du quartier. Il apparait dans le selecteur de modules avec son logo jaune et anthracite, et presente pour l instant le service ; les envois arriveront bientot. L application rouvre desormais toujours sur le dernier module utilise, meme apres un nettoyage du telephone, une mise a jour ou sur un nouvel appareil, car ce choix est aussi enregistre sur votre compte. Le selecteur ne montre plus que les modules auxquels votre compte a acces.";
-export const LAST_UPDATED = '2026-09-24';
-export const APP_BUILD_DATE = '2026-09-23';
+export const APP_VERSION = '3.81.0';
+export const APP_VERSION_NAME = "NAVY ay : devenez partenaire. Une epicerie ou un chauffeur peut desormais deposer sa demande depuis son telephone, photos des papiers comprises, meme sans reseau. Une operatrice de CyberKELY valide ou refuse le dossier avec un motif. Une fois valide, l epicier regle Ouvert / Ferme et ses tarifs, le chauffeur ses prix au kilometre, et chacun obtient son QR code a imprimer. Un selecteur Je suis permet de passer de client a epicier, chauffeur ou operatrice.";
+export const LAST_UPDATED = '2026-09-25';
+export const APP_BUILD_DATE = '2026-09-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.81.0',
+    date: '2026-09-25',
+    description:
+      "NAVY ay phase 1A : profils partenaires (epicier, chauffeur), circuit de validation par une operatrice, tarifs, QR code personnel et page publique.",
+    changes: [
+      "SQL (idempotent) : tables navy_partners, navy_operators, navy_settings, navy_referrals ; RLS activee et forcee, anon sans aucun droit, privileges par colonne (le titulaire ne touche jamais au statut) ; fonctions navy_is_operator, navy_decide_partner, navy_resubmit_partner, navy_public_partner, navy_designate_operator, navy_find_user_by_email, navy_list_operators, navy_record_referral.",
+      "Espace de stockage PRIVE navy-documents (pieces d identite = donnees personnelles sensibles) : dossier par titulaire, lecture titulaire + operatrices, liens signes de courte duree.",
+      "Roles cumulables Client / Epicier / Chauffeur / Operatrice, selecteur Je suis dans l en-tete (hauteur 89 px inchangee), choix memorise dans preferences.navyRole, barre du bas par role avec pastille des demandes en attente.",
+      "Devenir partenaire : formulaires epicier et chauffeur, 4 photos compressees sur le telephone (1600 px, JPEG 0,7), brouillon garde sur l appareil (base NavyAyDB), id cree sur le telephone et reutilise a chaque essai (upsert, aucun doublon), envoi automatique au retour du reseau.",
+      "Etat de la demande : en attente, validee, refusee avec motif (corriger et renvoyer), suspendue.",
+      "Mon epicerie (Ouvert / Ferme, tarifs depot et retrait, tarif conseille), Mon vehicule (prix minimum et par tranche de 5 km, prerempli 1000 / 1000, exemple en direct).",
+      "Mon QR : carte PNG a imprimer (logo, nom, immatriculation en gros pour un chauffeur) ; page publique /navy/p/:id sans connexion, parrainage enregistre une seule fois apres connexion.",
+      "Espace operatrice (en ligne seulement) : Demandes, detail avec photos, Valider / Refuser avec motif ; Partenaires avec filtre et Suspendre / Reactiver ; Reglages des tarifs conseilles et ajout d une operatrice par e-mail.",
+      "Correctifs : /app-version et /pwa-instructions gardent la barre du module precedent pour un compte sans budget ; selecteur a un seul module : message au lieu d une rangee vide.",
+      "11 nouveaux tests Vitest (calcul du prix, roles, validation des demandes, preference navyRole)."
+    ]
+  },
   {
     version: '3.80.0',
     date: '2026-09-24',

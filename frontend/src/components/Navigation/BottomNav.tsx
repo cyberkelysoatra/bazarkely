@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS, NAVY_AY_NAV_ITEMS } from '../../constants';
+import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from '../../constants';
 import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
 import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check } from 'lucide-react';
+import { useNavyRoles } from '../../modules/navy-ay/context/useNavyRoles';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -105,7 +106,14 @@ const iconMap = {
   FileText,
   Droplet,
   Receipt,
-  Waves
+  Waves,
+  // NAVY ay icons (phase 1A)
+  Store,
+  QrCode,
+  Truck,
+  Inbox,
+  Settings,
+  UserPlus
 };
 
 const BottomNav = () => {
@@ -225,6 +233,8 @@ const BottomNav = () => {
   const isEauModule = activeModule?.id === 'gestion-eau';
   // NAVY ay : barre anthracite / jaune (charte NAVY, jamais de bleu marine).
   const isNavyModule = activeModule?.id === 'navy-ay';
+  // NAVY ay (v3.81.0) : barre selon le rôle « Je suis » + pastille des demandes en attente.
+  const navyRoles = useNavyRoles();
 
   // Click-outside detection to exit switcher mode
   useEffect(() => {
@@ -278,7 +288,7 @@ const BottomNav = () => {
       activeModule?.id === 'construction'
         ? CONSTRUCTION_NAV_ITEMS
         : isNavyModule
-        ? NAVY_AY_NAV_ITEMS
+        ? navyRoles.navItems
         : isEauModule
         ? GESTION_EAU_NAV_ITEMS.filter(
             (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
@@ -312,7 +322,12 @@ const BottomNav = () => {
             const IconComponent = iconMap[item.icon as keyof typeof iconMap];
             // Routes "racine" (dashboard eau, espace client) → match exact pour ne pas
             // rester actives sur leurs sous-routes (ex. /gestion-eau/client/factures).
-            const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client';
+            const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client'
+              || (isNavyModule && 'end' in item && !!item.end);
+            // NAVY ay : pastille du nombre de demandes en attente (opératrice).
+            const navyBadge = isNavyModule && item.path === '/navy/operatrice/demandes' && navyRoles.pendingCount
+              ? navyRoles.pendingCount
+              : 0;
 
             return (
               <NavLink
@@ -329,11 +344,19 @@ const BottomNav = () => {
                   // NAVY ay : le bouton actif ENTIER est anthracite, icône et libellé jaunes
                   // (jaune sur blanc = contraste insuffisant, donc jamais de libellé jaune hors pastille).
                   <span
-                    className={`flex flex-col items-center rounded-2xl px-4 pt-2 pb-1.5 transition-all duration-300 ${
+                    className={`relative flex flex-col items-center rounded-2xl px-4 pt-2 pb-1.5 transition-all duration-300 ${
                       isActive ? 'bg-navyay-charcoal shadow-lg' : 'hover:bg-navyay-yellow/15'
                     }`}
                   >
                     <IconComponent className={`w-[18px] h-[18px] ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`} />
+                    {navyBadge > 0 && (
+                      <span
+                        className="absolute top-0.5 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-navyay-yellow text-navyay-charcoal text-[11px] font-bold leading-[18px] text-center ring-2 ring-white tabular-nums"
+                        aria-label={`${navyBadge} en attente`}
+                      >
+                        {navyBadge > 99 ? '99+' : navyBadge}
+                      </span>
+                    )}
                     <span className={`text-xs font-semibold mt-1 ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`}>
                       {item.label}
                     </span>
@@ -410,6 +433,12 @@ const BottomNav = () => {
         className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset overscroll-none lg:hidden"
       >
         <div className="flex flex-col animate-in fade-in duration-300">
+          {nonActiveModules.length === 0 ? (
+            // v3.81.0 : un seul module accessible → message au lieu d'une rangée vide.
+            <p className="px-4 py-4 text-center text-sm font-medium text-slate-600" role="status">
+              {activeModule?.name ?? 'Ce module'} est votre seul module pour l’instant
+            </p>
+          ) : (
           <div className="flex items-center justify-around flex-nowrap overflow-x-auto py-1.5">
             {nonActiveModules.map((module) => (
               <button
@@ -438,9 +467,12 @@ const BottomNav = () => {
               </button>
             ))}
           </div>
-          <div className="pb-0.5 text-center text-[10px] text-slate-400">
-            Appui long pour réorganiser
-          </div>
+          )}
+          {nonActiveModules.length > 0 && (
+            <div className="pb-0.5 text-center text-[10px] text-slate-400">
+              Appui long pour réorganiser
+            </div>
+          )}
         </div>
       </nav>
     );
