@@ -6,11 +6,11 @@
  * - NavyDesktopNav: role-based navigation line (desktop only).
  */
 import { NavLink } from 'react-router-dom';
-import { Home, Inbox, QrCode, Settings, Store, Truck, UserPlus, Users } from 'lucide-react';
+import { Home, Inbox, Map as MapIcon, Navigation, QrCode, Settings, Store, Truck, UserPlus, Users } from 'lucide-react';
 import { useNavyRoles } from '../context/useNavyRoles';
 import NavyRoleSwitcher from './NavyRoleSwitcher';
 
-const ICONS = { Home, Inbox, QrCode, Settings, Store, Truck, UserPlus, Users } as const;
+const ICONS = { Home, Inbox, Map: MapIcon, Navigation, QrCode, Settings, Store, Truck, UserPlus, Users } as const;
 
 export function NavyHeaderSubtitle() {
   const { held } = useNavyRoles();

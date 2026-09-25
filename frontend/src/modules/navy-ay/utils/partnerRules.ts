@@ -58,6 +58,8 @@ export function emptyFormFields(): PartnerFormFields {
     vehicle_plate: '',
     nif_holder_type: 'self',
     nif_holder_name: '',
+    shop_lat: null,
+    shop_lng: null,
   };
 }
 
@@ -73,6 +75,8 @@ export function fieldsFromRow(row: NavyPartnerRow): PartnerFormFields {
     vehicle_plate: row.vehicle_plate ?? '',
     nif_holder_type: row.nif_holder_type ?? 'self',
     nif_holder_name: row.nif_holder_name ?? '',
+    shop_lat: row.shop_lat ?? null,
+    shop_lng: row.shop_lng ?? null,
   };
 }
 
@@ -108,6 +112,9 @@ export function validateRequest(
   }
   if (!f.nif.trim()) return 'Indiquez le numéro NIF.';
   if (kind === 'epicier' && !f.stat_number.trim()) return 'Indiquez le numéro de la carte statistique.';
+  if (kind === 'epicier' && (f.shop_lat == null || f.shop_lng == null)) {
+    return 'Indiquez la position de la boutique sur la carte.';
+  }
   const missing = PHOTO_SLOTS[kind].find((slot) => !hasPhoto(slot));
   if (missing) return `Ajoutez la photo : ${PHOTO_LABELS[missing].toLowerCase()}.`;
   return null;
@@ -176,6 +183,7 @@ export function navItemsForRole(role: NavyRole, hasBothRequests: boolean): NavyN
       ];
     case 'chauffeur':
       return [
+        { path: '/navy/direction', icon: 'Navigation', label: 'Direction' },
         { path: '/navy/vehicule', icon: 'Truck', label: 'Mon véhicule' },
         { path: '/navy/qr', icon: 'QrCode', label: 'Mon QR' },
       ];
@@ -183,6 +191,8 @@ export function navItemsForRole(role: NavyRole, hasBothRequests: boolean): NavyN
       return [
         { path: '/navy/operatrice/demandes', icon: 'Inbox', label: 'Demandes' },
         { path: '/navy/operatrice/partenaires', icon: 'Users', label: 'Partenaires' },
+        { path: '/navy/operatrice/zones', icon: 'Map', label: 'Zones' },
+        { path: '/navy/operatrice/chauffeurs', icon: 'Navigation', label: 'Chauffeurs' },
         { path: '/navy/operatrice/reglages', icon: 'Settings', label: 'Réglages' },
       ];
     default: {

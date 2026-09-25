@@ -26,6 +26,7 @@ import {
   VEHICLE_TYPES,
 } from '../../utils/partnerRules';
 import PhotoField from '../ui/PhotoField';
+import ShopPositionField from './ShopPositionField';
 import { btnPrimary, inputCls, labelCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
 const PHOTO_HINTS: Partial<Record<PhotoSlot, string>> = {
@@ -105,7 +106,7 @@ export default function PartnerRequestPage() {
 
   if (!kind) return <Navigate to="/navy/devenir" replace />;
   // A request already sent and not refused is not edited here.
-  if (row && row.status !== 'rejected') return <Navigate to={`/navy/demande/${kind}`} replace />;
+  if (row && (row.status !== 'rejected' || row.rejection_final)) return <Navigate to={`/navy/demande/${kind}`} replace />;
   if (!fields) return <NavyLoader />;
 
   const set = <K extends keyof PartnerFormFields>(key: K, value: PartnerFormFields[K]) => {
@@ -264,6 +265,21 @@ export default function PartnerRequestPage() {
           )}
         </NavyCard>
 
+        {isGrocer && (
+          <NavyCard className="p-4 space-y-3">
+            <h3 className="font-semibold">Position de la boutique</h3>
+            <ShopPositionField
+              lat={fields.shop_lat}
+              lng={fields.shop_lng}
+              serverZoneId={row?.zone_id}
+              onChange={(lat, lng) => {
+                dirtyRef.current = true;
+                setFields((f) => (f ? { ...f, shop_lat: lat, shop_lng: lng } : f));
+              }}
+            />
+          </NavyCard>
+        )}
+
         <section className="space-y-3" aria-label="Photos">
           <h3 className="font-semibold px-1">Photos</h3>
           {PHOTO_SLOTS[kind].map((slot) => {
@@ -307,6 +323,12 @@ export default function PartnerRequestPage() {
         <p>Prenez chaque papier à plat, bien éclairé, sans reflet. Vous pouvez reprendre une photo autant de fois que nécessaire.</p>
         <p>Les photos sont allégées sur votre téléphone avant l’envoi : elles restent lisibles et consomment peu de données.</p>
         <p>Sans réseau, votre demande est gardée sur ce téléphone et part toute seule dès que le réseau revient.</p>
+        {isGrocer && (
+          <p>
+            Indiquez la position <strong>depuis la boutique</strong> : les chauffeurs et les clients s’y fieront pour trouver
+            votre porte. Une opératrice viendra la vérifier sur place.
+          </p>
+        )}
       </NavyHelp>
     </NavyPage>
   );

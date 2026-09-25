@@ -19,6 +19,11 @@ const OperatorRequestsPage = lazy(() => import('./operator/OperatorRequestsPage'
 const OperatorRequestDetailPage = lazy(() => import('./operator/OperatorRequestDetailPage'));
 const OperatorPartnersPage = lazy(() => import('./operator/OperatorPartnersPage'));
 const OperatorSettingsPage = lazy(() => import('./operator/OperatorSettingsPage'));
+const DriverDirectionPage = lazy(() => import('./partner/DriverDirectionPage'));
+const PartnerChangePage = lazy(() => import('./partner/PartnerChangePage'));
+const OperatorZonesPage = lazy(() => import('./operator/OperatorZonesPage'));
+const OperatorDriversPage = lazy(() => import('./operator/OperatorDriversPage'));
+const OperatorChangeDetailPage = lazy(() => import('./operator/OperatorChangeDetailPage'));
 
 export default function NavyRoutes() {
   return (
@@ -33,10 +38,15 @@ export default function NavyRoutes() {
           <Route path="epicerie" element={<NavyRoleRoute role="epicier"><GrocerPage /></NavyRoleRoute>} />
           <Route path="vehicule" element={<NavyRoleRoute role="chauffeur"><DriverPage /></NavyRoleRoute>} />
           <Route path="qr" element={<NavyRoleRoute role="partenaire"><MyQrPage /></NavyRoleRoute>} />
+          <Route path="direction" element={<NavyRoleRoute role="chauffeur"><DriverDirectionPage /></NavyRoleRoute>} />
+          <Route path="modifier/:kind" element={<NavyRoleRoute role="partenaire"><PartnerChangePage /></NavyRoleRoute>} />
           <Route path="operatrice/demandes" element={<NavyRoleRoute role="operatrice"><OperatorRequestsPage /></NavyRoleRoute>} />
           <Route path="operatrice/demandes/:id" element={<NavyRoleRoute role="operatrice"><OperatorRequestDetailPage /></NavyRoleRoute>} />
           <Route path="operatrice/partenaires" element={<NavyRoleRoute role="operatrice"><OperatorPartnersPage /></NavyRoleRoute>} />
           <Route path="operatrice/reglages" element={<NavyRoleRoute role="operatrice"><OperatorSettingsPage /></NavyRoleRoute>} />
+          <Route path="operatrice/zones" element={<NavyRoleRoute role="operatrice"><OperatorZonesPage /></NavyRoleRoute>} />
+          <Route path="operatrice/chauffeurs" element={<NavyRoleRoute role="operatrice"><OperatorDriversPage /></NavyRoleRoute>} />
+          <Route path="operatrice/modifications/:id" element={<NavyRoleRoute role="operatrice"><OperatorChangeDetailPage /></NavyRoleRoute>} />
           <Route path="*" element={<Navigate to="/navy" replace />} />
         </Routes>
       </Suspense>

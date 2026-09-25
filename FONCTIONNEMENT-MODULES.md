@@ -612,6 +612,49 @@ modifiables. L'admin NAVY est reconnu par son **identité de connexion** (`auth.
 sont dans l'espace de stockage **privé** `navy-documents`, jamais public, affichés par liens
 signés. L'espace opératrice ne garde rien sur l'appareil.
 
+### 🗺️ Phase 1B — carte, zones, direction, modifications, conservation des pièces (v3.82.0)
+
+**Carte commune** (`components/map/NavyMap.tsx`) : Leaflet + OpenStreetMap, centrée sur Nosy Be,
+au doigt (glisser, pincer, bouton « Ma position », épingle déplaçable). Hors ligne : message
+clair, et les morceaux de carte **déjà vus** sur le téléphone restent affichés (cache limité à
+~800 tuiles, jamais de téléchargement en masse). La carte complète de l'île hors ligne = phase 4.
+
+**Zones** (Opératrice → Zones, `/navy/operatrice/zones`) : dessin point par point sur la carte
+(annuler le dernier point, déplacer un point, terminer), nom, couleur douce, ordre. Les zones
+peuvent se toucher ; en cas de chevauchement, **la première de la liste l'emporte** (même règle
+sur le téléphone et sur le serveur). La zone d'une épicerie et celle de la destination d'un
+chauffeur sont **calculées par le serveur** et recalculées après chaque changement de zone.
+
+**Position de l'épicerie** : étape obligatoire du formulaire « Devenir épicier » et carte dans
+« Mon épicerie » (« Ma position » sur place, puis ajustement ; la zone s'affiche). L'opératrice
+voit la position dans la fiche et touche **« Position vérifiée sur place »** : date et nom
+enregistrés, position **figée** (écran et serveur).
+
+**Direction du chauffeur** (`/navy/direction`, accueil du rôle Chauffeur) : interrupteur
+Disponible / Pas disponible ; en passant Disponible, le chauffeur touche l'endroit où il va (la
+dernière destination est proposée). **Seule la destination est enregistrée, jamais la position
+actuelle.** La disponibilité s'arrête seule **3 h** après le dernier choix (rappel « Toujours
+disponible ? » dans la dernière demi-heure). Hors ligne : gardée sur le téléphone, envoyée au
+retour du réseau, sans doublon (le serveur ignore un choix plus ancien que celui qu'il a).
+Opératrice → **Chauffeurs** : liste et carte des destinations.
+
+**Demander une modification** (« Mon épicerie » / « Mon véhicule ») : formulaire prérempli,
+nouvelles photos si besoin. La demande repasse chez l'opératrice (Demandes → onglet
+**Modifications**, ancien et nouveau côte à côte). **L'ancien profil reste actif** (le QR public
+montre l'ancienne plaque) jusqu'à la validation, qui recopie les champs et supprime les
+anciennes photos remplacées. Une seule demande en attente par partenaire.
+
+**Décisions complétées** : refus **À corriger** (photos gardées, la personne renvoie) ou
+**Définitif** (photos supprimées aussitôt, fiche gardée sans photos, pas de renvoi) ;
+suspension avec son propre motif ; **Mettre fin au partenariat** (distinct de la suspension :
+rôle retiré, statut « Terminé », pièces supprimées 12 mois après la fin).
+
+**Conservation des pièces** (décision de JOEL, **durées à confirmer par un avocat**) : refus
+définitif et photos remplacées = suppression immédiate ; fin de partenariat = +12 mois. Les
+fichiers ne peuvent pas être supprimés en SQL : l'appli de l'opératrice les supprime et le
+serveur vérifie qu'ils ont bien disparu. Réglages → **« Purger les pièces arrivées à
+échéance »** (avec le nombre en attente) traite les échéances passées.
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

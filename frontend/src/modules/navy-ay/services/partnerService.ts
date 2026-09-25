@@ -28,6 +28,7 @@ import type {
 } from '../types/partner';
 import { documentPath, normalizePlate, SLOT_COLUMN } from '../utils/partnerRules';
 import { getNavyProfile, resetNavyProfile, setNavyProfile } from './navyProfileStore';
+import { flushDriverStatus } from './driverService';
 
 // The generated Database type does not know the navy_* tables yet.
 const db = supabase as any;
@@ -160,12 +161,23 @@ export function refreshNavyProfile(userId: string): Promise<void> {
 export async function refreshPendingCount(): Promise<void> {
   if (!isOnline()) return;
   try {
-    const { count, error } = (await withTimeout(
-      db.from('navy_partners').select('id', { count: 'exact', head: true }).eq('status', 'pending') as Promise<any>,
-      6000,
-      'navy-pending-count'
-    )) as any;
-    if (!error && typeof count === 'number') setNavyProfile({ pendingCount: count });
+    // New requests + change requests of validated partners (phase 1B).
+    const [partnersRes, changesRes] = (await Promise.all([
+      withTimeout(
+        db.from('navy_partners').select('id', { count: 'exact', head: true }).eq('status', 'pending') as Promise<any>,
+        6000,
+        'navy-pending-count'
+      ),
+      withTimeout(
+        db.from('navy_partner_changes').select('id', { count: 'exact', head: true }).eq('status', 'pending') as Promise<any>,
+        6000,
+        'navy-pending-changes-count'
+      ),
+    ])) as any[];
+    if (!partnersRes.error && typeof partnersRes.count === 'number') {
+      const changes = !changesRes.error && typeof changesRes.count === 'number' ? changesRes.count : 0;
+      setNavyProfile({ pendingCount: partnersRes.count + changes });
+    }
   } catch {
     /* badge stays as it was */
   }
@@ -242,6 +254,12 @@ function writablePayload(d: PartnerDraft, uploadedPaths: Partial<Record<PhotoSlo
   if (d.kind === 'epicier') {
     base.shop_name = f.shop_name.trim();
     base.stat_number = f.stat_number.trim();
+    // Phase 1B: shop position (the server computes the zone). Left out when unknown so
+    // an older draft never erases a position already on the server.
+    if (f.shop_lat != null && f.shop_lng != null) {
+      base.shop_lat = f.shop_lat;
+      base.shop_lng = f.shop_lng;
+    }
   } else {
     base.vehicle_type = f.vehicle_type || null;
     base.vehicle_plate = normalizePlate(f.vehicle_plate) || null;
@@ -375,6 +393,21 @@ async function flushPatches(userId: string) {
         if (data) await navyDb.partners.put(data as NavyPartnerRow);
       }
     } catch (err) {
+      // Refused for good (e.g. shop position verified on site, hence frozen): drop the
+      // edit and take the server copy back, instead of retrying forever.
+      if ((err as any)?.code === '42501') {
+        await navyDb.pendingPatches.delete(p.id);
+        try {
+          const { data } = (await withTimeout(
+            db.from('navy_partners').select('*').eq('id', p.id).maybeSingle(),
+            6000,
+            'navy-partner-reload'
+          )) as any;
+          if (data) await navyDb.partners.put(data as NavyPartnerRow);
+        } catch {
+          /* refreshed later */
+        }
+      }
       console.warn('⚠️ [navy] settings not sent yet:', errText(err));
     }
   }
@@ -392,6 +425,7 @@ export async function flushNavyQueue(userId: string): Promise<void> {
       if (d.state === 'queued') await sendDraft(d.id);
     }
     await flushPatches(userId);
+    await flushDriverStatus(userId);
   } finally {
     flushing = false;
   }

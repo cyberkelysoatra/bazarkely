@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.81.1';
-export const APP_VERSION_NAME = "NAVY ay : un lien NAVY ay partage sur WhatsApp affiche maintenant son propre apercu (titre, description et grande image NAVY ay) au lieu de celui du budget.";
+export const APP_VERSION = '3.82.0';
+export const APP_VERSION_NAME = "NAVY ay : la carte. L operatrice dessine les zones de Nosy Be (Hell-Ville, Ambatoloaka...). L epicier place sa boutique sur la carte, verifiee ensuite sur place. Le chauffeur dit ou il va en touchant la carte et devient disponible pour 3 heures. Un partenaire valide peut demander a changer de vehicule ou de boutique. Refus definitif, fin de partenariat et suppression des pieces a echeance.";
 export const LAST_UPDATED = '2026-09-25';
 export const APP_BUILD_DATE = '2026-09-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.82.0',
+    date: '2026-09-25',
+    description:
+      "NAVY ay phase 1B : carte, zones, position des epiceries, direction des chauffeurs, demandes de modification, conservation des pieces.",
+    changes: [
+      "Carte NAVY commune (Leaflet + OpenStreetMap) : doigt, pincement, bouton Ma position, epingle deplacable ; hors ligne, morceaux deja vus gardes (au plus ~800 tuiles, jamais de telechargement en masse).",
+      "Operatrice > Zones : dessin point par point, nom, couleur douce, ordre (la premiere zone l emporte en cas de chevauchement). Zone des epiceries et des destinations calculee par le serveur.",
+      "Position de la boutique dans Devenir epicier et Mon epicerie ; bouton Position verifiee sur place cote operatrice, position figee ensuite (ecran et serveur).",
+      "Chauffeur > Direction : Disponible en touchant la destination, expiration seule apres 3 h avec rappel ; hors ligne gardee puis envoyee sans doublon. Operatrice > Chauffeurs disponibles.",
+      "Demander une modification (vehicule, boutique, papiers) : repasse en validation, ancien profil actif jusque-la ; onglet Modifications avec ancien et nouveau cote a cote.",
+      "Refus a corriger ou definitif (photos supprimees), motif de suspension distinct, Mettre fin au partenariat (pieces supprimees 12 mois apres). Bouton de purge des pieces arrivees a echeance.",
+      "Securite : chaque chemin de document doit rester dans le dossier de son titulaire (correctif issu de la revue de securite)."
+    ]
+  },
   {
     version: '3.81.1',
     date: '2026-09-25',

@@ -4,11 +4,13 @@
  * Offline-first: saved on the phone at once, sent when the network allows.
  */
 import { useEffect, useState } from 'react';
-import { CheckCircle2, DoorClosed, DoorOpen, Loader2, Save, Smartphone, Store } from 'lucide-react';
+import { CheckCircle2, DoorClosed, DoorOpen, Loader2, MapPin, Save, Smartphone, Store } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useNavyProfile } from '../../services/navyProfileStore';
 import { updateMyPartnerSettings } from '../../services/partnerService';
+import PartnerChangeStatus from './PartnerChangeStatus';
+import ShopPositionField from './ShopPositionField';
 import { btnPrimary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyNotice, NavyOfflineNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
 function parseAr(v: string): number | null {
@@ -26,6 +28,8 @@ export default function GrocerPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<'sent' | 'queued' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [posSaved, setPosSaved] = useState<'sent' | 'queued' | null>(null);
 
   useEffect(() => {
     if (!row) return;
@@ -42,6 +46,13 @@ export default function GrocerPage() {
   const toggleOpen = async () => {
     setSaved(null);
     setSaved(await updateMyPartnerSettings(userId, row.id, { is_open: !row.is_open }));
+  };
+
+  const savePosition = async () => {
+    if (!pos) return;
+    const res = await updateMyPartnerSettings(userId, row.id, { shop_lat: pos.lat, shop_lng: pos.lng });
+    setPos(null);
+    setPosSaved(res);
   };
 
   const saveFees = async (e: React.FormEvent) => {
@@ -83,6 +94,35 @@ export default function GrocerPage() {
         </span>
       </button>
 
+      <NavyCard className="p-4 space-y-3">
+        <h3 className="font-semibold">Position de la boutique</h3>
+        <ShopPositionField
+          lat={pos?.lat ?? row.shop_lat}
+          lng={pos?.lng ?? row.shop_lng}
+          serverZoneId={pos ? null : row.zone_id}
+          verifiedAt={row.shop_location_verified_at}
+          onChange={
+            row.shop_location_verified_at
+              ? undefined
+              : (lat, lng) => {
+                  setPos({ lat, lng });
+                  setPosSaved(null);
+                }
+          }
+        />
+        {!row.shop_location_verified_at && pos && (
+          <button type="button" className={`${btnPrimary} w-full`} onClick={() => void savePosition()}>
+            <MapPin className="w-4 h-4" aria-hidden="true" />
+            Enregistrer la position
+          </button>
+        )}
+        {posSaved && !pos && (
+          <NavyNotice tone={posSaved === 'queued' ? 'info' : 'ok'} icon={posSaved === 'queued' ? Smartphone : CheckCircle2}>
+            {posSaved === 'queued' ? 'Position gardée sur ce téléphone, en attente d’envoi.' : 'Position enregistrée.'}
+          </NavyNotice>
+        )}
+      </NavyCard>
+
       <NavyCard className="p-4">
         <form onSubmit={saveFees} className="space-y-3" noValidate>
           <h3 className="font-semibold">Mes tarifs</h3>
@@ -119,6 +159,14 @@ export default function GrocerPage() {
           {pending ? 'Enregistré sur ce téléphone, en attente d’envoi.' : 'Enregistré.'}
         </NavyNotice>
       )}
+
+      <PartnerChangeStatus userId={userId} row={row} />
+
+      <NavyHelp title="Pourquoi indiquer la position sur place ?">
+        <p>Les chauffeurs et les clients viendront à l’endroit exact de l’épingle : placez-la sur votre porte, depuis la boutique.</p>
+        <p>La zone (Hell-Ville, Ambatoloaka…) est calculée toute seule à partir de la position.</p>
+        <p>Une opératrice passera vérifier. Une fois la position vérifiée, elle ne peut plus être changée depuis l’application.</p>
+      </NavyHelp>
 
       <NavyHelp title="À propos des tarifs">
         <p>Vous fixez librement vos tarifs. Le tarif conseillé par NAVY ay n’est qu’un repère.</p>

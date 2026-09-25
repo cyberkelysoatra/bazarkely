@@ -3,13 +3,15 @@
  * (list, add one by e-mail — the account must already exist). ONLINE ONLY.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Headset, Loader2, Save, Settings, ShieldCheck, UserPlus, WifiOff } from 'lucide-react';
+import { Headset, Loader2, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import {
   designateOperator,
   findUserByEmail,
   getSettings,
+  listDueDocuments,
   listOperators,
+  purgeDueDocuments,
   operatorErrorMessage,
   updateSettings,
 } from '../../services/operatorService';
@@ -35,6 +37,9 @@ export default function OperatorSettingsPage() {
   const [email, setEmail] = useState('');
   const [adding, setAdding] = useState(false);
   const [opMsg, setOpMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [dueCount, setDueCount] = useState<number | null>(null);
+  const [purging, setPurging] = useState(false);
+  const [purgeMsg, setPurgeMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -44,6 +49,7 @@ export default function OperatorSettingsPage() {
       for (const f of FIELDS) v[f.key] = s && s[f.key] != null ? String(s[f.key]) : '';
       setValues(v);
       setOperators(ops);
+      setDueCount((await listDueDocuments()).length);
     } catch (err) {
       setError(operatorErrorMessage(err));
     }
@@ -52,6 +58,26 @@ export default function OperatorSettingsPage() {
   useEffect(() => {
     if (isOnline) void load();
   }, [isOnline, load]);
+
+  const purge = async () => {
+    setPurging(true);
+    setPurgeMsg(null);
+    try {
+      const done = await purgeDueDocuments();
+      const left = (await listDueDocuments()).length;
+      setDueCount(left);
+      setPurgeMsg({
+        tone: left ? 'error' : 'ok',
+        text: left
+          ? `${done.length} pièce(s) supprimée(s), ${left} n’ont pas pu l’être. Réessayez plus tard.`
+          : `${done.length} pièce(s) supprimée(s).`,
+      });
+    } catch (err) {
+      setPurgeMsg({ tone: 'error', text: operatorErrorMessage(err) });
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,6 +214,29 @@ export default function OperatorSettingsPage() {
           </button>
         </form>
       </NavyCard>
+
+      {isOnline && dueCount !== null && (
+        <NavyCard className="p-4 space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <Trash2 className="w-5 h-5" aria-hidden="true" />
+            Conservation des pièces
+          </h3>
+          <p className="text-sm text-navyay-charcoal/80">
+            {dueCount === 0
+              ? 'Aucune pièce arrivée à échéance.'
+              : `${dueCount} pièce${dueCount > 1 ? 's' : ''} arrivée${dueCount > 1 ? 's' : ''} à échéance, à supprimer.`}
+          </p>
+          <button type="button" className={`${btnPrimary} w-full`} disabled={purging || dueCount === 0} onClick={() => void purge()}>
+            {purging ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
+            Purger les pièces arrivées à échéance{dueCount ? ` (${dueCount})` : ''}
+          </button>
+          {purgeMsg && <NavyNotice tone={purgeMsg.tone}>{purgeMsg.text}</NavyNotice>}
+          <p className="text-xs text-navyay-charcoal/70">
+            Règle actuelle : refus définitif et photos remplacées = suppression immédiate ; fin de partenariat = 12 mois après la fin.
+            Durées à confirmer par un avocat.
+          </p>
+        </NavyCard>
+      )}
 
       <NavyHelp title="À quoi servent ces réglages ?">
         <p>Les tarifs conseillés sont proposés aux chauffeurs et aux épiciers. Ils restent libres de fixer leurs propres prix.</p>

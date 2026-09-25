@@ -4,7 +4,7 @@ import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from 
 import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
 import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
 import { useNavyRoles } from '../../modules/navy-ay/context/useNavyRoles';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -113,7 +113,10 @@ const iconMap = {
   Truck,
   Inbox,
   Settings,
-  UserPlus
+  UserPlus,
+  // NAVY ay icons (phase 1B)
+  Map: MapIcon,
+  Navigation
 };
 
 const BottomNav = () => {

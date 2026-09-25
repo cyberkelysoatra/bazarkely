@@ -56,9 +56,10 @@ describe('roles', () => {
 describe('request validation', () => {
   const all = () => true;
   it('requires shop, phone, NIF, stat number and 4 photos for a grocer', () => {
-    const f = { ...emptyFormFields(), shop_name: 'Chez Zo', display_name: 'Zo', phone: '034 12 345 67', nif: '123', stat_number: '456' };
+    const f = { ...emptyFormFields(), shop_name: 'Chez Zo', display_name: 'Zo', phone: '034 12 345 67', nif: '123', stat_number: '456', shop_lat: -13.4, shop_lng: 48.27 };
     expect(validateRequest('epicier', f, all)).toBeNull();
     expect(validateRequest('epicier', { ...f, stat_number: '' }, all)).toMatch(/statistique/);
+    expect(validateRequest('epicier', { ...f, shop_lat: null, shop_lng: null }, all)).toMatch(/position/);
     expect(validateRequest('epicier', f, (s) => s !== 'shop_photo')).toMatch(/boutique/);
   });
   it('requires the NIF holder name when it is not the driver', () => {

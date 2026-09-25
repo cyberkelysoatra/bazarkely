@@ -4,7 +4,7 @@
  * never navy blue. Every icon is from lucide.
  */
 import { useId, useState, type ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock, Info, PauseCircle, WifiOff, XCircle } from 'lucide-react';
+import { AlertTriangle, Ban, CheckCircle2, ChevronDown, Clock, Info, PauseCircle, WifiOff, XCircle } from 'lucide-react';
 import type { PartnerStatus } from '../../types/partner';
 
 /** Page wrapper: same width and rhythm as the NAVY home page. */
@@ -97,6 +97,7 @@ const STATUS_META: Record<PartnerStatus, { label: string; icon: typeof Info; cls
   approved: { label: 'Validée', icon: CheckCircle2, cls: 'bg-emerald-100 text-emerald-900' },
   rejected: { label: 'Refusée', icon: XCircle, cls: 'bg-red-100 text-red-900' },
   suspended: { label: 'Suspendue', icon: PauseCircle, cls: 'bg-navyay-charcoal text-white' },
+  ended: { label: 'Terminé', icon: Ban, cls: 'bg-navyay-charcoal/10 text-navyay-charcoal' },
 };
 
 export function StatusBadge({ status }: { status: PartnerStatus }) {

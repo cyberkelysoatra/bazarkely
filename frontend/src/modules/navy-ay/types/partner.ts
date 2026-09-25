@@ -7,7 +7,8 @@
  */
 
 export type PartnerKind = 'epicier' | 'chauffeur';
-export type PartnerStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+/** 'ended' = end of partnership (phase 1B), distinct from a suspension. */
+export type PartnerStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'ended';
 export type VehicleType = 'bajaj' | 'moto' | 'taxi' | 'voiture' | 'velo' | 'camion' | 'autre';
 export type NifHolderType = 'self' | 'owner' | 'cooperative';
 
@@ -51,6 +52,17 @@ export interface NavyPartnerRow {
   shop_lat: number | null;
   shop_lng: number | null;
   phone_verified_at: string | null;
+  // phase 1B
+  shop_location_set_at?: string | null;
+  shop_location_verified_at?: string | null;
+  shop_location_verified_by?: string | null;
+  /** Computed by the server from shop_lat / shop_lng (first zone in the order). */
+  zone_id?: string | null;
+  suspension_reason?: string | null;
+  /** Final refusal: the documents are deleted, the request cannot be sent again. */
+  rejection_final?: boolean;
+  ended_at?: string | null;
+  documents_purge_after?: string | null;
 }
 
 /** Columns the owner may write (mirrors the column grants of the SQL). */
@@ -74,11 +86,13 @@ export type NavyPartnerWritable = Pick<
   | 'license_doc_path'
   | 'nif_holder_type'
   | 'nif_holder_name'
+  | 'shop_lat'
+  | 'shop_lng'
 >;
 
 /** Fields the owner edits after approval (settings of the shop / vehicle). */
 export type NavyPartnerSettingsPatch = Partial<
-  Pick<NavyPartnerRow, 'is_open' | 'depot_fee' | 'pickup_fee' | 'min_fare' | 'fare_per_5km'>
+  Pick<NavyPartnerRow, 'is_open' | 'depot_fee' | 'pickup_fee' | 'min_fare' | 'fare_per_5km' | 'shop_lat' | 'shop_lng'>
 >;
 
 /** Text fields of the request form. */
@@ -92,6 +106,9 @@ export interface PartnerFormFields {
   vehicle_plate: string;
   nif_holder_type: NifHolderType;
   nif_holder_name: string;
+  /** Grocer only: shop position (phase 1B), set on site then adjusted. */
+  shop_lat: number | null;
+  shop_lng: number | null;
 }
 
 /**
@@ -135,4 +152,88 @@ export interface NavyOperatorEntry {
   username: string | null;
   designated_at: string | null;
   is_admin: boolean;
+}
+
+// ------------------------------------------------------------------ phase 1B
+
+/** A point as [lat, lng] (same order as the server polygons). */
+export type LatLng = [number, number];
+
+/** Server row of public.navy_zones. polygon = list of [lat, lng] points. */
+export interface NavyZone {
+  id: string;
+  name: string;
+  polygon: LatLng[];
+  color: string;
+  sort_order: number;
+  created_by?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** Server row of public.navy_driver_status (destination only, never a live position). */
+export interface NavyDriverStatusRow {
+  partner_id: string;
+  user_id: string;
+  available: boolean;
+  dest_lat: number | null;
+  dest_lng: number | null;
+  dest_zone_id: string | null;
+  available_until: string | null;
+  client_at: string;
+  updated_at: string;
+}
+
+/** Driver choice kept on the phone until the server has it (idempotent, ordered by clientAt). */
+export interface DriverStatusLocal {
+  partnerId: string;
+  available: boolean;
+  destLat: number | null;
+  destLng: number | null;
+  /** Time of the choice on the phone. */
+  clientAt: string;
+  /** Not on the server yet. */
+  pending: boolean;
+  /** Zone of the destination computed by the server (null = unknown yet). */
+  destZoneId?: string | null;
+}
+
+export type PartnerChangeStatus = 'pending' | 'approved' | 'rejected';
+
+/** Fields a validated partner may ask to change (mirrors navy_request_partner_change). */
+export interface PartnerChangeFields {
+  display_name?: string;
+  shop_name?: string;
+  vehicle_type?: VehicleType;
+  vehicle_plate?: string;
+  nif_holder_type?: NifHolderType;
+  nif_holder_name?: string | null;
+  nif?: string;
+  stat_number?: string;
+  id_doc_path?: string;
+  nif_doc_path?: string;
+  stat_doc_path?: string;
+  shop_photo_path?: string;
+  vehicle_photo_path?: string;
+  license_doc_path?: string;
+}
+
+/** Server row of public.navy_partner_changes. */
+export interface NavyPartnerChangeRow {
+  id: string;
+  partner_id: string;
+  requested_by: string;
+  status: PartnerChangeStatus;
+  changes: PartnerChangeFields;
+  rejection_reason: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
+/** A document due for deletion (navy_purge_documents). */
+export interface NavyPurgeItem {
+  path: string;
+  reason: 'rejected_final' | 'replaced' | 'change_rejected' | 'ended';
+  due_at: string;
 }

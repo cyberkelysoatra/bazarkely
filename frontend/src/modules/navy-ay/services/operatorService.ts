@@ -8,13 +8,16 @@
  */
 import { supabase, withTimeout } from '../../../lib/supabase';
 import type {
+  NavyDriverStatusRow,
   NavyOperatorEntry,
+  NavyPartnerChangeRow,
   NavyPartnerRow,
+  NavyPurgeItem,
   NavySettings,
   PartnerKind,
   PartnerStatus,
 } from '../types/partner';
-import { refreshPendingCount } from './partnerService';
+import { NAVY_BUCKET, refreshPendingCount } from './partnerService';
 
 const db = supabase as any;
 
@@ -34,15 +37,86 @@ export async function getPartner(id: string): Promise<NavyPartnerRow | null> {
   return run<NavyPartnerRow | null>(db.from('navy_partners').select('*').eq('id', id).maybeSingle(), 'navy-op-get');
 }
 
-export type Decision = 'approve' | 'reject' | 'suspend' | 'reactivate';
+export type Decision = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'end';
 
-export async function decidePartner(id: string, decision: Decision, reason?: string): Promise<NavyPartnerRow> {
+/**
+ * Operator decision. `final` (refusal only): the documents are deleted at once and the
+ * request cannot be sent again; otherwise the person corrects and sends it back.
+ */
+export async function decidePartner(id: string, decision: Decision, reason?: string, final = false): Promise<NavyPartnerRow> {
   const row = await run<NavyPartnerRow>(
-    db.rpc('navy_decide_partner', { p_id: id, p_decision: decision, p_reason: reason ?? null }),
+    db.rpc('navy_decide_partner', { p_id: id, p_decision: decision, p_reason: reason ?? null, p_final: final }),
     'navy-op-decide'
   );
   void refreshPendingCount();
+  // Final refusal: delete the documents right away (they are queued and due now).
+  if (decision === 'reject' && final) await purgeDueDocuments().catch(() => undefined);
   return row;
+}
+
+// ------------------------------------------------------------------ phase 1B
+
+/** Shop position checked on site: stamped and frozen. */
+export function verifyShopLocation(id: string): Promise<NavyPartnerRow> {
+  return run<NavyPartnerRow>(db.rpc('navy_verify_shop_location', { p_id: id }), 'navy-op-verify-location');
+}
+
+export type ChangeWithPartner = NavyPartnerChangeRow & { partner: NavyPartnerRow | null };
+
+export function listChanges(status: NavyPartnerChangeRow['status'] = 'pending'): Promise<ChangeWithPartner[]> {
+  return run<ChangeWithPartner[]>(
+    db.from('navy_partner_changes').select('*, partner:navy_partners(*)').eq('status', status).order('created_at', { ascending: true }),
+    'navy-op-changes'
+  );
+}
+
+export async function getChange(id: string): Promise<ChangeWithPartner | null> {
+  return run<ChangeWithPartner | null>(
+    db.from('navy_partner_changes').select('*, partner:navy_partners(*)').eq('id', id).maybeSingle(),
+    'navy-op-change'
+  );
+}
+
+export async function decideChange(id: string, decision: 'approve' | 'reject', reason?: string): Promise<NavyPartnerChangeRow> {
+  const row = await run<NavyPartnerChangeRow>(
+    db.rpc('navy_decide_partner_change', { p_id: id, p_decision: decision, p_reason: reason ?? null }),
+    'navy-op-change-decide'
+  );
+  void refreshPendingCount();
+  // Replaced / unused photos are queued and due now: delete them right away.
+  await purgeDueDocuments().catch(() => undefined);
+  return row;
+}
+
+/** Drivers' status rows with their partner (operator). */
+export type DriverWithPartner = NavyDriverStatusRow & { partner: NavyPartnerRow | null };
+
+export function listDriverStatuses(): Promise<DriverWithPartner[]> {
+  return run<DriverWithPartner[]>(
+    db.from('navy_driver_status').select('*, partner:navy_partners(*)').eq('available', true).order('updated_at', { ascending: false }),
+    'navy-op-drivers'
+  );
+}
+
+/** Documents due for deletion (not deleted yet). */
+export function listDueDocuments(): Promise<NavyPurgeItem[]> {
+  return run<NavyPurgeItem[]>(db.rpc('navy_purge_documents'), 'navy-op-purge-list');
+}
+
+/**
+ * Delete the due documents from the private bucket (Storage API: the storage policy
+ * only lets an operator delete a queued, due path), then let the server confirm and
+ * mark what is really gone. Returns the paths deleted.
+ */
+export async function purgeDueDocuments(): Promise<string[]> {
+  const due = await listDueDocuments();
+  if (!due.length) return [];
+  const paths = due.map((d) => d.path);
+  for (let i = 0; i < paths.length; i += 50) {
+    const { error } = (await withTimeout(db.storage.from(NAVY_BUCKET).remove(paths.slice(i, i + 50)), 15000, 'navy-op-purge-remove')) as any;
+    if (error) throw error;
+  }
+  return run<string[]>(db.rpc('navy_mark_documents_purged', { p_paths: paths }), 'navy-op-purge-mark');
 }
 
 export function getSettings(): Promise<NavySettings | null> {

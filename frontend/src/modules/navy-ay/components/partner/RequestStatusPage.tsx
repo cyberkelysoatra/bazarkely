@@ -120,7 +120,13 @@ export default function RequestStatusPage() {
               </button>
             </>
           )}
-          {row.status === 'rejected' && !draft && (
+          {row.status === 'rejected' && row.rejection_final && (
+            <NavyNotice tone="error">
+              <strong>Refus définitif.</strong> {row.rejection_reason ? `Motif : ${row.rejection_reason}. ` : ''}
+              Vos photos ont été supprimées. Cette demande ne peut pas être renvoyée ; contactez CyberKELY en cas de question.
+            </NavyNotice>
+          )}
+          {row.status === 'rejected' && !row.rejection_final && !draft && (
             <>
               <NavyNotice tone="error">
                 <strong>Motif :</strong> {row.rejection_reason || 'non précisé'}
@@ -133,7 +139,13 @@ export default function RequestStatusPage() {
           )}
           {row.status === 'suspended' && (
             <NavyNotice tone="warn">
-              Votre compte partenaire est suspendu{row.rejection_reason ? ` : ${row.rejection_reason}` : '.'} Contactez CyberKELY.
+              Votre compte partenaire est suspendu{(row.suspension_reason ?? row.rejection_reason) ? ` : ${row.suspension_reason ?? row.rejection_reason}.` : '.'} Contactez CyberKELY.
+            </NavyNotice>
+          )}
+          {row.status === 'ended' && (
+            <NavyNotice tone="warn">
+              Votre partenariat a pris fin le {row.ended_at ? new Date(row.ended_at).toLocaleDateString('fr-FR') : '—'}
+              {row.suspension_reason ? ` : ${row.suspension_reason}` : ''}. Contactez CyberKELY pour toute question.
             </NavyNotice>
           )}
 
@@ -165,7 +177,8 @@ export default function RequestStatusPage() {
       <NavyHelp title="Que veut dire chaque état ?">
         <p><strong>En attente</strong> : votre dossier est arrivé, une opératrice va le vérifier.</p>
         <p><strong>Validée</strong> : vous faites partie du réseau. Votre espace et votre QR code sont prêts.</p>
-        <p><strong>Refusée</strong> : lisez le motif, corrigez, puis renvoyez. Le même dossier est réutilisé.</p>
+        <p><strong>Refusée</strong> : lisez le motif, corrigez, puis renvoyez. Le même dossier est réutilisé. Un refus <strong>définitif</strong> ne peut pas être renvoyé.</p>
+        <p><strong>Terminé</strong> : le partenariat a pris fin ; votre rôle a été retiré.</p>
         <p><strong>Gardée sur ce téléphone</strong> : pas encore arrivée, faute de réseau. Elle part toute seule.</p>
       </NavyHelp>
     </NavyPage>

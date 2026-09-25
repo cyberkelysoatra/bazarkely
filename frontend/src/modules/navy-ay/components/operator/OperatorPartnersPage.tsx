@@ -4,7 +4,8 @@
  * ONLINE ONLY.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, PauseCircle, PlayCircle, RefreshCw, Store, Truck, Users, WifiOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Ban, ChevronRight, Loader2, PauseCircle, PlayCircle, RefreshCw, Store, Truck, Users, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { decidePartner, listPartners, operatorErrorMessage } from '../../services/operatorService';
 import type { NavyPartnerRow, PartnerKind, PartnerStatus } from '../../types/partner';
@@ -12,7 +13,7 @@ import { VEHICLE_LABELS } from '../../utils/partnerRules';
 import { btnPrimary, btnSecondary, inputCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage, NavyPageTitle, StatusBadge } from '../ui/NavyUi';
 
 type KindFilter = PartnerKind | 'all';
-type StatusFilter = 'approved' | 'suspended' | 'all';
+type StatusFilter = 'approved' | 'suspended' | 'ended' | 'all';
 
 const chip = (active: boolean) =>
   `rounded-full px-3.5 py-2.5 text-sm font-medium border focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow ${
@@ -26,13 +27,14 @@ export default function OperatorPartnersPage() {
   const [rows, setRows] = useState<NavyPartnerRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
+  const [ending, setEnding] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const statuses: PartnerStatus[] = status === 'all' ? ['approved', 'suspended'] : [status];
+      const statuses: PartnerStatus[] = status === 'all' ? ['approved', 'suspended', 'ended'] : [status];
       setRows(await listPartners({ statuses, kind }));
     } catch (err) {
       setError(operatorErrorMessage(err));
@@ -63,6 +65,21 @@ export default function OperatorPartnersPage() {
     }
   };
 
+  const endPartnership = async (row: NavyPartnerRow) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await decidePartner(row.id, 'end', reason.trim() || undefined);
+      setEnding(null);
+      setReason('');
+      await load();
+    } catch (err) {
+      setError(operatorErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <NavyPage>
       <NavyPageTitle icon={Users} title="Partenaires" subtitle="Épiciers et chauffeurs validés." />
@@ -75,9 +92,9 @@ export default function OperatorPartnersPage() {
         ))}
       </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="État">
-        {(['all', 'approved', 'suspended'] as const).map((s) => (
+        {(['all', 'approved', 'suspended', 'ended'] as const).map((s) => (
           <button key={s} type="button" aria-pressed={status === s} className={chip(status === s)} onClick={() => setStatus(s)}>
-            {s === 'all' ? 'Tous les états' : s === 'approved' ? 'Actifs' : 'Suspendus'}
+            {s === 'all' ? 'Tous les états' : s === 'approved' ? 'Actifs' : s === 'suspended' ? 'Suspendus' : 'Terminés'}
           </button>
         ))}
       </div>
@@ -122,15 +139,69 @@ export default function OperatorPartnersPage() {
                   </span>
                   <StatusBadge status={r.status} />
                 </div>
-                {r.status === 'suspended' && r.rejection_reason && (
-                  <p className="mt-2 text-sm text-navyay-charcoal/75">Motif : {r.rejection_reason}</p>
+                {r.status === 'suspended' && (r.suspension_reason ?? r.rejection_reason) && (
+                  <p className="mt-2 text-sm text-navyay-charcoal/75">Motif : {r.suspension_reason ?? r.rejection_reason}</p>
                 )}
-                {!open ? (
+                {r.status === 'ended' && (
+                  <p className="mt-2 text-sm text-navyay-charcoal/75">
+                    Fin le {r.ended_at ? new Date(r.ended_at).toLocaleDateString('fr-FR') : '—'}
+                    {r.suspension_reason ? ` · ${r.suspension_reason}` : ''}
+                    {r.documents_purge_after ? ` · pièces supprimées après le ${new Date(r.documents_purge_after).toLocaleDateString('fr-FR')}` : ''}
+                  </p>
+                )}
+                <Link
+                  to={`/navy/operatrice/demandes/${r.id}`}
+                  className="mt-2 mr-4 inline-flex items-center gap-1 text-sm font-semibold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow rounded"
+                >
+                  Voir la fiche{r.kind === 'epicier' && r.shop_lat != null && !r.shop_location_verified_at ? ' · position à vérifier' : ''}
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                </Link>
+                {r.status === 'ended' ? null : ending === r.id ? (
+                  <div className="mt-3 space-y-2 rounded-xl border border-red-300 bg-red-50 p-3" role="alert">
+                    <p className="flex items-start gap-2 text-sm text-red-900">
+                      <AlertTriangle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                      <span>
+                        Mettre fin au partenariat de <strong>{r.kind === 'epicier' ? r.shop_name || r.display_name : r.display_name}</strong> ?
+                        Son rôle est retiré tout de suite et son QR code n’est plus reconnu. Ses pièces seront supprimées dans 12 mois.
+                        Ce n’est pas une suspension : il faudra une nouvelle demande pour revenir.
+                      </span>
+                    </p>
+                    <label className="block text-sm font-medium">
+                      Motif (facultatif)
+                      <input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} />
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" className={btnPrimary} disabled={busy} onClick={() => void endPartnership(r)}>
+                        {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Ban className="w-4 h-4" aria-hidden="true" />}
+                        Mettre fin
+                      </button>
+                      <button type="button" className={btnSecondary} disabled={busy} onClick={() => setEnding(null)}>
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-2 mr-4 inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow rounded"
+                    onClick={() => {
+                      setEnding(r.id);
+                      setActing(null);
+                      setReason('');
+                      setError(null);
+                    }}
+                  >
+                    <Ban className="w-4 h-4" aria-hidden="true" />
+                    Mettre fin au partenariat
+                  </button>
+                )}
+                {r.status === 'ended' ? null : !open ? (
                   <button
                     type="button"
                     className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow rounded"
                     onClick={() => {
                       setActing(r.id);
+                      setEnding(null);
                       setReason('');
                       setError(null);
                     }}
@@ -166,6 +237,7 @@ export default function OperatorPartnersPage() {
       <NavyHelp title="Suspendre un partenaire">
         <p>Une suspension retire le partenaire du réseau : son rôle disparaît de son application et son QR code n’est plus reconnu.</p>
         <p>Le motif est visible par le partenaire. Vous pouvez le réactiver à tout moment.</p>
+        <p><strong>Mettre fin au partenariat</strong> est définitif : le rôle est retiré et les pièces d’identité sont supprimées 12 mois après la fin.</p>
       </NavyHelp>
     </NavyPage>
   );

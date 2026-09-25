@@ -9,6 +9,7 @@ import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useNavyProfile } from '../../services/navyProfileStore';
 import { updateMyPartnerSettings } from '../../services/partnerService';
+import PartnerChangeStatus from './PartnerChangeStatus';
 import { computeFare, DEFAULT_FARE_PER_5KM, DEFAULT_MIN_FARE, VEHICLE_LABELS } from '../../utils/partnerRules';
 import { btnPrimary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyNotice, NavyOfflineNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
@@ -123,6 +124,8 @@ export default function DriverPage() {
           {pending ? 'Enregistré sur ce téléphone, en attente d’envoi.' : 'Enregistré.'}
         </NavyNotice>
       )}
+
+      <PartnerChangeStatus userId={userId} row={row} />
 
       <NavyHelp title="Comment le prix est-il calculé ?">
         <p>Le trajet est découpé en tranches de 5 km ; une tranche commencée compte entière.</p>

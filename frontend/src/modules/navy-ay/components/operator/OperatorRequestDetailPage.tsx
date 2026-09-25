@@ -7,9 +7,10 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, ImageOff, Loader2, Store, Truck, WifiOff, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BadgeCheck, Check, ImageOff, Loader2, MapPin, Store, Truck, WifiOff, X } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
-import { decidePartner, getPartner, operatorErrorMessage } from '../../services/operatorService';
+import { decidePartner, getPartner, operatorErrorMessage, verifyShopLocation } from '../../services/operatorService';
+import ShopPositionField from '../partner/ShopPositionField';
 import { signedDocumentUrls } from '../../services/partnerService';
 import type { NavyPartnerRow } from '../../types/partner';
 import { KIND_LABELS, PHOTO_LABELS, PHOTO_SLOTS, SLOT_COLUMN, VEHICLE_LABELS } from '../../utils/partnerRules';
@@ -35,7 +36,9 @@ export default function OperatorRequestDetailPage() {
   const [rejecting, setRejecting] = useState(false);
   const [reasonChoice, setReasonChoice] = useState('');
   const [reasonText, setReasonText] = useState('');
-  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'reject' | 'verify' | null>(null);
+  const [finalRefusal, setFinalRefusal] = useState(false);
+  const [confirmFinal, setConfirmFinal] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -62,11 +65,28 @@ export default function OperatorRequestDetailPage() {
       setError('Choisissez ou écrivez un motif de refus.');
       return;
     }
+    if (decision === 'reject' && finalRefusal && !confirmFinal) {
+      setConfirmFinal(true);
+      return;
+    }
     setBusy(decision);
     setError(null);
     try {
-      await decidePartner(row.id, decision, reason);
+      await decidePartner(row.id, decision, reason, decision === 'reject' && finalRefusal);
       navigate('/navy/operatrice/demandes', { replace: true });
+    } catch (err) {
+      setError(operatorErrorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const verify = async () => {
+    if (!row) return;
+    setBusy('verify');
+    setError(null);
+    try {
+      setRow(await verifyShopLocation(row.id));
     } catch (err) {
       setError(operatorErrorMessage(err));
     } finally {
@@ -140,6 +160,38 @@ export default function OperatorRequestDetailPage() {
             </dl>
           </NavyCard>
 
+          {row.kind === 'epicier' && (
+            <NavyCard className="p-4 space-y-3">
+              <h3 className="flex items-center gap-2 font-semibold">
+                <MapPin className="w-5 h-5" aria-hidden="true" />
+                Position de la boutique
+              </h3>
+              {row.shop_lat != null && row.shop_lng != null ? (
+                <>
+                  <ShopPositionField
+                    lat={row.shop_lat}
+                    lng={row.shop_lng}
+                    serverZoneId={row.zone_id}
+                    verifiedAt={row.shop_location_verified_at}
+                  />
+                  {row.shop_location_set_at && (
+                    <p className="text-xs text-navyay-charcoal/70">
+                      Indiquée le {new Date(row.shop_location_set_at).toLocaleString('fr-FR')}.
+                    </p>
+                  )}
+                  {!row.shop_location_verified_at && (
+                    <button type="button" className={`${btnSecondary} w-full`} disabled={!!busy} onClick={() => void verify()}>
+                      {busy === 'verify' ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <BadgeCheck className="w-5 h-5" aria-hidden="true" />}
+                      Position vérifiée sur place
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-navyay-charcoal/75">L’épicier n’a pas encore indiqué la position de sa boutique.</p>
+              )}
+            </NavyCard>
+          )}
+
           <section className="grid gap-3 sm:grid-cols-2" aria-label="Photos du dossier">
             {PHOTO_SLOTS[row.kind].map((slot) => {
               const path = row[SLOT_COLUMN[slot]] as string | null;
@@ -195,6 +247,44 @@ export default function OperatorRequestDetailPage() {
                   ))}
                 </div>
               </fieldset>
+              <fieldset>
+                <legend className="font-semibold">Type de refus</legend>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {([
+                    [false, 'À corriger', 'La personne corrige et renvoie.'],
+                    [true, 'Définitif', 'Photos supprimées, pas de renvoi.'],
+                  ] as const).map(([value, label, hint]) => (
+                    <label
+                      key={label}
+                      className={`cursor-pointer rounded-xl border px-3 py-2.5 focus-within:ring-2 focus-within:ring-navyay-yellow ${
+                        finalRefusal === value ? 'border-navyay-charcoal bg-navyay-charcoal text-white' : 'border-navyay-charcoal/25 hover:bg-navyay-yellow/15'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="refusal-kind"
+                        checked={finalRefusal === value}
+                        onChange={() => {
+                          setFinalRefusal(value);
+                          setConfirmFinal(false);
+                        }}
+                        className="sr-only"
+                      />
+                      <span className={`block text-sm font-semibold ${finalRefusal === value ? 'text-navyay-yellow' : ''}`}>{label}</span>
+                      <span className={`block text-xs ${finalRefusal === value ? 'text-white/85' : 'text-navyay-charcoal/70'}`}>{hint}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {finalRefusal && confirmFinal && (
+                <div className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-900" role="alert">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    Refus définitif : les {PHOTO_SLOTS[row.kind].length} photos du dossier seront <strong>supprimées tout de suite</strong> et la
+                    demande ne pourra plus être renvoyée. Touchez encore « Confirmer le refus » pour continuer.
+                  </span>
+                </div>
+              )}
               {reasonChoice === OTHER && (
                 <label className={labelCls}>
                   Motif
@@ -206,7 +296,15 @@ export default function OperatorRequestDetailPage() {
                   {busy === 'reject' ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <X className="w-5 h-5" aria-hidden="true" />}
                   Confirmer le refus
                 </button>
-                <button type="button" className={btnSecondary} disabled={!!busy} onClick={() => setRejecting(false)}>
+                <button
+                  type="button"
+                  className={btnSecondary}
+                  disabled={!!busy}
+                  onClick={() => {
+                    setRejecting(false);
+                    setConfirmFinal(false);
+                  }}
+                >
                   Annuler
                 </button>
               </div>
@@ -218,7 +316,9 @@ export default function OperatorRequestDetailPage() {
       <NavyHelp title="Que vérifier ?">
         <p>Les photos doivent être lisibles, et les noms, NIF et numéros doivent correspondre à ce qui est saisi.</p>
         <p>Touchez une photo pour l’agrandir. Le lien d’affichage expire au bout de quelques minutes : rouvrez la demande si besoin.</p>
-        <p>Un refus n’est pas définitif : la personne voit le motif, corrige et renvoie son dossier.</p>
+        <p>Refus « à corriger » : la personne voit le motif, corrige et renvoie son dossier (les photos sont gardées).</p>
+        <p>Refus « définitif » : les photos sont supprimées aussitôt ; la fiche reste, sans photos, avec le motif.</p>
+        <p>Épicerie : allez voir la boutique, puis touchez « Position vérifiée sur place ». La position est alors figée.</p>
       </NavyHelp>
     </NavyPage>
   );
