@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.81.0';
-export const APP_VERSION_NAME = "NAVY ay : devenez partenaire. Une epicerie ou un chauffeur peut desormais deposer sa demande depuis son telephone, photos des papiers comprises, meme sans reseau. Une operatrice de CyberKELY valide ou refuse le dossier avec un motif. Une fois valide, l epicier regle Ouvert / Ferme et ses tarifs, le chauffeur ses prix au kilometre, et chacun obtient son QR code a imprimer. Un selecteur Je suis permet de passer de client a epicier, chauffeur ou operatrice.";
+export const APP_VERSION = '3.81.1';
+export const APP_VERSION_NAME = "NAVY ay : un lien NAVY ay partage sur WhatsApp affiche maintenant son propre apercu (titre, description et grande image NAVY ay) au lieu de celui du budget.";
 export const LAST_UPDATED = '2026-09-25';
 export const APP_BUILD_DATE = '2026-09-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.81.1',
+    date: '2026-09-25',
+    description:
+      "Apercu WhatsApp des liens NAVY ay : titre, description et grande image propres a NAVY ay sur /navy, /navy/* et /ouvrir/navy.",
+    changes: [
+      "Fonctions Cloudflare Pages functions/navy/_middleware.ts et functions/ouvrir/_middleware.ts (cette derniere n agit que sur /ouvrir/navy) : balises og:* / twitter:* NAVY ay injectees dans le HTML, textes fixes, aucun appel reseau.",
+      "Logique partagee dans functions-lib/navyOg.ts (hors functions/, donc pas une route).",
+      "Image d apercu 1200 x 630 : /navy-ay/og-navy.png.",
+      "Aucun changement pour la racine, le budget, la Gestion Eau et les invitations /i/* ; l application elle-meme est inchangee."
+    ]
+  },
   {
     version: '3.81.0',
     date: '2026-09-25',

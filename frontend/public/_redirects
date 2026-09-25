@@ -2,6 +2,10 @@
 #
 # Les Pages Functions (frontend/functions/**) sont évaluées AVANT ce repli :
 #   - /i/*            -> functions/i/_middleware.ts   (injection Open Graph)
+#   - /navy, /navy/*  -> functions/navy/_middleware.ts   (Open Graph NAVY ay)
+#   - /ouvrir/*       -> functions/ouvrir/_middleware.ts (Open Graph NAVY ay sur /ouvrir/navy
+#                        uniquement ; les autres /ouvrir/* passent sans modification)
+#     (logique partagée : functions-lib/navyOg.ts, hors functions/ donc pas une route)
 #   - /og-invite.png  -> functions/og-invite.png.ts   (image PNG 1200x630)
 #   - /api/ocr-receipt-> functions/api/ocr-receipt.ts  (OCR Google Vision)
 # Elles ne sont donc PAS avalées par ce catch-all SPA.
