@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.83.0';
+export const APP_VERSION = '3.83.1';
 export const APP_VERSION_NAME = "Notifications sur le telephone (socle). L application peut recevoir des notifications meme fermee : abonnement du navigateur quand on active les notifications, envoi par le serveur, un seul service worker.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.83.1',
+    date: '2026-09-26',
+    description:
+      "Web Push : un seul abonnement a la fois par navigateur, et journal de reception des notifications.",
+    changes: [
+      "Correctif : deux demandes d abonnement simultanees se remplacaient l une l autre et laissaient un abonnement mort en base (vu en production). Une seule demande a la fois desormais.",
+      "Le service worker note les 10 dernieres notifications recues (titre et heure), pour pouvoir prouver la reception meme quand le centre de notifications du systeme n est pas lisible."
+    ]
+  },
   {
     version: '3.83.0',
     date: '2026-09-26',

@@ -38,7 +38,7 @@ self.addEventListener('activate', (event: any) => {
   event.waitUntil(
     (async () => {
       try {
-        const keep = new Set<string>([cacheNames.precache, cacheNames.runtime, 'api-cache']);
+        const keep = new Set<string>([cacheNames.precache, cacheNames.runtime, 'api-cache', 'bazarkely-push-receipts']);
         const names = await caches.keys();
         await Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)));
       } catch (e) {
@@ -416,6 +416,27 @@ function safeInAppUrl(value: unknown, fallback: string): string {
   return typeof value === 'string' && /^\/(?!\/)/.test(value) ? value : fallback;
 }
 
+// Diagnostic receipt log: the last 10 push titles + reception time, readable by the page
+// (caches.open(PUSH_RECEIPTS_CACHE)). Titles only — bodies never carry sensitive data but
+// are not kept anyway. Proves reception where the OS notification center cannot be read.
+const PUSH_RECEIPTS_CACHE = 'bazarkely-push-receipts';
+const PUSH_RECEIPTS_KEY = '/__push-receipts';
+
+async function recordPushReceipt(title: string): Promise<void> {
+  try {
+    const cache = await caches.open(PUSH_RECEIPTS_CACHE);
+    const previous = await cache.match(PUSH_RECEIPTS_KEY);
+    const list: Array<{ title: string; receivedAt: string }> = previous ? await previous.json() : [];
+    list.unshift({ title, receivedAt: new Date().toISOString() });
+    await cache.put(
+      PUSH_RECEIPTS_KEY,
+      new Response(JSON.stringify(list.slice(0, 10)), { headers: { 'Content-Type': 'application/json' } })
+    );
+  } catch (e) {
+    console.warn('[SW] ⚠️ Push receipt not recorded (non bloquant):', e);
+  }
+}
+
 // Remote push. Must survive a missing or malformed payload: show a default message.
 self.addEventListener('push', (event: any) => {
   let payload: any = {};
@@ -437,7 +458,9 @@ self.addEventListener('push', (event: any) => {
   const url = safeInAppUrl(payload.url ?? payload.data?.clickAction, '/');
 
   event.waitUntil(
-    self.registration.showNotification(title, {
+    Promise.all([
+      recordPushReceipt(title),
+      self.registration.showNotification(title, {
       body,
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
@@ -447,7 +470,8 @@ self.addEventListener('push', (event: any) => {
         { action: 'view', title: 'Voir' },
         { action: 'dismiss', title: 'Ignorer' }
       ]
-    } as NotificationOptions).catch((e: unknown) => console.error('[SW] ❌ showNotification failed:', e))
+      } as NotificationOptions).catch((e: unknown) => console.error('[SW] ❌ showNotification failed:', e))
+    ])
   );
 });
 

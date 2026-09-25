@@ -92,6 +92,7 @@ class NotificationService {
   private serviceWorkerRegistration: ServiceWorkerRegistration | null = null
   private dailyNotificationCount: Map<string, number> = new Map()
   private intervals: Map<string, NodeJS.Timeout> = new Map()
+  private pushSubscriptionInFlight: Promise<boolean> | null = null
 
   constructor() {
     this.isSupported = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
@@ -171,6 +172,17 @@ class NotificationService {
    * Toute erreur est journalisée puis ignorée (le parcours continue).
    */
   async ensurePushSubscription(): Promise<boolean> {
+    // Single flight: two concurrent calls would each replace the other's subscription,
+    // leaving a dead endpoint in push_subscriptions (seen in prod on 2026-09-26).
+    if (!this.pushSubscriptionInFlight) {
+      this.pushSubscriptionInFlight = this.doEnsurePushSubscription().finally(() => {
+        this.pushSubscriptionInFlight = null
+      })
+    }
+    return this.pushSubscriptionInFlight
+  }
+
+  private async doEnsurePushSubscription(): Promise<boolean> {
     try {
       if (!this.isSupported || Notification.permission !== 'granted' || !('PushManager' in window)) {
         return false
