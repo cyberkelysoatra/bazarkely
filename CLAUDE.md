@@ -212,6 +212,16 @@ En collant du code vers un éditeur de navigateur (tableau de bord Supabase, éd
 
 **Double parade :** toujours `-Encoding UTF8`, **et** écrire les fichiers sensibles en pur ASCII avec des séquences `\uXXXX` plutôt que des caractères littéraux.
 
+### `users.role` modifiable par l'utilisateur lui-même (corrigé 2026-09-25)
+
+**Problème :** les règles de modification de `public.users` (`auth.uid() = id`) limitent les lignes, pas les colonnes, et `authenticated` a le droit `UPDATE` sur toute la table. N'importe quel compte pouvait donc écrire `role = 'admin'` sur lui-même → `is_admin()`, `get_all_users_admin`, `delete_user_admin`, AdminPage.
+
+**Correctif :** déclencheur `users_role_guard` (migration `supabase/migrations/20260925220000_users_role_guard.sql`) : pour `authenticated` / `anon`, tout changement de `role` est refusé (`42501`) et une insertion est forcée à `role = 'user'`. Nommer un admin se fait **en SQL** (éditeur / fonction serveur), jamais depuis l'application.
+
+**Règle :** une colonne qui donne des droits (rôle, statut de validation, décision) ne doit **jamais** dépendre d'une simple règle RLS de ligne. La protéger par un déclencheur (ou des droits par colonne SANS droit de table), et tester l'auto-promotion en transaction annulée (voir `PROCEDURES-OUTILS.md` P14). Une fonction d'accès à des données sensibles peut aussi s'ancrer sur `auth.users` (non modifiable par un client), comme `is_joel()` et `navy_is_admin()`.
+
+---
+
 ### supabase.auth.getUser() plante en offline (résolu v3.12.1)
 
 **Problème :** `supabase.auth.getUser()` n'est PAS une lecture locale — c'est un fetch HTTP vers `/auth/v1/user`. En offline → throw `AuthRetryableFetchError: Failed to fetch`. Le helper `getCurrentUser()` de `lib/supabase.ts` (qui wrap `getUser()`) plantait l'entrée de `getMyLoans()` AVANT la lecture IndexedDB → page Prêts affichait "Aucun prêt" alors que des prêts existaient en local.
