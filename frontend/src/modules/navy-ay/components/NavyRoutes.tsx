@@ -6,6 +6,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import NavyHomePage from './NavyHomePage';
 import NavyProfileSync from './NavyProfileSync';
+import NavyParcelSync from './NavyParcelSync';
 import NavyRoleRoute from './NavyRoleRoute';
 import { NavyLoader } from './ui/NavyUi';
 
@@ -24,11 +25,21 @@ const PartnerChangePage = lazy(() => import('./partner/PartnerChangePage'));
 const OperatorZonesPage = lazy(() => import('./operator/OperatorZonesPage'));
 const OperatorDriversPage = lazy(() => import('./operator/OperatorDriversPage'));
 const OperatorChangeDetailPage = lazy(() => import('./operator/OperatorChangeDetailPage'));
+// Phase 2A: parcels
+const SendParcelPage = lazy(() => import('./parcel/SendParcelPage'));
+const MyParcelsPage = lazy(() => import('./parcel/MyParcelsPage'));
+const ParcelDetailPage = lazy(() => import('./parcel/ParcelDetailPage'));
+const GrocerParcelsPage = lazy(() => import('./parcel/GrocerParcelsPage'));
+const DriverOffersPage = lazy(() => import('./parcel/DriverOffersPage'));
+const DriverCoursesPage = lazy(() => import('./parcel/DriverCoursesPage'));
+const OperatorParcelsPage = lazy(() => import('./operator/OperatorParcelsPage'));
+const OperatorPaymentsPage = lazy(() => import('./operator/OperatorPaymentsPage'));
 
 export default function NavyRoutes() {
   return (
     <>
       <NavyProfileSync />
+      <NavyParcelSync />
       <Suspense fallback={<NavyLoader />}>
         <Routes>
           <Route index element={<NavyHomePage />} />
@@ -47,6 +58,15 @@ export default function NavyRoutes() {
           <Route path="operatrice/zones" element={<NavyRoleRoute role="operatrice"><OperatorZonesPage /></NavyRoleRoute>} />
           <Route path="operatrice/chauffeurs" element={<NavyRoleRoute role="operatrice"><OperatorDriversPage /></NavyRoleRoute>} />
           <Route path="operatrice/modifications/:id" element={<NavyRoleRoute role="operatrice"><OperatorChangeDetailPage /></NavyRoleRoute>} />
+          <Route path="envoyer" element={<SendParcelPage />} />
+          <Route path="colis" element={<MyParcelsPage mode="sent" />} />
+          <Route path="colis/:id" element={<ParcelDetailPage />} />
+          <Route path="recevoir" element={<MyParcelsPage mode="received" />} />
+          <Route path="epicier/colis" element={<NavyRoleRoute role="epicier"><GrocerParcelsPage /></NavyRoleRoute>} />
+          <Route path="offres" element={<NavyRoleRoute role="chauffeur"><DriverOffersPage /></NavyRoleRoute>} />
+          <Route path="courses" element={<NavyRoleRoute role="chauffeur"><DriverCoursesPage /></NavyRoleRoute>} />
+          <Route path="operatrice/colis" element={<NavyRoleRoute role="operatrice"><OperatorParcelsPage /></NavyRoleRoute>} />
+          <Route path="operatrice/paiements" element={<NavyRoleRoute role="operatrice"><OperatorPaymentsPage /></NavyRoleRoute>} />
           <Route path="*" element={<Navigate to="/navy" replace />} />
         </Routes>
       </Suspense>

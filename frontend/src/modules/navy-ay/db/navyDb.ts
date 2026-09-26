@@ -13,6 +13,20 @@
  */
 import Dexie, { type Table } from 'dexie';
 import type { NavyPartnerRow, NavyPartnerSettingsPatch, PartnerDraft } from '../types/partner';
+import type { NavyParcelRow, ParcelCodes, ParcelQueueEntry } from '../types/parcel';
+
+/**
+ * Phase 2A: parcels the account is involved in (sender, recipient, grocer, driver) as
+ * last read from the server, so lists and tracking stay readable offline. `scope`
+ * tells in which list the row was seen. Amounts and the withdrawal code are NOT here:
+ * the codes of the account's own orders live in `parcelCodes` (sender only).
+ */
+export interface NavyParcelLocal extends NavyParcelRow {
+  /** Account that read the row (a shared phone never mixes two accounts). */
+  ownerUserId: string;
+  /** Row kept locally without server confirmation yet (order queued offline). */
+  localOnly?: boolean;
+}
 
 export interface NavyPendingPatch {
   /** partner id */
@@ -32,6 +46,9 @@ export class NavyAyDB extends Dexie {
   drafts!: Table<PartnerDraft, string>;
   pendingPatches!: Table<NavyPendingPatch, string>;
   kv!: Table<NavyKv, string>;
+  parcels!: Table<NavyParcelLocal, [string, string]>;
+  parcelQueue!: Table<ParcelQueueEntry, string>;
+  parcelCodes!: Table<ParcelCodes & { userId: string }, string>;
 
   constructor() {
     super('NavyAyDB');
@@ -40,6 +57,16 @@ export class NavyAyDB extends Dexie {
       drafts: 'id, userId, [userId+kind]',
       pendingPatches: 'id, userId',
       kv: 'key',
+    });
+    // Phase 2A: parcels (additive: existing stores unchanged).
+    this.version(2).stores({
+      partners: 'id, user_id, [user_id+kind]',
+      drafts: 'id, userId, [userId+kind]',
+      pendingPatches: 'id, userId',
+      kv: 'key',
+      parcels: '[ownerUserId+id], ownerUserId, id',
+      parcelQueue: 'id, userId',
+      parcelCodes: 'parcelId, userId',
     });
   }
 }

@@ -173,31 +173,43 @@ export interface NavyNavItem {
   end?: boolean;
 }
 
-/** Bottom-bar items of a role (≤ 6). */
+/**
+ * Bottom-bar items of a role (≤ 6). Phase 2A: parcels. The operator bar keeps 6 entries:
+ * "Zones" is reached from "Réglages" (link card), its route is unchanged.
+ */
 export function navItemsForRole(role: NavyRole, hasBothRequests: boolean): NavyNavItem[] {
   switch (role) {
     case 'epicier':
       return [
+        { path: '/navy/epicier/colis', icon: 'Package', label: 'Colis' },
         { path: '/navy/epicerie', icon: 'Store', label: 'Mon épicerie' },
         { path: '/navy/qr', icon: 'QrCode', label: 'Mon QR' },
       ];
     case 'chauffeur':
       return [
+        { path: '/navy/offres', icon: 'BellRing', label: 'Offres' },
+        { path: '/navy/courses', icon: 'Route', label: 'Courses' },
         { path: '/navy/direction', icon: 'Navigation', label: 'Direction' },
-        { path: '/navy/vehicule', icon: 'Truck', label: 'Mon véhicule' },
+        { path: '/navy/vehicule', icon: 'Truck', label: 'Véhicule' },
         { path: '/navy/qr', icon: 'QrCode', label: 'Mon QR' },
       ];
     case 'operatrice':
       return [
+        { path: '/navy/operatrice/colis', icon: 'Package', label: 'Colis' },
+        { path: '/navy/operatrice/paiements', icon: 'Banknote', label: 'Paiements' },
         { path: '/navy/operatrice/demandes', icon: 'Inbox', label: 'Demandes' },
         { path: '/navy/operatrice/partenaires', icon: 'Users', label: 'Partenaires' },
-        { path: '/navy/operatrice/zones', icon: 'Map', label: 'Zones' },
         { path: '/navy/operatrice/chauffeurs', icon: 'Navigation', label: 'Chauffeurs' },
         { path: '/navy/operatrice/reglages', icon: 'Settings', label: 'Réglages' },
       ];
     default: {
-      const items: NavyNavItem[] = [{ path: '/navy', icon: 'Home', label: 'Accueil', end: true }];
-      if (!hasBothRequests) items.push({ path: '/navy/devenir', icon: 'UserPlus', label: 'Devenir partenaire' });
+      const items: NavyNavItem[] = [
+        { path: '/navy', icon: 'Home', label: 'Accueil', end: true },
+        { path: '/navy/envoyer', icon: 'Send', label: 'Envoyer' },
+        { path: '/navy/colis', icon: 'Package', label: 'Mes colis' },
+        { path: '/navy/recevoir', icon: 'PackageOpen', label: 'À recevoir' },
+      ];
+      if (!hasBothRequests) items.push({ path: '/navy/devenir', icon: 'UserPlus', label: 'Partenaire' });
       return items;
     }
   }

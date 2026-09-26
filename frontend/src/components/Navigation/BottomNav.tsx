@@ -4,7 +4,7 @@ import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from 
 import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
 import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
 import { useNavyRoles } from '../../modules/navy-ay/context/useNavyRoles';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation, Send, PackageOpen, BellRing, Route, Banknote } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -116,7 +116,13 @@ const iconMap = {
   UserPlus,
   // NAVY ay icons (phase 1B)
   Map: MapIcon,
-  Navigation
+  Navigation,
+  // NAVY ay icons (phase 2A)
+  Send,
+  PackageOpen,
+  BellRing,
+  Route,
+  Banknote
 };
 
 const BottomNav = () => {
@@ -328,8 +334,8 @@ const BottomNav = () => {
             const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client'
               || (isNavyModule && 'end' in item && !!item.end);
             // NAVY ay : pastille du nombre de demandes en attente (opératrice).
-            const navyBadge = isNavyModule && item.path === '/navy/operatrice/demandes' && navyRoles.pendingCount
-              ? navyRoles.pendingCount
+            const navyBadge = isNavyModule && navyRoles.badges[item.path]
+              ? navyRoles.badges[item.path]
               : 0;
 
             return (

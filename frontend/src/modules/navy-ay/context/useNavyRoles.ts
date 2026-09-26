@@ -11,6 +11,8 @@ import { effectivePreferences, queuePreferencesPatch, useModulePrefsState } from
 import { useNavyProfile } from '../services/navyProfileStore';
 import type { NavyRole } from '../types/partner';
 import { navItemsForRole, pickActiveRole, resolveNavyRoles, type NavyNavItem } from '../utils/partnerRules';
+import { useParcels } from '../services/parcelService';
+import { parcelAlerts } from '../utils/parcelRules';
 
 export interface NavyRoles {
   held: NavyRole[];
@@ -19,6 +21,8 @@ export interface NavyRoles {
   navItems: NavyNavItem[];
   hasBothRequests: boolean;
   pendingCount: number | null;
+  /** Bottom-bar badges by path (phase 2A: parcels to act on). */
+  badges: Record<string, number>;
 }
 
 export function useNavyRoles(): NavyRoles {
@@ -53,7 +57,35 @@ export function useNavyRoles(): NavyRoles {
     [userId]
   );
 
+  const parcels = useParcels();
+  const badges = useMemo(() => {
+    const b: Record<string, number> = {};
+    if (ownProfile && profile.pendingCount) b['/navy/operatrice/demandes'] = profile.pendingCount;
+    if (parcels.userId !== userId) return b;
+    const rows = parcels.rows;
+    if (activeRole === 'operatrice') {
+      b['/navy/operatrice/paiements'] = rows.filter((p) => p.payment_status === 'a_verifier' && p.status !== 'annule').length;
+      b['/navy/operatrice/colis'] = rows.filter((p) => parcelAlerts(p).some((a) => a !== 'Paiement à vérifier')).length;
+    } else if (activeRole === 'epicier') {
+      const shop = partners.find((p) => p.kind === 'epicier' && p.status === 'approved')?.id;
+      b['/navy/epicier/colis'] = shop
+        ? rows.filter(
+            (p) =>
+              (p.depot_partner_id === shop && (p.status === 'commande' || (p.status === 'chauffeur_trouve' && !p.handover_grocer_at))) ||
+              (p.arrival_partner_id === shop && (p.status === 'pris_en_charge' || p.status === 'arrive'))
+          ).length
+        : 0;
+    } else if (activeRole === 'chauffeur') {
+      b['/navy/offres'] = parcels.liveOffers;
+      b['/navy/courses'] = rows.filter((p) => p.driver_user_id === userId && (p.status === 'chauffeur_trouve' || p.status === 'pris_en_charge')).length;
+    } else {
+      b['/navy/recevoir'] = rows.filter((p) => p.recipient_user_id === userId && !['retire', 'annule'].includes(p.status)).length;
+    }
+    return b;
+  }, [ownProfile, profile.pendingCount, parcels, userId, activeRole, partners]);
+
   return {
+    badges,
     held,
     activeRole,
     setActiveRole,

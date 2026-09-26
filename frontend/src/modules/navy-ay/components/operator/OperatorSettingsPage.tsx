@@ -3,7 +3,8 @@
  * (list, add one by e-mail — the account must already exist). ONLINE ONLY.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Headset, Loader2, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
+import { ChevronRight, Headset, Loader2, Map as MapIcon, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import {
   designateOperator,
@@ -25,11 +26,14 @@ const FIELDS: { key: keyof NavySettings; label: string; required: boolean }[] = 
   { key: 'suggested_fare_per_5km', label: 'Chauffeur : prix conseillé par tranche de 5 km', required: true },
   { key: 'suggested_depot_fee', label: 'Épicier : tarif de dépôt conseillé', required: false },
   { key: 'suggested_pickup_fee', label: 'Épicier : tarif de retrait conseillé', required: false },
+  // Phase 2A: fixed CyberKELY share per parcel.
+  { key: 'cyberkely_share', label: 'Part CyberKELY par colis', required: true },
 ];
 
 export default function OperatorSettingsPage() {
   const isOnline = useOnlineStatus();
   const [values, setValues] = useState<Record<string, string> | null>(null);
+  const [omNumber, setOmNumber] = useState('');
   const [operators, setOperators] = useState<NavyOperatorEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
@@ -48,6 +52,7 @@ export default function OperatorSettingsPage() {
       const v: Record<string, string> = {};
       for (const f of FIELDS) v[f.key] = s && s[f.key] != null ? String(s[f.key]) : '';
       setValues(v);
+      setOmNumber(s?.orange_money_number ?? '');
       setOperators(ops);
       setDueCount((await listDueDocuments()).length);
     } catch (err) {
@@ -100,14 +105,19 @@ export default function OperatorSettingsPage() {
       }
       patch[f.key] = Math.round(n);
     }
+    const om = omNumber.trim();
+    if (om && !/^(\+261|0)\d{9}$/.test(om.replace(/[\s.-]/g, ''))) {
+      setError('Numéro Orange Money incomplet (10 chiffres, ex. 032 12 345 67).');
+      return;
+    }
     setSaving(true);
     setError(null);
     setSavedMsg(null);
     try {
-      const saved = await updateSettings(patch as Partial<NavySettings>);
+      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null });
       await navyDb.kv.put({ key: 'settings', value: saved });
       setNavyProfile({ settings: saved });
-      setSavedMsg('Tarifs conseillés enregistrés.');
+      setSavedMsg('Réglages enregistrés.');
     } catch (err) {
       setError(operatorErrorMessage(err));
     } finally {
@@ -152,15 +162,27 @@ export default function OperatorSettingsPage() {
 
   return (
     <NavyPage>
-      <NavyPageTitle icon={Settings} title="Réglages" subtitle="Tarifs conseillés et opératrices." />
+      <NavyPageTitle icon={Settings} title="Réglages" subtitle="Zones, tarifs, part CyberKELY, Orange Money et opératrices." />
       {error && <NavyNotice tone="error">{error}</NavyNotice>}
+
+      <Link
+        to="/navy/operatrice/zones"
+        className="flex items-center gap-3 rounded-2xl border border-navyay-charcoal/10 bg-white px-4 py-4 hover:bg-navyay-yellow/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow"
+      >
+        <MapIcon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold">Zones</span>
+          <span className="block text-sm text-navyay-charcoal/75">Dessiner et ordonner les zones de Nosy Be.</span>
+        </span>
+        <ChevronRight className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+      </Link>
 
       {!values ? (
         !error && <NavyLoader />
       ) : (
         <NavyCard className="p-4">
           <form onSubmit={save} className="space-y-3" noValidate>
-            <h3 className="font-semibold">Tarifs conseillés</h3>
+            <h3 className="font-semibold">Tarifs et paiement</h3>
             {FIELDS.map((f) => (
               <label key={f.key} className={labelCls}>
                 {f.label}
@@ -176,6 +198,21 @@ export default function OperatorSettingsPage() {
                 </div>
               </label>
             ))}
+            <label className={labelCls}>
+              Numéro Orange Money de CyberKELY
+              <input
+                className={inputCls}
+                inputMode="tel"
+                value={omNumber}
+                placeholder="Pas encore renseigné"
+                onChange={(e) => setOmNumber(e.target.value)}
+              />
+              <span className="mt-1 block text-xs text-navyay-charcoal/70">
+                {omNumber.trim()
+                  ? 'Les clients enverront leur paiement à ce numéro.'
+                  : 'Tant qu’il est vide, les clients ne peuvent payer qu’en espèces.'}
+              </span>
+            </label>
             {savedMsg && <NavyNotice tone="ok">{savedMsg}</NavyNotice>}
             <button type="submit" disabled={saving} className={`${btnPrimary} w-full`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
@@ -239,7 +276,8 @@ export default function OperatorSettingsPage() {
       )}
 
       <NavyHelp title="À quoi servent ces réglages ?">
-        <p>Les tarifs conseillés sont proposés aux chauffeurs et aux épiciers. Ils restent libres de fixer leurs propres prix.</p>
+        <p>Les tarifs conseillés sont proposés aux chauffeurs et aux épiciers. Ils restent libres de fixer leurs propres prix. La grille chauffeur sert aussi de prix de transport maximum payé par le client.</p>
+        <p>La part CyberKELY s’ajoute à chaque colis. Un changement ne touche jamais un colis déjà commandé.</p>
         <p>Une opératrice valide les demandes et gère les partenaires. Elle peut aussi ajouter une autre opératrice. La personne doit s’être déjà connectée une fois à l’application.</p>
       </NavyHelp>
     </NavyPage>

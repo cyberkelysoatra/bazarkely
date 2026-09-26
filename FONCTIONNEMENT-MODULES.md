@@ -655,6 +655,93 @@ fichiers ne peuvent pas être supprimés en SQL : l'appli de l'opératrice les s
 serveur vérifie qu'ils ont bien disparu. Réglages → **« Purger les pièces arrivées à
 échéance »** (avec le nombre en attente) traite les échéances passées.
 
+### 📦 Phase 2A — le circuit du colis par les épiceries (v3.84.0)
+
+**Parcours** (chaque étape est horodatée dans le journal du colis, avec qui l'a faite) :
+1. **Commandé** (`commande`) — le client passe par « Envoyer » : destinataire (nom, téléphone)
+   → épicerie de départ (la plus proche en premier, ouvertes seulement) → épicerie d'arrivée
+   (sur la carte ou dans une liste triée par distance) → contenu (document, vêtement, téléphone,
+   nourriture, autre) et valeur déclarée (≤ 50 000 Ar, plafond d'indemnisation affiché) → choix
+   « Automatique, le moins cher » ou « Je choisis mon chauffeur » → prix et paiement.
+   Il reçoit le **code colis** (4 chiffres, à écrire au marqueur sur le colis) et le **code de
+   retrait** (6 chiffres, secret, à donner au destinataire par téléphone).
+2. **Déposé** (`depose`) — l'épicier de départ trouve le colis par son code, coche « refermé
+   devant moi » et « espèces encaissées » si paiement en espèces. **L'offre aux chauffeurs part à
+   ce moment**, si le paiement est acquis.
+3. **Chauffeur trouvé** (`chauffeur_trouve`) — un chauffeur accepte l'offre.
+4. **En route** (`pris_en_charge`) — **double confirmation** : l'épicier choisit le chauffeur
+   attendu (ou scanne son QR NAVY), PUIS le chauffeur touche « J'ai le colis ». Un seul geste ne
+   suffit pas.
+5. **Arrivé** (`arrive`) — l'épicier d'arrivée saisit le code colis.
+6. **Livré** (`retire`) — l'épicier d'arrivée saisit le code de retrait donné par le
+   destinataire ; vérifié **par le serveur**, bloqué après 5 codes faux (l'opératrice débloque).
+Côté client, trois repères simples : **Accepté**, **En route**, **Livré**. Le paiement suit un
+état à part (espèces à payer au dépôt / référence Orange Money à saisir / à vérifier / refusé /
+payé).
+
+**Prix** (calculé et **figé par le serveur à la commande**, l'appli n'envoie jamais un prix) :
+tarif de dépôt de l'épicier de départ + tarif de retrait de l'épicier d'arrivée + prix du
+transport + **part CyberKELY** (montant fixe par colis, Réglages, 300 Ar au départ).
+- Transport d'un chauffeur = `max(prix minimum, prix par 5 km × tranches de 5 km entamées)`.
+- **Distance estimée** = vol d'oiseau entre les deux épiceries **+ 30 %** (une seule fonction,
+  `navy_estimated_km`, à remplacer par la distance par la route en 2B).
+- Le client paie le **transport plafond** = grille conseillée de Réglages pour cette distance.
+  Seuls les chauffeurs dont le prix est ≤ plafond reçoivent l'offre ; si le chauffeur retenu
+  est moins cher, la différence est un **avoir dû au client** (enregistré, utilisé en 2B).
+- **Total arrondi aux 100 Ar supérieurs**, l'arrondi va à CyberKELY. Au client : une ligne par
+  étape au nom du partenaire, majorée de sa quote-part CyberKELY (répartie au prorata des tarifs).
+  Exemple : tarifs 100 / 100, 7 km, grille 1 000 Ar par 5 km, part 300 → 114 + 2 273 + 113 =
+  **2 500 Ar**. L'épicier voit « votre tarif X Ar + part NAVY Y Ar » ; le chauffeur ne voit que
+  ce qu'il gagne.
+
+**Choix du chauffeur** : chauffeurs **validés, disponibles**, dont la destination est dans la
+**zone de l'épicerie d'arrivée**. Automatique : le moins cher d'abord ; sans réponse sous
+**30 s**, au suivant. Je choisis : le chauffeur choisi d'abord ; sans réponse, au suivant s'il
+n'est pas plus cher, sinon l'appli demande au client de choisir (ou de passer en automatique).
+Personne n'accepte : relance **toutes les 5 min**, alerte à l'opératrice après **30 min**.
+
+**Paiement** : espèces à l'épicier au dépôt ; **Orange Money** au numéro de CyberKELY (Réglages ;
+tant qu'il est vide, seules les espèces sont proposées), puis le client saisit la référence
+reçue par SMS et l'opératrice la valide dans **Paiements**. Aucun chauffeur n'est appelé avant.
+
+**Non retiré** : rappel au client et au destinataire après **24 h**, alerte opératrice après
+**3 jours**, « retour à organiser » possible après **7 jours** (retour facturé en 2B).
+**Annulation** : par le client tant que le colis n'est pas déposé ; par l'opératrice tant qu'il
+n'est pas pris en charge ; un paiement déjà reçu devient un avoir.
+
+**Délais décidés par le serveur** : tâche planifiée `navy-tick` (`pg_cron`, **toutes les 10 s**)
+— offres expirées → suivant, relances, alertes, rappels ; et l'acceptation d'une offre refuse
+toute offre dont l'échéance est passée. Jamais un chronomètre qui ne vit que dans un téléphone.
+
+**Notifications** (socle web-push, `notify_users`) à chaque étape, aux personnes concernées ;
+titre court (« Colis 4821 : pris en charge »), **jamais de montant ni de code de retrait**.
+Demande d'autorisation : client à la première commande, épicier dans « Colis », chauffeur dans
+« Direction » et « Offres ». Chaque envoi est tracé (`navy_notify_log`).
+
+**Qui voit quoi** (appliqué par le serveur) : le client voit ses colis, leur prix et le code de
+retrait ; le destinataire lié (compte NAVY dont un profil partenaire **validé** porte ce numéro)
+voit le colis dans « À recevoir » et le code de retrait ; l'épicier voit les colis de sa
+boutique et sa propre ligne de prix (plus le montant à encaisser en espèces au dépôt), jamais le
+code de retrait ; le chauffeur voit ses offres et ses courses et ce qu'il gagne, jamais le total
+ni le code ; l'opératrice voit tout **sauf le code de retrait**.
+
+**Écrans** : Client — Envoyer, Mes colis, À recevoir, détail avec suivi, bouton Appeler le
+chauffeur. Épicier — Colis (À recevoir au dépôt, À remettre au chauffeur, Arrivés à retirer,
+recherche par code). Chauffeur — Offres (plein écran, compte à rebours de 30 s), Courses
+(itinéraire, appel de l'épicier, « J'ai le colis »). Opératrice — **Colis** (alertes en tête :
+sans chauffeur 30 min, non retiré 3 jours / 7 jours, code bloqué ; annuler, relancer,
+débloquer, retour à organiser) et **Paiements**. La barre opératrice reste à 6 boutons :
+**Zones** s'ouvre depuis Réglages.
+
+**Hors ligne** : listes et suivi déjà chargés restent lisibles. Commande, référence Orange
+Money, dépôt, remise, confirmation du chauffeur et réception sont gardés sur le téléphone et
+envoyés au retour du réseau **avec le même identifiant** (aucun doublon). L'acceptation d'une
+offre et la saisie du code de retrait **exigent le réseau** et le disent.
+
+**Reports de la 1B corrigés** : les fiches NAVY supprimées sur le serveur disparaissent de
+l'appareil au rafraîchissement suivant (mêmes protections que la synchro descendante) ; le
+formulaire « Corriger ma demande » attend la réponse du serveur au lieu de s'afficher vide.
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

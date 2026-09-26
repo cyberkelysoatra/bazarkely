@@ -1,11 +1,11 @@
 /**
  * NAVY ay — home page (phase 0). Explains the service in plain French and announces
- * that sending parcels is coming soon. Static content: works fully offline.
+ * how to send a parcel (phase 2A: sending is open). Static content: works fully offline.
  * Charter: ylang-ylang yellow + charcoal, text on yellow = charcoal, no navy blue.
  */
 import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Clock, Info, PackagePlus, Smartphone, Store, Truck, UserPlus, WifiOff } from 'lucide-react';
+import { ChevronDown, ChevronRight, Info, PackagePlus, Send, Smartphone, Store, Truck, UserPlus, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../stores/appStore';
 import { useNavyProfile } from '../services/navyProfileStore';
@@ -145,16 +145,23 @@ export default function NavyHomePage() {
         </ol>
       </section>
 
-      {/* Annonce */}
-      <section className="rounded-2xl bg-navyay-charcoal text-white px-5 py-5">
+      {/* Phase 2A: sending is open */}
+      <section className="rounded-2xl bg-navyay-charcoal text-white px-5 py-5 space-y-3">
         <p className="flex items-center gap-2 font-semibold text-navyay-yellow">
-          <Clock className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          Les envois arrivent bientôt
+          <Send className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          Envoyez un colis dès maintenant
         </p>
-        <p className="mt-1 text-sm text-white/85 leading-relaxed">
-          Nous préparons le réseau d’épiceries et de chauffeurs. Vous pourrez bientôt envoyer
-          et suivre vos colis directement ici.
+        <p className="text-sm text-white/85 leading-relaxed">
+          Choisissez l’épicerie de départ et celle d’arrivée, payez en espèces ou par Orange Money, et suivez votre colis
+          jusqu’à sa remise.
         </p>
+        <Link
+          to="/navy/envoyer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-navyay-yellow px-4 py-3 font-semibold text-navyay-charcoal focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <PackagePlus className="w-5 h-5" aria-hidden="true" />
+          Envoyer un colis
+        </Link>
       </section>
 
       {/* Aide ⓘ (repliée par défaut) */}

@@ -61,19 +61,37 @@ export default function PartnerRequestPage() {
   const dirtyRef = useRef(false);
   const saveTimer = useRef<number | null>(null);
 
-  // Initial form: local draft first, else the refused request, else empty.
+  // Where the initial form came from (a request that arrives later refills an empty form).
+  const sourceRef = useRef<'draft' | 'row' | 'empty' | null>(null);
+  // The server answer of this visit is still expected (online, first refresh running).
+  const awaitingServer = isOnline && !profile.serverChecked && profile.refreshing;
+
+  // Initial form: local draft first, else the refused request, else empty. Opened
+  // directly (phase 2A fix of a 1B carry-over), the request may not be on the phone yet:
+  // wait for the server answer instead of showing an empty form.
   useEffect(() => {
     if (!kind || !userId || loadedRef.current || !profile.loadedLocal) return;
+    if (!row && awaitingServer) return;
     loadedRef.current = true;
     void getDraft(userId, kind).then((d) => {
       if (d) {
+        sourceRef.current = 'draft';
         setFields(d.fields);
         setPhotos(d.photos);
       } else {
+        sourceRef.current = row ? 'row' : 'empty';
         setFields(row ? fieldsFromRow(row) : emptyFormFields());
       }
     });
-  }, [kind, userId, profile.loadedLocal, row]);
+  }, [kind, userId, profile.loadedLocal, row, awaitingServer]);
+
+  // The refused request arrived after an empty form was shown, nothing typed yet: prefill.
+  useEffect(() => {
+    if (row && sourceRef.current === 'empty' && !dirtyRef.current) {
+      sourceRef.current = 'row';
+      setFields(fieldsFromRow(row));
+    }
+  }, [row]);
 
   // Photos already on the server (correction): short-lived signed URLs.
   useEffect(() => {
@@ -105,6 +123,8 @@ export default function PartnerRequestPage() {
   );
 
   if (!kind) return <Navigate to="/navy/devenir" replace />;
+  // Never decide on a phone copy that the running refresh may contradict.
+  if (row && awaitingServer) return <NavyLoader />;
   // A request already sent and not refused is not edited here.
   if (row && (row.status !== 'rejected' || row.rejection_final)) return <Navigate to={`/navy/demande/${kind}`} replace />;
   if (!fields) return <NavyLoader />;

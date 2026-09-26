@@ -15,6 +15,7 @@ import { loadDriverStatus, setDriverAvailability, useDriverState } from '../../s
 import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import { DRIVER_REMINDER_MS, formatRemaining, isLocalAvailable, localAvailableUntil, zoneForPoint } from '../../utils/geo';
 import NavyMap from '../map/NavyMap';
+import { NavyNotifyPrompt } from '../parcel/ParcelUi';
 import { btnAccent, btnPrimary, btnSecondary, NavyCard, NavyHelp, NavyNotice, NavyOfflineNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
 export default function DriverDirectionPage() {
@@ -102,6 +103,7 @@ export default function DriverDirectionPage() {
     <NavyPage>
       <NavyPageTitle icon={Navigation} title="Ma direction" subtitle={row.display_name ?? undefined} />
       {!isOnline && <NavyOfflineNotice>Hors ligne : votre choix est gardé sur ce téléphone et partira au retour du réseau.</NavyOfflineNotice>}
+      <NavyNotifyPrompt why="Activez les notifications : une course ne vous attend que 30 secondes. Sans notification, vous la manquerez." />
 
       <button
         type="button"

@@ -47,6 +47,8 @@ export interface NavyMapProps {
   onDraftChange?: (points: LatLng[]) => void;
   onMapTap?: (lat: number, lng: number) => void;
   onZoneTap?: (zoneId: string) => void;
+  /** Phase 2A: a marker touched (e.g. choosing a grocer on the map). */
+  onMarkerTap?: (markerId: string) => void;
   /** Show the "Ma position" button. */
   locate?: boolean;
   /** Initial framing: 'pin' (zoom on the pin), 'content' (zones + markers), default Nosy Be. */
@@ -105,6 +107,7 @@ export default function NavyMap({
   onDraftChange,
   onMapTap,
   onZoneTap,
+  onMarkerTap,
   locate = false,
   fit = 'island',
   heightClass = 'h-[55vh] min-h-[280px] max-h-[520px]',
@@ -124,8 +127,8 @@ export default function NavyMap({
   const [locateMsg, setLocateMsg] = useState<string | null>(null);
 
   // Latest callbacks, read by Leaflet handlers bound once.
-  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft });
-  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft };
+  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap });
+  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap };
 
   // Map created once.
   useEffect(() => {
@@ -201,6 +204,7 @@ export default function NavyMap({
     for (const m of markers) {
       L.marker([m.lat, m.lng], { icon: markerIcon(m.kind), keyboard: false, title: m.label, alt: m.label })
         .bindPopup(escapeHtml(m.label))
+        .on('click', () => cb.current.onMarkerTap?.(m.id))
         .addTo(layer);
     }
   }, [markers]);

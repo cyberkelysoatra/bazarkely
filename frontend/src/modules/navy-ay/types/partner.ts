@@ -135,6 +135,10 @@ export interface NavySettings {
   suggested_fare_per_5km: number;
   suggested_depot_fee: number | null;
   suggested_pickup_fee: number | null;
+  /** Phase 2A: fixed CyberKELY share per parcel (Ar). */
+  cyberkely_share?: number;
+  /** Phase 2A: CyberKELY Orange Money number (null = Orange Money not open yet). */
+  orange_money_number?: string | null;
   updated_at?: string;
 }
 

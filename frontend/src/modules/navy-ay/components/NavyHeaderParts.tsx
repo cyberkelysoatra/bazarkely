@@ -6,11 +6,15 @@
  * - NavyDesktopNav: role-based navigation line (desktop only).
  */
 import { NavLink } from 'react-router-dom';
-import { Home, Inbox, Map as MapIcon, Navigation, QrCode, Settings, Store, Truck, UserPlus, Users } from 'lucide-react';
+import {
+  Banknote, BellRing, Home, Inbox, Map as MapIcon, Navigation, Package, PackageOpen, QrCode, Route, Send, Settings, Store, Truck, UserPlus, Users,
+} from 'lucide-react';
 import { useNavyRoles } from '../context/useNavyRoles';
 import NavyRoleSwitcher from './NavyRoleSwitcher';
 
-const ICONS = { Home, Inbox, Map: MapIcon, Navigation, QrCode, Settings, Store, Truck, UserPlus, Users } as const;
+const ICONS = {
+  Banknote, BellRing, Home, Inbox, Map: MapIcon, Navigation, Package, PackageOpen, QrCode, Route, Send, Settings, Store, Truck, UserPlus, Users,
+} as const;
 
 export function NavyHeaderSubtitle() {
   const { held } = useNavyRoles();
@@ -18,12 +22,12 @@ export function NavyHeaderSubtitle() {
 }
 
 export function NavyDesktopNav() {
-  const { navItems, pendingCount } = useNavyRoles();
+  const { navItems, badges } = useNavyRoles();
   return (
     <nav className="hidden lg:flex items-center justify-around mt-4">
       {navItems.map((item) => {
         const Icon = ICONS[item.icon as keyof typeof ICONS] ?? Home;
-        const badge = item.path === '/navy/operatrice/demandes' && pendingCount ? pendingCount : 0;
+        const badge = badges[item.path] ?? 0;
         return (
           <NavLink
             key={item.path}

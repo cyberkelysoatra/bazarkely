@@ -1,8 +1,23 @@
-export const APP_VERSION = '3.83.2';
-export const APP_VERSION_NAME = "Notifications sur le telephone (socle). L application peut recevoir des notifications meme fermee : abonnement du navigateur quand on active les notifications, envoi par le serveur, un seul service worker.";
+export const APP_VERSION = '3.84.0';
+export const APP_VERSION_NAME = "NAVY ay : le circuit du colis par les epiceries. Commande, paiement, depot, chauffeur, arrivee et retrait avec code, suivi et notifications a chaque etape.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.84.0',
+    date: '2026-09-26',
+    description:
+      "NAVY ay phase 2A : un colis fait tout le trajet, de l epicerie de depart jusqu au retrait par le destinataire.",
+    changes: [
+      "Client : Envoyer (destinataire, epiceries de depart et d arrivee sur la carte ou en liste, contenu et valeur declaree plafonnee a 50 000 Ar, chauffeur automatique ou choisi, prix detaille, especes ou Orange Money), Mes colis, A recevoir, suivi Accepte / En route / Livre, code colis et code de retrait.",
+      "Prix calcule et fige par le serveur : tarifs des deux epiciers + transport (distance estimee a vol d oiseau + 30 %) + part CyberKELY fixe, total arrondi aux 100 Ar ; chauffeur moins cher que le prix paye = avoir du au client.",
+      "Epicier : onglet Colis (depot, remise au chauffeur avec double confirmation ou scan de son QR, reception, retrait par code verifie par le serveur et bloque apres 5 essais).",
+      "Chauffeur : offres en plein ecran avec 30 secondes pour accepter, passage automatique au suivant, relance toutes les 5 minutes ; onglet Courses.",
+      "Operatrice : Colis (alertes : sans chauffeur 30 min, non retire 3 et 7 jours, code bloque) et Paiements Orange Money ; part CyberKELY et numero Orange Money dans Reglages ; Zones accessible depuis Reglages.",
+      "Delais tenus par le serveur (tache planifiee toutes les 10 s) et notification a chaque etape, sans montant ni code de retrait.",
+      "Reports de la 1B corriges : fiches supprimees sur le serveur retirees du telephone ; formulaire Corriger ma demande prerempli meme ouvert directement."
+    ]
+  },
   {
     version: '3.83.2',
     date: '2026-09-26',

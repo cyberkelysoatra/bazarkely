@@ -128,8 +128,24 @@ export function refreshNavyProfile(userId: string): Promise<void> {
           const p = patches.find((x) => x.id === r.id);
           return p ? { ...r, ...p.patch } : r;
         });
+        // Server-side deletions (phase 2A, carry-over of 1B): a local row absent from the
+        // answer is removed, same protections as lib/syncReconcile (a request or a
+        // settings edit still waiting to go up keeps its row; an EMPTY answer only
+        // counts when the same refresh proved the session valid).
+        const sessionProved = opRes.status === 'fulfilled' && !opRes.value.error;
+        const drafts = await navyDb.drafts.where('userId').equals(userId).toArray();
+        const protectedIds = new Set([...drafts.map((d) => d.id), ...patches.map((p) => p.id)]);
+        const serverIds = new Set(rows.map((r) => r.id));
         await navyDb.transaction('rw', navyDb.partners, navyDb.kv, async () => {
           await navyDb.partners.bulkPut(merged);
+          if (rows.length > 0 || sessionProved) {
+            const local = await navyDb.partners.where('user_id').equals(userId).toArray();
+            const gone = local.filter((l) => !serverIds.has(l.id) && !protectedIds.has(l.id));
+            if (gone.length) {
+              console.info(`🧹 [navy] ${gone.length} partner row(s) removed on the server, removed from this phone`);
+              await navyDb.partners.bulkDelete(gone.map((g) => g.id));
+            }
+          }
           await navyDb.kv.put({ key: kvKey(userId, 'partnersKnown'), value: true });
         });
       }
