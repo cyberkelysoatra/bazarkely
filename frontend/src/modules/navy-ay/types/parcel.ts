@@ -136,6 +136,10 @@ export interface NavyParcelOffer {
   sent_at: string;
   expires_at: string;
   answered_at: string | null;
+  /** navy_my_offers(): seconds left by the SERVER clock at fetch time. */
+  seconds_left?: number;
+  /** Phone time (ms) when seconds_left was read. */
+  fetched_at?: number;
 }
 
 export interface NavyParcelPayment {

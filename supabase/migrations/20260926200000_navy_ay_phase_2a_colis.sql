@@ -1378,6 +1378,17 @@ language sql stable security definer set search_path = public as $$
      and public.navy_owns_partner(p.depot_partner_id);
 $$;
 
+-- Driver: his live offers with the time left computed by the SERVER clock (a phone clock
+-- a few seconds off would otherwise show a wrong countdown).
+create or replace function public.navy_my_offers()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(to_jsonb(o) || jsonb_build_object('seconds_left', round(extract(epoch from o.expires_at - now())::numeric, 1))
+                            order by o.expires_at), '[]'::jsonb)
+    from public.navy_parcel_offers o
+   where auth.uid() is not null and o.driver_user_id = auth.uid()
+     and o.status = 'envoyee' and o.expires_at > now();
+$$;
+
 -- -------------------------------------------------------------------------------------
 -- 8. Function privileges (P7: EXECUTE is granted to anon explicitly by default)
 -- -------------------------------------------------------------------------------------
@@ -1417,6 +1428,7 @@ revoke execute on function public.navy_parcel_drivers(uuid) from public, anon;
 revoke execute on function public.navy_relaunch_offers(uuid) from public, anon;
 revoke execute on function public.navy_mark_return(uuid) from public, anon;
 revoke execute on function public.navy_cash_due(uuid[]) from public, anon;
+revoke execute on function public.navy_my_offers() from public, anon;
 
 grant execute on function public.navy_estimated_km(float8, float8, float8, float8) to authenticated;
 grant execute on function public.navy_fare(numeric, integer, integer) to authenticated;
@@ -1445,6 +1457,7 @@ grant execute on function public.navy_parcel_drivers(uuid) to authenticated;
 grant execute on function public.navy_relaunch_offers(uuid) to authenticated;
 grant execute on function public.navy_mark_return(uuid) to authenticated;
 grant execute on function public.navy_cash_due(uuid[]) to authenticated;
+grant execute on function public.navy_my_offers() to authenticated;
 
 -- -------------------------------------------------------------------------------------
 -- 9. Server clock: pg_cron every 10 seconds (replaces a job of the same name).

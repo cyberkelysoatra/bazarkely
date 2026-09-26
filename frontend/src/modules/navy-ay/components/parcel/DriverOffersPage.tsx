@@ -11,7 +11,7 @@ import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../../stores/appStore';
 import { acceptOffer, myOffers, refreshParcels, refuseOffer } from '../../services/parcelService';
 import type { NavyParcelOffer } from '../../types/parcel';
-import { CATEGORY_LABELS, OFFER_SECONDS, parcelErrorMessage, secondsLeft } from '../../utils/parcelRules';
+import { CATEGORY_LABELS, OFFER_SECONDS, offerSecondsLeft, parcelErrorMessage } from '../../utils/parcelRules';
 import { NavyNotifyPrompt } from './ParcelUi';
 import { btnAccent, btnSecondary, formatAr, NavyCard, NavyHelp, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
@@ -46,7 +46,7 @@ export default function DriverOffersPage() {
     return () => window.clearInterval(t);
   }, []);
 
-  const live = (offers ?? []).filter((o) => secondsLeft(o.expires_at, now) > 0);
+  const live = (offers ?? []).filter((o) => offerSecondsLeft(o, now) > 0);
   const offer = live[0] ?? null;
 
   const accept = async (o: NavyParcelOffer) => {
@@ -87,7 +87,7 @@ export default function DriverOffersPage() {
   }
 
   if (offer) {
-    const left = secondsLeft(offer.expires_at, now);
+    const left = offerSecondsLeft(offer, now);
     const pct = Math.max(0, Math.min(100, (left / OFFER_SECONDS) * 100));
     return (
       <div className="fixed inset-0 z-[70] flex flex-col bg-navyay-yellow text-navyay-charcoal" role="dialog" aria-modal="true" aria-label="Nouvelle course">

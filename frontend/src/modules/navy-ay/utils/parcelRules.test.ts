@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeFare } from './partnerRules';
-import { estimatedKm, milestones, parcelAlerts, priceBreakdown, secondsLeft } from './parcelRules';
+import { estimatedKm, milestones, offerSecondsLeft, parcelAlerts, priceBreakdown, secondsLeft } from './parcelRules';
 import type { NavyParcelRow } from '../types/parcel';
 
 describe('priceBreakdown', () => {
@@ -63,5 +63,20 @@ describe('secondsLeft / alerts', () => {
   it('flags a blocked withdrawal code', () => {
     const p = { status: 'arrive', withdraw_blocked_at: '2026-09-26T10:00:00Z', payment_status: 'paye' } as NavyParcelRow;
     expect(parcelAlerts(p)).toContain('Code de retrait bloqué');
+  });
+});
+
+describe('offerSecondsLeft', () => {
+  it('follows the server clock, not the phone clock', () => {
+    const now = Date.parse('2026-09-26T10:00:00Z');
+    // Phone clock 13 s late: expires_at looks 38 s away, the server says 25 s.
+    const o = { expires_at: '2026-09-26T10:00:38Z', seconds_left: 25, fetched_at: now };
+    expect(offerSecondsLeft(o, now)).toBe(25);
+    expect(offerSecondsLeft(o, now + 10000)).toBe(15);
+    expect(offerSecondsLeft(o, now + 30000)).toBe(0);
+  });
+  it('never shows more than 30 s', () => {
+    const now = Date.parse('2026-09-26T10:00:00Z');
+    expect(offerSecondsLeft({ expires_at: '2026-09-26T10:01:00Z' }, now)).toBe(30);
   });
 });

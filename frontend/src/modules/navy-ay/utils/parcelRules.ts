@@ -167,6 +167,22 @@ export function secondsLeft(expiresAt: string, now = Date.now()): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
 }
 
+/**
+ * Seconds left of an offer, by the SERVER clock when known (seconds_left read at
+ * fetched_at, minus the time elapsed on the phone since), else by expires_at. Never more
+ * than the offer deadline, never negative.
+ */
+export function offerSecondsLeft(
+  o: { expires_at: string; seconds_left?: number; fetched_at?: number },
+  now = Date.now()
+): number {
+  const left =
+    o.seconds_left != null && o.fetched_at != null
+      ? o.seconds_left - (now - o.fetched_at) / 1000
+      : (new Date(o.expires_at).getTime() - now) / 1000;
+  return Math.max(0, Math.min(OFFER_SECONDS, Math.ceil(left)));
+}
+
 /** Operator alerts shown on top of the list. */
 export function parcelAlerts(p: NavyParcelRow, now = Date.now()): string[] {
   const out: string[] = [];

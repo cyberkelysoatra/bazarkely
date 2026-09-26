@@ -383,21 +383,16 @@ export function parcelDrivers(parcelId: string): Promise<NavyQuoteDriver[]> {
   return run<NavyQuoteDriver[]>(db.rpc('navy_parcel_drivers', { p_parcel_id: parcelId }), 'navy-parcel-drivers');
 }
 
-/** Live offers addressed to the signed-in driver (RLS: his own only). */
+/**
+ * Live offers addressed to the signed-in driver, with the time left by the SERVER clock
+ * (navy_my_offers): the countdown never depends on a phone clock that may be off.
+ */
 export async function myOffers(): Promise<NavyParcelOffer[]> {
-  const list = await run<NavyParcelOffer[]>(
-    db
-      .from('navy_parcel_offers')
-      .select('*')
-      .eq('status', 'envoyee')
-      .gt('expires_at', new Date().toISOString())
-      .order('expires_at', { ascending: true })
-      .limit(20),
-    'navy-offers',
-    6000
-  );
-  set({ liveOffers: list.length });
-  return list;
+  const list = await run<NavyParcelOffer[]>(db.rpc('navy_my_offers'), 'navy-offers', 6000);
+  const at = Date.now();
+  const offers = (list ?? []).map((o) => ({ ...o, fetched_at: at }));
+  set({ liveOffers: offers.length });
+  return offers;
 }
 
 // ------------------------------------------------------------------ operator

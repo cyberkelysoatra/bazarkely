@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.84.0';
+export const APP_VERSION = '3.84.1';
 export const APP_VERSION_NAME = "NAVY ay : le circuit du colis par les epiceries. Commande, paiement, depot, chauffeur, arrivee et retrait avec code, suivi et notifications a chaque etape.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.84.1',
+    date: '2026-09-26',
+    description:
+      "NAVY ay : deux correctifs vus en production pendant la validation des colis.",
+    changes: [
+      "Offre chauffeur : le compte a rebours suit l horloge du serveur (le telephone affichait 38 s alors qu il en restait bien moins, l acceptation etait alors refusee comme trop tardive).",
+      "Ecran Colis de l epicier : le gain affiche ne compte que la ligne de sa boutique (un epicier qui envoie lui-meme un colis voyait le total de toutes les lignes)."
+    ]
+  },
   {
     version: '3.84.0',
     date: '2026-09-26',

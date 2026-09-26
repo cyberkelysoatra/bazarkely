@@ -75,7 +75,9 @@ export default function GrocerParcelsPage() {
     Promise.all([myPriceLines(list), cashDue(list.filter((id) => mine.find((p) => p.id === id)?.status === 'commande'))])
       .then(([lines, cash]) => {
         const byParcel: Record<string, NavyPriceLine[]> = {};
-        for (const l of lines) (byParcel[l.parcel_id] ??= []).push(l);
+        // Only this shop's own lines: when the grocer is also the sender of a parcel, RLS
+        // returns every line of it (the sender sees the whole price).
+        for (const l of lines) if (l.partner_id === shop?.id && l.kind !== 'transport') (byParcel[l.parcel_id] ??= []).push(l);
         const next = { lines: byParcel, cash };
         setMoney(next);
         void navyDb.kv.put({ key: moneyKey, value: next });
