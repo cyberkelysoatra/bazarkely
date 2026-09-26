@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.86.0';
+export const APP_VERSION = '3.86.1';
 export const APP_VERSION_NAME = "NAVY ay : remise directe au chauffeur (photo du contenu, double confirmation, droit de refus) et retour paye d avance des colis non retires.";
 export const LAST_UPDATED = '2026-09-27';
-export const APP_BUILD_DATE = '2026-09-27';
+export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.86.1',
+    date: '2026-09-27',
+    description:
+      "NAVY ay : colis retour sans telephone de l expediteur affiche sans point vide, vu en production.",
+    changes: [
+      "Suivi du colis et ecran epicier : le destinataire s affiche sans le separateur quand son telephone est inconnu (colis retour)."
+    ]
+  },
   {
     version: '3.86.0',
     date: '2026-09-27',

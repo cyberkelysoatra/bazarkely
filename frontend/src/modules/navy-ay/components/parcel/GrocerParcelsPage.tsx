@@ -372,7 +372,10 @@ function ArrivalCard({ p, userId, lines, isOnline, queued }: { p: NavyParcelLoca
     <NavyCard className="p-4 space-y-3">
       <CardHead p={p} />
       <Earnings lines={lines} />
-      <p className="text-sm">Pour <strong>{p.recipient_name}</strong> · {p.recipient_phone}</p>
+      <p className="text-sm">
+        Pour <strong>{p.recipient_name}</strong>
+        {p.recipient_phone ? ` · ${p.recipient_phone}` : ''}
+      </p>
       {p.status === 'pris_en_charge' ? (
         queued ? (
           <NavyNotice icon={Smartphone}>Réception gardée sur ce téléphone, envoyée au retour du réseau.</NavyNotice>

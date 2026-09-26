@@ -726,7 +726,7 @@ export default function ParcelDetailPage() {
           </p>
         )}
         <Row label="Arrivée" value={`${parcel.arrival_name ?? '—'}${zoneName(zones, parcel.arrival_zone_id) ? ` (${zoneName(zones, parcel.arrival_zone_id)})` : ''}`} />
-        <Row label="Destinataire" value={`${parcel.recipient_name} · ${parcel.recipient_phone}`} />
+        <Row label="Destinataire" value={parcel.recipient_phone ? `${parcel.recipient_name} · ${parcel.recipient_phone}` : parcel.recipient_name} />
         <Row label="Contenu" value={`${CATEGORY_LABELS[parcel.category]} · valeur ${formatAr(parcel.declared_value)}`} />
         <Row label={parcel.distance_source === 'route' ? 'Distance par la route' : 'Distance estimée'} value={formatKm(parcel.distance_km)} />
         {(isSender || isRecipient) && withdrawCode && !params.get('nouveau') && parcel.status !== 'commande' && !['retire', 'annule'].includes(parcel.status) && (
