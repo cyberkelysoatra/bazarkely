@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.84.1';
+export const APP_VERSION = '3.84.2';
 export const APP_VERSION_NAME = "NAVY ay : le circuit du colis par les epiceries. Commande, paiement, depot, chauffeur, arrivee et retrait avec code, suivi et notifications a chaque etape.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.84.2',
+    date: '2026-09-26',
+    description:
+      "NAVY ay : finitions d affichage vues en production pendant la validation des colis.",
+    changes: [
+      "Suivi d un colis : les zones de depart et d arrivee s affichent (la page ne chargeait pas la liste des zones et ecrivait hors zone).",
+      "Cartes chauffeur et epicier : un ancien message (par exemple Garde sur ce telephone) disparait quand le colis passe a l etape suivante.",
+      "Retrait : le message Code correct reste affiche quelques secondes avant que le colis quitte la liste."
+    ]
+  },
   {
     version: '3.84.1',
     date: '2026-09-26',

@@ -35,7 +35,7 @@ import {
   useParcels,
   type ParcelDetail,
 } from '../../services/parcelService';
-import { useNavyZones, zoneName } from '../../services/zoneService';
+import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import type { NavyQuoteDriver } from '../../types/parcel';
 import type { VehicleType } from '../../types/partner';
 import { VEHICLE_LABELS } from '../../utils/partnerRules';
@@ -71,6 +71,11 @@ export default function ParcelDetailPage() {
       setLoadError(parcelErrorMessage(err));
     }
   }, [id, isOnline]);
+
+  // Zone names of the departure / arrival (phone copy first, then the server).
+  useEffect(() => {
+    void loadZones();
+  }, []);
 
   useEffect(() => {
     void load();
@@ -280,8 +285,8 @@ export default function ParcelDetailPage() {
       )}
 
       <NavyCard className="p-4 space-y-2 text-sm">
-        <Row label="Départ" value={`${parcel.depot_name ?? '—'} (${zoneName(zones, parcel.depot_zone_id) ?? 'hors zone'})`} />
-        <Row label="Arrivée" value={`${parcel.arrival_name ?? '—'} (${zoneName(zones, parcel.arrival_zone_id) ?? 'hors zone'})`} />
+        <Row label="Départ" value={`${parcel.depot_name ?? '—'}${zoneName(zones, parcel.depot_zone_id) ? ` (${zoneName(zones, parcel.depot_zone_id)})` : ''}`} />
+        <Row label="Arrivée" value={`${parcel.arrival_name ?? '—'}${zoneName(zones, parcel.arrival_zone_id) ? ` (${zoneName(zones, parcel.arrival_zone_id)})` : ''}`} />
         <Row label="Destinataire" value={`${parcel.recipient_name} · ${parcel.recipient_phone}`} />
         <Row label="Contenu" value={`${CATEGORY_LABELS[parcel.category]} · valeur ${formatAr(parcel.declared_value)}`} />
         <Row label="Distance estimée" value={`${parcel.distance_km} km`} />

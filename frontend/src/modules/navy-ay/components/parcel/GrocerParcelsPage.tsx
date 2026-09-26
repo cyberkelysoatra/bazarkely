@@ -185,9 +185,11 @@ function CardHead({ p }: { p: NavyParcelLocal }) {
   );
 }
 
-function useGesture(userId: string) {
+function useGesture(userId: string, status: string) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
+  // A message about the previous step is stale once the parcel has moved on.
+  useEffect(() => setMsg(null), [status]);
   const act = useCallback(
     async (op: Parameters<typeof doGesture>[1], ok: string) => {
       setBusy(true);
@@ -212,7 +214,7 @@ function useGesture(userId: string) {
 function DepotCard({ p, userId, lines, cash, queued }: { p: NavyParcelLocal; userId: string; lines?: NavyPriceLine[]; cash?: number; queued: boolean }) {
   const [sealed, setSealed] = useState(false);
   const [collected, setCollected] = useState(false);
-  const { busy, msg, act, setMsg } = useGesture(userId);
+  const { busy, msg, act, setMsg } = useGesture(userId, p.status);
   const isCash = p.payment_method === 'especes';
   const submit = () => {
     if (!sealed) return setMsg({ tone: 'error', text: 'Cochez « Colis refermé devant moi ».' });
@@ -256,7 +258,7 @@ function DepotCard({ p, userId, lines, cash, queued }: { p: NavyParcelLocal; use
 
 function HandoverCard({ p, userId, lines, queued }: { p: NavyParcelLocal; userId: string; lines?: NavyPriceLine[]; queued: boolean }) {
   const [scan, setScan] = useState(false);
-  const { busy, msg, act, setMsg } = useGesture(userId);
+  const { busy, msg, act, setMsg } = useGesture(userId, p.status);
   const handTo = (driverPartnerId: string) =>
     act({ kind: 'handover_grocer', parcelId: p.id, driverPartnerId }, 'Remis. Le chauffeur doit confirmer dans son application.');
   return (
@@ -320,7 +322,7 @@ function HandoverCard({ p, userId, lines, queued }: { p: NavyParcelLocal; userId
 function ArrivalCard({ p, userId, lines, isOnline, queued }: { p: NavyParcelLocal; userId: string; lines?: NavyPriceLine[]; isOnline: boolean; queued: boolean }) {
   const [code, setCode] = useState('');
   const [wcode, setWcode] = useState('');
-  const { busy, msg, act, setMsg } = useGesture(userId);
+  const { busy, msg, act, setMsg } = useGesture(userId, p.status);
   const [wBusy, setWBusy] = useState(false);
 
   const receive = () => {
@@ -336,7 +338,8 @@ function ArrivalCard({ p, userId, lines, isOnline, queued }: { p: NavyParcelLoca
       if (r.ok) {
         setMsg({ tone: 'ok', text: 'Code correct : remettez le colis au destinataire.' });
         setWcode('');
-        void refreshParcels(userId);
+        // Leave the confirmation on screen a moment before the parcel leaves the list.
+        window.setTimeout(() => void refreshParcels(userId), 4000);
       } else if (r.blocked) {
         setMsg({ tone: 'error', text: 'Trop d’essais faux : le retrait est bloqué. L’opératrice est prévenue, elle vous appellera.' });
         void refreshParcels(userId);

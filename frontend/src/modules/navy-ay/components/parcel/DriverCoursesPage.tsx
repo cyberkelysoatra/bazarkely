@@ -83,6 +83,9 @@ function CourseCard({ p, userId, queued }: { p: NavyParcelLocal; userId: string;
   const toDepot = p.status === 'chauffeur_trouve';
   const link = toDepot ? mapLink(p.depot_lat, p.depot_lng) : mapLink(p.arrival_lat, p.arrival_lng);
   const phone = toDepot ? p.depot_phone : p.arrival_phone;
+  // A message about the previous step (e.g. "kept on this phone") is stale once the
+  // parcel has moved on.
+  useEffect(() => setMsg(null), [p.status]);
 
   const confirm = async () => {
     setBusy(true);
