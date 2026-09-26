@@ -212,13 +212,17 @@ En collant du code vers un éditeur de navigateur (tableau de bord Supabase, éd
 
 **Double parade :** toujours `-Encoding UTF8`, **et** écrire les fichiers sensibles en pur ASCII avec des séquences `\uXXXX` plutôt que des caractères littéraux.
 
-### `users.role` modifiable par l'utilisateur lui-même (corrigé 2026-09-25)
+### Colonnes de `users` modifiables par l'utilisateur lui-même (corrigé 2026-09-25 puis 2026-09-26)
 
-**Problème :** les règles de modification de `public.users` (`auth.uid() = id`) limitent les lignes, pas les colonnes, et `authenticated` a le droit `UPDATE` sur toute la table. N'importe quel compte pouvait donc écrire `role = 'admin'` sur lui-même → `is_admin()`, `get_all_users_admin`, `delete_user_admin`, AdminPage.
+**Problème :** les règles de modification de `public.users` (`auth.uid() = id`) limitent les lignes, pas les colonnes, et `authenticated` a le droit `UPDATE` sur toute la table. N'importe quel compte pouvait donc réécrire sur lui-même `role = 'admin'` (→ `is_admin()`, AdminPage…), mais aussi `phone`, `email`, `created_at`… et toute colonne ajoutée plus tard. Une fonction serveur qui fait confiance à `users.phone` / `users.email` était donc usurpable.
 
-**Correctif :** déclencheur `users_role_guard` (migration `supabase/migrations/20260925220000_users_role_guard.sql`) : pour `authenticated` / `anon`, tout changement de `role` est refusé (`42501`) et une insertion est forcée à `role = 'user'`. Nommer un admin se fait **en SQL** (éditeur / fonction serveur), jamais depuis l'application.
+**Correctif (liste blanche) :** déclencheur **unique** `users_columns_guard` (migration `supabase/migrations/20260926230000_users_columns_guard.sql`, remplace `users_role_guard`) :
+- `anon` : aucune écriture (`42501`) ;
+- `authenticated` UPDATE : **seules** `preferences` et `updated_at` peuvent changer (seule écriture cliente : `apiService.updateUserPreferences`). Comparaison `to_jsonb(new) - autorisées` / `to_jsonb(old) - autorisées` → une colonne ajoutée demain est **protégée d'office** ; refus `42501` qui nomme la colonne ;
+- `authenticated` INSERT : seuls `id`, `username`, `preferences` viennent du client ; `role = 'user'`, dates = `now()`, `email` = celui du jeton, `phone` = null, compteurs par défaut. La vraie création du profil est faite par `handle_new_user` (serveur, non concerné).
+Nommer un admin, corriger un téléphone ou un e-mail se fait **en SQL** (éditeur / fonction serveur), jamais depuis l'application.
 
-**Règle :** une colonne qui donne des droits (rôle, statut de validation, décision) ne doit **jamais** dépendre d'une simple règle RLS de ligne. La protéger par un déclencheur (ou des droits par colonne SANS droit de table), et tester l'auto-promotion en transaction annulée (voir `PROCEDURES-OUTILS.md` P14). Une fonction d'accès à des données sensibles peut aussi s'ancrer sur `auth.users` (non modifiable par un client), comme `is_joel()` et `navy_is_admin()`.
+**Règle :** toute nouvelle écriture cliente sur `users` = **ajouter la colonne à la liste blanche** dans une migration (sinon refus `42501` en production). Une colonne qui donne des droits ou une identité (rôle, téléphone, e-mail, statut de validation) ne doit **jamais** dépendre d'une simple règle RLS de ligne, et `users.phone` reste **non vérifié** (déclaré à l'inscription) tant que la vérification par SMS n'existe pas. Tester en transaction annulée (voir `PROCEDURES-OUTILS.md` P14). Une fonction d'accès à des données sensibles peut aussi s'ancrer sur `auth.users` (non modifiable par un client), comme `is_joel()` et `navy_is_admin()`.
 
 ---
 

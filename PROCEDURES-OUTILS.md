@@ -133,7 +133,7 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 ### P14 — Protéger UNE colonne d'une table déjà ouverte en écriture (2026-09-25, `users.role`)
 - **Symptôme :** tout compte connecté pouvait faire `update users set role='admin' where id=auth.uid()` → `is_admin()` vrai. La règle RLS `auth.uid() = id` limite **les lignes**, jamais **les colonnes**.
 - **Piège :** `revoke update (role) on users from authenticated` ne suffit **pas** quand un droit `UPDATE` existe sur **toute la table** (droit de table ⊃ droits de colonne ; Supabase l'accorde par défaut). Il faudrait retirer le droit de table puis ré-accorder colonne par colonne, ce qui casse facilement l'application.
-- **Résolution retenue :** déclencheur `BEFORE INSERT OR UPDATE` qui teste `current_user in ('authenticated','anon')` : refus (`42501`) si la colonne change, valeur forcée à l'INSERT. Les fonctions `SECURITY DEFINER` possédées par `postgres` (ex. `handle_new_user`), l'éditeur SQL et la clé de service ne sont pas concernés. Exemples : `users_role_guard` (migration `20260925220000_users_role_guard.sql`), `navy_partners_guard`.
+- **Résolution retenue :** déclencheur `BEFORE INSERT OR UPDATE` qui teste `current_user in ('authenticated','anon')` : refus (`42501`) si la colonne change, valeur forcée à l'INSERT. Les fonctions `SECURITY DEFINER` possédées par `postgres` (ex. `handle_new_user`), l'éditeur SQL et la clé de service ne sont pas concernés. Exemples : `users_columns_guard` (liste blanche, migration `20260926230000_users_columns_guard.sql`, a remplacé `users_role_guard`), `navy_partners_guard`. **Préférer une liste blanche** (`to_jsonb(new) - autorisées` comparé à `to_jsonb(old) - autorisées`) : une colonne ajoutée plus tard est protégée d'office.
 - **Méthode de test sûre :** créer le déclencheur **dans** une transaction annulée, jouer les essais (P8), `rollback`, puis seulement l'appliquer. Création de compte simulée : `insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at) …` en `postgres` (le rôle `supabase_auth_admin` n'est pas accessible depuis l'outil SQL).
 - **Piège de test :** dans un bloc `do $$`, `r := r || (select … )` devient **NULL** si la sous-requête ne voit rien (RLS) → tout le compte rendu disparaît. Toujours `coalesce(…, '(none)')`.
 
@@ -159,6 +159,27 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Résolution :** `netstat -ano | grep ":3000 "` → identifier le PID sur `[::1]:3000` (`Get-CimInstance Win32_Process -Filter 'ProcessId=<pid>'` pour la ligne de commande) et l'arrêter s'il appartient à une session inactive.
 - **Permission de notification :** la bulle « Autoriser » est dans l'interface de Chrome, hors de la page : ni un clic scripté ni l'extension ne peuvent la valider. JOEL doit cliquer (fenêtre du groupe Claude au premier plan, sinon la bulle n'apparaît pas).
 
+### P19 — Bloc SQL de test qui « enregistre » : le compte rendu par exception annule TOUT (2026-09-26, NAVY 2A)
+- **Symptôme :** un bloc `do $$ … raise exception 'RES %', r; $$` affiche bien le compte rendu, mais les gestes joués dedans (réception, codes faux…) ne sont **pas** en base.
+- **Cause :** l'exception finale annule la transaction entière — pratique pour un test en transaction annulée (P8), fatal pour une action à garder.
+- **Résolution :** pour une action à **enregistrer** au nom d'un compte, enchaîner des instructions simples dans le même appel : `select set_config('request.jwt.claims','{"sub":"<uuid>","role":"authenticated"}', true); set local role authenticated; select navy_x(...);` (le résultat du dernier `select` est renvoyé). Garder le `raise exception` final pour les seuls tests à annuler.
+
+### P20 — Onglet caché : l'appli reste « hors ligne » après une micro-coupure (2026-09-26)
+- **Symptôme :** après une brève coupure réseau (l'extension Chrome se déconnecte un instant), l'appli affiche « Hors ligne » alors que `navigator.onLine` est vrai et que `fetch` répond 200.
+- **Cause :** le service d'état réseau (`onlineStatusService`) ne revérifie que par événement `online` ou par sonde toutes les 2 min, **en pause quand l'onglet est caché** (cas permanent de l'onglet piloté).
+- **Résolution (test) :** `window.dispatchEvent(new Event('online'))`. Sur un vrai téléphone l'événement arrive seul.
+
+### P21 — Compte à rebours : jamais l'horloge du téléphone (2026-09-26, NAVY 2A)
+- **Symptôme :** offre chauffeur affichée « 38 s » (plus que les 30 s possibles) ; l'acceptation est refusée « trop tard ».
+- **Cause :** décompte calculé avec `expires_at - Date.now()` ; l'horloge du téléphone avait plusieurs secondes d'écart avec le serveur.
+- **Résolution :** le serveur renvoie le temps restant (`seconds_left`, fonction `navy_my_offers`) ; le téléphone ne retranche que le temps écoulé depuis la lecture, et plafonne au délai maximal (`offerSecondsLeft`).
+
 ---
 
 *Créé le 2026-06-04 (session module gestion-eau Phase 1). À enrichir au fil des sessions. Enrichi S88 (Phase 2 RLS) : P7–P9. Enrichi 2026-06-09 (Promoteur Phase 3 invitations) : P10–P11. Enrichi 2026-06-13 (correctif cache Cloudflare/SW v3.48.1) : P12. Enrichi 2026-09-15 : P13. Enrichi 2026-09-25 (faille users.role) : P14.*
+
+### P22 — Exécuter du SQL sans piloter l'éditeur : connecteur Supabase (2026-09-26, verrou `users`)
+- **Constat :** le connecteur Supabase de la session (outils `mcp__…__execute_sql`, projet `ofzmwrzatcztoekrpvkj`) a accès au projet BazarKELY : lecture du schéma, des fonctions (`pg_get_functiondef`), exécution de DDL. Plus de crash Translate (P1), de grille figée (P11) ni de filtre sur le texte lu (P10).
+- **Tests en transaction annulée :** un seul appel « migration + bloc `do $$ … raise exception 'RESULTS %', r; $$` » : l'exception finale annule **tout**, DDL compris (vérifier ensuite que l'ancien état est intact). Le compte rendu arrive dans le message d'erreur.
+- **Application réelle :** même appel sans le bloc de test, puis **rejouer une seconde fois** et relire `pg_trigger` pour prouver l'absence de doublon. Vérifier `anon` par REST (clé anon), comme avant.
+- **Limite :** préférer `execute_sql` à `apply_migration` (ce dernier inscrit sa propre version dans l'historique des migrations, différente du nom du fichier du dépôt).
