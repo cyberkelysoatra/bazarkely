@@ -40,6 +40,7 @@ import { computeFare, VEHICLE_LABELS } from '../../utils/partnerRules';
 import {
   CATEGORY_LABELS,
   creditSplit,
+  formatKm,
   isValidRecipientPhone,
   MAX_DECLARED_VALUE,
   minProposedTotal,
@@ -475,7 +476,7 @@ export default function SendParcelPage() {
                 <p className="flex items-start gap-1.5 text-xs text-navyay-charcoal/75">
                   <Route className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   <span>
-                    {kmSource === 'route' ? `Distance par la route : ${km} km.` : `Distance estimée : ${km} km (à vol d’oiseau + 30 %).`} La part NAVY ay est comprise dans chaque ligne.
+                    {kmSource === 'route' ? `Distance par la route : ${formatKm(km)}.` : `Distance estimée : ${formatKm(km)} (à vol d’oiseau + 30 %).`} La part NAVY ay est comprise dans chaque ligne.
                     {!quote && ' Estimation faite sur ce téléphone : le prix exact sera confirmé à l’envoi.'}
                   </span>
                 </p>

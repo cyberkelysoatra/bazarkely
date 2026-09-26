@@ -46,7 +46,7 @@ import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import type { NavyCounterOption, NavyQuoteDriver } from '../../types/parcel';
 import type { VehicleType } from '../../types/partner';
 import { VEHICLE_LABELS } from '../../utils/partnerRules';
-import { CATEGORY_LABELS, MAX_DECLARED_VALUE, PAYMENT_LABELS, parcelErrorMessage, SUPPLEMENT_LABELS } from '../../utils/parcelRules';
+import { CATEGORY_LABELS, formatKm, MAX_DECLARED_VALUE, PAYMENT_LABELS, parcelErrorMessage, SUPPLEMENT_LABELS } from '../../utils/parcelRules';
 import { NavyNotifyPrompt, ParcelCode, ParcelMilestones, ParcelStatusBadge, ParcelTimeline } from './ParcelUi';
 import { btnAccent, btnPrimary, btnSecondary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage } from '../ui/NavyUi';
 
@@ -380,7 +380,7 @@ export default function ParcelDetailPage() {
         <Row label="Arrivée" value={`${parcel.arrival_name ?? '—'}${zoneName(zones, parcel.arrival_zone_id) ? ` (${zoneName(zones, parcel.arrival_zone_id)})` : ''}`} />
         <Row label="Destinataire" value={`${parcel.recipient_name} · ${parcel.recipient_phone}`} />
         <Row label="Contenu" value={`${CATEGORY_LABELS[parcel.category]} · valeur ${formatAr(parcel.declared_value)}`} />
-        <Row label={parcel.distance_source === 'route' ? 'Distance par la route' : 'Distance estimée'} value={`${parcel.distance_km} km`} />
+        <Row label={parcel.distance_source === 'route' ? 'Distance par la route' : 'Distance estimée'} value={formatKm(parcel.distance_km)} />
         {(isSender || isRecipient) && withdrawCode && !params.get('nouveau') && parcel.status !== 'commande' && !['retire', 'annule'].includes(parcel.status) && (
           <Row label="Code de retrait" value={withdrawCode} mono />
         )}

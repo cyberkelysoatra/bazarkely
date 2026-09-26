@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.85.0';
+export const APP_VERSION = '3.85.1';
 export const APP_VERSION_NAME = "NAVY ay : distances par la route, prix propose par le client, contre-proposition, couloir autour du trajet du chauffeur et avoir NAVY.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.85.1',
+    date: '2026-09-26',
+    description:
+      "NAVY ay : distances ecrites a la francaise (10,1 km au lieu de 10.1 km), vu en production.",
+    changes: [
+      "Envoyer, suivi du colis, offres et courses du chauffeur, liste des epiceries : virgule decimale et une decimale au plus."
+    ]
+  },
   {
     version: '3.85.0',
     date: '2026-09-26',

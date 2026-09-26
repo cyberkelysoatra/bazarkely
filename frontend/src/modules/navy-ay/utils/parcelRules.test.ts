@@ -3,6 +3,7 @@ import { computeFare } from './partnerRules';
 import {
   creditSplit,
   estimatedKm,
+  formatKm,
   milestones,
   minProposedTotal,
   offerSecondsLeft,
@@ -149,5 +150,13 @@ describe('offerSecondsLeft, broadcast offers', () => {
   it('a broadcast offer is not capped at 30 s', () => {
     expect(offerSecondsLeft({ expires_at: '2026-01-01T00:04:00Z', seconds_left: 240, fetched_at: 1000, broadcast: true }, 1000)).toBe(240);
     expect(offerSecondsLeft({ expires_at: '2026-01-01T00:04:00Z', seconds_left: 240, fetched_at: 1000 }, 1000)).toBe(30);
+  });
+});
+
+describe('formatKm', () => {
+  it('writes distances the French way', () => {
+    expect(formatKm(10.1)).toMatch(/^10,1\s?km$/);
+    expect(formatKm('8.0')).toMatch(/^8\s?km$/);
+    expect(formatKm(null)).toBe('— km');
   });
 });

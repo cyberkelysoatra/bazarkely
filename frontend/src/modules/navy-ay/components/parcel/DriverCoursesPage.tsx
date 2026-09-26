@@ -10,7 +10,7 @@ import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { doGesture, refreshParcels, useParcels } from '../../services/parcelService';
 import type { NavyParcelLocal } from '../../db/navyDb';
-import { CATEGORY_LABELS, parcelErrorMessage } from '../../utils/parcelRules';
+import { CATEGORY_LABELS, formatKm, parcelErrorMessage } from '../../utils/parcelRules';
 import { formatTime, ParcelCode, ParcelStatusBadge } from './ParcelUi';
 import { btnAccent, btnSecondary, formatAr, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
@@ -108,7 +108,7 @@ function CourseCard({ p, userId, queued }: { p: NavyParcelLocal; userId: string;
       <div className="flex items-start justify-between gap-3">
         <div>
           <ParcelCode code={p.code} />
-          <p className="text-sm text-navyay-charcoal/75">{CATEGORY_LABELS[p.category]} · {p.distance_km} km · acceptée à {formatTime(p.driver_found_at)}</p>
+          <p className="text-sm text-navyay-charcoal/75">{CATEGORY_LABELS[p.category]} · {formatKm(p.distance_km)} · acceptée à {formatTime(p.driver_found_at)}</p>
         </div>
         <ParcelStatusBadge status={p.status} />
       </div>

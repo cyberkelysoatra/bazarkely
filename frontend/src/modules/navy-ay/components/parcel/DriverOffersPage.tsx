@@ -13,7 +13,7 @@ import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../../stores/appStore';
 import { acceptOffer, myOffers, refreshParcels, refuseOffer } from '../../services/parcelService';
 import type { NavyParcelOffer } from '../../types/parcel';
-import { CATEGORY_LABELS, OFFER_SECONDS, offerSecondsLeft, parcelErrorMessage } from '../../utils/parcelRules';
+import { CATEGORY_LABELS, formatKm, OFFER_SECONDS, offerSecondsLeft, parcelErrorMessage } from '../../utils/parcelRules';
 import { NavyNotifyPrompt } from './ParcelUi';
 import { btnAccent, btnSecondary, formatAr, NavyCard, NavyHelp, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
@@ -131,7 +131,7 @@ export default function DriverOffersPage() {
               </p>
               <p className="flex items-center gap-3">
                 <Route className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-                Distance : <strong>{offer.distance_km} km</strong>
+                Distance : <strong>{formatKm(offer.distance_km)}</strong>
               </p>
               <p className="flex items-center gap-3">
                 <Package className="w-5 h-5 flex-shrink-0" aria-hidden="true" />

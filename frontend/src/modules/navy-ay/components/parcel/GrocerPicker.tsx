@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { Check, Crosshair, Loader2, MapPin, Store } from 'lucide-react';
 import type { NavyOpenGrocer } from '../../types/parcel';
 import type { NavyZone } from '../../types/partner';
-import { estimatedKm } from '../../utils/parcelRules';
+import { estimatedKm, formatKm } from '../../utils/parcelRules';
 import { zoneName } from '../../services/zoneService';
 import NavyMap from '../map/NavyMap';
 import { btnSecondary, formatAr } from '../ui/NavyUi';
@@ -125,7 +125,7 @@ export default function GrocerPicker({
                 {km !== null && (
                   <span className="flex items-center gap-1 text-xs tabular-nums text-navyay-charcoal/80">
                     <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                    {km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`}
+                    {km < 1 ? `${Math.round(km * 1000)} m` : formatKm(km)}
                   </span>
                 )}
                 {active && <Check className="w-5 h-5 flex-shrink-0" aria-hidden="true" />}

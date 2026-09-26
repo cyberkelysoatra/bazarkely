@@ -60,6 +60,13 @@ export function pairKm(
   return { km: estimatedKm(from.lat, from.lng, to.lat, to.lng), source: 'estimation' };
 }
 
+/** Distance in French: decimal comma, at most one decimal (10,1 km ; 8 km). */
+export function formatKm(km: number | string | null | undefined): string {
+  const n = Number(km);
+  if (km == null || !Number.isFinite(n)) return '— km';
+  return `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
+}
+
 /** Attribution required by OpenRouteService (terms of use) for road distances. */
 export const ORS_ATTRIBUTION = '© openrouteservice by HeiGIT | Données © les contributeurs d’OpenStreetMap';
 
