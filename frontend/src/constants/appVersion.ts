@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.85.1';
-export const APP_VERSION_NAME = "NAVY ay : distances par la route, prix propose par le client, contre-proposition, couloir autour du trajet du chauffeur et avoir NAVY.";
-export const LAST_UPDATED = '2026-09-26';
-export const APP_BUILD_DATE = '2026-09-26';
+export const APP_VERSION = '3.86.0';
+export const APP_VERSION_NAME = "NAVY ay : remise directe au chauffeur (photo du contenu, double confirmation, droit de refus) et retour paye d avance des colis non retires.";
+export const LAST_UPDATED = '2026-09-27';
+export const APP_BUILD_DATE = '2026-09-27';
 export const VERSION_HISTORY = [
+  {
+    version: '3.86.0',
+    date: '2026-09-27',
+    description:
+      "NAVY ay phase 2B2 : remise directe au chauffeur et retour paye d avance d un colis non retire.",
+    changes: [
+      "Envoyer : nouveau depart Je remets le colis au chauffeur (Orange Money uniquement) ; lieu de remise pose sur la carte, repere, telephone ; pas de tarif de depot, part NAVY repartie sur les deux autres lignes ; distance par la route calculee par le serveur.",
+      "Remise : photo du contenu ouvert (privee, visible du client, du chauffeur de la course et de l operatrice, supprimee 30 jours apres la fin du colis sauf litige) ; le client voit nom, photo du vehicule et plaque du chauffeur et peut l appeler ; double confirmation client puis chauffeur (ou QR du chauffeur scanne).",
+      "Chauffeur : lieu de remise, appel du client, photo du contenu, droit de refus motive ; le client choisit alors un autre chauffeur ou l annulation en avoir.",
+      "Retour : cree tout seul a Retour a organiser, prix d un colis en sens inverse aux tarifs du jour, fige, paye d avance (avoir puis Orange Money), aucune offre avant paiement, rappel 24 h et alerte operatrice 3 jours, nouveau code de retrait pour l expediteur.",
+      "Reglages : majoration de la distance estimee (30 % par defaut, 0 a 150 %). Telephone : liste des epiceries remplacee a chaque reponse du serveur, gestes des colis termines retires d office.",
+      "Securite : suppression d un compte par l administrateur verifiee sur le compte de connexion et interdite aux visiteurs non connectes."
+    ]
+  },
   {
     version: '3.85.1',
     date: '2026-09-26',

@@ -126,7 +126,7 @@ export function getSettings(): Promise<NavySettings | null> {
 
 export function updateSettings(patch: Partial<NavySettings>): Promise<NavySettings> {
   const clean: Record<string, number | string | null> = {};
-  for (const k of ['suggested_min_fare', 'suggested_fare_per_5km', 'suggested_depot_fee', 'suggested_pickup_fee', 'cyberkely_share', 'orange_money_number', 'corridor_width_m'] as const) {
+  for (const k of ['suggested_min_fare', 'suggested_fare_per_5km', 'suggested_depot_fee', 'suggested_pickup_fee', 'cyberkely_share', 'orange_money_number', 'corridor_width_m', 'estimate_margin_pct'] as const) {
     if (k in patch) clean[k] = (patch as any)[k];
   }
   return run<NavySettings>(db.from('navy_settings').update(clean).eq('id', true).select('*').single(), 'navy-op-settings-save');

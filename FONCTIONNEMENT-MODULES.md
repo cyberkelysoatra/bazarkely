@@ -794,6 +794,52 @@ tout, le paiement est acquis immédiatement. Jamais remboursé en espèces, jama
 Visible par le client dans « Mes colis » ; aucun partenaire ne le voit ; l'épicier n'encaisse que
 le reste à payer.
 
+### 🤝 Phase 2B2 — remise directe au chauffeur, retour payé d'avance (v3.86.0)
+
+**Remise directe** (« Je remets le colis au chauffeur », à l'étape Départ, **Orange Money
+uniquement**) : pas d'épicier de départ, donc pas de tarif de dépôt ; la part CyberKELY se répartit
+sur les deux lignes restantes (transport, épicier d'arrivée). Le client **pose le lieu de remise
+sur la carte** (une lecture GPS ponctuelle propose le point, l'épingle se déplace au doigt), ajoute
+un repère (120 caractères) et le téléphone que le chauffeur appellera. Distance lieu → épicier
+d'arrivée : **une** demande OpenRouteService par la fonction serveur `navy-routes` (action
+`handover`, appelée par la base seulement), repli vol d'oiseau + majoration. Aucune offre avant la
+validation du paiement par l'opératrice ; le colis passe alors à « Chauffeur à trouver » et les
+offres partent comme en 2B1 (zone ou couloir de l'épicier d'arrivée). Après acceptation : le
+client voit nom, **photo du véhicule**, véhicule et **plaque** du chauffeur + « Appeler » ; le
+chauffeur voit le lieu (lien carte), le repère et « Appeler le client ». **Preuve sans épicier** :
+(1) **photo du contenu ouvert** prise dans l'appli (stockage privé `navy-documents`, chemin
+`{client}/parcels/{colis}/contenu.jpg`, lisible par le client, le chauffeur de la course et
+l'opératrice seulement ; **verrouillée après la remise** ; supprimée **30 jours après la fin du
+colis** sauf litige ouvert par l'opératrice) ; (2) **droit de refus motivé** du chauffeur → le
+client choisit « chercher un autre chauffeur » (le chauffeur qui a refusé ne reçoit plus ce colis)
+ou « annuler » (avoir) ; (3) **double confirmation** : le client confirme « remis au chauffeur »
+(ou scanne le QR du chauffeur), puis le chauffeur « j'ai le colis ». La suite est celle de 2A.
+Hors ligne : commande et photo gardées puis envoyées avec le même identifiant ; confirmations,
+refus et paiement exigent le réseau.
+
+**Retour d'un colis non retiré** : « Retour à organiser » (après 7 jours) crée **tout seul un colis
+retour** lié à l'original : expéditeur = destinataire, départ = épicier d'arrivée d'origine,
+arrivée = épicier de départ d'origine (remise directe : l'expéditeur choisit l'épicerie de retour,
+la plus proche du lieu de remise proposée par défaut). **Prix** = celui d'un colis en sens inverse
+aux **tarifs actuels**, arrondi aux 100 Ar, **figé** à la création (ou au choix de l'épicerie).
+**Payé d'avance** : avoir d'abord, puis Orange Money validé par l'opératrice ; notification avec un
+lien vers le paiement (sans montant) ; tant que ce n'est pas payé, aucune offre ne part et le colis
+reste chez l'épicier ; rappel au client après 24 h, alerte opératrice après 3 jours. Une fois payé :
+dépôt confirmé d'office, circuit 2A, nouveau code de retrait donné à l'expéditeur. Quand le retour
+quitte l'épicerie, le colis d'origine passe à « Renvoyé à l'expéditeur ». Si le destinataire vient
+finalement retirer l'original avant le départ du retour, le retour est annulé (avoir). Écran
+opératrice : filtre « Retours », état de paiement, lien vers le colis d'origine.
+
+**Réglage « Majoration de la distance estimée »** (Réglages, aide ⓘ) : pourcentage ajouté au vol
+d'oiseau quand la distance par la route manque (30 % par défaut, 0 à 150 %), lu par le devis
+serveur et par l'estimation du téléphone ; un colis déjà commandé garde sa distance et son prix.
+
+**Téléphone** : la copie locale des épiceries est remplacée à chaque réponse du serveur (une
+épicerie supprimée ou fermée n'est plus proposée) ; les gestes gardés sur le téléphone pour un colis
+terminé ou annulé sont retirés d'office (trace dans la console). **Sécurité** :
+`delete_user_admin` n'est plus exécutable par `anon` et vérifie l'administrateur sur `auth.users`
+(comme `navy_is_admin()`).
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

@@ -223,6 +223,19 @@ function DepotCard({ p, userId, lines, cash, queued }: { p: NavyParcelLocal; use
     if (isCash && !collected) return setMsg({ tone: 'error', text: 'Confirmez que les espèces sont encaissées.' });
     void act({ kind: 'deposit', parcelId: p.id, cash: isCash }, 'Colis déposé. NAVY ay cherche un chauffeur.');
   };
+  // Phase 2B2: a return parcel is already here (not collected): nothing to drop, the
+  // drop is confirmed on its own once the sender has paid the return.
+  if (p.return_of) {
+    return (
+      <NavyCard className="p-4 space-y-3">
+        <CardHead p={p} />
+        <Earnings lines={lines} />
+        <NavyNotice icon={Clock}>
+          Colis non retiré, renvoyé à {p.sender_name ?? 'l’expéditeur'}. Écrivez ce nouveau code sur le colis et gardez-le : le retour attend le paiement de l’expéditeur.
+        </NavyNotice>
+      </NavyCard>
+    );
+  }
   return (
     <NavyCard className="p-4 space-y-3">
       <CardHead p={p} />

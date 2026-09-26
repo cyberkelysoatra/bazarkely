@@ -1,4 +1,4 @@
-// Edge Function `navy-routes` - NAVY ay phase 2B1: road distances and driver routes.
+// Edge Function `navy-routes` - NAVY ay phases 2B1-2B2: road distances and driver routes.
 //
 // Caller: ONLY the database (public.navy_call_routes() through pg_net), header
 // `x-navy-internal` = shared secret kept in Supabase Vault (navy_routes_secret, read
@@ -11,11 +11,15 @@
 // POST { action: 'route', partner_id }
 //   One Directions request from the driver's single GPS reading to his destination,
 //   stored (simplified) through navy_store_route(), used for the corridor.
+// POST { action: 'handover', id }   (phase 2B2)
+//   One Directions request from a direct hand-over place (chosen by a client) to the
+//   arrival grocer, stored through navy_store_handover_distance(); the price of a direct
+//   hand-over uses it (else straight line + the margin of the settings).
 //
 // The OpenRouteService key lives ONLY in the function secret ORS_API_KEY. It is never
 // written in the database, a log, a response or the repository.
 // Every error (no key, quota reached, service down) is journalled (navy_ors_log) and
-// leaves the database on its fallback: straight line + 30 %, zone criterion only.
+// leaves the database on its fallback: straight line + margin (30 % by default), zone only.
 // Nothing is ever billed: the free plan simply refuses beyond its quota.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
@@ -186,6 +190,42 @@ async function route(partnerId: string): Promise<Response> {
   return reply({ ok: true, points: coords.length })
 }
 
+async function handover(id: string): Promise<Response> {
+  if (!UUID_RE.test(id)) return reply({ error: 'id' }, 400)
+  const { data: work, error } = await db.rpc('navy_handover_work', { p_id: id })
+  if (error) return reply({ error: 'work: ' + error.message }, 500)
+  if (!work) return reply({ skipped: true })
+  const w = work as { lat: number; lng: number; to_lat: number; to_lng: number }
+  const store = (ok: boolean, km: number | null, duration: number | null) =>
+    db.rpc('navy_store_handover_distance', { p_id: id, p_km: km, p_duration_s: duration, p_ok: ok })
+
+  let status = 0
+  let json: any = null
+  try {
+    ;({ status, json } = await ors('/directions/driving-car/geojson', {
+      coordinates: [
+        [w.lng, w.lat],
+        [w.to_lng, w.to_lat],
+      ],
+      // the place may be a little away from a road (a yard, a house)
+      radiuses: [1000, 1000],
+    }))
+  } catch (e) {
+    json = { error: (e as Error).message }
+  }
+  const summary = json?.features?.[0]?.properties?.summary
+  const ok = status === 200 && typeof summary?.distance === 'number'
+  if (status !== 0) await log('directions', ok, status || null, ok ? 'handover' : errorText(status, json))
+  if (!ok) {
+    await store(false, null, null)
+    return reply({ error: errorText(status, json) }, 200)
+  }
+  const km = Math.round((summary.distance / 1000) * 10) / 10
+  const { error: errStore } = await store(true, km, Math.round(summary.duration ?? 0))
+  if (errStore) return reply({ error: 'store: ' + errStore.message }, 500)
+  return reply({ ok: true, km })
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return reply({ error: 'method not allowed' }, 405)
 
@@ -203,6 +243,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (body?.action === 'matrix') return await matrix()
     if (body?.action === 'route') return await route(String(body?.partner_id ?? ''))
+    if (body?.action === 'handover') return await handover(String(body?.id ?? ''))
     return reply({ error: 'unknown action' }, 400)
   } catch (e) {
     console.error('[navy-routes]', (e as Error).message)

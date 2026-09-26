@@ -3,6 +3,7 @@ import { computeFare } from './partnerRules';
 import {
   creditSplit,
   estimatedKm,
+  estimateMarginPct,
   formatKm,
   milestones,
   minProposedTotal,
@@ -12,7 +13,10 @@ import {
   priceBreakdown,
   proposedDriverGain,
   proposedTotalProblem,
+  parcelPhotoPath,
+  round5,
   secondsLeft,
+  statusLabel,
 } from './parcelRules';
 import type { NavyGrocerDistance, NavyParcelRow } from '../types/parcel';
 
@@ -158,5 +162,55 @@ describe('formatKm', () => {
     expect(formatKm(10.1)).toMatch(/^10,1\s?km$/);
     expect(formatKm('8.0')).toMatch(/^8\s?km$/);
     expect(formatKm(null)).toBe('— km');
+  });
+});
+
+describe('phase 2B2: estimate margin (settings)', () => {
+  it('uses the margin of the settings, 30 % by default, bounded 0-150', () => {
+    const d30 = estimatedKm(-13.4, 48.2667, -13.3956, 48.1606);
+    expect(d30).toBe(14.9); // same as public.navy_estimated_km with 30 %
+    expect(estimatedKm(-13.4, 48.2667, -13.3956, 48.1606, 50)).toBe(17.2);
+    expect(estimatedKm(-13.4, 48.2667, -13.3956, 48.1606, 0)).toBe(11.5);
+    expect(estimateMarginPct(null)).toBe(30);
+    expect(estimateMarginPct({ estimate_margin_pct: 200 })).toBe(150);
+    expect(estimateMarginPct({ estimate_margin_pct: -5 })).toBe(0);
+  });
+  it('pairKm falls back on the estimate with the given margin', () => {
+    const a = { id: 'a', lat: -13.4, lng: 48.2667 };
+    const b = { id: 'b', lat: -13.3956, lng: 48.1606 };
+    expect(pairKm([], a, b, 50)).toEqual({ km: 17.2, source: 'estimation' });
+  });
+});
+
+describe('phase 2B2: direct hand-over', () => {
+  it('no depot fee: the CyberKELY share goes to the two remaining lines', () => {
+    const b = priceBreakdown(0, 3000, 100, 300);
+    expect(b.lines[0]).toEqual({ kind: 'depot', base: 0, navyShare: 0, shown: 0 });
+    expect(b.lines[1].shown + b.lines[2].shown).toBe(b.total);
+    expect(b.total).toBe(3400);
+  });
+  it('labels a paid direct hand-over waiting for a driver', () => {
+    expect(statusLabel({ status: 'depose', departure_mode: 'remise', search_state: 'recherche' })).toBe('Chauffeur à trouver');
+    expect(statusLabel({ status: 'depose', departure_mode: 'remise', search_state: 'choix_apres_refus' })).toBe('Chauffeur a refusé');
+    expect(statusLabel({ status: 'depose', departure_mode: 'epicier', search_state: null })).toBe('Déposé');
+    expect(statusLabel({ status: 'retourne', search_state: null })).toBe('Renvoyé à l’expéditeur');
+  });
+  it('photo path and hand-over rounding match the server', () => {
+    expect(parcelPhotoPath('u1', 'p1')).toBe('u1/parcels/p1/contenu.jpg');
+    expect(round5(-13.412345678)).toBe(-13.41235);
+  });
+});
+
+describe('phase 2B2: operator alerts of a return', () => {
+  const base = { status: 'commande', payment_status: 'attente_reference', return_of: 'orig' } as unknown as NavyParcelRow;
+  it('unpaid return, then 3 days alert', () => {
+    expect(parcelAlerts(base)).toContain('Retour en attente de paiement');
+    expect(parcelAlerts({ ...base, return_alert_at: '2026-01-01T00:00:00Z' })).toContain('Retour non payé depuis 3 jours');
+    expect(parcelAlerts({ ...base, payment_status: 'paye' })).not.toContain('Retour en attente de paiement');
+  });
+  it('the original no longer alerts once its return exists', () => {
+    const orig = { status: 'arrive', return_status: 'a_organiser', return_parcel_id: 'ret', payment_status: 'paye' } as unknown as NavyParcelRow;
+    expect(parcelAlerts(orig)).toEqual([]);
+    expect(parcelAlerts({ ...orig, return_parcel_id: null })).toContain('Retour à organiser');
   });
 });

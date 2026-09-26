@@ -36,6 +36,7 @@ const FIELDS: { key: keyof NavySettings; label: string; required: boolean }[] = 
 ];
 
 const DEFAULT_CORRIDOR_M = 500;
+const DEFAULT_MARGIN_PCT = 30;
 
 export default function OperatorSettingsPage() {
   const isOnline = useOnlineStatus();
@@ -52,6 +53,7 @@ export default function OperatorSettingsPage() {
   const [purging, setPurging] = useState(false);
   const [purgeMsg, setPurgeMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [corridor, setCorridor] = useState('');
+  const [margin, setMargin] = useState('');
   const [dist, setDist] = useState<NavyDistanceStatus | null>(null);
   const [distBusy, setDistBusy] = useState(false);
   const [distMsg, setDistMsg] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
@@ -65,6 +67,7 @@ export default function OperatorSettingsPage() {
       setValues(v);
       setOmNumber(s?.orange_money_number ?? '');
       setCorridor(String(s?.corridor_width_m ?? DEFAULT_CORRIDOR_M));
+      setMargin(String(s?.estimate_margin_pct ?? DEFAULT_MARGIN_PCT));
       setOperators(ops);
       setDist(await distanceStatus());
       setDueCount((await listDueDocuments()).length);
@@ -151,6 +154,11 @@ export default function OperatorSettingsPage() {
       setError('Largeur du couloir : entre 50 et 5 000 mètres.');
       return;
     }
+    const marginPct = Number(margin.replace(/[\s%]/g, ''));
+    if (!Number.isFinite(marginPct) || marginPct < 0 || marginPct > 150 || !Number.isInteger(marginPct)) {
+      setError('Majoration de la distance estimée : un nombre entier entre 0 et 150 %.');
+      return;
+    }
     const om = omNumber.trim();
     if (om && !/^(\+261|0)\d{9}$/.test(om.replace(/[\s.-]/g, ''))) {
       setError('Numéro Orange Money incomplet (10 chiffres, ex. 032 12 345 67).');
@@ -160,7 +168,7 @@ export default function OperatorSettingsPage() {
     setError(null);
     setSavedMsg(null);
     try {
-      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null, corridor_width_m: Math.round(width) });
+      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null, corridor_width_m: Math.round(width), estimate_margin_pct: marginPct });
       await navyDb.kv.put({ key: 'settings', value: saved });
       setNavyProfile({ settings: saved });
       setSavedMsg('Réglages enregistrés.');
@@ -275,6 +283,27 @@ export default function OperatorSettingsPage() {
                 Un chauffeur reçoit aussi un colis si son trajet passe à moins de cette distance de l’épicerie d’arrivée. Conseillé : 500 m.
               </span>
             </label>
+            <label className={labelCls}>
+              Majoration de la distance estimée
+              <div className="relative">
+                <input
+                  className={`${inputCls} pr-10`}
+                  inputMode="numeric"
+                  value={margin}
+                  onChange={(e) => setMargin(e.target.value)}
+                  aria-describedby="navy-margin-help"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-sm text-navyay-charcoal/70" aria-hidden="true">%</span>
+              </div>
+              <span id="navy-margin-help" className="mt-1 block text-xs text-navyay-charcoal/70">
+                Ajoutée à la distance à vol d’oiseau quand la distance par la route manque. Conseillé : 30 %. Entre 0 et 150 %.
+              </span>
+            </label>
+            <NavyHelp title="À quoi sert la majoration ?">
+              <p>Quand NAVY ay ne connaît pas encore la distance par la route (service indisponible, nouvelle épicerie, lieu de remise), il prend la distance à vol d’oiseau et ajoute ce pourcentage, parce que la route fait toujours des détours.</p>
+              <p>Exemple : 6 km à vol d’oiseau + 30 % = 7,8 km. Le prix du transport est calculé sur cette distance.</p>
+              <p>Un changement vaut pour les prochaines commandes seulement : un colis déjà commandé garde son prix.</p>
+            </NavyHelp>
             {savedMsg && <NavyNotice tone="ok">{savedMsg}</NavyNotice>}
             <button type="submit" disabled={saving} className={`${btnPrimary} w-full`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
@@ -370,8 +399,9 @@ export default function OperatorSettingsPage() {
           </button>
           {purgeMsg && <NavyNotice tone={purgeMsg.tone}>{purgeMsg.text}</NavyNotice>}
           <p className="text-xs text-navyay-charcoal/70">
-            Règle actuelle : refus définitif et photos remplacées = suppression immédiate ; fin de partenariat = 12 mois après la fin.
-            Durées à confirmer par un avocat.
+            Règle actuelle : refus définitif et photos remplacées = suppression immédiate ; fin de partenariat = 12 mois après la fin ;
+            photo du contenu d’une remise directe = 30 jours après la fin du colis, sauf litige ouvert. Durées à confirmer par un avocat.
+            Les pièces arrivées à échéance sont aussi supprimées toutes seules à l’ouverture de l’application par une opératrice.
           </p>
         </NavyCard>
       )}

@@ -143,6 +143,8 @@ export interface NavySettings {
   orange_money_number?: string | null;
   /** Phase 2B1: corridor width around a driver's route (meters). */
   corridor_width_m?: number;
+  /** Phase 2B2: % added to the straight-line distance when the road distance is missing (0–150, 30 by default). */
+  estimate_margin_pct?: number;
   updated_at?: string;
 }
 

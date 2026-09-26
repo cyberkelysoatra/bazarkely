@@ -7,13 +7,17 @@
  * recipient ONLY.
  */
 
-export type ParcelStatus = 'commande' | 'depose' | 'chauffeur_trouve' | 'pris_en_charge' | 'arrive' | 'retire' | 'annule';
+/** 'retourne' (phase 2B2): not collected, sent back to the sender (its return parcel left the grocer). */
+export type ParcelStatus = 'commande' | 'depose' | 'chauffeur_trouve' | 'pris_en_charge' | 'arrive' | 'retire' | 'annule' | 'retourne';
 export type PaymentMethod = 'especes' | 'orange_money';
 export type PaymentStatus = 'a_payer_depot' | 'attente_reference' | 'a_verifier' | 'refuse' | 'paye';
 /** 'prix' (phase 2B1): "Je propose mon prix", offer broadcast to every eligible driver. */
 export type DriverMode = 'auto' | 'choix' | 'prix';
 export type ParcelCategory = 'document' | 'vetement' | 'telephone' | 'nourriture' | 'autre';
-export type SearchState = 'recherche' | 'attente_client' | 'trouve' | 'contre_proposition' | 'attente_supplement';
+/** 'choix_apres_refus' (phase 2B2): a driver refused the direct hand-over, the client decides. */
+export type SearchState = 'recherche' | 'attente_client' | 'trouve' | 'contre_proposition' | 'attente_supplement' | 'choix_apres_refus';
+/** Phase 2B2: drop at a grocer, or direct hand-over to the driver (Orange Money only). */
+export type DepartureMode = 'epicier' | 'remise';
 /** Phase 2B1: counter-proposal of the server when the price paid is too low for the drivers. */
 export type CounterState = 'propose' | 'choisi' | 'refuse';
 export type DistanceSource = 'route' | 'estimation';
@@ -91,6 +95,28 @@ export interface NavyParcelRow {
   precheck_at?: string | null;
   /** Supplement after a chosen counter-proposal (same states as the first payment). */
   supplement_status?: PaymentStatus | null;
+  // phase 2B2 — direct hand-over (the depot_* fields hold the hand-over place, no depot grocer)
+  departure_mode?: DepartureMode;
+  handover_note?: string | null;
+  /** The client confirmed "remis au chauffeur" (first half of the double confirmation). */
+  client_handover_at?: string | null;
+  /** Photo of the opened content (private bucket navy-documents). */
+  photo_path?: string | null;
+  photo_at?: string | null;
+  photo_dispute_at?: string | null;
+  photo_purged_at?: string | null;
+  refused_driver_ids?: string[];
+  refusal_reason?: string | null;
+  // phase 2B2 — return of a parcel not collected
+  /** On a return parcel: the original parcel. */
+  return_of?: string | null;
+  /** On an original parcel: its return parcel. */
+  return_parcel_id?: string | null;
+  /** Return grocer confirmed (the price is frozen then). */
+  return_confirmed_at?: string | null;
+  returned_at?: string | null;
+  return_reminder_at?: string | null;
+  return_alert_at?: string | null;
 }
 
 export interface NavyParcelPrices {
@@ -228,6 +254,36 @@ export interface NavyQuote {
   min_total?: number;
   /** Phase 2B1: NAVY credit of the signed-in account (deducted automatically). */
   credit_balance?: number;
+  /** Phase 2B2 (direct hand-over): the road distance is being computed by the server. */
+  distance_pending?: boolean;
+  estimate_margin_pct?: number;
+}
+
+/** Phase 2B2: price of a return for a return grocer (navy_return_quote). */
+export interface NavyReturnQuote {
+  distance_km: number;
+  distance_source: DistanceSource;
+  transport_ceiling: number;
+  depot_fee: number;
+  pickup_fee: number;
+  share: number;
+  breakdown: NavyQuote['breakdown'];
+  depot_name: string;
+  arrival_name: string;
+  arrival_id: string;
+  arrival_zone_id: string | null;
+  orange_money_number: string | null;
+  credit_balance: number;
+  confirmed: boolean;
+}
+
+/** Phase 2B2: who is coming (navy_parcel_driver_card, sender of a direct hand-over). */
+export interface NavyDriverCard {
+  name: string | null;
+  vehicle_type: string | null;
+  plate: string | null;
+  phone: string | null;
+  vehicle_photo_path: string | null;
 }
 
 /** Phase 2B1: road distance between two grocers (public.navy_grocer_distances). */
@@ -263,7 +319,7 @@ export interface NavyCreditSummary {
 
 /** Order form (kept on the phone as the payload of a queued order). */
 export interface ParcelOrderInput {
-  depotId: string;
+  depotId: string | null;
   arrivalId: string;
   recipientName: string;
   recipientPhone: string;
@@ -274,6 +330,13 @@ export interface ParcelOrderInput {
   paymentMethod: PaymentMethod;
   /** "Je propose mon prix": total proposed by the client (multiple of 100 Ar). */
   proposedTotal?: number | null;
+  /** Phase 2B2: direct hand-over to the driver (depotId is then null). */
+  departureMode?: DepartureMode;
+  handoverLat?: number | null;
+  handoverLng?: number | null;
+  handoverNote?: string | null;
+  /** Phone the driver calls at the hand-over. */
+  senderPhone?: string | null;
 }
 
 /** Gesture kept on the phone until the server has it (same ids on every attempt). */
@@ -283,7 +346,9 @@ export type ParcelQueuedOp =
   | { kind: 'deposit'; parcelId: string; cash: boolean }
   | { kind: 'handover_grocer'; parcelId: string; driverPartnerId: string }
   | { kind: 'handover_driver'; parcelId: string }
-  | { kind: 'receive'; parcelId: string; code: string };
+  | { kind: 'receive'; parcelId: string; code: string }
+  /** Phase 2B2: photo of the content (compressed JPEG kept on the phone until sent). */
+  | { kind: 'photo'; parcelId: string; blob: Blob };
 
 export interface ParcelQueueEntry {
   /** Unique key of the gesture: `${kind}:${parcelId}`. */

@@ -21,11 +21,12 @@ import {
   ScanLine,
   Store,
   Truck,
+  Undo2,
   X,
 } from 'lucide-react';
 import notificationService from '../../../../services/notificationService';
 import type { NavyParcelEvent, NavyParcelRow, ParcelStatus } from '../../types/parcel';
-import { eventLabel, milestones, STATUS_LABELS } from '../../utils/parcelRules';
+import { eventLabel, milestones, statusLabel } from '../../utils/parcelRules';
 import { btnAccent, btnSecondary, NavyCard } from '../ui/NavyUi';
 
 const STATUS_CLS: Record<ParcelStatus, string> = {
@@ -36,6 +37,7 @@ const STATUS_CLS: Record<ParcelStatus, string> = {
   arrive: 'bg-emerald-100 text-emerald-900',
   retire: 'bg-emerald-100 text-emerald-900',
   annule: 'bg-red-100 text-red-900',
+  retourne: 'bg-navyay-charcoal/10 text-navyay-charcoal',
 };
 
 const STATUS_ICON: Record<ParcelStatus, typeof Package> = {
@@ -46,14 +48,22 @@ const STATUS_ICON: Record<ParcelStatus, typeof Package> = {
   arrive: MapPin,
   retire: PackageCheck,
   annule: Ban,
+  retourne: Undo2,
 };
 
-export function ParcelStatusBadge({ status }: { status: ParcelStatus }) {
-  const Icon = STATUS_ICON[status];
+/** Status badge. `parcel` (phase 2B2) refines the label: direct hand-over "Chauffeur à trouver". */
+export function ParcelStatusBadge({
+  status,
+  parcel,
+}: {
+  status: ParcelStatus;
+  parcel?: Pick<NavyParcelRow, 'departure_mode' | 'search_state'>;
+}) {
+  const Icon = parcel?.departure_mode === 'remise' && status === 'depose' ? Clock : STATUS_ICON[status];
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${STATUS_CLS[status]}`}>
       <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-      {STATUS_LABELS[status]}
+      {statusLabel({ status, departure_mode: parcel?.departure_mode, search_state: parcel?.search_state ?? null })}
     </span>
   );
 }
@@ -83,7 +93,7 @@ export function formatTime(iso: string | null | undefined): string {
 
 /** Accepté / En route / Livré. */
 export function ParcelMilestones({ parcel }: { parcel: NavyParcelRow }) {
-  if (parcel.status === 'annule') return null;
+  if (parcel.status === 'annule' || parcel.status === 'retourne') return null;
   const steps = milestones(parcel);
   return (
     <ol className="grid grid-cols-3 gap-2" aria-label="Étapes du colis">
@@ -184,7 +194,19 @@ export function NavyNotifyPrompt({ why }: { why: string }) {
 }
 
 /** Camera QR scanner (NAVY charter). Calls onResult once, then stops. */
-export function NavyQrScanner({ onResult, onClose, hint }: { onResult: (text: string) => void; onClose: () => void; hint: string }) {
+export function NavyQrScanner({
+  onResult,
+  onClose,
+  hint,
+  title = 'Scanner le QR du chauffeur',
+  fallback = 'Choisissez le chauffeur dans la liste.',
+}: {
+  onResult: (text: string) => void;
+  onClose: () => void;
+  hint: string;
+  title?: string;
+  fallback?: string;
+}) {
   const elementId = 'navy-qr-reader';
   const handledRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,8 +241,8 @@ export function NavyQrScanner({ onResult, onClose, hint }: { onResult: (text: st
         if (!cancelled) {
           setError(
             String(e).includes('NotAllowedError')
-              ? 'Accès à la caméra refusé. Choisissez le chauffeur dans la liste.'
-              : 'Caméra indisponible. Choisissez le chauffeur dans la liste.'
+              ? `Accès à la caméra refusé. ${fallback}`
+              : `Caméra indisponible. ${fallback}`
           );
         }
       });
@@ -237,7 +259,7 @@ export function NavyQrScanner({ onResult, onClose, hint }: { onResult: (text: st
         <div className="flex items-center justify-between px-4 py-3 border-b border-navyay-charcoal/10">
           <h3 className="inline-flex items-center gap-2 font-semibold">
             <ScanLine className="w-5 h-5" aria-hidden="true" />
-            Scanner le QR du chauffeur
+            {title}
           </h3>
           <button type="button" onClick={onClose} className="p-2 -mr-2 rounded-lg hover:bg-navyay-yellow/20" aria-label="Fermer">
             <X className="w-5 h-5" aria-hidden="true" />

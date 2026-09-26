@@ -19,20 +19,35 @@ import type {
 export const MAX_DECLARED_VALUE = 50000;
 /** Offer deadline for a driver. */
 export const OFFER_SECONDS = 30;
-/** Correction applied to the straight-line distance (phase 2A estimate). */
-export const DISTANCE_FACTOR = 1.3;
+/**
+ * Phase 2B2: default % added to the straight-line distance when the road distance is
+ * missing (navy_settings.estimate_margin_pct, adjustable by operators, 0–150).
+ */
+export const DEFAULT_ESTIMATE_MARGIN_PCT = 30;
+/** Correction applied to the straight-line distance by default (phase 2A estimate). */
+export const DISTANCE_FACTOR = 1 + DEFAULT_ESTIMATE_MARGIN_PCT / 100;
+
+/** Margin of the settings, bounded 0–150 (default 30 %). */
+export function estimateMarginPct(settings: { estimate_margin_pct?: number | null } | null | undefined): number {
+  const n = Number(settings?.estimate_margin_pct);
+  return Number.isFinite(n) ? Math.min(150, Math.max(0, Math.round(n))) : DEFAULT_ESTIMATE_MARGIN_PCT;
+}
 
 /**
- * Estimated distance between two shops: great-circle distance + 30 %, rounded to
- * 0.1 km. SINGLE place to replace by a road distance (phase 2B). Mirrors
- * public.navy_estimated_km().
+ * Estimated distance between two points: great-circle distance + the margin of the
+ * settings (30 % by default), rounded to 0.1 km. Mirrors public.navy_estimated_km().
  */
-export function estimatedKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+export function estimatedKm(lat1: number, lng1: number, lat2: number, lng2: number, marginPct = DEFAULT_ESTIMATE_MARGIN_PCT): number {
   const rad = (d: number) => (d * Math.PI) / 180;
   const a =
     Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
-  const km = 2 * 6371 * Math.asin(Math.sqrt(a)) * DISTANCE_FACTOR;
+  const km = 2 * 6371 * Math.asin(Math.sqrt(a)) * (1 + marginPct / 100);
   return Math.round(km * 10) / 10;
+}
+
+/** Hand-over point rounded to 5 decimals (~1 m), as the server keys its distances. */
+export function round5(n: number): number {
+  return Math.round(n * 1e5) / 1e5;
 }
 
 /**
@@ -44,7 +59,8 @@ export function estimatedKm(lat1: number, lng1: number, lat2: number, lng2: numb
 export function pairKm(
   distances: NavyGrocerDistance[] | null | undefined,
   from: { id: string; lat: number; lng: number },
-  to: { id: string; lat: number; lng: number }
+  to: { id: string; lat: number; lng: number },
+  marginPct = DEFAULT_ESTIMATE_MARGIN_PCT
 ): { km: number; source: DistanceSource } {
   const row = (distances ?? []).find(
     (d) =>
@@ -57,7 +73,7 @@ export function pairKm(
       d.to_lng === to.lng
   );
   if (row) return { km: Number(row.km), source: 'route' };
-  return { km: estimatedKm(from.lat, from.lng, to.lat, to.lng), source: 'estimation' };
+  return { km: estimatedKm(from.lat, from.lng, to.lat, to.lng, marginPct), source: 'estimation' };
 }
 
 /** Distance in French: decimal comma, at most one decimal (10,1 km ; 8 km). */
@@ -171,7 +187,29 @@ export const STATUS_LABELS: Record<ParcelStatus, string> = {
   arrive: 'Arrivé, à retirer',
   retire: 'Livré',
   annule: 'Annulé',
+  retourne: 'Renvoyé à l’expéditeur',
 };
+
+/**
+ * Status label of a parcel. Direct hand-over (2B2): "depose" means "paid, waiting for a
+ * driver" (the client still has the parcel).
+ */
+export function statusLabel(p: Pick<NavyParcelRow, 'status' | 'departure_mode' | 'search_state'>): string {
+  if (p.departure_mode === 'remise' && p.status === 'depose') {
+    return p.search_state === 'choix_apres_refus' ? 'Chauffeur a refusé' : 'Chauffeur à trouver';
+  }
+  return STATUS_LABELS[p.status];
+}
+
+/** Phase 2B2: this parcel is the return of another one. */
+export function isReturnParcel(p: Pick<NavyParcelRow, 'return_of'>): boolean {
+  return !!p.return_of;
+}
+
+/** Phase 2B2: path of the content photo in the private bucket (fixed: a retake replaces it). */
+export function parcelPhotoPath(userId: string, parcelId: string): string {
+  return `${userId}/parcels/${parcelId}/contenu.jpg`;
+}
 
 /** Phase 2B1: supplement after a chosen counter-proposal. */
 export const SUPPLEMENT_LABELS: Record<PaymentStatus, string> = {
@@ -242,6 +280,21 @@ export const EVENT_LABELS: Record<string, string> = {
   reference_orange_money_supplement: 'Référence Orange Money du supplément envoyée',
   supplement_valide: 'Supplément confirmé',
   supplement_refuse: 'Supplément non reconnu',
+  // phase 2B2
+  pret_pour_remise: 'Paiement acquis : recherche d’un chauffeur pour la remise',
+  photo_contenu: 'Photo du contenu enregistrée',
+  remis_par_le_client: 'Remis au chauffeur par le client',
+  remise_refusee: 'Remise refusée par le chauffeur',
+  nouvelle_recherche_apres_refus: 'Nouvelle recherche de chauffeur demandée',
+  litige_ouvert: 'Litige ouvert : la photo est conservée',
+  litige_clos: 'Litige clos',
+  retour_cree: 'Colis retour créé',
+  retour_impossible: 'Retour impossible pour l’instant (aucune épicerie)',
+  retour_prix_fige: 'Prix du retour fixé',
+  retour_epicerie_choisie: 'Épicerie de retour choisie',
+  rappel_retour_24h: 'Rappel : retour à payer',
+  alerte_retour_non_paye_3j: 'Retour non payé depuis 3 jours : opératrice prévenue',
+  retour_parti: 'Renvoyé à l’expéditeur',
 };
 
 export function eventLabel(event: string): string {
@@ -285,8 +338,14 @@ export function parcelAlerts(p: NavyParcelRow, now = Date.now()): string[] {
   if (p.supplement_status === 'a_verifier' && p.status !== 'annule') out.push('Supplément à vérifier');
   if (p.payment_status === 'a_verifier' && p.status !== 'annule') out.push('Paiement à vérifier');
   if (p.withdraw_blocked_at && p.status === 'arrive') out.push('Code de retrait bloqué');
-  if (p.status === 'arrive' && p.return_status === 'a_organiser') out.push('Retour à organiser');
-  else if (p.status === 'arrive' && (p.overdue_7d_at || (p.arrived_at && now - new Date(p.arrived_at).getTime() > 7 * 864e5)))
+  if (p.status === 'depose' && p.search_state === 'choix_apres_refus') out.push('Remise refusée : le client doit choisir');
+  if (p.return_of && p.status === 'commande' && p.payment_status !== 'paye') {
+    out.push(p.return_alert_at ? 'Retour non payé depuis 3 jours' : 'Retour en attente de paiement');
+  }
+  // Once the return parcel exists, the alert is carried by the return (payment state).
+  if (p.status === 'arrive' && p.return_status === 'a_organiser') {
+    if (!p.return_parcel_id) out.push('Retour à organiser');
+  } else if (p.status === 'arrive' && (p.overdue_7d_at || (p.arrived_at && now - new Date(p.arrived_at).getTime() > 7 * 864e5)))
     out.push('Non retiré depuis 7 jours');
   else if (p.status === 'arrive' && p.alert_3d_at) out.push('Non retiré depuis 3 jours');
   return out;
@@ -306,6 +365,17 @@ export function parcelErrorMessage(err: unknown): string {
   if (/no longer available/i.test(msg)) return 'Ce colis n’est plus disponible.';
   if (/not the expected driver/i.test(msg)) return 'Ce n’est pas le chauffeur attendu pour ce colis.';
   if (/grocer must hand/i.test(msg)) return 'L’épicier doit d’abord confirmer qu’il vous a remis le colis.';
+  if (/client must hand/i.test(msg)) return 'Le client doit d’abord confirmer qu’il vous a remis le colis (ou scanner votre QR).';
+  if (/photo of the content required/i.test(msg)) return 'Prenez d’abord la photo du contenu ouvert.';
+  if (/photo not uploaded|invalid path/i.test(msg)) return 'La photo n’est pas arrivée. Reprenez-la puis réessayez.';
+  if (/needs Orange Money/i.test(msg)) return 'La remise directe au chauffeur se paie uniquement par Orange Money.';
+  if (/sender phone required/i.test(msg)) return 'Indiquez votre téléphone : le chauffeur vous appellera en approchant.';
+  if (/hand-over place required/i.test(msg)) return 'Posez le lieu de remise sur la carte.';
+  if (/landmark too long/i.test(msg)) return 'Repère trop long (120 caractères au plus).';
+  if (/return grocer to confirm/i.test(msg)) return 'Choisissez d’abord l’épicerie où vous reprendrez le colis.';
+  if (/return grocer not available/i.test(msg)) return 'Cette épicerie ne peut pas recevoir le retour. Choisissez-en une autre.';
+  if (/drop confirmed once paid/i.test(msg)) return 'Colis retour : le dépôt se confirme tout seul une fois le retour payé.';
+  if (/not returned again/i.test(msg)) return 'Un colis retour ne peut pas être renvoyé une nouvelle fois.';
   if (/wrong parcel code/i.test(msg)) return 'Ce code colis ne correspond pas.';
   if (/cash must be collected/i.test(msg)) return 'Confirmez que les espèces ont été encaissées.';
   if (/closed in front/i.test(msg)) return 'Cochez « Colis refermé devant moi ».';
@@ -316,6 +386,7 @@ export function parcelErrorMessage(err: unknown): string {
   if (/same grocer/i.test(msg)) return 'Choisissez deux épiceries différentes.';
   if (/declared value/i.test(msg)) return `La valeur déclarée doit être comprise entre 0 et ${MAX_DECLARED_VALUE.toLocaleString('fr-FR')} Ar.`;
   if (/invalid reference/i.test(msg)) return 'Référence incomplète (4 caractères au moins).';
+  if (/refuse_handover: reason required/i.test(msg)) return 'Indiquez le motif du refus.';
   if (/too late/i.test(msg)) return 'Il est trop tard pour annuler ce colis.';
   if (/only after 7 days/i.test(msg)) return 'Possible seulement après 7 jours sans retrait.';
   if (/reason required/i.test(msg)) return 'Indiquez un motif.';

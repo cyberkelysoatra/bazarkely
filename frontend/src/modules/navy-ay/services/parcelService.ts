@@ -21,6 +21,7 @@ import { navyDb, type NavyParcelLocal } from '../db/navyDb';
 import type {
   NavyCounterOption,
   NavyCreditSummary,
+  NavyDriverCard,
   NavyGrocerDistance,
   NavyOpenGrocer,
   NavyParcelEvent,
@@ -31,12 +32,14 @@ import type {
   NavyPriceLine,
   NavyQuote,
   NavyQuoteDriver,
+  NavyReturnQuote,
   ParcelCodes,
   ParcelOrderInput,
   ParcelQueueEntry,
   ParcelQueuedOp,
 } from '../types/parcel';
-import { isNetworkError } from '../utils/parcelRules';
+import { isNetworkError, parcelPhotoPath } from '../utils/parcelRules';
+import { NAVY_BUCKET } from './partnerService';
 
 const db = supabase as any;
 const PAGE = 1000;
@@ -130,6 +133,7 @@ export function refreshParcels(userId: string): Promise<void> {
   refreshInFlight = (async () => {
     set({ refreshing: true });
     try {
+      await pruneFinishedGestures(userId, state.rows);
       await flushParcelQueue(userId);
       const rows: NavyParcelRow[] = [];
       let complete = false;
@@ -173,6 +177,7 @@ export function refreshParcels(userId: string): Promise<void> {
           if (row) await navyDb.parcelCodes.put({ parcelId: row.id, code: row.code, withdrawCode: s.withdraw_code, userId });
         }
       });
+      await pruneFinishedGestures(userId, rows);
       await reloadLocal(userId);
       if (complete) set({ refreshedAt: Date.now() });
     } catch (err) {
@@ -187,6 +192,24 @@ export function refreshParcels(userId: string): Promise<void> {
 
 // ------------------------------------------------------------------ queue (offline gestures)
 
+const FINISHED: NavyParcelRow['status'][] = ['retire', 'annule', 'retourne'];
+
+/**
+ * Phase 2B2: a gesture kept on the phone about a parcel that is finished (delivered,
+ * cancelled, sent back) is removed instead of being replayed: the server would refuse
+ * it, and it would keep an obsolete local copy of the parcel alive.
+ */
+export async function pruneFinishedGestures(userId: string, rows: Pick<NavyParcelRow, 'id' | 'status'>[]): Promise<number> {
+  const finished = new Set(rows.filter((r) => FINISHED.includes(r.status)).map((r) => r.id));
+  if (!finished.size) return 0;
+  const entries = await navyDb.parcelQueue.where('userId').equals(userId).toArray();
+  const stale = entries.filter((e) => finished.has(e.op.parcelId));
+  if (!stale.length) return 0;
+  console.info(`🧹 [navy] ${stale.length} gesture(s) about finished parcels removed from this phone:`, stale.map((e) => e.id).join(', '));
+  await navyDb.parcelQueue.bulkDelete(stale.map((e) => e.id));
+  return stale.length;
+}
+
 function queueKey(op: ParcelQueuedOp): string {
   return op.kind === 'payment_ref' ? `${op.kind}:${op.paymentId}` : `${op.kind}:${op.parcelId}`;
 }
@@ -198,10 +221,22 @@ async function enqueue(userId: string, op: ParcelQueuedOp): Promise<ParcelQueueE
   return entry;
 }
 
-async function sendOp(op: ParcelQueuedOp): Promise<any> {
+async function sendOp(op: ParcelQueuedOp, userId: string): Promise<any> {
   switch (op.kind) {
+    case 'photo': {
+      // Same path at every attempt (upsert): a replay never makes a second file.
+      const path = parcelPhotoPath(userId, op.parcelId);
+      const { error } = (await withTimeout(
+        db.storage.from(NAVY_BUCKET).upload(path, op.blob, { upsert: true, contentType: 'image/jpeg' }),
+        20000,
+        'navy-parcel-photo-upload'
+      )) as any;
+      if (error) throw error;
+      return run(db.rpc('navy_set_parcel_photo', { p_parcel_id: op.parcelId, p_path: path }), 'navy-parcel-photo');
+    }
     case 'create': {
       const i = op.input;
+      const remise = i.departureMode === 'remise';
       return run(
         db.rpc('navy_create_parcel', {
           p_id: op.parcelId,
@@ -215,6 +250,11 @@ async function sendOp(op: ParcelQueuedOp): Promise<any> {
           p_chosen_driver: i.driverMode === 'choix' ? i.chosenDriverId : null,
           p_payment_method: i.paymentMethod,
           p_proposed_total: i.driverMode === 'prix' ? i.proposedTotal ?? null : null,
+          p_departure_mode: remise ? 'remise' : 'epicier',
+          p_handover_lat: remise ? i.handoverLat ?? null : null,
+          p_handover_lng: remise ? i.handoverLng ?? null : null,
+          p_handover_note: remise ? i.handoverNote ?? null : null,
+          p_sender_phone: remise ? i.senderPhone ?? null : null,
         }),
         'navy-create-parcel',
         12000
@@ -248,7 +288,7 @@ export async function doGesture(userId: string, op: ParcelQueuedOp): Promise<Ges
   const entry = await enqueue(userId, op);
   if (!online()) return { status: 'queued' };
   try {
-    const data = await sendOp(op);
+    const data = await sendOp(op, userId);
     await navyDb.parcelQueue.delete(entry.id);
     await afterSuccess(userId, op, data);
     await reloadLocal(userId);
@@ -276,7 +316,7 @@ export function flushParcelQueue(userId: string): Promise<void> {
       for (const e of entries) {
         if (e.lastError) continue; // refused for good: shown to the person, never replayed blindly
         try {
-          const data = await sendOp(e.op);
+          const data = await sendOp(e.op, userId);
           await navyDb.parcelQueue.delete(e.id);
           await afterSuccess(userId, e.op, data);
         } catch (err) {
@@ -307,11 +347,19 @@ export async function placeOrder(userId: string, input: ParcelOrderInput): Promi
   return { parcelId, result };
 }
 
-/** Open grocers (server), kept on the phone for an order prepared offline. */
+/**
+ * Open grocers (server), kept on the phone for an order prepared offline. Each server
+ * answer REPLACES the phone copy: a grocer removed or closed on the server is no longer
+ * proposed (phase 2B2; the reconciliation is traced in the console).
+ */
 export async function loadOpenGrocers(): Promise<{ list: NavyOpenGrocer[]; fromPhone: boolean }> {
   if (online()) {
     try {
       const list = await run<NavyOpenGrocer[]>(db.rpc('navy_open_grocers'), 'navy-open-grocers');
+      const before = ((await navyDb.kv.get(GROCERS_KEY))?.value as NavyOpenGrocer[] | undefined) ?? [];
+      const kept = new Set(list.map((g) => g.id));
+      const gone = before.filter((g) => !kept.has(g.id));
+      if (gone.length) console.info(`🧹 [navy] ${gone.length} grocer(s) removed or closed on the server, removed from this phone`);
       await navyDb.kv.put({ key: GROCERS_KEY, value: list });
       return { list, fromPhone: false };
     } catch (err) {
@@ -351,6 +399,15 @@ export async function loadGrocerDistances(): Promise<NavyGrocerDistance[]> {
 
 export function getQuote(depotId: string, arrivalId: string): Promise<NavyQuote> {
   return run<NavyQuote>(db.rpc('navy_quote', { p_depot: depotId, p_arrival: arrivalId }), 'navy-quote');
+}
+
+/**
+ * Phase 2B2: quote of a direct hand-over (place chosen on the map → arrival grocer).
+ * The server asks the road distance once (OpenRouteService) and answers at once with
+ * the estimate while it is computed (distance_pending): read again a few seconds later.
+ */
+export function getHandoverQuote(lat: number, lng: number, arrivalId: string): Promise<NavyQuote> {
+  return run<NavyQuote>(db.rpc('navy_quote_handover', { p_lat: lat, p_lng: lng, p_arrival: arrivalId }), 'navy-quote-handover');
 }
 
 // ------------------------------------------------------------------ detail
@@ -462,6 +519,50 @@ export async function myOffers(): Promise<NavyParcelOffer[]> {
   return offers;
 }
 
+// ------------------------------------------------------------------ phase 2B2 (online only)
+
+/** Short-lived signed URL of a private photo (content, driver's vehicle). Never cached. */
+export async function signedPhotoUrl(path: string): Promise<string | null> {
+  const { data, error } = (await withTimeout(db.storage.from(NAVY_BUCKET).createSignedUrl(path, 300), 8000, 'navy-photo-url')) as any;
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
+/** Sender: who is coming (name, vehicle, plate, phone, vehicle photo path). */
+export function driverCard(parcelId: string): Promise<NavyDriverCard | null> {
+  return run<NavyDriverCard | null>(db.rpc('navy_parcel_driver_card', { p_parcel_id: parcelId }), 'navy-driver-card');
+}
+
+/** Sender: "remis au chauffeur", or the driver's QR scanned (his partner id). Network required. */
+export function clientHandover(parcelId: string, driverPartnerId: string | null): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_client_handover', { p_parcel_id: parcelId, p_driver_partner_id: driverPartnerId }), 'navy-client-handover');
+}
+
+/** Driver: refuses the parcel at the hand-over (reason required). */
+export function refuseHandover(parcelId: string, reason: string): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_refuse_handover', { p_parcel_id: parcelId, p_reason: reason }), 'navy-refuse-handover');
+}
+
+/** Sender, after a refusal: search another driver, or cancel (credit). */
+export function afterRefusal(parcelId: string, choice: 'rechercher' | 'annuler'): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_after_refusal', { p_parcel_id: parcelId, p_choice: choice }), 'navy-after-refusal');
+}
+
+/** Sender: price of the return for a return grocer. */
+export function returnQuote(parcelId: string, arrivalId: string | null): Promise<NavyReturnQuote> {
+  return run<NavyReturnQuote>(db.rpc('navy_return_quote', { p_parcel_id: parcelId, p_arrival: arrivalId }), 'navy-return-quote');
+}
+
+/** Sender: confirm the return grocer (the price is frozen then). */
+export function confirmReturn(parcelId: string, arrivalId: string): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_confirm_return', { p_parcel_id: parcelId, p_arrival: arrivalId }), 'navy-confirm-return');
+}
+
+/** Operator: open / close a dispute on the content photo (an open dispute keeps it). */
+export function setPhotoDispute(parcelId: string, open: boolean): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_set_photo_dispute', { p_parcel_id: parcelId, p_open: open }), 'navy-photo-dispute');
+}
+
 // ------------------------------------------------------------------ operator
 
 export function unblockWithdraw(parcelId: string): Promise<NavyParcelRow> {
@@ -477,14 +578,14 @@ export function markReturn(parcelId: string): Promise<NavyParcelRow> {
 }
 
 export interface PaymentToCheck extends NavyParcelPayment {
-  parcel: Pick<NavyParcelRow, 'code' | 'sender_name' | 'recipient_name' | 'status'> | null;
+  parcel: Pick<NavyParcelRow, 'code' | 'sender_name' | 'recipient_name' | 'status' | 'departure_mode' | 'return_of'> | null;
 }
 
 export function paymentsToCheck(): Promise<PaymentToCheck[]> {
   return run<PaymentToCheck[]>(
     db
       .from('navy_parcel_payments')
-      .select('*, parcel:navy_parcels(code, sender_name, recipient_name, status)')
+      .select('*, parcel:navy_parcels(code, sender_name, recipient_name, status, departure_mode, return_of)')
       .eq('status', 'a_verifier')
       .order('submitted_at', { ascending: true }),
     'navy-payments'

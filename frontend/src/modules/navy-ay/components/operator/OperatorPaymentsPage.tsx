@@ -113,6 +113,12 @@ function PaymentCard({ pay, onDone }: { pay: PaymentToCheck; onDone: () => void 
           {pay.kind === 'supplement' && (
             <p className="mt-1 inline-block rounded-full bg-navyay-yellow px-2 py-0.5 text-xs font-semibold">Supplément (autre chauffeur choisi)</p>
           )}
+          {pay.parcel?.return_of && (
+            <p className="mt-1 inline-block rounded-full bg-navyay-yellow px-2 py-0.5 text-xs font-semibold">Retour d’un colis non retiré</p>
+          )}
+          {pay.parcel?.departure_mode === 'remise' && (
+            <p className="mt-1 inline-block rounded-full bg-navyay-charcoal/10 px-2 py-0.5 text-xs font-semibold">Remise directe au chauffeur</p>
+          )}
         </div>
         <p className="text-2xl font-bold tabular-nums">{formatAr(pay.amount)}</p>
       </div>

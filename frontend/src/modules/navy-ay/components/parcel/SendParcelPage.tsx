@@ -1,6 +1,13 @@
 /**
- * Client — "Envoyer un colis" (phase 2A, 2B1). Short steps: recipient → depot grocer →
- * arrival grocer → content and value → driver choice → price and payment.
+ * Client — "Envoyer un colis" (phase 2A, 2B1, 2B2). Short steps: recipient → departure
+ * (depot grocer, or direct hand-over to the driver) → arrival grocer → content and value
+ * → driver choice → price and payment.
+ * Phase 2B2, "Je remets le colis au chauffeur" (Orange Money only): the client places the
+ * hand-over point on the map (one GPS reading proposes it, the pin can be dragged), adds
+ * a landmark and the phone the driver will call; no depot fee (the CyberKELY share is
+ * spread over the two remaining lines). The photo of the opened content can be taken
+ * here (kept on the phone and sent with the order, same id) or later before the
+ * hand-over.
  *
  * The price is computed by the SERVER (navy_quote, then frozen by navy_create_parcel):
  * the phone never sends an amount, except the total the client proposes himself in
@@ -19,11 +26,13 @@ import {
   CheckCircle2,
   HandCoins,
   Loader2,
+  MapPin,
   Route,
   Send,
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Store,
   Truck,
   UserRound,
   Wallet,
@@ -33,13 +42,23 @@ import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useScrollToError } from '../../../../hooks/useScrollToError';
 import { useNavyProfile } from '../../services/navyProfileStore';
-import { doGesture, getQuote, loadGrocerDistances, loadOpenGrocers, myCredit, placeOrder } from '../../services/parcelService';
+import {
+  doGesture,
+  getHandoverQuote,
+  getQuote,
+  loadGrocerDistances,
+  loadOpenGrocers,
+  myCredit,
+  placeOrder,
+} from '../../services/parcelService';
 import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
-import type { DriverMode, NavyGrocerDistance, NavyOpenGrocer, NavyQuote, ParcelCategory, PaymentMethod } from '../../types/parcel';
+import type { DepartureMode, DriverMode, NavyGrocerDistance, NavyOpenGrocer, NavyQuote, ParcelCategory, PaymentMethod } from '../../types/parcel';
 import { computeFare, VEHICLE_LABELS } from '../../utils/partnerRules';
 import {
   CATEGORY_LABELS,
   creditSplit,
+  estimatedKm,
+  estimateMarginPct,
   formatKm,
   isValidRecipientPhone,
   MAX_DECLARED_VALUE,
@@ -50,13 +69,17 @@ import {
   priceBreakdown,
   proposedDriverGain,
   proposedTotalProblem,
+  round5,
 } from '../../utils/parcelRules';
+import NavyMap from '../map/NavyMap';
+import PhotoField from '../ui/PhotoField';
 import { NavyNotifyPrompt } from './ParcelUi';
 import GrocerPicker from './GrocerPicker';
 import { btnAccent, btnPrimary, btnSecondary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 import type { VehicleType } from '../../types/partner';
 
 const STEPS = ['Destinataire', 'Départ', 'Arrivée', 'Contenu', 'Chauffeur', 'Prix et paiement'] as const;
+const NOTE_MAX = 120;
 
 export default function SendParcelPage() {
   const userId = useAppStore((s) => s.user?.id);
@@ -72,6 +95,14 @@ export default function SendParcelPage() {
   const [grocers, setGrocers] = useState<NavyOpenGrocer[] | null>(null);
   const [grocersFromPhone, setGrocersFromPhone] = useState(false);
   const [depotId, setDepotId] = useState<string | null>(null);
+  // Phase 2B2: direct hand-over to the driver.
+  const [departure, setDeparture] = useState<DepartureMode>('epicier');
+  const [handPin, setHandPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [handNote, setHandNote] = useState('');
+  const [senderPhone, setSenderPhone] = useState(() => (useAppStore.getState().user as { phone?: string | null } | null)?.phone ?? '');
+  const [photo, setPhoto] = useState<Blob | undefined>(undefined);
+  const [locating, setLocating] = useState(false);
+  const [locateMsg, setLocateMsg] = useState<string | null>(null);
   const [arrivalId, setArrivalId] = useState<string | null>(null);
   const [category, setCategory] = useState<ParcelCategory | null>(null);
   const [value, setValue] = useState('');
@@ -88,54 +119,120 @@ export default function SendParcelPage() {
 
   useEffect(() => {
     void loadZones();
-    loadOpenGrocers()
-      .then(({ list, fromPhone }) => {
-        setGrocers(list);
-        setGrocersFromPhone(fromPhone);
-      })
-      .catch((err) => {
-        setGrocers([]);
-        setError(parcelErrorMessage(err));
-      });
+    const loadGrocers = (retry: boolean): Promise<void> =>
+      loadOpenGrocers()
+        .then(({ list, fromPhone }) => {
+          setGrocers(list);
+          setGrocersFromPhone(fromPhone);
+          // The phone copy while "online": the first call failed (network hiccup). Ask the
+          // server again so that no grocer removed since is proposed.
+          if (fromPhone && retry && navigator.onLine) window.setTimeout(() => void loadGrocers(false), 3000);
+        })
+        .catch((err) => {
+          setGrocers([]);
+          setError(parcelErrorMessage(err));
+        });
+    void loadGrocers(true);
     // Road distances and credit kept on the phone: the offline estimate uses them too.
     loadGrocerDistances().then(setDistances).catch(() => undefined);
     if (userId) myCredit(userId).then(({ credit }) => setPhoneCredit(credit?.balance ?? null)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
-  // Server quote as soon as both grocers are known (online).
+  const remise = departure === 'remise';
+  const pinLat = handPin ? round5(handPin.lat) : null;
+  const pinLng = handPin ? round5(handPin.lng) : null;
+
+  // Server quote as soon as both ends are known (online). Direct hand-over: the road
+  // distance is computed by the server a few seconds later (read again while pending).
   useEffect(() => {
     setQuote(null);
-    if (!depotId || !arrivalId || !isOnline) return;
+    if (!arrivalId || !isOnline) return;
+    if (remise ? pinLat == null || pinLng == null : !depotId) return;
     let cancelled = false;
+    let timer: number | undefined;
+    const ask = (left: number) => {
+      const p = remise ? getHandoverQuote(pinLat as number, pinLng as number, arrivalId) : getQuote(depotId as string, arrivalId);
+      p.then((q) => {
+        if (cancelled) return;
+        setQuote(q);
+        if (q.distance_pending && left > 0) timer = window.setTimeout(() => ask(left - 1), 2500);
+      })
+        .catch((err) => !cancelled && setError(parcelErrorMessage(err)))
+        .finally(() => !cancelled && setQuoteLoading(false));
+    };
     setQuoteLoading(true);
-    getQuote(depotId, arrivalId)
-      .then((q) => !cancelled && setQuote(q))
-      .catch((err) => !cancelled && setError(parcelErrorMessage(err)))
-      .finally(() => !cancelled && setQuoteLoading(false));
+    // A pin being dragged: wait for it to settle before asking (one road distance per place).
+    timer = window.setTimeout(() => ask(3), remise ? 800 : 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [depotId, arrivalId, isOnline]);
+  }, [depotId, arrivalId, isOnline, remise, pinLat, pinLng]);
+
+  // One GPS reading proposes the hand-over place (never a continuous tracking).
+  const locateOnce = () => {
+    if (!('geolocation' in navigator)) {
+      setLocateMsg('Ce téléphone ne donne pas sa position : touchez la carte à l’endroit de la remise.');
+      return;
+    }
+    setLocating(true);
+    setLocateMsg(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setHandPin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (pos.coords.accuracy > 60) setLocateMsg(`Position approximative (à ${Math.round(pos.coords.accuracy)} m près) : ajustez l’épingle.`);
+      },
+      () => {
+        setLocating(false);
+        setLocateMsg('Position indisponible : touchez la carte à l’endroit de la remise.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  };
+  const chooseDeparture = (d: DepartureMode) => {
+    setDeparture(d);
+    setError(null);
+    if (d === 'remise') {
+      setDepotId(null);
+      setPayment('orange_money');
+      if (!handPin) locateOnce();
+    }
+  };
 
   const depot = grocers?.find((g) => g.id === depotId) ?? null;
   const arrival = grocers?.find((g) => g.id === arrivalId) ?? null;
 
   // Offline estimate: same rules as the server, with the settings and the road
-  // distances kept on the phone (straight line + 30 % when the pair is unknown).
+  // distances kept on the phone (straight line + the margin of the settings when the
+  // road distance is unknown; always for a direct hand-over offline).
+  const margin = quote?.estimate_margin_pct ?? estimateMarginPct(profile.settings as any);
   const estimate = useMemo(() => {
-    if (quote || !depot || !arrival) return null;
+    if (quote || !arrival) return null;
     const s = profile.settings as any;
-    const d = pairKm(distances, depot, arrival);
+    let d: { km: number; source: 'route' | 'estimation' };
+    if (remise) {
+      if (pinLat == null || pinLng == null) return null;
+      d = { km: estimatedKm(pinLat, pinLng, arrival.lat, arrival.lng, margin), source: 'estimation' };
+    } else {
+      if (!depot) return null;
+      d = pairKm(distances, depot, arrival, margin);
+    }
     const ceiling = computeFare(d.km, s?.suggested_min_fare ?? 1000, s?.suggested_fare_per_5km ?? 1000);
-    const b = priceBreakdown(depot.depot_fee, ceiling, arrival.pickup_fee, s?.cyberkely_share ?? 300);
-    return { km: d.km, source: d.source, total: b.total, lines: b.lines.map((l) => ({ kind: l.kind, shown: l.shown })) };
-  }, [quote, depot, arrival, profile.settings, distances]);
+    const b = priceBreakdown(remise ? 0 : depot?.depot_fee ?? 0, ceiling, arrival.pickup_fee, s?.cyberkely_share ?? 300);
+    return {
+      km: d.km,
+      source: d.source,
+      total: b.total,
+      lines: b.lines.filter((l) => !(remise && l.kind === 'depot')).map((l) => ({ kind: l.kind, shown: l.shown })),
+    };
+  }, [quote, depot, arrival, profile.settings, distances, remise, pinLat, pinLng, margin]);
 
   const declared = Number(value.replace(/\s/g, ''));
   const share = quote?.share ?? (profile.settings as any)?.cyberkely_share ?? 300;
-  const depotFee = quote?.depot_fee ?? depot?.depot_fee ?? 0;
+  const depotFee = remise ? 0 : quote?.depot_fee ?? depot?.depot_fee ?? 0;
   const pickupFee = quote?.pickup_fee ?? arrival?.pickup_fee ?? 0;
   // "Je propose mon prix": minimum accepted and what the driver would earn.
   const minTotal = quote?.min_total ?? minProposedTotal(depotFee, pickupFee, share);
@@ -146,7 +243,10 @@ export default function SendParcelPage() {
     ? priceBreakdown(depotFee, proposedGain ?? 0, pickupFee, share).lines.map((l) => ({ kind: l.kind, shown: l.shown }))
     : null;
 
-  const lines = proposedLines ?? (quote ? quote.breakdown.lines.map((l) => ({ kind: l.kind, shown: l.shown })) : estimate?.lines ?? []);
+  // Direct hand-over: no departure grocer line (its CyberKELY part is 0).
+  const lines = (proposedLines ?? (quote ? quote.breakdown.lines.map((l) => ({ kind: l.kind, shown: l.shown })) : estimate?.lines ?? [])).filter(
+    (l) => !(remise && l.kind === 'depot')
+  );
   const total = driverMode === 'prix' ? (proposedOk ? proposedTotal : null) : quote?.breakdown.total ?? estimate?.total ?? null;
   const km = quote?.distance_km ?? estimate?.km ?? null;
   const kmSource = quote?.distance_source ?? estimate?.source ?? 'estimation';
@@ -155,6 +255,8 @@ export default function SendParcelPage() {
   const credit = total !== null ? creditSplit(creditBalance, total) : null;
   const toPay = credit ? credit.due : total;
   const omNumber = quote?.orange_money_number?.trim() || null;
+  // Orange Money open? (server quote, else the settings kept on the phone; offline: allowed)
+  const omOpen = quote ? !!omNumber : !!String((profile.settings as any)?.orange_money_number ?? '').trim() || !isOnline;
   const lineLabel = (kind: string) =>
     kind === 'depot' ? depot?.shop_name ?? 'Épicerie de départ' : kind === 'pickup' ? arrival?.shop_name ?? 'Épicerie d’arrivée' : 'Transport';
 
@@ -163,7 +265,13 @@ export default function SendParcelPage() {
       if (!recipientName.trim()) return 'Indiquez le nom du destinataire.';
       if (!isValidRecipientPhone(recipientPhone)) return 'Numéro du destinataire incomplet (10 chiffres, ex. 034 12 345 67).';
     }
-    if (s === 1 && !depotId) return 'Choisissez l’épicerie où vous déposez le colis.';
+    if (s === 1 && !remise && !depotId) return 'Choisissez l’épicerie où vous déposez le colis.';
+    if (s === 1 && remise) {
+      if (!omOpen) return 'La remise au chauffeur se paie par Orange Money, qui n’est pas encore ouvert. Choisissez un épicier.';
+      if (!handPin) return 'Posez le lieu de remise sur la carte (touchez la carte ou « Ma position »).';
+      if (!isValidRecipientPhone(senderPhone)) return 'Indiquez votre téléphone (10 chiffres) : le chauffeur vous appellera en approchant.';
+      if (handNote.trim().length > NOTE_MAX) return `Repère trop long (${NOTE_MAX} caractères au plus).`;
+    }
     if (s === 2) {
       if (!arrivalId) return 'Choisissez l’épicerie où le destinataire viendra le chercher.';
       if (arrival && !arrival.zone_id) return 'Cette épicerie est hors des zones desservies. Choisissez-en une autre.';
@@ -182,8 +290,11 @@ export default function SendParcelPage() {
       if (problem) return problem;
     }
     if (s === 5) {
-      if (payment === 'orange_money' && !omNumber && toPay !== 0) return 'Le paiement Orange Money n’est pas encore ouvert. Choisissez les espèces.';
-      if (payment === 'orange_money' && reference.trim() && reference.trim().length < 4) return 'Référence Orange Money incomplète.';
+      if ((remise || payment === 'orange_money') && !omNumber && toPay !== 0 && isOnline)
+        return remise
+          ? 'Le paiement Orange Money n’est pas encore ouvert : choisissez un épicier de départ.'
+          : 'Le paiement Orange Money n’est pas encore ouvert. Choisissez les espèces.';
+      if ((remise || payment === 'orange_money') && reference.trim() && reference.trim().length < 4) return 'Référence Orange Money incomplète.';
     }
     return null;
   };
@@ -208,12 +319,12 @@ export default function SendParcelPage() {
         return;
       }
     }
-    if (!userId || !depotId || !arrivalId || !category) return;
+    if (!userId || (!remise && !depotId) || !arrivalId || !category) return;
     setSending(true);
     setError(null);
     try {
       const { parcelId, result } = await placeOrder(userId, {
-        depotId,
+        depotId: remise ? null : depotId,
         arrivalId,
         recipientName: recipientName.trim(),
         recipientPhone: recipientPhone.trim(),
@@ -221,14 +332,22 @@ export default function SendParcelPage() {
         declaredValue: Math.round(declared),
         driverMode,
         chosenDriverId: driverMode === 'choix' ? chosenDriver : null,
-        paymentMethod: toPay === 0 ? 'especes' : payment,
+        paymentMethod: remise ? 'orange_money' : toPay === 0 ? 'especes' : payment,
         proposedTotal: driverMode === 'prix' ? proposedTotal : null,
+        departureMode: departure,
+        handoverLat: remise ? pinLat : null,
+        handoverLng: remise ? pinLng : null,
+        handoverNote: remise ? handNote.trim() || null : null,
+        senderPhone: remise ? senderPhone.trim() : null,
       });
       if (result.status === 'error') {
         setError(parcelErrorMessage(result.error));
         return;
       }
-      if (payment === 'orange_money' && toPay !== 0 && reference.trim()) {
+      // Photo of the content (direct hand-over): kept on the phone and sent after the
+      // order, with the same parcel id (queued in order: the order goes up first).
+      if (remise && photo) await doGesture(userId, { kind: 'photo', parcelId, blob: photo });
+      if ((remise || payment === 'orange_money') && toPay !== 0 && reference.trim()) {
         await doGesture(userId, { kind: 'payment_ref', paymentId: crypto.randomUUID(), parcelId, reference: reference.trim() });
       }
       navigate(result.status === 'sent' ? `/navy/colis/${parcelId}?nouveau=1` : '/navy/colis?garde=1', { replace: true });
@@ -290,11 +409,99 @@ export default function SendParcelPage() {
 
       {step === 1 && (
         <NavyCard className="p-4 space-y-3">
-          <h3 className="font-semibold">Où déposez-vous le colis ?</h3>
-          {grocers === null ? (
-            <p className="flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Chargement des épiceries…</p>
+          <h3 className="font-semibold">Comment le colis part-il ?</h3>
+          <div className="grid gap-2">
+            {(
+              [
+                { v: 'epicier', title: 'Je dépose chez un épicier', text: 'L’épicier referme le colis devant vous, puis le remet au chauffeur.', icon: Store },
+                {
+                  v: 'remise',
+                  title: 'Je remets le colis au chauffeur',
+                  text: omOpen
+                    ? 'Le chauffeur vient le prendre là où vous êtes. Paiement Orange Money uniquement.'
+                    : 'Demande le paiement Orange Money, pas encore ouvert.',
+                  icon: HandCoins,
+                },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                aria-pressed={departure === o.v}
+                disabled={o.v === 'remise' && !omOpen}
+                onClick={() => chooseDeparture(o.v)}
+                className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow disabled:opacity-60 ${
+                  departure === o.v ? 'border-navyay-charcoal bg-navyay-yellow/25' : 'border-navyay-charcoal/20 bg-white hover:bg-navyay-yellow/10'
+                }`}
+              >
+                <o.icon className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <span>
+                  <span className="block font-semibold">{o.title}</span>
+                  <span className="block text-sm text-navyay-charcoal/80">{o.text}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {!remise ? (
+            grocers === null ? (
+              <p className="flex items-center gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Chargement des épiceries…</p>
+            ) : (
+              <GrocerPicker grocers={grocers} zones={zones} selectedId={depotId} excludeId={arrivalId} onSelect={setDepotId} mode="depot" />
+            )
           ) : (
-            <GrocerPicker grocers={grocers} zones={zones} selectedId={depotId} excludeId={arrivalId} onSelect={setDepotId} mode="depot" />
+            <div className="space-y-3">
+              <p className="flex items-start gap-2 text-sm">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <span>Posez l’épingle là où vous remettrez le colis. Déplacez-la au doigt si besoin.</span>
+              </p>
+              <NavyMap
+                ariaLabel="Carte : lieu de remise au chauffeur"
+                zones={zones}
+                pin={handPin}
+                onPinChange={(lat, lng) => setHandPin({ lat, lng })}
+                locate
+                fit={handPin ? 'pin' : 'island'}
+                heightClass="h-72"
+              />
+              {locating && (
+                <p className="flex items-center gap-2 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Lecture de votre position…
+                </p>
+              )}
+              {locateMsg && (
+                <p className="text-sm text-navyay-charcoal/80" role="status">
+                  {locateMsg}
+                </p>
+              )}
+              <label className={labelCls}>
+                Repère (facultatif)
+                <input
+                  className={inputCls}
+                  value={handNote}
+                  onChange={(e) => setHandNote(e.target.value)}
+                  maxLength={NOTE_MAX}
+                  placeholder="Ex. devant la pharmacie"
+                  autoComplete="off"
+                />
+              </label>
+              <label className={labelCls}>
+                Votre téléphone (le chauffeur vous appellera en approchant)
+                <input
+                  className={inputCls}
+                  value={senderPhone}
+                  onChange={(e) => setSenderPhone(e.target.value)}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="034 12 345 67"
+                />
+              </label>
+              <NavyHelp title="Comment se passe la remise au chauffeur ?">
+                <p>Après votre paiement Orange Money, NAVY ay propose la course aux chauffeurs qui vont vers l’épicerie d’arrivée.</p>
+                <p>Vous voyez le nom, la photo du véhicule et la plaque du chauffeur. Il vous appelle en approchant.</p>
+                <p>Avant de refermer le colis, prenez une photo du contenu ouvert dans l’application. Seuls vous, le chauffeur de la course et l’opératrice peuvent la voir.</p>
+                <p>Vous confirmez « remis au chauffeur » (ou vous scannez son QR), puis il confirme « j’ai le colis ». Il faut les deux gestes.</p>
+              </NavyHelp>
+            </div>
           )}
         </NavyCard>
       )}
@@ -303,7 +510,7 @@ export default function SendParcelPage() {
         <NavyCard className="p-4 space-y-3">
           <h3 className="font-semibold">Où le destinataire viendra-t-il le chercher ?</h3>
           <p className="text-sm text-navyay-charcoal/80">Appelez d’abord le destinataire pour choisir ensemble l’épicerie la plus pratique pour lui.</p>
-          {grocers && <GrocerPicker grocers={grocers} zones={zones} selectedId={arrivalId} excludeId={depotId} onSelect={setArrivalId} mode="arrival" />}
+          {grocers && <GrocerPicker grocers={grocers} zones={zones} selectedId={arrivalId} excludeId={remise ? null : depotId} onSelect={setArrivalId} mode="arrival" />}
         </NavyCard>
       )}
 
@@ -476,7 +683,10 @@ export default function SendParcelPage() {
                 <p className="flex items-start gap-1.5 text-xs text-navyay-charcoal/75">
                   <Route className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   <span>
-                    {kmSource === 'route' ? `Distance par la route : ${formatKm(km)}.` : `Distance estimée : ${formatKm(km)} (à vol d’oiseau + 30 %).`} La part NAVY ay est comprise dans chaque ligne.
+                    {kmSource === 'route'
+                      ? `Distance par la route : ${formatKm(km)}.`
+                      : `Distance estimée : ${formatKm(km)} (à vol d’oiseau + ${margin} %)${quote?.distance_pending ? ', distance par la route en cours de calcul' : ''}.`}{' '}
+                    La part NAVY ay est comprise dans chaque ligne.
                     {!quote && ' Estimation faite sur ce téléphone : le prix exact sera confirmé à l’envoi.'}
                   </span>
                 </p>
@@ -490,6 +700,8 @@ export default function SendParcelPage() {
             <h3 className="font-semibold">Paiement</h3>
             {toPay === 0 ? (
               <NavyNotice tone="ok" icon={Wallet}>Votre avoir NAVY couvre tout le prix : rien à payer, le paiement est acquis dès la commande.</NavyNotice>
+            ) : remise ? (
+              <NavyNotice icon={Smartphone}>Remise au chauffeur : paiement par Orange Money uniquement. Aucun chauffeur n’est appelé avant la vérification du paiement.</NavyNotice>
             ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               <button
@@ -523,7 +735,7 @@ export default function SendParcelPage() {
               </button>
             </div>
             )}
-            {toPay !== 0 && payment === 'orange_money' && omNumber && toPay !== null && (
+            {toPay !== 0 && (remise || payment === 'orange_money') && omNumber && toPay !== null && (
               <div className="space-y-2 rounded-xl bg-navyay-charcoal/[0.04] p-3 text-sm">
                 <p>
                   Envoyez <strong className="tabular-nums">{formatAr(toPay)}</strong> au numéro Orange Money de CyberKELY :{' '}
@@ -537,6 +749,17 @@ export default function SendParcelPage() {
               </div>
             )}
           </NavyCard>
+
+          {remise && (
+            <NavyCard className="p-4 space-y-2">
+              <PhotoField
+                label="Photo du contenu ouvert"
+                hint="Avant de refermer le colis. Facultative maintenant, obligatoire avant la remise. Seuls vous, le chauffeur de la course et l’opératrice peuvent la voir."
+                blob={photo}
+                onChange={setPhoto}
+              />
+            </NavyCard>
+          )}
 
           <NavyNotifyPrompt why="Recevez une notification à chaque étape de votre colis (déposé, en route, arrivé)." />
         </>
@@ -565,7 +788,7 @@ export default function SendParcelPage() {
       </div>
 
       <NavyHelp title="Comment se passe l’envoi ?">
-        <p>1. Vous déposez le colis à l’épicerie de départ. L’épicier le referme devant vous.</p>
+        <p>1. Vous déposez le colis à l’épicerie de départ. L’épicier le referme devant vous. Avec Orange Money, vous pouvez aussi le remettre directement au chauffeur.</p>
         <p>2. Un chauffeur qui va dans la bonne direction l’emporte jusqu’à l’épicerie d’arrivée.</p>
         <p>3. Le destinataire vient le chercher et donne le code de retrait que vous lui aurez transmis.</p>
         <p>Le prix est fixé au moment de la commande : il ne change plus ensuite, sauf si vous acceptez vous-même un chauffeur plus cher.</p>
