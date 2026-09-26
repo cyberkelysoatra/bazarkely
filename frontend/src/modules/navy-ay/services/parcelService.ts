@@ -19,6 +19,9 @@ import { useSyncExternalStore } from 'react';
 import { supabase, withTimeout } from '../../../lib/supabase';
 import { navyDb, type NavyParcelLocal } from '../db/navyDb';
 import type {
+  NavyCounterOption,
+  NavyCreditSummary,
+  NavyGrocerDistance,
   NavyOpenGrocer,
   NavyParcelEvent,
   NavyParcelOffer,
@@ -38,6 +41,8 @@ import { isNetworkError } from '../utils/parcelRules';
 const db = supabase as any;
 const PAGE = 1000;
 const GROCERS_KEY = 'openGrocers';
+/** Phase 2B1: road distances between grocers, kept on the phone (offline price). */
+const DISTANCES_KEY = 'grocerDistances';
 
 function online() {
   return typeof navigator === 'undefined' || navigator.onLine;
@@ -209,6 +214,7 @@ async function sendOp(op: ParcelQueuedOp): Promise<any> {
           p_driver_mode: i.driverMode,
           p_chosen_driver: i.driverMode === 'choix' ? i.chosenDriverId : null,
           p_payment_method: i.paymentMethod,
+          p_proposed_total: i.driverMode === 'prix' ? i.proposedTotal ?? null : null,
         }),
         'navy-create-parcel',
         12000
@@ -316,6 +322,33 @@ export async function loadOpenGrocers(): Promise<{ list: NavyOpenGrocer[]; fromP
   return { list: (kv?.value as NavyOpenGrocer[] | undefined) ?? [], fromPhone: true };
 }
 
+/**
+ * Phase 2B1: road distances between grocers (server table), kept on the phone so that
+ * the distance by the road is also known offline. Fallback: the copy of the phone.
+ */
+export async function loadGrocerDistances(): Promise<NavyGrocerDistance[]> {
+  if (online()) {
+    try {
+      const rows: NavyGrocerDistance[] = [];
+      for (let page = 0; page < 10; page++) {
+        const data = await run<NavyGrocerDistance[]>(
+          db.from('navy_grocer_distances').select('*').order('from_id').order('to_id').range(page * PAGE, page * PAGE + PAGE - 1),
+          'navy-grocer-distances'
+        );
+        rows.push(...(data ?? []));
+        if (!data || data.length < PAGE) {
+          await navyDb.kv.put({ key: DISTANCES_KEY, value: rows });
+          return rows;
+        }
+      }
+    } catch (err) {
+      if (!isNetworkError(err)) console.warn('⚠️ [navy] grocer distances unreadable:', err instanceof Error ? err.message : err);
+    }
+  }
+  const kv = await navyDb.kv.get(DISTANCES_KEY);
+  return (kv?.value as NavyGrocerDistance[] | undefined) ?? [];
+}
+
 export function getQuote(depotId: string, arrivalId: string): Promise<NavyQuote> {
   return run<NavyQuote>(db.rpc('navy_quote', { p_depot: depotId, p_arrival: arrivalId }), 'navy-quote');
 }
@@ -377,6 +410,40 @@ export function cancelParcel(parcelId: string, reason: string | null): Promise<N
 
 export function chooseDriver(parcelId: string, driverPartnerId: string | null): Promise<NavyParcelRow> {
   return run<NavyParcelRow>(db.rpc('navy_choose_driver', { p_parcel_id: parcelId, p_driver: driverPartnerId }), 'navy-choose-driver');
+}
+
+// ------------------------------------------------------------------ phase 2B1 (online only)
+
+/** Counter-proposal of a parcel: up to 3 drivers, nearest first (sender, operators). */
+export function counterOptions(parcelId: string): Promise<NavyCounterOption[]> {
+  return run<NavyCounterOption[]>(db.rpc('navy_parcel_counter', { p_parcel_id: parcelId }), 'navy-counter');
+}
+
+/** Sender: choose one driver of the counter-proposal (the supplement is computed by the server). */
+export function chooseCounter(parcelId: string, driverPartnerId: string): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_choose_counter', { p_parcel_id: parcelId, p_driver: driverPartnerId }), 'navy-choose-counter');
+}
+
+/** Sender: refuse the counter-proposal (the search goes on). */
+export function refuseCounter(parcelId: string): Promise<NavyParcelRow> {
+  return run<NavyParcelRow>(db.rpc('navy_refuse_counter', { p_parcel_id: parcelId }), 'navy-refuse-counter');
+}
+
+const CREDIT_KEY = (userId: string) => `${userId}:credit`;
+
+/** Own NAVY credit (balance + last movements), phone copy when offline. */
+export async function myCredit(userId: string): Promise<{ credit: NavyCreditSummary | null; fromPhone: boolean }> {
+  if (online()) {
+    try {
+      const credit = await run<NavyCreditSummary>(db.rpc('navy_my_credit'), 'navy-my-credit');
+      await navyDb.kv.put({ key: CREDIT_KEY(userId), value: credit });
+      return { credit, fromPhone: false };
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  const kv = await navyDb.kv.get(CREDIT_KEY(userId));
+  return { credit: (kv?.value as NavyCreditSummary | undefined) ?? null, fromPhone: true };
 }
 
 export function parcelDrivers(parcelId: string): Promise<NavyQuoteDriver[]> {

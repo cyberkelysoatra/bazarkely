@@ -10,9 +10,13 @@
 export type ParcelStatus = 'commande' | 'depose' | 'chauffeur_trouve' | 'pris_en_charge' | 'arrive' | 'retire' | 'annule';
 export type PaymentMethod = 'especes' | 'orange_money';
 export type PaymentStatus = 'a_payer_depot' | 'attente_reference' | 'a_verifier' | 'refuse' | 'paye';
-export type DriverMode = 'auto' | 'choix';
+/** 'prix' (phase 2B1): "Je propose mon prix", offer broadcast to every eligible driver. */
+export type DriverMode = 'auto' | 'choix' | 'prix';
 export type ParcelCategory = 'document' | 'vetement' | 'telephone' | 'nourriture' | 'autre';
-export type SearchState = 'recherche' | 'attente_client' | 'trouve';
+export type SearchState = 'recherche' | 'attente_client' | 'trouve' | 'contre_proposition' | 'attente_supplement';
+/** Phase 2B1: counter-proposal of the server when the price paid is too low for the drivers. */
+export type CounterState = 'propose' | 'choisi' | 'refuse';
+export type DistanceSource = 'route' | 'estimation';
 
 export interface NavyParcelRow {
   id: string;
@@ -78,6 +82,15 @@ export interface NavyParcelRow {
   cancelled_by: string | null;
   cancel_reason: string | null;
   updated_at: string;
+  // phase 2B1
+  distance_source?: DistanceSource;
+  proposed_total?: number | null;
+  counter_state?: CounterState | null;
+  counter_at?: string | null;
+  counter_round?: number | null;
+  precheck_at?: string | null;
+  /** Supplement after a chosen counter-proposal (same states as the first payment). */
+  supplement_status?: PaymentStatus | null;
 }
 
 export interface NavyParcelPrices {
@@ -91,6 +104,16 @@ export interface NavyParcelPrices {
   total_price: number;
   credit_due: number;
   credit_reason: string | null;
+  // phase 2B1
+  initial_total?: number | null;
+  /** NAVY credit (avoir) deducted at the order. */
+  credit_used?: number;
+  /** What is left to pay for the first payment (initial_total - credit_used). */
+  amount_due?: number | null;
+  supplement?: number;
+  supplement_credit_used?: number;
+  supplement_due?: number;
+  supplement_method?: 'avoir' | 'especes' | 'orange_money' | null;
 }
 
 export type PriceLineKind = 'depot' | 'transport' | 'pickup';
@@ -136,6 +159,8 @@ export interface NavyParcelOffer {
   sent_at: string;
   expires_at: string;
   answered_at: string | null;
+  /** Phase 2B1: "Je propose mon prix" offer, sent to every driver, open for the round (no 30 s countdown). */
+  broadcast?: boolean;
   /** navy_my_offers(): seconds left by the SERVER clock at fetch time. */
   seconds_left?: number;
   /** Phone time (ms) when seconds_left was read. */
@@ -148,6 +173,8 @@ export interface NavyParcelPayment {
   reference: string;
   amount: number;
   status: 'a_verifier' | 'valide' | 'refuse';
+  /** Phase 2B1: first payment or supplement after a counter-proposal. */
+  kind?: 'principal' | 'supplement';
   reason: string | null;
   submitted_by: string;
   submitted_at: string;
@@ -171,6 +198,7 @@ export interface NavyQuoteDriver {
   vehicle_type: string | null;
   fare: number;
   dest_zone_id: string | null;
+  via?: 'zone' | 'couloir';
 }
 
 export interface NavyQuoteLine {
@@ -183,6 +211,8 @@ export interface NavyQuoteLine {
 /** navy_quote(): computed by the server, never by the phone. */
 export interface NavyQuote {
   distance_km: number;
+  /** Phase 2B1: 'route' = OpenRouteService road distance, 'estimation' = straight line + 30 %. */
+  distance_source?: DistanceSource;
   transport_ceiling: number;
   depot_fee: number;
   pickup_fee: number;
@@ -194,6 +224,41 @@ export interface NavyQuote {
   arrival_zone_id: string | null;
   drivers: NavyQuoteDriver[];
   orange_money_number: string | null;
+  /** Phase 2B1: minimum accepted for "Je propose mon prix" (grocers + CyberKELY share, rounded up). */
+  min_total?: number;
+  /** Phase 2B1: NAVY credit of the signed-in account (deducted automatically). */
+  credit_balance?: number;
+}
+
+/** Phase 2B1: road distance between two grocers (public.navy_grocer_distances). */
+export interface NavyGrocerDistance {
+  from_id: string;
+  to_id: string;
+  from_lat: number;
+  from_lng: number;
+  to_lat: number;
+  to_lng: number;
+  km: number;
+  duration_s: number | null;
+  source: DistanceSource;
+  computed_at: string;
+}
+
+/** Phase 2B1: one driver of a counter-proposal (navy_parcel_counter). */
+export interface NavyCounterOption {
+  rank: number;
+  driver_partner_id: string;
+  driver_name: string | null;
+  vehicle_type: string | null;
+  new_total: number;
+  supplement: number;
+  near_km: number | null;
+}
+
+/** Phase 2B1: NAVY credit (navy_my_credit). */
+export interface NavyCreditSummary {
+  balance: number;
+  movements: { at: string; amount: number; kind: 'credit' | 'utilisation'; note: string | null; parcel_code: string | null }[];
 }
 
 /** Order form (kept on the phone as the payload of a queued order). */
@@ -207,6 +272,8 @@ export interface ParcelOrderInput {
   driverMode: DriverMode;
   chosenDriverId: string | null;
   paymentMethod: PaymentMethod;
+  /** "Je propose mon prix": total proposed by the client (multiple of 100 Ar). */
+  proposedTotal?: number | null;
 }
 
 /** Gesture kept on the phone until the server has it (same ids on every attempt). */

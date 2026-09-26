@@ -742,6 +742,58 @@ offre et la saisie du code de retrait **exigent le réseau** et le disent.
 l'appareil au rafraîchissement suivant (mêmes protections que la synchro descendante) ; le
 formulaire « Corriger ma demande » attend la réponse du serveur au lieu de s'afficher vide.
 
+### 🛣️ Phase 2B1 — distances par la route, prix proposé, contre-proposition, couloir, avoir (v3.85.0)
+
+**Distance par la route** : table `navy_grocer_distances` (épicerie A → épicerie B, km, durée,
+source `route` ou `estimation`, date). Remplie par la fonction serveur `navy-routes` avec l'API
+**Matrix d'OpenRouteService** (profil voiture, `api.heigit.org`) : **une seule demande** pour
+toutes les épiceries validées et placées. Quand une épicerie est validée, déplacée ou retirée,
+un déclencheur SQL efface **ses seules lignes** et demande leur recalcul (appel serveur → serveur,
+pg_net + secret en Vault) ; bouton opératrice « **Recalculer les distances** » dans Réglages
+(date du dernier calcul, nombre de demandes du mois). Le devis lit la table ; **repli** sur le
+vol d'oiseau + 30 % si la paire manque, si une épicerie a bougé depuis ou si le service a
+échoué (affiché « distance estimée », sinon « distance par la route » avec l'attribution
+OpenRouteService / OpenStreetMap). Le téléphone garde la table (Dexie) : distance par la route
+**disponible hors ligne**. La clé OpenRouteService n'existe que comme secret de la fonction
+serveur (`ORS_API_KEY`). Offre gratuite : Matrix 500/jour, Directions 2 000/jour ; au-delà le
+service refuse (jamais de facture) et l'appli reste sur le repli.
+
+**« Je propose mon prix »** (3ᵉ choix à la commande) : le client saisit un **prix total**
+(multiple de 100 Ar) ; minimum accepté = tarifs des deux épiciers + part CyberKELY, arrondi aux
+100 Ar supérieurs (refusé en dessous, aussi par le serveur). Le chauffeur gagne total − épiciers
+− part, et ne voit que ce montant. Après le dépôt, l'offre part **à tous les chauffeurs éligibles
+en même temps**, ouverte pendant le tour (5 min), sans compte à rebours : **le premier qui
+accepte l'emporte** (verrou serveur), les autres offres passent à « annulée ». Réglage chauffeur
+« **Masquer les offres inférieures à mon tarif** » (désactivé par défaut).
+
+**Contre-proposition** : après un tour complet sans preneur, ou au plus tard 5 min après le
+départ de l'offre (et dès la commande si aucun chauffeur ne peut la prendre à ce prix), le
+serveur cherche la cause : (a) aucun chauffeur sur la direction → comportement 2A (relance toutes
+les 5 min, alerte à 30 min) ; (b) des chauffeurs existent mais leur tarif dépasse ce que le
+client a payé pour le transport → le client voit **jusqu'à 3 chauffeurs** (les plus proches du
+départ), nom, véhicule, **nouveau prix total** et supplément. Il en choisit un (prix refigés,
+journal horodaté) ou refuse (la recherche continue). **Supplément** : avoir d'abord, puis espèces
+à l'épicier si le colis n'est pas encore déposé (encaissé au dépôt), sinon Orange Money
+(référence validée par l'opératrice). L'offre ne part au chauffeur choisi qu'une fois le
+supplément acquis (30 s, puis règles 2A). Une seule contre-proposition par colis.
+
+**Couloir** : quand le chauffeur se déclare disponible ou change de direction, l'appli fait
+**une seule lecture GPS** (avec son accord) ; le serveur demande **un** itinéraire à
+OpenRouteService (gardé tant que la direction ne change pas). Position et itinéraire expirent
+avec la direction (3 h) et sont **effacés** par la tâche planifiée. Éligibilité : chauffeur
+validé, disponible, et (destination dans la zone de l'épicier d'arrivée **ou** itinéraire passant
+à moins de la **largeur du couloir** de cette épicerie ; 500 m par défaut, réglable). Calcul en
+géométrie simple dans le SQL (PostGIS n'est pas installé). Refus du GPS : le chauffeur reste
+disponible, seul le critère de zone s'applique. Aucun client ne lit la position ni l'itinéraire.
+
+**Avoir NAVY** : solde par client tenu par un **journal de mouvements**
+(`navy_credit_movements`, crédit : chauffeur moins cher, colis annulé après paiement ; débit :
+utilisation) — jamais un solde écrit directement. **Déduit automatiquement** à la commande
+suivante et sur un supplément (« Avoir utilisé : −400 Ar »), le reste est gardé ; s'il couvre
+tout, le paiement est acquis immédiatement. Jamais remboursé en espèces, jamais transférable.
+Visible par le client dans « Mes colis » ; aucun partenaire ne le voit ; l'épicier n'encaisse que
+le reste à payer.
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

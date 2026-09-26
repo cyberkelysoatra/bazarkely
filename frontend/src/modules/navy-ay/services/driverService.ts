@@ -1,7 +1,11 @@
 /**
- * NAVY ay — driver availability and destination (phase 1B), offline-first.
+ * NAVY ay — driver availability and destination (phase 1B, 2B1), offline-first.
  *
- * Only the DESTINATION the driver chooses is recorded, never a live position.
+ * The DESTINATION the driver chooses is recorded, never a live position. Phase 2B1:
+ * ONE GPS reading is taken when the driver declares himself available or changes
+ * direction (with his browser's consent) and sent with it; the server computes the
+ * route once from it (corridor) and erases both when the direction expires. The
+ * reading stays on the phone only until it is sent, then it is removed from the phone.
  * The choice is kept on the phone at once (NavyAyDB kv '<user>:driverStatus'), then
  * sent through navy_set_driver_status(). Offline or on timeout it stays marked
  * "pending" and leaves when the network comes back. Idempotent and order-safe: the
@@ -103,7 +107,8 @@ export async function setDriverAvailability(
   userId: string,
   partnerId: string,
   available: boolean,
-  dest: { lat: number; lng: number } | null
+  dest: { lat: number; lng: number } | null,
+  origin: { lat: number; lng: number } | null = null
 ): Promise<'sent' | 'queued' | 'error'> {
   const next: DriverStatusLocal = {
     partnerId,
@@ -113,6 +118,8 @@ export async function setDriverAvailability(
     clientAt: new Date().toISOString(),
     pending: true,
     destZoneId: null,
+    originLat: available ? origin?.lat ?? null : null,
+    originLng: available ? origin?.lng ?? null : null,
   };
   await navyDb.kv.put({ key: key(userId), value: next });
   if (dest) await navyDb.kv.put({ key: lastDestKey(userId), value: dest });
@@ -141,6 +148,8 @@ export function flushDriverStatus(userId: string): Promise<'sent' | 'queued' | '
           p_dest_lat: s.destLat,
           p_dest_lng: s.destLng,
           p_client_at: s.clientAt,
+          p_origin_lat: s.originLat ?? null,
+          p_origin_lng: s.originLng ?? null,
         }),
         8000,
         'navy-driver-status-set'
@@ -158,7 +167,8 @@ export function flushDriverStatus(userId: string): Promise<'sent' | 'queued' | '
       // A newer choice made meanwhile stays pending.
       const current = (await navyDb.kv.get(key(userId)))?.value as DriverStatusLocal | undefined;
       if (current && current.clientAt === s.clientAt) {
-        const done: DriverStatusLocal = { ...s, pending: false, destZoneId: row?.dest_zone_id ?? null };
+        // The GPS reading is not kept on the phone once the server has it.
+        const done: DriverStatusLocal = { ...s, pending: false, destZoneId: row?.dest_zone_id ?? null, originLat: null, originLng: null };
         await navyDb.kv.put({ key: key(userId), value: done });
         if (state.userId === userId) set({ status: done });
       }
@@ -172,4 +182,58 @@ export function flushDriverStatus(userId: string): Promise<'sent' | 'queued' | '
     }
   })();
   return flushing;
+}
+
+// ------------------------------------------------------------------ phase 2B1
+
+/**
+ * ONE reading of the position (never a tracking). Resolves null when the driver refuses,
+ * when the phone has no GPS or after 10 s: the driver stays available, only the zone
+ * criterion applies to him then.
+ */
+export function readPositionOnce(timeoutMs = 10000): Promise<{ lat: number; lng: number } | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v: { lat: number; lng: number } | null) => {
+      if (done) return;
+      done = true;
+      resolve(v);
+    };
+    const t = window.setTimeout(() => finish(null), timeoutMs + 1000);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          window.clearTimeout(t);
+          finish({ lat: Math.round(p.coords.latitude * 1e6) / 1e6, lng: Math.round(p.coords.longitude * 1e6) / 1e6 });
+        },
+        () => {
+          window.clearTimeout(t);
+          finish(null);
+        },
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+      );
+    } catch {
+      window.clearTimeout(t);
+      finish(null);
+    }
+  });
+}
+
+export interface MyRouteState {
+  route_status: 'pending' | 'ok' | 'failed';
+  expires_at: string;
+  computed_at: string | null;
+}
+
+/** State of the driver's own route (corridor), online only; null = no reading shared. */
+export async function loadMyRoute(partnerId: string): Promise<MyRouteState | null> {
+  if (!online()) return null;
+  const { data, error } = (await withTimeout(
+    db.from('navy_driver_routes').select('route_status, expires_at, computed_at').eq('partner_id', partnerId).maybeSingle(),
+    6000,
+    'navy-driver-route'
+  )) as any;
+  if (error) throw error;
+  return (data as MyRouteState | null) ?? null;
 }

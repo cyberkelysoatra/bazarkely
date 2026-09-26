@@ -215,7 +215,9 @@ function DepotCard({ p, userId, lines, cash, queued }: { p: NavyParcelLocal; use
   const [sealed, setSealed] = useState(false);
   const [collected, setCollected] = useState(false);
   const { busy, msg, act, setMsg } = useGesture(userId, p.status);
-  const isCash = p.payment_method === 'especes';
+  // Cash to collect: first payment left (cash) and / or a supplement (phase 2B1).
+  // Nothing when the NAVY credit covered everything (payment already acquired).
+  const isCash = p.payment_status === 'a_payer_depot' || p.supplement_status === 'a_payer_depot';
   const submit = () => {
     if (!sealed) return setMsg({ tone: 'error', text: 'Cochez « Colis refermé devant moi ».' });
     if (isCash && !collected) return setMsg({ tone: 'error', text: 'Confirmez que les espèces sont encaissées.' });
@@ -243,7 +245,7 @@ function DepotCard({ p, userId, lines, cash, queued }: { p: NavyParcelLocal; use
               </span>
             </label>
           ) : (
-            <p className="text-sm text-navyay-charcoal/80">Payé par Orange Money : rien à encaisser.</p>
+            <p className="text-sm text-navyay-charcoal/80">{p.payment_method === 'especes' ? 'Déjà payé : rien à encaisser.' : 'Payé par Orange Money : rien à encaisser.'}</p>
           )}
           <button type="button" className={`${btnAccent} w-full`} disabled={busy} onClick={submit}>
             {busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-5 h-5" aria-hidden="true" />}

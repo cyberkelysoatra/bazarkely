@@ -2,9 +2,11 @@
  * "Mon véhicule" (phase 1A): vehicle information, minimum fare and fare per started
  * 5 km slice, prefilled with the suggested grid of navy_settings (1 000 / 1 000 Ar),
  * with a live example. Rule: fare = max(minimum, fare per slice × started slices).
+ * Phase 2B1: option "Masquer les offres inférieures à mon tarif" (off by default), saved
+ * like the fares (phone first, sent when the network is there).
  */
 import { useEffect, useState } from 'react';
-import { Calculator, CheckCircle2, Loader2, Save, Smartphone, Truck } from 'lucide-react';
+import { Calculator, CheckCircle2, EyeOff, Loader2, Save, Smartphone, Truck } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useNavyProfile } from '../../services/navyProfileStore';
@@ -32,6 +34,7 @@ export default function DriverPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<'sent' | 'queued' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filterSaving, setFilterSaving] = useState(false);
 
   useEffect(() => {
     if (!row) return;
@@ -59,6 +62,16 @@ export default function DriverPage() {
       setSaved(await updateMyPartnerSettings(userId, row.id, { min_fare: m, fare_per_5km: p }));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const hideLow = !!row.hide_low_offers;
+  const toggleFilter = async () => {
+    setFilterSaving(true);
+    try {
+      setSaved(await updateMyPartnerSettings(userId, row.id, { hide_low_offers: !hideLow }));
+    } finally {
+      setFilterSaving(false);
     }
   };
 
@@ -117,6 +130,33 @@ export default function DriverPage() {
             Enregistrer mes prix
           </button>
         </form>
+      </NavyCard>
+
+      <NavyCard className="p-4 space-y-3">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-1 w-5 h-5 flex-shrink-0 accent-[#2E2E2E]"
+            checked={hideLow}
+            disabled={filterSaving}
+            onChange={() => void toggleFilter()}
+          />
+          <span className="flex-1 min-w-0">
+            <span className="flex items-center gap-2 font-semibold">
+              <EyeOff className="w-4 h-4" aria-hidden="true" />
+              Masquer les offres inférieures à mon tarif
+            </span>
+            <span className="block text-sm text-navyay-charcoal/80">
+              {hideLow
+                ? 'Activé : vous ne recevez pas les courses où le client propose moins que votre prix pour cette distance.'
+                : 'Désactivé : vous recevez aussi les courses à prix proposé par le client, même en dessous de votre tarif. Vous restez libre de refuser.'}
+            </span>
+          </span>
+        </label>
+        <NavyHelp title="À quoi sert ce réglage ?">
+          <p>Avec « Je propose mon prix », le client fixe le prix. La course est envoyée à tous les chauffeurs qui vont dans la bonne direction.</p>
+          <p>Si ce réglage est activé, vous ne recevez pas les courses qui vous rapportent moins que votre propre tarif (calculé avec vos prix ci-dessus).</p>
+        </NavyHelp>
       </NavyCard>
 
       {(saved || pending) && (

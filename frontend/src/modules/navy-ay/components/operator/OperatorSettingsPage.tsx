@@ -1,24 +1,29 @@
 /**
  * Operator — "Réglages" (phase 1A): suggested fares (navy_settings) and operators
  * (list, add one by e-mail — the account must already exist). ONLINE ONLY.
+ * Phase 2B1: corridor width around the drivers' routes, road distances between grocers
+ * (last computation, "Recalculer les distances", OpenRouteService requests this month).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronRight, Headset, Loader2, Map as MapIcon, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
+import { ChevronRight, Headset, Loader2, Map as MapIcon, RefreshCw, Route, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import {
   designateOperator,
+  distanceStatus,
   findUserByEmail,
   getSettings,
   listDueDocuments,
   listOperators,
   purgeDueDocuments,
   operatorErrorMessage,
+  requestDistanceRefresh,
   updateSettings,
 } from '../../services/operatorService';
+import { ORS_ATTRIBUTION } from '../../utils/parcelRules';
 import { navyDb } from '../../db/navyDb';
 import { setNavyProfile } from '../../services/navyProfileStore';
-import type { NavyOperatorEntry, NavySettings } from '../../types/partner';
+import type { NavyDistanceStatus, NavyOperatorEntry, NavySettings } from '../../types/partner';
 import { btnPrimary, inputCls, labelCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
 const FIELDS: { key: keyof NavySettings; label: string; required: boolean }[] = [
@@ -29,6 +34,8 @@ const FIELDS: { key: keyof NavySettings; label: string; required: boolean }[] = 
   // Phase 2A: fixed CyberKELY share per parcel.
   { key: 'cyberkely_share', label: 'Part CyberKELY par colis', required: true },
 ];
+
+const DEFAULT_CORRIDOR_M = 500;
 
 export default function OperatorSettingsPage() {
   const isOnline = useOnlineStatus();
@@ -44,6 +51,10 @@ export default function OperatorSettingsPage() {
   const [dueCount, setDueCount] = useState<number | null>(null);
   const [purging, setPurging] = useState(false);
   const [purgeMsg, setPurgeMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [corridor, setCorridor] = useState('');
+  const [dist, setDist] = useState<NavyDistanceStatus | null>(null);
+  const [distBusy, setDistBusy] = useState(false);
+  const [distMsg, setDistMsg] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -53,7 +64,9 @@ export default function OperatorSettingsPage() {
       for (const f of FIELDS) v[f.key] = s && s[f.key] != null ? String(s[f.key]) : '';
       setValues(v);
       setOmNumber(s?.orange_money_number ?? '');
+      setCorridor(String(s?.corridor_width_m ?? DEFAULT_CORRIDOR_M));
       setOperators(ops);
+      setDist(await distanceStatus());
       setDueCount((await listDueDocuments()).length);
     } catch (err) {
       setError(operatorErrorMessage(err));
@@ -84,6 +97,34 @@ export default function OperatorSettingsPage() {
     }
   };
 
+  const recompute = async () => {
+    setDistBusy(true);
+    setDistMsg(null);
+    try {
+      await requestDistanceRefresh();
+      setDistMsg({ tone: 'info', text: 'Calcul demandé. Les distances arrivent dans quelques secondes.' });
+      // The server answers through the routing service: read again a few seconds later.
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => window.setTimeout(r, 2500));
+        const st = await distanceStatus();
+        setDist(st);
+        if (!st.full_pending) {
+          setDistMsg(
+            st.last_error
+              ? { tone: 'error', text: 'Le service de distances n’a pas répondu. Les prix utilisent la distance estimée en attendant.' }
+              : { tone: 'ok', text: 'Distances recalculées.' }
+          );
+          return;
+        }
+      }
+      setDistMsg({ tone: 'info', text: 'Calcul toujours en cours. Revenez dans un instant.' });
+    } catch (err) {
+      setDistMsg({ tone: 'error', text: operatorErrorMessage(err) });
+    } finally {
+      setDistBusy(false);
+    }
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!values) return;
@@ -105,6 +146,11 @@ export default function OperatorSettingsPage() {
       }
       patch[f.key] = Math.round(n);
     }
+    const width = Number(corridor.replace(/\s/g, ''));
+    if (!Number.isFinite(width) || width < 50 || width > 5000) {
+      setError('Largeur du couloir : entre 50 et 5 000 mètres.');
+      return;
+    }
     const om = omNumber.trim();
     if (om && !/^(\+261|0)\d{9}$/.test(om.replace(/[\s.-]/g, ''))) {
       setError('Numéro Orange Money incomplet (10 chiffres, ex. 032 12 345 67).');
@@ -114,7 +160,7 @@ export default function OperatorSettingsPage() {
     setError(null);
     setSavedMsg(null);
     try {
-      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null });
+      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null, corridor_width_m: Math.round(width) });
       await navyDb.kv.put({ key: 'settings', value: saved });
       setNavyProfile({ settings: saved });
       setSavedMsg('Réglages enregistrés.');
@@ -162,7 +208,7 @@ export default function OperatorSettingsPage() {
 
   return (
     <NavyPage>
-      <NavyPageTitle icon={Settings} title="Réglages" subtitle="Zones, tarifs, part CyberKELY, Orange Money et opératrices." />
+      <NavyPageTitle icon={Settings} title="Réglages" subtitle="Zones, tarifs, couloir, distances, Orange Money et opératrices." />
       {error && <NavyNotice tone="error">{error}</NavyNotice>}
 
       <Link
@@ -213,12 +259,67 @@ export default function OperatorSettingsPage() {
                   : 'Tant qu’il est vide, les clients ne peuvent payer qu’en espèces.'}
               </span>
             </label>
+            <label className={labelCls}>
+              Largeur du couloir autour du trajet des chauffeurs
+              <div className="relative">
+                <input
+                  className={`${inputCls} pr-10`}
+                  inputMode="numeric"
+                  value={corridor}
+                  onChange={(e) => setCorridor(e.target.value)}
+                  aria-describedby="navy-corridor-help"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-sm text-navyay-charcoal/70" aria-hidden="true">m</span>
+              </div>
+              <span id="navy-corridor-help" className="mt-1 block text-xs text-navyay-charcoal/70">
+                Un chauffeur reçoit aussi un colis si son trajet passe à moins de cette distance de l’épicerie d’arrivée. Conseillé : 500 m.
+              </span>
+            </label>
             {savedMsg && <NavyNotice tone="ok">{savedMsg}</NavyNotice>}
             <button type="submit" disabled={saving} className={`${btnPrimary} w-full`}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Save className="w-4 h-4" aria-hidden="true" />}
               Enregistrer
             </button>
           </form>
+        </NavyCard>
+      )}
+
+      {dist && (
+        <NavyCard className="p-4 space-y-3">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <Route className="w-5 h-5" aria-hidden="true" />
+            Distances par la route
+          </h3>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-navyay-charcoal/75">Dernier calcul</dt>
+            <dd className="text-right font-medium">{dist.computed_at ? new Date(dist.computed_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : 'Jamais'}</dd>
+            <dt className="text-navyay-charcoal/75">Épiceries placées</dt>
+            <dd className="text-right font-medium tabular-nums">{dist.grocers}</dd>
+            <dt className="text-navyay-charcoal/75">Trajets connus</dt>
+            <dd className="text-right font-medium tabular-nums">{dist.pairs_route} sur {Math.max(0, dist.grocers * (dist.grocers - 1))}</dd>
+            <dt className="text-navyay-charcoal/75">Demandes ce mois-ci</dt>
+            <dd className="text-right font-medium tabular-nums" data-testid="navy-ors-month">
+              {dist.month_requests}
+              <span className="block text-xs font-normal text-navyay-charcoal/70">
+                {dist.month_matrix} distances · {dist.month_directions} trajets{dist.month_errors ? ` · ${dist.month_errors} en échec` : ''}
+              </span>
+            </dd>
+          </dl>
+          {dist.last_error && (
+            <NavyNotice tone="warn">Dernier calcul non abouti. Les prix utilisent la distance estimée (à vol d’oiseau + 30 %) en attendant.</NavyNotice>
+          )}
+          <button type="button" className={`${btnPrimary} w-full`} disabled={distBusy} onClick={() => void recompute()}>
+            {distBusy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
+            Recalculer les distances
+          </button>
+          {distMsg && <NavyNotice tone={distMsg.tone}>{distMsg.text}</NavyNotice>}
+          <NavyHelp title="Comment sont calculées les distances ?">
+            <p>Les distances entre épiceries sont calculées par la route (service OpenRouteService), en une seule demande pour toutes les épiceries.</p>
+            <p>Quand une épicerie est validée ou déplacée, seules ses distances sont recalculées, toutes seules. Le bouton refait le calcul pour toutes.</p>
+            <p>Si le service ne répond pas, NAVY ay utilise la distance à vol d’oiseau + 30 % : aucune commande n’est bloquée.</p>
+            <p>Offre gratuite : 500 calculs de distances et 2 000 trajets de chauffeurs par jour. Au-delà, le service refuse (jamais de facture).</p>
+          </NavyHelp>
+          <p className="text-xs text-navyay-charcoal/75">{ORS_ATTRIBUTION}</p>
         </NavyCard>
       )}
 

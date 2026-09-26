@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.84.2';
-export const APP_VERSION_NAME = "NAVY ay : le circuit du colis par les epiceries. Commande, paiement, depot, chauffeur, arrivee et retrait avec code, suivi et notifications a chaque etape.";
+export const APP_VERSION = '3.85.0';
+export const APP_VERSION_NAME = "NAVY ay : distances par la route, prix propose par le client, contre-proposition, couloir autour du trajet du chauffeur et avoir NAVY.";
 export const LAST_UPDATED = '2026-09-26';
 export const APP_BUILD_DATE = '2026-09-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.85.0',
+    date: '2026-09-26',
+    description:
+      "NAVY ay phase 2B1 : distances par la route, prix propose par le client, contre-proposition, couloir autour du trajet et avoir NAVY.",
+    changes: [
+      "Distances entre epiceries calculees par la route (OpenRouteService) en une seule demande, recalcul cible quand une epicerie est validee ou deplacee, gardees sur le telephone (hors ligne) ; repli a vol d oiseau + 30 % si le service ne repond pas.",
+      "Envoyer : troisieme choix Je propose mon prix (minimum = tarifs des deux epiciers + part NAVY, multiple de 100 Ar) ; la course part a tous les chauffeurs en meme temps, le premier qui accepte l emporte.",
+      "Contre-proposition : si aucun chauffeur n accepte au prix paye, jusqu a 3 chauffeurs plus proches a un autre prix ; supplement paye par l avoir, en especes au depot ou par Orange Money avant tout appel du chauffeur.",
+      "Chauffeur : une seule lecture GPS quand il se declare disponible ou change de direction ; son trajet recoit aussi les colis dont l epicerie d arrivee est a moins de 500 m (reglable) ; position effacee a l expiration. Reglage Masquer les offres inferieures a mon tarif.",
+      "Avoir NAVY : journal de mouvements, deduit automatiquement a la commande suivante et sur un supplement, visible dans Mes colis, jamais rembourse en especes.",
+      "Operatrice (Reglages) : largeur du couloir, bouton Recalculer les distances, date du dernier calcul et nombre de demandes du mois."
+    ]
+  },
   {
     version: '3.84.2',
     date: '2026-09-26',

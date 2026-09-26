@@ -1,6 +1,8 @@
 /**
- * Parcel tracking (phase 2A): milestones Accepté / En route / Livré, journal, codes,
+ * Parcel tracking (phase 2A, 2B1): milestones Accepté / En route / Livré, journal, codes,
  * payment, price, driver call button, choice of another driver when asked, cancel.
+ * Phase 2B1: counter-proposal (up to 3 drivers at another price) and its supplement,
+ * NAVY credit used. Choosing / refusing a counter-proposal needs the network.
  *
  * What each person sees is decided by the SERVER (RLS): the price for the sender and
  * operators, the withdrawal code for the sender and the linked recipient only.
@@ -12,6 +14,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Ban,
+  BadgePercent,
   Check,
   Copy,
   Loader2,
@@ -21,25 +24,29 @@ import {
   Smartphone,
   Sparkles,
   Truck,
+  Wallet,
   WifiOff,
 } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import {
   cancelParcel,
+  chooseCounter,
   chooseDriver,
+  counterOptions,
   doGesture,
   getParcelDetail,
   parcelDrivers,
   refreshParcels,
+  refuseCounter,
   useParcels,
   type ParcelDetail,
 } from '../../services/parcelService';
 import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
-import type { NavyQuoteDriver } from '../../types/parcel';
+import type { NavyCounterOption, NavyQuoteDriver } from '../../types/parcel';
 import type { VehicleType } from '../../types/partner';
 import { VEHICLE_LABELS } from '../../utils/partnerRules';
-import { CATEGORY_LABELS, MAX_DECLARED_VALUE, PAYMENT_LABELS, parcelErrorMessage } from '../../utils/parcelRules';
+import { CATEGORY_LABELS, MAX_DECLARED_VALUE, PAYMENT_LABELS, parcelErrorMessage, SUPPLEMENT_LABELS } from '../../utils/parcelRules';
 import { NavyNotifyPrompt, ParcelCode, ParcelMilestones, ParcelStatusBadge, ParcelTimeline } from './ParcelUi';
 import { btnAccent, btnPrimary, btnSecondary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage } from '../ui/NavyUi';
 
@@ -59,6 +66,7 @@ export default function ParcelDetailPage() {
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
   const [drivers, setDrivers] = useState<NavyQuoteDriver[] | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [counter, setCounter] = useState<NavyCounterOption[] | null>(null);
 
   const load = useCallback(async () => {
     if (!isOnline) return;
@@ -98,6 +106,13 @@ export default function ParcelDetailPage() {
     if (!needChoice || !isOnline) return;
     parcelDrivers(id).then(setDrivers).catch(() => setDrivers([]));
   }, [needChoice, isOnline, id]);
+
+  // Phase 2B1: price too low for the drivers → up to 3 drivers at another price.
+  const needCounter = isSender && parcel?.counter_state === 'propose' && ['commande', 'depose'].includes(parcel.status);
+  useEffect(() => {
+    if (!needCounter || !isOnline) return;
+    counterOptions(id).then(setCounter).catch(() => setCounter([]));
+  }, [needCounter, isOnline, id]);
 
   if (!userId) return null;
   if (notFound && !parcel) {
@@ -158,6 +173,34 @@ export default function ParcelDetailPage() {
       await cancelParcel(id, null);
       setMsg({ tone: 'ok', text: 'Commande annulée.' });
       setConfirmCancel(false);
+      void load();
+      void refreshParcels(userId);
+    } catch (err) {
+      setMsg({ tone: 'error', text: parcelErrorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickCounter = async (driverId: string | null) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (driverId) {
+        const p = await chooseCounter(id, driverId);
+        setMsg({
+          tone: 'ok',
+          text:
+            p.supplement_status === 'paye'
+              ? 'Chauffeur choisi. Le supplément est payé par votre avoir : la course lui est proposée.'
+              : p.supplement_status === 'a_payer_depot'
+              ? 'Chauffeur choisi. Payez le supplément en espèces à l’épicier au moment du dépôt.'
+              : 'Chauffeur choisi. Payez le supplément par Orange Money puis envoyez la référence ci-dessous.',
+        });
+      } else {
+        await refuseCounter(id);
+        setMsg({ tone: 'info', text: 'Proposition refusée. NAVY ay continue de chercher un chauffeur à votre prix.' });
+      }
       void load();
       void refreshParcels(userId);
     } catch (err) {
@@ -266,6 +309,54 @@ export default function ParcelDetailPage() {
         </NavyCard>
       )}
 
+      {needCounter && (
+        <NavyCard className="p-4 space-y-3 border-navyay-yellow">
+          <p className="flex items-start gap-2 font-semibold">
+            <BadgePercent className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+            Aucun chauffeur n’a pris la course à votre prix. Ces chauffeurs peuvent la faire à un autre prix :
+          </p>
+          {!isOnline ? (
+            <NavyNotice icon={WifiOff}>Choisir ou refuser demande une connexion.</NavyNotice>
+          ) : counter === null ? (
+            <NavyLoader />
+          ) : counter.length === 0 ? (
+            <NavyNotice>Ces chauffeurs ne sont plus disponibles. Actualisez dans un instant.</NavyNotice>
+          ) : (
+            <ul className="space-y-1.5" aria-label="Chauffeurs proposés">
+              {counter.map((c) => (
+                <li key={c.driver_partner_id}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void pickCounter(c.driver_partner_id)}
+                    className="w-full flex items-center gap-3 rounded-xl border border-navyay-charcoal/15 bg-white px-3 py-3 text-left hover:bg-navyay-yellow/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow disabled:opacity-60"
+                  >
+                    <Truck className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-medium truncate">{c.driver_name ?? 'Chauffeur'}</span>
+                      <span className="block text-xs text-navyay-charcoal/75">
+                        {c.vehicle_type ? VEHICLE_LABELS[c.vehicle_type as VehicleType] ?? c.vehicle_type : 'Véhicule'}
+                        {c.near_km != null ? ` · à ${String(c.near_km).replace('.', ',')} km` : ''}
+                      </span>
+                    </span>
+                    <span className="text-right">
+                      <span className="block font-semibold tabular-nums">{formatAr(c.new_total)}</span>
+                      <span className="block text-xs tabular-nums text-navyay-charcoal/75">+{formatAr(c.supplement)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" className={`${btnSecondary} w-full`} disabled={busy || !isOnline} onClick={() => void pickCounter(null)}>
+            Non merci, continuer à chercher à mon prix
+          </button>
+          <p className="text-xs text-navyay-charcoal/75">
+            Le montant affiché est le nouveau prix total. Le supplément se paie d’abord avec votre avoir NAVY, puis en espèces à l’épicier si le colis n’est pas encore déposé, sinon par Orange Money. La course n’est proposée au chauffeur qu’une fois le supplément payé.
+          </p>
+        </NavyCard>
+      )}
+
       {showDriver && (
         <NavyCard className="p-4 flex items-center gap-3">
           <Truck className="w-6 h-6 flex-shrink-0" aria-hidden="true" />
@@ -289,7 +380,7 @@ export default function ParcelDetailPage() {
         <Row label="Arrivée" value={`${parcel.arrival_name ?? '—'}${zoneName(zones, parcel.arrival_zone_id) ? ` (${zoneName(zones, parcel.arrival_zone_id)})` : ''}`} />
         <Row label="Destinataire" value={`${parcel.recipient_name} · ${parcel.recipient_phone}`} />
         <Row label="Contenu" value={`${CATEGORY_LABELS[parcel.category]} · valeur ${formatAr(parcel.declared_value)}`} />
-        <Row label="Distance estimée" value={`${parcel.distance_km} km`} />
+        <Row label={parcel.distance_source === 'route' ? 'Distance par la route' : 'Distance estimée'} value={`${parcel.distance_km} km`} />
         {(isSender || isRecipient) && withdrawCode && !params.get('nouveau') && parcel.status !== 'commande' && !['retire', 'annule'].includes(parcel.status) && (
           <Row label="Code de retrait" value={withdrawCode} mono />
         )}
@@ -303,8 +394,17 @@ export default function ParcelDetailPage() {
         <NavyCard className="p-4 space-y-3">
           <h3 className="font-semibold">Paiement</h3>
           <p className="text-sm">
-            {parcel.payment_method === 'especes' ? 'Espèces' : 'Orange Money'} · <strong>{PAYMENT_LABELS[parcel.payment_status]}</strong>
+            {prices && (prices.amount_due ?? 1) === 0 ? 'Avoir NAVY' : parcel.payment_method === 'especes' ? 'Espèces' : 'Orange Money'} ·{' '}
+            <strong>{PAYMENT_LABELS[parcel.payment_status]}</strong>
           </p>
+          {parcel.supplement_status && (
+            <p className="text-sm">
+              <strong>{SUPPLEMENT_LABELS[parcel.supplement_status]}</strong>
+              {prices && parcel.supplement_status !== 'paye' && (prices.supplement_due ?? 0) > 0 && (
+                <> : <span className="tabular-nums">{formatAr(prices.supplement_due)}</span></>
+              )}
+            </p>
+          )}
           {parcel.payment_status === 'refuse' && parcel.payment_refusal_reason && (
             <NavyNotice tone="error">Motif : {parcel.payment_refusal_reason}. Vérifiez la référence puis renvoyez-la.</NavyNotice>
           )}
@@ -322,14 +422,43 @@ export default function ParcelDetailPage() {
                 <span>Total</span>
                 <span className="text-xl tabular-nums">{formatAr(prices.total_price)}</span>
               </p>
+              {(prices.supplement ?? 0) > 0 && (
+                <p className="flex justify-between gap-3 text-sm">
+                  <span>dont supplément (autre chauffeur)</span>
+                  <span className="tabular-nums">+{formatAr(prices.supplement)}</span>
+                </p>
+              )}
+              {(prices.credit_used ?? 0) + (prices.supplement_credit_used ?? 0) > 0 && (
+                <p className="flex justify-between gap-3 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Wallet className="w-4 h-4" aria-hidden="true" />
+                    Avoir utilisé
+                  </span>
+                  <span className="tabular-nums">−{formatAr((prices.credit_used ?? 0) + (prices.supplement_credit_used ?? 0))}</span>
+                </p>
+              )}
               {prices.credit_due > 0 && (
                 <NavyNotice tone="ok">Avoir en votre faveur : {formatAr(prices.credit_due)} ({prices.credit_reason ?? 'différence de prix'}). Il sera utilisable sur un prochain envoi.</NavyNotice>
               )}
             </>
           )}
-          {parcel.payment_method === 'orange_money' && ['attente_reference', 'refuse'].includes(parcel.payment_status) && parcel.status !== 'annule' && (
+          {((parcel.payment_method === 'orange_money' && ['attente_reference', 'refuse'].includes(parcel.payment_status)) ||
+            ['attente_reference', 'refuse'].includes(parcel.supplement_status ?? '')) &&
+            parcel.status !== 'annule' && (
             <form onSubmit={sendReference} className="space-y-2" noValidate>
-              {prices && <p className="text-sm">Envoyez <strong className="tabular-nums">{formatAr(prices.total_price)}</strong> par Orange Money, puis saisissez la référence reçue par SMS.</p>}
+              {prices && (
+                <p className="text-sm">
+                  Envoyez{' '}
+                  <strong className="tabular-nums">
+                    {formatAr(
+                      parcel.payment_method === 'orange_money' && ['attente_reference', 'refuse'].includes(parcel.payment_status)
+                        ? prices.amount_due ?? prices.total_price
+                        : prices.supplement_due ?? 0
+                    )}
+                  </strong>{' '}
+                  par Orange Money, puis saisissez la référence reçue par SMS.
+                </p>
+              )}
               <label className={labelCls}>
                 Référence Orange Money
                 <input className={inputCls} value={reference} onChange={(e) => setReference(e.target.value)} autoComplete="off" />
@@ -361,7 +490,8 @@ export default function ParcelDetailPage() {
       <NavyHelp title="Comprendre le suivi">
         <p>Accepté : un chauffeur a pris la course. En route : il a le colis en main. Livré : le destinataire l’a retiré.</p>
         <p>Le code colis (4 chiffres) est écrit sur le colis. Le code de retrait est secret : seuls vous et le destinataire le voyez.</p>
-        <p>Vous pouvez annuler tant que le colis n’est pas déposé à l’épicerie.</p>
+        <p>Vous pouvez annuler tant que le colis n’est pas déposé à l’épicerie. Ce qui a déjà été payé devient un avoir NAVY, utilisé tout seul sur votre prochain envoi.</p>
+        <p>Si aucun chauffeur n’accepte votre prix, NAVY ay peut vous proposer des chauffeurs à un autre prix : vous choisissez ou vous refusez.</p>
       </NavyHelp>
     </NavyPage>
   );

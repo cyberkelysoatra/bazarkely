@@ -8,6 +8,7 @@
  */
 import { supabase, withTimeout } from '../../../lib/supabase';
 import type {
+  NavyDistanceStatus,
   NavyDriverStatusRow,
   NavyOperatorEntry,
   NavyPartnerChangeRow,
@@ -125,10 +126,22 @@ export function getSettings(): Promise<NavySettings | null> {
 
 export function updateSettings(patch: Partial<NavySettings>): Promise<NavySettings> {
   const clean: Record<string, number | string | null> = {};
-  for (const k of ['suggested_min_fare', 'suggested_fare_per_5km', 'suggested_depot_fee', 'suggested_pickup_fee', 'cyberkely_share', 'orange_money_number'] as const) {
+  for (const k of ['suggested_min_fare', 'suggested_fare_per_5km', 'suggested_depot_fee', 'suggested_pickup_fee', 'cyberkely_share', 'orange_money_number', 'corridor_width_m'] as const) {
     if (k in patch) clean[k] = (patch as any)[k];
   }
   return run<NavySettings>(db.from('navy_settings').update(clean).eq('id', true).select('*').single(), 'navy-op-settings-save');
+}
+
+// ------------------------------------------------------------------ phase 2B1
+
+/** Road distances follow-up: last computation, pairs, requests of the month. */
+export function distanceStatus(): Promise<NavyDistanceStatus> {
+  return run<NavyDistanceStatus>(db.rpc('navy_distance_status'), 'navy-op-distances');
+}
+
+/** "Recalculer les distances": ONE Matrix request for every grocer (server side). */
+export function requestDistanceRefresh(): Promise<NavyDistanceStatus> {
+  return run<NavyDistanceStatus>(db.rpc('navy_request_distance_refresh'), 'navy-op-distances-refresh');
 }
 
 export function listOperators(): Promise<NavyOperatorEntry[]> {

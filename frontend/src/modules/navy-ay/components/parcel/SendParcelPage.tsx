@@ -1,11 +1,14 @@
 /**
- * Client — "Envoyer un colis" (phase 2A). Short steps: recipient → depot grocer →
+ * Client — "Envoyer un colis" (phase 2A, 2B1). Short steps: recipient → depot grocer →
  * arrival grocer → content and value → driver choice → price and payment.
  *
  * The price is computed by the SERVER (navy_quote, then frozen by navy_create_parcel):
- * the phone never sends an amount. Offline, an estimate is shown (same rules, cached
- * settings) and the order is kept on the phone, sent at the return of the network with
- * the same id (no duplicate). "Je choisis mon chauffeur" needs the network.
+ * the phone never sends an amount, except the total the client proposes himself in
+ * "Je propose mon prix" (checked again by the server: minimum, multiple of 100 Ar).
+ * The NAVY credit is deducted by the server. Offline, an estimate is shown (same rules,
+ * cached settings, road distance kept on the phone) and the order is kept on the phone,
+ * sent at the return of the network with the same id (no duplicate). "Je choisis mon
+ * chauffeur" needs the network.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,30 +17,38 @@ import {
   ArrowRight,
   Banknote,
   CheckCircle2,
+  HandCoins,
   Loader2,
+  Route,
   Send,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Truck,
   UserRound,
+  Wallet,
   WifiOff,
 } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useScrollToError } from '../../../../hooks/useScrollToError';
 import { useNavyProfile } from '../../services/navyProfileStore';
-import { doGesture, getQuote, loadOpenGrocers, placeOrder } from '../../services/parcelService';
+import { doGesture, getQuote, loadGrocerDistances, loadOpenGrocers, myCredit, placeOrder } from '../../services/parcelService';
 import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
-import type { DriverMode, NavyOpenGrocer, NavyQuote, ParcelCategory, PaymentMethod } from '../../types/parcel';
+import type { DriverMode, NavyGrocerDistance, NavyOpenGrocer, NavyQuote, ParcelCategory, PaymentMethod } from '../../types/parcel';
 import { computeFare, VEHICLE_LABELS } from '../../utils/partnerRules';
 import {
   CATEGORY_LABELS,
-  estimatedKm,
+  creditSplit,
   isValidRecipientPhone,
   MAX_DECLARED_VALUE,
+  minProposedTotal,
+  ORS_ATTRIBUTION,
+  pairKm,
   parcelErrorMessage,
   priceBreakdown,
+  proposedDriverGain,
+  proposedTotalProblem,
 } from '../../utils/parcelRules';
 import { NavyNotifyPrompt } from './ParcelUi';
 import GrocerPicker from './GrocerPicker';
@@ -65,6 +76,9 @@ export default function SendParcelPage() {
   const [value, setValue] = useState('');
   const [driverMode, setDriverMode] = useState<DriverMode>('auto');
   const [chosenDriver, setChosenDriver] = useState<string | null>(null);
+  const [proposed, setProposed] = useState('');
+  const [distances, setDistances] = useState<NavyGrocerDistance[]>([]);
+  const [phoneCredit, setPhoneCredit] = useState<number | null>(null);
   const [payment, setPayment] = useState<PaymentMethod>('especes');
   const [reference, setReference] = useState('');
   const [quote, setQuote] = useState<NavyQuote | null>(null);
@@ -82,6 +96,9 @@ export default function SendParcelPage() {
         setGrocers([]);
         setError(parcelErrorMessage(err));
       });
+    // Road distances and credit kept on the phone: the offline estimate uses them too.
+    loadGrocerDistances().then(setDistances).catch(() => undefined);
+    if (userId) myCredit(userId).then(({ credit }) => setPhoneCredit(credit?.balance ?? null)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
@@ -104,20 +121,38 @@ export default function SendParcelPage() {
   const depot = grocers?.find((g) => g.id === depotId) ?? null;
   const arrival = grocers?.find((g) => g.id === arrivalId) ?? null;
 
-  // Offline estimate: same rules as the server, with the settings kept on the phone.
+  // Offline estimate: same rules as the server, with the settings and the road
+  // distances kept on the phone (straight line + 30 % when the pair is unknown).
   const estimate = useMemo(() => {
     if (quote || !depot || !arrival) return null;
     const s = profile.settings as any;
-    const km = estimatedKm(depot.lat, depot.lng, arrival.lat, arrival.lng);
-    const ceiling = computeFare(km, s?.suggested_min_fare ?? 1000, s?.suggested_fare_per_5km ?? 1000);
+    const d = pairKm(distances, depot, arrival);
+    const ceiling = computeFare(d.km, s?.suggested_min_fare ?? 1000, s?.suggested_fare_per_5km ?? 1000);
     const b = priceBreakdown(depot.depot_fee, ceiling, arrival.pickup_fee, s?.cyberkely_share ?? 300);
-    return { km, total: b.total, lines: b.lines.map((l) => ({ kind: l.kind, shown: l.shown })) };
-  }, [quote, depot, arrival, profile.settings]);
+    return { km: d.km, source: d.source, total: b.total, lines: b.lines.map((l) => ({ kind: l.kind, shown: l.shown })) };
+  }, [quote, depot, arrival, profile.settings, distances]);
 
   const declared = Number(value.replace(/\s/g, ''));
-  const lines = quote ? quote.breakdown.lines.map((l) => ({ kind: l.kind, shown: l.shown })) : estimate?.lines ?? [];
-  const total = quote?.breakdown.total ?? estimate?.total ?? null;
+  const share = quote?.share ?? (profile.settings as any)?.cyberkely_share ?? 300;
+  const depotFee = quote?.depot_fee ?? depot?.depot_fee ?? 0;
+  const pickupFee = quote?.pickup_fee ?? arrival?.pickup_fee ?? 0;
+  // "Je propose mon prix": minimum accepted and what the driver would earn.
+  const minTotal = quote?.min_total ?? minProposedTotal(depotFee, pickupFee, share);
+  const proposedTotal = Number(proposed.replace(/[\s.]/g, ''));
+  const proposedOk = driverMode === 'prix' && proposedTotalProblem(proposedTotal, minTotal) === null;
+  const proposedGain = proposedOk ? proposedDriverGain(proposedTotal, depotFee, pickupFee, share) : null;
+  const proposedLines = proposedOk
+    ? priceBreakdown(depotFee, proposedGain ?? 0, pickupFee, share).lines.map((l) => ({ kind: l.kind, shown: l.shown }))
+    : null;
+
+  const lines = proposedLines ?? (quote ? quote.breakdown.lines.map((l) => ({ kind: l.kind, shown: l.shown })) : estimate?.lines ?? []);
+  const total = driverMode === 'prix' ? (proposedOk ? proposedTotal : null) : quote?.breakdown.total ?? estimate?.total ?? null;
   const km = quote?.distance_km ?? estimate?.km ?? null;
+  const kmSource = quote?.distance_source ?? estimate?.source ?? 'estimation';
+  // NAVY credit: deducted automatically by the server, shown here in advance.
+  const creditBalance = quote?.credit_balance ?? phoneCredit ?? 0;
+  const credit = total !== null ? creditSplit(creditBalance, total) : null;
+  const toPay = credit ? credit.due : total;
   const omNumber = quote?.orange_money_number?.trim() || null;
   const lineLabel = (kind: string) =>
     kind === 'depot' ? depot?.shop_name ?? 'Épicerie de départ' : kind === 'pickup' ? arrival?.shop_name ?? 'Épicerie d’arrivée' : 'Transport';
@@ -141,8 +176,12 @@ export default function SendParcelPage() {
       if (!isOnline) return 'Choisir son chauffeur demande une connexion. Prenez « Automatique » ou attendez le réseau.';
       if (!chosenDriver) return 'Choisissez un chauffeur dans la liste.';
     }
+    if (s === 4 && driverMode === 'prix') {
+      const problem = proposedTotalProblem(proposedTotal, minTotal);
+      if (problem) return problem;
+    }
     if (s === 5) {
-      if (payment === 'orange_money' && !omNumber) return 'Le paiement Orange Money n’est pas encore ouvert. Choisissez les espèces.';
+      if (payment === 'orange_money' && !omNumber && toPay !== 0) return 'Le paiement Orange Money n’est pas encore ouvert. Choisissez les espèces.';
       if (payment === 'orange_money' && reference.trim() && reference.trim().length < 4) return 'Référence Orange Money incomplète.';
     }
     return null;
@@ -181,13 +220,14 @@ export default function SendParcelPage() {
         declaredValue: Math.round(declared),
         driverMode,
         chosenDriverId: driverMode === 'choix' ? chosenDriver : null,
-        paymentMethod: payment,
+        paymentMethod: toPay === 0 ? 'especes' : payment,
+        proposedTotal: driverMode === 'prix' ? proposedTotal : null,
       });
       if (result.status === 'error') {
         setError(parcelErrorMessage(result.error));
         return;
       }
-      if (payment === 'orange_money' && reference.trim()) {
+      if (payment === 'orange_money' && toPay !== 0 && reference.trim()) {
         await doGesture(userId, { kind: 'payment_ref', paymentId: crypto.randomUUID(), parcelId, reference: reference.trim() });
       }
       navigate(result.status === 'sent' ? `/navy/colis/${parcelId}?nouveau=1` : '/navy/colis?garde=1', { replace: true });
@@ -310,6 +350,7 @@ export default function SendParcelPage() {
               [
                 { v: 'auto', title: 'Automatique, le moins cher', text: 'NAVY ay propose la course au chauffeur le moins cher qui va dans la bonne direction.', icon: Sparkles },
                 { v: 'choix', title: 'Je choisis mon chauffeur', text: 'Vous voyez les chauffeurs disponibles et vous en choisissez un.', icon: UserRound },
+                { v: 'prix', title: 'Je propose mon prix', text: 'Vous fixez le prix total. La course est proposée à tous les chauffeurs : le premier qui accepte l’emporte.', icon: HandCoins },
               ] as const
             ).map((o) => (
               <button
@@ -329,6 +370,38 @@ export default function SendParcelPage() {
               </button>
             ))}
           </div>
+          {driverMode === 'prix' && (
+            <div className="space-y-2 rounded-xl bg-navyay-charcoal/[0.04] p-3">
+              <label className={labelCls}>
+                Prix total que vous proposez
+                <div className="relative">
+                  <input
+                    className={`${inputCls} pr-10 text-lg font-semibold`}
+                    inputMode="numeric"
+                    value={proposed}
+                    onChange={(e) => setProposed(e.target.value)}
+                    placeholder={String(Math.max(minTotal, 100))}
+                    aria-describedby="navy-proposed-help"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-sm text-navyay-charcoal/70" aria-hidden="true">Ar</span>
+                </div>
+              </label>
+              <p id="navy-proposed-help" className="text-sm">
+                Minimum accepté : <strong className="tabular-nums">{formatAr(minTotal)}</strong> (tarifs des deux épiciers + part NAVY ay). Par tranches de 100 Ar.
+              </p>
+              {proposedGain !== null && (
+                <p className="text-sm" aria-live="polite">
+                  Le chauffeur gagnera <strong className="tabular-nums">{formatAr(proposedGain)}</strong>.
+                  {quote && proposedGain < quote.transport_ceiling && ' C’est moins que le prix habituel : la course peut mettre plus de temps à trouver preneur.'}
+                </p>
+              )}
+              <NavyHelp title="Comment marche « Je propose mon prix » ?">
+                <p>Vous fixez le prix total du colis. Après le dépôt, la course est proposée en même temps à tous les chauffeurs qui vont dans la bonne direction.</p>
+                <p>Le premier chauffeur qui accepte l’emporte. Il ne voit que ce qu’il gagne, jamais le prix total.</p>
+                <p>Si aucun chauffeur n’accepte à ce prix, NAVY ay vous propose jusqu’à 3 chauffeurs à un autre prix : vous choisissez ou vous refusez.</p>
+              </NavyHelp>
+            </div>
+          )}
           {driverMode === 'choix' &&
             (!isOnline ? (
               <NavyNotice icon={WifiOff}>Choisir son chauffeur demande une connexion.</NavyNotice>
@@ -380,13 +453,33 @@ export default function SendParcelPage() {
                   ))}
                 </ul>
                 <div className="flex items-baseline justify-between gap-3 border-t border-navyay-charcoal/15 pt-3">
-                  <span className="font-semibold">Total à payer</span>
-                  <span className="text-3xl font-bold tabular-nums">{formatAr(total)}</span>
+                  <span className="font-semibold">{credit && credit.used > 0 ? 'Total' : 'Total à payer'}</span>
+                  <span className={`${credit && credit.used > 0 ? 'text-xl' : 'text-3xl'} font-bold tabular-nums`}>{formatAr(total)}</span>
                 </div>
-                <p className="text-xs text-navyay-charcoal/75">
-                  Distance estimée : {km} km (à vol d’oiseau + 30 %). La part NAVY ay est comprise dans chaque ligne.
-                  {!quote && ' Estimation faite sur ce téléphone : le prix exact sera confirmé à l’envoi.'}
+                {credit && credit.used > 0 && (
+                  <>
+                    <p className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <Wallet className="w-4 h-4" aria-hidden="true" />
+                        Avoir utilisé
+                      </span>
+                      <span className="tabular-nums font-medium">−{formatAr(credit.used)}</span>
+                    </p>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-semibold">Reste à payer</span>
+                      <span className="text-3xl font-bold tabular-nums">{formatAr(credit.due)}</span>
+                    </div>
+                    {credit.left > 0 && <p className="text-xs text-navyay-charcoal/75">Il vous restera {formatAr(credit.left)} d’avoir pour un prochain envoi.</p>}
+                  </>
+                )}
+                <p className="flex items-start gap-1.5 text-xs text-navyay-charcoal/75">
+                  <Route className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    {kmSource === 'route' ? `Distance par la route : ${km} km.` : `Distance estimée : ${km} km (à vol d’oiseau + 30 %).`} La part NAVY ay est comprise dans chaque ligne.
+                    {!quote && ' Estimation faite sur ce téléphone : le prix exact sera confirmé à l’envoi.'}
+                  </span>
                 </p>
+                {kmSource === 'route' && <p className="text-xs text-navyay-charcoal/75">{ORS_ATTRIBUTION}</p>}
               </>
             )}
             <NavyNotice icon={ShieldCheck}>Indemnisation maximale en cas de perte : {formatAr(Math.min(Number.isFinite(declared) ? declared : 0, MAX_DECLARED_VALUE))}.</NavyNotice>
@@ -394,6 +487,9 @@ export default function SendParcelPage() {
 
           <NavyCard className="p-4 space-y-3">
             <h3 className="font-semibold">Paiement</h3>
+            {toPay === 0 ? (
+              <NavyNotice tone="ok" icon={Wallet}>Votre avoir NAVY couvre tout le prix : rien à payer, le paiement est acquis dès la commande.</NavyNotice>
+            ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
@@ -425,10 +521,11 @@ export default function SendParcelPage() {
                 </span>
               </button>
             </div>
-            {payment === 'orange_money' && omNumber && total !== null && (
+            )}
+            {toPay !== 0 && payment === 'orange_money' && omNumber && toPay !== null && (
               <div className="space-y-2 rounded-xl bg-navyay-charcoal/[0.04] p-3 text-sm">
                 <p>
-                  Envoyez <strong className="tabular-nums">{formatAr(total)}</strong> au numéro Orange Money de CyberKELY :{' '}
+                  Envoyez <strong className="tabular-nums">{formatAr(toPay)}</strong> au numéro Orange Money de CyberKELY :{' '}
                   <strong className="tabular-nums">{omNumber}</strong>
                 </p>
                 <label className={labelCls}>
@@ -470,7 +567,8 @@ export default function SendParcelPage() {
         <p>1. Vous déposez le colis à l’épicerie de départ. L’épicier le referme devant vous.</p>
         <p>2. Un chauffeur qui va dans la bonne direction l’emporte jusqu’à l’épicerie d’arrivée.</p>
         <p>3. Le destinataire vient le chercher et donne le code de retrait que vous lui aurez transmis.</p>
-        <p>Le prix est fixé au moment de la commande : il ne change plus ensuite.</p>
+        <p>Le prix est fixé au moment de la commande : il ne change plus ensuite, sauf si vous acceptez vous-même un chauffeur plus cher.</p>
+        <p>Si vous avez un avoir NAVY, il est déduit tout seul du prix.</p>
       </NavyHelp>
     </NavyPage>
   );

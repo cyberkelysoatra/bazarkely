@@ -1,17 +1,19 @@
 /**
- * Driver home — "Direction du moment" (phase 1B). A big Available / Not available
+ * Driver home — "Direction du moment" (phase 1B, 2B1). A big Available / Not available
  * switch. Becoming available = touching on the map the place the driver is heading to
  * (last destination proposed by default); the arrival zone is shown in plain words.
- * Only that destination is recorded, never a live position. Availability ends by
- * itself 3 h after the last update, with a "Toujours disponible ?" reminder.
+ * Phase 2B1: at that moment ONLY, one GPS reading (browser consent) is sent with the
+ * destination so that the server computes the route (corridor). Never a tracking;
+ * refused = still available, zone criterion only. Availability ends by itself 3 h
+ * after the last update ("Toujours disponible ?" keeps the same route, no new reading).
  * Offline: the choice is kept on the phone and sent when the network comes back.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock, Loader2, MapPin, Navigation, PauseCircle, PlayCircle, Smartphone } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, LocateFixed, MapPin, Navigation, PauseCircle, PlayCircle, Route, Smartphone } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useNavyProfile } from '../../services/navyProfileStore';
-import { loadDriverStatus, setDriverAvailability, useDriverState } from '../../services/driverService';
+import { loadDriverStatus, loadMyRoute, readPositionOnce, setDriverAvailability, useDriverState, type MyRouteState } from '../../services/driverService';
 import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import { DRIVER_REMINDER_MS, formatRemaining, isLocalAvailable, localAvailableUntil, zoneForPoint } from '../../utils/geo';
 import NavyMap from '../map/NavyMap';
@@ -30,6 +32,9 @@ export default function DriverDirectionPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [locating, setLocating] = useState(false);
+  const [gpsShared, setGpsShared] = useState<boolean | null>(null);
+  const [route, setRoute] = useState<MyRouteState | null | undefined>(undefined);
 
   useEffect(() => {
     if (!userId || !row) return;
@@ -41,6 +46,22 @@ export default function DriverDirectionPage() {
     const t = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(t);
   }, []);
+
+  // Route (corridor) computed by the server from the single reading, refreshed a few times.
+  useEffect(() => {
+    if (!row || !isOnline) return;
+    let stop = false;
+    const read = () =>
+      loadMyRoute(row.id)
+        .then((r) => !stop && setRoute(r))
+        .catch(() => undefined);
+    void read();
+    const t = window.setInterval(() => void read(), 8000);
+    return () => {
+      stop = true;
+      window.clearInterval(t);
+    };
+  }, [row?.id, isOnline, driver.status?.clientAt, driver.status?.pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const status = driver.userId === userId ? driver.status : null;
   const available = isLocalAvailable(status, now);
@@ -70,10 +91,16 @@ export default function DriverDirectionPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await setDriverAvailability(userId, row.id, true, dest);
+      // ONE reading of the position, only now (never a tracking).
+      setLocating(true);
+      const origin = await readPositionOnce();
+      setLocating(false);
+      setGpsShared(!!origin);
+      const res = await setDriverAvailability(userId, row.id, true, dest, origin);
       if (res === 'error') setError('Votre disponibilité n’a pas été acceptée. Rechargez l’application puis réessayez.');
       else setChoosing(false);
     } finally {
+      setLocating(false);
       setBusy(false);
     }
   };
@@ -164,6 +191,10 @@ export default function DriverDirectionPage() {
         <NavyCard className="p-4 space-y-3">
           <h3 className="font-semibold">Où allez-vous ?</h3>
           <p className="text-sm text-navyay-charcoal/80">Touchez la carte à l’endroit de votre arrivée, ou faites glisser l’épingle.</p>
+          <p className="flex items-start gap-2 text-xs text-navyay-charcoal/75">
+            <LocateFixed className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            <span>En confirmant, votre position est lue une seule fois pour calculer votre trajet. Elle n’est jamais suivie et s’efface avec votre direction.</span>
+          </p>
           <NavyMap
             ariaLabel="Carte : choisissez votre destination"
             zones={zones}
@@ -184,7 +215,7 @@ export default function DriverDirectionPage() {
           <div className="grid gap-2 sm:grid-cols-2">
             <button type="button" className={btnAccent} disabled={busy || !dest} onClick={() => void confirm()}>
               {busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-5 h-5" aria-hidden="true" />}
-              Je suis disponible
+              {locating ? 'Lecture de votre position…' : 'Je suis disponible'}
             </button>
             <button type="button" className={btnSecondary} disabled={busy} onClick={() => setChoosing(false)}>
               Annuler
@@ -204,6 +235,18 @@ export default function DriverDirectionPage() {
               </div>
             </div>
             <NavyMap ariaLabel="Carte : votre destination" zones={zones} pin={currentDest} fit="pin" heightClass="h-56" />
+            <p className="flex items-start gap-2 text-sm" aria-live="polite">
+              <Route className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                {route?.route_status === 'ok'
+                  ? 'Trajet calculé : les colis dont l’épicerie d’arrivée est proche de votre route vous seront aussi proposés.'
+                  : route?.route_status === 'pending'
+                  ? 'Calcul de votre trajet en cours…'
+                  : route?.route_status === 'failed' || gpsShared === false || route === null
+                  ? 'Position non partagée ou trajet indisponible : seuls les colis vers votre zone d’arrivée vous sont proposés.'
+                  : 'Seuls les colis vers votre zone d’arrivée vous sont proposés pour l’instant.'}
+              </span>
+            </p>
             <button type="button" className={`${btnPrimary} w-full`} disabled={busy} onClick={startChoosing}>
               <Navigation className="w-4 h-4" aria-hidden="true" />
               Changer de destination
@@ -214,7 +257,8 @@ export default function DriverDirectionPage() {
 
       <NavyHelp title="À quoi sert la direction ?">
         <p>Vous faites déjà des trajets : en indiquant où vous allez, NAVY ay peut vous confier un colis pour cette zone.</p>
-        <p>Seule votre destination est enregistrée. Votre position n’est jamais suivie.</p>
+        <p>Votre destination est enregistrée. Quand vous vous déclarez disponible ou changez de destination, votre position est lue une seule fois pour calculer votre trajet : NAVY ay peut alors vous proposer aussi les colis dont l’épicerie d’arrivée est proche de votre route.</p>
+        <p>Votre position n’est jamais suivie. Elle s’efface quand votre disponibilité s’arrête. Si vous refusez de la partager, vous restez disponible : seuls les colis vers votre zone d’arrivée vous sont alors proposés.</p>
         <p>La disponibilité s’arrête toute seule 3 heures après votre dernier choix. Un rappel « Toujours disponible ? » s’affiche avant.</p>
         <p>Sans réseau, votre choix est gardé sur le téléphone et part tout seul au retour du réseau.</p>
       </NavyHelp>

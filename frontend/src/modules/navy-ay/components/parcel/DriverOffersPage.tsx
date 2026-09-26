@@ -1,12 +1,14 @@
 /**
- * Driver — "Offres" (phase 2A). A live offer fills the screen with a 30-second
- * countdown: departure, arrival, estimated distance, category and WHAT HE EARNS (never
- * the total paid by the client). The deadline is the SERVER's (expires_at); accepting
- * requires the network and is refused by the server once the deadline has passed.
+ * Driver — "Offres" (phase 2A, 2B1). A live offer fills the screen with a 30-second
+ * countdown: departure, arrival, distance, category and WHAT HE EARNS (never the total
+ * paid by the client). The deadline is the SERVER's (expires_at); accepting requires
+ * the network and is refused by the server once the deadline has passed.
+ * Phase 2B1: a "Je propose mon prix" offer (broadcast) is sent to every eligible driver
+ * at once and stays open for the round: no countdown, the first who accepts wins.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BellRing, CheckCircle2, Loader2, MapPin, Package, Route, WifiOff, XCircle } from 'lucide-react';
+import { BellRing, CheckCircle2, Loader2, MapPin, Package, Route, Users, WifiOff, XCircle } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../../stores/appStore';
 import { acceptOffer, myOffers, refreshParcels, refuseOffer } from '../../services/parcelService';
@@ -89,21 +91,31 @@ export default function DriverOffersPage() {
   if (offer) {
     const left = offerSecondsLeft(offer, now);
     const pct = Math.max(0, Math.min(100, (left / OFFER_SECONDS) * 100));
+    const broadcast = !!offer.broadcast;
     return (
       <div className="fixed inset-0 z-[70] flex flex-col bg-navyay-yellow text-navyay-charcoal" role="dialog" aria-modal="true" aria-label="Nouvelle course">
-        <div className="h-2 bg-navyay-charcoal/15" aria-hidden="true">
-          <div className="h-full bg-navyay-charcoal transition-[width] duration-200 ease-linear" style={{ width: `${pct}%` }} />
-        </div>
+        {!broadcast && (
+          <div className="h-2 bg-navyay-charcoal/15" aria-hidden="true">
+            <div className="h-full bg-navyay-charcoal transition-[width] duration-200 ease-linear" style={{ width: `${pct}%` }} />
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto px-5 py-6 max-w-lg w-full mx-auto flex flex-col gap-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-lg font-bold">
               <BellRing className="w-6 h-6" aria-hidden="true" />
               Nouvelle course
             </p>
-            <p className="text-5xl font-bold tabular-nums" aria-live="polite" aria-label={`${left} secondes restantes`}>
-              {left}
-              <span className="text-xl"> s</span>
-            </p>
+            {broadcast ? (
+              <p className="flex items-center gap-1.5 rounded-2xl bg-navyay-charcoal px-3 py-1.5 text-sm font-semibold leading-tight text-white">
+                <Users className="w-4 h-4 text-navyay-yellow" aria-hidden="true" />
+                Le premier qui accepte l’emporte
+              </p>
+            ) : (
+              <p className="text-5xl font-bold tabular-nums" aria-live="polite" aria-label={`${left} secondes restantes`}>
+                {left}
+                <span className="text-xl"> s</span>
+              </p>
+            )}
           </div>
           <div className="rounded-3xl bg-white/90 p-5 space-y-4">
             <p className="text-sm">Vous gagnez</p>
@@ -119,7 +131,7 @@ export default function DriverOffersPage() {
               </p>
               <p className="flex items-center gap-3">
                 <Route className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-                Distance estimée : <strong>{offer.distance_km} km</strong>
+                Distance : <strong>{offer.distance_km} km</strong>
               </p>
               <p className="flex items-center gap-3">
                 <Package className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
@@ -127,6 +139,12 @@ export default function DriverOffersPage() {
               </p>
             </div>
           </div>
+          {broadcast && (
+            <p className="text-sm text-navyay-charcoal/85">
+              Cette course est proposée en même temps à d’autres chauffeurs. Elle reste ouverte quelques minutes, sauf si un autre accepte avant vous.
+            </p>
+          )}
+          {live.length > 1 && <p className="text-sm font-medium">{live.length - 1} autre(s) course(s) en attente après celle-ci.</p>}
           {msg && <NavyNotice tone={msg.tone}>{msg.text}</NavyNotice>}
           <div className="mt-auto grid grid-cols-2 gap-3 pb-[env(safe-area-inset-bottom)]">
             <button type="button" className={`${btnSecondary} py-4 text-lg`} disabled={busy} onClick={() => void refuse(offer)}>
@@ -157,7 +175,8 @@ export default function DriverOffersPage() {
       <NavyHelp title="Comment marchent les offres ?">
         <p>Une course vous est proposée quand un colis va vers votre zone d’arrivée et que votre prix est dans le budget du client.</p>
         <p>Vous avez 30 secondes pour accepter. Passé ce délai, la course est proposée à un autre chauffeur.</p>
-        <p>Le montant affiché est ce que vous gagnez sur ce colis.</p>
+        <p>« Le premier qui accepte l’emporte » : le client a proposé son prix, la course est envoyée à plusieurs chauffeurs en même temps, sans compte à rebours.</p>
+        <p>Le montant affiché est ce que vous gagnez sur ce colis. Dans « Mon véhicule », vous pouvez masquer les courses payées moins que votre tarif.</p>
       </NavyHelp>
     </NavyPage>
   );

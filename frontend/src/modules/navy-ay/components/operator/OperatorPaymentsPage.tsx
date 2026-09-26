@@ -110,6 +110,9 @@ function PaymentCard({ pay, onDone }: { pay: PaymentToCheck; onDone: () => void 
           {pay.parcel && <ParcelCode code={pay.parcel.code} />}
           <p className="text-sm">Client : {pay.parcel?.sender_name ?? '—'} · pour {pay.parcel?.recipient_name ?? '—'}</p>
           <p className="text-xs text-navyay-charcoal/75">Envoyée à {formatTime(pay.submitted_at)}</p>
+          {pay.kind === 'supplement' && (
+            <p className="mt-1 inline-block rounded-full bg-navyay-yellow px-2 py-0.5 text-xs font-semibold">Supplément (autre chauffeur choisi)</p>
+          )}
         </div>
         <p className="text-2xl font-bold tabular-nums">{formatAr(pay.amount)}</p>
       </div>

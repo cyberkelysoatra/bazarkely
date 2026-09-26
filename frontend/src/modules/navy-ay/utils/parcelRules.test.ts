@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { computeFare } from './partnerRules';
-import { estimatedKm, milestones, offerSecondsLeft, parcelAlerts, priceBreakdown, secondsLeft } from './parcelRules';
-import type { NavyParcelRow } from '../types/parcel';
+import {
+  creditSplit,
+  estimatedKm,
+  milestones,
+  minProposedTotal,
+  offerSecondsLeft,
+  pairKm,
+  parcelAlerts,
+  priceBreakdown,
+  proposedDriverGain,
+  proposedTotalProblem,
+  secondsLeft,
+} from './parcelRules';
+import type { NavyGrocerDistance, NavyParcelRow } from '../types/parcel';
 
 describe('priceBreakdown', () => {
   it('E2 case: fees 100 / 100, grid 1000 per 5 km, 7 km, share 300', () => {
@@ -78,5 +90,64 @@ describe('offerSecondsLeft', () => {
   it('never shows more than 30 s', () => {
     const now = Date.parse('2026-09-26T10:00:00Z');
     expect(offerSecondsLeft({ expires_at: '2026-09-26T10:01:00Z' }, now)).toBe(30);
+  });
+});
+
+// ------------------------------------------------------------------ phase 2B1
+
+describe('pairKm (road distance kept on the phone, fallback straight line + 30 %)', () => {
+  const a = { id: 'a', lat: -13.405, lng: 48.27 };
+  const b = { id: 'b', lat: -13.39, lng: 48.215 };
+  const row: NavyGrocerDistance = {
+    from_id: 'a', to_id: 'b', from_lat: -13.405, from_lng: 48.27, to_lat: -13.39, to_lng: 48.215,
+    km: 7.8, duration_s: 700, source: 'route', computed_at: '2026-09-27T00:00:00Z',
+  };
+  it('uses the road distance of the table', () => {
+    expect(pairKm([row], a, b)).toEqual({ km: 7.8, source: 'route' });
+  });
+  it('falls back to the estimate when the pair is missing (other direction included)', () => {
+    expect(pairKm([row], b, a)).toEqual({ km: estimatedKm(b.lat, b.lng, a.lat, a.lng), source: 'estimation' });
+    expect(pairKm([], a, b).source).toBe('estimation');
+    expect(pairKm(null, a, b).km).toBe(estimatedKm(a.lat, a.lng, b.lat, b.lng));
+  });
+  it('ignores a row computed for an older position of a shop', () => {
+    expect(pairKm([row], a, { ...b, lat: -13.3901 }).source).toBe('estimation');
+  });
+  it('ignores an "estimation" row (no road found)', () => {
+    expect(pairKm([{ ...row, source: 'estimation' }], a, b).source).toBe('estimation');
+  });
+});
+
+describe('Je propose mon prix', () => {
+  it('minimum = grocers + CyberKELY share rounded up to 100 Ar', () => {
+    expect(minProposedTotal(100, 100, 300)).toBe(500);
+    expect(minProposedTotal(150, 120, 300)).toBe(600);
+    expect(minProposedTotal(0, 0, 0)).toBe(0);
+  });
+  it('the driver earns total − grocers − share', () => {
+    expect(proposedDriverGain(1500, 100, 100, 300)).toBe(1000);
+    expect(proposedDriverGain(600, 150, 120, 300)).toBe(30);
+  });
+  it('refuses below the minimum and non multiples of 100', () => {
+    expect(proposedTotalProblem(400, 500)).toMatch(/inférieur/);
+    expect(proposedTotalProblem(1550, 500)).toMatch(/multiple de 100/);
+    expect(proposedTotalProblem(0, 500)).toMatch(/Indiquez/);
+    expect(proposedTotalProblem(1500, 500)).toBeNull();
+    expect(proposedTotalProblem(500, 500)).toBeNull();
+  });
+});
+
+describe('creditSplit (avoir)', () => {
+  it('uses the credit first and keeps the rest', () => {
+    expect(creditSplit(400, 1500)).toEqual({ used: 400, due: 1100, left: 0 });
+    expect(creditSplit(2000, 1500)).toEqual({ used: 1500, due: 0, left: 500 });
+    expect(creditSplit(0, 1500)).toEqual({ used: 0, due: 1500, left: 0 });
+  });
+});
+
+describe('offerSecondsLeft, broadcast offers', () => {
+  it('a broadcast offer is not capped at 30 s', () => {
+    expect(offerSecondsLeft({ expires_at: '2026-01-01T00:04:00Z', seconds_left: 240, fetched_at: 1000, broadcast: true }, 1000)).toBe(240);
+    expect(offerSecondsLeft({ expires_at: '2026-01-01T00:04:00Z', seconds_left: 240, fetched_at: 1000 }, 1000)).toBe(30);
   });
 });

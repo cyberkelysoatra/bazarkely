@@ -63,6 +63,8 @@ export interface NavyPartnerRow {
   rejection_final?: boolean;
   ended_at?: string | null;
   documents_purge_after?: string | null;
+  /** Phase 2B1 (driver): do not receive offers below my own fare. */
+  hide_low_offers?: boolean;
 }
 
 /** Columns the owner may write (mirrors the column grants of the SQL). */
@@ -92,7 +94,7 @@ export type NavyPartnerWritable = Pick<
 
 /** Fields the owner edits after approval (settings of the shop / vehicle). */
 export type NavyPartnerSettingsPatch = Partial<
-  Pick<NavyPartnerRow, 'is_open' | 'depot_fee' | 'pickup_fee' | 'min_fare' | 'fare_per_5km' | 'shop_lat' | 'shop_lng'>
+  Pick<NavyPartnerRow, 'is_open' | 'depot_fee' | 'pickup_fee' | 'min_fare' | 'fare_per_5km' | 'shop_lat' | 'shop_lng' | 'hide_low_offers'>
 >;
 
 /** Text fields of the request form. */
@@ -139,7 +141,26 @@ export interface NavySettings {
   cyberkely_share?: number;
   /** Phase 2A: CyberKELY Orange Money number (null = Orange Money not open yet). */
   orange_money_number?: string | null;
+  /** Phase 2B1: corridor width around a driver's route (meters). */
+  corridor_width_m?: number;
   updated_at?: string;
+}
+
+/** Phase 2B1: road distances follow-up for operators (navy_distance_status). */
+export interface NavyDistanceStatus {
+  computed_at: string | null;
+  requested_at: string | null;
+  last_error: string | null;
+  full_pending: boolean;
+  corridor_width_m: number;
+  grocers: number;
+  pairs_route: number;
+  pairs_total: number;
+  queued: number;
+  month_requests: number;
+  month_matrix: number;
+  month_directions: number;
+  month_errors: number;
 }
 
 /** Public card behind the QR code (navy_public_partner). */
@@ -200,6 +221,12 @@ export interface DriverStatusLocal {
   pending: boolean;
   /** Zone of the destination computed by the server (null = unknown yet). */
   destZoneId?: string | null;
+  /**
+   * Phase 2B1: ONE GPS reading taken when the driver declares himself available or
+   * changes direction, kept on the phone only until it is sent (then removed).
+   */
+  originLat?: number | null;
+  originLng?: number | null;
 }
 
 export type PartnerChangeStatus = 'pending' | 'approved' | 'rejected';

@@ -5,7 +5,15 @@
  * covered by unit tests (parcelRules.test.ts). They never produce a price sent to the
  * server.
  */
-import type { NavyParcelRow, ParcelCategory, ParcelStatus, PaymentStatus, PriceLineKind } from '../types/parcel';
+import type {
+  DistanceSource,
+  NavyGrocerDistance,
+  NavyParcelRow,
+  ParcelCategory,
+  ParcelStatus,
+  PaymentStatus,
+  PriceLineKind,
+} from '../types/parcel';
 
 /** Maximum declared value (compensation ceiling). */
 export const MAX_DECLARED_VALUE = 50000;
@@ -25,6 +33,63 @@ export function estimatedKm(lat1: number, lng1: number, lat2: number, lng2: numb
     Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
   const km = 2 * 6371 * Math.asin(Math.sqrt(a)) * DISTANCE_FACTOR;
   return Math.round(km * 10) / 10;
+}
+
+/**
+ * Phase 2B1: distance between two grocers — the road distance of the table kept on the
+ * phone (navy_grocer_distances) when it was computed for the CURRENT positions of both
+ * shops, else the estimate above. Mirrors public.navy_pair_km(), so the offline price
+ * uses the same distance as the server.
+ */
+export function pairKm(
+  distances: NavyGrocerDistance[] | null | undefined,
+  from: { id: string; lat: number; lng: number },
+  to: { id: string; lat: number; lng: number }
+): { km: number; source: DistanceSource } {
+  const row = (distances ?? []).find(
+    (d) =>
+      d.from_id === from.id &&
+      d.to_id === to.id &&
+      d.source === 'route' &&
+      d.from_lat === from.lat &&
+      d.from_lng === from.lng &&
+      d.to_lat === to.lat &&
+      d.to_lng === to.lng
+  );
+  if (row) return { km: Number(row.km), source: 'route' };
+  return { km: estimatedKm(from.lat, from.lng, to.lat, to.lng), source: 'estimation' };
+}
+
+/** Attribution required by OpenRouteService (terms of use) for road distances. */
+export const ORS_ATTRIBUTION = '© openrouteservice by HeiGIT | Données © les contributeurs d’OpenStreetMap';
+
+/**
+ * Phase 2B1, "Je propose mon prix": minimum accepted = both grocers' fees + CyberKELY
+ * share, rounded UP to 100 Ar. Mirrors public.navy_min_total().
+ */
+export function minProposedTotal(depotFee: number, pickupFee: number, share: number): number {
+  const sum = Math.max(0, depotFee || 0) + Math.max(0, pickupFee || 0) + Math.max(0, share || 0);
+  return Math.ceil(sum / 100) * 100;
+}
+
+/** What the driver earns with a proposed total: total − both grocers − CyberKELY share. */
+export function proposedDriverGain(total: number, depotFee: number, pickupFee: number, share: number): number {
+  return Math.max(0, Math.round(total) - Math.max(0, depotFee || 0) - Math.max(0, pickupFee || 0) - Math.max(0, share || 0));
+}
+
+/** Plain-French problem of a proposed total, or null when it is accepted (same rules as the server). */
+export function proposedTotalProblem(total: number, min: number): string | null {
+  if (!Number.isFinite(total) || total <= 0) return 'Indiquez le prix total que vous proposez, en ariary.';
+  if (total % 100 !== 0) return 'Le prix proposé doit être un multiple de 100 Ar (ex. 2 500 Ar).';
+  if (total < min) return `Le prix proposé ne peut pas être inférieur à ${min.toLocaleString('fr-FR')} Ar.`;
+  if (total > 1000000) return 'Prix proposé trop élevé.';
+  return null;
+}
+
+/** NAVY credit deducted from an amount: used first, the rest is kept. */
+export function creditSplit(balance: number, amount: number): { used: number; due: number; left: number } {
+  const used = Math.max(0, Math.min(Math.max(0, balance || 0), Math.max(0, amount || 0)));
+  return { used, due: Math.max(0, amount - used), left: Math.max(0, (balance || 0) - used) };
 }
 
 export interface BreakdownLine {
@@ -101,6 +166,15 @@ export const STATUS_LABELS: Record<ParcelStatus, string> = {
   annule: 'Annulé',
 };
 
+/** Phase 2B1: supplement after a chosen counter-proposal. */
+export const SUPPLEMENT_LABELS: Record<PaymentStatus, string> = {
+  a_payer_depot: 'Supplément à payer en espèces au dépôt',
+  attente_reference: 'Supplément à payer par Orange Money',
+  a_verifier: 'Supplément en cours de vérification',
+  refuse: 'Supplément non reconnu',
+  paye: 'Supplément payé',
+};
+
 export const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   a_payer_depot: 'Espèces à payer au dépôt',
   attente_reference: 'Référence Orange Money à saisir',
@@ -150,6 +224,17 @@ export const EVENT_LABELS: Record<string, string> = {
   retour_a_organiser: 'Retour à organiser',
   retire: 'Retiré par le destinataire',
   annule: 'Commande annulée',
+  // phase 2B1
+  offre_diffusee: 'Course proposée à tous les chauffeurs (le premier qui accepte l’emporte)',
+  contre_proposition: 'Chauffeurs disponibles à un autre prix : votre choix est demandé',
+  contre_proposition_choisie: 'Chauffeur choisi à un autre prix',
+  contre_proposition_refusee: 'Autre prix refusé : la recherche continue',
+  supplement_paye_avoir: 'Supplément payé par l’avoir NAVY',
+  supplement_especes_depot: 'Supplément à payer en espèces au dépôt',
+  supplement_orange_money: 'Supplément à payer par Orange Money',
+  reference_orange_money_supplement: 'Référence Orange Money du supplément envoyée',
+  supplement_valide: 'Supplément confirmé',
+  supplement_refuse: 'Supplément non reconnu',
 };
 
 export function eventLabel(event: string): string {
@@ -173,14 +258,15 @@ export function secondsLeft(expiresAt: string, now = Date.now()): number {
  * than the offer deadline, never negative.
  */
 export function offerSecondsLeft(
-  o: { expires_at: string; seconds_left?: number; fetched_at?: number },
+  o: { expires_at: string; seconds_left?: number; fetched_at?: number; broadcast?: boolean },
   now = Date.now()
 ): number {
   const left =
     o.seconds_left != null && o.fetched_at != null
       ? o.seconds_left - (now - o.fetched_at) / 1000
       : (new Date(o.expires_at).getTime() - now) / 1000;
-  return Math.max(0, Math.min(OFFER_SECONDS, Math.ceil(left)));
+  // A "Je propose mon prix" offer stays open for the whole round: no 30 s cap.
+  return Math.max(0, (o as { broadcast?: boolean }).broadcast ? Math.ceil(left) : Math.min(OFFER_SECONDS, Math.ceil(left)));
 }
 
 /** Operator alerts shown on top of the list. */
@@ -188,6 +274,8 @@ export function parcelAlerts(p: NavyParcelRow, now = Date.now()): string[] {
   const out: string[] = [];
   if (p.status === 'depose' && p.no_driver_alert_at) out.push('Sans chauffeur depuis 30 min');
   if (p.status === 'depose' && p.search_state === 'attente_client') out.push('Le client doit choisir un chauffeur');
+  if (['commande', 'depose'].includes(p.status) && p.counter_state === 'propose') out.push('Prix trop bas : le client doit choisir');
+  if (p.supplement_status === 'a_verifier' && p.status !== 'annule') out.push('Supplément à vérifier');
   if (p.payment_status === 'a_verifier' && p.status !== 'annule') out.push('Paiement à vérifier');
   if (p.withdraw_blocked_at && p.status === 'arrive') out.push('Code de retrait bloqué');
   if (p.status === 'arrive' && p.return_status === 'a_organiser') out.push('Retour à organiser');
@@ -202,7 +290,12 @@ export function parcelErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String((err as any)?.message ?? err ?? '');
   const code = (err as any)?.code;
   if (/timeout|Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Le réseau ne répond pas. Vérifiez la connexion puis réessayez.';
+  if (/offer already taken/i.test(msg)) return 'Trop tard : un autre chauffeur a déjà accepté cette course.';
   if (/offer expired/i.test(msg)) return 'Trop tard : cette course a été proposée à un autre chauffeur.';
+  if (/below the minimum/i.test(msg)) return 'Le prix proposé est inférieur au minimum accepté. Augmentez-le.';
+  if (/multiple of 100/i.test(msg)) return 'Le prix proposé doit être un multiple de 100 Ar.';
+  if (/proposed total too high/i.test(msg)) return 'Prix proposé trop élevé.';
+  if (/no counter-proposal pending/i.test(msg)) return 'Cette proposition n’est plus d’actualité. Actualisez.';
   if (/no longer available/i.test(msg)) return 'Ce colis n’est plus disponible.';
   if (/not the expected driver/i.test(msg)) return 'Ce n’est pas le chauffeur attendu pour ce colis.';
   if (/grocer must hand/i.test(msg)) return 'L’épicier doit d’abord confirmer qu’il vous a remis le colis.';
