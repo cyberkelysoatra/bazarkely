@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.87.1';
-export const APP_VERSION_NAME = "NAVY ay : nouvelle carte de Nosy Be aux couleurs NAVY, fluide et utilisable hors ligne.";
+export const APP_VERSION = '3.88.0';
+export const APP_VERSION_NAME = "NAVY ay : accueil sur la carte et nouveau parcours d envoi, choisi du bout du doigt.";
 export const LAST_UPDATED = '2026-09-27';
 export const APP_BUILD_DATE = '2026-09-27';
 export const VERSION_HISTORY = [
+  {
+    version: '3.88.0',
+    date: '2026-09-27',
+    description:
+      "NAVY ay phase 2C2 : l accueil du client devient la carte de Nosy Be, et l envoi d un colis se fait par-dessus la carte.",
+    changes: [
+      "Accueil client : carte plein ecran centree sur votre position (lue une seule fois), epiceries ouvertes, chauffeurs disponibles la ou ils vont ; choix Un colis, Un taxi ou Mes courses (bientot) et gros bouton J envoie un colis a.",
+      "Destinataire : choix dans les contacts du telephone (Chrome Android) ou saisie, destinataires recents ; s il est sur NAVY ay, son epicerie habituelle devient l arrivee.",
+      "Route tracee sur la carte avec la distance ; toucher votre point ou l epicerie d arrivee pour les changer ; depart dans la rue ou chez un epicier.",
+      "Chaque chauffeur affiche son prix pour votre colis ; sa fiche montre le vehicule, la plaque, le prenom et ou il va ; Lui proposer mon colis, 30 secondes pour accepter, avec un compte a rebours.",
+      "Nouvel ecran Mon epicerie de retrait (menu en haut a droite).",
+      "Suivi du colis affiche par-dessus la carte avec le trajet."
+    ]
+  },
   {
     version: '3.87.1',
     date: '2026-09-27',

@@ -32,10 +32,11 @@ import { Crosshair, Loader2, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import type { LatLng } from '../../types/partner';
 import { NOSY_BE_CENTER } from '../../utils/geo';
-import type { NavyMapMarker, NavyMapProps } from './navyMapTypes';
+import type { NavyMapApi, NavyMapMarker, NavyMapProps } from './navyMapTypes';
 import { GLYPH_FONTS, loadGlyph, openMapFile, type MapFileState } from './navyMapFile';
 import { MAP_COLORS, navyMapStyle } from './navyMapStyle';
 import { boundsOf, draftGeoJSON, toLngLat, zonesGeoJSON } from './navyMapGeo';
+import { meElement, OVERLAY_CSS, overlayKey, shopElement, vehicleElement } from './navyMapOverlay';
 
 const CHARCOAL = MAP_COLORS.charcoal;
 const YELLOW = MAP_COLORS.yellow;
@@ -119,6 +120,18 @@ function setData(map: MapLibreMap, id: string, data: GeoJSON.GeoJSON) {
   (map.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 }
 
+/** Phase 2C2: a line of [lat, lng] points as GeoJSON (empty when fewer than 2 points). */
+function lineGeoJSON(points: LatLng[] | null | undefined): GeoJSON.FeatureCollection {
+  if (!points || points.length < 2) return { type: 'FeatureCollection', features: [] };
+  return {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map(toLngLat) } }],
+  };
+}
+
+/** Shop names hidden when zoomed out (mock-up: below 13.6). */
+const SHOP_NAMES_ZOOM = 13.6;
+
 interface Props extends NavyMapProps {
   /** Called when this engine cannot run on the phone (NavyMap then shows Leaflet). */
   onEngineFail?: (reason: string) => void;
@@ -142,7 +155,21 @@ export default function NavyMapVector({
   fit = 'island',
   heightClass = 'h-[55vh] min-h-[280px] max-h-[520px]',
   onEngineFail,
+  frame = 'card',
+  initialView,
+  route,
+  trail,
+  walk,
+  me,
+  onMeTap,
+  shops,
+  onShopTap,
+  shopNames = 'zoom',
+  vehicles,
+  onVehicleTap,
+  onReady,
 }: Props) {
+  const full = frame === 'full';
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
@@ -157,8 +184,12 @@ export default function NavyMapVector({
   const [locateMsg, setLocateMsg] = useState<string | null>(null);
 
   // Latest callbacks, read by handlers bound once.
-  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail });
-  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail };
+  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady });
+  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady };
+  // Phase 2C2 overlays (client map).
+  const meRef = useRef<Marker | null>(null);
+  const shopsRef = useRef<Marker[]>([]);
+  const vehiclesRef = useRef<Marker[]>([]);
 
   // Map created once per attempt (a new attempt when the network comes back without the file).
   useEffect(() => {
@@ -186,8 +217,8 @@ export default function NavyMapVector({
         map = new MapLibreMap({
           container,
           style: navyMapStyle(file.key),
-          center: toLngLat(NOSY_BE_CENTER),
-          zoom: ISLAND_ZOOM,
+          center: initialView ? [initialView.lng, initialView.lat] : toLngLat(NOSY_BE_CENTER),
+          zoom: initialView?.zoom ?? ISLAND_ZOOM,
           minZoom: 9,
           maxZoom: 18.5,
           maxBounds: BOUNDS,
@@ -208,8 +239,12 @@ export default function NavyMapVector({
       Object.defineProperty(container, '__navyMap', { value: map, configurable: true });
       map.touchZoomRotate.disableRotation();
       map.keyboard.disableRotation();
-      map.addControl(new NavigationControl({ showCompass: false, visualizePitch: false }), 'top-left');
-      map.addControl(new AttributionControl({ compact: false }), 'bottom-right');
+      // Full-frame map (2C2): the page draws its own zoom buttons above the panels.
+      if (!full) map.addControl(new NavigationControl({ showCompass: false, visualizePitch: false }), 'top-left');
+      map.addControl(new AttributionControl({ compact: false }), full ? 'top-left' : 'bottom-right');
+      const zoomClass = () => container.classList.toggle('navy-zlo', (map as MapLibreMap).getZoom() < SHOP_NAMES_ZOOM);
+      map.on('zoom', zoomClass);
+      zoomClass();
 
       map.on('error', (ev) => console.warn('[NavyMap] map error', ev.error?.message ?? ev));
       map.on('webglcontextlost', () => console.warn('[NavyMap] WebGL context lost'));
@@ -264,7 +299,61 @@ export default function NavyMapVector({
           },
           paint: { 'text-color': CHARCOAL, 'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 2 },
         });
+        // Phase 2C2: walk to the depot, a driver's way, the parcel route (mock-up charter).
+        m.addSource('navy-walk', { type: 'geojson', data: empty });
+        m.addSource('navy-trail', { type: 'geojson', data: empty });
+        m.addSource('navy-route', { type: 'geojson', data: empty });
+        m.addSource('navy-route-dashed', { type: 'geojson', data: empty });
+        m.addLayer({
+          id: 'navy-walk',
+          type: 'line',
+          source: 'navy-walk',
+          layout: { 'line-cap': 'round' },
+          paint: { 'line-color': CHARCOAL, 'line-width': 3, 'line-dasharray': [0.2, 2] },
+        });
+        m.addLayer({
+          id: 'navy-trail',
+          type: 'line',
+          source: 'navy-trail',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': CHARCOAL, 'line-width': 3, 'line-opacity': 0.75, 'line-dasharray': [1.5, 1.5] },
+        });
+        const caseW = ['interpolate', ['linear'], ['zoom'], 11, 5, 14, 10, 17, 18] as unknown as number;
+        const lineW = ['interpolate', ['linear'], ['zoom'], 11, 3, 14, 6, 17, 12] as unknown as number;
+        const round = { 'line-cap': 'round', 'line-join': 'round' } as const;
+        m.addLayer({ id: 'navy-route-case', type: 'line', source: 'navy-route', layout: round, paint: { 'line-color': CHARCOAL, 'line-width': caseW } });
+        m.addLayer({ id: 'navy-route', type: 'line', source: 'navy-route', layout: round, paint: { 'line-color': YELLOW, 'line-width': lineW } });
+        m.addLayer({
+          id: 'navy-route-dashed-case',
+          type: 'line',
+          source: 'navy-route-dashed',
+          layout: { 'line-join': 'round' },
+          paint: { 'line-color': CHARCOAL, 'line-width': caseW, 'line-dasharray': [1.2, 0.8] },
+        });
+        m.addLayer({
+          id: 'navy-route-dashed',
+          type: 'line',
+          source: 'navy-route-dashed',
+          layout: { 'line-join': 'round' },
+          paint: { 'line-color': YELLOW, 'line-width': lineW, 'line-dasharray': [2, 1.33] },
+        });
         setReady(true);
+        const api: NavyMapApi = {
+          fitPoints: (points, padding, maxZoom = MAX_FIT_ZOOM + 0.5) => {
+            const b = boundsOf(points);
+            if (!b) return;
+            const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+            try {
+              m.fitBounds(new LngLatBounds([b[0], b[1]], [b[2], b[3]]), { padding, maxZoom, duration: reduce ? 0 : 800 });
+            } catch {
+              // padding larger than the map (tiny screen): centre only
+              m.jumpTo({ center: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2] });
+            }
+          },
+          easeTo: (lat, lng, zoom) => m.easeTo({ center: [lng, lat], zoom: zoom ?? m.getZoom(), duration: 600 }),
+          zoomBy: (delta) => m.easeTo({ zoom: m.getZoom() + delta, duration: 250 }),
+        };
+        cb.current.onReady?.(api);
       });
 
       map.on('click', (e) => {
@@ -289,6 +378,10 @@ export default function NavyMapVector({
     return () => {
       cancelled = true;
       ro?.disconnect();
+      cb.current.onReady?.(null);
+      meRef.current = null;
+      shopsRef.current = [];
+      vehiclesRef.current = [];
       markersRef.current = [];
       verticesRef.current = [];
       pinRef.current = null;
@@ -387,6 +480,80 @@ export default function NavyMapVector({
     });
   }, [draft, draftColor, !!onDraftChange, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- Phase 2C2 overlays -----------------------------------------------------------
+  useEffect(() => {
+    elRef.current?.classList.toggle('navy-names', shopNames === 'always');
+  }, [shopNames, ready]);
+
+  const routeKey = overlayKey(route ? [route.dashed ?? false, route.coords] : null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    setData(map, 'navy-route', lineGeoJSON(route && !route.dashed ? route.coords : null));
+    setData(map, 'navy-route-dashed', lineGeoJSON(route?.dashed ? route.coords : null));
+  }, [routeKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const trailKey = overlayKey(trail);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && ready) setData(map, 'navy-trail', lineGeoJSON(trail));
+  }, [trailKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const walkKey = overlayKey(walk);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && ready) setData(map, 'navy-walk', lineGeoJSON(walk));
+  }, [walkKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (!me) {
+      meRef.current?.remove();
+      meRef.current = null;
+      return;
+    }
+    if (!meRef.current) {
+      const node = meElement(!!cb.current.onMeTap);
+      node.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cb.current.onMeTap?.();
+      });
+      meRef.current = new Marker({ element: node }).setLngLat([me.lng, me.lat]).addTo(map);
+    } else meRef.current.setLngLat([me.lng, me.lat]);
+  }, [me?.lat, me?.lng, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const shopsKey = overlayKey(shops);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    shopsRef.current.forEach((m) => m.remove());
+    shopsRef.current = (shops ?? []).map((s) => {
+      const node = shopElement(s);
+      node.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cb.current.onShopTap?.(s.id);
+      });
+      const offset = s.role === 'dest' ? -17 : -13;
+      return new Marker({ element: node, anchor: 'left', offset: [offset, 0] }).setLngLat([s.lng, s.lat]).addTo(map);
+    });
+  }, [shopsKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const vehiclesKey = overlayKey(vehicles);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    vehiclesRef.current.forEach((m) => m.remove());
+    vehiclesRef.current = (vehicles ?? []).map((v) => {
+      const node = vehicleElement(v);
+      node.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cb.current.onVehicleTap?.(v.id);
+      });
+      return new Marker({ element: node }).setLngLat([v.lng, v.lat]).addTo(map);
+    });
+  }, [vehiclesKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Initial framing, once there is something to frame.
   useEffect(() => {
     const map = mapRef.current;
@@ -437,25 +604,25 @@ export default function NavyMapVector({
   };
 
   return (
-    <div className="space-y-2">
-      <style>{`.navy-vmap .maplibregl-ctrl-attrib{font-size:10px;background:rgba(255,255,255,.8)}.navy-vmap .maplibregl-ctrl-attrib a{color:${CHARCOAL}}.navy-vmap .maplibregl-ctrl-group{border-radius:12px;box-shadow:0 1px 4px rgba(46,46,46,.25)}.navy-vmap .maplibregl-ctrl-group button{width:44px;height:44px}.navy-vmap .maplibregl-marker:focus-visible{outline:3px solid ${YELLOW};outline-offset:2px;border-radius:9999px}.navy-vmap .maplibregl-popup-content{border-radius:10px;padding:6px 10px;font-weight:600;color:${CHARCOAL}}`}</style>
+    <div className={full ? 'relative w-full h-full' : 'space-y-2'}>
+      <style>{`${OVERLAY_CSS}.navy-vmap .maplibregl-ctrl-attrib{font-size:10px;background:rgba(255,255,255,.8)}.navy-vmap .maplibregl-ctrl-attrib a{color:${CHARCOAL}}.navy-vmap .maplibregl-ctrl-group{border-radius:12px;box-shadow:0 1px 4px rgba(46,46,46,.25)}.navy-vmap .maplibregl-ctrl-group button{width:44px;height:44px}.navy-vmap .maplibregl-marker:focus-visible{outline:3px solid ${YELLOW};outline-offset:2px;border-radius:9999px}.navy-vmap .maplibregl-popup-content{border-radius:10px;padding:6px 10px;font-weight:600;color:${CHARCOAL}}`}</style>
       {fileState === 'missing' && (!isOnline || !navigator.onLine) && (
-        <div className="flex items-start gap-2 rounded-xl border border-navyay-yellow bg-navyay-yellow/15 px-3 py-2 text-sm" role="status">
+        <div className={`${full ? 'absolute left-3 right-3 top-12 z-[6] ' : ''}flex items-start gap-2 rounded-xl border border-navyay-yellow bg-navyay-yellow/15 px-3 py-2 text-sm`} role="status">
           <WifiOff className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>Hors ligne : la carte de l’île n’est pas encore sur ce téléphone. Les zones et les points restent affichés ; elle s’enregistrera à la prochaine connexion.</span>
         </div>
       )}
-      <div className="relative">
+      <div className={full ? 'relative w-full h-full' : 'relative'}>
         <div
           ref={elRef}
           role="application"
           aria-label={ariaLabel}
           data-navy-map="vector"
           data-navy-map-file={fileState}
-          className={`navy-vmap w-full ${heightClass} rounded-2xl overflow-hidden border border-navyay-charcoal/15`}
+          className={full ? 'navy-vmap w-full h-full overflow-hidden' : `navy-vmap w-full ${heightClass} rounded-2xl overflow-hidden border border-navyay-charcoal/15`}
           style={{ touchAction: 'none', background: '#EFEDE6' }}
         />
-        {locate && (
+        {locate && !full && (
           <button
             type="button"
             onClick={doLocate}

@@ -868,6 +868,41 @@ inchangée) ; si aucun moteur ne se charge, un message remplace la carte sans ca
 Test manuel de la bascule : `sessionStorage.navy_map_force_leaflet = '1'` puis recharger.
 Régénérer le fichier : `PROCEDURES-OUTILS.md` P28.
 
+### 🧭 Phase 2C2 — accueil sur la carte et nouveau parcours client (v3.88.0)
+
+**Rôle Client** : l'accueil `/navy` est la **carte plein cadre** (entre l'en-tête inchangé et la
+barre du bas). **Une seule** lecture GPS à l'ouverture (jamais de suivi) ; refusée → Hell-Ville.
+Point jaune « Vous », épiceries ouvertes en carrés, chauffeurs **disponibles** posés sur leur
+**destination déclarée** (arrondie ~100 m ; la position en direct viendra en 2C3), compteur
+« N chauffeurs disponibles sur l'île ». En bas : « Un colis / Un taxi / Mes courses » (les deux
+derniers « Bientôt », une phrase d'explication) et le gros bouton « J'envoie un colis à… ». Les
+autres rôles gardent leur accueil. « Envoyer » (`/navy/envoyer`) ouvre le même parcours ; l'ancien
+formulaire en 6 étapes est retiré, **sa logique est reprise telle quelle** (mêmes fonctions serveur).
+
+**Parcours** (panneaux en fondu par-dessus la carte, `prefers-reduced-motion` respecté) :
+destinataire (sélecteur de contacts de Chrome Android, sinon saisie ; numéro remis au format
+0XX XX XXX XX ; « Mes destinataires récents » tirés des colis envoyés) → reconnaissance
+`navy_lookup_recipient` (**seulement le téléphone d'un partenaire validé** tant que la vérification
+SMS 1C n'existe pas ; répond prénom + épicerie habituelle, jamais de nom de famille ni de
+domicile ; 30 appels/heure/compte) → épicerie habituelle comme arrivée, sinon choix sur la carte →
+**route** jaune bordée d'anthracite (fonction serveur `navy-routes`, action `path`, gardée par
+paire ; trait droit pointillé sinon) et distance en grand ; toucher « Vous » déplace le départ,
+toucher l'arrivée la change ; départ « dans la rue » (remise directe 2B2) ou « chez un épicier »
+(le plus proche, distance à pied) → chauffeurs qui peuvent prendre le colis avec **leur prix** au
+dessus de l'icône (part CyberKELY comprise), les autres grisés ; « Le moins cher » = mode
+automatique ; **fiche du véhicule** (type, plaque, photo du véhicule, prénom, destination et trait
+pointillé, prix détaillé, jamais le téléphone) → « Lui proposer mon colis » = « Je choisis mon
+chauffeur » (30 s) ; « Je propose mon prix » dans « Autres façons de commander » → contenu (5
+icônes, valeur, photo si remise dans la rue) → paiement → suivi. Le suivi (`/navy/colis/:id`,
+mêmes liens) s'affiche par-dessus la carte avec le trajet, panneau repliable, **compte à rebours
+circulaire de 30 s** pendant une offre.
+
+**Mon épicerie de retrait** (`/navy/mon-epicerie`, menu en haut à droite, proposée après un
+premier retrait) : table `navy_client_profiles` (chacun sa ligne seulement, RLS forcée).
+**Hors ligne** : carte, épiceries, chauffeurs et destinataires récents gardés sur le téléphone ;
+une commande préparée sans réseau part au retour avec le même id. **Secours Leaflet** : mêmes
+éléments en rendu simple (route en trait, carrés, véhicules avec prix).
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

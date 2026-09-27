@@ -12,8 +12,11 @@
  * What each person sees is decided by the SERVER (RLS): the price for the sender and
  * operators, the withdrawal code for the sender and the linked recipient only.
  * Offline: the copy kept on the phone (status, codes of own orders) stays readable.
+ * Phase 2C2: shown above the map of the island with the parcel's route (ParcelMapFrame),
+ * like the client journey; a circular 30 s countdown while a driver has the offer.
+ * Same links, same gestures, same server functions.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -67,6 +70,8 @@ import { VEHICLE_LABELS } from '../../utils/partnerRules';
 import { CATEGORY_LABELS, formatKm, MAX_DECLARED_VALUE, PAYMENT_LABELS, parcelErrorMessage, SUPPLEMENT_LABELS } from '../../utils/parcelRules';
 import { NavyNotifyPrompt, NavyQrScanner, ParcelCode, ParcelMilestones, ParcelStatusBadge, ParcelTimeline, partnerIdFromQr } from './ParcelUi';
 import GrocerPicker from './GrocerPicker';
+import ParcelMapFrame from '../client/ParcelMapFrame';
+import { offerRingLeft } from '../../utils/clientRules';
 import PhotoField from '../ui/PhotoField';
 import { btnAccent, btnPrimary, btnSecondary, formatAr, inputCls, labelCls, NavyCard, NavyHelp, NavyLoader, NavyNotice, NavyPage } from '../ui/NavyUi';
 
@@ -114,15 +119,27 @@ export default function ParcelDetailPage() {
     void loadZones();
   }, []);
 
+  const local = parcels.userId === userId ? parcels.rows.find((p) => p.id === id) : undefined;
+  const parcel = detail?.parcel ?? local ?? null;
+
+  // Phase 2C2: a driver is looking at the offer (30 s) → read more often, show the ring.
+  const searching = !!parcel && parcel.status === 'depose' && !parcel.driver_partner_id && parcel.driver_mode !== 'prix';
   useEffect(() => {
     void load();
     if (!isOnline) return;
-    const t = window.setInterval(() => void load(), 10000);
+    const t = window.setInterval(() => void load(), searching ? 3000 : 10000);
     return () => window.clearInterval(t);
-  }, [load, isOnline]);
-
-  const local = parcels.userId === userId ? parcels.rows.find((p) => p.id === id) : undefined;
-  const parcel = detail?.parcel ?? local ?? null;
+  }, [load, isOnline, searching]);
+  const lastOffer = detail?.events.filter((e) => e.event === 'offre_envoyee').slice(-1)[0] ?? null;
+  const seenRef = useRef<Record<number, number>>({});
+  if (lastOffer && !seenRef.current[lastOffer.id]) seenRef.current[lastOffer.id] = Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!searching) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [searching]);
+  const ringLeft = searching && lastOffer ? offerRingLeft(new Date(lastOffer.at).getTime(), seenRef.current[lastOffer.id], now) : 0;
   const codes = parcels.codes[id];
   const withdrawCode = detail?.withdrawCode ?? codes?.withdrawCode ?? null;
   const isSender = !!parcel && parcel.sender_id === userId;
@@ -388,14 +405,15 @@ export default function ParcelDetailPage() {
   const photoQueued = parcels.queue.some((q) => q.op.kind === 'photo' && q.op.parcelId === id);
 
   return (
-    <NavyPage>
-      <div className="flex items-center justify-between gap-3 pt-2">
-        <Link to={isSender ? '/navy/colis' : isRecipient ? '/navy/recevoir' : '/navy'} className="inline-flex items-center gap-1 text-sm font-medium hover:underline">
+    <ParcelMapFrame parcel={parcel} showStart={isSender || parcel.driver_user_id === userId}>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <Link to={isSender ? '/navy/colis' : isRecipient ? '/navy/recevoir' : '/navy'} className="inline-flex min-h-[44px] items-center gap-1 text-sm font-medium hover:underline">
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Retour
         </Link>
         {isOnline && (
-          <button type="button" onClick={() => void load()} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium hover:bg-navyay-yellow/20" aria-label="Actualiser">
+          <button type="button" onClick={() => void load()} className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium hover:bg-navyay-yellow/20" aria-label="Actualiser">
             <RefreshCw className="w-4 h-4" aria-hidden="true" />
             Actualiser
           </button>
@@ -497,6 +515,14 @@ export default function ParcelDetailPage() {
       )}
 
       <ParcelMilestones parcel={parcel} />
+
+      {ringLeft > 0 && (
+        <NavyCard className="p-4 text-center space-y-2 border-navyay-yellow">
+          <h3 className="font-extrabold">{parcel.driver_mode === 'choix' ? 'Votre chauffeur' : 'Un chauffeur'} a 30 secondes pour accepter</h3>
+          <OfferRing left={ringLeft} />
+          <p className="text-sm text-navyay-charcoal/75">Sans réponse, la course passe au chauffeur suivant, au même prix ou moins cher.</p>
+        </NavyCard>
+      )}
 
       {needChoice && (
         <NavyCard className="p-4 space-y-3 border-navyay-yellow">
@@ -842,8 +868,35 @@ export default function ParcelDetailPage() {
         <p>Si aucun chauffeur n’accepte votre prix, NAVY ay peut vous proposer des chauffeurs à un autre prix : vous choisissez ou vous refusez.</p>
         <p>Remise au chauffeur : prenez la photo du contenu ouvert, vérifiez le nom et la plaque, puis confirmez « remis au chauffeur ». Le chauffeur peut refuser un colis : vous choisissez alors de chercher un autre chauffeur ou d’annuler (avoir).</p>
         <p>Colis non retiré après 7 jours : il vous revient. Le retour se paie d’avance au prix d’un envoi en sens inverse, et vous reprenez le colis avec un nouveau code de retrait.</p>
+        <p>La carte montre le trajet du colis, de son départ jusqu’à l’épicerie d’arrivée. Touchez « Voir la carte » pour la dégager.</p>
       </NavyHelp>
-    </NavyPage>
+    </div>
+    </ParcelMapFrame>
+  );
+}
+
+/** Circular 30 s countdown (mock-up .ring). */
+function OfferRing({ left }: { left: number }) {
+  const c = 2 * Math.PI * 52;
+  return (
+    <div className="relative mx-auto h-[120px] w-[120px]" role="img" aria-label={`Compte à rebours : environ ${Math.ceil(left / 10) * 10} secondes`}>
+      <svg viewBox="0 0 120 120" className="h-[120px] w-[120px] -rotate-90" aria-hidden="true">
+        <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(46,46,46,0.12)" strokeWidth="10" />
+        <circle
+          cx="60"
+          cy="60"
+          r="52"
+          fill="none"
+          stroke="#E9B824"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - left / 30)}
+          className="transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[34px] font-extrabold tabular-nums">{left}</span>
+    </div>
   );
 }
 

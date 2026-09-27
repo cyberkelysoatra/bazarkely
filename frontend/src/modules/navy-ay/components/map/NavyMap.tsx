@@ -9,7 +9,7 @@
 import { Component, lazy, Suspense, useState, type ReactNode } from 'react';
 import type { NavyMapProps } from './navyMapTypes';
 
-export type { NavyMapMarker, NavyMapProps } from './navyMapTypes';
+export type { NavyMapApi, NavyMapMarker, NavyMapPadding, NavyMapProps, NavyMapShop, NavyMapVehicle } from './navyMapTypes';
 
 const NavyMapVector = lazy(() => import('./NavyMapVector'));
 const NavyMapLeaflet = lazy(() => import('./NavyMapLeaflet'));
@@ -78,13 +78,13 @@ export default function NavyMap(props: NavyMapProps) {
   };
   const placeholder = (
     <div
-      className={`w-full ${props.heightClass ?? 'h-[55vh] min-h-[280px] max-h-[520px]'} rounded-2xl border border-navyay-charcoal/15`}
+      className={props.frame === 'full' ? 'w-full h-full' : `w-full ${props.heightClass ?? 'h-[55vh] min-h-[280px] max-h-[520px]'} rounded-2xl border border-navyay-charcoal/15`}
       style={{ background: '#EFEDE6' }}
       aria-hidden="true"
     />
   );
   return (
-    <MapUnavailableBoundary heightClass={props.heightClass}>
+    <MapUnavailableBoundary heightClass={props.frame === 'full' ? 'h-full' : props.heightClass}>
       <Suspense fallback={placeholder}>
         {engine === 'vector' ? (
           <VectorBoundary onFail={fail}>

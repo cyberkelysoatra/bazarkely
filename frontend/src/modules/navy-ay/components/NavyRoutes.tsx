@@ -26,7 +26,9 @@ const OperatorZonesPage = lazy(() => import('./operator/OperatorZonesPage'));
 const OperatorDriversPage = lazy(() => import('./operator/OperatorDriversPage'));
 const OperatorChangeDetailPage = lazy(() => import('./operator/OperatorChangeDetailPage'));
 // Phase 2A: parcels
-const SendParcelPage = lazy(() => import('./parcel/SendParcelPage'));
+// Phase 2C2: sending = the client journey on the map
+const ClientMapHome = lazy(() => import('./client/ClientMapHome'));
+const ClientGrocerPage = lazy(() => import('./client/ClientGrocerPage'));
 const MyParcelsPage = lazy(() => import('./parcel/MyParcelsPage'));
 const ParcelDetailPage = lazy(() => import('./parcel/ParcelDetailPage'));
 const GrocerParcelsPage = lazy(() => import('./parcel/GrocerParcelsPage'));
@@ -58,7 +60,8 @@ export default function NavyRoutes() {
           <Route path="operatrice/zones" element={<NavyRoleRoute role="operatrice"><OperatorZonesPage /></NavyRoleRoute>} />
           <Route path="operatrice/chauffeurs" element={<NavyRoleRoute role="operatrice"><OperatorDriversPage /></NavyRoleRoute>} />
           <Route path="operatrice/modifications/:id" element={<NavyRoleRoute role="operatrice"><OperatorChangeDetailPage /></NavyRoleRoute>} />
-          <Route path="envoyer" element={<SendParcelPage />} />
+          <Route path="envoyer" element={<ClientMapHome startPanel="recipient" />} />
+          <Route path="mon-epicerie" element={<ClientGrocerPage />} />
           <Route path="colis" element={<MyParcelsPage mode="sent" />} />
           <Route path="colis/:id" element={<ParcelDetailPage />} />
           <Route path="recevoir" element={<MyParcelsPage mode="received" />} />

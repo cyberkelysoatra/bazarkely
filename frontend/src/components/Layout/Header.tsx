@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask } from 'lucide-react';
+import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
@@ -1050,6 +1050,20 @@ const Header = () => {
                       {/* BackupStatusIndicator supprimé - architecture simplifiée */}
                     </div>
                     
+                    {/* NAVY ay (2C2) : épicerie de retrait habituelle */}
+                    {isNavyModule && (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          navigate('/navy/mon-epicerie');
+                        }}
+                        className="w-full flex items-center space-x-2 px-3 py-2 min-h-[44px] text-sm text-white/90 hover:bg-white/20 rounded-lg transition-colors"
+                      >
+                        <Store className="w-4 h-4" />
+                        <span>Mon épicerie de retrait</span>
+                      </button>
+                    )}
+
                     {/* Mise à jour */}
                     <button
                       onClick={() => {

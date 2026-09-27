@@ -13,13 +13,16 @@
  * Offline: a clear message; tiles already seen on this phone are still shown.
  * The map container blocks page scrolling while a finger is on it (touch-action: none),
  * so moving the map never scrolls the page by mistake.
+ * Phase 2C2 (client map): the same overlays as the vector map in a simple form (route
+ * line, dotted lines, "Vous", grocers, drivers with their price), full frame possible.
  */
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair, Loader2, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
-import type { NavyMapMarker, NavyMapProps } from './navyMapTypes';
+import type { NavyMapApi, NavyMapMarker, NavyMapProps } from './navyMapTypes';
+import { meElement, OVERLAY_CSS, overlayKey, shopElement, vehicleElement } from './navyMapOverlay';
 import { NOSY_BE_CENTER, NOSY_BE_ZOOM, sortZones } from '../../utils/geo';
 import { countCachedTiles, navyTileLayer, type NavyTileLayer } from './navyTiles';
 
@@ -81,7 +84,23 @@ export default function NavyMapLeaflet({
   locate = false,
   fit = 'island',
   heightClass = 'h-[55vh] min-h-[280px] max-h-[520px]',
+  frame = 'card',
+  initialView,
+  route,
+  trail,
+  walk,
+  me,
+  onMeTap,
+  shops,
+  onShopTap,
+  shopNames = 'zoom',
+  vehicles,
+  onVehicleTap,
+  onReady,
 }: NavyMapProps) {
+  const full = frame === 'full';
+  const overlayLayer = useRef<L.LayerGroup | null>(null);
+  const linesLayer = useRef<L.LayerGroup | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<NavyTileLayer | null>(null);
@@ -97,20 +116,24 @@ export default function NavyMapLeaflet({
   const [locateMsg, setLocateMsg] = useState<string | null>(null);
 
   // Latest callbacks, read by Leaflet handlers bound once.
-  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap });
-  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap };
+  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onMeTap, onShopTap, onVehicleTap, onReady });
+  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onMeTap, onShopTap, onVehicleTap, onReady };
 
   // Map created once.
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
     const map = L.map(elRef.current, {
-      zoomControl: true,
+      zoomControl: !full,
       attributionControl: true,
       tap: true,
       // Two fingers zoom; one finger pans the map (never the page).
       touchZoom: true,
       bounceAtZoomLimits: false,
-    } as L.MapOptions).setView(NOSY_BE_CENTER, NOSY_BE_ZOOM);
+    } as L.MapOptions).setView(
+      initialView ? [initialView.lat, initialView.lng] : NOSY_BE_CENTER,
+      // Leaflet zooms are one level above MapLibre's for the same scale.
+      initialView ? Math.round(initialView.zoom + 1) : NOSY_BE_ZOOM
+    );
     map.attributionControl.setPrefix(false);
     mapRef.current = map;
     const tiles = navyTileLayer();
@@ -120,6 +143,24 @@ export default function NavyMapLeaflet({
     zonesLayer.current = L.layerGroup().addTo(map);
     markersLayer.current = L.layerGroup().addTo(map);
     draftLayer.current = L.layerGroup().addTo(map);
+    linesLayer.current = L.layerGroup().addTo(map);
+    overlayLayer.current = L.layerGroup().addTo(map);
+    const zoomClass = () => elRef.current?.classList.toggle('navy-zlo', map.getZoom() < 15);
+    map.on('zoomend', zoomClass);
+    zoomClass();
+    const api: NavyMapApi = {
+      fitPoints: (points, padding, maxZoom = 15.5) => {
+        if (!points.length) return;
+        map.fitBounds(L.latLngBounds(points as L.LatLngExpression[]), {
+          paddingTopLeft: [padding.left, padding.top],
+          paddingBottomRight: [padding.right, padding.bottom],
+          maxZoom: Math.round(maxZoom + 1),
+        });
+      },
+      easeTo: (lat, lng, zoom) => map.setView([lat, lng], zoom == null ? map.getZoom() : Math.round(zoom + 1)),
+      zoomBy: (delta) => map.setZoom(map.getZoom() + Math.sign(delta)),
+    };
+    cb.current.onReady?.(api);
 
     map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
@@ -134,6 +175,7 @@ export default function NavyMapLeaflet({
     return () => {
       window.clearTimeout(t);
       ro?.disconnect();
+      cb.current.onReady?.(null);
       map.remove();
       mapRef.current = null;
       pinRef.current = null;
@@ -246,6 +288,40 @@ export default function NavyMapLeaflet({
     });
   }, [draft, draftColor, !!onDraftChange]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- Phase 2C2 overlays (simple rendering on the fallback) ---------------------------
+  useEffect(() => {
+    elRef.current?.classList.toggle('navy-names', shopNames === 'always');
+  }, [shopNames]);
+
+  const linesKey = overlayKey([route ?? null, trail ?? null, walk ?? null]);
+  useEffect(() => {
+    const layer = linesLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (walk && walk.length > 1) L.polyline(walk as L.LatLngExpression[], { color: CHARCOAL, weight: 3, dashArray: '1 8', lineCap: 'round', interactive: false }).addTo(layer);
+    if (trail && trail.length > 1) L.polyline(trail as L.LatLngExpression[], { color: CHARCOAL, weight: 3, opacity: 0.75, dashArray: '6 6', interactive: false }).addTo(layer);
+    if (route && route.coords.length > 1) {
+      const dash = route.dashed ? '12 8' : undefined;
+      L.polyline(route.coords as L.LatLngExpression[], { color: CHARCOAL, weight: 10, dashArray: dash, interactive: false }).addTo(layer);
+      L.polyline(route.coords as L.LatLngExpression[], { color: YELLOW, weight: 6, dashArray: dash, interactive: false }).addTo(layer);
+    }
+  }, [linesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pointsKey = overlayKey([me ?? null, shops ?? null, vehicles ?? null]);
+  useEffect(() => {
+    const layer = overlayLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    const add = (lat: number, lng: number, node: HTMLElement, onTap: (() => void) | undefined, anchor: [number, number], size: [number, number]) => {
+      L.marker([lat, lng], { icon: L.divIcon({ className: '', html: node, iconSize: size, iconAnchor: anchor }), keyboard: false, interactive: !!onTap })
+        .on('click', () => onTap?.())
+        .addTo(layer);
+    };
+    for (const s of shops ?? []) add(s.lat, s.lng, shopElement(s), () => cb.current.onShopTap?.(s.id), [s.role === 'dest' ? 17 : 13, s.role === 'dest' ? 17 : 13], [160, 34]);
+    for (const v of vehicles ?? []) add(v.lat, v.lng, vehicleElement(v), () => cb.current.onVehicleTap?.(v.id), [22, 22], [44, 44]);
+    if (me) add(me.lat, me.lng, meElement(!!cb.current.onMeTap), () => cb.current.onMeTap?.(), [22, 22], [44, 44]);
+  }, [pointsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Initial framing, once there is something to frame.
   useEffect(() => {
     const map = mapRef.current;
@@ -294,10 +370,10 @@ export default function NavyMapLeaflet({
   };
 
   return (
-    <div className="space-y-2">
-      <style>{`.navy-zone-label{background:rgba(255,255,255,.88);border:0;box-shadow:none;color:${CHARCOAL};font-weight:600;font-size:12px;padding:1px 6px;border-radius:6px}.navy-zone-label:before{display:none}.navy-map .leaflet-control-attribution{font-size:10px}`}</style>
+    <div className={full ? 'relative w-full h-full' : 'space-y-2'}>
+      <style>{`${OVERLAY_CSS}.navy-zone-label{background:rgba(255,255,255,.88);border:0;box-shadow:none;color:${CHARCOAL};font-weight:600;font-size:12px;padding:1px 6px;border-radius:6px}.navy-zone-label:before{display:none}.navy-map .leaflet-control-attribution{font-size:10px}`}</style>
       {!isOnline && (
-        <div className="flex items-start gap-2 rounded-xl border border-navyay-yellow bg-navyay-yellow/15 px-3 py-2 text-sm" role="status">
+        <div className={`${full ? 'absolute left-3 right-3 top-12 z-[600] ' : ''}flex items-start gap-2 rounded-xl border border-navyay-yellow bg-navyay-yellow/15 px-3 py-2 text-sm`} role="status">
           <WifiOff className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             {cachedTiles === 0
@@ -307,15 +383,15 @@ export default function NavyMapLeaflet({
           </span>
         </div>
       )}
-      <div className="relative">
+      <div className={full ? 'relative w-full h-full' : 'relative'}>
         <div
           ref={elRef}
           role="application"
           aria-label={ariaLabel}
-          className={`navy-map w-full ${heightClass} rounded-2xl overflow-hidden border border-navyay-charcoal/15 bg-navyay-charcoal/5`}
+          className={full ? 'navy-map w-full h-full overflow-hidden bg-navyay-charcoal/5' : `navy-map w-full ${heightClass} rounded-2xl overflow-hidden border border-navyay-charcoal/15 bg-navyay-charcoal/5`}
           style={{ touchAction: 'none' }}
         />
-        {locate && (
+        {locate && !full && (
           <button
             type="button"
             onClick={doLocate}

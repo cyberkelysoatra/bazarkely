@@ -3,14 +3,18 @@
  * how to send a parcel (phase 2A: sending is open). Static content: works fully offline.
  * Charter: ylang-ylang yellow + charcoal, text on yellow = charcoal, no navy blue.
  */
-import { useId, useState } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Info, PackagePlus, Send, Smartphone, Store, Truck, UserPlus, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../stores/appStore';
 import { useNavyProfile } from '../services/navyProfileStore';
 import { KIND_LABELS } from '../utils/partnerRules';
-import { StatusBadge } from './ui/NavyUi';
+import { useNavyRoles } from '../context/useNavyRoles';
+import { NavyLoader, StatusBadge } from './ui/NavyUi';
+
+// Phase 2C2: the client's home is the map (decision 48 (1)); other roles keep this page.
+const ClientMapHome = lazy(() => import('./client/ClientMapHome'));
 
 const STEPS = [
   {
@@ -31,6 +35,18 @@ const STEPS = [
 ] as const;
 
 export default function NavyHomePage() {
+  const { activeRole } = useNavyRoles();
+  if (activeRole === 'client') {
+    return (
+      <Suspense fallback={<NavyLoader />}>
+        <ClientMapHome />
+      </Suspense>
+    );
+  }
+  return <NavyRoleHome />;
+}
+
+function NavyRoleHome() {
   const isOnline = useOnlineStatus();
   const [helpOpen, setHelpOpen] = useState(false);
   const helpId = useId();

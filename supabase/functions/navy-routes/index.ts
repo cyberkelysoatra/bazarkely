@@ -15,6 +15,10 @@
 //   One Directions request from a direct hand-over place (chosen by a client) to the
 //   arrival grocer, stored through navy_store_handover_distance(); the price of a direct
 //   hand-over uses it (else straight line + the margin of the settings).
+// POST { action: 'path', id }   (phase 2C2)
+//   One Directions request from the departure (grocer, or rounded hand-over place) to
+//   the arrival grocer; the line is stored through navy_store_path() and drawn on the
+//   client's map (else a dashed straight line).
 //
 // The OpenRouteService key lives ONLY in the function secret ORS_API_KEY. It is never
 // written in the database, a log, a response or the repository.
@@ -226,6 +230,45 @@ async function handover(id: string): Promise<Response> {
   return reply({ ok: true, km })
 }
 
+// Phase 2C2: the road drawn on the client's map (departure -> arrival grocer). Stored
+// once per pair as GeoJSON [lng, lat] points (at most MAX_ROUTE_POINTS).
+async function path(id: string): Promise<Response> {
+  if (!UUID_RE.test(id)) return reply({ error: 'id' }, 400)
+  const { data: work, error } = await db.rpc('navy_path_work', { p_id: id })
+  if (error) return reply({ error: 'work: ' + error.message }, 500)
+  if (!work) return reply({ skipped: true })
+  const w = work as { lat: number; lng: number; to_lat: number; to_lng: number }
+  const store = (ok: boolean, coords: [number, number][] | null, km: number | null) =>
+    db.rpc('navy_store_path', { p_id: id, p_path: coords, p_km: km, p_ok: ok })
+
+  let status = 0
+  let json: any = null
+  try {
+    ;({ status, json } = await ors('/directions/driving-car/geojson', {
+      coordinates: [
+        [w.lng, w.lat],
+        [w.to_lng, w.to_lat],
+      ],
+      radiuses: [1000, 1000],
+    }))
+  } catch (e) {
+    json = { error: (e as Error).message }
+  }
+  const line = json?.features?.[0]?.geometry?.coordinates
+  const summary = json?.features?.[0]?.properties?.summary
+  const ok = status === 200 && Array.isArray(line) && line.length > 1
+  if (status !== 0) await log('directions', ok, status || null, ok ? `path ${line.length} points` : errorText(status, json))
+  if (!ok) {
+    await store(false, null, null)
+    return reply({ error: errorText(status, json) }, 200)
+  }
+  const coords = simplify(line.map((p: number[]) => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]))
+  const km = typeof summary?.distance === 'number' ? Math.round((summary.distance / 1000) * 10) / 10 : null
+  const { error: errStore } = await store(true, coords, km)
+  if (errStore) return reply({ error: 'store: ' + errStore.message }, 500)
+  return reply({ ok: true, points: coords.length })
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return reply({ error: 'method not allowed' }, 405)
 
@@ -244,6 +287,7 @@ Deno.serve(async (req: Request) => {
     if (body?.action === 'matrix') return await matrix()
     if (body?.action === 'route') return await route(String(body?.partner_id ?? ''))
     if (body?.action === 'handover') return await handover(String(body?.id ?? ''))
+    if (body?.action === 'path') return await path(String(body?.id ?? ''))
     return reply({ error: 'unknown action' }, 400)
   } catch (e) {
     console.error('[navy-routes]', (e as Error).message)

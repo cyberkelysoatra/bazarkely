@@ -183,3 +183,45 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Tests en transaction annulée :** un seul appel « migration + bloc `do $$ … raise exception 'RESULTS %', r; $$` » : l'exception finale annule **tout**, DDL compris (vérifier ensuite que l'ancien état est intact). Le compte rendu arrive dans le message d'erreur.
 - **Application réelle :** même appel sans le bloc de test, puis **rejouer une seconde fois** et relire `pg_trigger` pour prouver l'absence de doublon. Vérifier `anon` par REST (clé anon), comme avant.
 - **Limite :** préférer `execute_sql` à `apply_migration` (ce dernier inscrit sa propre version dans l'historique des migrations, différente du nom du fichier du dépôt).
+
+### P23 — Rejouer une migration EXACTE sans la recopier (2026-09-26, NAVY 2B1)
+- **Besoin :** « rejouer une seconde fois » un fichier SQL de 100 Ko sans le recopier à la main dans `execute_sql` (coûteux, risque d'écart avec le fichier).
+- **Résolution :** le dépôt est public. Après le push, la base lit le fichier commité à l'adresse **figée par le commit** : `select net.http_get('https://raw.githubusercontent.com/cyberkelysoatra/bazarkely/<sha>/supabase/migrations/<fichier>.sql')`. On compare `md5(content)` (table `net._http_response`) au `md5sum` de `git show HEAD:<fichier>`, puis on exécute dans un bloc `do $$ … if md5(v_sql) <> '<md5>' then raise …; execute v_sql; $$`. Rejouable à volonté : empreinte (fonctions `md5(prosrc)` + droits, règles, droits de tables et de colonnes, index, contraintes) relevée avant et après = preuve d'idempotence.
+- **Garde-fou :** jamais une adresse de branche (contenu mouvant) ; toujours le SHA + la comparaison md5 avant `execute`.
+
+### P24 — Onglet piloté caché : bridage intensif, appli « hors ligne », clics figés (2026-09-26)
+- **Symptômes :** au bout de quelques minutes d'onglet caché, les `setTimeout` n'avancent plus qu'une fois par minute (bridage intensif de Chrome) : scripts `javascript_tool` qui expirent (45 s), ping réseau de l'appli qui échoue → « Hors ligne » et gestes mis en file, offres de 30 s ratées, `computer left_click` sur la carte qui fige le rendu.
+- **Résolution :** travailler par **appels courts** juste après un `navigate` (la page fraîchement chargée n'est pas encore bridée), sans boucles d'attente longues ; `window.dispatchEvent(new Event('online'))` ne suffit plus une fois bridé → recharger la page. Si l'extension perd l'onglet, `tabs_context_mcp` en recrée un **visible** (plus de bridage). Pour une offre de 30 s : ouvrir d'abord l'écran Offres avec un `setInterval` qui accepte dès que la boîte apparaît, PUIS déclencher l'offre.
+- **Géolocalisation sans clic :** espionner `navigator.geolocation.getCurrentPosition` / `watchPosition` dans la page (position fixe renvoyée, compteurs d'appels) ; pour une destination sans toucher la carte, écrire `<user>:driverLastDest` dans `NavyAyDB.kv` puis recharger.
+
+### P25 — Comptes de test : `auth.users` ne supprime PAS `public.users` (2026-09-26)
+- **Constat :** `delete from auth.users where email like 'test-…'` laisse les lignes `public.users` (pas de clé étrangère en cascade dans ce projet) et leurs comptes de caisse.
+- **Résolution :** au nettoyage, supprimer aussi `public.users` **par identifiants explicites** (cascade vers `accounts`), puis recompter (17 comptes réels au 2026-09-26).
+
+### P26 — Positions TEST « dans la mer » : OpenRouteService répond 404 (2026-09-27, NAVY 2B2)
+- **Symptôme :** distance « estimée » alors que la clé ORS marche ; journal `navy_ors_requests` : `HTTP 404: Could not find routable point within a radius of 1000.0 meters`. La Matrix répond 200 mais sans distance pour la paire.
+- **Cause :** coordonnées TEST approximatives tombées dans la mer (ex. -13.3956, 48.1606 près d'Ambatoloaka).
+- **Résolution :** géocoder les lieux TEST avec Nominatim (`curl -A "bazarkely-test/1.0" "https://nominatim.openstreetmap.org/search?q=Ambatoloaka&format=json&limit=1"`) : Ambatoloaka -13.39828, 48.20803 ; Hell-Ville -13.40541, 48.27431. Le repli (vol d'oiseau + majoration) prouve au passage que rien n'est bloqué.
+
+### P27 — Notifications de test qui changent la page de l'onglet piloté (2026-09-27, NAVY 2B2)
+- **Symptôme :** un script `javascript_tool` échoue « Inspected target navigated or closed » ou lit une autre page ; `location.pathname` devient `/navy/colis/…`, `/navy/operatrice/paiements`…
+- **Cause :** chaque geste NAVY envoie une notification à JOEL (client, opératrice, épicier) ; l'appli ouvre la page liée. Une rafale de gestes joués au serveur = une rafale de navigations.
+- **Résolution :** relire `location.pathname` avant d'agir, `navigate` juste avant chaque geste écran, scripts courts (pas de longues attentes qui enjambent une navigation). Côté bonus : la page ouverte par la notification sert de preuve que la notification est partie.
+
+### P28 — Régénérer la carte de Nosy Be (NAVY, décision 52 (2)) (2026-09-27, NAVY 2C1)
+- **Quand :** après que l'équipe de JOEL a complété OpenStreetMap sur l'île (routes, pistes, voies piétonnes). Protomaps reconstruit la planète chaque jour : la correction entre dans le fichier le lendemain environ.
+- **Commande (depuis `C:\bazarkely-2`) :** `node scripts/navy-map/build-nosybe-map.mjs` (option `--date=AAAAMMJJ` pour une construction précise, `--maxzoom=14` pour forcer plus petit). Le script télécharge `go-pmtiles` (binaire officiel, rangé dans `scripts/navy-map/.bin/`, ignoré par git), prend la construction quotidienne la plus récente (`build-metadata.protomaps.dev/builds.json`), extrait l'île (`--bbox=48.10,-13.56,48.45,-13.12`, zoom 15 ; repli zoom 14 au-delà de 20 Mo), supprime l'ancien `nosybe-*.pmtiles`, réécrit `map-version.json` et retélécharge les glyphes (Noto Sans Regular/Medium, plages 0-255, 256-511, 8192-8447).
+- **Puis :** `git add -f frontend/public/navy-ay/map` (le dossier `public` est ignoré par git), bump de version, commit, push. Les téléphones voient la nouvelle date dans `map-version.json`, gardent le nouveau fichier et suppriment l'ancien (`navy-map-<date>`).
+- **Piège Windows :** sous Git Bash, `tar` est le GNU tar qui lit `C:` comme un hôte distant (« Cannot connect to C: resolve failed ») ; le script appelle donc `C:\Windows\System32\tar.exe` (bsdtar, lit les .zip).
+- **Contrôle :** taille (≈ 1,5 Mo au 2026-09-27), puis en production `curl -sI https://1sakely.org/navy-ay/map/<fichier>` (200, `accept-ranges: bytes`) et `curl -s -H "Range: bytes=0-15" -o NUL -w "%{http_code}"` (206).
+
+### P29 — Cloudflare Pages ignore `Range` : fichier servi entier (2026-09-27, NAVY 2C1)
+- **Symptôme :** `curl -H "Range: bytes=0-15"` sur un fichier de `public/` répond **200** avec le fichier entier, sans `Accept-Ranges` ni `Content-Range`. La bibliothèque `pmtiles` (`FetchSource`) refuse cette réponse (« content-length exceeding request ») : la carte reste vide au premier affichage en ligne. Invisible en local (Vite répond 206).
+- **Résolution :** lecture côté téléphone par `RangeOrWholeSource` (`navyMapFile.ts`) : 206 → morceaux ; 200 → garde l'unique téléchargement en mémoire, en sert tous les morceaux et le range aussitôt pour le hors-ligne. Pas de fonction serveur, pas de changement d'offre.
+- **Test local du cas Cloudflare :** Playwright `ctx.route('**/*.pmtiles', r => r.fulfill({status:200, body}))`.
+
+### P30 — Tester un parcours NAVY en local sans session : banc avec réponses serveur simulées (2026-09-27, NAVY 2C2)
+- **Besoin :** le Chrome de JOEL n'a pas de session sur localhost et l'onglet piloté est bridé (P13, P24) ; il faut pourtant voir le parcours complet à 412 px avant la production.
+- **Résolution :** page d'essai temporaire `frontend/dev-harness/navy-client.html` (jamais commitée) qui monte les vrais composants dans un `MemoryRouter`, pose un utilisateur dans `useAppStore`, puis banc Playwright `channel: 'chrome'` qui répond à la place de Supabase : `ctx.route('**/rest/v1/**', …)` renvoie des jeux d'essai par nom de fonction (`navy_open_grocers`, `navy_quote`, `navy_route_path`…). Pour un `maybeSingle()` sans ligne : répondre **406** `{code:'PGRST116'}`. Géolocalisation : `geolocation` + `permissions:['geolocation']` du contexte, espion sur `getCurrentPosition` / `watchPosition`.
+- **Piège Leaflet :** les couches Leaflet ont un `z-index` ≥ 400 ; une carte en décor passe **au-dessus** des panneaux posés sur elle. Envelopper la carte dans un bloc `isolate z-0`.
+- **Piège clic :** deux marqueurs superposés font échouer `locator.click()` (élément masqué) ; `dispatchEvent('click')` sur l'élément visé.

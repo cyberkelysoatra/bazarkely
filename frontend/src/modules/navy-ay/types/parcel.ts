@@ -359,6 +359,36 @@ export interface ParcelQueueEntry {
   lastError: string | null;
 }
 
+/** Phase 2C2: available driver shown on the client's map (navy_available_drivers). */
+export interface NavyAvailableDriver {
+  partner_id: string;
+  /** First name only (the family name never leaves the server). */
+  first_name: string | null;
+  vehicle_type: string | null;
+  plate: string | null;
+  vehicle_photo_path: string | null;
+  /** Declared destination, rounded ~100 m (the live position comes in 2C3). */
+  dest_lat: number;
+  dest_lng: number;
+  dest_zone_id: string | null;
+  /** Declared route [[lat, lng], ...] rounded ~100 m, or null. */
+  route: [number, number][] | null;
+}
+
+/** Phase 2C2: answer of navy_lookup_recipient (nothing else is ever returned). */
+export interface NavyRecipientLookup {
+  known: boolean;
+  first_name: string | null;
+  usual_grocer_id: string | null;
+}
+
+/** Phase 2C2: road geometry of a parcel (navy_route_path), GeoJSON order [lng, lat]. */
+export interface NavyRoutePath {
+  status: 'ok' | 'pending' | 'failed' | 'none';
+  km: number | null;
+  path: [number, number][] | null;
+}
+
 /** Created order as kept on the phone (codes shown again on the "created" screen). */
 export interface ParcelCodes {
   parcelId: string;
