@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.87.0';
+export const APP_VERSION = '3.87.1';
 export const APP_VERSION_NAME = "NAVY ay : nouvelle carte de Nosy Be aux couleurs NAVY, fluide et utilisable hors ligne.";
 export const LAST_UPDATED = '2026-09-27';
 export const APP_BUILD_DATE = '2026-09-27';
 export const VERSION_HISTORY = [
+  {
+    version: '3.87.1',
+    date: '2026-09-27',
+    description:
+      "NAVY ay : carte de l ile affichee des la premiere ouverture en ligne sur 1sakely.org, vu en production.",
+    changes: [
+      "Le serveur de l application envoie le fichier de carte en entier au lieu de morceaux : le telephone le lit alors en un seul telechargement (1,5 Mo), le garde aussitot pour le hors ligne et ne le telecharge plus une seconde fois.",
+      "Deux cartes ouvertes ensemble sur un meme ecran partagent ce telechargement."
+    ]
+  },
   {
     version: '3.87.0',
     date: '2026-09-27',

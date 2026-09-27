@@ -68,6 +68,11 @@ function ensureProtocols(): Protocol {
   return protocol;
 }
 
+/** Background download finished: later tiles are read from the phone copy. */
+function swapToLocal(local: PMTiles) {
+  ensureProtocols().add(local);
+}
+
 function el(html: string, label?: string): HTMLDivElement {
   const d = document.createElement('div');
   d.innerHTML = html;
@@ -173,7 +178,7 @@ export default function NavyMapVector({
         cb.current.onEngineFail?.(String(e));
         return;
       }
-      const file = await openMapFile((local: PMTiles) => proto.add(local));
+      const file = await openMapFile(swapToLocal);
       if (cancelled) return;
       if (file.archive) proto.add(file.archive);
       setFileState(file.state);

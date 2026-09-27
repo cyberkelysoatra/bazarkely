@@ -854,9 +854,11 @@ réservés aux zones, épingles et épiceries. Nord toujours en haut (ni rotatio
 doigts pour zoomer, un doigt déplace la carte et jamais la page ; « Ma position » = **une** lecture
 GPS par appui. Attribution « © OpenStreetMap · Protomaps ».
 
-**Hors ligne** : à la première carte NAVY ouverte en ligne, la carte se lit par morceaux sur le
-réseau pendant que le téléphone **garde le fichier entier une fois** (+ polices des noms) dans le
-cache `navy-map-<date>` ; ensuite elle s'affiche **sans réseau**. `map-version.json` donne la date :
+**Hors ligne** : à la première carte NAVY ouverte en ligne, le téléphone **garde le fichier entier
+une fois** (+ polices des noms) dans le cache `navy-map-<date>`. Cloudflare Pages ignore les
+demandes par morceaux (`Range`) et renvoie le fichier entier : ce téléchargement unique (1,5 Mo)
+sert à la fois à l'affichage et au hors-ligne (v3.87.1) ; un serveur qui accepte les morceaux est
+lu par morceaux, avec le téléchargement complet en arrière-plan ; ensuite elle s'affiche **sans réseau**. `map-version.json` donne la date :
 une nouvelle date remplace le fichier (anciens caches supprimés) ; l'ancien cache de morceaux
 `navy-osm-tiles-v1` est supprimé ; le service worker ne purge jamais `navy-map-*` lors d'une mise à
 jour de l'appli. Hors ligne sans fichier gardé : message clair, zones et points restent affichés,

@@ -2,16 +2,17 @@
  * NAVY ay vector map file (phase 2C1): the whole island of Nosy Be in ONE file
  * (/navy-ay/map/nosybe-<date>.pmtiles, ~1.5 MB), served by Cloudflare Pages with the app.
  *
- * - First NAVY map opened online: the map reads the file by byte ranges (fast first
- *   paint) while the phone downloads the WHOLE file once in the background and keeps it
- *   in Cache Storage (`navy-map-<date>`), with the label glyphs.
+ * - First NAVY map opened online: read by byte ranges when the server honours them
+ *   (then the WHOLE file is downloaded once in the background), or from the whole file
+ *   when the server ignores ranges (Cloudflare Pages: one 1.5 MB download). Either way
+ *   the file is kept in Cache Storage (`navy-map-<date>`), with the label glyphs.
  * - Then the map reads the kept copy: it shows without any network.
  * - A new date in map-version.json replaces the file (older `navy-map-*` caches deleted).
  * - The phase 1B tile cache (`navy-osm-tiles-v1`) is deleted.
  *
  * Nothing here touches the network when the phone is offline.
  */
-import { FetchSource, FileSource, PMTiles, type Source } from 'pmtiles';
+import { FileSource, PMTiles, type RangeResponse, type Source } from 'pmtiles';
 
 export const MAP_BASE = '/navy-ay/map/';
 export const MAP_CACHE_PREFIX = 'navy-map-';
@@ -122,21 +123,21 @@ async function deleteCaches(names: string[]) {
   await Promise.all(names.map((n) => caches.delete(n).catch(() => false)));
 }
 
-let downloading: Promise<boolean> | null = null;
+let keeping: Promise<boolean> | null = null;
 
 /**
- * Download the whole file once (plus the glyphs) into `navy-map-<date>`, then delete
- * older map caches. Resolves true when the file is kept on the phone.
+ * Keep the whole file (plus the glyphs) in `navy-map-<date>`, then delete older map
+ * caches. `getBlob` gives the file (already in memory, or downloaded). Resolves true
+ * when the file is kept on the phone.
  */
-function downloadWhole(v: MapVersion, url: string): Promise<boolean> {
-  if (downloading) return downloading;
-  downloading = (async () => {
+function keepWhole(v: MapVersion, url: string, getBlob: () => Promise<Blob | null>): Promise<boolean> {
+  if (keeping) return keeping;
+  keeping = (async () => {
     if (!cachesAvailable()) return false;
     const name = cacheNameFor(v);
     try {
-      const resp = await fetchWithTimeout(url, 120000, { cache: 'no-cache' });
-      if (!resp.ok) return false;
-      const blob = await resp.blob();
+      const blob = await getBlob();
+      if (!blob) return false;
       // Guard against the SPA fallback (index.html served with 200 for a missing file).
       const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
       if (blob.size < 1024 || head[0] !== 0x50 || head[1] !== 0x4d) return false;
@@ -155,10 +156,65 @@ function downloadWhole(v: MapVersion, url: string): Promise<boolean> {
     } catch {
       return false;
     } finally {
-      downloading = null;
+      keeping = null;
     }
   })();
-  return downloading;
+  return keeping;
+}
+
+async function downloadBlob(url: string): Promise<Blob | null> {
+  const resp = await fetchWithTimeout(url, 120000, { cache: 'no-cache' });
+  return resp.ok ? resp.blob() : null;
+}
+
+/**
+ * Online reading of the island file. Reads by byte ranges when the server honours them
+ * (206). Cloudflare Pages ignores `Range` and answers 200 with the WHOLE file: the
+ * source then keeps that one download in memory and serves every slice from it, and
+ * the same bytes are kept for offline use (no second download).
+ */
+export class RangeOrWholeSource implements Source {
+  private whole: Promise<ArrayBuffer> | null = null;
+  private rangesSeen = false;
+
+  private readonly url: string;
+  private readonly onWhole: (buf: ArrayBuffer) => void;
+  private readonly onRanges: () => void;
+
+  constructor(url: string, onWhole: (buf: ArrayBuffer) => void, onRanges: () => void) {
+    this.url = url;
+    this.onWhole = onWhole;
+    this.onRanges = onRanges;
+  }
+
+  getKey(): string {
+    return this.url;
+  }
+
+  async getBytes(offset: number, length: number): Promise<RangeResponse> {
+    if (this.whole) return { data: (await this.whole).slice(offset, offset + length) };
+    const resp = await fetch(this.url, { headers: { range: `bytes=${offset}-${offset + length - 1}` }, cache: 'no-store' });
+    if (resp.status === 206) {
+      if (!this.rangesSeen) {
+        this.rangesSeen = true;
+        this.onRanges();
+      }
+      return { data: await resp.arrayBuffer() };
+    }
+    if (resp.status === 200) {
+      if (this.whole) {
+        void resp.body?.cancel().catch(() => {});
+      } else {
+        const whole = resp.arrayBuffer();
+        this.whole = whole;
+        whole.then(this.onWhole, () => {
+          if (this.whole === whole) this.whole = null;
+        });
+      }
+      return { data: (await this.whole).slice(offset, offset + length) };
+    }
+    throw new Error(`island map file: HTTP ${resp.status}`);
+  }
 }
 
 let oldCacheDropped = false;
@@ -183,7 +239,21 @@ export function currentMapCache(): string | null {
  * (and start the one-time download). `onLocal` fires when a background download
  * finishes, with the local archive to swap in.
  */
-export async function openMapFile(onLocal?: (archive: PMTiles, key: string) => void): Promise<MapFile> {
+const localListeners = new Set<(archive: PMTiles, key: string) => void>();
+let opening: Promise<MapFile> | null = null;
+
+export function openMapFile(onLocal?: (archive: PMTiles, key: string) => void): Promise<MapFile> {
+  if (onLocal) localListeners.add(onLocal);
+  // Maps opened together (two maps on one screen) share ONE opening and ONE download.
+  if (!opening) {
+    opening = openOnce().finally(() => {
+      opening = null;
+    });
+  }
+  return opening;
+}
+
+async function openOnce(): Promise<MapFile> {
   dropOldTileCache();
   const v = await readVersion();
 
@@ -214,14 +284,22 @@ export async function openMapFile(onLocal?: (archive: PMTiles, key: string) => v
     return current;
   }
 
-  current = { state: 'remote', key: url, archive: new PMTiles(new FetchSource(url)), cacheName: name };
-  void downloadWhole(v, url).then(async (ok) => {
+  const swapToKept = async (ok: boolean) => {
     if (!ok) return;
     const local = await keptSource(name);
     if (!local) return;
     current = { state: 'local', key: local.key, archive: new PMTiles(local.source), cacheName: name };
-    onLocal?.(current.archive as PMTiles, local.key);
-  });
+    const archive = current.archive as PMTiles;
+    localListeners.forEach((fn) => fn(archive, local.key));
+  };
+  const source = new RangeOrWholeSource(
+    url,
+    // Server sent the whole file (Cloudflare Pages): keep those very bytes.
+    (buf) => void keepWhole(v, url, async () => new Blob([buf])).then(swapToKept),
+    // Server honours ranges: download the whole file once in the background.
+    () => void keepWhole(v, url, () => downloadBlob(url)).then(swapToKept)
+  );
+  current = { state: 'remote', key: url, archive: new PMTiles(source), cacheName: name };
   return current;
 }
 
