@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.86.1';
-export const APP_VERSION_NAME = "NAVY ay : remise directe au chauffeur (photo du contenu, double confirmation, droit de refus) et retour paye d avance des colis non retires.";
+export const APP_VERSION = '3.87.0';
+export const APP_VERSION_NAME = "NAVY ay : nouvelle carte de Nosy Be aux couleurs NAVY, fluide et utilisable hors ligne.";
 export const LAST_UPDATED = '2026-09-27';
-export const APP_BUILD_DATE = '2026-09-26';
+export const APP_BUILD_DATE = '2026-09-27';
 export const VERSION_HISTORY = [
+  {
+    version: '3.87.0',
+    date: '2026-09-27',
+    description:
+      "NAVY ay phase 2C1 : nouvelle carte vectorielle de Nosy Be aux couleurs NAVY, utilisable hors ligne, sur tous les ecrans NAVY.",
+    changes: [
+      "Carte : fichier de l ile entiere (1,5 Mo) servi avec l application ; mer vert-de-gris, terre claire, routes blanches, petites rues et pistes en tirets, noms des villages en capitales, Hell-Ville en plus gros ; jaune et anthracite reserves aux zones, epingles et epiceries.",
+      "Hors ligne : a la premiere ouverture en ligne, le telephone garde toute la carte de l ile ; elle s affiche ensuite sans reseau. Une nouvelle carte remplace l ancienne ; l ancien cache de morceaux de carte est supprime.",
+      "Memes gestes qu avant : toucher pour poser, epingle et points de zone deplacables au doigt, Ma position lue une seule fois, carte toujours nord en haut.",
+      "Vieux telephone sans carte vectorielle : bascule toute seule sur l ancienne carte."
+    ]
+  },
   {
     version: '3.86.1',
     date: '2026-09-27',

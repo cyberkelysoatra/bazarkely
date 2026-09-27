@@ -840,6 +840,32 @@ terminé ou annulé sont retirés d'office (trace dans la console). **Sécurité
 `delete_user_admin` n'est plus exécutable par `anon` et vérifie l'administrateur sur `auth.users`
 (comme `navy_is_admin()`).
 
+### 🗺️ Phase 2C1 — nouvelle carte vectorielle de Nosy Be (v3.87.0)
+
+**Toutes les cartes NAVY** (Chauffeurs, Zones ×2, choix de l'épicerie, lieu de remise dans
+Envoyer, Direction du chauffeur ×2, position de la boutique) passent par le même composant
+`components/map/NavyMap.tsx`, **mêmes props qu'avant** : aucun écran n'a changé. Le décor devient
+une **carte vectorielle** (MapLibre) dessinée à partir d'un **fichier de l'île entière**
+(`/navy-ay/map/nosybe-<date>.pmtiles`, ~1,5 Mo, OpenStreetMap par Protomaps), servi par Cloudflare
+avec l'appli. **Charte** (maquette validée) : mer vert-de-gris `#C7D9D2`, terre `#F1EEE6`, routes
+blanches bordées `#CFC7B2`, petites rues dès que le fichier les contient (zoom 12), pistes et
+sentiers en tirets fins, villages en capitales espacées, Hell-Ville plus gros ; jaune et anthracite
+réservés aux zones, épingles et épiceries. Nord toujours en haut (ni rotation ni inclinaison), deux
+doigts pour zoomer, un doigt déplace la carte et jamais la page ; « Ma position » = **une** lecture
+GPS par appui. Attribution « © OpenStreetMap · Protomaps ».
+
+**Hors ligne** : à la première carte NAVY ouverte en ligne, la carte se lit par morceaux sur le
+réseau pendant que le téléphone **garde le fichier entier une fois** (+ polices des noms) dans le
+cache `navy-map-<date>` ; ensuite elle s'affiche **sans réseau**. `map-version.json` donne la date :
+une nouvelle date remplace le fichier (anciens caches supprimés) ; l'ancien cache de morceaux
+`navy-osm-tiles-v1` est supprimé ; le service worker ne purge jamais `navy-map-*` lors d'une mise à
+jour de l'appli. Hors ligne sans fichier gardé : message clair, zones et points restent affichés,
+la carte se rouvre seule au retour du réseau. **Secours** : sans WebGL (vieux téléphone) ou si le
+moteur échoue au démarrage, bascule automatique sur l'ancienne carte Leaflet (`NavyMapLeaflet`,
+inchangée) ; si aucun moteur ne se charge, un message remplace la carte sans casser la page.
+Test manuel de la bascule : `sessionStorage.navy_map_force_leaflet = '1'` puis recharger.
+Régénérer le fichier : `PROCEDURES-OUTILS.md` P28.
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

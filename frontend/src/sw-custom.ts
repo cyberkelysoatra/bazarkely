@@ -40,7 +40,9 @@ self.addEventListener('activate', (event: any) => {
       try {
         const keep = new Set<string>([cacheNames.precache, cacheNames.runtime, 'api-cache', 'bazarkely-push-receipts']);
         const names = await caches.keys();
-        await Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)));
+        // NAVY ay island map kept for offline use (navy-map-<date>): replaced by the app
+        // itself when map-version.json changes, never purged by an app update.
+        await Promise.all(names.filter((n) => !keep.has(n) && !n.startsWith('navy-map-')).map((n) => caches.delete(n)));
       } catch (e) {
         console.warn('[SW] ⚠️ Purge des caches obsolètes échouée (non bloquant):', e);
       }

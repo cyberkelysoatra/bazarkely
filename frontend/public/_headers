@@ -40,3 +40,17 @@
 # HTML — jamais en cache (revalidation systématique).
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
+
+# NAVY ay — carte de l'île (phase 2C1). Le fichier .pmtiles est daté (nouveau nom à chaque
+# régénération) ; map-version.json dit au téléphone quel fichier garder : jamais périmé.
+# Règles sans chevauchement (Cloudflare joint deux Cache-Control par une virgule).
+/navy-ay/map/map-version.json
+  Cache-Control: no-cache
+
+/navy-ay/map/*.pmtiles
+  Cache-Control: public, max-age=86400
+  Content-Type: application/octet-stream
+
+/navy-ay/map/fonts/*
+  Cache-Control: public, max-age=604800
+  Content-Type: application/x-protobuf
