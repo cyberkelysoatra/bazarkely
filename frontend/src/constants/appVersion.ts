@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.88.0';
-export const APP_VERSION_NAME = "NAVY ay : accueil sur la carte et nouveau parcours d envoi, choisi du bout du doigt.";
+export const APP_VERSION = '3.89.0';
+export const APP_VERSION_NAME = "NAVY ay : la carte vivante, chauffeurs en direct et obstacles.";
 export const LAST_UPDATED = '2026-09-27';
 export const APP_BUILD_DATE = '2026-09-27';
 export const VERSION_HISTORY = [
+  {
+    version: '3.89.0',
+    date: '2026-09-27',
+    description:
+      "NAVY ay phase 2C3 : la carte devient vivante, les chauffeurs disponibles roulent en direct et la carte suit votre colis.",
+    changes: [
+      "Chauffeurs disponibles en direct sur la carte (position a 200 m pres, envoyee toutes les 30 secondes seulement quand ils sont disponibles et que NAVY ay est ouverte) ; entre deux positions, le vehicule avance le long de sa route.",
+      "Fiche du vehicule : vitesse et distance de vous. Gris : position incertaine ; blanc a bord pointille : position non suivie.",
+      "Suivi d une course : position exacte du chauffeur, la carte suit l approche puis le trajet, bouton Recentrer, et Sortez maintenant a moins de 300 m pour une remise dans la rue.",
+      "Obstacles (travaux, route inondee, passage ferme) : l operatrice les trace dans Zones, onglet Obstacles ; les chauffeurs peuvent en signaler ; affiches sur toutes les cartes et evites par les itineraires.",
+      "Ma direction : le chauffeur voit clairement quand sa position est partagee."
+    ]
+  },
   {
     version: '3.88.0',
     date: '2026-09-27',

@@ -20,6 +20,13 @@
 //   the arrival grocer; the line is stored through navy_store_path() and drawn on the
 //   client's map (else a dashed straight line).
 //
+// Phase 2C3: every Directions request (route, handover, path) avoids the obstacles of
+// the private NAVY layer that are validated and in progress (navy_obstacle_zones(),
+// service_role only): a small polygon around each point (30 m) or line (15 m on each
+// side) is sent as `options.avoid_polygons`. If OpenRouteService cannot find a road
+// around them, the same request is made again without them (the obstacle stays drawn on
+// the map, the route is simply not diverted).
+//
 // The OpenRouteService key lives ONLY in the function secret ORS_API_KEY. It is never
 // written in the database, a log, a response or the repository.
 // Every error (no key, quota reached, service down) is journalled (navy_ors_log) and
@@ -149,6 +156,80 @@ function simplify(points: [number, number][]): [number, number][] {
   return out
 }
 
+// ------------------------------------------------------------------ phase 2C3 obstacles
+
+type Ring = [number, number][]
+
+/** Square-ish octagon of radius r metres around [lng, lat]. */
+function octagon(lng: number, lat: number, r: number): Ring {
+  const kx = 111320 * Math.cos((lat * Math.PI) / 180)
+  const ring: Ring = []
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4
+    ring.push([lng + (r * Math.cos(a)) / kx, lat + (r * Math.sin(a)) / 110574])
+  }
+  ring.push(ring[0])
+  return ring
+}
+
+/** Rectangle of half-width w metres around a segment, extended w metres at both ends. */
+function segmentBox(a: [number, number], b: [number, number], w: number): Ring | null {
+  const lat0 = (a[1] + b[1]) / 2
+  const kx = 111320 * Math.cos((lat0 * Math.PI) / 180)
+  const ky = 110574
+  const ax = a[0] * kx, ay = a[1] * ky, bx = b[0] * kx, by = b[1] * ky
+  const len = Math.hypot(bx - ax, by - ay)
+  if (len < 0.5) return null
+  const ux = (bx - ax) / len, uy = (by - ay) / len
+  const px = -uy * w, py = ux * w
+  const sx = ax - ux * w, sy = ay - uy * w, ex = bx + ux * w, ey = by + uy * w
+  const pts: [number, number][] = [
+    [sx + px, sy + py],
+    [ex + px, ey + py],
+    [ex - px, ey - py],
+    [sx - px, sy - py],
+  ]
+  const ring = pts.map(([x, y]) => [x / kx, y / ky] as [number, number])
+  ring.push(ring[0])
+  return ring
+}
+
+/** Validated obstacles in progress as a MultiPolygon for ORS, or null when there is none. */
+async function avoidPolygons(): Promise<{ type: 'MultiPolygon'; coordinates: Ring[][] } | null> {
+  const { data, error } = await db.rpc('navy_obstacle_zones')
+  if (error || !Array.isArray(data) || data.length === 0) return null
+  const polys: Ring[][] = []
+  for (const g of data as { type?: string; coordinates?: unknown }[]) {
+    if (g?.type === 'Point' && Array.isArray(g.coordinates)) {
+      const [lng, lat] = g.coordinates as number[]
+      if (Number.isFinite(lng) && Number.isFinite(lat)) polys.push([octagon(lng, lat, 30)])
+    } else if (g?.type === 'LineString' && Array.isArray(g.coordinates)) {
+      const c = g.coordinates as [number, number][]
+      for (let i = 1; i < c.length && polys.length < 200; i++) {
+        const box = segmentBox(c[i - 1], c[i], 15)
+        if (box) polys.push([box])
+      }
+    }
+  }
+  return polys.length ? { type: 'MultiPolygon', coordinates: polys } : null
+}
+
+/** Directions with the obstacles avoided; again without them if no road goes around. */
+async function directions(body: Record<string, unknown>): Promise<{ status: number; json: any }> {
+  let avoid: Awaited<ReturnType<typeof avoidPolygons>> = null
+  try {
+    avoid = await avoidPolygons()
+  } catch {
+    avoid = null
+  }
+  if (avoid) {
+    const first = await ors('/directions/driving-car/geojson', { ...body, options: { avoid_polygons: avoid } })
+    if (first.status === 200 || first.status === 0) return first
+    await log('directions', false, first.status, 'avoid_polygons refused, retried without: ' + errorText(first.status, first.json))
+  }
+  return ors('/directions/driving-car/geojson', body)
+}
+
 async function route(partnerId: string): Promise<Response> {
   if (!UUID_RE.test(partnerId)) return reply({ error: 'partner_id' }, 400)
   const { data: work, error } = await db.rpc('navy_route_work', { p_partner_id: partnerId })
@@ -169,7 +250,7 @@ async function route(partnerId: string): Promise<Response> {
   let status = 0
   let json: any = null
   try {
-    ;({ status, json } = await ors('/directions/driving-car/geojson', {
+    ;({ status, json } = await directions({
       coordinates: [
         [w.origin_lng, w.origin_lat],
         [w.dest_lng, w.dest_lat],
@@ -206,7 +287,7 @@ async function handover(id: string): Promise<Response> {
   let status = 0
   let json: any = null
   try {
-    ;({ status, json } = await ors('/directions/driving-car/geojson', {
+    ;({ status, json } = await directions({
       coordinates: [
         [w.lng, w.lat],
         [w.to_lng, w.to_lat],
@@ -244,7 +325,7 @@ async function path(id: string): Promise<Response> {
   let status = 0
   let json: any = null
   try {
-    ;({ status, json } = await ors('/directions/driving-car/geojson', {
+    ;({ status, json } = await directions({
       coordinates: [
         [w.lng, w.lat],
         [w.to_lng, w.to_lat],

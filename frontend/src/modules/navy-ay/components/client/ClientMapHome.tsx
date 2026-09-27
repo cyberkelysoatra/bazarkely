@@ -15,8 +15,10 @@
  * except the total proposed by the client (checked again by the server).
  *
  * Position: ONE GPS reading when the map opens (never a continuous tracking); refused or
- * unavailable → centred on Hell-Ville. Drivers are shown at their DECLARED destination
- * (the live position comes in 2C3), never with a phone. Pickup always at a grocer
+ * unavailable → centred on Hell-Ville. Phase 2C3: drivers are shown LIVE (position
+ * rounded ~200 m, read every 30 s while the map is on screen, moved along their route
+ * between two positions, utils/liveMotion.ts); a driver whose NAVY ay is not open is
+ * shown at his declared destination ("position non suivie"). Never with a phone. Pickup always at a grocer
  * (decisions 7, 16): no home is ever shown.
  * Offline: the map, the last grocers, drivers and recent recipients kept on the phone;
  * an order prepared offline leaves at the return of the network with the same id.
@@ -38,6 +40,7 @@ import {
   MapPin,
   Package,
   Send,
+  TriangleAlert,
   Shirt,
   ShoppingBasket,
   Smartphone,
@@ -60,8 +63,8 @@ import {
   signedPhotoUrl,
   useParcels,
 } from '../../services/parcelService';
+import { liveDrivers, useMapObstacles } from '../../services/liveService';
 import {
-  availableDrivers,
   dismissUsualGrocerProposal,
   lookupRecipient,
   myUsualGrocer,
@@ -73,7 +76,7 @@ import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import type {
   DepartureMode,
   DriverMode,
-  NavyAvailableDriver,
+  NavyLiveDriver,
   NavyGrocerDistance,
   NavyOpenGrocer,
   NavyQuote,
@@ -111,6 +114,8 @@ import {
   recentRecipients,
   spreadDrivers,
 } from '../../utils/clientRules';
+import { LiveFleet, metresBetween } from '../../utils/liveMotion';
+import { OBSTACLE_LABELS, obstaclesOnRoute } from '../../utils/obstacleRules';
 import NavyMap, { type NavyMapApi, type NavyMapShop, type NavyMapVehicle } from '../map/NavyMap';
 import PhotoField from '../ui/PhotoField';
 import { formatAr, NavyNotice } from '../ui/NavyUi';
@@ -177,7 +182,11 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
   // ---- data
   const [grocers, setGrocers] = useState<NavyOpenGrocer[]>([]);
   const [grocersFromPhone, setGrocersFromPhone] = useState(false);
-  const [drivers, setDrivers] = useState<NavyAvailableDriver[]>([]);
+  const [drivers, setDrivers] = useState<NavyLiveDriver[]>([]);
+  // Phase 2C3: live tracks of the drivers (simulated motion between two positions).
+  const fleetRef = useRef(new LiveFleet());
+  const vehiclePosition = useCallback((id: string, t: number) => fleetRef.current.position(id, t), []);
+  const [clock, setClock] = useState(() => Date.now());
   const [distances, setDistances] = useState<NavyGrocerDistance[]>([]);
   const [phoneCredit, setPhoneCredit] = useState<number | null>(null);
   const [usualId, setUsualId] = useState<string | null>(null);
@@ -245,15 +254,38 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
     }
   }, [isOnline, userId]);
 
+  // Drivers read every 30 s while the map is on screen (never in the background).
   useEffect(() => {
     let alive = true;
-    const load = () => availableDrivers().then(({ list }) => alive && setDrivers(list)).catch(() => undefined);
-    void load();
-    if (!isOnline) return;
+    const load = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      void liveDrivers()
+        .then(({ list, receivedAt }) => {
+          if (!alive) return;
+          // Home map: available drivers only (a course's driver is followed on its parcel).
+          const avail = list.filter((d) => d.available !== false);
+          fleetRef.current.update(
+            avail.map((d) => ({ id: d.partner_id, live: d.live, route: d.route })),
+            receivedAt
+          );
+          setDrivers(avail);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const onVisible = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVisible);
+    if (!isOnline) {
+      return () => {
+        alive = false;
+        document.removeEventListener('visibilitychange', onVisible);
+      };
+    }
     const t = window.setInterval(load, 30000);
     return () => {
       alive = false;
       window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [isOnline]);
 
@@ -384,6 +416,9 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
   const routeLine: { coords: LatLng[]; dashed?: boolean } | null =
     arrival && fromPoint ? (path ? { coords: path.coords } : { coords: [[fromPoint.lat, fromPoint.lng], [arrival.lat, arrival.lng]], dashed: true }) : null;
   const inJourney = !['home', 'recipient'].includes(panel) && !!arrival;
+  // Phase 2C3: validated obstacles lying on the parcel's route (alert of the route panel).
+  const mapObstacles = useMapObstacles();
+  const routeObstacles = useMemo(() => obstaclesOnRoute(mapObstacles, routeLine?.coords, Date.now()), [mapObstacles, routeLine?.coords]);
   const shops: NavyMapShop[] = useMemo(
     () =>
       grocers.map((g) => ({
@@ -405,6 +440,8 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
           lat: d.lat,
           lng: d.lng,
           type: d.vehicle_type,
+          // no recent position: at his destination, "position non suivie"
+          state: fleetRef.current.has(d.partner_id) ? 'live' : 'untracked',
           label: `${d.first_name ?? 'Chauffeur'}, ${vt}`,
           price: inJourney && p ? formatAr(p.total) : null,
           dim: inJourney && !p,
@@ -414,6 +451,13 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
     [drivers, pricedById, inJourney, selected, panel, chosenDriver, driverMode]
   );
   const selectedDriver = selected ? drivers.find((d) => d.partner_id === selected) ?? null : null;
+  // The sheet shows the speed and the distance "de vous": refreshed every second while open.
+  useEffect(() => {
+    if (panel !== 'vehicle') return;
+    const t = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [panel]);
+  const selectedPos = selectedDriver ? fleetRef.current.position(selectedDriver.partner_id, clock) : null;
   const trail = selectedDriver?.route && selectedDriver.route.length > 1 ? selectedDriver.route : null;
   const walk = !remise && inJourney && start && depot ? ([[start.lat, start.lng], [depot.lat, depot.lng]] as LatLng[]) : null;
 
@@ -441,7 +485,9 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
   }, [panel, gpsDone, grocers.length]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (panel !== 'vehicle' || !selectedDriver) return;
+    const now = fleetRef.current.position(selectedDriver.partner_id, Date.now());
     const pts: LatLng[] = [[selectedDriver.dest_lat, selectedDriver.dest_lng], ...(trail ?? [])];
+    if (now) pts.push([now.lat, now.lng]);
     if (arrival) pts.push([arrival.lat, arrival.lng]);
     if (fromPoint) pts.push([fromPoint.lat, fromPoint.lng]);
     apiRef.current?.fitPoints(pts, pad(), 15);
@@ -668,7 +714,7 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
     <div className="space-y-3">
       <PanelHead
         title="Bonjour !"
-        sub="Les chauffeurs disponibles sont sur la carte, là où ils vont. Touchez-en un pour le découvrir."
+        sub="Les chauffeurs disponibles roulent en direct sur la carte. Touchez-en un pour le découvrir."
         help={
           <>
             <p>NAVY ay transporte vos petits colis à Nosy Be avec des chauffeurs qui font déjà le trajet.</p>
@@ -894,6 +940,14 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
         </div>
       </div>
       {errorBox}
+      {routeObstacles.length > 0 && (
+        <div role="status" className="flex items-start gap-2 rounded-xl border border-[#B42318]/30 bg-[#B42318]/[0.07] px-3 py-2 text-sm">
+          <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#B42318]" aria-hidden="true" />
+          <span>
+            Obstacle signalé sur la route : {routeObstacles.map((o) => OBSTACLE_LABELS[o.kind].toLowerCase()).join(', ')}. Le chauffeur passera par un autre chemin si possible.
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Départ du colis">
         <button
           type="button"
@@ -1017,6 +1071,10 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
     const vt = selectedDriver.vehicle_type ? VEHICLE_LABELS[selectedDriver.vehicle_type as VehicleType] ?? selectedDriver.vehicle_type : 'Véhicule';
     const dn = selectedDriver.first_name ?? 'Ce chauffeur';
     const ceilingTotal = quote?.breakdown.total ?? null;
+    const speed = selectedPos ? fleetRef.current.speedKmh(selectedDriver.partner_id, clock) : null;
+    const speedText = selectedPos ? (selectedPos.stale ? 'Incertaine' : speed != null ? `${speed} km/h` : '—') : 'Non suivie';
+    const here = selectedPos ?? { lat: selectedDriver.dest_lat, lng: selectedDriver.dest_lng };
+    const fromYouText = start ? `${selectedPos ? '' : '≈ '}${formatKm(Math.round(metresBetween(start, here) / 100) / 10)}` : '—';
     const lp = p ? priceBreakdown(depotFee, p.driver.fare, pickupFee, share).lines.filter((l) => !(remise && l.kind === 'depot')) : [];
     return (
       <div className="space-y-3">
@@ -1043,6 +1101,14 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
           <div className="rounded-xl bg-navyay-charcoal/[0.05] px-2.5 py-2">
             <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-navyay-charcoal/75">Votre colis</span>
             <b className="block truncate tabular-nums">{arrival && km != null ? formatKm(km) : '—'}</b>
+          </div>
+          <div className="rounded-xl bg-navyay-charcoal/[0.05] px-2.5 py-2">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-navyay-charcoal/75">Vitesse</span>
+            <b className="block truncate tabular-nums" data-navy-speed="">{speedText}</b>
+          </div>
+          <div className="rounded-xl bg-navyay-charcoal/[0.05] px-2.5 py-2">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.05em] text-navyay-charcoal/75">De vous</span>
+            <b className="block truncate tabular-nums" data-navy-distance="">{fromYouText}</b>
           </div>
         </div>
         {!arrival ? (
@@ -1105,7 +1171,12 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
           </p>
         )}
         <p className="text-xs text-navyay-charcoal/75">
-          Position approximative tant qu’il n’a pas accepté : le véhicule est montré là où il va. Le trait pointillé montre son chemin. Son téléphone s’affichera après son acceptation.
+          {selectedPos
+            ? selectedPos.stale
+              ? 'Position incertaine : pas de nouvelle position depuis 2 minutes.'
+              : 'Position en direct, à 200 m près tant qu’il n’a pas accepté.'
+            : 'Position non suivie : NAVY ay n’est pas ouverte sur son téléphone, il est montré là où il va.'}{' '}
+          Le trait pointillé montre son chemin. Son téléphone s’affichera après son acceptation.
         </p>
         <div className="flex items-center justify-between">
           <button type="button" className={linkCls} onClick={closeVehicle}>
@@ -1114,6 +1185,7 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
           <HelpToggle>
             <p>La fiche montre le véhicule, sa plaque et le prénom du chauffeur, pour le reconnaître. Son téléphone n’apparaît qu’après son acceptation.</p>
             <p>« Lui proposer mon colis » : il a 30 secondes pour accepter, sinon la course passe au suivant.</p>
+            <p>Entre deux positions (une toutes les 30 secondes), le véhicule avance sur la carte le long de sa route, à sa vitesse. Gris : pas de nouvelle depuis 2 minutes. Blanc à bord pointillé : son application n’est pas ouverte, il est montré là où il va.</p>
           </HelpToggle>
         </div>
       </div>
@@ -1430,6 +1502,7 @@ export default function ClientMapHome({ startPanel = 'home' }: { startPanel?: 'h
           onShopTap={onShopTap}
           shopNames={panel === 'pickGrocer' || panel === 'pickDepot' ? 'always' : 'zoom'}
           vehicles={vehicles}
+          vehiclePosition={vehiclePosition}
           onVehicleTap={onVehicleTap}
           route={inJourney ? routeLine : null}
           trail={panel === 'vehicle' ? trail : null}

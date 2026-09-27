@@ -15,14 +15,18 @@
  * so moving the map never scrolls the page by mistake.
  * Phase 2C2 (client map): the same overlays as the vector map in a simple form (route
  * line, dotted lines, "Vous", grocers, drivers with their price), full frame possible.
+ * Phase 2C3: vehicles moved in place (setLatLng) from `vehiclePosition`, never rebuilt at
+ * each position; obstacles of the private NAVY layer as a red dashed line + pictogram.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair, Loader2, WifiOff } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import type { NavyMapApi, NavyMapMarker, NavyMapProps } from './navyMapTypes';
-import { meElement, OVERLAY_CSS, overlayKey, shopElement, vehicleElement } from './navyMapOverlay';
+import { meElement, obstacleElement, OVERLAY_CSS, overlayKey, RED, shopElement, vehicleElement } from './navyMapOverlay';
+import { useMapObstacles } from '../../services/liveService';
+import { formatUntil, isObstacleActive, obstacleAnchor, OBSTACLE_LABELS, obstaclePoints } from '../../utils/obstacleRules';
 import { NOSY_BE_CENTER, NOSY_BE_ZOOM, sortZones } from '../../utils/geo';
 import { countCachedTiles, navyTileLayer, type NavyTileLayer } from './navyTiles';
 
@@ -97,10 +101,17 @@ export default function NavyMapLeaflet({
   vehicles,
   onVehicleTap,
   onReady,
+  vehiclePosition,
+  obstacles,
+  draftShape = 'polygon',
 }: NavyMapProps) {
   const full = frame === 'full';
   const overlayLayer = useRef<L.LayerGroup | null>(null);
   const linesLayer = useRef<L.LayerGroup | null>(null);
+  const obstaclesLayer = useRef<L.LayerGroup | null>(null);
+  const vehicleMarkers = useRef<Map<string, L.Marker>>(new Map());
+  const livePos = useRef(vehiclePosition);
+  livePos.current = vehiclePosition;
   const elRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<NavyTileLayer | null>(null);
@@ -143,18 +154,20 @@ export default function NavyMapLeaflet({
     zonesLayer.current = L.layerGroup().addTo(map);
     markersLayer.current = L.layerGroup().addTo(map);
     draftLayer.current = L.layerGroup().addTo(map);
+    obstaclesLayer.current = L.layerGroup().addTo(map);
     linesLayer.current = L.layerGroup().addTo(map);
     overlayLayer.current = L.layerGroup().addTo(map);
     const zoomClass = () => elRef.current?.classList.toggle('navy-zlo', map.getZoom() < 15);
     map.on('zoomend', zoomClass);
     zoomClass();
     const api: NavyMapApi = {
-      fitPoints: (points, padding, maxZoom = 15.5) => {
+      fitPoints: (points, padding, maxZoom = 15.5, durationMs) => {
         if (!points.length) return;
         map.fitBounds(L.latLngBounds(points as L.LatLngExpression[]), {
           paddingTopLeft: [padding.left, padding.top],
           paddingBottomRight: [padding.right, padding.bottom],
           maxZoom: Math.round(maxZoom + 1),
+          ...(durationMs != null ? { animate: durationMs > 0, duration: durationMs / 1000 } : {}),
         });
       },
       easeTo: (lat, lng, zoom) => map.setView([lat, lng], zoom == null ? map.getZoom() : Math.round(zoom + 1)),
@@ -260,7 +273,7 @@ export default function NavyMapLeaflet({
     layer.clearLayers();
     if (!draft || draft.length === 0) return;
     const shape =
-      draft.length >= 3
+      draft.length >= 3 && draftShape !== 'line'
         ? L.polygon(draft as L.LatLngExpression[], { color: CHARCOAL, weight: 2.5, dashArray: '6 6', fillColor: draftColor, fillOpacity: 0.35 })
         : L.polyline(draft as L.LatLngExpression[], { color: CHARCOAL, weight: 2.5, dashArray: '6 6' });
     shape.addTo(layer);
@@ -286,7 +299,7 @@ export default function NavyMapLeaflet({
       });
       v.addTo(layer);
     });
-  }, [draft, draftColor, !!onDraftChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [draft, draftColor, draftShape, !!onDraftChange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Phase 2C2 overlays (simple rendering on the fallback) ---------------------------
   useEffect(() => {
@@ -308,6 +321,7 @@ export default function NavyMapLeaflet({
   }, [linesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pointsKey = overlayKey([me ?? null, shops ?? null, vehicles ?? null]);
+  const hasLive = !!vehiclePosition;
   useEffect(() => {
     const layer = overlayLayer.current;
     if (!layer) return;
@@ -318,9 +332,65 @@ export default function NavyMapLeaflet({
         .addTo(layer);
     };
     for (const s of shops ?? []) add(s.lat, s.lng, shopElement(s), () => cb.current.onShopTap?.(s.id), [s.role === 'dest' ? 17 : 13, s.role === 'dest' ? 17 : 13], [160, 34]);
-    for (const v of vehicles ?? []) add(v.lat, v.lng, vehicleElement(v), () => cb.current.onVehicleTap?.(v.id), [22, 22], [44, 44]);
+    vehicleMarkers.current.clear();
+    for (const v of vehicles ?? []) {
+      const p = livePos.current?.(v.id, Date.now());
+      const el = vehicleElement(p ? { ...v, state: p.stale ? 'stale' : 'live' } : v);
+      const mk = L.marker([p?.lat ?? v.lat, p?.lng ?? v.lng], { icon: L.divIcon({ className: '', html: el, iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: false })
+        .on('click', () => cb.current.onVehicleTap?.(v.id))
+        .addTo(layer);
+      vehicleMarkers.current.set(v.id, mk);
+    }
     if (me) add(me.lat, me.lng, meElement(!!cb.current.onMeTap), () => cb.current.onMeTap?.(), [22, 22], [44, 44]);
   }, [pointsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 2C3: live vehicles moved in place (10 times a second, once with reduced motion).
+  useEffect(() => {
+    if (!hasLive) return;
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t = window.setInterval(() => {
+      const now = Date.now();
+      vehicleMarkers.current.forEach((mk, id) => {
+        const p = livePos.current?.(id, now);
+        if (!p) return;
+        mk.setLatLng([p.lat, p.lng]);
+        const el = (mk.getElement()?.querySelector('.navy-veh') as HTMLElement | null) ?? null;
+        el?.classList.toggle('stale', !!p.stale);
+      });
+    }, reduce ? 1000 : 100);
+    return () => window.clearInterval(t);
+  }, [hasLive, pointsKey]);
+
+  // Phase 2C3: obstacles (validated ones in progress by default).
+  const storeObstacles = useMapObstacles(obstacles === undefined);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setClock(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const shownObstacles = useMemo(
+    () => (obstacles === 'none' ? [] : Array.isArray(obstacles) ? obstacles : storeObstacles.filter((o) => isObstacleActive(o, clock))),
+    [obstacles, storeObstacles, clock]
+  );
+  const obstaclesKey = overlayKey(shownObstacles.map((o) => [o.id, o.status, o.kind, o.ends_at, o.geom]));
+  useEffect(() => {
+    const layer = obstaclesLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    const now = Date.now();
+    for (const o of shownObstacles) {
+      const proposed = o.status !== 'valide';
+      const label = `${OBSTACLE_LABELS[o.kind] ?? 'Obstacle'}${proposed ? ' (signalé, à valider)' : ''}, ${formatUntil(o.ends_at, now)}${o.note ? ` : ${o.note}` : ''}`;
+      if (o.geom.type === 'LineString') {
+        L.polyline(obstaclePoints(o.geom) as L.LatLngExpression[], { color: RED, weight: 7, opacity: proposed ? 0.5 : 0.95, dashArray: '8 6', interactive: false }).addTo(layer);
+      }
+      const el = obstacleElement(o.kind, label);
+      if (proposed) el.style.opacity = '0.6';
+      L.marker(obstacleAnchor(o.geom) as L.LatLngExpression, { icon: L.divIcon({ className: '', html: el, iconSize: [30, 30], iconAnchor: [15, 15] }), keyboard: false })
+        .bindPopup(escapeHtml(label))
+        .addTo(layer);
+    }
+  }, [obstaclesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial framing, once there is something to frame.
   useEffect(() => {

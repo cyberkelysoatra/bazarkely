@@ -4,9 +4,13 @@
  * (undo last point, drag a point, finish). Zones may touch; when they overlap, the
  * first one in the order wins (same rule on the phone and on the server). Every
  * validated grocer is shown on the map with its zone. Writes are ONLINE ONLY.
+ * Phase 2C3: second tab "Obstacles" (?onglet=obstacles), the private NAVY layer
+ * (OperatorObstaclesPanel), without a new button in the bar.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Eraser, Loader2, Map as MapIcon, Pencil, Plus, Trash2, Undo2, WifiOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowDown, ArrowUp, Check, Eraser, Loader2, Map as MapIcon, Pencil, Plus, Trash2, TriangleAlert, Undo2, WifiOff } from 'lucide-react';
+import OperatorObstaclesPanel from './OperatorObstaclesPanel';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { listPartners, operatorErrorMessage } from '../../services/operatorService';
 import { deleteZone, loadZones, saveZone, saveZoneOrders, useNavyZones } from '../../services/zoneService';
@@ -30,6 +34,45 @@ const toolBtn =
   'inline-flex items-center justify-center gap-1.5 rounded-xl border border-navyay-charcoal/25 bg-white px-3 py-2.5 text-sm font-semibold hover:bg-navyay-yellow/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow disabled:opacity-50';
 
 export default function OperatorZonesPage() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('onglet') === 'obstacles' ? 'obstacles' : 'zones';
+  const tabs = (
+    <div className="grid grid-cols-2 gap-1 rounded-2xl bg-navyay-charcoal/[0.06] p-1" role="tablist" aria-label="Zones ou obstacles">
+      {(
+        [
+          ['zones', 'Zones', MapIcon],
+          ['obstacles', 'Obstacles', TriangleAlert],
+        ] as const
+      ).map(([k, label, Icon]) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          aria-selected={tab === k}
+          onClick={() => setParams(k === 'zones' ? {} : { onglet: k }, { replace: true })}
+          className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow ${
+            tab === k ? 'bg-white text-navyay-charcoal shadow-sm' : 'text-navyay-charcoal/75'
+          }`}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  if (tab === 'obstacles') {
+    return (
+      <NavyPage>
+        <NavyPageTitle icon={TriangleAlert} title="Obstacles" subtitle="Travaux, routes inondées, passages fermés : la couche privée NAVY." />
+        {tabs}
+        <OperatorObstaclesPanel />
+      </NavyPage>
+    );
+  }
+  return <ZonesTab tabs={tabs} />;
+}
+
+function ZonesTab({ tabs }: { tabs: ReactNode }) {
   const isOnline = useOnlineStatus();
   const { zones } = useNavyZones();
   const [grocers, setGrocers] = useState<NavyPartnerRow[]>([]);
@@ -156,6 +199,7 @@ export default function OperatorZonesPage() {
   return (
     <NavyPage>
       <NavyPageTitle icon={MapIcon} title="Zones" subtitle="Quartiers et villages de livraison de Nosy Be." />
+      {tabs}
       {!isOnline && (
         <NavyNotice icon={WifiOff}>Hors ligne : les zones s’affichent, mais les modifications demandent une connexion.</NavyNotice>
       )}

@@ -12,8 +12,15 @@
  * never the page (touch-action: none on the container).
  * Offline: the island file kept on the phone; a clear message when it is not there yet.
  * Loaded lazily by NavyMap.tsx, which falls back to Leaflet if this engine fails.
+ *
+ * Phase 2C3 (living map): vehicles are a POINT LAYER of the map (GeoJSON source updated
+ * on every frame from `vehiclePosition`, images drawn once), not HTML markers rebuilt at
+ * each position; the price tag is a text label on a yellow stretched tag; a hidden list
+ * of buttons keeps them reachable with the keyboard and screen readers. Obstacles of the
+ * private NAVY layer: hatched line + pictogram, gone by themselves at the end of their
+ * duration.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttributionControl,
   LngLatBounds,
@@ -36,7 +43,24 @@ import type { NavyMapApi, NavyMapMarker, NavyMapProps } from './navyMapTypes';
 import { GLYPH_FONTS, loadGlyph, openMapFile, type MapFileState } from './navyMapFile';
 import { MAP_COLORS, navyMapStyle } from './navyMapStyle';
 import { boundsOf, draftGeoJSON, toLngLat, zonesGeoJSON } from './navyMapGeo';
-import { meElement, OVERLAY_CSS, overlayKey, shopElement, vehicleElement } from './navyMapOverlay';
+import {
+  HATCH_SVG,
+  meElement,
+  OBSTACLE_PATHS,
+  obstacleImageSvg,
+  OVERLAY_CSS,
+  overlayKey,
+  shopElement,
+  svgImage,
+  TAG_SVG,
+  VEHICLE_KEYS,
+  vehicleAria,
+  vehicleImageSvg,
+  vehicleKey,
+} from './navyMapOverlay';
+import { useMapObstacles } from '../../services/liveService';
+import type { NavyObstacle } from '../../types/parcel';
+import { formatUntil, isObstacleActive, obstacleAnchor, OBSTACLE_LABELS, obstaclePoints } from '../../utils/obstacleRules';
 
 const CHARCOAL = MAP_COLORS.charcoal;
 const YELLOW = MAP_COLORS.yellow;
@@ -129,6 +153,42 @@ function lineGeoJSON(points: LatLng[] | null | undefined): GeoJSON.FeatureCollec
   };
 }
 
+/** Phase 2C3: images of the vehicles, price tag and obstacles (drawn once per map). */
+async function addLiveImages(m: MapLibreMap): Promise<void> {
+  const jobs: Promise<void>[] = [];
+  const add = (id: string, svgText: string, opts: Parameters<MapLibreMap['addImage']>[2] = { pixelRatio: 2 }) =>
+    jobs.push(
+      svgImage(svgText)
+        .then((img) => {
+          if (!m.hasImage(id)) m.addImage(id, img, opts);
+        })
+        .catch(() => undefined)
+    );
+  for (const key of VEHICLE_KEYS)
+    for (const state of ['live', 'untracked', 'stale'] as const) for (const sel of [0, 1]) add(`veh-${key}-${state}-${sel}`, vehicleImageSvg(key, state, !!sel));
+  add('navy-tag', TAG_SVG, { pixelRatio: 2, stretchX: [[18, 22]], stretchY: [[12, 16]], content: [8, 4, 32, 24] });
+  for (const kind of Object.keys(OBSTACLE_PATHS)) {
+    add(`obs-${kind}`, obstacleImageSvg(kind));
+    add(`obs-${kind}-p`, obstacleImageSvg(kind, true));
+  }
+  add('navy-hatch', HATCH_SVG);
+  await Promise.all(jobs);
+}
+
+/** Obstacles as GeoJSON: lines (hatched) and one pictogram per obstacle. */
+function obstaclesGeoJSON(list: NavyObstacle[], nowMs: number): { lines: GeoJSON.FeatureCollection; icons: GeoJSON.FeatureCollection } {
+  const lines: GeoJSON.Feature[] = [];
+  const icons: GeoJSON.Feature[] = [];
+  for (const o of list) {
+    const proposed = o.status !== 'valide';
+    const label = `${OBSTACLE_LABELS[o.kind] ?? 'Obstacle'}${proposed ? ' (signalé, à valider)' : ''}, ${formatUntil(o.ends_at, nowMs)}${o.note ? ` : ${o.note}` : ''}`;
+    const props = { id: o.id, icon: `obs-${o.kind in OBSTACLE_PATHS ? o.kind : 'autre'}${proposed ? '-p' : ''}`, label, proposed };
+    if (o.geom.type === 'LineString') lines.push({ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: obstaclePoints(o.geom).map(toLngLat) } });
+    icons.push({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: toLngLat(obstacleAnchor(o.geom)) } });
+  }
+  return { lines: { type: 'FeatureCollection', features: lines }, icons: { type: 'FeatureCollection', features: icons } };
+}
+
 /** Shop names hidden when zoomed out (mock-up: below 13.6). */
 const SHOP_NAMES_ZOOM = 13.6;
 
@@ -168,6 +228,9 @@ export default function NavyMapVector({
   vehicles,
   onVehicleTap,
   onReady,
+  vehiclePosition,
+  obstacles,
+  draftShape = 'polygon',
 }: Props) {
   const full = frame === 'full';
   const elRef = useRef<HTMLDivElement | null>(null);
@@ -184,12 +247,14 @@ export default function NavyMapVector({
   const [locateMsg, setLocateMsg] = useState<string | null>(null);
 
   // Latest callbacks, read by handlers bound once.
-  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady });
-  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady };
+  const cb = useRef({ onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady, draftShape });
+  cb.current = { onPinChange, onMapTap, onZoneTap, onDraftChange, draft, onMarkerTap, onEngineFail, onMeTap, onShopTap, onVehicleTap, onReady, draftShape };
+  // Phase 2C3: latest vehicles and their live position, read on every frame.
+  const liveRef = useRef({ vehicles, vehiclePosition });
+  liveRef.current = { vehicles, vehiclePosition };
   // Phase 2C2 overlays (client map).
   const meRef = useRef<Marker | null>(null);
   const shopsRef = useRef<Marker[]>([]);
-  const vehiclesRef = useRef<Marker[]>([]);
 
   // Map created once per attempt (a new attempt when the network comes back without the file).
   useEffect(() => {
@@ -337,14 +402,69 @@ export default function NavyMapVector({
           layout: { 'line-join': 'round' },
           paint: { 'line-color': YELLOW, 'line-width': lineW, 'line-dasharray': [2, 1.33] },
         });
-        setReady(true);
+        // Phase 2C3: obstacles (hatched line + pictogram), then the vehicles above everything.
+        m.addSource('navy-obstacle-lines', { type: 'geojson', data: empty });
+        m.addSource('navy-obstacle-icons', { type: 'geojson', data: empty });
+        m.addSource('navy-vehicles', { type: 'geojson', data: empty });
+        const finish = () => {
+          if (cancelled || !m.getStyle()) return;
+          m.addLayer({
+            id: 'navy-obstacle-case',
+            type: 'line',
+            source: 'navy-obstacle-lines',
+            layout: round,
+            paint: { 'line-color': '#B42318', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 12] as unknown as number, 'line-opacity': ['case', ['get', 'proposed'], 0.5, 1] },
+          });
+          m.addLayer({
+            id: 'navy-obstacle-line',
+            type: 'line',
+            source: 'navy-obstacle-lines',
+            layout: round,
+            paint: { 'line-pattern': 'navy-hatch', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.5, 16, 9] as unknown as number, 'line-opacity': ['case', ['get', 'proposed'], 0.5, 1] },
+          });
+          m.addLayer({
+            id: 'navy-obstacle-icons',
+            type: 'symbol',
+            source: 'navy-obstacle-icons',
+            layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+          });
+          m.addLayer({
+            id: 'navy-veh-icons',
+            type: 'symbol',
+            source: 'navy-vehicles',
+            layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'sort'] },
+            paint: { 'icon-opacity': ['case', ['get', 'dim'], 0.32, 1], 'icon-opacity-transition': { duration: 400 } },
+          });
+          m.addLayer({
+            id: 'navy-veh-tags',
+            type: 'symbol',
+            source: 'navy-vehicles',
+            filter: ['!=', ['get', 'price'], ''],
+            layout: {
+              'text-field': ['get', 'price'],
+              'text-font': ['Noto Sans Medium'],
+              'text-size': 12,
+              'text-offset': [0, -2.35],
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+              'icon-image': 'navy-tag',
+              'icon-text-fit': 'both',
+              'icon-text-fit-padding': [2, 7, 2, 7],
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+            },
+            paint: { 'text-color': CHARCOAL },
+          });
+          setReady(true);
+          cb.current.onReady?.(api);
+        };
         const api: NavyMapApi = {
-          fitPoints: (points, padding, maxZoom = MAX_FIT_ZOOM + 0.5) => {
+          fitPoints: (points, padding, maxZoom = MAX_FIT_ZOOM + 0.5, durationMs) => {
             const b = boundsOf(points);
             if (!b) return;
             const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
             try {
-              m.fitBounds(new LngLatBounds([b[0], b[1]], [b[2], b[3]]), { padding, maxZoom, duration: reduce ? 0 : 800 });
+              m.fitBounds(new LngLatBounds([b[0], b[1]], [b[2], b[3]]), { padding, maxZoom, duration: reduce ? 0 : durationMs ?? 800, easing: (x) => x * (2 - x) });
             } catch {
               // padding larger than the map (tiny screen): centre only
               m.jumpTo({ center: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2] });
@@ -353,11 +473,32 @@ export default function NavyMapVector({
           easeTo: (lat, lng, zoom) => m.easeTo({ center: [lng, lat], zoom: zoom ?? m.getZoom(), duration: 600 }),
           zoomBy: (delta) => m.easeTo({ zoom: m.getZoom() + delta, duration: 250 }),
         };
-        cb.current.onReady?.(api);
+        void addLiveImages(m).finally(finish);
       });
 
       map.on('click', (e) => {
         const m = map as MapLibreMap;
+        // Phase 2C3: a vehicle (44 px target around the icon), then an obstacle.
+        const box: [[number, number], [number, number]] = [
+          [e.point.x - 18, e.point.y - 18],
+          [e.point.x + 18, e.point.y + 18],
+        ];
+        if (cb.current.onVehicleTap && m.getLayer('navy-veh-icons')) {
+          const hit = m.queryRenderedFeatures(box, { layers: ['navy-veh-icons'] });
+          const id = hit[0]?.properties?.id;
+          if (typeof id === 'string') {
+            cb.current.onVehicleTap(id);
+            return;
+          }
+        }
+        if (m.getLayer('navy-obstacle-icons') && !cb.current.onMapTap && !cb.current.onPinChange) {
+          const hit = m.queryRenderedFeatures(box, { layers: ['navy-obstacle-icons', 'navy-obstacle-line'] });
+          const label = hit[0]?.properties?.label;
+          if (typeof label === 'string') {
+            new Popup({ closeButton: false, maxWidth: '240px', offset: 14 }).setLngLat(e.lngLat).setText(label).addTo(m);
+            return;
+          }
+        }
         if (cb.current.onZoneTap && m.getLayer('navy-zones-fill')) {
           const hit = m.queryRenderedFeatures(e.point, { layers: ['navy-zones-fill'] });
           const id = hit[0]?.properties?.id;
@@ -381,7 +522,6 @@ export default function NavyMapVector({
       cb.current.onReady?.(null);
       meRef.current = null;
       shopsRef.current = [];
-      vehiclesRef.current = [];
       markersRef.current = [];
       verticesRef.current = [];
       pinRef.current = null;
@@ -461,7 +601,7 @@ export default function NavyMapVector({
     if (!map || !ready) return;
     verticesRef.current.forEach((v) => v.remove());
     verticesRef.current = [];
-    setData(map, 'navy-draft', draftGeoJSON(draft));
+    setData(map, 'navy-draft', draftGeoJSON(draft, draftShape));
     if (map.getLayer('navy-draft-fill')) map.setPaintProperty('navy-draft-fill', 'fill-color', draftColor);
     if (!draft?.length) return;
     verticesRef.current = draft.map((pt, i) => {
@@ -474,11 +614,11 @@ export default function NavyMapVector({
         pts[i] = [ll.lat, ll.lng];
         return pts;
       };
-      v.on('drag', () => setData(map, 'navy-draft', draftGeoJSON(moved())));
+      v.on('drag', () => setData(map, 'navy-draft', draftGeoJSON(moved(), cb.current.draftShape)));
       v.on('dragend', () => cb.current.onDraftChange?.(moved()));
       return v;
     });
-  }, [draft, draftColor, !!onDraftChange, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [draft, draftColor, draftShape, !!onDraftChange, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Phase 2C2 overlays -----------------------------------------------------------
   useEffect(() => {
@@ -539,20 +679,74 @@ export default function NavyMapVector({
     });
   }, [shopsKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Phase 2C3: vehicles = points of the map, moved on every frame (simulated motion).
   const vehiclesKey = overlayKey(vehicles);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    vehiclesRef.current.forEach((m) => m.remove());
-    vehiclesRef.current = (vehicles ?? []).map((v) => {
-      const node = vehicleElement(v);
-      node.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cb.current.onVehicleTap?.(v.id);
+    const draw = () => {
+      const now = Date.now();
+      const { vehicles: list, vehiclePosition: pos } = liveRef.current;
+      const features: GeoJSON.Feature[] = (list ?? []).map((v, i) => {
+        const p = pos?.(v.id, now) ?? null;
+        const state = p ? (p.stale ? 'stale' : 'live') : v.state ?? 'live';
+        return {
+          type: 'Feature',
+          properties: {
+            id: v.id,
+            icon: `veh-${vehicleKey(v.type)}-${state}-${v.selected ? 1 : 0}`,
+            dim: !!v.dim,
+            price: v.price ?? '',
+            sort: v.selected ? 1000 : v.dim ? i : 500 + i,
+          },
+          geometry: { type: 'Point', coordinates: [p?.lng ?? v.lng, p?.lat ?? v.lat] },
+        };
       });
-      return new Marker({ element: node }).setLngLat([v.lng, v.lat]).addTo(map);
-    });
-  }, [vehiclesKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+      setData(map, 'navy-vehicles', { type: 'FeatureCollection', features });
+    };
+    draw();
+    if (!vehiclePosition || !vehicles?.length) return;
+    // ~20 frames per second is enough for a vehicle; 1 per second with reduced motion.
+    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf = 0;
+    let last = 0;
+    let timer = 0;
+    if (reduce) timer = window.setInterval(draw, 1000);
+    else {
+      const loop = (t: number) => {
+        if (t - last >= 50) {
+          last = t;
+          draw();
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearInterval(timer);
+    };
+  }, [vehiclesKey, !!vehiclePosition, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 2C3: obstacles (validated ones in progress by default), gone at the end of their duration.
+  const storeObstacles = useMapObstacles(obstacles === undefined);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setClock(Date.now()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const shownObstacles = useMemo(
+    () => (obstacles === 'none' ? [] : Array.isArray(obstacles) ? obstacles : storeObstacles.filter((o) => isObstacleActive(o, clock))),
+    [obstacles, storeObstacles, clock]
+  );
+  const obstaclesKey = overlayKey(shownObstacles.map((o) => [o.id, o.status, o.kind, o.ends_at, o.geom]));
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const { lines, icons } = obstaclesGeoJSON(shownObstacles, Date.now());
+    setData(map, 'navy-obstacle-lines', lines);
+    setData(map, 'navy-obstacle-icons', icons);
+  }, [obstaclesKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial framing, once there is something to frame.
   useEffect(() => {
@@ -622,6 +816,22 @@ export default function NavyMapVector({
           className={full ? 'navy-vmap w-full h-full overflow-hidden' : `navy-vmap w-full ${heightClass} rounded-2xl overflow-hidden border border-navyay-charcoal/15`}
           style={{ touchAction: 'none', background: '#EFEDE6' }}
         />
+        {!!vehicles?.length && onVehicleTap && (
+          <ul className="absolute left-2 top-2 z-[7] m-0 list-none p-0" aria-label="Véhicules sur la carte">
+            {vehicles.map((v) => (
+              <li key={v.id}>
+                <button
+                  type="button"
+                  className="sr-only focus:not-sr-only focus:block focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-bold focus:text-navyay-charcoal focus:shadow-md focus:outline-none focus:ring-2 focus:ring-navyay-yellow"
+                  data-navy-vehicle={v.id}
+                  onClick={() => cb.current.onVehicleTap?.(v.id)}
+                >
+                  {vehicleAria(v)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {locate && !full && (
           <button
             type="button"

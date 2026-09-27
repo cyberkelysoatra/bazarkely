@@ -903,6 +903,46 @@ premier retrait) : table `navy_client_profiles` (chacun sa ligne seulement, RLS 
 une commande préparée sans réseau part au retour avec le même id. **Secours Leaflet** : mêmes
 éléments en rendu simple (route en trait, carrés, véhicules avec prix).
 
+### 🛵 Phase 2C3 — la carte vivante (v3.89.0)
+
+**Positions des chauffeurs (décisions 49, 50)** : tant qu'un chauffeur est « Disponible » (non
+expiré) **ou** a une course acceptée (jusqu'à la remise à l'épicerie d'arrivée), **et** que NAVY ay
+est ouverte à l'écran, son téléphone envoie sa position toutes les **30 s**
+(`NavyDriverLiveSync`, monté sur toutes les pages NAVY) ; arrêt immédiat sur « Pas disponible », à
+l'expiration, en arrière-plan ou sur refus du serveur. Table `navy_driver_positions` : **une ligne
+par chauffeur, écrasée**, sans historique, aucune règle ni droit client (écriture par
+`navy_report_position`, réservée au chauffeur lui-même ; appel à moins de 10 s ignoré ; lignes
+effacées sur « Pas disponible » et par la tâche `navy-positions-purge` toutes les 5 min).
+Lecture : `navy_live_drivers()` (tout compte connecté) = chauffeurs disponibles, position de moins
+de **2 min** **arrondie à ~200 m** (grille 0,0018°), **jamais à moins de 800 m** (rayon de 800 à 1 200 m, variable à chaque disponibilité) du point où il s'est
+déclaré disponible (il apparaît alors sur sa destination) ; **position exacte** seulement pour
+l'expéditeur et les deux épiciers d'une course qu'il a acceptée. Sans position récente : icône
+blanche à bord pointillé sur la destination déclarée (« position non suivie »). Le téléphone du
+client relit toutes les 30 s pendant que la carte est affichée.
+
+**Mouvement simulé (`utils/liveMotion.ts`, testé)** : entre deux positions, l'icône avance le long
+de l'itinéraire du chauffeur à la vitesse mesurée (sinon 15 km/h), rejoint le vrai point en 2,5 s
+sans saut, s'arrête 30 s après la dernière position, devient **grise** (« position incertaine »)
+après 2 min, disparaît après 5 min. Les véhicules sont une **couche de points** de la carte
+(images dessinées une fois, source GeoJSON mise à jour ~20 fois/s), avec une liste de boutons
+cachée pour le clavier. Fiche : **Vitesse** et **De vous** en plus.
+
+**Suivi d'une course (`ParcelMapFrame`)** : position exacte du chauffeur, **caméra qui suit**
+(approche : véhicule + départ ; trajet : véhicule + arrivée ; zoom jusqu'à 17), pause au geste
+(glisser, pincer, molette, boutons de zoom), bouton **« Recentrer »**, reprise seule **6 s** après le
+dernier geste ; remise dans la rue : bandeau **« Sortez maintenant »** sous 300 m (vibration).
+
+**Obstacles (décisions 52 (2), 55 (2))** : table `navy_map_obstacles` (travaux, route inondée,
+passage fermé, autre ; point ou passage ; début, fin). Chauffeur : « Signaler un obstacle » sur
+« Ma direction » (proposé, notification à l'opératrice, invisible des autres avant validation).
+Opératrice : **Zones → onglet « Obstacles »** (`?onglet=obstacles`) : tracer un passage ou poser un
+point, motif, durée (1 h … 1 semaine ou date précise, 90 jours au plus), valider / refuser les
+signalements, modifier, supprimer. Affichage sur **toutes** les cartes NAVY (trait hachuré rouge +
+pictogramme), disparition automatique à la fin ; alerte sur le panneau route si un obstacle est sur
+le trajet. Itinéraires calculés ensuite par `navy-routes` : `avoid_polygons` (30 m autour d'un
+point, 15 m de part et d'autre d'un passage), nouvel essai sans eux si aucune route ne contourne.
+Oubli 7 jours après la fin (`navy-obstacles-purge`).
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

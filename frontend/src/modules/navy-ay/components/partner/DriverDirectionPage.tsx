@@ -7,9 +7,12 @@
  * refused = still available, zone criterion only. Availability ends by itself 3 h
  * after the last update ("Toujours disponible ?" keeps the same route, no new reading).
  * Offline: the choice is kept on the phone and sent when the network comes back.
+ * Phase 2C3 (decisions 49, 50): while available and NAVY ay open, the position is sent
+ * every 30 s (NavyDriverLiveSync) and shown to clients rounded to ~200 m; the screen says
+ * so plainly and shows the state of the sharing. "Signaler un obstacle" (decision 55 (2)).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock, Loader2, LocateFixed, MapPin, Navigation, PauseCircle, PlayCircle, Route, Smartphone } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, EyeOff, Loader2, LocateFixed, MapPin, Navigation, PauseCircle, PlayCircle, Route, Smartphone } from 'lucide-react';
 import { useAppStore } from '../../../../stores/appStore';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useNavyProfile } from '../../services/navyProfileStore';
@@ -18,6 +21,9 @@ import { loadZones, useNavyZones, zoneName } from '../../services/zoneService';
 import { DRIVER_REMINDER_MS, formatRemaining, isLocalAvailable, localAvailableUntil, zoneForPoint } from '../../utils/geo';
 import NavyMap from '../map/NavyMap';
 import { NavyNotifyPrompt } from '../parcel/ParcelUi';
+import { useLiveShare } from '../NavyDriverLiveSync';
+import { grid200 } from '../../utils/liveMotion';
+import DriverObstacleReport from './DriverObstacleReport';
 import { btnAccent, btnPrimary, btnSecondary, NavyCard, NavyHelp, NavyNotice, NavyOfflineNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
 export default function DriverDirectionPage() {
@@ -35,6 +41,7 @@ export default function DriverDirectionPage() {
   const [locating, setLocating] = useState(false);
   const [gpsShared, setGpsShared] = useState<boolean | null>(null);
   const [route, setRoute] = useState<MyRouteState | null | undefined>(undefined);
+  const share = useLiveShare();
 
   useEffect(() => {
     if (!userId || !row) return;
@@ -158,6 +165,34 @@ export default function DriverDirectionPage() {
         </span>
       </button>
 
+      <NavyCard className="p-4 space-y-2" aria-live="polite">
+        <p className="flex items-start gap-2 text-sm">
+          {available && share.state === 'sharing' ? (
+            <Eye className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          ) : (
+            <EyeOff className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          )}
+          <span>
+            <strong>
+              {available
+                ? share.state === 'sharing'
+                  ? 'Votre position est partagée en ce moment.'
+                  : share.state === 'denied'
+                  ? 'Position refusée par le téléphone : vous apparaissez sur votre destination.'
+                  : share.state === 'no-gps'
+                  ? 'Position introuvable pour l’instant : vous apparaissez sur votre destination.'
+                  : 'Partage de la position en cours de démarrage…'
+                : 'Votre position n’est pas partagée.'}
+            </strong>{' '}
+            Tant que vous êtes disponible, votre position est visible des clients, à 200 m près. Elle n’est plus partagée dès que vous passez « Pas disponible ».
+          </span>
+        </p>
+        <p className="text-xs text-navyay-charcoal/75">
+          Envoyée toutes les 30 secondes, seulement quand NAVY ay est ouverte à l’écran. Près de l’endroit où vous vous êtes déclaré disponible (800 m au moins), elle n’est jamais montrée.
+          Pendant une course acceptée, le client et les épiciers de cette course voient votre position exacte.
+        </p>
+      </NavyCard>
+
       {status?.pending && (
         <NavyNotice icon={Smartphone}>Gardé sur ce téléphone, en attente d’envoi. Il part tout seul dès que le réseau revient.</NavyNotice>
       )}
@@ -193,7 +228,7 @@ export default function DriverDirectionPage() {
           <p className="text-sm text-navyay-charcoal/80">Touchez la carte à l’endroit de votre arrivée, ou faites glisser l’épingle.</p>
           <p className="flex items-start gap-2 text-xs text-navyay-charcoal/75">
             <LocateFixed className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-            <span>En confirmant, votre position est lue une seule fois pour calculer votre trajet. Elle n’est jamais suivie et s’efface avec votre direction.</span>
+            <span>En confirmant, votre position est lue pour calculer votre trajet. Tant que vous êtes disponible, votre position est visible des clients, à 200 m près. Elle n’est plus partagée dès que vous passez « Pas disponible ».</span>
           </p>
           <NavyMap
             ariaLabel="Carte : choisissez votre destination"
@@ -234,7 +269,17 @@ export default function DriverDirectionPage() {
                 <p className="text-sm text-navyay-charcoal/75">Encore {formatRemaining(remaining)} de disponibilité</p>
               </div>
             </div>
-            <NavyMap ariaLabel="Carte : votre destination" zones={zones} pin={currentDest} fit="pin" heightClass="h-56" />
+            <NavyMap
+              ariaLabel="Carte : votre destination"
+              zones={zones}
+              pin={currentDest}
+              fit="pin"
+              heightClass="h-56"
+              me={share.state === 'sharing' && share.last ? { lat: grid200(share.last.lat), lng: grid200(share.last.lng) } : null}
+            />
+            {share.state === 'sharing' && share.last && (
+              <p className="text-xs text-navyay-charcoal/75">Le point jaune : là où les clients vous voient (à 200 m près).</p>
+            )}
             <p className="flex items-start gap-2 text-sm" aria-live="polite">
               <Route className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <span>
@@ -255,10 +300,14 @@ export default function DriverDirectionPage() {
         )
       )}
 
+      <DriverObstacleReport userId={userId} />
+
       <NavyHelp title="À quoi sert la direction ?">
         <p>Vous faites déjà des trajets : en indiquant où vous allez, NAVY ay peut vous confier un colis pour cette zone.</p>
-        <p>Votre destination est enregistrée. Quand vous vous déclarez disponible ou changez de destination, votre position est lue une seule fois pour calculer votre trajet : NAVY ay peut alors vous proposer aussi les colis dont l’épicerie d’arrivée est proche de votre route.</p>
-        <p>Votre position n’est jamais suivie. Elle s’efface quand votre disponibilité s’arrête. Si vous refusez de la partager, vous restez disponible : seuls les colis vers votre zone d’arrivée vous sont alors proposés.</p>
+        <p>Votre destination est enregistrée. Quand vous vous déclarez disponible ou changez de destination, votre position est lue pour calculer votre trajet : NAVY ay peut alors vous proposer aussi les colis dont l’épicerie d’arrivée est proche de votre route.</p>
+        <p>Tant que vous êtes disponible et que NAVY ay est ouverte à l’écran, votre position est envoyée toutes les 30 secondes : les clients vous voient rouler sur la carte, à 200 m près. Elle n’est plus partagée dès que vous passez « Pas disponible », et elle n’est jamais gardée en historique.</p>
+        <p>Si vous refusez de la partager, vous restez disponible : vous apparaissez sur votre destination, et seuls les colis vers votre zone d’arrivée vous sont proposés.</p>
+        <p>« Signaler un obstacle » : travaux, route inondée, passage fermé. L’opératrice le vérifie avant de l’afficher sur les cartes de tous.</p>
         <p>La disponibilité s’arrête toute seule 3 heures après votre dernier choix. Un rappel « Toujours disponible ? » s’affiche avant.</p>
         <p>Sans réseau, votre choix est gardé sur le téléphone et part tout seul au retour du réseau.</p>
       </NavyHelp>

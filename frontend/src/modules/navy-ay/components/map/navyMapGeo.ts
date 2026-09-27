@@ -74,9 +74,14 @@ export function zonesGeoJSON(
   };
 }
 
-/** Polygon being drawn: a filled shape from 3 points, a dashed line before. */
-export function draftGeoJSON(points: LatLng[] | undefined): FeatureCollection<Polygon | LineString> {
+/** Polygon being drawn: a filled shape from 3 points, a dashed line before (always a line for a passage). */
+export function draftGeoJSON(points: LatLng[] | undefined, shape: 'polygon' | 'line' = 'polygon'): FeatureCollection<Polygon | LineString> {
   const pts = points ?? [];
+  if (shape === 'line') {
+    return pts.length >= 2
+      ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts.map(toLngLat) } }] }
+      : { type: 'FeatureCollection', features: [] };
+  }
   if (pts.length >= 3) {
     return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring(pts)] } }] };
   }

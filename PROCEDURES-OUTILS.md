@@ -225,3 +225,12 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Résolution :** page d'essai temporaire `frontend/dev-harness/navy-client.html` (jamais commitée) qui monte les vrais composants dans un `MemoryRouter`, pose un utilisateur dans `useAppStore`, puis banc Playwright `channel: 'chrome'` qui répond à la place de Supabase : `ctx.route('**/rest/v1/**', …)` renvoie des jeux d'essai par nom de fonction (`navy_open_grocers`, `navy_quote`, `navy_route_path`…). Pour un `maybeSingle()` sans ligne : répondre **406** `{code:'PGRST116'}`. Géolocalisation : `geolocation` + `permissions:['geolocation']` du contexte, espion sur `getCurrentPosition` / `watchPosition`.
 - **Piège Leaflet :** les couches Leaflet ont un `z-index` ≥ 400 ; une carte en décor passe **au-dessus** des panneaux posés sur elle. Envelopper la carte dans un bloc `isolate z-0`.
 - **Piège clic :** deux marqueurs superposés font échouer `locator.click()` (élément masqué) ; `dispatchEvent('click')` sur l'élément visé.
+
+### P31 — Déclencheur de garde déclaré `security definer` : la garde ne voit plus l'appelant (2026-09-27, NAVY 2C3)
+- **Symptôme :** un déclencheur « liste blanche » qui teste `current_user in ('authenticated','anon')` laisse tout passer (ou la règle RLS refuse une insertion que la garde devait corriger : `42501 new row violates row-level security policy`).
+- **Cause :** dans une fonction `SECURITY DEFINER`, `current_user` est le **propriétaire** (`postgres`), jamais le rôle de l'appelant.
+- **Résolution :** fonction de garde en **`security invoker`** (les aides qu'elle appelle, `navy_is_operator()`…, restent `definer`), et `grant execute` à `authenticated` sur les fonctions pures qu'elle appelle. Tester en transaction annulée (P8) : insertion d'un chauffeur avec `status='valide'` → doit ressortir `propose`.
+
+### P32 — Bloc Bash « heredoc » refusé (« unexpected EOF while looking for matching `'` ») (2026-09-27)
+- **Symptôme :** une commande `cat > fichier <<'EOF' … EOF` ou `python - <<'EOF'` échoue sans rien écrire dès que le contenu mêle apostrophes typographiques, accents graves et `${…}`.
+- **Résolution :** écrire le script dans le dossier de travail temporaire avec l'outil d'écriture, puis `python chemin/du/script.py` ; ou changer le délimiteur (`<<'PYEOF'`). Toujours vérifier après coup que le fichier visé a bien changé.

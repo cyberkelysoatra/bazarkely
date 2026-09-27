@@ -6,9 +6,16 @@
  *
  * The stage is `position: fixed` between the measured bottom of the <header> and the top
  * of the bottom bar: nothing scrolls, the page never scrolls sideways.
+ *
+ * Phase 2C3 (decision 53): useFollowCamera frames continuously the person (or the
+ * departure) and the vehicle, zooming in as it comes closer; a gesture of the person on
+ * the map (move, pinch, wheel, zoom buttons) pauses it, a "Recentrer" button appears and
+ * the framing comes back by itself 6 seconds after the last gesture.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Crosshair, Minus, Plus } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Crosshair, LocateFixed, Minus, Plus } from 'lucide-react';
+import type { NavyMapApi, NavyMapPadding } from '../map/NavyMap';
+import type { LatLng } from '../../types/partner';
 
 /** Top (header bottom) and bottom (bottom bar height) of the free space, in px. */
 export function useMapFrame(): { top: number; bottom: number } {
@@ -154,14 +161,120 @@ export const STAGE_CSS = `
 @media (prefers-reduced-motion: reduce){.navy-sheet-in{animation:none}.navy-sheet-out{transition:none}.navy-pulse{animation:none}}
 `;
 
-/** The stage: fixed map background + overlays (children). */
-export function MapStage({ map, children }: { map: ReactNode; children: ReactNode }) {
+/** The stage: fixed map background + overlays (children). `onMapGesture`: the person moved or zoomed the map. */
+export function MapStage({ map, children, onMapGesture }: { map: ReactNode; children: ReactNode; onMapGesture?: () => void }) {
   const { top, bottom } = useMapFrame();
+  const down = useRef<{ x: number; y: number } | null>(null);
+  const pointers = useRef(0);
+  const gesture = onMapGesture
+    ? {
+        onPointerDownCapture: (e: ReactPointerEvent) => {
+          pointers.current += 1;
+          down.current = { x: e.clientX, y: e.clientY };
+          if (pointers.current > 1) onMapGesture(); // pinch
+        },
+        onPointerMoveCapture: (e: ReactPointerEvent) => {
+          // A tap is not a gesture; a finger that moves the map is.
+          if (down.current && Math.hypot(e.clientX - down.current.x, e.clientY - down.current.y) > 8) onMapGesture();
+        },
+        onPointerUpCapture: () => {
+          pointers.current = Math.max(0, pointers.current - 1);
+          if (!pointers.current) down.current = null;
+        },
+        onPointerCancelCapture: () => {
+          pointers.current = 0;
+          down.current = null;
+        },
+        onWheelCapture: () => onMapGesture(),
+        onDoubleClickCapture: () => onMapGesture(),
+      }
+    : {};
   return (
     <div className="fixed inset-x-0 z-0 overflow-hidden text-navyay-charcoal" style={{ top, bottom, background: '#EFEDE6' }} data-navy-stage="">
       <style>{STAGE_CSS}</style>
-      <div className="absolute inset-0 isolate z-0">{map}</div>
+      <div className="absolute inset-0 isolate z-0" {...gesture}>
+        {map}
+      </div>
       {children}
     </div>
+  );
+}
+
+/** Seconds of calm after the person's last gesture before the camera follows again. */
+export const FOLLOW_RESUME_MS = 6000;
+const FOLLOW_EVERY_MS = 1200;
+/** Closest reasonable zoom while following (vector zoom). */
+export const FOLLOW_MAX_ZOOM = 17;
+
+/**
+ * Camera that follows (decision 53). `points()` gives what must stay in view (vehicle +
+ * person or departure); `padding()` the free space (panel below). Framing every 1.2 s
+ * with a soft 1.1 s move.
+ */
+export function useFollowCamera({
+  active,
+  apiRef,
+  points,
+  padding,
+}: {
+  active: boolean;
+  apiRef: MutableRefObject<NavyMapApi | null>;
+  points: () => LatLng[];
+  padding: () => NavyMapPadding;
+}): { paused: boolean; gesture: () => void; recenter: () => void } {
+  const [paused, setPaused] = useState(false);
+  const lastGesture = useRef(0);
+  const latest = useRef({ points, padding });
+  latest.current = { points, padding };
+
+  const frame = useCallback(() => {
+    const pts = latest.current.points();
+    if (pts.length) apiRef.current?.fitPoints(pts, latest.current.padding(), FOLLOW_MAX_ZOOM, 1100);
+  }, [apiRef]);
+
+  useEffect(() => {
+    if (!active) {
+      setPaused(false);
+      return;
+    }
+    frame();
+    const t = window.setInterval(() => {
+      if (lastGesture.current && Date.now() - lastGesture.current < FOLLOW_RESUME_MS) return;
+      if (lastGesture.current) {
+        lastGesture.current = 0;
+        setPaused(false);
+      }
+      frame();
+    }, FOLLOW_EVERY_MS);
+    return () => window.clearInterval(t);
+  }, [active, frame]);
+
+  const gesture = useCallback(() => {
+    if (!active) return;
+    lastGesture.current = Date.now();
+    setPaused(true);
+  }, [active]);
+
+  const recenter = useCallback(() => {
+    lastGesture.current = 0;
+    setPaused(false);
+    frame();
+  }, [frame]);
+
+  return { paused, gesture, recenter };
+}
+
+/** "Recentrer" (mock-up .recenter): shown while the follow is paused by a gesture. */
+export function RecenterPill({ onClick, bottom }: { onClick: () => void; bottom: number }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ bottom }}
+      className="absolute left-1/2 z-20 inline-flex min-h-[44px] -translate-x-1/2 items-center gap-2 rounded-full bg-navyay-charcoal px-4 py-2.5 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(46,46,46,0.3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-yellow"
+    >
+      <LocateFixed className="h-4 w-4 text-navyay-yellow" aria-hidden="true" />
+      Recentrer
+    </button>
   );
 }

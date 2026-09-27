@@ -7,6 +7,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import NavyHomePage from './NavyHomePage';
 import NavyProfileSync from './NavyProfileSync';
 import NavyParcelSync from './NavyParcelSync';
+import NavyDriverLiveSync from './NavyDriverLiveSync';
 import NavyRoleRoute from './NavyRoleRoute';
 import { NavyLoader } from './ui/NavyUi';
 
@@ -42,6 +43,7 @@ export default function NavyRoutes() {
     <>
       <NavyProfileSync />
       <NavyParcelSync />
+      <NavyDriverLiveSync />
       <Suspense fallback={<NavyLoader />}>
         <Routes>
           <Route index element={<NavyHomePage />} />

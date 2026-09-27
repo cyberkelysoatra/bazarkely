@@ -395,3 +395,47 @@ export interface ParcelCodes {
   code: string;
   withdrawCode: string;
 }
+
+// ------------------------------------------------------------------ phase 2C3
+
+/** Live position of a driver (navy_live_drivers): rounded ~200 m, exact for the parties of his course. */
+export interface NavyLivePosition {
+  lat: number;
+  lng: number;
+  /** Seconds since the driver's phone sent it (server clock, P21). */
+  age_s: number;
+  speed_kmh: number | null;
+  exact: boolean;
+}
+
+/** Phase 2C3: answer of navy_live_drivers() = navy_available_drivers() + the live position. */
+export interface NavyLiveDriver extends NavyAvailableDriver {
+  /** Declared available now (false: only a course in progress makes him visible, to its parties). */
+  available: boolean;
+  /** The caller is a party of a course this driver accepted (exact position). */
+  in_course: boolean;
+  /** Average rating once above the threshold (decision 4); null until ratings exist. */
+  rating: number | null;
+  /** Null: no recent position (NAVY ay not open on his phone) → shown at his destination. */
+  live: NavyLivePosition | null;
+}
+
+export type NavyObstacleKind = 'travaux' | 'inondation' | 'ferme' | 'autre';
+export type NavyObstacleStatus = 'propose' | 'valide' | 'refuse';
+
+/** GeoJSON order ([lng, lat]), as stored by the server. */
+export type NavyObstacleGeom = { type: 'Point'; coordinates: [number, number] } | { type: 'LineString'; coordinates: [number, number][] };
+
+/** Phase 2C3: temporary obstacle of the private NAVY layer (navy_map_obstacles). */
+export interface NavyObstacle {
+  id: string;
+  kind: NavyObstacleKind;
+  geom: NavyObstacleGeom;
+  note: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: NavyObstacleStatus;
+  reported_by: string | null;
+  validated_by: string | null;
+  created_at: string;
+}

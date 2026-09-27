@@ -2,6 +2,7 @@
  * NAVY ay map interface, shared by the vector engine (phase 2C1) and the Leaflet fallback.
  * Every screen talks to NavyMap through these props only.
  */
+import type { NavyObstacle } from '../../types/parcel';
 import type { LatLng, NavyZone } from '../../types/partner';
 
 export interface NavyMapMarker {
@@ -60,6 +61,20 @@ export interface NavyMapProps {
   onVehicleTap?: (id: string) => void;
   /** Camera handle for the page (buttons drawn outside the map, framing above the panels). */
   onReady?: (api: NavyMapApi | null) => void;
+
+  // ---- Phase 2C3 (living map), all optional.
+  /**
+   * Live position of a vehicle at a given time (simulated motion, utils/liveMotion.ts),
+   * read by the map on every frame; null = the vehicle stays at its lat/lng.
+   */
+  vehiclePosition?: (id: string, nowMs: number) => { lat: number; lng: number; stale?: boolean } | null;
+  /**
+   * Obstacles of the private NAVY layer. Default: the validated obstacles in progress
+   * (shared store, every NAVY map); a list: exactly these (operator screen); 'none': hidden.
+   */
+  obstacles?: NavyObstacle[] | 'none';
+  /** 'line': the draft is a passage (dashed line), not a polygon. */
+  draftShape?: 'polygon' | 'line';
 }
 
 export interface NavyMapShop {
@@ -80,6 +95,8 @@ export interface NavyMapVehicle {
   label: string;
   /** Price tag above the icon ("1 700 Ar"), or nothing. */
   price?: string | null;
+  /** Phase 2C3: 'live' (position received), 'untracked' (at his destination), 'stale' (grey, 2 min). */
+  state?: 'live' | 'untracked' | 'stale';
   dim?: boolean;
   selected?: boolean;
 }
@@ -93,7 +110,7 @@ export interface NavyMapPadding {
 
 export interface NavyMapApi {
   /** Frame points ([lat, lng]) inside the visible part (padding in px around it). */
-  fitPoints: (points: LatLng[], padding: NavyMapPadding, maxZoom?: number) => void;
+  fitPoints: (points: LatLng[], padding: NavyMapPadding, maxZoom?: number, durationMs?: number) => void;
   /** Move to a point (vector zoom). */
   easeTo: (lat: number, lng: number, zoom?: number) => void;
   zoomBy: (delta: number) => void;
