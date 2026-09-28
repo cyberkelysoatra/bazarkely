@@ -146,8 +146,7 @@ jobs:
           CERT=$("$BT/apksigner" verify --verbose --print-certs "$APK" | grep -E "Verified using|Signer #1 certificate (DN|SHA-256|SHA-1)")
           echo "$CERT"
           # Public fingerprints (needed to restrict the Firebase API key to this app).
-          echo "::notice title=APK certificate::$(echo "$CERT" | grep -E "SHA-256|SHA-1" | tr '
-' ' ')"
+          echo "::notice title=APK certificate::$(echo "$CERT" | grep -E "SHA-256|SHA-1" | paste -sd ' ')"
           "$BT/aapt2" dump badging "$APK" | head -1
           cp "$APK" navy-ay.apk
           SIZE=$(stat -c %s navy-ay.apk)
