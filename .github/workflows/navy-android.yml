@@ -143,7 +143,11 @@ jobs:
           APK=navy-android/android/app/build/outputs/apk/release/app-release.apk
           test -f "$APK" || { echo "::error::Unsigned or missing APK"; ls -R navy-android/android/app/build/outputs/apk; exit 1; }
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BT/apksigner" verify --verbose --print-certs "$APK" | grep -E "Verified using|Signer #1 certificate (DN|SHA-256)"
+          CERT=$("$BT/apksigner" verify --verbose --print-certs "$APK" | grep -E "Verified using|Signer #1 certificate (DN|SHA-256|SHA-1)")
+          echo "$CERT"
+          # Public fingerprints (needed to restrict the Firebase API key to this app).
+          echo "::notice title=APK certificate::$(echo "$CERT" | grep -E "SHA-256|SHA-1" | tr '
+' ' ')"
           "$BT/aapt2" dump badging "$APK" | head -1
           cp "$APK" navy-ay.apk
           SIZE=$(stat -c %s navy-ay.apk)

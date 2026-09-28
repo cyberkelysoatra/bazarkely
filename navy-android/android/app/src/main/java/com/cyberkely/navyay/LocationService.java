@@ -254,7 +254,7 @@ public class LocationService extends Service {
                 } catch (Exception ignoredErr) {
                     // plain response
                 }
-                if (!ignored) NavyStatus.sent(this, true, null);
+                if (!ignored) NavyStatus.sent(this, true, null, l.getLatitude(), l.getLongitude());
                 return;
             }
             String code = NavySession.errorCode(r);

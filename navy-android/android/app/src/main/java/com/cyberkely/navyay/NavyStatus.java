@@ -33,6 +33,8 @@ final class NavyStatus {
     static final String K_SENDS = "sends";
     static final String K_BEATS = "js_beats";
     static final String K_LOG = "log";
+    static final String K_LAST_LAT = "last_lat";
+    static final String K_LAST_LNG = "last_lng";
 
     private NavyStatus() {}
 
@@ -80,10 +82,15 @@ final class NavyStatus {
     }
 
     static synchronized void sent(Context c, boolean ok, String error) {
+        sent(c, ok, error, Double.NaN, Double.NaN);
+    }
+
+    static synchronized void sent(Context c, boolean ok, String error, double lat, double lng) {
         SharedPreferences.Editor e = p(c).edit();
         long now = System.currentTimeMillis();
         if (ok) {
             e.putInt(K_SENT_OK, p(c).getInt(K_SENT_OK, 0) + 1).putLong(K_LAST_SENT, now);
+            if (!Double.isNaN(lat)) e.putString(K_LAST_LAT, String.valueOf(lat)).putString(K_LAST_LNG, String.valueOf(lng));
         } else {
             e.putInt(K_SENT_FAIL, p(c).getInt(K_SENT_FAIL, 0) + 1).putString(K_LAST_ERROR, error);
         }
@@ -106,6 +113,8 @@ final class NavyStatus {
             o.put("lastSentAt", s.getLong(K_LAST_SENT, 0));
             o.put("lastFixAt", s.getLong(K_LAST_FIX, 0));
             o.put("lastError", s.getString(K_LAST_ERROR, null));
+            o.put("lastLat", s.getString(K_LAST_LAT, null));
+            o.put("lastLng", s.getString(K_LAST_LNG, null));
             o.put("intervalMs", s.getLong(K_INTERVAL, 0));
             o.put("sends", times(c, K_SENDS));
             o.put("jsBeats", times(c, K_BEATS));
