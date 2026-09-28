@@ -15,7 +15,7 @@ on:
       api-level:
         description: 'Android API level of the emulator'
         required: true
-        default: '30'
+        default: '34'
 
 permissions:
   contents: read
@@ -63,7 +63,7 @@ jobs:
       - name: Emulator checks
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ github.event.inputs.api-level || '30' }}
+          api-level: ${{ github.event.inputs.api-level || '34' }}
           target: google_apis_playstore
           arch: x86_64
           disable-animations: true

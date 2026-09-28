@@ -109,6 +109,9 @@ async function debugChecks() {
       ua: navigator.userAgent.includes('NavyAyApp'),
       plugins: window.Capacitor ? Object.keys(Capacitor.Plugins || {}) : [],
       google: [...document.querySelectorAll('button')].some(b => b.textContent.includes('Continuer avec Google')),
+      chrome: (navigator.userAgent.match(/Chrome\/[0-9.]+/) || [''])[0],
+      root: (document.getElementById('root') || {}).innerHTML ? document.getElementById('root').innerHTML.length : 0,
+      text: document.body.innerText.slice(0, 300),
       info: window.Capacitor && Capacitor.Plugins.App ? await Capacitor.Plugins.App.getInfo() : null,
     }))()`,
     (v) => v && v.href && v.href.startsWith('https://1sakely.org/navy') && v.google,
@@ -118,7 +121,7 @@ async function debugChecks() {
   record('app id and name', !!(state && state.info && state.info.id === APP && state.info.name === 'NAVY ay'), state && state.info);
 
   // K2 (mechanics): Google button opens a Chrome Custom Tab, not the WebView.
-  await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Continuer avec Google')).click(), true`);
+  await evaluate(`(([...document.querySelectorAll('button')].find(b => b.textContent.includes('Continuer avec Google')) || { click() {} }).click(), true)`);
   await sleep(8000);
   const resumed = resumedActivity();
   const stayed = await evaluate('location.href').catch((e) => String(e));
