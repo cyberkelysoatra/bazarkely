@@ -12,9 +12,14 @@ const results = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const adb = (args, opts = {}) => execSync(`adb ${args}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts }).trim();
 
+// Job logs of a public repo need a signed-in GitHub account; annotations can be read by
+// anyone through the API (check-runs/<job id>/annotations), so each result is one too.
+const annotate = (s) => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 function record(name, ok, detail) {
   results.push({ name, ok });
-  console.log(JSON.stringify({ check: name, ok, detail }));
+  const line = JSON.stringify({ check: name, ok, detail });
+  console.log(line);
+  console.log(`::${ok ? 'notice' : 'error'} title=NAVY ${mode} check::${annotate(line.slice(0, 1500))}`);
 }
 
 function resumedActivity() {

@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Enable KVM
         run: |
@@ -35,14 +35,14 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
 
       - name: Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -76,6 +76,6 @@ jobs:
 
       - name: Result
         run: |
-          echo "debug checks exit: ${DEBUG_EXIT:-missing}, release checks exit: ${RELEASE_EXIT:-skipped}"
+          echo "::notice title=NAVY check exits::debug=${DEBUG_EXIT:-missing} release=${RELEASE_EXIT:-skipped}"
           test "${DEBUG_EXIT:-1}" = "0"
           test "${RELEASE_EXIT:-0}" = "0"
