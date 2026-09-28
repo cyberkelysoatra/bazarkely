@@ -1,6 +1,8 @@
-# NAVY ay Android app: end-to-end check on an Android emulator (phase 3A).
+# NAVY ay Android app: end-to-end check on an Android emulator (phase 3A, 3B).
 # Triggers: a tag navy-android-check-* (git tag navy-android-check-N && git push origin
-# navy-android-check-N) or a manual run. Never pull_request. Uses NO secret: debug build (WebView debugging on) for the
+# navy-android-check-N) or a manual run.
+# Phase 3B: navy-android-build-N = compile only (Java errors as annotations);
+# navy-android-oldwv-N = Android 11 image (WebView 83): the "update WebView" page. Never pull_request. Uses NO secret: debug build (WebView debugging on) for the
 # scripted checks, then the published signed APK (stable Releases address) for the
 # install-and-start check. Script: navy-android/scripts/emulator-check.mjs.
 
@@ -10,6 +12,8 @@ on:
   push:
     tags:
       - 'navy-android-check-*'
+      - 'navy-android-build-*'
+      - 'navy-android-oldwv-*'
   workflow_dispatch:
     inputs:
       api-level:
@@ -55,12 +59,28 @@ jobs:
           npx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -PnavyVersionName=0.0.0-check -PnavyVersionCode=1
+          set +e
+          ./gradlew assembleDebug --no-daemon -PnavyVersionName=0.0.0-check -PnavyVersionCode=1 > ../build.log 2>&1
+          STATUS=$?
+          set -e
+          tail -40 ../build.log
+          if [ $STATUS -ne 0 ]; then
+            MSG=$(grep -E "error:|warning: \[|e: |What went wrong|> " ../build.log | head -40 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Android build failed::$MSG"
+            exit $STATUS
+          fi
+          echo "::notice title=Android build::debug APK built"
+
+      - name: Compile only
+        if: startsWith(github.ref_name, 'navy-android-build-')
+        run: echo "Compile-only run, no emulator"
 
       - name: Download published APK
+        if: ${{ !startsWith(github.ref_name, 'navy-android-build-') }}
         run: curl -sSfL -o navy-ay-release.apk https://github.com/${{ github.repository }}/releases/latest/download/navy-ay.apk || echo "No published APK yet"
 
       - name: Emulator checks
+        if: ${{ !startsWith(github.ref_name, 'navy-android-build-') && !startsWith(github.ref_name, 'navy-android-oldwv-') }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ github.event.inputs.api-level || '34' }}
@@ -71,11 +91,27 @@ jobs:
           script: |
             adb install -r navy-android/android/app/build/outputs/apk/debug/app-debug.apk
             node navy-android/scripts/emulator-check.mjs debug; echo "DEBUG_EXIT=$?" >> "$GITHUB_ENV"
+            node navy-android/scripts/emulator-check.mjs native; echo "NATIVE_EXIT=$?" >> "$GITHUB_ENV"
             adb uninstall com.cyberkely.navyay || true
             if [ -f navy-ay-release.apk ]; then adb install navy-ay-release.apk && node navy-android/scripts/emulator-check.mjs release; echo "RELEASE_EXIT=$?" >> "$GITHUB_ENV"; fi
 
+      - name: Old WebView check (Android 11, WebView 83)
+        if: startsWith(github.ref_name, 'navy-android-oldwv-')
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r navy-android/android/app/build/outputs/apk/debug/app-debug.apk
+            node navy-android/scripts/emulator-check.mjs oldwebview; echo "OLDWV_EXIT=$?" >> "$GITHUB_ENV"
+
       - name: Result
+        if: ${{ !startsWith(github.ref_name, 'navy-android-build-') }}
         run: |
-          echo "::notice title=NAVY check exits::debug=${DEBUG_EXIT:-missing} release=${RELEASE_EXIT:-skipped}"
-          test "${DEBUG_EXIT:-1}" = "0"
+          echo "::notice title=NAVY check exits::debug=${DEBUG_EXIT:-skipped} native=${NATIVE_EXIT:-skipped} release=${RELEASE_EXIT:-skipped} oldwebview=${OLDWV_EXIT:-skipped}"
+          if [ -n "${OLDWV_EXIT:-}" ]; then test "$OLDWV_EXIT" = "0"; exit $?; fi
+          test "${DEBUG_EXIT:-1}" = "0" && test "${NATIVE_EXIT:-1}" = "0"
           test "${RELEASE_EXIT:-0}" = "0"

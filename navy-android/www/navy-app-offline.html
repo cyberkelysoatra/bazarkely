@@ -9,6 +9,10 @@
     Local fallback page of the NAVY ay Android app (capacitor.config.json server.errorPath).
     Shown only when the very first load of https://1sakely.org/navy fails (no network).
     Afterwards the site's Service Worker serves the app offline as usual.
+    Phase 3B: also shown by Capacitor when the phone's WebView is older than
+    android.minWebViewVersion (87, the site is built for Chrome 87+): the page then asks
+    to update "Android System WebView" from the Play Store instead of retrying.
+    Old engines run this page: ES5 only (var, function), no arrow functions.
     This page has no access to Capacitor plugins: it only probes the network and reloads.
   -->
   <style>
@@ -26,6 +30,9 @@
       background: var(--charcoal); color: #FFFFFF; font-size: 1rem; font-weight: 600; }
     button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     .status { margin-top: 16px; font-size: 0.875rem; min-height: 1.25rem; }
+    a.btn { display: inline-block; margin-top: 28px; min-height: 48px; padding: 12px 28px; border-radius: 12px;
+      background: var(--charcoal); color: #FFFFFF; font-size: 1rem; font-weight: 600; text-decoration: none; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -37,13 +44,29 @@
       <path d="M292.8 519.4 A220 220 0 0 1 711.4 417.3" fill="none" stroke="#4A4A4A" stroke-width="46" stroke-linecap="round"/>
       <polygon points="648.6,429.5 731.2,519.4 774.3,405.2" fill="#4A4A4A"/>
     </svg>
-    <h1>Pas de réseau.</h1>
-    <p>NAVY ay se relancera dès que la connexion revient.</p>
-    <button type="button" id="retry">Réessayer</button>
-    <div class="status" id="status" role="status" aria-live="polite"></div>
+    <div id="offline">
+      <h1>Pas de réseau.</h1>
+      <p>NAVY ay se relancera dès que la connexion revient.</p>
+      <button type="button" id="retry">Réessayer</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </div>
+    <div id="webview" class="hidden">
+      <h1>Mettez à jour Android System WebView</h1>
+      <p>Le moteur qui affiche NAVY ay sur ce téléphone est trop ancien. Mettez à jour « Android System WebView » dans le Play Store, puis rouvrez NAVY ay.</p>
+      <a class="btn" href="market://details?id=com.google.android.webview">Ouvrir le Play Store</a>
+      <p style="margin-top:16px;font-size:0.875rem">Sans Play Store : <a href="https://play.google.com/store/apps/details?id=com.google.android.webview">play.google.com</a></p>
+    </div>
   </main>
   <script>
     (function () {
+      // WebView too old (Chrome engine under 87): the site cannot run, ask for an update.
+      var m = /Chrome\/(\d+)/.exec(navigator.userAgent || '');
+      if (m && parseInt(m[1], 10) < 87) {
+        document.getElementById('offline').className = 'hidden';
+        document.getElementById('webview').className = '';
+        document.title = 'NAVY ay - Mettez à jour WebView';
+        return;
+      }
       var APP_URL = 'https://1sakely.org/navy';
       var PROBE_URL = 'https://1sakely.org/navy/app/version.json';
       var busy = false;

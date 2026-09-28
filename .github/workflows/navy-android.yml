@@ -9,6 +9,8 @@
 #
 # Secrets (Settings > Secrets and variables > Actions), never printed:
 #   NAVY_KEYSTORE_BASE64, NAVY_KEYSTORE_PASSWORD, NAVY_KEY_ALIAS, NAVY_KEY_PASSWORD
+#   NAVY_GOOGLE_SERVICES_BASE64 (phase 3B: Firebase google-services.json, base64; decoded
+#   into a temporary file removed after the build, never committed)
 #
 # A tag run publishes the Release "navy-ay.apk" (stable address:
 # https://github.com/cyberkelysoatra/bazarkely/releases/latest/download/navy-ay.apk)
@@ -102,6 +104,23 @@ jobs:
           printf '%s' "$NAVY_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/navy-ay.jks"
           echo "NAVY_KEYSTORE_PATH=$RUNNER_TEMP/navy-ay.jks" >> "$GITHUB_ENV"
 
+      - name: Decode Firebase configuration
+        env:
+          NAVY_GOOGLE_SERVICES_BASE64: ${{ secrets.NAVY_GOOGLE_SERVICES_BASE64 }}
+        run: |
+          if [ -z "$NAVY_GOOGLE_SERVICES_BASE64" ]; then
+            if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "::error::Secret NAVY_GOOGLE_SERVICES_BASE64 is missing (notifications would not work)"; exit 1
+            fi
+            echo "::warning::No Firebase configuration: test build without notifications"; exit 0
+          fi
+          printf '%s' "$NAVY_GOOGLE_SERVICES_BASE64" | base64 -d > navy-android/android/app/google-services.json
+          if ! grep -q '"package_name": *"com.cyberkely.navyay"' navy-android/android/app/google-services.json; then
+            rm -f navy-android/android/app/google-services.json
+            echo "::error::google-services.json does not declare com.cyberkely.navyay"; exit 1
+          fi
+          echo "Firebase configuration decoded (content not printed)"
+
       - name: Build signed release APK
         working-directory: navy-android/android
         env:
@@ -114,9 +133,9 @@ jobs:
             -PnavyVersionName="${{ steps.version.outputs.name }}" \
             -PnavyVersionCode="${{ steps.version.outputs.code }}"
 
-      - name: Remove signing key
+      - name: Remove signing key and Firebase configuration
         if: always()
-        run: rm -f "$RUNNER_TEMP/navy-ay.jks"
+        run: rm -f "$RUNNER_TEMP/navy-ay.jks" navy-android/android/app/google-services.json
 
       - name: Check signature and version
         id: apk

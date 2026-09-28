@@ -62,6 +62,12 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // Phase 3B: position with the screen off (fused location) and Firebase Cloud Messaging
+    // (free Spark plan). google-services.json comes from the GitHub secret
+    // NAVY_GOOGLE_SERVICES_BASE64 at build time; without it the app still builds (no FCM).
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 }
 
 apply from: 'capacitor.build.gradle'

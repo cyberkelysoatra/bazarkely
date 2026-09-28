@@ -3,7 +3,7 @@
 // Talks to the app WebView through the Chrome DevTools protocol forwarded by adb
 // (debug build: WebView debugging is on). Prints one JSON line per check, exits 1 on failure.
 //
-// Usage: node scripts/emulator-check.mjs <debug|release>
+// Usage: node scripts/emulator-check.mjs <debug|native|oldwebview|release>
 import { execSync } from 'node:child_process';
 
 const APP = 'com.cyberkely.navyay';
@@ -168,6 +168,49 @@ async function debugChecks() {
   record('network back: the app reloads NAVY ay by itself', typeof again === 'string' && again.startsWith('https://1sakely.org/navy') && !again.includes('offline'), again);
 }
 
+// ---- Phase 3B: native side (no account needed) ---------------------------------------
+async function nativeChecks() {
+  launch();
+  const ready = await waitFor(`!!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.NavyNative)`, (v) => v === true, 30);
+  record('3B bridge NavyNative present', ready === true, ready);
+
+  for (const p of ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'ACCESS_BACKGROUND_LOCATION', 'POST_NOTIFICATIONS']) {
+    try { adb(`shell pm grant ${APP} android.permission.${p}`); } catch { /* not grantable on this API */ }
+  }
+  adb('emu geo fix 48.27431 -13.40541');
+  const perms = await evaluate(`Capacitor.Plugins.NavyNative.getPermissions()`).catch((e) => String(e));
+  record('3B permissions readable (guided screen)', !!(perms && perms.location === 'always' && perms.notifications === true && typeof perms.batteryExempt === 'boolean' && typeof perms.fullScreen === 'boolean'), perms);
+
+  // A session that the server refuses (fake token): the service must start in the
+  // foreground with its notification, try to send, be refused and stop by itself.
+  const fake = JSON.stringify({ access_token: 'x.y.z', refresh_token: 'fake-refresh-token', expires_at: Math.floor(Date.now() / 1000) + 3600, user: { id: '00000000-0000-4000-8000-000000000000' } });
+  const started = await evaluate(`Capacitor.Plugins.NavyNative.setSession({ session: ${JSON.stringify(fake)}, url: 'https://ofzmwrzatcztoekrpvkj.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mem13cnphdGN6dG9la3JwdmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNjAxMTUsImV4cCI6MjA3NDczNjExNX0.hYDpbvzwNZWmDgXPSGEgoKLR-m51TQZmaWw1whQ90Cw' }).then(() => Capacitor.Plugins.NavyNative.startTracking({ partnerId: '00000000-0000-4000-8000-000000000001', mode: 'available' }))`).catch((e) => String(e));
+  await sleep(3000);
+  const svc = adb(`shell dumpsys activity services ${APP}`);
+  const notif = adb('shell dumpsys notification --noredact');
+  record('3B foreground service started with its permanent notification', /LocationService/.test(svc) && /isForeground=true/.test(svc) && /votre position est partag/.test(notif), { started: started && started.running, foreground: /isForeground=true/.test(svc), notification: /votre position est partag/.test(notif) });
+  const stopped = await waitFor(`Capacitor.Plugins.NavyNative.getStatus()`, (v) => v && v.running === false, 30, 3000);
+  const svc2 = adb(`shell dumpsys activity services ${APP}`);
+  const notif2 = adb('shell dumpsys notification --noredact');
+  record('3B refused by the server: sharing stops at once, notification removed', !!(stopped && stopped.running === false) && !/LocationService/.test(svc2) && !/votre position est partag/.test(notif2),
+    { stopReason: stopped && stopped.stopReason, sentFail: stopped && stopped.sentFail, lastError: stopped && stopped.lastError, log: stopped && String(stopped.log || '').slice(0, 400) });
+
+  // Page stop: start again (session restored) then stop from the page.
+  await evaluate(`Capacitor.Plugins.NavyNative.setSession({ session: ${JSON.stringify(fake)} }).then(() => Capacitor.Plugins.NavyNative.startTracking({ partnerId: '00000000-0000-4000-8000-000000000001', mode: 'course' })).then(() => Capacitor.Plugins.NavyNative.stopTracking({ reason: 'page' }))`).catch((e) => String(e));
+  await sleep(2000);
+  const st = await evaluate(`Capacitor.Plugins.NavyNative.getStatus()`).catch((e) => String(e));
+  record('3B stop from the page', !!(st && st.running === false), st && { running: st.running, stopReason: st.stopReason });
+  const channels = adb(`shell dumpsys notification --noredact`);
+  record('3B notification channels', /navy_offers_call/.test(channels) && /navy_position/.test(channels) && /navy_general/.test(channels), null);
+}
+
+// ---- Phase 3B: phone whose WebView is too old (Android 11 image, WebView 83) ----------
+async function oldWebViewChecks() {
+  launch();
+  const v = await waitFor(`({ href: location.href, text: document.body.innerText, ua: navigator.userAgent })`, (x) => x && /WebView/.test(x.text || ''), 25);
+  record('3B old WebView: clear "Mettez à jour Android System WebView" page', !!(v && /Mettez à jour Android System WebView/.test(v.text || '')), v && { href: v.href, ua: v.ua, text: String(v.text).slice(0, 200) });
+}
+
 async function releaseChecks() {
   launch();
   await sleep(15000);
@@ -183,6 +226,8 @@ async function releaseChecks() {
 
 try {
   if (mode === 'release') await releaseChecks();
+  else if (mode === 'native') await nativeChecks();
+  else if (mode === 'oldwebview') await oldWebViewChecks();
   else await debugChecks();
 } catch (e) {
   record('script error', false, String(e && e.stack ? e.stack : e));

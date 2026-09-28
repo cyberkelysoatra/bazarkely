@@ -13,7 +13,8 @@
   },
   "android": {
     "allowMixedContent": false,
-    "captureInput": false
+    "captureInput": false,
+    "minWebViewVersion": 87
   },
   "plugins": {
     "SplashScreen": {
