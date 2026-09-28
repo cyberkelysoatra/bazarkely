@@ -75,8 +75,7 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
+      # Android SDK: preinstalled on GitHub's ubuntu runners (ANDROID_HOME).
 
       - name: Node 22
         uses: actions/setup-node@v5
