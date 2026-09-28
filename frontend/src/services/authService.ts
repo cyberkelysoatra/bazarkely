@@ -6,6 +6,7 @@
 import type { User } from '../types/supabase';
 import { supabase, getCurrentUser, isAuthenticated as checkAuth, withTimeout } from '../lib/supabase';
 import { handleSupabaseError } from '../lib/supabase';
+import { isNativeApp, signInWithGoogleInApp } from '../modules/navy-ay/services/nativeApp';
 
 // Timeout par défaut pour toutes les requêtes DB Supabase dans le flux d'auth
 // Les requêtes DB peuvent hanger silencieusement sans throw ni réponse
@@ -51,7 +52,7 @@ class AuthService {
       }
 
       // Convertir les données Supabase en format User
-      const user: User = {
+      const user = {
         id: userData.id,
         username: userData.username,
         email: userData.email,
@@ -61,7 +62,7 @@ class AuthService {
         created_at: userData.created_at,
         updated_at: userData.updated_at,
         last_sync: userData.last_sync
-      };
+      } as unknown as User;
       
       console.log('✅ Connexion réussie pour:', email);
       return { success: true, user };
@@ -111,7 +112,7 @@ class AuthService {
       console.log('ℹ️ Le profil utilisateur sera créé automatiquement par le trigger PostgreSQL');
       
       // Retourner un utilisateur basique avec les données Auth
-      const user: User = {
+      const user = {
         id: data.user.id,
         username,
         email,
@@ -125,7 +126,7 @@ class AuthService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         last_sync: new Date().toISOString()
-      };
+      } as unknown as User;
       
       return { success: true, user };
 
@@ -215,6 +216,13 @@ class AuthService {
   async signInWithGoogle(): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
       console.log('🔐 Connexion avec Google...');
+
+      // NAVY ay Android app: Google refuses the embedded WebView, open a Chrome Custom Tab
+      // instead (return through a deep link, see modules/navy-ay/services/nativeApp.ts).
+      // On the web isNativeApp() is false and the flow below is unchanged.
+      if (isNativeApp()) {
+        return await signInWithGoogleInApp();
+      }
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -284,7 +292,7 @@ class AuthService {
       if (userError) {
         console.log('❌ Erreur lors de la récupération des données utilisateur:', userError.message);
         // Créer un utilisateur basique si le trigger n'a pas encore fonctionné
-        const user: User = {
+        const user = {
           id: currentUser.id,
           username: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Utilisateur',
           email: currentUser.email || '',
@@ -298,7 +306,7 @@ class AuthService {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           last_sync: new Date().toISOString()
-        };
+        } as unknown as User;
         return { success: true, user };
       }
 
@@ -308,7 +316,7 @@ class AuthService {
       }
 
       // Convertir les données Supabase en format User
-      const user: User = {
+      const user = {
         id: userData.id,
         username: userData.username,
         email: userData.email,
@@ -318,7 +326,7 @@ class AuthService {
         created_at: userData.created_at,
         updated_at: userData.updated_at,
         last_sync: userData.last_sync
-      };
+      } as unknown as User;
 
       console.log('✅ Connexion Google réussie pour:', user.username);
       return { success: true, user };
@@ -336,7 +344,7 @@ class AuthService {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const { data: userData, error } = await withTimeout(
-          supabase.from('users').select('id').eq('id', userId).single(),
+          supabase.from('users').select('id').eq('id', userId).single() as unknown as Promise<{ data: unknown; error: any }>,
           DB_TIMEOUT_MS, `waitForUserProfile attempt ${attempt}`
         );
 
@@ -435,7 +443,7 @@ class AuthService {
         created_at: userData.created_at,
         updated_at: userData.updated_at,
         last_sync: userData.last_sync
-      };
+      } as unknown as User;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error);
       return null;

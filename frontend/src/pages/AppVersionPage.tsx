@@ -3,7 +3,7 @@
  * Displays application version information, update status, and version history
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,11 +20,16 @@ import {
   APP_VERSION,
   APP_VERSION_NAME,
   APP_BUILD_DATE,
-  VERSION_HISTORY,
-  type VersionEntry
+  VERSION_HISTORY
 } from '../constants/appVersion';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { isStandalone } from '../utils/browserDetection';
+import NativeAppVersionLine from '../modules/navy-ay/components/app/NativeAppVersionLine';
+
+type VersionEntry = {
+  type?: 'major' | 'minor' | 'patch' | 'hotfix' | string;
+  changes: string | string[];
+};
 
 /**
  * Get badge color based on version type
@@ -58,7 +63,7 @@ const getVersionTypeLabel = (type: VersionEntry['type']): string => {
     case 'hotfix':
       return 'Urgente';
     default:
-      return type;
+      return type ?? '';
   }
 };
 
@@ -159,6 +164,7 @@ const AppVersionPage: React.FC = () => {
               <p className="text-sm text-gray-600">
                 Compilé le {formatDate(APP_BUILD_DATE)}
               </p>
+              <NativeAppVersionLine className="mt-1 text-sm font-medium text-gray-700" />
             </div>
             <div className="flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full">
               <Smartphone className="w-8 h-8 text-purple-600" />
@@ -313,7 +319,7 @@ const AppVersionPage: React.FC = () => {
                         Modifications :
                       </h3>
                       <ul className="space-y-2">
-                        {entry.changes.map((change, index) => (
+                        {(Array.isArray(entry.changes) ? entry.changes : [entry.changes]).map((change: string, index: number) => (
                           <li
                             key={index}
                             className="flex items-start gap-2 text-sm text-gray-600"

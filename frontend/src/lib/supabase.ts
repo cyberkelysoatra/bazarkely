@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/supabase'
 
 // Supabase configuration
-const supabaseUrl = 'https://ofzmwrzatcztoekrpvkj.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mem13cnphdGN6dG9la3JwdmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNjAxMTUsImV4cCI6MjA3NDczNjExNX0.hYDpbvzwNZWmDgXPSGEgoKLR-m51TQZmaWw1whQ90Cw'
+export const supabaseUrl = 'https://ofzmwrzatcztoekrpvkj.supabase.co'
+export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mem13cnphdGN6dG9la3JwdmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNjAxMTUsImV4cCI6MjA3NDczNjExNX0.hYDpbvzwNZWmDgXPSGEgoKLR-m51TQZmaWw1whQ90Cw'
 
 // Timeout helper: reject a promise after N ms
 export function withTimeout<T>(promise: Promise<T>, ms = 8000, label = 'Supabase'): Promise<T> {

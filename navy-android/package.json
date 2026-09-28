@@ -1,0 +1,21 @@
+{
+  "name": "navy-ay-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NAVY ay Android shell (Capacitor) loading https://1sakely.org/navy",
+  "license": "UNLICENSED",
+  "scripts": {
+    "sync": "cap sync android",
+    "assets": "capacitor-assets generate --android --iconBackgroundColor \"#FFFFFF\" --iconBackgroundColorDark \"#FFFFFF\" --splashBackgroundColor \"#FFFFFF\" --splashBackgroundColorDark \"#FFFFFF\""
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.2"
+  }
+}

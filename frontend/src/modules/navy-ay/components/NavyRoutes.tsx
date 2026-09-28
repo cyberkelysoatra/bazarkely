@@ -9,6 +9,7 @@ import NavyProfileSync from './NavyProfileSync';
 import NavyParcelSync from './NavyParcelSync';
 import NavyDriverLiveSync from './NavyDriverLiveSync';
 import NavyRoleRoute from './NavyRoleRoute';
+import NavyAppUpdateBanner from './app/NavyAppUpdateBanner';
 import { NavyLoader } from './ui/NavyUi';
 
 const BecomePartnerPage = lazy(() => import('./partner/BecomePartnerPage'));
@@ -44,6 +45,7 @@ export default function NavyRoutes() {
       <NavyProfileSync />
       <NavyParcelSync />
       <NavyDriverLiveSync />
+      <NavyAppUpdateBanner />
       <Suspense fallback={<NavyLoader />}>
         <Routes>
           <Route index element={<NavyHomePage />} />

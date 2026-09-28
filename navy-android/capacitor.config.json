@@ -1,0 +1,23 @@
+{
+  "appId": "com.cyberkely.navyay",
+  "appName": "NAVY ay",
+  "webDir": "www",
+  "appendUserAgent": "NavyAyApp",
+  "server": {
+    "url": "https://1sakely.org/navy",
+    "allowNavigation": [
+      "1sakely.org",
+      "ofzmwrzatcztoekrpvkj.supabase.co"
+    ],
+    "errorPath": "navy-app-offline.html"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true
+    }
+  }
+}

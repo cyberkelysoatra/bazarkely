@@ -1,0 +1,76 @@
+apply plugin: 'com.android.application'
+
+// NAVY ay: version and signing come from the CI (.github/workflows/navy-android.yml).
+// versionName/versionCode are derived from the git tag navy-android-vX.Y.Z and passed as
+// -PnavyVersionName / -PnavyVersionCode. The release keystore is decoded from GitHub secrets
+// into a temporary file whose path and passwords arrive through environment variables.
+// Nothing secret is ever written in this repository.
+def navyVersionName = project.findProperty('navyVersionName') ?: '0.0.0-dev'
+def navyVersionCode = (project.findProperty('navyVersionCode') ?: '1').toInteger()
+def navyKeystorePath = System.getenv('NAVY_KEYSTORE_PATH')
+
+android {
+    namespace = "com.cyberkely.navyay"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.cyberkely.navyay"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode navyVersionCode
+        versionName navyVersionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (navyKeystorePath) {
+                storeFile file(navyKeystorePath)
+                storePassword System.getenv('NAVY_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('NAVY_KEY_ALIAS')
+                keyPassword System.getenv('NAVY_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (navyKeystorePath) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

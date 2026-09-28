@@ -11,6 +11,7 @@ import './services/encryptionInit'
 // Travail de fond, sans aucune interface : le service s'abonne lui-meme a la
 // session et au retour du reseau.
 import { demarrerEcritureAutomatiqueSms } from './modules/sms-inbox/services/ecritureAutomatiqueService'
+import { initNativeApp, isNativeApp } from './modules/navy-ay/services/nativeApp'
 
 // TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
 // import optimizationManager from './services/optimizationManager'
@@ -76,6 +77,12 @@ const captureOAuthTokens = () => {
 
 // Capture tokens BEFORE React renders
 captureOAuthTokens();
+
+// NAVY ay Android app only: listen for the Google sign-in return link (no-op on the web,
+// the Capacitor packages are loaded only inside the app).
+if (isNativeApp()) {
+  void initNativeApp();
+}
 
 // CRITICAL: Capture PWA install prompt IMMEDIATELY before React renders
 // This prevents the beforeinstallprompt event from being lost during React mount

@@ -193,3 +193,11 @@ AGENT-*-DOCUMENTATION-VERIFICATION.md
 
 
 scripts/navy-map/.bin/
+
+# Signing keys and service credentials (NAVY ay Android app, phase 3A) — never committed.
+*.jks
+*.keystore
+google-services.json
+*service-account*.json
+client_secret_*.json
+navy-android/android/app/release/

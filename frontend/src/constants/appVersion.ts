@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.89.0';
-export const APP_VERSION_NAME = "NAVY ay : la carte vivante, chauffeurs en direct et obstacles.";
-export const LAST_UPDATED = '2026-09-27';
-export const APP_BUILD_DATE = '2026-09-27';
+export const APP_VERSION = '3.90.0';
+export const APP_VERSION_NAME = "NAVY ay : l'appli Android des chauffeurs et sa page de telechargement.";
+export const LAST_UPDATED = '2026-09-28';
+export const APP_BUILD_DATE = '2026-09-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.90.0',
+    date: '2026-09-28',
+    description:
+      "NAVY ay phase 3A : une petite appli Android qui affiche le meme NAVY ay que le site, avec la connexion Google, et une page pour la telecharger.",
+    changes: [
+      "Nouvelle page publique 1sakely.org/navy/app : bouton de telechargement, 3 etapes d installation, QR code de la page.",
+      "Dans l appli, la connexion Google s ouvre dans un onglet Chrome puis revient dans l appli, sur la page de depart.",
+      "Dans l appli, un bandeau discret signale une nouvelle version de l appli ; l ecran Version affiche la version de l appli Android.",
+      "Sur le site web, rien ne change."
+    ]
+  },
   {
     version: '3.89.0',
     date: '2026-09-27',

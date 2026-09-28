@@ -29,6 +29,8 @@ const EauScanResolverPage = React.lazy(() => import('./modules/gestion-eau/compo
 const EauVitrinePage = React.lazy(() => import('./modules/gestion-eau/components/EauVitrinePage'));
 // NAVY ay (v3.81.0) : fiche PUBLIQUE d'un partenaire derrière son QR code /navy/p/:id
 const NavyPublicPartnerPage = React.lazy(() => import('./modules/navy-ay/components/PublicPartnerPage'));
+// NAVY ay (phase 3A) : page PUBLIQUE de téléchargement de l'appli Android /navy/app
+const NavyAppDownloadPage = React.lazy(() => import('./modules/navy-ay/components/app/NavyAppDownloadPage'));
 import ErrorBoundary from './components/ErrorBoundary';
 import IOSInstallPrompt from './components/iOSInstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
@@ -211,6 +213,15 @@ function App() {
                     element={
                       <Suspense fallback={<div className="min-h-screen" />}>
                         <NavyPublicPartnerPage />
+                      </Suspense>
+                    }
+                  />
+                  {/* NAVY ay : téléchargement de l'appli Android (sans connexion) */}
+                  <Route
+                    path="/navy/app"
+                    element={
+                      <Suspense fallback={<div className="min-h-screen" />}>
+                        <NavyAppDownloadPage />
                       </Suspense>
                     }
                   />
