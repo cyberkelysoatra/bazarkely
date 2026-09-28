@@ -234,3 +234,22 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 ### P32 — Bloc Bash « heredoc » refusé (« unexpected EOF while looking for matching `'` ») (2026-09-27)
 - **Symptôme :** une commande `cat > fichier <<'EOF' … EOF` ou `python - <<'EOF'` échoue sans rien écrire dès que le contenu mêle apostrophes typographiques, accents graves et `${…}`.
 - **Résolution :** écrire le script dans le dossier de travail temporaire avec l'outil d'écriture, puis `python chemin/du/script.py` ; ou changer le délimiteur (`<<'PYEOF'`). Toujours vérifier après coup que le fichier visé a bien changé.
+
+### P33 — Journaux GitHub Actions illisibles sans compte (2026-09-28, NAVY 3A)
+- **Symptôme :** dépôt public, mais `GET /actions/jobs/<id>/logs` répond **403** « Must have admin rights » et la page du journal demande « Sign in » (le Chrome piloté n'est pas connecté à GitHub).
+- **Résolution :** faire écrire les résultats en **annotations** (`echo "::notice title=X::message"`, `::error` pour un échec ; `%0A` pour les retours à la ligne). Elles se lisent **sans compte** : `GET https://api.github.com/repos/<o>/<r>/check-runs/<id de la tâche>/annotations` (id de tâche via `GET /actions/runs/<run>/jobs`). Exemple : `navy-android/scripts/emulator-check.mjs`.
+
+### P34 — `workflow_dispatch` indisponible hors de la branche par défaut (2026-09-28)
+- **Constat :** la branche par défaut du dépôt est `main` (plus tenue) ; un workflow présent seulement sur `cloudflare-migration` n'a pas de bouton « Run workflow ».
+- **Résolution :** ajouter un déclencheur par **tag** (`on.push.tags`) et pousser un tag pour lancer (ex. `navy-android-check-N`, `navy-android-vX.Y.Z`).
+
+### P35 — Fabrication Android sur GitHub (2026-09-28, NAVY 3A)
+- `android-actions/setup-android@v3` a échoué sans message utile : **inutile**, le kit Android est préinstallé sur `ubuntu-latest` (`ANDROID_HOME`, `build-tools/*/apksigner`).
+- Téléphone virtuel : `reactivecircus/android-emulator-runner@v2` + règle udev KVM, image **API 34** `google_apis_playstore`. L'image API 30 a une WebView 83 qui n'affiche **pas** le site (compilé pour Chrome 87+).
+- Piloter la vue web de l'appli : version debug (débogage WebView actif par défaut), `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` puis protocole DevTools (`Runtime.evaluate`).
+- La page `errorPath` de Capacitor est servie depuis `https://localhost` : un `fetch` vers 1sakely.org doit être en `mode: 'no-cors'`.
+
+### P36 — Chaîne `git add … && git add -f …` : le fichier forcé est oublié (2026-09-28)
+- **Symptôme :** un fichier de `frontend/public/` (dossier ignoré) manque dans le commit.
+- **Cause :** le premier `git add` qui cite un chemin ignoré sort en erreur, donc le `&& git add -f` suivant ne s'exécute pas.
+- **Résolution :** `git add -f` sur une ligne séparée, puis `git show --stat HEAD | grep <fichier>` avant de pousser. Aussi : `keytool` répond en français sur ce PC, ajouter `-J-Duser.language=en` pour lire sa sortie par script.
