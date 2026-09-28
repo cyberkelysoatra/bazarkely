@@ -25,6 +25,8 @@ import {
   X,
 } from 'lucide-react';
 import notificationService from '../../../../services/notificationService';
+import { getNativePermissions, hasNavyNative, isNativeApp, requestNativePermission } from '../../services/nativeApp';
+import { NAVY_APP_PAGE } from '../../utils/nativeAppRules';
 import type { NavyParcelEvent, NavyParcelRow, ParcelStatus } from '../../types/parcel';
 import { eventLabel, milestones, statusLabel } from '../../utils/parcelRules';
 import { btnAccent, btnSecondary, NavyCard } from '../ui/NavyUi';
@@ -145,6 +147,65 @@ export function ParcelTimeline({ events }: { events: NavyParcelEvent[] }) {
  * Reuses the web-push foundation (notificationService.requestPermission subscribes).
  */
 export function NavyNotifyPrompt({ why }: { why: string }) {
+  // Phase 3B: inside the Android app, notifications are the phone's (Firebase).
+  if (isNativeApp()) return <NavyNativeNotifyPrompt why={why} />;
+  return <NavyWebNotifyPrompt why={why} />;
+}
+
+/** App: Android notification permission (1.1.0+), or an update invitation (1.0.0). */
+function NavyNativeNotifyPrompt({ why }: { why: string }) {
+  const native = hasNavyNative();
+  const [granted, setGranted] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!native) return;
+    let stop = false;
+    const read = () => void getNativePermissions().then((p) => !stop && setGranted(p.notifications)).catch(() => undefined);
+    read();
+    const onVis = () => document.visibilityState === 'visible' && read();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stop = true;
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [native]);
+  if (!native) {
+    return (
+      <NavyCard className="p-4 space-y-3 border-navyay-yellow">
+        <p className="flex items-start gap-3 text-sm">
+          <Bell className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>Mettez à jour l’appli NAVY ay pour recevoir les courses écran éteint, avec une sonnerie comme un appel.</span>
+        </p>
+        <a href={NAVY_APP_PAGE} className={`${btnAccent} w-full`}>Mettre à jour l’appli</a>
+      </NavyCard>
+    );
+  }
+  if (granted !== false) return null;
+  const ask = async () => {
+    setBusy(true);
+    try {
+      setGranted((await requestNativePermission('notifications')).notifications);
+    } catch {
+      /* stays as it is */
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <NavyCard className="p-4 space-y-3 border-navyay-yellow">
+      <p className="flex items-start gap-3 text-sm">
+        <Bell className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <span>{why}</span>
+      </p>
+      <button type="button" className={`${btnAccent} w-full`} disabled={busy} onClick={() => void ask()}>
+        {busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <Bell className="w-5 h-5" aria-hidden="true" />}
+        Activer les notifications
+      </button>
+    </NavyCard>
+  );
+}
+
+function NavyWebNotifyPrompt({ why }: { why: string }) {
   const supported = typeof window !== 'undefined' && 'Notification' in window;
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(supported ? Notification.permission : 'unsupported');
   const [busy, setBusy] = useState(false);

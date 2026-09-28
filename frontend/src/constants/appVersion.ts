@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.90.0';
-export const APP_VERSION_NAME = "NAVY ay : l'appli Android des chauffeurs et sa page de telechargement.";
+export const APP_VERSION = '3.91.0';
+export const APP_VERSION_NAME = "NAVY ay : position ecran eteint, courses qui sonnent comme un appel, ecran guide.";
 export const LAST_UPDATED = '2026-09-28';
 export const APP_BUILD_DATE = '2026-09-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.91.0',
+    date: '2026-09-28',
+    description:
+      "NAVY ay phase 3B : avec l appli Android 1.1.0, la position du chauffeur part meme ecran eteint et les courses sonnent comme un appel.",
+    changes: [
+      "Appli Android : position envoyee toutes les 30 secondes meme ecran eteint, seulement quand le chauffeur est disponible ou en course, avec une notification permanente et un bouton Pas disponible.",
+      "Appli Android : une course arrive comme un appel (ecran allume, sonnerie, Accepter / Refuser), 30 secondes au plus.",
+      "Appli Android : ecran guide au premier lancement (notifications, position Toujours, alerte plein ecran, batterie, test final).",
+      "Un chauffeur disponible immobile depuis 1 heure (reglable par l operatrice) passe Pas disponible et recoit une notification.",
+      "Site : bandeau Installez l appli pour les chauffeurs ; barre du bas NAVY sur une ligne ; menu du haut NAVY simplifie ; page Version aux couleurs NAVY depuis NAVY."
+    ]
+  },
   {
     version: '3.90.0',
     date: '2026-09-28',

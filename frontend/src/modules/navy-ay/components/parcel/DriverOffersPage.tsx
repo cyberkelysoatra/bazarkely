@@ -5,15 +5,18 @@
  * the network and is refused by the server once the deadline has passed.
  * Phase 2B1: a "Je propose mon prix" offer (broadcast) is sent to every eligible driver
  * at once and stays open for the round: no countdown, the first who accepts wins.
+ * Phase 3B: the app's call-like alert opens /navy/offres?colis=<parcel>&reponse=accepter
+ * (or refuser): the answer is given ONCE, through the same accept / refuse as the buttons.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { BellRing, CheckCircle2, Loader2, MapPin, Package, Route, Users, WifiOff, XCircle } from 'lucide-react';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
 import { useAppStore } from '../../../../stores/appStore';
 import { acceptOffer, myOffers, refreshParcels, refuseOffer } from '../../services/parcelService';
 import type { NavyParcelOffer } from '../../types/parcel';
 import { CATEGORY_LABELS, formatKm, OFFER_SECONDS, offerSecondsLeft, parcelErrorMessage } from '../../utils/parcelRules';
+import { parseOfferQuery } from '../../utils/backgroundRules';
 import { NavyNotifyPrompt } from './ParcelUi';
 import { btnAccent, btnSecondary, formatAr, NavyCard, NavyHelp, NavyNotice, NavyPage, NavyPageTitle } from '../ui/NavyUi';
 
@@ -50,6 +53,25 @@ export default function DriverOffersPage() {
 
   const live = (offers ?? []).filter((o) => offerSecondsLeft(o, now) > 0);
   const offer = live[0] ?? null;
+
+  // Answer given from the app's alert (once, when the offers are loaded).
+  const location = useLocation();
+  const answered = useRef(false);
+  useEffect(() => {
+    if (answered.current || offers === null || busy) return;
+    const q = parseOfferQuery(location.search);
+    if (!q) return;
+    answered.current = true;
+    navigate('/navy/offres', { replace: true });
+    const target = offers.find((o) => o.parcel_id === q.parcelId && offerSecondsLeft(o, Date.now()) > 0);
+    if (!q.action) return;
+    if (!target) {
+      setMsg({ tone: 'error', text: 'Cette course n’est plus disponible : un autre chauffeur l’a prise ou le délai est passé.' });
+      return;
+    }
+    if (q.action === 'accepter') void accept(target);
+    else void refuse(target);
+  }, [offers, location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const accept = async (o: NavyParcelOffer) => {
     setBusy(true);

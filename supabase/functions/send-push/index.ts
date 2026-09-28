@@ -1,4 +1,4 @@
-// Edge Function `send-push` — Web Push phase 1.
+// Edge Function `send-push` — Web Push phase 1, Firebase Cloud Messaging (NAVY ay 3B).
 //
 // POST { user_ids: string[], titre: string, corps?: string, url?: string }
 //   Sends a Web Push notification to every subscription of the given accounts.
@@ -26,6 +26,15 @@
 // decryptable message under the Deno runtime (verified 2026-09-26: FCM accepts it, Chrome
 // silently drops it, while an empty push is delivered). The payload is therefore
 // encrypted here with WebCrypto, following RFC 8291 (aes128gcm).
+//
+// NAVY ay phase 3B: every recipient ALSO receives the message on each Firebase token of
+// his NAVY ay Android app (public.push_fcm_tokens), through FCM HTTP v1. Access token
+// signed here (RS256, WebCrypto) from the service account kept in the function secret
+// FCM_SERVICE_ACCOUNT (JSON or base64 of the JSON; never logged, never returned).
+// Data messages only, high priority: the app decides how to show them. A course offer
+// (url /navy/offres?colis=<parcel>) rings like a call ONLY for a recipient who really
+// holds a live offer for that parcel (checked here in navy_parcel_offers): never a client.
+// An invalid token (UNREGISTERED) is deleted. Without the secret: Web Push only.
 
 import webpush from 'npm:web-push@3.6.7'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0'
@@ -109,6 +118,203 @@ async function authentifier(req: Request, cfg: ConfigServeur): Promise<'interne'
     .eq('id', auth.user.id)
     .maybeSingle()
   return profil?.role === 'admin' ? 'admin' : null
+}
+
+// ------------------------------------------------------------------ FCM (phase 3B)
+
+interface CompteService {
+  project_id: string
+  client_email: string
+  private_key: string
+  token_uri?: string
+}
+
+function b64Decode(v: string): Uint8Array {
+  const raw = atob(v.replace(/\s/g, ''))
+  const out = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
+  return out
+}
+
+function b64url(bytes: Uint8Array | string): string {
+  const b = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes
+  let s = ''
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** Service account from the secret (raw JSON or base64 of it); null when absent or unusable. */
+function lireCompteService(): CompteService | null {
+  const brut = (Deno.env.get('FCM_SERVICE_ACCOUNT') ?? '').trim()
+  if (!brut) return null
+  try {
+    const texte = brut.startsWith('{') ? brut : new TextDecoder().decode(b64Decode(brut))
+    const j = JSON.parse(texte)
+    if (typeof j?.project_id !== 'string' || typeof j?.client_email !== 'string' || typeof j?.private_key !== 'string') return null
+    return j as CompteService
+  } catch {
+    return null
+  }
+}
+
+let accesFcmCache: { valeur: string; expire: number } | null = null
+
+/** OAuth access token for FCM (JWT RS256 signed with the service account key, cached ~1 h). */
+async function accesFcm(sa: CompteService): Promise<string> {
+  const maintenant = Math.floor(Date.now() / 1000)
+  if (accesFcmCache && accesFcmCache.expire - 120 > maintenant) return accesFcmCache.valeur
+  const aud = sa.token_uri || 'https://oauth2.googleapis.com/token'
+  const entete = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const revendications = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud,
+    iat: maintenant,
+    exp: maintenant + 3600
+  }))
+  const pem = sa.private_key.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, '').replace(/\s/g, '')
+  const cle = await crypto.subtle.importKey('pkcs8', b64Decode(pem), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
+  const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cle, new TextEncoder().encode(`${entete}.${revendications}`)))
+  const jwt = `${entete}.${revendications}.${b64url(signature)}`
+  const rep = await fetch(aud, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${jwt}`
+  })
+  const j = await rep.json().catch(() => ({}))
+  if (!rep.ok || typeof j?.access_token !== 'string') throw new Error(`FCM access token refused (${rep.status})`)
+  accesFcmCache = { valeur: j.access_token, expire: maintenant + (Number(j.expires_in) || 3600) }
+  return j.access_token
+}
+
+/** Sends one data message; 'ok', 'invalide' (token to delete) or 'echec'. */
+async function envoyerFcm(sa: CompteService, jeton: string, donnees: Record<string, string>, ttlSecondes: number): Promise<'ok' | 'invalide' | 'echec'> {
+  const acces = await accesFcm(sa)
+  const rep = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${acces}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: {
+        token: jeton,
+        data: donnees,
+        android: { priority: 'HIGH', ttl: `${Math.max(1, Math.round(ttlSecondes))}s` }
+      }
+    })
+  })
+  if (rep.ok) {
+    await rep.body?.cancel()
+    return 'ok'
+  }
+  const texte = await rep.text().catch(() => '')
+  if (rep.status === 404 || /UNREGISTERED|registration-token-not-registered|not a valid FCM registration token/i.test(texte)) {
+    return 'invalide'
+  }
+  console.warn(`[send-push] FCM failed (status ${rep.status})`)
+  return 'echec'
+}
+
+/** "2 000" (French thousands). */
+function montant(n: unknown): string {
+  const v = Math.round(Number(n) || 0)
+  return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+}
+
+interface JetonFcm {
+  id: string
+  user_id: string
+  token: string
+  failures: number
+}
+
+interface OffreVivante {
+  id: string
+  driver_user_id: string
+  fare: number
+  depot_name: string | null
+  arrival_name: string | null
+  expires_at: string
+  broadcast: boolean | null
+}
+
+const OFFRE_URL_RE = /^\/navy\/offres\?colis=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+
+/** FCM to every app of the recipients. Never throws. */
+async function envoyerTousFcm(userIds: string[], titre: string, corps: string, url: string) {
+  const bilan = { fcm_configure: false, fcm_jetons: 0, fcm_envoyes: 0, fcm_offres: 0, fcm_supprimes: 0, fcm_echecs: 0 }
+  const sa = lireCompteService()
+  if (!sa) return bilan
+  bilan.fcm_configure = true
+  const { data: jetons, error } = await client
+    .from('push_fcm_tokens')
+    .select('id, user_id, token, failures')
+    .in('user_id', userIds)
+  if (error) {
+    console.error('[send-push] read FCM tokens failed:', error.message)
+    return bilan
+  }
+  bilan.fcm_jetons = jetons?.length ?? 0
+  if (!jetons?.length) return bilan
+
+  // A course offer: only recipients holding a live offer for that parcel get the ringing.
+  const offres = new Map<string, OffreVivante>()
+  const m = OFFRE_URL_RE.exec(url)
+  if (m) {
+    const { data } = await client
+      .from('navy_parcel_offers')
+      .select('id, driver_user_id, fare, depot_name, arrival_name, expires_at, broadcast')
+      .eq('parcel_id', m[1])
+      .in('driver_user_id', userIds)
+      .eq('status', 'envoyee')
+      .gt('expires_at', new Date().toISOString())
+    for (const o of (data ?? []) as OffreVivante[]) offres.set(o.driver_user_id, o)
+  }
+
+  await Promise.all(
+    (jetons as JetonFcm[]).map(async (j) => {
+      const offre = offres.get(j.user_id)
+      let donnees: Record<string, string>
+      let ttl = 60 * 60 * 24
+      if (offre && m) {
+        const expire = new Date(offre.expires_at).getTime()
+        ttl = Math.max(1, Math.ceil((expire - Date.now()) / 1000))
+        donnees = {
+          kind: 'offer',
+          title: titre,
+          body: corps,
+          url,
+          offer_id: offre.id,
+          parcel_id: m[1],
+          expires_at_ms: String(expire),
+          fare: montant(offre.fare),
+          depot_name: offre.depot_name ?? '',
+          arrival_name: offre.arrival_name ?? '',
+          broadcast: offre.broadcast ? 'true' : 'false'
+        }
+      } else {
+        donnees = { kind: 'general', title: titre, body: corps, url }
+      }
+      let r: 'ok' | 'invalide' | 'echec' = 'echec'
+      try {
+        r = await envoyerFcm(sa, j.token, donnees, ttl)
+      } catch (e) {
+        console.warn(`[send-push] FCM error for token ${j.id}: ${(e as Error).message}`)
+      }
+      if (r === 'ok') {
+        bilan.fcm_envoyes++
+        if (offre) bilan.fcm_offres++
+        await client.from('push_fcm_tokens').update({ last_used_at: new Date().toISOString(), failures: 0 }).eq('id', j.id)
+      } else if (r === 'invalide') {
+        bilan.fcm_supprimes++
+        await client.from('push_fcm_tokens').delete().eq('id', j.id)
+      } else {
+        bilan.fcm_echecs++
+        const f = (j.failures ?? 0) + 1
+        if (f > MAX_ECHECS) await client.from('push_fcm_tokens').delete().eq('id', j.id)
+        else await client.from('push_fcm_tokens').update({ failures: f }).eq('id', j.id)
+      }
+    })
+  )
+  return bilan
 }
 
 interface Abonnement {
@@ -197,7 +403,8 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === 'GET') {
-    return repondre({ public_key: cfg.vapidPublic })
+    // fcm: whether the Firebase service account is configured (nothing secret returned).
+    return repondre({ public_key: cfg.vapidPublic, fcm: lireCompteService() !== null })
   }
   if (req.method !== 'POST') return repondre({ erreur: 'methode non autorisee' }, 405)
 
@@ -239,6 +446,12 @@ Deno.serve(async (req: Request) => {
 
   const bilan = { appelant, abonnements: abonnements?.length ?? 0, envoyes: 0, supprimes: 0, echecs: 0 }
 
+  // Phase 3B: the Android app (FCM), in parallel with Web Push.
+  const fcm = envoyerTousFcm(userIds, titre, corps, url).catch((e) => {
+    console.error('[send-push] FCM:', (e as Error).message)
+    return null
+  })
+
   await Promise.all(
     ((abonnements ?? []) as Abonnement[]).map(async (abo) => {
       let statut: number | null = null
@@ -273,6 +486,7 @@ Deno.serve(async (req: Request) => {
     })
   )
 
-  console.log('[send-push]', JSON.stringify(bilan))
-  return repondre(bilan)
+  const bilanComplet = { ...bilan, ...((await fcm) ?? {}) }
+  console.log('[send-push]', JSON.stringify(bilanComplet))
+  return repondre(bilanComplet)
 })

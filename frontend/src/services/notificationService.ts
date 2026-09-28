@@ -184,6 +184,9 @@ class NotificationService {
 
   private async doEnsurePushSubscription(): Promise<boolean> {
     try {
+      // NAVY ay Android app (phase 3B): notifications come through Firebase, never Web Push
+      // (no duplicate). The Capacitor bridge is injected only inside the app.
+      if ((window as any).Capacitor?.isNativePlatform?.()) return false
       if (!this.isSupported || Notification.permission !== 'granted' || !('PushManager' in window)) {
         return false
       }

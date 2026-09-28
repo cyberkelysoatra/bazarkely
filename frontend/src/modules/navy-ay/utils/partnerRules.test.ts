@@ -45,8 +45,8 @@ describe('roles', () => {
     expect(pickActiveRole(['client'], null)).toBe('client');
   });
   it('bars stay within 6 buttons and hide "Devenir partenaire" when both requests exist', () => {
-    expect(navItemsForRole('client', false).map((i) => i.label)).toEqual(['Accueil', 'Envoyer', 'Mes colis', 'À recevoir', 'Partenaire']);
-    expect(navItemsForRole('client', true).map((i) => i.label)).toEqual(['Accueil', 'Envoyer', 'Mes colis', 'À recevoir']);
+    expect(navItemsForRole('client', false).map((i) => i.label)).toEqual(['Accueil', 'Envoyer', 'Envoyés', 'À retirer', 'Partenaire']);
+    expect(navItemsForRole('client', true).map((i) => i.label)).toEqual(['Accueil', 'Envoyer', 'Envoyés', 'À retirer']);
     for (const r of ['client', 'epicier', 'chauffeur', 'operatrice'] as const) {
       expect(navItemsForRole(r, false).length).toBeLessThanOrEqual(6);
     }

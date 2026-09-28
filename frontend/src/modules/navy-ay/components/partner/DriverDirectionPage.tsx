@@ -10,6 +10,9 @@
  * Phase 2C3 (decisions 49, 50): while available and NAVY ay open, the position is sent
  * every 30 s (NavyDriverLiveSync) and shown to clients rounded to ~200 m; the screen says
  * so plainly and shows the state of the sharing. "Signaler un obstacle" (decision 55 (2)).
+ * Phase 3B: in the Android app the position leaves even with the screen off (native
+ * service, permanent notification); an available driver who does not move for an hour
+ * (operator setting) is stopped by the server and notified.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock, Eye, EyeOff, Loader2, LocateFixed, MapPin, Navigation, PauseCircle, PlayCircle, Route, Smartphone } from 'lucide-react';
@@ -188,7 +191,10 @@ export default function DriverDirectionPage() {
           </span>
         </p>
         <p className="text-xs text-navyay-charcoal/75">
-          Envoyée toutes les 30 secondes, seulement quand NAVY ay est ouverte à l’écran. Près de l’endroit où vous vous êtes déclaré disponible (800 m au moins), elle n’est jamais montrée.
+          {share.emitter === 'native'
+            ? 'Envoyée toutes les 30 secondes par l’appli, même écran éteint (60 secondes si la batterie est faible). Une notification permanente vous le rappelle, avec un bouton « Pas disponible ».'
+            : 'Envoyée toutes les 30 secondes, seulement quand NAVY ay est ouverte à l’écran. Avec l’appli Android, elle part aussi écran éteint.'}{' '}
+          Près de l’endroit où vous vous êtes déclaré disponible (800 m au moins), elle n’est jamais montrée.
           Pendant une course acceptée, le client et les épiciers de cette course voient votre position exacte.
         </p>
       </NavyCard>
@@ -305,7 +311,8 @@ export default function DriverDirectionPage() {
       <NavyHelp title="À quoi sert la direction ?">
         <p>Vous faites déjà des trajets : en indiquant où vous allez, NAVY ay peut vous confier un colis pour cette zone.</p>
         <p>Votre destination est enregistrée. Quand vous vous déclarez disponible ou changez de destination, votre position est lue pour calculer votre trajet : NAVY ay peut alors vous proposer aussi les colis dont l’épicerie d’arrivée est proche de votre route.</p>
-        <p>Tant que vous êtes disponible et que NAVY ay est ouverte à l’écran, votre position est envoyée toutes les 30 secondes : les clients vous voient rouler sur la carte, à 200 m près. Elle n’est plus partagée dès que vous passez « Pas disponible », et elle n’est jamais gardée en historique.</p>
+        <p>Tant que vous êtes disponible, votre position est envoyée toutes les 30 secondes : les clients vous voient rouler sur la carte, à 200 m près. Sur le site, seulement quand NAVY ay est ouverte à l’écran ; avec l’appli Android, même écran éteint. Elle n’est plus partagée dès que vous passez « Pas disponible », et elle n’est jamais gardée en historique.</p>
+        <p>Si vous ne bougez pas pendant 1 heure sans course, NAVY ay vous passe « Pas disponible » et vous prévient : touchez la notification pour redevenir disponible.</p>
         <p>Si vous refusez de la partager, vous restez disponible : vous apparaissez sur votre destination, et seuls les colis vers votre zone d’arrivée vous sont proposés.</p>
         <p>« Signaler un obstacle » : travaux, route inondée, passage fermé. L’opératrice le vérifie avant de l’afficher sur les cartes de tous.</p>
         <p>La disponibilité s’arrête toute seule 3 heures après votre dernier choix. Un rappel « Toujours disponible ? » s’affiche avant.</p>

@@ -6,7 +6,7 @@
 import type { User } from '../types/supabase';
 import { supabase, getCurrentUser, isAuthenticated as checkAuth, withTimeout } from '../lib/supabase';
 import { handleSupabaseError } from '../lib/supabase';
-import { isNativeApp, signInWithGoogleInApp } from '../modules/navy-ay/services/nativeApp';
+import { forgetNativeAppBeforeSignOut, isNativeApp, signInWithGoogleInApp } from '../modules/navy-ay/services/nativeApp';
 
 // Timeout par défaut pour toutes les requêtes DB Supabase dans le flux d'auth
 // Les requêtes DB peuvent hanger silencieusement sans throw ni réponse
@@ -369,6 +369,15 @@ class AuthService {
    */
   async logout(): Promise<boolean> {
     console.log('🚪 Déconnexion en cours...');
+
+    // NAVY ay app (phase 3B): stop the position sharing and forget this phone's Firebase
+    // token while the session is still valid. No-op on the web; never blocks > 4 s.
+    if (isNativeApp()) {
+      await Promise.race([
+        forgetNativeAppBeforeSignOut().catch(() => undefined),
+        new Promise(resolve => setTimeout(resolve, 4000))
+      ]);
+    }
 
     // Nettoyer les données locales EN PREMIER — même si Supabase est inaccessible
     localStorage.removeItem('bazarkely-user');

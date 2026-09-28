@@ -206,8 +206,8 @@ export function navItemsForRole(role: NavyRole, hasBothRequests: boolean): NavyN
       const items: NavyNavItem[] = [
         { path: '/navy', icon: 'Home', label: 'Accueil', end: true },
         { path: '/navy/envoyer', icon: 'Send', label: 'Envoyer' },
-        { path: '/navy/colis', icon: 'Package', label: 'Mes colis' },
-        { path: '/navy/recevoir', icon: 'PackageOpen', label: 'À recevoir' },
+        { path: '/navy/colis', icon: 'Package', label: 'Envoyés' },
+        { path: '/navy/recevoir', icon: 'PackageOpen', label: 'À retirer' },
       ];
       if (!hasBothRequests) items.push({ path: '/navy/devenir', icon: 'UserPlus', label: 'Partenaire' });
       return items;

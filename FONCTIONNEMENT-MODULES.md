@@ -943,6 +943,67 @@ le trajet. Itinéraires calculés ensuite par `navy-routes` : `avoid_polygons` (
 point, 15 m de part et d'autre d'un passage), nouvel essai sans eux si aucune route ne contourne.
 Oubli 7 jours après la fin (`navy-obstacles-purge`).
 
+### 📱 Phase 3B — l'appli Android en arrière-plan (v3.91.0, appli 1.1.0)
+
+**Position écran éteint (décisions 25, 48 (5), 49, 50)** : dans l'appli Android **1.1.0 et plus**,
+pour un **chauffeur validé**, un **service Android au premier plan** (`LocationService`, code natif
+de `navy-android/`) envoie la position **toutes les 30 s** (**60 s** si la batterie est sous 20 % et
+ne charge pas) directement à `navy_report_position`, en HTTPS, avec la session du compte : rien ne
+dépend du JavaScript de la page, qu'Android fige écran éteint. Il tourne **seulement** quand le
+chauffeur est « Disponible » (non expiré) ou a une course en cours, et s'arrête **aussitôt** quand
+le serveur refuse une position (« Pas disponible », expiration, fin de course, immobilité) ou
+quand la page l'arrête (déconnexion, « Pas disponible » à l'écran). **Notification permanente** :
+« NAVY ay : votre position est partagée » + « Disponible » / « Course en cours », bouton
+**« Pas disponible »** (appel direct de `navy_set_driver_status`). **Un seul émetteur à la fois**
+(`positionEmitter`) : le service natif dans l'appli 1.1.0+, la page elle-même sur le site et dans
+l'appli 1.0.0 (écran allumé seulement, comme en 2C3). `NavyDriverLiveSync` reste le point
+d'entrée commun. Serveur inchangé pour l'arrondi 200 m, la zone protégée et l'absence d'historique.
+
+**Session partagée page / appli** : le service natif peut renouveler lui-même la session (5 min
+avant l'expiration d'une heure) ; la page la relit alors dans l'appli (relais de stockage de
+`lib/supabase.ts`, actif **uniquement** dans l'appli 1.1.0+) : un seul jeton de
+renouvellement en circulation, jamais rejoué (Supabase révoquerait la session).
+
+**Arrêt après immobilité (décision 56 (7))** : `navy_driver_positions.still_since` (+ point
+d'immobilité) ; bouger de plus de **150 m** (ou redevenir disponible, « Toujours disponible ? »)
+relance le compteur. `navy_tick` → `navy_stop_idle_drivers()` passe « Pas disponible » un chauffeur
+disponible **sans course** immobile depuis **`navy_settings.idle_stop_minutes`** (60 par défaut,
+15 à 480, **Réglages** de l'opératrice), efface position et trajet, et le notifie
+(« Vous étiez immobile depuis 1 h : vous n'êtes plus disponible. » → « Ma direction »). **Jamais
+pendant une course.** L'expiration de 3 h reste en place.
+
+**Notifications Firebase (décision 25)** : projet Firebase `navy-ay` (plan gratuit Spark). Jetons
+dans **`push_fcm_tokens`** (un par appareil ; RLS forcée ; écriture par `push_fcm_register` /
+`push_fcm_forget`, le compte lui-même, `anon` sans droit), enregistrés à la connexion et à chaque
+renouvellement, oubliés à la déconnexion. `send-push` envoie **aussi** par **FCM HTTP v1** (secret
+de fonction `FCM_SERVICE_ACCOUNT`) ; jeton invalide effacé. `notify_users` / `navy_notify` :
+mêmes signatures ; une offre porte désormais son colis (`/navy/offres?colis=<id>`). Dans l'appli,
+**pas d'abonnement Web Push** (aucun doublon).
+
+**Course façon appel entrant (décision 56 (2))** : pour une offre, `send-push` vérifie que le
+destinataire détient **vraiment** une offre vivante pour ce colis (jamais un client), puis l'appli
+affiche une **alerte plein écran** (écran allumé même verrouillé), **sonnerie en boucle + vibration**
+jusqu'à l'échéance, **30 s au plus**, boutons **« Accepter »** (ouvre `/navy/offres?colis=…&reponse=accepter`,
+même chemin que le bouton de l'écran Offres) et **« Refuser »** (`navy_refuse_offer`). Offre prise
+par un autre, annulée ou expirée : vérification toutes les 3 s, sonnerie arrêtée, alerte fermée.
+
+**Écran guidé (décision 56 (6))** : `/navy/reglages-appli`, ouvert **seul** au premier lancement
+d'un chauffeur validé (et si une autorisation est retirée plus tard), accessible par le menu du
+haut à droite (« Réglages de l'appli »). Cinq étapes, une par écran, cochées une fois faites :
+notifications, position **« Toujours »**, alerte plein écran, **économie de batterie** (consignes
+Tecno, Infinix, Itel, Samsung, Xiaomi + bouton « Lancement automatique »), **test final** (écran
+éteint 2 min → « Nous avons reçu X positions sur Y »).
+
+**Site** : bandeau **« Installez l'appli NAVY ay pour recevoir les courses écran éteint »** pour un
+chauffeur validé hors de l'appli, masquable 7 jours (l'appli reste conseillée, pas obligatoire).
+
+**Finitions** : barre du bas NAVY, un libellé **sur une ligne** de 360 à 430 px (« Envoyés »,
+« À retirer » ; 10,5 px pour la barre à 6 boutons de l'opératrice) ; menu du haut à droite NAVY
+dédié (une ligne par entrée, sans « Sauvegarde Cloud » ni installation PWA ; « Installer l'appli
+NAVY ay » vers `/navy/app` sur le site) ; pages Version et Paramètres ouvertes depuis NAVY aux
+couleurs NAVY. Autres modules inchangés. Appli : `android.minWebViewVersion` = 87 (page
+« Mettez à jour Android System WebView » sur un vieux téléphone).
+
 ---
 
 ## MODULE — SCAN DE TICKET DE CAISSE (flux Transactions, Phases 1 + 2) — v3.26.0

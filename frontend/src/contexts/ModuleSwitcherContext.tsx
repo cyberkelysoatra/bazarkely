@@ -3,7 +3,7 @@
  * Gère le mode switcher, le module actif, et la liste des modules disponibles
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import {
@@ -98,6 +98,12 @@ const OPEN_LINK_PREFIX = '/ouvrir';
 /** Pages transverses (tous modules) : version / mise à jour, installation PWA. */
 const TRANSVERSE_PATHS = ['/app-version', '/pwa-instructions'];
 
+/**
+ * v3.91.0 (NAVY ay 3B) : pages partagées qui, ouvertes DEPUIS NAVY ay, gardent l'en-tête et
+ * la barre du bas NAVY (quel que soit l'accès budget). Rien n'est mémorisé.
+ */
+const NAVY_SHARED_PATHS = [...TRANSVERSE_PATHS, '/settings'];
+
 /** Attente max de la liste de modules du compte avant la reprise (ms). */
 const RESTORE_WAIT_MS = 6000;
 
@@ -127,6 +133,8 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
   const [isSwitcherMode, setIsSwitcherMode] = useState(false);
   const [availableModules] = useState<Module[]>(DEFAULT_MODULES);
   const [activeModule, setActiveModuleState] = useState<Module | null>(null);
+  const activeModuleRef = useRef<Module | null>(null);
+  activeModuleRef.current = activeModule;
   const location = useLocation();
   const navigate = useNavigate();
   const hasCheckedStorage = useRef(false);
@@ -263,6 +271,18 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
    */
   useEffect(() => {
     const module = determineActiveModule();
+
+    // v3.91.0 (NAVY ay 3B) : page partagée ouverte depuis NAVY ay → on reste en NAVY ay.
+    if (NAVY_SHARED_PATHS.includes(location.pathname)) {
+      const prevId = activeModuleRef.current?.id ?? loadSavedModule()?.id;
+      if (prevId === 'navy-ay') {
+        const navy = availableModules.find((m) => m.id === 'navy-ay');
+        if (navy) {
+          setActiveModuleState(navy);
+          return;
+        }
+      }
+    }
 
     // v3.81.0 : pages transverses (/app-version, /pwa-instructions) pour un compte SANS
     // accès budget confirmé → on garde le module précédent (sa barre, son en-tête) au lieu

@@ -206,7 +206,7 @@ const BottomNav = () => {
     setUser({ ...user, preferences: merged }); // optimiste local
     try {
       const result = await apiService.updateUserPreferences(user.id, merged);
-      if (result.success && result.data) setUser(result.data);
+      if (result.success && result.data) setUser(result.data as unknown as Parameters<typeof setUser>[0]);
     } catch {
       // Hors-ligne / réseau bloqué : l'ordre local reste appliqué, repartira au
       // prochain changement en ligne.
@@ -315,6 +315,9 @@ const BottomNav = () => {
 
     // Garde-fou : jamais plus de 6 boutons dans la barre (cumul de rôles rare).
     if (navItems.length > 6) navItems = navItems.slice(0, 6);
+    // NAVY ay (3B) : barre de 6 boutons (opératrice) = libellés en 10,5 px et marges
+    // resserrées, pour tenir sur UNE ligne dès 360 px (« Partenaires » = 53 px).
+    const navyDense = isNavyModule && navItems.length >= 6;
 
     // Thème actif : vert AHUVI en mode eau, bleu sinon.
     const activeBg = isEauModule ? 'bg-ahuvi-forest' : 'bg-blue-600';
@@ -326,7 +329,7 @@ const BottomNav = () => {
         ref={navRef}
         className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl z-50 safe-area-inset overscroll-none lg:hidden"
       >
-        <div className="flex items-center justify-around py-1.5 animate-in fade-in duration-300">
+        <div className={`flex items-center justify-around py-1.5 animate-in fade-in duration-300${isNavyModule ? ' px-1' : ''}`}>
           {navItems.map((item) => {
             const IconComponent = iconMap[item.icon as keyof typeof iconMap];
             // Routes "racine" (dashboard eau, espace client) → match exact pour ne pas
@@ -345,7 +348,8 @@ const BottomNav = () => {
                 end={exact}
                 className={({ isActive }) =>
                   isNavyModule
-                    ? 'mobile-nav-item !bg-transparent' // pas de halo bleu en NAVY ay (charte)
+                    ? // NAVY ay (3B) : boutons de largeur égale, libellé sur UNE ligne de 360 à 430 px
+                      `flex flex-1 min-w-0 justify-center ${navyDense ? 'px-0' : 'px-0.5'} focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-charcoal rounded-2xl`
                     : `mobile-nav-item ${isActive ? 'active' : ''}`
                 }
               >
@@ -353,7 +357,7 @@ const BottomNav = () => {
                   // NAVY ay : le bouton actif ENTIER est anthracite, icône et libellé jaunes
                   // (jaune sur blanc = contraste insuffisant, donc jamais de libellé jaune hors pastille).
                   <span
-                    className={`relative flex flex-col items-center rounded-2xl px-4 pt-2 pb-1.5 transition-all duration-300 ${
+                    className={`relative flex w-full max-w-[5.75rem] flex-col items-center rounded-2xl ${navyDense ? 'px-0.5' : 'px-1'} pt-2 pb-1.5 transition-colors duration-300 ${
                       isActive ? 'bg-navyay-charcoal shadow-lg' : 'hover:bg-navyay-yellow/15'
                     }`}
                   >
@@ -366,7 +370,7 @@ const BottomNav = () => {
                         {navyBadge > 99 ? '99+' : navyBadge}
                       </span>
                     )}
-                    <span className={`text-xs font-semibold mt-1 ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`}>
+                    <span className={`mt-1 block w-full text-center ${navyDense ? 'text-[10.5px]' : 'text-[11px]'} leading-tight font-semibold whitespace-nowrap ${isActive ? 'text-navyay-yellow' : 'text-navyay-charcoal'}`}>
                       {item.label}
                     </span>
                   </span>

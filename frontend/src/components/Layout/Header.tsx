@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { Bell, User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store } from 'lucide-react';
+import { User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
@@ -8,9 +8,9 @@ import { simulationRoleLabel } from '../../modules/gestion-eau/constants/simulat
 import { EauLogo } from '../../modules/gestion-eau/components';
 import { NavySymbol, NavyTitle } from '../../modules/navy-ay/components/NavyLogo';
 import { NavyDesktopNav, NavyHeaderSubtitle } from '../../modules/navy-ay/components/NavyHeaderParts';
+import NavyUserMenu from '../../modules/navy-ay/components/NavyUserMenu';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
-import apiService from '../../services/apiService';
 import budgetService from '../../services/budgetService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
@@ -118,10 +118,6 @@ const Header = () => {
     totalQuestionsAnswered, 
     correctAnswers, 
     detailedProfile, 
-    geolocation,
-    levelProgress,
-    badges,
-    certifications,
     practiceTracking
   } = useCertificationStore();
 
@@ -606,23 +602,6 @@ const Header = () => {
     return roleIcons[role] || '👤';
   };
 
-  // Helper function to get company/site display
-  const getCompanyDisplay = (company: typeof activeCompany): string => {
-    if (!company) return 'Gestion Construction & Approvisionnements';
-    
-    const companyName = company.name || 'Entreprise';
-    
-    // Check if org_unit is available (may be added to UserCompany type in future)
-    // Using type assertion to access potential org_unit property
-    const companyWithOrgUnit = company as typeof company & { org_unit?: string | null };
-    const site = companyWithOrgUnit.org_unit;
-    
-    if (site) {
-      return `${companyName} • ${site}`;
-    }
-    
-    return companyName;
-  };
 
   // Fermer le menu en cliquant à l'extérieur
   useEffect(() => {
@@ -993,8 +972,20 @@ const Header = () => {
                 </div>
               </div>
 
-              {/* Menu déroulant des actions */}
-              {isMenuOpen && (
+              {/* Menu déroulant des actions — NAVY ay (3B) : menu dédié, une ligne par entrée,
+                  sans les entrées propres au budget. Autres modules : menu inchangé. */}
+              {isMenuOpen && isNavyModule && (
+                <NavyUserMenu
+                  displayName={user?.detailedProfile?.firstName || user?.username || 'Utilisateur'}
+                  isAdmin={isAdmin}
+                  updateAvailable={!!updateAvailable}
+                  onClose={handleMenuClose}
+                  onLogout={() => {
+                    void handleLogout().then(handleMenuClose);
+                  }}
+                />
+              )}
+              {isMenuOpen && !isNavyModule && (
                 <div className={`dropdown-menu absolute top-full right-0 mt-2 backdrop-blur-sm rounded-xl p-3 border shadow-lg z-50 min-w-[200px] ${
                   isNavyModule ? 'bg-navyay-charcoal/95 border-navyay-charcoal' : 'bg-purple-500/80 border-purple-300/50'
                 }`}>

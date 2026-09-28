@@ -5,6 +5,7 @@
  * (last computation, "Recalculer les distances", OpenRouteService requests this month).
  */
 import { useCallback, useEffect, useState } from 'react';
+import { IDLE_DEFAULT_MINUTES, parseIdleMinutes } from '../../utils/backgroundRules';
 import { ChevronRight, Headset, Loader2, Map as MapIcon, RefreshCw, Route, Save, Settings, ShieldCheck, Trash2, UserPlus, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useOnlineStatus from '../../../../hooks/useOnlineStatus';
@@ -54,6 +55,7 @@ export default function OperatorSettingsPage() {
   const [purgeMsg, setPurgeMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [corridor, setCorridor] = useState('');
   const [margin, setMargin] = useState('');
+  const [idle, setIdle] = useState('');
   const [dist, setDist] = useState<NavyDistanceStatus | null>(null);
   const [distBusy, setDistBusy] = useState(false);
   const [distMsg, setDistMsg] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
@@ -68,6 +70,7 @@ export default function OperatorSettingsPage() {
       setOmNumber(s?.orange_money_number ?? '');
       setCorridor(String(s?.corridor_width_m ?? DEFAULT_CORRIDOR_M));
       setMargin(String(s?.estimate_margin_pct ?? DEFAULT_MARGIN_PCT));
+      setIdle(String(s?.idle_stop_minutes ?? IDLE_DEFAULT_MINUTES));
       setOperators(ops);
       setDist(await distanceStatus());
       setDueCount((await listDueDocuments()).length);
@@ -159,6 +162,11 @@ export default function OperatorSettingsPage() {
       setError('Majoration de la distance estimée : un nombre entier entre 0 et 150 %.');
       return;
     }
+    const idleMinutes = parseIdleMinutes(idle.replace(/[\s]/g, '').replace(/min$/i, ''));
+    if (idleMinutes == null) {
+      setError('Arrêt après immobilité : un nombre entier de minutes entre 15 et 480.');
+      return;
+    }
     const om = omNumber.trim();
     if (om && !/^(\+261|0)\d{9}$/.test(om.replace(/[\s.-]/g, ''))) {
       setError('Numéro Orange Money incomplet (10 chiffres, ex. 032 12 345 67).');
@@ -168,7 +176,7 @@ export default function OperatorSettingsPage() {
     setError(null);
     setSavedMsg(null);
     try {
-      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null, corridor_width_m: Math.round(width), estimate_margin_pct: marginPct });
+      const saved = await updateSettings({ ...(patch as Partial<NavySettings>), orange_money_number: om || null, corridor_width_m: Math.round(width), estimate_margin_pct: marginPct, idle_stop_minutes: idleMinutes });
       await navyDb.kv.put({ key: 'settings', value: saved });
       setNavyProfile({ settings: saved });
       setSavedMsg('Réglages enregistrés.');
@@ -299,6 +307,27 @@ export default function OperatorSettingsPage() {
                 Ajoutée à la distance à vol d’oiseau quand la distance par la route manque. Conseillé : 30 %. Entre 0 et 150 %.
               </span>
             </label>
+            <label className={labelCls}>
+              Arrêt après immobilité d’un chauffeur disponible
+              <div className="relative">
+                <input
+                  className={`${inputCls} pr-14`}
+                  inputMode="numeric"
+                  value={idle}
+                  onChange={(e) => setIdle(e.target.value)}
+                  aria-describedby="navy-idle-help"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-sm text-navyay-charcoal/70" aria-hidden="true">min</span>
+              </div>
+              <span id="navy-idle-help" className="mt-1 block text-xs text-navyay-charcoal/70">
+                Un chauffeur disponible, sans course, qui ne bouge pas de plus de 150 m pendant cette durée passe « Pas disponible » et reçoit une notification. Conseillé : 60 min. Entre 15 et 480.
+              </span>
+            </label>
+            <NavyHelp title="Pourquoi arrêter un chauffeur immobile ?">
+              <p>Un chauffeur qui a oublié de passer « Pas disponible » (rentré chez lui, en pause) continuerait d’apparaître sur la carte et de recevoir des courses.</p>
+              <p>Après la durée choisie sans bouger, NAVY ay le passe « Pas disponible » et le prévient ; il redevient disponible d’un geste. Jamais pendant une course.</p>
+              <p>Il ne s’applique qu’aux chauffeurs dont la position est envoyée (appli Android, ou NAVY ay ouverte à l’écran). L’arrêt automatique après 3 heures reste en place.</p>
+            </NavyHelp>
             <NavyHelp title="À quoi sert la majoration ?">
               <p>Quand NAVY ay ne connaît pas encore la distance par la route (service indisponible, nouvelle épicerie, lieu de remise), il prend la distance à vol d’oiseau et ajoute ce pourcentage, parce que la route fait toujours des détours.</p>
               <p>Exemple : 6 km à vol d’oiseau + 30 % = 7,8 km. Le prix du transport est calculé sur cette distance.</p>

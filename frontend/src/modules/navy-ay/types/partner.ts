@@ -145,6 +145,8 @@ export interface NavySettings {
   corridor_width_m?: number;
   /** Phase 2B2: % added to the straight-line distance when the road distance is missing (0–150, 30 by default). */
   estimate_margin_pct?: number;
+  /** Phase 3B: an available driver without a course, still (150 m) this long, is stopped (15–480 min, 60 by default). */
+  idle_stop_minutes?: number;
   updated_at?: string;
 }
 

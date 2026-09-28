@@ -10,6 +10,8 @@ import NavyParcelSync from './NavyParcelSync';
 import NavyDriverLiveSync from './NavyDriverLiveSync';
 import NavyRoleRoute from './NavyRoleRoute';
 import NavyAppUpdateBanner from './app/NavyAppUpdateBanner';
+import NavyAppInstallBanner from './app/NavyAppInstallBanner';
+import NavyAppBackground from './app/NavyAppBackground';
 import { NavyLoader } from './ui/NavyUi';
 
 const BecomePartnerPage = lazy(() => import('./partner/BecomePartnerPage'));
@@ -38,6 +40,8 @@ const DriverOffersPage = lazy(() => import('./parcel/DriverOffersPage'));
 const DriverCoursesPage = lazy(() => import('./parcel/DriverCoursesPage'));
 const OperatorParcelsPage = lazy(() => import('./operator/OperatorParcelsPage'));
 const OperatorPaymentsPage = lazy(() => import('./operator/OperatorPaymentsPage'));
+// Phase 3B: guided set-up of the Android app (screen-off position, call-like offers)
+const NavyAppSetupPage = lazy(() => import('./app/NavyAppSetupPage'));
 
 export default function NavyRoutes() {
   return (
@@ -46,6 +50,8 @@ export default function NavyRoutes() {
       <NavyParcelSync />
       <NavyDriverLiveSync />
       <NavyAppUpdateBanner />
+      <NavyAppInstallBanner />
+      <NavyAppBackground />
       <Suspense fallback={<NavyLoader />}>
         <Routes>
           <Route index element={<NavyHomePage />} />
@@ -74,6 +80,7 @@ export default function NavyRoutes() {
           <Route path="courses" element={<NavyRoleRoute role="chauffeur"><DriverCoursesPage /></NavyRoleRoute>} />
           <Route path="operatrice/colis" element={<NavyRoleRoute role="operatrice"><OperatorParcelsPage /></NavyRoleRoute>} />
           <Route path="operatrice/paiements" element={<NavyRoleRoute role="operatrice"><OperatorPaymentsPage /></NavyRoleRoute>} />
+          <Route path="reglages-appli" element={<NavyAppSetupPage />} />
           <Route path="*" element={<Navigate to="/navy" replace />} />
         </Routes>
       </Suspense>
