@@ -1,12 +1,12 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "apkUrl": "https://github.com/cyberkelysoatra/bazarkely/releases/latest/download/navy-ay.apk",
   "apkSizeBytes": 4529343,
-  "publishedAt": "2026-09-29T20:25:29Z",
-  "version_code": 10200,
-  "sha256": "895f0da95197a2a5520f47d68e8662afca7d717a142ea55ed8ec92df315f7c8c",
+  "publishedAt": "2026-09-29T21:11:53Z",
+  "version_code": 10201,
+  "sha256": "a0da26763cb47deec1b7ed9a89dc324ebcb665daadf3c261ae2bf805e68ee111",
   "size_bytes": 4529343,
-  "apk_url": "https://github.com/cyberkelysoatra/bazarkely/releases/download/navy-android-v1.2.0/navy-ay.apk",
-  "notes_fr": "NAVY ay se met à jour elle-même : plus besoin de passer par la page de téléchargement.\nRapport de l'appli (batterie, positions envoyées) et carte plus stable quand le GPS est imprécis.",
+  "apk_url": "https://github.com/cyberkelysoatra/bazarkely/releases/download/navy-android-v1.2.1/navy-ay.apk",
+  "notes_fr": "Vérification de la mise à jour automatique.",
   "minimum_version": "1.0.0"
 }
