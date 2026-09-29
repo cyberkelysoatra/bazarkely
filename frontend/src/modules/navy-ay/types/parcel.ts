@@ -404,6 +404,10 @@ export interface NavyLivePosition {
   lng: number;
   /** Seconds since the driver's phone sent it (server clock, P21). */
   age_s: number;
+  /** Phase 3C: age of the last USABLE position (an imprecise one only refreshes age_s). */
+  fix_age_s?: number | null;
+  /** Phase 3C: precision of that position (m). */
+  accuracy_m?: number | null;
   speed_kmh: number | null;
   exact: boolean;
 }

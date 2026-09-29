@@ -24,7 +24,9 @@ import {
 } from '../constants/appVersion';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { isStandalone } from '../utils/browserDetection';
-import NativeAppVersionLine from '../modules/navy-ay/components/app/NativeAppVersionLine';
+import { useModuleSwitcher } from '../contexts/ModuleSwitcherContext';
+import { isNativeApp } from '../modules/navy-ay/services/nativeApp';
+import { NavyAppUpdateStatus, NavyVersionSummary } from '../modules/navy-ay/components/app/NavyVersionBlocks';
 
 type VersionEntry = {
   type?: 'major' | 'minor' | 'patch' | 'hotfix' | string;
@@ -72,6 +74,12 @@ const AppVersionPage: React.FC = () => {
   const { updateAvailable, isChecking, applyUpdate } = useServiceWorkerUpdate();
   const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
   const [isUpdating, setIsUpdating] = useState(false);
+  // NAVY ay (phase 3C, decision 59 (3)): "Site" / "Appli Android" lines from NAVY or
+  // inside the Android app; the app's own update state instead of "Mode navigateur".
+  // Budget, Eau and Construction: page unchanged.
+  const { activeModule } = useModuleSwitcher();
+  const inNavyApp = isNativeApp();
+  const navyContext = inNavyApp || activeModule?.id === 'navy-ay';
 
   /**
    * Toggle version history expansion
@@ -144,8 +152,11 @@ const AppVersionPage: React.FC = () => {
         {/* Current Version Card */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Version installée
+            {navyContext ? 'Versions' : 'Version installée'}
           </h2>
+          {navyContext ? (
+            <NavyVersionSummary />
+          ) : (
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-2">
@@ -164,12 +175,12 @@ const AppVersionPage: React.FC = () => {
               <p className="text-sm text-gray-600">
                 Compilé le {formatDate(APP_BUILD_DATE)}
               </p>
-              <NativeAppVersionLine className="mt-1 text-sm font-medium text-gray-700" />
             </div>
             <div className="flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full">
               <Smartphone className="w-8 h-8 text-purple-600" />
             </div>
           </div>
+          )}
         </section>
 
         {/* Update Status Card */}
@@ -177,7 +188,9 @@ const AppVersionPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Statut de mise à jour
           </h2>
-          {isStandalone() ? (
+          {inNavyApp ? (
+            <NavyAppUpdateStatus />
+          ) : isStandalone() ? (
             // PWA installed mode — show update controls
             <>
               {isChecking ? (

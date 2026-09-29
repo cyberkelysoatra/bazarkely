@@ -9,6 +9,7 @@ import { EauLogo } from '../../modules/gestion-eau/components';
 import { NavySymbol, NavyTitle } from '../../modules/navy-ay/components/NavyLogo';
 import { NavyDesktopNav, NavyHeaderSubtitle } from '../../modules/navy-ay/components/NavyHeaderParts';
 import NavyUserMenu from '../../modules/navy-ay/components/NavyUserMenu';
+import { NavyAppUpdateDot } from '../../modules/navy-ay/components/app/NavyAppUpdateUi';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
 import budgetService from '../../services/budgetService';
@@ -959,8 +960,10 @@ const Header = () => {
                 }
                 onClick={handleMenuToggle}
               >
-                <div className="w-10 h-10 bg-white/50 rounded-full flex items-center justify-center border border-white/60">
+                <div className="relative w-10 h-10 bg-white/50 rounded-full flex items-center justify-center border border-white/60">
                   <User className="w-5 h-5 text-white" />
+                  {/* NAVY ay (3C) : pastille « nouvelle version de l'appli Android », appli seulement */}
+                  {isNavyModule && <NavyAppUpdateDot />}
                 </div>
                 <div className="hidden sm:block">
                   {showUsername && (

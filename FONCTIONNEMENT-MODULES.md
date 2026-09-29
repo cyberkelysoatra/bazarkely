@@ -1117,6 +1117,20 @@ section « Soldes : toujours un MOUVEMENT, jamais une valeur absolue ».
 
 ---
 
+## NAVY ay — Phase 3C : mise à jour de l'appli Android (v3.92.0, appli 1.2.0)
+
+Décision 59 : une appli déjà installée ne ressemble **jamais** à une première installation.
+
+- **Vérification** (`services/navyAppUpdate.ts`, appli seulement) : au lancement et au retour au premier plan (6 h au plus entre deux vérifications automatiques), plus « Vérifier maintenant ». `version.json` lu sans cache, comparé au `versionCode` Android de l'appli (`App.getInfo().build`).
+- **Affichage** : bandeau NAVY en haut (« Mise à jour disponible : X (vous avez Y) », « Ce qui change », « Mettre à jour », ⓘ, masquable 24 h), pastille rouge sur le bouton du menu et sur l'entrée « Mise à jour ». Jamais sur le site web ni pour une appli à jour. `minimum_version` plus récent que l'appli = écran bloquant (inactif tant que `1.0.0`).
+- **Appli 1.2.0+** (`NavyUpdater.java`) : téléchargement dans le dossier privé de l'appli avec progression et « Annuler », contrôles (adresse = Release `navy-android-vX.Y.Z` du dépôt, redirections GitHub seulement ; SHA-256 de `version.json` ; paquet `com.cyberkely.navyay` ; `versionCode` supérieur ; même certificat quand Android le dit), puis écran de mise à jour d'Android par `FileProvider`. Première fois : écran NAVY qui explique l'autorisation, page Android « applis inconnues », reprise automatique au retour. Après : `PackageReplacedReceiver` efface le fichier, notification « NAVY ay est à jour », et la page affiche une fois « NAVY ay est à jour (X) ».
+- **Appli 1.1.0** : même bandeau (affiché par le site), écran d'explication puis ouverture du fichier de la Release dans Chrome. Sert une seule fois, pour passer à 1.2.0.
+- **Page `/navy/app`** : dans l'appli, mise à jour seulement ; dans Chrome Android, carte « Vous avez déjà NAVY ay ? » (lien `intent://auth-callback?navy_open=update…`, repli `?appli=absente`) avant « Première installation » ; ordinateur et iPhone : « L'appli NAVY ay existe pour Android ».
+- **Page « Mise à jour »** (partagée) : depuis NAVY ou dans l'appli, « Site : 3.92.0 » et « Appli Android : X » ; dans l'appli, l'état de l'appli remplace « Mode navigateur ». Budget, Eau, Construction : inchangés.
+- **Rapport automatique** : échantillons toutes les 5 min pendant le partage de position (batterie, charge, écran, économie de batterie, positions acceptées ; jamais de coordonnées), gardés 48 h. « Envoyer mon rapport » (Réglages de l'appli) et envoi seul à « Pas disponible » si 20 min écran éteint ou plus. Table `navy_app_reports` (RLS forcée, écriture par `navy_app_report_submit` pour soi seul, lecture par le compte et les opératrices, purge 90 jours).
+- **Carte vivante** : une position de précision > 100 m ne met à jour que l'heure du dernier signal (`at`) ; position, vitesse et mouvement simulé restent ceux de la dernière position utilisable (`fix_at`, `fix_age_s`). Même règle dans `liveMotion.ts` (`isImpreciseFix`) et dans le service natif (pas de vitesse transmise).
+- ⚠️ `REQUEST_INSTALL_PACKAGES` : à retirer d'une future version Play Store (mise à jour par le Store).
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

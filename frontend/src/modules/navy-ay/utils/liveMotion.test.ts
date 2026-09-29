@@ -5,6 +5,7 @@ import {
   BLEND_MS,
   DEFAULT_SPEED_MPS,
   grid200,
+  isImpreciseFix,
   displayedPosition,
   LiveFleet,
   metresBetween,
@@ -132,5 +133,46 @@ describe('grid200 (same rounding as the server)', () => {
     for (const [lat, lng] of [[-13.40541, 48.27431], [-13.39828, 48.20803], [-13.3, 48.31]]) {
       expect(metresBetween({ lat, lng }, { lat: grid200(lat), lng: grid200(lng) })).toBeLessThan(142);
     }
+  });
+});
+
+describe('phase 3C: an imprecise position (> 100 m) is only a sign of life', () => {
+  const lngAt = (m: number) => 48.2 + m / (111320 * Math.cos((13.4 * Math.PI) / 180));
+
+  it('flags the positions less precise than 100 m (same threshold as the server)', () => {
+    expect(isImpreciseFix(101)).toBe(true);
+    expect(isImpreciseFix(100)).toBe(false);
+    expect(isImpreciseFix(null)).toBe(false);
+    expect(isImpreciseFix(undefined)).toBe(false);
+  });
+
+  it('never moves the vehicle nor gives a speed, but keeps it alive', () => {
+    let t = newTrack({ ...at(48.2), atMs: T0, speedMps: null, accuracyM: 12 }, ROUTE);
+    // 800 m jump in 30 s (27 m/s) with 400 m of uncertainty
+    t = addFix(t, { ...at(lngAt(800)), atMs: T0 + 30_000, speedMps: 27, accuracyM: 400 }, T0 + 30_000, undefined, T0 + 30_000);
+    expect(t.fixes).toHaveLength(1);
+    expect(trackSpeed(t)).toBeCloseTo(DEFAULT_SPEED_MPS, 6);
+    // still "live" 2 min after the last precise fix thanks to the signal
+    expect(displayedPosition(t, T0 + 140_000).stale).toBe(false);
+    expect(displayedPosition(t, T0 + 160_000).stale).toBe(true);
+  });
+
+  it('measures the speed between precise positions only', () => {
+    let t = newTrack({ ...at(48.2), atMs: T0, speedMps: null, accuracyM: 900 }, ROUTE);
+    t = addFix(t, { ...at(lngAt(300)), atMs: T0 + 30_000, speedMps: null, accuracyM: 10 }, T0 + 30_000);
+    expect(trackSpeed(t)).toBeCloseTo(DEFAULT_SPEED_MPS, 6); // not 10 m/s measured from an imprecise fix
+    t = addFix(t, { ...at(lngAt(600)), atMs: T0 + 60_000, speedMps: null, accuracyM: 10 }, T0 + 60_000);
+    expect(trackSpeed(t)).toBeCloseTo(10, 1);
+  });
+
+  it('LiveFleet: the server keeps the usable position (fix_age_s) and refreshes the signal (age_s)', () => {
+    const f = new LiveFleet();
+    f.update([{ id: 'a', live: { ...at(48.2), age_s: 0, fix_age_s: 0, accuracy_m: 10, speed_kmh: 36 }, route: ROUTE }], T0);
+    // 100 s later: an imprecise fix arrived 1 s ago, the usable position is 100 s old
+    f.update([{ id: 'a', live: { ...at(48.2), age_s: 1, fix_age_s: 100, accuracy_m: 10, speed_kmh: 36 }, route: ROUTE }], T0 + 100_000);
+    const p = f.position('a', T0 + 100_000)!;
+    expect(p.stale).toBe(false);
+    // the simulation stopped 30 s after the usable position: 300 m, not more
+    expect(metresBetween(at(48.2), p)).toBeCloseTo(300, 0);
   });
 });

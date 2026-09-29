@@ -20,6 +20,7 @@ import {
   LocateFixed,
   MonitorSmartphone,
   PhoneIncoming,
+  Send,
   Rocket,
   Settings2,
   Smartphone,
@@ -29,7 +30,8 @@ import {
 import { useAppStore } from '../../../../stores/appStore';
 import { useNavyProfile } from '../../services/navyProfileStore';
 import { useDriverState } from '../../services/driverService';
-import { getNativePermissions, getNativeTrackingStatus, hasNavyNative, isNativeApp, requestNativePermission } from '../../services/nativeApp';
+import { getNativePermissions, getNativeTrackingStatus, hasNativeReport, hasNavyNative, isNativeApp, requestNativePermission } from '../../services/nativeApp';
+import { formatMinutes, sendAppReport, type AppReportResult } from '../../services/appReportService';
 import { isLocalAvailable } from '../../utils/geo';
 import { NAVY_APP_PAGE } from '../../utils/nativeAppRules';
 import {
@@ -142,6 +144,7 @@ export default function NavyAppSetupPage() {
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [tracking, setTracking] = useState<{ running: boolean; intervalMs: number } | null>(null);
+  const [report, setReport] = useState<AppReportResult | 'sending' | null>(null);
 
   const testPassed = !!test?.result?.ok;
   const refresh = useCallback(async () => {
@@ -480,6 +483,44 @@ export default function NavyAppSetupPage() {
           </button>
         )}
       </div>
+
+      {hasNativeReport() && (
+        <NavyCard className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Send className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="font-bold">Rapport de l’appli</h2>
+              <p className="mt-0.5 text-sm text-navyay-charcoal/80 leading-relaxed">
+                Batterie, écran allumé ou éteint, positions envoyées pendant vos 48 dernières heures. Jamais l’endroit où vous étiez.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`${btnSecondary} w-full`}
+            disabled={report === 'sending'}
+            onClick={() => {
+              setReport('sending');
+              void sendAppReport(false).then(setReport);
+            }}
+          >
+            {report === 'sending' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send className="w-5 h-5" aria-hidden="true" />}
+            Envoyer mon rapport
+          </button>
+          {report && report !== 'sending' && (
+            <p className="text-sm" aria-live="polite">
+              {report.kind === 'sent'
+                ? `Rapport envoyé, merci : ${formatMinutes(report.summary.screenOffMinutes)} écran éteint${
+                    report.summary.drainPctPerHour != null ? `, ${String(report.summary.drainPctPerHour).replace('.', ',')} % de batterie par heure` : ''
+                  }, ${report.summary.positionsSent} positions sur ${report.summary.positionsExpected} attendues.`
+                : report.kind === 'empty'
+                  ? 'Pas encore assez de relevés : passez « Disponible » un moment, puis réessayez.'
+                  : 'Le rapport n’est pas parti. Vérifiez votre connexion, puis réessayez.'}
+            </p>
+          )}
+          <p className="text-xs text-navyay-charcoal/75">Il part aussi tout seul quand vous passez « Pas disponible » après au moins 20 minutes écran éteint.</p>
+        </NavyCard>
+      )}
 
       <NavyHelp title="Pourquoi ces réglages ?">
         <p>Sans eux, Android endort NAVY ay quand l’écran s’éteint : votre position ne part plus et les courses ne sonnent pas.</p>

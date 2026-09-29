@@ -34,6 +34,7 @@ import {
 } from '../services/nativeApp';
 import { isLocalAvailable } from '../utils/geo';
 import { positionEmitter, trackingMode } from '../utils/backgroundRules';
+import { maybeSendAutoAppReport } from '../services/appReportService';
 
 export const LIVE_SEND_MS = 30_000;
 const NATIVE_STOP_DELAY_MS = 5_000;
@@ -142,7 +143,12 @@ export default function NavyDriverLiveSync() {
     // Not eligible: stop, but only if it lasts (a status still loading must not stop it).
     const t = window.setTimeout(() => {
       startedRef.current = null;
-      void stopNativeTracking('page').then(fromNative).catch(() => undefined);
+      void stopNativeTracking('page')
+        .then((s) => {
+          fromNative(s);
+          void maybeSendAutoAppReport(); // phase 3C: summary of the stretch, if 20 min screen off
+        })
+        .catch(() => undefined);
     }, NATIVE_STOP_DELAY_MS);
     return () => window.clearTimeout(t);
   }, [emitter, eligible, mode, row?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -160,10 +166,12 @@ export default function NavyDriverLiveSync() {
     const offStop = onNativeEvent('trackingStopped', () => {
       startedRef.current = null;
       read();
+      void maybeSendAutoAppReport();
       if (userId && row) void loadDriverStatus(userId, row.id);
     });
     const offAvail = onNativeEvent('availabilityOff', () => {
       read();
+      void maybeSendAutoAppReport();
       if (userId && row) void loadDriverStatus(userId, row.id);
     });
     return () => {

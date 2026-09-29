@@ -12,6 +12,10 @@
  *   - the simulated advance stops 30 s after the last position (a stopped driver does
  *     not seem to drive); without a position for 2 minutes the icon turns grey
  *     ("position incertaine"); after 5 minutes the track is forgotten.
+ *   - phase 3C: a position less precise than 100 m (isImpreciseFix) never feeds the speed
+ *     nor the simulation: it only refreshes the time of the last signal (same rule as the
+ *     server, navy_report_position, which keeps the last usable fix and gives its age as
+ *     fix_age_s). Seen on 2026-09-28/29: an imprecise GPS jump gave up to 29 m/s.
  * Pure functions (no clock, no DOM): every time is given. Covered by liveMotion.test.ts.
  */
 import type { LatLng } from '../types/partner';
@@ -25,6 +29,12 @@ export const DEFAULT_SPEED_MPS = 15 / 3.6;
 export const OFF_ROUTE_M = 250;
 /** Faster than this is a GPS jump, not a speed. */
 export const MAX_SPEED_MPS = 30;
+/** Less precise than this (m), a position is only a sign of life (server: same threshold). */
+export const IMPRECISE_M = 100;
+
+export function isImpreciseFix(accuracyM: number | null | undefined): boolean {
+  return accuracyM != null && Number.isFinite(accuracyM) && accuracyM > IMPRECISE_M;
+}
 
 export interface LiveFix {
   lat: number;
@@ -33,6 +43,8 @@ export interface LiveFix {
   atMs: number;
   /** Speed given by the server (m/s), or null. */
   speedMps: number | null;
+  /** Precision of the position (m), when known. */
+  accuracyM?: number | null;
 }
 
 export interface LiveRoute {
@@ -47,6 +59,14 @@ export interface LiveTrack {
   route: LiveRoute | null;
   /** Smooth join towards the newest position. */
   blend: { lat: number; lng: number; startMs: number } | null;
+  /** Time of the last sign of life (a usable position or an imprecise one), ms. */
+  signalAtMs?: number;
+}
+
+/** Last sign of life of the driver: never older than his last usable position. */
+function signalAt(track: LiveTrack): number {
+  const last = track.fixes[track.fixes.length - 1];
+  return Math.max(last.atMs, track.signalAtMs ?? 0);
 }
 
 export interface LivePosition {
@@ -116,7 +136,7 @@ export function trackSpeed(track: LiveTrack): number {
   const last = track.fixes[track.fixes.length - 1];
   if (!last) return 0;
   if (last.speedMps != null && Number.isFinite(last.speedMps)) return Math.min(MAX_SPEED_MPS, Math.max(0, last.speedMps));
-  if (track.fixes.length >= 2) {
+  if (track.fixes.length >= 2 && !isImpreciseFix(track.fixes[track.fixes.length - 2].accuracyM)) {
     const prev = track.fixes[track.fixes.length - 2];
     const dt = (last.atMs - prev.atMs) / 1000;
     if (dt > 0) {
@@ -147,7 +167,7 @@ const ease = (t: number) => t * (2 - t);
 export function displayedPosition(track: LiveTrack, nowMs: number): LivePosition {
   const last = track.fixes[track.fixes.length - 1];
   const sim = simulatedPosition(track, nowMs);
-  const stale = nowMs - last.atMs > STALE_MS;
+  const stale = nowMs - Math.max(last.atMs, signalAt(track)) > STALE_MS;
   const b = track.blend;
   if (b && nowMs - b.startMs < BLEND_MS) {
     const t = ease(Math.max(0, nowMs - b.startMs) / BLEND_MS);
@@ -163,16 +183,24 @@ export function newTrack(fix: LiveFix, route: LatLng[] | null | undefined): Live
 const sameFix = (a: LiveFix, b: LiveFix) => Math.abs(a.atMs - b.atMs) < 2_000 && a.lat === b.lat && a.lng === b.lng;
 
 /** A new position received at `nowMs`: the icon leaves from where it is shown now. */
-export function addFix(track: LiveTrack, fix: LiveFix, nowMs: number, route?: LatLng[] | null): LiveTrack {
+export function addFix(track: LiveTrack, fix: LiveFix, nowMs: number, route?: LatLng[] | null, signalAtMs?: number): LiveTrack {
   const last = track.fixes[track.fixes.length - 1];
   const nextRoute = route === undefined ? track.route : prepareRoute(route);
-  if (last && sameFix(last, fix)) return nextRoute === track.route ? track : { ...track, route: nextRoute };
-  if (last && fix.atMs <= last.atMs) return track; // older answer arriving late
+  const signal = Math.max(track.signalAtMs ?? 0, signalAtMs ?? 0);
+  // Imprecise: a sign of life only (the vehicle neither moves nor gets a speed from it).
+  if (last && isImpreciseFix(fix.accuracyM)) {
+    return { ...track, route: nextRoute, signalAtMs: Math.max(signal, last.atMs) };
+  }
+  if (last && sameFix(last, fix)) {
+    return nextRoute === track.route && signal <= signalAt(track) ? track : { ...track, route: nextRoute, signalAtMs: Math.max(signal, signalAt(track)) };
+  }
+  if (last && fix.atMs <= last.atMs) return signal > signalAt(track) ? { ...track, signalAtMs: signal } : track; // older answer arriving late
   const from = last ? displayedPosition(track, nowMs) : null;
   return {
     fixes: [...track.fixes.slice(-1), fix],
     route: nextRoute,
     blend: from ? { lat: from.lat, lng: from.lng, startMs: nowMs } : null,
+    signalAtMs: signal,
   };
 }
 
@@ -180,7 +208,8 @@ export function addFix(track: LiveTrack, fix: LiveFix, nowMs: number, route?: La
 
 export interface LiveEntry {
   id: string;
-  live: { lat: number; lng: number; age_s: number; speed_kmh: number | null } | null;
+  /** age_s: last sign of life; fix_age_s (phase 3C): the usable position; accuracy_m: its precision. */
+  live: { lat: number; lng: number; age_s: number; speed_kmh: number | null; fix_age_s?: number | null; accuracy_m?: number | null } | null;
   route: LatLng[] | null;
 }
 
@@ -195,16 +224,19 @@ export class LiveFleet {
       seen.add(e.id);
       const cur = this.tracks.get(e.id);
       if (!e.live) {
-        if (cur && receivedAtMs - cur.fixes[cur.fixes.length - 1].atMs > FORGET_MS) this.tracks.delete(e.id);
+        if (cur && receivedAtMs - signalAt(cur) > FORGET_MS) this.tracks.delete(e.id);
         continue;
       }
+      const signalAtMs = receivedAtMs - Math.max(0, e.live.age_s) * 1000;
+      const fixAge = typeof e.live.fix_age_s === 'number' ? Math.max(e.live.fix_age_s, e.live.age_s) : e.live.age_s;
       const fix: LiveFix = {
         lat: e.live.lat,
         lng: e.live.lng,
-        atMs: receivedAtMs - Math.max(0, e.live.age_s) * 1000,
+        atMs: receivedAtMs - Math.max(0, fixAge) * 1000,
         speedMps: e.live.speed_kmh == null ? null : e.live.speed_kmh / 3.6,
+        accuracyM: e.live.accuracy_m ?? null,
       };
-      this.tracks.set(e.id, cur ? addFix(cur, fix, receivedAtMs, e.route) : newTrack(fix, e.route));
+      this.tracks.set(e.id, cur ? addFix(cur, fix, receivedAtMs, e.route, signalAtMs) : { ...newTrack(fix, e.route), signalAtMs });
     }
     // "Pas disponible": gone from the answer, gone from the map.
     for (const id of [...this.tracks.keys()]) if (!seen.has(id)) this.tracks.delete(id);
@@ -213,7 +245,7 @@ export class LiveFleet {
   position(id: string, nowMs: number): LivePosition | null {
     const t = this.tracks.get(id);
     if (!t) return null;
-    if (nowMs - t.fixes[t.fixes.length - 1].atMs > FORGET_MS) return null;
+    if (nowMs - signalAt(t) > FORGET_MS) return null;
     return displayedPosition(t, nowMs);
   }
 

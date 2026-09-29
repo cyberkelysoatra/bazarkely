@@ -89,6 +89,11 @@ export async function initNativeApp(): Promise<void> {
 async function handleIncomingUrl(url: string): Promise<void> {
   const result = parseAuthCallbackUrl(url);
   if (!result) return;
+  if (result.kind === 'open') {
+    // Phase 3C: "Ouvrir l'appli pour la mettre à jour" from Chrome: the update page.
+    window.location.replace(result.path);
+    return;
+  }
   try {
     const { Browser } = await import('@capacitor/browser');
     await Browser.close();
@@ -166,7 +171,7 @@ export async function getNativeAppVersion(): Promise<string | null> {
 
 
 interface CapacitorBridge {
-  PluginHeaders?: { name: string }[];
+  PluginHeaders?: { name: string; methods?: { name: string }[] }[];
   nativePromise?: (plugin: string, method: string, options?: Record<string, unknown>) => Promise<any>;
 }
 
@@ -197,11 +202,16 @@ async function callNative<T>(method: string, options: Record<string, unknown> = 
 interface ListenerPlugin {
   addListener: (event: string, cb: (data: { value?: string }) => void) => Promise<{ remove: () => Promise<void> }>;
 }
-let listenerPlugin: Promise<ListenerPlugin> | null = null;
-/** Native events need the Capacitor runtime (loaded on demand, inside the app only). */
-function nativeListenerPlugin(): Promise<ListenerPlugin> {
+let listenerPlugin: Promise<{ plugin: ListenerPlugin }> | null = null;
+/**
+ * Native events need the Capacitor runtime (loaded on demand, inside the app only).
+ * The plugin proxy is WRAPPED in an object: a proxy returned from .then() is taken for a
+ * "thenable" (its "then" is a plugin method that does not exist), so the promise never
+ * settled and no native event ever reached the page (seen in phase 3C).
+ */
+function nativeListenerPlugin(): Promise<{ plugin: ListenerPlugin }> {
   if (!listenerPlugin) {
-    listenerPlugin = import('@capacitor/core').then(({ registerPlugin }) => registerPlugin<ListenerPlugin>('NavyNative'));
+    listenerPlugin = import('@capacitor/core').then(({ registerPlugin }) => ({ plugin: registerPlugin<ListenerPlugin>('NavyNative') }));
   }
   return listenerPlugin;
 }
@@ -264,13 +274,16 @@ export function requestNativePermission(action: NativePermissionAction): Promise
   return callNative(method[action], {}, 0); // no timeout: the driver answers at his pace
 }
 
-/** Native events: "trackingStopped", "availabilityOff", "fcmToken". Returns the unsubscribe. */
-export function onNativeEvent(event: 'trackingStopped' | 'availabilityOff' | 'fcmToken', cb: (value: string | undefined) => void): () => void {
+/** Native events: "trackingStopped", "availabilityOff", "fcmToken", "updateProgress" (3C). Returns the unsubscribe. */
+export function onNativeEvent(
+  event: 'trackingStopped' | 'availabilityOff' | 'fcmToken' | 'updateProgress',
+  cb: (value: string | undefined) => void
+): () => void {
   if (!hasNavyNative()) return () => undefined;
   let handle: { remove: () => Promise<void> } | null = null;
   let removed = false;
   void nativeListenerPlugin()
-    .then((p) => p.addListener(event, (d) => cb(d?.value)))
+    .then(({ plugin }) => plugin.addListener(event, (d) => cb(d?.value)))
     .then((h) => {
       handle = h;
       if (removed) void h.remove();
@@ -332,4 +345,78 @@ export async function forgetNativeAppBeforeSignOut(): Promise<void> {
     token ? withTimeout((supabase as any).rpc('push_fcm_forget', { p_token: token }), 3000, 'push-fcm-forget') : Promise.resolve(),
   ]);
   await callNative('deleteFcmToken', {}, 3000).catch(() => undefined);
+}
+
+// ------------------------------------------------------------------ phase 3C
+
+/** True inside app 1.2.0+ (the app downloads and checks its own update). */
+export function hasNativeUpdater(): boolean {
+  const cap = bridge();
+  return !!cap?.PluginHeaders?.find((h) => h.name === 'NavyNative')?.methods?.some((m) => m.name === 'downloadUpdate');
+}
+
+/** Installed app: version name and Android versionCode (App.getInfo().build), in every app version. */
+export async function getInstalledApp(): Promise<{ version: string | null; versionCode: number | null } | null> {
+  if (!isNativeApp()) return null;
+  try {
+    const { App } = await import('@capacitor/app');
+    const info = await App.getInfo();
+    const code = parseInt(String(info.build ?? ''), 10);
+    return { version: info.version || null, versionCode: Number.isFinite(code) && code > 0 ? code : null };
+  } catch {
+    return null;
+  }
+}
+
+export interface NativeUpdateResult {
+  ok: boolean;
+  reason?: string;
+  versionName?: string;
+  versionCode?: number;
+  signature?: 'same' | 'unknown';
+}
+
+/** Downloads the update into the app's private folder and checks it (no timeout: the size varies). */
+export function downloadNativeUpdate(url: string, sha256: string, size: number | null): Promise<NativeUpdateResult> {
+  return callNative<NativeUpdateResult>('downloadUpdate', { url, sha256, size: size ?? 0 }, 0);
+}
+
+export function cancelNativeUpdate(): Promise<void> {
+  return callNative<void>('cancelUpdate', {}, 3000);
+}
+
+export function nativeCanInstallUpdates(): Promise<{ versionName: string | null; versionCode: number; canInstall: boolean; sdk: number }> {
+  return callNative('getAppInfo', {}, 5000);
+}
+
+/** Android's page to let NAVY ay update itself (asked once). */
+export function openNativeInstallPermission(): Promise<{ opened: boolean; canInstall: boolean }> {
+  return callNative('openInstallPermission', {}, 5000);
+}
+
+/** Opens Android's own update screen for the checked file. */
+export function openNativeUpdateScreen(): Promise<{ opened: boolean; canInstall: boolean }> {
+  return callNative('installUpdate', {}, 5000);
+}
+
+export function clearNativeUpdate(): Promise<void> {
+  return callNative<void>('clearUpdate', {}, 3000);
+}
+
+export interface NativeReport {
+  samples: unknown[];
+  model: string | null;
+  android: string | null;
+  sdk: number | null;
+  appVersion: string | null;
+}
+
+/** Samples of the automatic report (never any coordinate). App 1.2.0+ only. */
+export function getNativeReport(): Promise<NativeReport> {
+  return callNative<NativeReport>('getReport', {}, 5000);
+}
+
+export function hasNativeReport(): boolean {
+  const cap = bridge();
+  return !!cap?.PluginHeaders?.find((h) => h.name === 'NavyNative')?.methods?.some((m) => m.name === 'getReport');
 }

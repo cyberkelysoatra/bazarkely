@@ -272,3 +272,19 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Constat :** sur un vrai téléphone posé en intérieur, 16 positions sur 196 avaient une précision de 100 à 1 253 m ; comparées sans marge, elles « bougeaient » de plus de 150 m et l'arrêt après immobilité ne se déclenchait jamais.
 - **Règle :** toute décision sur un déplacement retranche la précision (`accuracy_m`) de la distance (`navy_report_position`, `movesStillPoint`). À appliquer aussi à la vitesse calculée et au mouvement simulé.
 - **Mesure sans historique :** pour compter les envois d'un chauffeur, une tâche `pg_cron` temporaire toutes les 10 s qui note seulement l'heure de sa ligne (schéma privé non exposé), supprimée en fin d'essai.
+
+### P41 — Publier une nouvelle version de l'appli Android NAVY ay (procédure, 2026-09-29, NAVY 3C)
+- **Quand :** seulement quand la **coquille** change (code Java, extensions, icône, réglages Android). Une mise à jour du site ne demande aucune nouvelle version de l'appli.
+- **Commande (depuis `C:\bazarkely-2`, tag ANNOTÉ, numéro changé) :**
+  `git tag -a navy-android-v1.2.2 -m "Ce qui change, en une à trois lignes de français simple" && git push origin navy-android-v1.2.2`
+  Le message du tag devient `notes_fr` (« Ce qui change ») dans `version.json` et dans la Release. Tag léger (sans `-a`) = « Améliorations et corrections. ».
+- **Ce que fait GitHub (`navy-android.yml`) :** tests unitaires des règles natives, fabrication signée, Release `navy-android-vX.Y.Z` (fichier `navy-ay.apk`), puis commit automatique de `frontend/public/navy/app/version.json` : `version`, `apkUrl` (dernière version, gardé pour 1.0.0/1.1.0), `apkSizeBytes`, `publishedAt`, `version_code`, `sha256`, `size_bytes`, `apk_url` (fichier de CETTE version : la seule adresse acceptée par l'appli), `notes_fr`, `minimum_version`.
+- **Après :** `git pull` (commit du robot), puis contrôle : `curl -s https://1sakely.org/navy/app/version.json` (nouvelle version, sha256 à 64 caractères). Les applis 1.2.0+ affichent le bandeau au prochain lancement ou retour au premier plan (6 h au plus entre deux vérifications automatiques ; « Vérifier maintenant » sur la page Mise à jour).
+- **Mise à jour obligatoire :** changer à la main `minimum_version` dans `version.json` (le robot garde la valeur). Toute appli plus ancienne affiche alors un écran bloquant. Valeur au 2026-09-29 : `1.0.0` (personne n'est bloqué).
+- **Contrôles sur téléphone virtuel :** `git tag navy-android-update-N` (contrôles du téléchargeur : adresse, SHA-256, version, certificat) et `git tag navy-android-intent-N` (bouton « Ouvrir l'appli pour la mettre à jour » depuis Chrome, appli présente puis absente) ; résultats en annotations (P33).
+
+### P42 — Capacitor : ne jamais renvoyer le « proxy » d'une extension depuis une promesse (2026-09-29, NAVY 3C)
+- **Symptôme :** aucun évènement natif (`trackingStopped`, `availabilityOff`, `fcmToken`, `updateProgress`) n'atteint la page ; erreur `"NavyNative.then()" is not implemented on android`.
+- **Cause :** `import('@capacitor/core').then(({ registerPlugin }) => registerPlugin('X'))` renvoie un proxy dont toute propriété, y compris `then`, est une méthode d'extension : la promesse le prend pour une promesse et ne se résout jamais.
+- **Résolution :** l'envelopper dans un objet (`=> ({ plugin: registerPlugin('X') })`). Corrigé dans `nativeApp.ts`.
+

@@ -13,6 +13,7 @@ import { hasNavyNative, isNativeApp } from '../services/nativeApp';
 import { NAVY_APP_PAGE } from '../utils/nativeAppRules';
 import { useNavyProfile } from '../services/navyProfileStore';
 import { NAVY_SETUP_PATH } from './app/NavyAppBackground';
+import { useNavyAppUpdate } from '../services/navyAppUpdate';
 
 interface Props {
   displayName: string;
@@ -35,6 +36,9 @@ interface Entry {
 export default function NavyUserMenu({ displayName, isAdmin, updateAvailable, onClose, onLogout }: Props) {
   const navigate = useNavigate();
   const profile = useNavyProfile();
+  // Phase 3C: a new Android app also puts the dot on "Mise à jour" (inside the app only).
+  const appUpdate = useNavyAppUpdate();
+  const appUpdateAvailable = appUpdate.inApp && (appUpdate.status === 'available' || appUpdate.status === 'required');
   const approvedDriver = profile.partners.some((p) => p.kind === 'chauffeur' && p.status === 'approved');
   const go = (path: string) => () => {
     onClose();
@@ -48,7 +52,7 @@ export default function NavyUserMenu({ displayName, isAdmin, updateAvailable, on
   if (!isNativeApp()) {
     entries.push({ key: 'app', icon: Smartphone, label: 'Installer l’appli NAVY ay', onClick: go(NAVY_APP_PAGE) });
   }
-  entries.push({ key: 'version', icon: RefreshCw, label: 'Mise à jour', onClick: go('/app-version'), trailing: `v${APP_VERSION}`, dot: updateAvailable });
+  entries.push({ key: 'version', icon: RefreshCw, label: 'Mise à jour', onClick: go('/app-version'), trailing: `v${APP_VERSION}`, dot: updateAvailable || appUpdateAvailable });
   entries.push({ key: 'settings', icon: Settings, label: 'Paramètres', onClick: go('/settings') });
   if (isAdmin) entries.push({ key: 'admin', icon: Shield, label: 'Administration', onClick: go('/admin') });
   entries.push({ key: 'logout', icon: LogOut, label: 'Déconnexion', onClick: onLogout, danger: true });
@@ -85,7 +89,7 @@ export default function NavyUserMenu({ displayName, isAdmin, updateAvailable, on
                 <Icon className="w-[18px] h-[18px] flex-shrink-0 text-navyay-yellow" aria-hidden="true" />
                 <span className="flex-1">{e.label}</span>
                 {e.trailing && <span className="text-xs text-white/60 tabular-nums">{e.trailing}</span>}
-                {e.dot && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-label="Nouvelle version disponible" />}
+                {e.dot && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" role="img" aria-label="Nouvelle version disponible" />}
               </button>
             </li>
           );
