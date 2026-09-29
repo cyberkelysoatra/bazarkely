@@ -9,7 +9,7 @@
  * (NavyAppBackground), and from the NAVY menu ("Réglages de l'appli").
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BatteryCharging,
   Bell,
@@ -37,6 +37,7 @@ import { NAVY_APP_PAGE } from '../../utils/nativeAppRules';
 import {
   nextSetupStep,
   phoneBrand,
+  stepAfterUpdate,
   screenOffTestResult,
   SETUP_STEPS,
   SETUP_TEST_MS,
@@ -136,6 +137,7 @@ export default function NavyAppSetupPage() {
   const profile = useNavyProfile();
   const driver = useDriverState();
   const navigate = useNavigate();
+  const afterUpdate = new URLSearchParams(useLocation().search).has('apres-mise-a-jour');
   const native = hasNavyNative();
   const approved = profile.partners.some((p) => p.kind === 'chauffeur' && p.status === 'approved');
   const [perms, setPerms] = useState<NativePermissions | null>(null);
@@ -152,7 +154,7 @@ export default function NavyAppSetupPage() {
     try {
       const p = await getNativePermissions();
       setPerms(p);
-      setStep((cur) => cur ?? nextSetupStep(p, !!readTest()?.result?.ok) ?? 'test');
+      setStep((cur) => cur ?? (afterUpdate ? stepAfterUpdate(p) : null) ?? nextSetupStep(p, !!readTest()?.result?.ok) ?? 'test');
     } catch {
       /* next time */
     }
@@ -162,7 +164,7 @@ export default function NavyAppSetupPage() {
     } catch {
       /* next time */
     }
-  }, [native]);
+  }, [native, afterUpdate]);
 
   // Android settings pages come back here: read the permissions again each time.
   useEffect(() => {
@@ -413,6 +415,13 @@ export default function NavyAppSetupPage() {
   return (
     <NavyPage>
       <NavyPageTitle icon={Smartphone} title="Réglages de l’appli" subtitle="Pour recevoir les courses écran éteint" />
+      {afterUpdate && (
+        <NavyNotice tone={stepAfterUpdate(perms) ? 'warn' : 'ok'}>
+          {stepAfterUpdate(perms)
+            ? `NAVY ay vient d’être mise à jour. Android a remis à zéro le réglage « ${STEP_META[stepAfterUpdate(perms)!].title} » : réactivez-le ci-dessous, puis revenez ici.`
+            : 'Tout est de nouveau réglé après la mise à jour. Vous recevrez les courses écran éteint.'}
+        </NavyNotice>
+      )}
 
       <ol className="grid grid-cols-5 gap-1" aria-label="Étapes">
         {SETUP_STEPS.map((s, i) => {

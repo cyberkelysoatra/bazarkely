@@ -164,6 +164,15 @@ export function nextSetupStep(p: NativePermissions, testPassed: boolean): SetupS
   return SETUP_STEPS.find((s) => !stepDone(s, p, testPassed)) ?? null;
 }
 
+/**
+ * Phase 3C: just after an update of the app, the first Android setting to put back.
+ * An update is a new installation session for Android: outside the Play Store the
+ * installer may reset the full-screen alert (seen on Joël's phone, 1.1.0 → 1.2.0).
+ */
+export function stepAfterUpdate(p: NativePermissions): SetupStepId | null {
+  return SETUP_STEPS.filter((s) => s !== 'test').find((s) => !stepDone(s, p, false)) ?? null;
+}
+
 /** The guided screen opens by itself: never completed, or a permission was taken back since. */
 export function setupNeeded(p: NativePermissions, completed: boolean): boolean {
   if (!completed) return true;

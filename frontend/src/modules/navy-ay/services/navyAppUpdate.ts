@@ -78,6 +78,17 @@ const LAST_CHECK_KEY = 'navy-app-update-last-check';
 const DISMISSED_KEY = 'navy-app-update-dismissed-at';
 const TARGET_KEY = 'navy-app-update-target';
 const INFO_KEY = 'navy-app-update-info';
+/** Set for this opening of the app when it has just been updated (guided screen, 3C). */
+export const AFTER_UPDATE_KEY = 'navy-app-after-update';
+
+let afterUpdateResolve: (v: string | null) => void = () => undefined;
+const afterUpdatePromise = new Promise<string | null>((r) => {
+  afterUpdateResolve = r;
+});
+/** Resolves with the new version when the app has just been updated, else null. */
+export function afterUpdateKnown(): Promise<string | null> {
+  return isNativeApp() ? afterUpdatePromise : Promise.resolve(null);
+}
 
 function readNumber(key: string): number | null {
   try {
@@ -198,7 +209,15 @@ export function startNavyAppUpdates(): void {
     if (target && isUpdateDone(target, installed?.version)) {
       write(TARGET_KEY, null);
       set({ justUpdated: installed?.version ?? target });
+      try {
+        sessionStorage.setItem(AFTER_UPDATE_KEY, installed?.version ?? target);
+      } catch {
+        // the guided screen still opens by its own rule
+      }
       if (hasNativeUpdater()) void clearNativeUpdate().catch(() => undefined);
+      afterUpdateResolve(installed?.version ?? target);
+    } else {
+      afterUpdateResolve(null);
     }
     await checkNavyAppUpdate(false);
   })();

@@ -16,6 +16,7 @@ import {
   screenOffTestResult,
   sendIntervalMs,
   setupNeeded,
+  stepAfterUpdate,
   trackingMode,
   type NativePermissions,
 } from './backgroundRules';
@@ -161,5 +162,13 @@ describe('install banner', () => {
     expect(installBannerVisible({ isNative: false, approvedDriver: false, dismissedAt: null, now })).toBe(false);
     expect(installBannerVisible({ isNative: false, approvedDriver: true, dismissedAt: now - 6 * 86400_000, now })).toBe(false);
     expect(installBannerVisible({ isNative: false, approvedDriver: true, dismissedAt: now - 8 * 86400_000, now })).toBe(true);
+  });
+});
+
+describe('phase 3C: guided screen just after an update', () => {
+  it('goes straight to the setting Android reset (full-screen alert), never to the test', () => {
+    expect(stepAfterUpdate({ ...all, fullScreen: false })).toBe('fullscreen');
+    expect(stepAfterUpdate({ ...all, location: 'foreground', fullScreen: false })).toBe('location');
+    expect(stepAfterUpdate(all)).toBeNull();
   });
 });

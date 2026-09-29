@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.92.0';
+export const APP_VERSION = '3.92.1';
 export const APP_VERSION_NAME = "NAVY ay : l’appli Android se met à jour elle-même, sans jamais ressembler à une première installation.";
 export const LAST_UPDATED = '2026-09-29';
 export const APP_BUILD_DATE = '2026-09-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.92.1',
+    date: '2026-09-30',
+    description:
+      "NAVY ay : juste après une mise à jour de l’appli, l’écran guidé s’ouvre directement sur le réglage qu’Android a remis à zéro.",
+    changes: [
+      "Vu sur le téléphone de Joël : la mise à jour 1.1.0 → 1.2.0 a désactivé « L’alerte plein écran ». L’écran guidé s’ouvre maintenant sur ce réglage, avec une phrase qui explique pourquoi."
+    ]
+  },
   {
     version: '3.92.0',
     date: '2026-09-29',

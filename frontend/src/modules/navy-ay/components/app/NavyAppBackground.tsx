@@ -13,7 +13,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../../../stores/appStore';
 import { useNavyProfile } from '../../services/navyProfileStore';
 import { getNativePermissions, hasNavyNative, onNativeEvent, syncFcmToken } from '../../services/nativeApp';
-import { setupNeeded } from '../../utils/backgroundRules';
+import { setupNeeded, stepAfterUpdate } from '../../utils/backgroundRules';
+import { afterUpdateKnown } from '../../services/navyAppUpdate';
 
 export const NAVY_SETUP_PATH = '/navy/reglages-appli';
 const doneKey = (userId: string) => `navy-app-setup-done:${userId}`;
@@ -62,8 +63,16 @@ export default function NavyAppBackground() {
       const path = pathRef.current;
       if (path.startsWith(NAVY_SETUP_PATH) || path.startsWith('/navy/offres') || path.startsWith('/navy/courses')) return;
       try {
+        // Phase 3C: just after an update, straight to the setting Android may have reset
+        // (full-screen alert), with an explanation, once.
+        const updatedTo = await afterUpdateKnown();
         const perms = await getNativePermissions();
         if (stop) return;
+        if (updatedTo && stepAfterUpdate(perms) && sessionStorage.getItem(OPENED_KEY) !== 'after-update') {
+          sessionStorage.setItem(OPENED_KEY, 'after-update');
+          navigate(`${NAVY_SETUP_PATH}?apres-mise-a-jour=1`);
+          return;
+        }
         const completed = isSetupCompleted(userId);
         if (!setupNeeded(perms, completed)) return;
         // At most once per opening of the app (never a loop if the driver declines a step).
