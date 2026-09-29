@@ -253,3 +253,22 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Symptôme :** un fichier de `frontend/public/` (dossier ignoré) manque dans le commit.
 - **Cause :** le premier `git add` qui cite un chemin ignoré sort en erreur, donc le `&& git add -f` suivant ne s'exécute pas.
 - **Résolution :** `git add -f` sur une ligne séparée, puis `git show --stat HEAD | grep <fichier>` avant de pousser. Aussi : `keytool` répond en français sur ce PC, ajouter `-J-Duser.language=en` pour lire sa sortie par script.
+
+### P37 — Capacitor : une extension native n'est PAS dans `Capacitor.Plugins` (2026-09-29, NAVY 3B)
+- **Symptôme :** `Capacitor.Plugins.NavyNative` indéfini dans l'appli, `isPluginAvailable('NavyNative')` faux avant le chargement de `@capacitor/core`.
+- **Cause :** l'appli n'injecte que `Capacitor.PluginHeaders` (liste des extensions) et `Capacitor.nativePromise` ; `Capacitor.Plugins` ne contient que les extensions que la page a enregistrées (`registerPlugin`).
+- **Résolution :** détecter par `PluginHeaders.some(h => h.name === 'X')`, appeler par `Capacitor.nativePromise('X', 'methode', {})` ; pour les écouteurs, `registerPlugin('X')` de `@capacitor/core` chargé à la demande. Banc local : simuler aussi `window.androidBridge`, sinon `@capacitor/core` croit être sur le web.
+
+### P38 — Expression régulière PostgreSQL : répétition plafonnée à 255 (2026-09-28)
+- **Symptôme :** `invalid regular expression: invalid repetition count(s)` sur `'^[A-Za-z0-9]{20,4096}$'`.
+- **Résolution :** contrôler la longueur à part (`length(x) between 20 and 4096`) et garder `+` dans l'expression.
+
+### P39 — Remplacement par script dans un YAML : `'\n'` devient un vrai retour à la ligne (2026-09-28)
+- **Symptôme :** GitHub affiche des exécutions « failure » nommées d'après le chemin du fichier (`.github/workflows/x.yml`) sur un simple push, sans aucune étape : fichier YAML invalide.
+- **Cause :** une chaîne Python contenant `tr '\n' ' '` écrite telle quelle a produit un vrai saut de ligne dans le bloc `run:`.
+- **Résolution :** éviter les séquences d'échappement dans les scripts qui écrivent du YAML (ici `paste -sd ' '`) ; après modification, repérer les lignes de premier niveau inattendues avant de pousser un tag.
+
+### P40 — Position GPS imprécise en intérieur : ne pas la prendre pour un déplacement (2026-09-29, NAVY 3B)
+- **Constat :** sur un vrai téléphone posé en intérieur, 16 positions sur 196 avaient une précision de 100 à 1 253 m ; comparées sans marge, elles « bougeaient » de plus de 150 m et l'arrêt après immobilité ne se déclenchait jamais.
+- **Règle :** toute décision sur un déplacement retranche la précision (`accuracy_m`) de la distance (`navy_report_position`, `movesStillPoint`). À appliquer aussi à la vitesse calculée et au mouvement simulé.
+- **Mesure sans historique :** pour compter les envois d'un chauffeur, une tâche `pg_cron` temporaire toutes les 10 s qui note seulement l'heure de sa ligne (schéma privé non exposé), supprimée en fin d'essai.
