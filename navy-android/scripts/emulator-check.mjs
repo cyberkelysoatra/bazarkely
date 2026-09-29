@@ -297,82 +297,86 @@ async function updateChecks() {
 }
 
 // ---- Phase 3C: "Ouvrir l'appli pour la mettre à jour" from Chrome (intent link) --------
-async function chromePage(pathPart) {
-  const sockets = adb('shell cat /proc/net/unix');
-  const sock = sockets.split('\n').map((l) => l.trim().split(/\s+/).pop()).find((x) => x && x.includes('chrome_devtools_remote'));
-  if (!sock) throw new Error('no Chrome devtools socket');
-  port += 1;
-  adb(`forward tcp:${port} localabstract:${sock.replace(/^@/, '')}`);
-  for (let i = 0; i < 20; i++) {
-    try {
-      const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const t = list.find((x) => x.type === 'page' && x.url.includes(pathPart));
-      if (t) return t.webSocketDebuggerUrl;
-    } catch {
-      // not ready
+// Chrome of the emulator image exposes no DevTools socket: the screen is read and touched
+// through Android's accessibility tree (uiautomator), like a person would.
+function uiNodes() {
+  try {
+    adb('shell uiautomator dump /sdcard/navy-ui.xml');
+    const xml = adb('shell cat /sdcard/navy-ui.xml');
+    const out = [];
+    const re = /<node [^>]*?text="([^"]*)"[^>]*?content-desc="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/g;
+    let m;
+    while ((m = re.exec(xml))) {
+      out.push({ text: (m[1] + ' ' + m[2]).replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim(), x: Math.round((+m[3] + +m[5]) / 2), y: Math.round((+m[4] + +m[6]) / 2) });
     }
-    await sleep(1000);
+    return out;
+  } catch (e) {
+    return [];
   }
-  throw new Error('no Chrome page ' + pathPart);
 }
-
-async function chromeEval(expression, pathPart = '/navy/app', gesture = false) {
-  const url = await chromePage(pathPart);
-  const ws = new WebSocket(url);
-  await new Promise((res, rej) => {
-    ws.onopen = res;
-    ws.onerror = rej;
-  });
-  const reply = new Promise((res, rej) => {
-    const t = setTimeout(() => rej(new Error('chrome evaluate timeout')), 20000);
-    ws.onmessage = (m) => {
-      const msg = JSON.parse(m.data);
-      if (msg.id === 1) {
-        clearTimeout(t);
-        res(msg);
-      }
-    };
-  });
-  ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, awaitPromise: true, returnByValue: true, userGesture: gesture } }));
-  const msg = await reply;
-  ws.close();
-  return msg.result?.result?.value;
+const norm = (s) => s.replace(/[’']/g, "'");
+function findNode(nodes, re) {
+  return nodes.find((n) => re.test(norm(n.text)));
 }
-
+async function tapText(re, tries = 10) {
+  for (let i = 0; i < tries; i++) {
+    const n = findNode(uiNodes(), re);
+    if (n) {
+      adb(`shell input tap ${n.x} ${n.y}`);
+      return n.text;
+    }
+    await sleep(1500);
+  }
+  return null;
+}
+async function chromeReady(expectRe) {
+  // Chrome first-run screens (no account, no sync, no notifications).
+  const skip = /^(Use without an account|Accept & continue|No thanks|No, thanks|Not now|Got it|Skip|Continue|Utiliser sans compte|Accepter et continuer|Non merci)$/i;
+  const seen = [];
+  for (let i = 0; i < 25; i++) {
+    const nodes = uiNodes();
+    if (findNode(nodes, expectRe)) return { ok: true, seen };
+    const b = nodes.find((n) => skip.test(n.text));
+    if (b) {
+      seen.push(b.text);
+      adb(`shell input tap ${b.x} ${b.y}`);
+    }
+    await sleep(2500);
+  }
+  return { ok: false, seen, last: uiNodes().map((n) => n.text).filter(Boolean).slice(0, 30) };
+}
 function openInChrome(url) {
   adb(`shell am start -a android.intent.action.VIEW -d "${url}" -n com.android.chrome/com.google.android.apps.chrome.Main`);
 }
 
 async function intentChecks() {
-  adb('shell am set-debug-app --persistent com.android.chrome');
-  adb(`shell "echo '_ --disable-fre --no-default-browser-check --no-first-run --disable-features=SigninPromo' > /data/local/tmp/chrome-command-line"`);
-  adb('shell am force-stop com.android.chrome');
   const PAGE = 'https://1sakely.org/navy/app';
-
-  // App present.
+  // App present (debug build of this commit).
   openInChrome(PAGE);
-  await sleep(8000);
-  const layout = await chromeEval(`(() => {
-    const t = document.body.innerText;
-    const a = document.querySelector('a[href^="intent:"]');
-    return { have: t.indexOf('Vous avez déjà NAVY ay'), first: t.indexOf('Première installation'), button: a ? a.textContent : null, href: a ? a.getAttribute('href') : null };
-  })()`).catch((e) => String(e));
-  record('3C Chrome: "Vous avez déjà NAVY ay ?" before "Première installation"', !!(layout && layout.have >= 0 && layout.first > layout.have && /Ouvrir l.appli pour la mettre à jour/.test(layout.button || '')), layout);
-  await chromeEval(`(document.querySelector('a[href^="intent:"]').click(), true)`, '/navy/app', true).catch(() => undefined);
-  await sleep(6000);
+  const ready = await chromeReady(/Vous avez déjà NAVY ay/);
+  const nodes = uiNodes().map((n) => norm(n.text));
+  const iHave = nodes.findIndex((t) => /Vous avez déjà NAVY ay/.test(t));
+  const iFirst = nodes.findIndex((t) => /Première installation/.test(t));
+  record('3C Chrome: "Vous avez déjà NAVY ay ?" before "Première installation"', ready.ok && iHave >= 0 && (iFirst === -1 || iFirst > iHave), { ready, iHave, iFirst });
+  const tapped = await tapText(/Ouvrir l'appli pour la mettre à jour/);
+  await sleep(4000);
+  // Chrome may ask to confirm leaving for an app.
+  let confirm = null;
+  if (!resumedActivity().includes(APP)) confirm = await tapText(/^(Continue|Open|Ouvrir|Continuer|NAVY ay)$/i, 2);
+  await sleep(5000);
   const resumed = resumedActivity();
   const inApp = await waitFor('location.pathname', (v) => v === '/navy/app', 15).catch((e) => String(e));
-  record('3C Chrome, app present: the app opens on its update page', resumed.includes(`${APP}/.MainActivity`) && inApp === '/navy/app', { resumed, inApp });
+  record('3C Chrome, app present: the app opens on its update page', resumed.includes(`${APP}/.MainActivity`) && inApp === '/navy/app', { tapped, confirm, resumed, inApp });
 
   // App absent.
   adb(`uninstall ${APP}`);
   adb('shell am force-stop com.android.chrome');
   openInChrome(PAGE);
-  await sleep(8000);
-  await chromeEval(`(document.querySelector('a[href^="intent:"]').click(), true)`, '/navy/app', true).catch(() => undefined);
+  await chromeReady(/Vous avez déjà NAVY ay/);
+  const tapped2 = await tapText(/Ouvrir l'appli pour la mettre à jour/);
   await sleep(6000);
-  const back = await chromeEval(`({ href: location.href, text: document.body.innerText.slice(0, 900) })`, '/navy/app').catch((e) => String(e));
-  record('3C Chrome, app absent: back on the page with "L’appli n’est pas sur ce téléphone"', !!(back && /appli=absente/.test(back.href) && /L.appli n.est pas sur ce téléphone/.test(back.text)), back && { href: back.href });
+  const back = await chromeReady(/L'appli n'est pas sur ce téléphone/);
+  record("3C Chrome, app absent: back on the page with \"L'appli n'est pas sur ce téléphone\"", back.ok, { tapped2, back, resumed: resumedActivity() });
 }
 
 try {
