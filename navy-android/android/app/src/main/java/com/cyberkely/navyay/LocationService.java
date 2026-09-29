@@ -79,6 +79,7 @@ public class LocationService extends Service {
             long wanted = batteryLow() ? INTERVAL_LOW_BATTERY_MS : INTERVAL_MS;
             if (wanted != intervalMs) requestUpdates(wanted);
             maybeSend(true);
+            NavyStatus.sampleIfDue(LocationService.this, false);
             handler.postDelayed(this, 5_000);
         }
     };
@@ -168,6 +169,7 @@ public class LocationService extends Service {
         requestUpdates(batteryLow() ? INTERVAL_LOW_BATTERY_MS : INTERVAL_MS);
         handler.removeCallbacks(tick);
         handler.postDelayed(tick, 5_000);
+        NavyStatus.sampleIfDue(this, false);
         return START_STICKY;
     }
 
@@ -239,12 +241,15 @@ public class LocationService extends Service {
     private void send(String partnerId, Location l) {
         if (partnerId == null) return;
         try {
+            // Phase 3C: a fix less precise than 100 m never gives a speed (server: only the
+            // time of the signal; same rule as liveMotion.ts isImpreciseFix).
+            boolean precise = !l.hasAccuracy() || l.getAccuracy() <= 100f;
             JSONObject args = new JSONObject()
                 .put("p_partner_id", partnerId)
                 .put("p_lat", Math.round(l.getLatitude() * 1e6) / 1e6)
                 .put("p_lng", Math.round(l.getLongitude() * 1e6) / 1e6)
-                .put("p_heading", l.hasBearing() ? l.getBearing() : JSONObject.NULL)
-                .put("p_speed_mps", l.hasSpeed() ? l.getSpeed() : JSONObject.NULL)
+                .put("p_heading", precise && l.hasBearing() ? l.getBearing() : JSONObject.NULL)
+                .put("p_speed_mps", precise && l.hasSpeed() ? l.getSpeed() : JSONObject.NULL)
                 .put("p_accuracy_m", l.hasAccuracy() ? Math.round(l.getAccuracy()) : JSONObject.NULL);
             NavySession.Http.Result r = NavySession.rpc(this, "navy_report_position", args);
             if (r.code >= 200 && r.code < 300) {
@@ -318,6 +323,7 @@ public class LocationService extends Service {
 
     @Override
     public void onDestroy() {
+        NavyStatus.sampleIfDue(this, true); // closes the period of the report
         stopping = true;
         handler.removeCallbacks(tick);
         try {

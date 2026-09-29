@@ -2,7 +2,11 @@
 # Triggers: a tag navy-android-check-* (git tag navy-android-check-N && git push origin
 # navy-android-check-N) or a manual run.
 # Phase 3B: navy-android-build-N = compile only (Java errors as annotations);
-# navy-android-oldwv-N = Android 11 image (WebView 83): the "update WebView" page. Never pull_request. Uses NO secret: debug build (WebView debugging on) for the
+# navy-android-oldwv-N = Android 11 image (WebView 83): the "update WebView" page.
+# Phase 3C: navy-android-update-N = checks of the app's own updater (debug build with the
+# versionCode of 1.1.0, then real Release files: address, SHA-256, version, certificate);
+# navy-android-intent-N = "Ouvrir l'appli pour la mettre à jour" from Chrome, app present
+# then absent (needs the site in production). Unit tests of the native rules run first. Never pull_request. Uses NO secret: debug build (WebView debugging on) for the
 # scripted checks, then the published signed APK (stable Releases address) for the
 # install-and-start check. Script: navy-android/scripts/emulator-check.mjs.
 
@@ -14,6 +18,8 @@ on:
       - 'navy-android-check-*'
       - 'navy-android-build-*'
       - 'navy-android-oldwv-*'
+      - 'navy-android-update-*'
+      - 'navy-android-intent-*'
   workflow_dispatch:
     inputs:
       api-level:
@@ -59,8 +65,10 @@ jobs:
           npx cap sync android
           cd android
           chmod +x gradlew
+          CODE=1
+          case "$GITHUB_REF_NAME" in navy-android-update-*) CODE=10100 ;; esac
           set +e
-          ./gradlew assembleDebug --no-daemon -PnavyVersionName=0.0.0-check -PnavyVersionCode=1 > ../build.log 2>&1
+          ./gradlew testDebugUnitTest assembleDebug --no-daemon -PnavyVersionName=0.0.0-check -PnavyVersionCode=$CODE > ../build.log 2>&1
           STATUS=$?
           set -e
           tail -40 ../build.log
@@ -69,7 +77,7 @@ jobs:
             echo "::error title=Android build failed::$MSG"
             exit $STATUS
           fi
-          echo "::notice title=Android build::debug APK built"
+          echo "::notice title=Android build::debug APK built, unit tests passed (versionCode $CODE)"
 
       - name: Compile only
         if: startsWith(github.ref_name, 'navy-android-build-')
@@ -79,8 +87,36 @@ jobs:
         if: ${{ !startsWith(github.ref_name, 'navy-android-build-') }}
         run: curl -sSfL -o navy-ay-release.apk https://github.com/${{ github.repository }}/releases/latest/download/navy-ay.apk || echo "No published APK yet"
 
+      - name: Update checks (phase 3C)
+        if: startsWith(github.ref_name, 'navy-android-update-')
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          NAVY_NEWER_TAG: navy-android-v1.2.0
+        with:
+          api-level: 34
+          target: google_apis_playstore
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r navy-android/android/app/build/outputs/apk/debug/app-debug.apk
+            node navy-android/scripts/emulator-check.mjs update; echo "UPDATE_EXIT=$?" >> "$GITHUB_ENV"
+
+      - name: Intent checks (phase 3C)
+        if: startsWith(github.ref_name, 'navy-android-intent-')
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis_playstore
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r navy-android/android/app/build/outputs/apk/debug/app-debug.apk
+            node navy-android/scripts/emulator-check.mjs intent; echo "INTENT_EXIT=$?" >> "$GITHUB_ENV"
+
       - name: Emulator checks
-        if: ${{ !startsWith(github.ref_name, 'navy-android-build-') && !startsWith(github.ref_name, 'navy-android-oldwv-') }}
+        if: ${{ !startsWith(github.ref_name, 'navy-android-build-') && !startsWith(github.ref_name, 'navy-android-oldwv-') && !startsWith(github.ref_name, 'navy-android-update-') && !startsWith(github.ref_name, 'navy-android-intent-') }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ github.event.inputs.api-level || '34' }}
@@ -111,7 +147,9 @@ jobs:
       - name: Result
         if: ${{ !startsWith(github.ref_name, 'navy-android-build-') }}
         run: |
-          echo "::notice title=NAVY check exits::debug=${DEBUG_EXIT:-skipped} native=${NATIVE_EXIT:-skipped} release=${RELEASE_EXIT:-skipped} oldwebview=${OLDWV_EXIT:-skipped}"
+          echo "::notice title=NAVY check exits::debug=${DEBUG_EXIT:-skipped} native=${NATIVE_EXIT:-skipped} release=${RELEASE_EXIT:-skipped} oldwebview=${OLDWV_EXIT:-skipped} update=${UPDATE_EXIT:-skipped} intent=${INTENT_EXIT:-skipped}"
           if [ -n "${OLDWV_EXIT:-}" ]; then test "$OLDWV_EXIT" = "0"; exit $?; fi
+          if [ -n "${UPDATE_EXIT:-}" ]; then test "$UPDATE_EXIT" = "0"; exit $?; fi
+          if [ -n "${INTENT_EXIT:-}" ]; then test "$INTENT_EXIT" = "0"; exit $?; fi
           test "${DEBUG_EXIT:-1}" = "0" && test "${NATIVE_EXIT:-1}" = "0"
           test "${RELEASE_EXIT:-0}" = "0"

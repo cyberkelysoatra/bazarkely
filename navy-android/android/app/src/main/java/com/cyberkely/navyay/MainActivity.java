@@ -20,6 +20,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NavyNativePlugin.class);
         super.onCreate(savedInstanceState);
         NavyNotifications.ensureChannels(this);
+        // Phase 3C: a leftover update file (update done, or given up) never stays around.
+        if (!NavyUpdater.isReady()) NavyUpdater.deleteFile(this);
         openLinkedPage(getIntent());
     }
 

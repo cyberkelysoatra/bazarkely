@@ -59,6 +59,15 @@
             android:name=".OfferActionReceiver"
             android:exported="false" />
 
+        <!-- Phase 3C: the app was updated (deletes the downloaded file, "NAVY ay est à jour"). -->
+        <receiver
+            android:name=".PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="navy_general" />
@@ -89,4 +98,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Phase 3C: the app updates itself (outside the Play Store only; to remove from a
+         future Play Store version, which is updated by the Store). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

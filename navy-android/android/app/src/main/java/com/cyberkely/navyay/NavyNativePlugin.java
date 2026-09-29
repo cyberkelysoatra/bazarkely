@@ -176,6 +176,85 @@ public class NavyNativePlugin extends Plugin {
         FirebaseMessaging.getInstance().deleteToken().addOnCompleteListener(task -> call.resolve());
     }
 
+    // ------------------------------------------------------------------ phase 3C: update from the app
+
+    /** Installed version (name + Android versionCode) and whether Android lets NAVY ay update itself. */
+    @PluginMethod
+    public void getAppInfo(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("versionName", appVersion(getContext()));
+        r.put("versionCode", NavyUpdater.installedVersionCode(getContext()));
+        r.put("canInstall", NavyUpdater.canInstall(getContext()));
+        r.put("sdk", Build.VERSION.SDK_INT);
+        call.resolve(r);
+    }
+
+    /**
+     * Downloads the new version into the app's private folder and checks it (address,
+     * SHA-256, package, versionCode, certificate). Progress: event "updateProgress"
+     * ({ value: "received/total" }). Resolves with { ok, reason?, versionName?, versionCode? }.
+     */
+    @PluginMethod
+    public void downloadUpdate(PluginCall call) {
+        final String url = call.getString("url");
+        final String sha = call.getString("sha256");
+        final Long sizeArg = call.getLong("size", 0L);
+        final long size = sizeArg == null ? 0L : sizeArg;
+        final Context c = getContext();
+        new Thread(() -> {
+            JSONObject res = NavyUpdater.download(c, url, sha, size, (received, total) -> emit("updateProgress", received + "/" + total));
+            try {
+                call.resolve(JSObject.fromJSONObject(res));
+            } catch (Exception e) {
+                call.reject("update");
+            }
+        }, "navy-update").start();
+    }
+
+    @PluginMethod
+    public void cancelUpdate(PluginCall call) {
+        NavyUpdater.cancel();
+        call.resolve();
+    }
+
+    /** The Android page "Installer des applis inconnues" for NAVY ay (asked once). */
+    @PluginMethod
+    public void openInstallPermission(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("opened", Build.VERSION.SDK_INT >= 26 && tryStart(NavyUpdater.permissionIntent(getContext())));
+        r.put("canInstall", NavyUpdater.canInstall(getContext()));
+        call.resolve(r);
+    }
+
+    /** Opens Android's own update screen for the checked file. */
+    @PluginMethod
+    public void installUpdate(PluginCall call) {
+        JSObject r = new JSObject();
+        boolean can = NavyUpdater.canInstall(getContext());
+        r.put("canInstall", can);
+        r.put("opened", can && NavyUpdater.openInstaller(getActivity() != null ? getActivity() : getContext()));
+        call.resolve(r);
+    }
+
+    /** Deletes a leftover update file (after the update, or when the driver gives up). */
+    @PluginMethod
+    public void clearUpdate(PluginCall call) {
+        NavyUpdater.deleteFile(getContext());
+        call.resolve();
+    }
+
+    /** Samples of the automatic report (no coordinates) + phone model, for "Envoyer mon rapport". */
+    @PluginMethod
+    public void getReport(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("samples", NavyStatus.reportSamples(getContext()));
+        r.put("model", ((Build.MANUFACTURER == null ? "" : Build.MANUFACTURER) + " " + (Build.MODEL == null ? "" : Build.MODEL)).trim());
+        r.put("android", Build.VERSION.RELEASE);
+        r.put("sdk", Build.VERSION.SDK_INT);
+        r.put("appVersion", appVersion(getContext()));
+        call.resolve(r);
+    }
+
     // ------------------------------------------------------------------ permissions (guided screen)
 
     private boolean hasForegroundLocation() {

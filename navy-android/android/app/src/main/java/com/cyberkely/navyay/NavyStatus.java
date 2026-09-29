@@ -35,6 +35,10 @@ final class NavyStatus {
     static final String K_LOG = "log";
     static final String K_LAST_LAT = "last_lat";
     static final String K_LAST_LNG = "last_lng";
+    /** Phase 3C: automatic report (battery, screen, positions), never any coordinates. */
+    static final String K_REPORT = "report_samples";
+    static final long REPORT_EVERY_MS = 5 * 60_000L;
+    static final long REPORT_KEEP_MS = 48 * 60 * 60_000L;
 
     private NavyStatus() {}
 
@@ -96,6 +100,56 @@ final class NavyStatus {
         }
         e.apply();
         if (ok) appendTime(c, K_SENDS, now);
+    }
+
+    /**
+     * Phase 3C: one sample every 5 minutes while the position is shared: time, battery %,
+     * charging, screen on, battery saver, NAVY ay exempt from battery optimisation,
+     * cumulative positions accepted / failed, interval. Kept 48 h on the phone, never a
+     * coordinate. Read by the page for "Envoyer mon rapport".
+     */
+    static synchronized void sampleIfDue(Context c, boolean force) {
+        long now = System.currentTimeMillis();
+        JSONArray cur = reportSamples(c);
+        if (!force && cur.length() > 0) {
+            long last = cur.optJSONObject(cur.length() - 1) != null ? cur.optJSONObject(cur.length() - 1).optLong("t", 0) : 0;
+            if (now - last < REPORT_EVERY_MS - 5_000) return;
+        }
+        try {
+            android.content.Intent b = c.registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            int level = b != null ? b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) : -1;
+            int scale = b != null ? b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100) : 100;
+            int status = b != null ? b.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) : -1;
+            android.os.PowerManager pm = (android.os.PowerManager) c.getSystemService(Context.POWER_SERVICE);
+            JSONObject o = new JSONObject();
+            o.put("t", now);
+            o.put("bat", level >= 0 && scale > 0 ? Math.round(level * 1000f / scale) / 10.0 : JSONObject.NULL);
+            o.put("chg", status == android.os.BatteryManager.BATTERY_STATUS_CHARGING || status == android.os.BatteryManager.BATTERY_STATUS_FULL);
+            o.put("scr", pm != null && pm.isInteractive());
+            o.put("save", pm != null && pm.isPowerSaveMode());
+            o.put("exempt", pm != null && pm.isIgnoringBatteryOptimizations(c.getPackageName()));
+            o.put("ok", p(c).getInt(K_SENT_OK, 0));
+            o.put("fail", p(c).getInt(K_SENT_FAIL, 0));
+            o.put("iv", p(c).getLong(K_INTERVAL, 0));
+            o.put("run", p(c).getBoolean(K_TRACKING, false));
+            JSONArray next = new JSONArray();
+            for (int i = 0; i < cur.length(); i++) {
+                JSONObject s = cur.optJSONObject(i);
+                if (s != null && now - s.optLong("t", 0) <= REPORT_KEEP_MS) next.put(s);
+            }
+            next.put(o);
+            p(c).edit().putString(K_REPORT, next.toString()).apply();
+        } catch (Exception ignored) {
+            // next time
+        }
+    }
+
+    static JSONArray reportSamples(Context c) {
+        try {
+            return new JSONArray(p(c).getString(K_REPORT, "[]"));
+        } catch (Exception e) {
+            return new JSONArray();
+        }
     }
 
     static JSONObject snapshot(Context c) {

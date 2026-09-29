@@ -3,7 +3,7 @@
 // Talks to the app WebView through the Chrome DevTools protocol forwarded by adb
 // (debug build: WebView debugging is on). Prints one JSON line per check, exits 1 on failure.
 //
-// Usage: node scripts/emulator-check.mjs <debug|native|oldwebview|release>
+// Usage: node scripts/emulator-check.mjs <debug|native|oldwebview|release|update|intent>
 import { execSync } from 'node:child_process';
 
 const APP = 'com.cyberkely.navyay';
@@ -224,8 +224,161 @@ async function releaseChecks() {
   record('release version', true, { version, code, minSdk });
 }
 
+// ---- Phase 3C: update checks of the native updater (debug build, versionCode 10100) ----
+const RELEASES = 'https://github.com/cyberkelysoatra/bazarkely/releases/download';
+async function sha256Of(url) {
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  const { createHash } = await import('node:crypto');
+  return { sha: createHash('sha256').update(buf).digest('hex'), size: buf.length };
+}
+
+function updateFileExists() {
+  try {
+    return adb(`shell run-as ${APP} ls files/updates`).includes('navy-ay-update.apk');
+  } catch {
+    return false;
+  }
+}
+
+async function download(url, sha, size = 0) {
+  return evaluate(`Capacitor.nativePromise('NavyNative', 'downloadUpdate', ${JSON.stringify({ url, sha256: sha, size })})`, 120000).catch((e) => ({ error: String(e) }));
+}
+
+async function updateChecks() {
+  launch();
+  const ready = await waitFor(
+    `!!(window.Capacitor && (Capacitor.PluginHeaders || []).some((h) => h.name === 'NavyNative' && (h.methods || []).some((m) => m.name === 'downloadUpdate')))`,
+    (v) => v === true,
+    30
+  );
+  record('3C updater methods present (downloadUpdate)', ready === true, ready);
+  const info = await evaluate(`Capacitor.nativePromise('NavyNative', 'getAppInfo', {})`).catch((e) => String(e));
+  record('3C installed versionCode read by the app', !!(info && info.versionCode === 10100), info);
+
+  const zero = '0'.repeat(64);
+  const foreign = await download('https://example.com/navy-ay.apk', zero);
+  record('3C address outside the Releases refused', foreign && foreign.ok === false && foreign.reason === 'url', foreign);
+  const latest = await download('https://github.com/cyberkelysoatra/bazarkely/releases/latest/download/navy-ay.apk', zero);
+  record('3C unversioned address refused', latest && latest.ok === false && latest.reason === 'url', latest);
+
+  const u110 = `${RELEASES}/navy-android-v1.1.0/navy-ay.apk`;
+  const h110 = await sha256Of(u110);
+  const bad = await download(u110, zero, h110 ? h110.size : 0);
+  record('3C wrong SHA-256 refused and file deleted', bad && bad.ok === false && bad.reason === 'sha256' && !updateFileExists(), { bad, fileLeft: updateFileExists() });
+  if (h110) {
+    const same = await download(u110, h110.sha, h110.size);
+    record('3C version not higher (1.1.0 = 10100) refused and file deleted', same && same.ok === false && same.reason === 'version' && !updateFileExists(), { same, fileLeft: updateFileExists() });
+  }
+  const newer = process.env.NAVY_NEWER_TAG;
+  if (newer) {
+    const url = `${RELEASES}/${newer}/navy-ay.apk`;
+    const h = await sha256Of(url);
+    if (h) {
+      const r = await download(url, h.sha, h.size);
+      // The debug build is signed with the debug key: a release file must be refused
+      // ("signature"), or, when Android cannot tell, accepted then refused by Android itself.
+      record('3C other certificate: refused by the app (or left to Android)', r && ((r.ok === false && r.reason === 'signature') || (r.ok === true && r.signature === 'unknown')), { r, fileLeft: updateFileExists() });
+      if (r && r.ok) {
+        const perm = await evaluate(`Capacitor.nativePromise('NavyNative', 'installUpdate', {})`).catch((e) => String(e));
+        record('3C first time: Android permission needed before the update screen', !!(perm && perm.canInstall === false && perm.opened === false), perm);
+        const open = await evaluate(`Capacitor.nativePromise('NavyNative', 'openInstallPermission', {})`).catch((e) => String(e));
+        await sleep(3000);
+        record('3C permission page of Android opened', !!(open && open.opened), { open, resumed: resumedActivity() });
+      }
+      await evaluate(`Capacitor.nativePromise('NavyNative', 'clearUpdate', {})`).catch(() => undefined);
+    } else {
+      record('3C newer release reachable', false, url);
+    }
+  }
+  const rep = await evaluate(`Capacitor.nativePromise('NavyNative', 'getReport', {})`).catch((e) => String(e));
+  record('3C report readable, no coordinates', !!(rep && Array.isArray(rep.samples) && !/lat|lng/.test(JSON.stringify(rep.samples))), rep && { samples: rep.samples.length, model: rep.model, android: rep.android });
+}
+
+// ---- Phase 3C: "Ouvrir l'appli pour la mettre à jour" from Chrome (intent link) --------
+async function chromePage(pathPart) {
+  const sockets = adb('shell cat /proc/net/unix');
+  const sock = sockets.split('\n').map((l) => l.trim().split(/\s+/).pop()).find((x) => x && x.includes('chrome_devtools_remote'));
+  if (!sock) throw new Error('no Chrome devtools socket');
+  port += 1;
+  adb(`forward tcp:${port} localabstract:${sock.replace(/^@/, '')}`);
+  for (let i = 0; i < 20; i++) {
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+      const t = list.find((x) => x.type === 'page' && x.url.includes(pathPart));
+      if (t) return t.webSocketDebuggerUrl;
+    } catch {
+      // not ready
+    }
+    await sleep(1000);
+  }
+  throw new Error('no Chrome page ' + pathPart);
+}
+
+async function chromeEval(expression, pathPart = '/navy/app', gesture = false) {
+  const url = await chromePage(pathPart);
+  const ws = new WebSocket(url);
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = rej;
+  });
+  const reply = new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error('chrome evaluate timeout')), 20000);
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      if (msg.id === 1) {
+        clearTimeout(t);
+        res(msg);
+      }
+    };
+  });
+  ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, awaitPromise: true, returnByValue: true, userGesture: gesture } }));
+  const msg = await reply;
+  ws.close();
+  return msg.result?.result?.value;
+}
+
+function openInChrome(url) {
+  adb(`shell am start -a android.intent.action.VIEW -d "${url}" -n com.android.chrome/com.google.android.apps.chrome.Main`);
+}
+
+async function intentChecks() {
+  adb('shell am set-debug-app --persistent com.android.chrome');
+  adb(`shell "echo '_ --disable-fre --no-default-browser-check --no-first-run --disable-features=SigninPromo' > /data/local/tmp/chrome-command-line"`);
+  adb('shell am force-stop com.android.chrome');
+  const PAGE = 'https://1sakely.org/navy/app';
+
+  // App present.
+  openInChrome(PAGE);
+  await sleep(8000);
+  const layout = await chromeEval(`(() => {
+    const t = document.body.innerText;
+    const a = document.querySelector('a[href^="intent:"]');
+    return { have: t.indexOf('Vous avez déjà NAVY ay'), first: t.indexOf('Première installation'), button: a ? a.textContent : null, href: a ? a.getAttribute('href') : null };
+  })()`).catch((e) => String(e));
+  record('3C Chrome: "Vous avez déjà NAVY ay ?" before "Première installation"', !!(layout && layout.have >= 0 && layout.first > layout.have && /Ouvrir l.appli pour la mettre à jour/.test(layout.button || '')), layout);
+  await chromeEval(`(document.querySelector('a[href^="intent:"]').click(), true)`, '/navy/app', true).catch(() => undefined);
+  await sleep(6000);
+  const resumed = resumedActivity();
+  const inApp = await waitFor('location.pathname', (v) => v === '/navy/app', 15).catch((e) => String(e));
+  record('3C Chrome, app present: the app opens on its update page', resumed.includes(`${APP}/.MainActivity`) && inApp === '/navy/app', { resumed, inApp });
+
+  // App absent.
+  adb(`uninstall ${APP}`);
+  adb('shell am force-stop com.android.chrome');
+  openInChrome(PAGE);
+  await sleep(8000);
+  await chromeEval(`(document.querySelector('a[href^="intent:"]').click(), true)`, '/navy/app', true).catch(() => undefined);
+  await sleep(6000);
+  const back = await chromeEval(`({ href: location.href, text: document.body.innerText.slice(0, 900) })`, '/navy/app').catch((e) => String(e));
+  record('3C Chrome, app absent: back on the page with "L’appli n’est pas sur ce téléphone"', !!(back && /appli=absente/.test(back.href) && /L.appli n.est pas sur ce téléphone/.test(back.text)), back && { href: back.href });
+}
+
 try {
-  if (mode === 'release') await releaseChecks();
+  if (mode === 'update') await updateChecks();
+  else if (mode === 'intent') await intentChecks();
+  else if (mode === 'release') await releaseChecks();
   else if (mode === 'native') await nativeChecks();
   else if (mode === 'oldwebview') await oldWebViewChecks();
   else await debugChecks();

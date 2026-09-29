@@ -15,6 +15,10 @@
 # A tag run publishes the Release "navy-ay.apk" (stable address:
 # https://github.com/cyberkelysoatra/bazarkely/releases/latest/download/navy-ay.apk)
 # then updates frontend/public/navy/app/version.json on the deployed branch.
+# Phase 3C: version.json also carries version_code, sha256, size_bytes, apk_url (this
+# version's own Release file, the only address the app's updater accepts), notes_fr (the
+# annotated tag's message) and minimum_version (kept from the file). Publish with:
+#   git tag -a navy-android-v1.2.1 -m "Ce qui change en une à trois lignes" && git push origin navy-android-v1.2.1
 # A manual run only builds and keeps the APK as a run artifact (no Release).
 
 name: NAVY ay Android
@@ -121,6 +125,12 @@ jobs:
           fi
           echo "Firebase configuration decoded (content not printed)"
 
+      - name: Unit tests of the native rules (update checks)
+        working-directory: navy-android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest --no-daemon -PnavyVersionName="${{ steps.version.outputs.name }}" -PnavyVersionCode="${{ steps.version.outputs.code }}"
+
       - name: Build signed release APK
         working-directory: navy-android/android
         env:
@@ -150,7 +160,10 @@ jobs:
           "$BT/aapt2" dump badging "$APK" | head -1
           cp "$APK" navy-ay.apk
           SIZE=$(stat -c %s navy-ay.apk)
+          SHA256=$(sha256sum navy-ay.apk | cut -d' ' -f1)
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "::notice title=APK SHA-256::$SHA256"
           echo "APK size: $SIZE bytes"
 
       - name: Keep APK (manual run)
@@ -161,23 +174,52 @@ jobs:
           path: navy-ay.apk
           retention-days: 7
 
+      # Phase 3C: "Ce qui change" (notes_fr) = the message of the annotated tag, 1 to 3
+      # lines of plain French: git tag -a navy-android-vX.Y.Z -m "..."
+      - name: Release notes from the tag annotation
+        id: notes
+        if: github.event_name == 'push'
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          TEXT=""
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" = "tag" ]; then
+            TEXT=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/-----BEGIN/,$d' | grep -v '^[[:space:]]*$' | head -3 | cut -c1-200)
+          fi
+          if [ -z "$TEXT" ]; then TEXT="Améliorations et corrections."; fi
+          {
+            echo "text<<NAVY_NOTES_EOF"
+            echo "$TEXT"
+            echo "NAVY_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "::notice title=notes_fr::$(echo "$TEXT" | paste -sd ' ')"
+
       - name: Publish GitHub Release
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.name }}
+          NOTES_FR: ${{ steps.notes.outputs.text }}
         run: |
+          {
+            echo "Appli Android NAVY ay, version $VERSION."
+            echo ""
+            echo "Ce qui change :"
+            echo "$NOTES_FR"
+          } > release-notes.md
           gh release create "$GITHUB_REF_NAME" navy-ay.apk \
             --repo "$GITHUB_REPOSITORY" \
             --title "NAVY ay Android $VERSION" \
-            --notes "Appli Android NAVY ay, version $VERSION. Page d'installation : https://1sakely.org/navy/app" \
+            --notes-file release-notes.md \
             --latest
 
       - name: Update version.json on the site
         if: github.event_name == 'push'
         env:
           VERSION: ${{ steps.version.outputs.name }}
+          CODE: ${{ steps.version.outputs.code }}
           SIZE: ${{ steps.apk.outputs.size }}
+          SHA256: ${{ steps.apk.outputs.sha256 }}
+          NOTES_FR: ${{ steps.notes.outputs.text }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -185,8 +227,20 @@ jobs:
             git fetch origin "$DEPLOY_BRANCH"
             git checkout -B "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
             FILE=frontend/public/navy/app/version.json
-            printf '{\n  "version": "%s",\n  "apkUrl": "https://github.com/%s/releases/latest/download/navy-ay.apk",\n  "apkSizeBytes": %s,\n  "publishedAt": "%s"\n}\n' \
-              "$VERSION" "$GITHUB_REPOSITORY" "$SIZE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$FILE"
+            # minimum_version is kept from the file (changed by hand in the repository only
+            # when an old app must be blocked); 1.0.0 = nobody is blocked.
+            MIN=$(jq -r '.minimum_version // "1.0.0"' "$FILE" 2>/dev/null || echo "1.0.0")
+            echo "$MIN" | grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+$' || MIN="1.0.0"
+            jq -n --arg version "$VERSION" \
+              --arg latest "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/navy-ay.apk" \
+              --arg apk "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/navy-ay.apk" \
+              --arg sha "$SHA256" --arg notes "$NOTES_FR" --arg min "$MIN" \
+              --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --argjson code "$CODE" --argjson size "$SIZE" \
+              '{version: $version, apkUrl: $latest, apkSizeBytes: $size, publishedAt: $at,
+                version_code: $code, sha256: $sha, size_bytes: $size, apk_url: $apk,
+                notes_fr: $notes, minimum_version: $min}' > "$FILE"
+            cat "$FILE"
             git add -f "$FILE"
             git commit -m "chore: NAVY ay Android app $VERSION published"
             if git push origin "$DEPLOY_BRANCH"; then exit 0; fi
