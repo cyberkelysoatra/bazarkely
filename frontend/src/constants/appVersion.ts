@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.91.0';
+export const APP_VERSION = '3.91.1';
 export const APP_VERSION_NAME = "NAVY ay : position ecran eteint, courses qui sonnent comme un appel, ecran guide.";
 export const LAST_UPDATED = '2026-09-28';
-export const APP_BUILD_DATE = '2026-09-28';
+export const APP_BUILD_DATE = '2026-09-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.91.1',
+    date: '2026-09-29',
+    description:
+      "NAVY ay : l arret apres 1 heure immobile marche aussi quand le GPS du telephone est imprecis (a l interieur).",
+    changes: [
+      "Une position peu precise ne compte plus comme un deplacement : l arret automatique du chauffeur immobile se declenche bien apres 1 heure."
+    ]
+  },
   {
     version: '3.91.0',
     date: '2026-09-28',

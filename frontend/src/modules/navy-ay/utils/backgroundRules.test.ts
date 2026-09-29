@@ -4,6 +4,7 @@ import {
   installBannerVisible,
   isAuthSessionKey,
   isIdleFor,
+  movesStillPoint,
   medianInterval,
   nextSetupStep,
   parseIdleMinutes,
@@ -72,6 +73,15 @@ describe('idle stop', () => {
     expect(isIdleFor(new Date(now - 59 * 60_000).toISOString(), now, 60)).toBe(false);
     expect(isIdleFor(now - 31 * 60_000, now, 30)).toBe(true);
     expect(isIdleFor(null, now, 60)).toBe(false);
+  });
+
+  it('an imprecise fix never restarts the idle clock (real phone, 2026-09-28)', () => {
+    expect(movesStillPoint(800, 1253)).toBe(false); // indoor network fix
+    expect(movesStillPoint(120, 32)).toBe(false);
+    expect(movesStillPoint(200, 32)).toBe(true);
+    expect(movesStillPoint(400, 20)).toBe(true);
+    expect(movesStillPoint(160, null)).toBe(true);
+    expect(movesStillPoint(140, null)).toBe(false);
   });
 
   it('labels and bounds like the server', () => {

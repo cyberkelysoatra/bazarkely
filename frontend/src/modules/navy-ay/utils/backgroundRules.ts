@@ -83,6 +83,16 @@ export function isIdleFor(stillSince: string | number | null | undefined, now: n
   return now - t >= minutes * 60_000;
 }
 
+/**
+ * Server rule (navy_report_position, corrective 2026-09-29): a fix restarts the idle clock
+ * only when it is farther than 150 m from the still point BEYOND its own uncertainty, so
+ * that an imprecise indoor fix (hundreds of metres) never looks like a move.
+ */
+export function movesStillPoint(distanceM: number, accuracyM: number | null | undefined): boolean {
+  const acc = accuracyM != null && Number.isFinite(accuracyM) && accuracyM > 0 ? Math.min(accuracyM, 100_000) : 0;
+  return distanceM - acc > IDLE_RADIUS_M;
+}
+
 /** "1 h", "1 h 30", "45 min" (same as navy_duration_label). */
 export function durationLabel(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));
