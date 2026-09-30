@@ -8,7 +8,11 @@ export async function fetchNavyAppVersionInfo(timeoutMs = 8000): Promise<NavyApp
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${NAVY_APP_VERSION_JSON}?t=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
+    const res = await fetch(`${NAVY_APP_VERSION_JSON}?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      signal: controller.signal,
+    });
     if (!res.ok) return null;
     return readVersionInfo(await res.json());
   } catch {

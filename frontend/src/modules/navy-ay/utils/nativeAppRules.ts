@@ -180,11 +180,24 @@ export function appUpdateStatus(installed: InstalledApp | null, info: NavyAppVer
   return compareVersions(installed.version, info.minimumVersion) < 0 ? 'required' : 'available';
 }
 
-/** At launch and back to the front: at most one automatic check every 6 hours. */
-export const UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+/**
+ * The published version is read again at launch, at EVERY return to the front and at
+ * each "Vérifier maintenant" (the file is tiny). Only two automatic readings closer than
+ * 20 s are merged (launch and "back to the front" fire together). Seen on Joël's phone
+ * (3C): with the former 6-hour limit, the page kept saying "à jour (1.2.0)" after 1.2.1
+ * was published, until the app was closed and reopened.
+ */
+export const UPDATE_AUTO_DEBOUNCE_MS = 20_000;
 export function shouldCheckForUpdate(lastCheckMs: number | null, nowMs: number, manual = false): boolean {
   if (manual || !lastCheckMs) return true;
-  return nowMs - lastCheckMs >= UPDATE_CHECK_EVERY_MS || nowMs < lastCheckMs;
+  return nowMs - lastCheckMs >= UPDATE_AUTO_DEBOUNCE_MS || nowMs < lastCheckMs;
+}
+
+/** "Dernière vérification : 14 h 05" (the phone's local time). */
+export function lastCheckLabel(lastCheckMs: number | null): string | null {
+  if (!lastCheckMs) return null;
+  const d = new Date(lastCheckMs);
+  return `Dernière vérification : ${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 /** "Masquer": the banner comes back after 24 hours (never hidden for a mandatory update). */

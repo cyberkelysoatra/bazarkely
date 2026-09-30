@@ -67,6 +67,8 @@ export interface NavyAppUpdateState {
   status: AppUpdateStatus;
   checking: boolean;
   lastCheck: number | null;
+  /** The last reading of version.json failed (no network): the state shown may be old. */
+  checkFailed: boolean;
   path: UpdatePath;
   dismissed: boolean;
   flow: UpdateFlow | null;
@@ -124,6 +126,7 @@ let state: NavyAppUpdateState = {
   status: 'unknown',
   checking: false,
   lastCheck: null,
+  checkFailed: false,
   path: 'chrome',
   dismissed: false,
   flow: null,
@@ -166,12 +169,13 @@ let checkRun: Promise<void> | null = null;
 /** Reads the installed version and version.json (automatic: 6 h at most; manual: always). */
 export function checkNavyAppUpdate(manual = false): Promise<void> {
   if (!isNativeApp()) return Promise.resolve();
-  if (checkRun) return checkRun;
+  // "Vérifier maintenant" during an automatic reading: read once more right after it,
+  // never answer with the reading that was already under way.
+  if (checkRun) return manual ? checkRun.then(() => checkNavyAppUpdate(true)) : checkRun;
   checkRun = (async () => {
-    const installed = state.installed ?? (await getInstalledApp());
+    const installed = (await getInstalledApp()) ?? state.installed;
     const now = Date.now();
-    const last = readNumber(LAST_CHECK_KEY);
-    if (!shouldCheckForUpdate(last, now, manual) && state.info) {
+    if (!shouldCheckForUpdate(state.lastCheck, now, manual) && state.info) {
       recompute(state.info, installed);
       return;
     }
@@ -181,7 +185,7 @@ export function checkNavyAppUpdate(manual = false): Promise<void> {
       write(LAST_CHECK_KEY, String(now));
       write(INFO_KEY, JSON.stringify(info));
     }
-    set({ checking: false, lastCheck: info ? now : state.lastCheck });
+    set({ checking: false, lastCheck: info ? now : state.lastCheck, checkFailed: !info });
     recompute(info ?? state.info, installed);
   })().finally(() => {
     checkRun = null;

@@ -6,6 +6,7 @@ import {
   isAllowedUpdateUrl,
   isUpdateBannerDismissed,
   isUpdateDone,
+  lastCheckLabel,
   openAppIntentUrl,
   progressPercent,
   shouldCheckForUpdate,
@@ -195,13 +196,21 @@ describe('phase 3C: which journey', () => {
     expect(updatePath(true, info({ updateUrl: null }))).toBe('chrome');
   });
 
-  it('checks at most every 6 hours, always when asked', () => {
+  it('reads the published version again at every return to the front, and always when asked', () => {
     const now = Date.UTC(2026, 8, 29, 12);
     expect(shouldCheckForUpdate(null, now)).toBe(true);
-    expect(shouldCheckForUpdate(now - 5 * 3600_000, now)).toBe(false);
-    expect(shouldCheckForUpdate(now - 6 * 3600_000, now)).toBe(true);
-    expect(shouldCheckForUpdate(now - 60_000, now, true)).toBe(true);
+    // Joël's case: checked 1 minute before 1.2.1 was published, back to the front after
+    expect(shouldCheckForUpdate(now - 60_000, now)).toBe(true);
+    expect(shouldCheckForUpdate(now - 5 * 3600_000, now)).toBe(true);
+    // launch and "back to the front" together: one reading
+    expect(shouldCheckForUpdate(now - 5_000, now)).toBe(false);
+    expect(shouldCheckForUpdate(now - 5_000, now, true)).toBe(true);
     expect(shouldCheckForUpdate(now + 3600_000, now)).toBe(true); // clock moved back
+  });
+
+  it('says when the last check was made', () => {
+    expect(lastCheckLabel(null)).toBeNull();
+    expect(lastCheckLabel(new Date(2026, 8, 29, 14, 5).getTime())).toBe('Dernière vérification : 14 h 05');
   });
 
   it('can be hidden for 24 hours', () => {

@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.92.1';
+export const APP_VERSION = '3.92.2';
 export const APP_VERSION_NAME = "NAVY ay : l’appli Android se met à jour elle-même, sans jamais ressembler à une première installation.";
 export const LAST_UPDATED = '2026-09-29';
-export const APP_BUILD_DATE = '2026-09-29';
+export const APP_BUILD_DATE = '2026-09-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.92.2',
+    date: '2026-09-30',
+    description:
+      "NAVY ay : « Vérifier maintenant » et chaque retour dans l’appli relisent toujours la dernière version publiée de l’appli Android.",
+    changes: [
+      "Vu sur le téléphone de Joël : la page Mise à jour affichait encore « NAVY ay est à jour (1.2.0) » alors que la 1.2.1 était publiée, jusqu’à fermer et rouvrir l’appli.",
+      "La page indique l’heure de la dernière vérification, et « Vérification impossible » quand le réseau manque."
+    ]
+  },
   {
     version: '3.92.1',
     date: '2026-09-30',

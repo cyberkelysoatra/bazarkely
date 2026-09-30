@@ -18,7 +18,7 @@ import { NavyHelp, NavyNotice, btnAccent, btnPrimary, btnSecondary } from '../ui
 import { fetchNavyAppVersionInfo } from '../../services/navyAppVersion';
 import { isNativeApp } from '../../services/nativeApp';
 import { checkNavyAppUpdate, startNavyAppUpdates, useNavyAppUpdate } from '../../services/navyAppUpdate';
-import { NAVY_APK_URL, NAVY_APP_PAGE, formatFileSize, openAppIntentUrl, type NavyAppVersionInfo } from '../../utils/nativeAppRules';
+import { NAVY_APK_URL, NAVY_APP_PAGE, formatFileSize, lastCheckLabel, openAppIntentUrl, type NavyAppVersionInfo } from '../../utils/nativeAppRules';
 import { NavyAppUpdateCard, NavyAppUpdateFlow, NavyAppUpdatedToast, UpdateHelp } from './NavyAppUpdateUi';
 
 const PAGE_URL = `https://1sakely.org${NAVY_APP_PAGE}`;
@@ -90,13 +90,18 @@ function InAppUpdatePage() {
               <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
             </span>
             <p className="mt-3 text-lg font-bold">NAVY ay est à jour ({u.installed!.version})</p>
-            {checked && !u.checking && <p className="mt-1 text-sm text-navyay-charcoal/75">Vérifié à l’instant.</p>}
+            {lastCheckLabel(u.lastCheck) && <p className="mt-1 text-sm text-navyay-charcoal/75">{lastCheckLabel(u.lastCheck)}</p>}
           </section>
         ) : u.status === 'available' || u.status === 'required' ? (
           <NavyAppUpdateCard />
         ) : (
           <p className="flex items-center justify-center gap-2 text-sm" role="status">
             <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Recherche d’une nouvelle version…
+          </p>
+        )}
+        {checked && u.checkFailed && !u.checking && (
+          <p className="text-sm text-center" role="alert">
+            Vérification impossible pour l’instant : vérifiez votre connexion, puis réessayez.
           </p>
         )}
         <button

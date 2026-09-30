@@ -12,6 +12,7 @@ import { CheckCircle2, Globe, Loader2, RefreshCw, Smartphone } from 'lucide-reac
 import { APP_VERSION } from '../../../../constants/appVersion';
 import { checkNavyAppUpdate, startNavyAppUpdates, useNavyAppUpdate } from '../../services/navyAppUpdate';
 import { isNativeApp } from '../../services/nativeApp';
+import { lastCheckLabel } from '../../utils/nativeAppRules';
 import { btnSecondary } from '../ui/NavyUi';
 import { NavyAppUpdateCard, NavyAppUpdatedToast, NavyAppUpdateFlow } from './NavyAppUpdateUi';
 
@@ -68,6 +69,12 @@ export function NavyAppUpdateStatus() {
           <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Recherche d’une nouvelle version de l’appli…
         </p>
       )}
+      {u.checkFailed && !u.checking && (
+        <p className="text-sm" role="alert">
+          Vérification impossible pour l’instant : vérifiez votre connexion, puis réessayez.
+        </p>
+      )}
+      {lastCheckLabel(u.lastCheck) && <p className="text-xs text-navyay-charcoal/75">{lastCheckLabel(u.lastCheck)}</p>}
       <button type="button" className={`${btnSecondary} w-full sm:w-auto`} disabled={u.checking} onClick={() => void checkNavyAppUpdate(true)}>
         {u.checking ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <RefreshCw className="h-5 w-5" aria-hidden="true" />}
         Vérifier maintenant
