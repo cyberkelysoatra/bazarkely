@@ -173,6 +173,25 @@ export function stepAfterUpdate(p: NativePermissions): SetupStepId | null {
   return SETUP_STEPS.filter((s) => s !== 'test').find((s) => !stepDone(s, p, false)) ?? null;
 }
 
+/**
+ * Phase 3C: the app was updated since the last opening, known from the Android
+ * versionCode kept on the phone (does not depend on the journey that made the update,
+ * nor on which version of the site ran first after it).
+ */
+export function wasUpdatedSince(previousCode: number | null, currentCode: number | null): boolean {
+  return previousCode != null && currentCode != null && previousCode > 0 && currentCode > previousCode;
+}
+
+/**
+ * Phase 3C (seen on Joël's phone after 1.2.0 → 1.2.1): the full-screen alert switched off
+ * by an update stays off until the driver opens the settings himself. A reminder stays
+ * on every NAVY screen of an approved driver while it is off, except on the guided
+ * screen itself. Unknown state (bridge busy, Android < 14 always true): no reminder.
+ */
+export function fullScreenReminderVisible(o: { nativeBridge: boolean; approvedDriver: boolean; fullScreen: boolean | null; path: string }): boolean {
+  return o.nativeBridge && o.approvedDriver && o.fullScreen === false && !o.path.startsWith('/navy/reglages-appli');
+}
+
 /** The guided screen opens by itself: never completed, or a permission was taken back since. */
 export function setupNeeded(p: NativePermissions, completed: boolean): boolean {
   if (!completed) return true;

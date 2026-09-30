@@ -17,6 +17,8 @@ import {
   sendIntervalMs,
   setupNeeded,
   stepAfterUpdate,
+  wasUpdatedSince,
+  fullScreenReminderVisible,
   trackingMode,
   type NativePermissions,
 } from './backgroundRules';
@@ -170,5 +172,25 @@ describe('phase 3C: guided screen just after an update', () => {
     expect(stepAfterUpdate({ ...all, fullScreen: false })).toBe('fullscreen');
     expect(stepAfterUpdate({ ...all, location: 'foreground', fullScreen: false })).toBe('location');
     expect(stepAfterUpdate(all)).toBeNull();
+  });
+});
+
+describe('phase 3C: full-screen alert after an update', () => {
+  it('knows an update happened from the Android versionCode kept on the phone', () => {
+    expect(wasUpdatedSince(10200, 10201)).toBe(true);
+    expect(wasUpdatedSince(10201, 10201)).toBe(false);
+    expect(wasUpdatedSince(null, 10201)).toBe(false); // first opening with this rule
+    expect(wasUpdatedSince(10300, 10201)).toBe(false);
+  });
+
+  it('reminds an approved driver while the alert is off, everywhere but the guided screen', () => {
+    const base = { nativeBridge: true, approvedDriver: true, fullScreen: false, path: '/navy/offres' };
+    expect(fullScreenReminderVisible(base)).toBe(true);
+    expect(fullScreenReminderVisible({ ...base, path: '/navy/direction' })).toBe(true);
+    expect(fullScreenReminderVisible({ ...base, path: '/navy/reglages-appli' })).toBe(false);
+    expect(fullScreenReminderVisible({ ...base, fullScreen: true })).toBe(false);
+    expect(fullScreenReminderVisible({ ...base, fullScreen: null })).toBe(false);
+    expect(fullScreenReminderVisible({ ...base, approvedDriver: false })).toBe(false);
+    expect(fullScreenReminderVisible({ ...base, nativeBridge: false })).toBe(false);
   });
 });

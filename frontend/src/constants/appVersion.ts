@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.92.2';
+export const APP_VERSION = '3.92.3';
 export const APP_VERSION_NAME = "NAVY ay : l’appli Android se met à jour elle-même, sans jamais ressembler à une première installation.";
 export const LAST_UPDATED = '2026-09-29';
 export const APP_BUILD_DATE = '2026-09-30';
 export const VERSION_HISTORY = [
+  {
+    version: '3.92.3',
+    date: '2026-09-30',
+    description:
+      "NAVY ay : tant que l’alerte plein écran est désactivée, un bandeau le rappelle au chauffeur sur tous les écrans NAVY, avec un bouton pour la réactiver.",
+    changes: [
+      "Vu sur le téléphone de Joël : après la mise à jour 1.2.1, l’alerte plein écran était de nouveau désactivée et rien ne le signalait hors des Réglages de l’appli.",
+      "La mise à jour de l’appli est maintenant reconnue par son numéro de version Android : l’écran guidé s’ouvre sur le réglage à remettre, même si l’ancienne version du site s’est affichée en premier."
+    ]
+  },
   {
     version: '3.92.2',
     date: '2026-09-30',

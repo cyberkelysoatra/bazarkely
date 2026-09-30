@@ -12,6 +12,7 @@ import NavyRoleRoute from './NavyRoleRoute';
 import NavyAppUpdateBanner from './app/NavyAppUpdateBanner';
 import NavyAppInstallBanner from './app/NavyAppInstallBanner';
 import NavyAppBackground from './app/NavyAppBackground';
+import NavyFullScreenReminder from './app/NavyFullScreenReminder';
 import { NavyLoader } from './ui/NavyUi';
 
 const BecomePartnerPage = lazy(() => import('./partner/BecomePartnerPage'));
@@ -50,6 +51,7 @@ export default function NavyRoutes() {
       <NavyParcelSync />
       <NavyDriverLiveSync />
       <NavyAppUpdateBanner />
+      <NavyFullScreenReminder />
       <NavyAppInstallBanner />
       <NavyAppBackground />
       <Suspense fallback={<NavyLoader />}>

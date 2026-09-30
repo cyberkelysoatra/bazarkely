@@ -42,6 +42,7 @@ import {
   type NavyAppVersionInfo,
   type UpdatePath,
 } from '../utils/nativeAppRules';
+import { wasUpdatedSince } from '../utils/backgroundRules';
 
 export type UpdateFlowStep =
   /** 1.1.0: explanation before Chrome opens the file. */
@@ -80,6 +81,8 @@ const LAST_CHECK_KEY = 'navy-app-update-last-check';
 const DISMISSED_KEY = 'navy-app-update-dismissed-at';
 const TARGET_KEY = 'navy-app-update-target';
 const INFO_KEY = 'navy-app-update-info';
+/** Android versionCode seen at the previous opening (update detection, 3C). */
+const LAST_CODE_KEY = 'navy-app-last-version-code';
 /** Set for this opening of the app when it has just been updated (guided screen, 3C). */
 export const AFTER_UPDATE_KEY = 'navy-app-after-update';
 
@@ -210,16 +213,19 @@ export function startNavyAppUpdates(): void {
     } catch {
       target = null;
     }
-    if (target && isUpdateDone(target, installed?.version)) {
+    const previousCode = readNumber(LAST_CODE_KEY);
+    if (installed?.versionCode) write(LAST_CODE_KEY, String(installed.versionCode));
+    const updated = (!!target && isUpdateDone(target, installed?.version)) || wasUpdatedSince(previousCode, installed?.versionCode ?? null);
+    if (updated) {
       write(TARGET_KEY, null);
       set({ justUpdated: installed?.version ?? target });
       try {
-        sessionStorage.setItem(AFTER_UPDATE_KEY, installed?.version ?? target);
+        sessionStorage.setItem(AFTER_UPDATE_KEY, installed?.version ?? target ?? 'maj');
       } catch {
         // the guided screen still opens by its own rule
       }
       if (hasNativeUpdater()) void clearNativeUpdate().catch(() => undefined);
-      afterUpdateResolve(installed?.version ?? target);
+      afterUpdateResolve(installed?.version ?? target ?? 'maj');
     } else {
       afterUpdateResolve(null);
     }
