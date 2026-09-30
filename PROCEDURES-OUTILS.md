@@ -288,3 +288,8 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Cause :** `import('@capacitor/core').then(({ registerPlugin }) => registerPlugin('X'))` renvoie un proxy dont toute propriété, y compris `then`, est une méthode d'extension : la promesse le prend pour une promesse et ne se résout jamais.
 - **Résolution :** l'envelopper dans un objet (`=> ({ plugin: registerPlugin('X') })`). Corrigé dans `nativeApp.ts`.
 
+### P43 — Appli Android hors Play Store : Play Protect et alerte plein écran à chaque version (2026-09-30, NAVY 3C)
+- **Play Protect :** une version jamais vue d'un développeur inconnu peut être bloquée (« Appli bloquée… Play Protect n'a jamais vu d'appli de ce développeur », bouton OK seul). Au 2ᵉ essai, après l'analyse en ligne, elle passe en général. Facteurs : fichier nouveau, certificat sans historique, autorisation sensible (`REQUEST_INSTALL_PACKAGES` depuis 1.2.0), ouverture depuis un navigateur.
+- **Alerte plein écran :** chaque mise à jour hors Store la remet à zéro (Android 14+, état fixé par l'installateur à chaque session). Le site le rattrape (écran guidé après mise à jour + bandeau de rappel) ; ne jamais retirer ces deux protections.
+- **Navigateur :** Brave affiche « Fichier potentiellement dangereux » et peut télécharger plusieurs copies : conseiller Chrome pour une première installation.
+

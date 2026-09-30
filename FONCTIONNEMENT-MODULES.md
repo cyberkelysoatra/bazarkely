@@ -1130,6 +1130,11 @@ Décision 59 : une appli déjà installée ne ressemble **jamais** à une premi�
 - **Rapport automatique** : échantillons toutes les 5 min pendant le partage de position (batterie, charge, écran, économie de batterie, positions acceptées ; jamais de coordonnées), gardés 48 h. « Envoyer mon rapport » (Réglages de l'appli) et envoi seul à « Pas disponible » si 20 min écran éteint ou plus. Table `navy_app_reports` (RLS forcée, écriture par `navy_app_report_submit` pour soi seul, lecture par le compte et les opératrices, purge 90 jours).
 - **Carte vivante** : une position de précision > 100 m ne met à jour que l'heure du dernier signal (`at`) ; position, vitesse et mouvement simulé restent ceux de la dernière position utilisable (`fix_at`, `fix_age_s`). Même règle dans `liveMotion.ts` (`isImpreciseFix`) et dans le service natif (pas de vitesse transmise).
 - ⚠️ `REQUEST_INSTALL_PACKAGES` : à retirer d'une future version Play Store (mise à jour par le Store).
+- **Correctifs vus sur le téléphone de Joël** :
+  - v3.92.1 : juste après une mise à jour, l'écran guidé s'ouvre sur le réglage qu'Android a remis à zéro (`stepAfterUpdate`) ;
+  - v3.92.2 : « Vérifier maintenant » et chaque retour au premier plan relisent `version.json` (lectures automatiques à moins de 20 s fusionnées), avec l'heure de la dernière vérification et « Vérification impossible » sans réseau ;
+  - v3.92.3 : la mise à jour est aussi reconnue par le `versionCode` Android gardé sur le téléphone (`navy-app-last-version-code`, `wasUpdatedSince`), et un **bandeau de rappel** (`NavyFullScreenReminder`) reste sur tous les écrans NAVY d'un chauffeur validé tant que l'alerte plein écran est désactivée.
+- ⚠️ **L'alerte plein écran est remise à zéro par Android à chaque mise à jour hors Play Store** (constaté deux fois sur le téléphone de Joël). **Play Protect** peut bloquer une nouvelle version jamais vue (« n'a jamais vu d'appli de ce développeur ») : réessayer passe en général ; voies durables dans `RAPPORT-PHASE-3C.md`.
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
