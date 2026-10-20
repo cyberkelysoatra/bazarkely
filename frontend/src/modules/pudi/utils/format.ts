@@ -1,0 +1,57 @@
+// Formatting helpers (fr-MG amounts, dates in Madagascar time, countdown).
+import { fr } from '../i18n/fr';
+
+/** Default closing (server setting pudi_settings.cloture_at), used offline. */
+export const CLOTURE_PAR_DEFAUT = '2026-10-26T20:00:00+03:00';
+
+const MADA_OFFSET_MS = 3 * 3600 * 1000; // Madagascar = UTC+3, no daylight saving
+
+/** 610000000 → "610 000 000 Ar" (spaces as thousands separator). */
+export function formatAr(montant: number): string {
+  const entier = Math.round(montant).toString();
+  return entier.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Ar';
+}
+
+function enHeureMada(iso: string): Date {
+  return new Date(new Date(iso).getTime() + MADA_OFFSET_MS);
+}
+
+/** "lundi 26 octobre 2026 à 20 h (heure de Madagascar)" */
+export function dateClotureLongue(iso: string): string {
+  const d = enHeureMada(iso);
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const heure = m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
+  return `${fr.temps.jours[d.getUTCDay()]} ${d.getUTCDate()} ${fr.temps.mois[d.getUTCMonth()]} ${d.getUTCFullYear()} à ${heure} ${fr.temps.heureMada}`;
+}
+
+/** "21 octobre 2026 à 14 h 05" (Madagascar time). */
+export function dateCourte(iso: string): string {
+  const d = enHeureMada(iso);
+  return `${d.getUTCDate()} ${fr.temps.mois[d.getUTCMonth()]} ${d.getUTCFullYear()} à ${d.getUTCHours()} h ${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+/** "14 h 05" (Madagascar time). */
+export function heureCourte(iso: string): string {
+  const d = enHeureMada(iso);
+  return `${d.getUTCHours()} h ${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+export interface Restant {
+  jours: number;
+  heures: number;
+  minutes: number;
+  fini: boolean;
+}
+
+/** Time left until `finMs`; `maintenantMs` must already be corrected with the server offset. */
+export function tempsRestant(finMs: number, maintenantMs: number): Restant {
+  const ms = Math.max(0, finMs - maintenantMs);
+  const totalMin = Math.floor(ms / 60000);
+  return {
+    jours: Math.floor(totalMin / 1440),
+    heures: Math.floor((totalMin % 1440) / 60),
+    minutes: totalMin % 60,
+    fini: ms <= 0
+  };
+}

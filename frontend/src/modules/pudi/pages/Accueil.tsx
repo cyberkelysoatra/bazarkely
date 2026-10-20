@@ -1,0 +1,125 @@
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
+import { Icone } from '../composants/Icones';
+import { BandeauxEtat, Image, Page, RangeeLogos, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
+import { fr } from '../i18n/fr';
+import { usePudi } from '../PudiContexte';
+import { abonnerInstallation, installationDisponible, lancerInstallation } from '../appels/installation';
+import { dateClotureLongue, tempsRestant } from '../utils/format';
+
+function CompteARebours() {
+  const { clotureAt, decalage } = usePudi();
+  const [maintenant, setMaintenant] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setMaintenant(Date.now()), 15000);
+    return () => window.clearInterval(id);
+  }, []);
+  const r = tempsRestant(Date.parse(clotureAt), maintenant + decalage);
+  if (r.fini) return null;
+  const bloc = (valeur: number, unite: string) => (
+    <div className="flex-1 bg-white border border-filet rounded-xl py-2 text-center">
+      <div className="font-titre text-[28px] leading-none text-marine">{valeur}</div>
+      <div className="text-[13px] text-gris mt-1">{unite}</div>
+    </div>
+  );
+  return (
+    <div aria-label={fr.accueil.restant}>
+      <p className="text-[13px] text-gris mb-1.5">{fr.accueil.restant}</p>
+      <div className="flex gap-2">
+        {bloc(r.jours, r.jours > 1 ? fr.accueil.jours : fr.accueil.jour)}
+        {bloc(r.heures, fr.accueil.heures)}
+        {bloc(r.minutes, fr.accueil.minutes)}
+      </div>
+    </div>
+  );
+}
+
+function BoutonInstaller() {
+  const dispo = useSyncExternalStore(abonnerInstallation, installationDisponible, () => false);
+  if (!dispo) return null;
+  return (
+    <button type="button" className={`${boutonSecondaire} w-full`} onClick={() => void lancerInstallation()}>
+      <Icone nom="telecharger" />
+      {fr.accueil.installer}
+    </button>
+  );
+}
+
+export default function Accueil() {
+  const { etat, clotureAt } = usePudi();
+  const clos = !!etat?.clos;
+  return (
+    <Page logosPied={false}>
+      <div className="-ml-4 -mr-6 -mt-4 mb-4 sm:mx-0 sm:mt-0 sm:rounded-xl overflow-hidden">
+        <Image
+          src={`/pudi/images/${clos ? 'cloture' : 'couverture'}.webp`}
+          alt=""
+          width={1000}
+          height={clos ? 535 : 562}
+          className="w-full h-auto block"
+          fondSecours="#0B2A8C"
+          prioritaire
+        />
+      </div>
+      <h1 className="font-titre text-[26px] leading-[1.15] text-marine">{fr.app.titre}</h1>
+      <p className="mt-3 text-[16px] leading-relaxed">{fr.accueil.invitation}</p>
+      <p className="mt-2 text-[14px] leading-relaxed text-gris">{fr.accueil.indicative}</p>
+
+      <div className="mt-4">
+        <BandeauxEtat />
+      </div>
+
+      <div className="mt-4 bg-white border border-filet rounded-xl p-3 flex gap-3 items-start">
+        <Icone nom="calendrier" className="w-5 h-5 text-marine mt-0.5" />
+        <p className="text-[15px]">
+          <span className="font-bold">{fr.accueil.cloture} : </span>
+          {dateClotureLongue(clotureAt)}
+        </p>
+      </div>
+      <div className="mt-3">
+        <CompteARebours />
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3">
+        {clos ? (
+          <Link to="/resultats" className={boutonPrincipal}>
+            <Icone nom="graphique" />
+            {fr.accueil.voirResultats}
+          </Link>
+        ) : (
+          <>
+            <Link to="/secteurs" className={boutonPrincipal}>
+              <Icone nom="grille" />
+              {fr.accueil.decouvrir}
+            </Link>
+            <Link to="/choix" className={boutonSecondaire}>
+              <Icone nom="liste" />
+              {fr.accueil.preparer}
+            </Link>
+          </>
+        )}
+        <BoutonInstaller />
+      </div>
+
+      <details className="mt-5 bg-white border border-filet rounded-xl group">
+        <summary className="min-h-[48px] px-3 flex items-center gap-2 cursor-pointer font-bold text-marine list-none">
+          <Icone nom="info" />
+          {fr.accueil.aideTitre}
+          <Icone nom="bas" className="w-5 h-5 ml-auto transition-transform group-open:rotate-180" />
+        </summary>
+        <ol className="px-4 pb-4 space-y-2.5">
+          {fr.accueil.aideEtapes.map((e, i) => (
+            <li key={i} className="flex gap-3 text-[15px]">
+              <span className="font-titre text-marine text-[18px] leading-none mt-0.5">{i + 1}</span>
+              <span>{e}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+
+      <div className="mt-6">
+        <RangeeLogos />
+      </div>
+    </Page>
+  );
+}

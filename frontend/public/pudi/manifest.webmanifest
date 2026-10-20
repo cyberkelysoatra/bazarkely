@@ -1,0 +1,17 @@
+{
+  "name": "PUDi Nosy Be",
+  "short_name": "PUDi",
+  "description": "Priorisation du PUDi de Nosy Be 2026-2040 : consultation des parties prenantes du PIC3.",
+  "lang": "fr",
+  "start_url": "/pudi/",
+  "scope": "/pudi/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBFAF7",
+  "theme_color": "#0B2A8C",
+  "icons": [
+    { "src": "/pudi/icones/pudi-icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pudi/icones/pudi-icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pudi/icones/pudi-icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

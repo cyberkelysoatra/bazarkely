@@ -1136,6 +1136,49 @@ Décision 59 : une appli déjà installée ne ressemble **jamais** à une premi�
   - v3.92.3 : la mise à jour est aussi reconnue par le `versionCode` Android gardé sur le téléphone (`navy-app-last-version-code`, `wasUpdatedSince`), et un **bandeau de rappel** (`NavyFullScreenReminder`) reste sur tous les écrans NAVY d'un chauffeur validé tant que l'alerte plein écran est désactivée.
 - ⚠️ **L'alerte plein écran est remise à zéro par Android à chaque mise à jour hors Play Store** (constaté deux fois sur le téléphone de Joël). **Play Protect** peut bloquer une nouvelle version jamais vue (« n'a jamais vu d'appli de ce développeur ») : réessayer passe en général ; voies durables dans `RAPPORT-PHASE-3C.md`.
 
+## MODULE PUDi (priorisation du PUDi de Nosy Be 2026-2040) · Phase 1, v3.93.0
+
+Consultation publique des parties prenantes du PIC3 (GIHTNB facilitateur) : 52 programmes, 11 secteurs. Ouverture
+jeudi 22/10/2026, clôture lundi 26/10/2026 20 h (heure de Madagascar, réglage serveur `pudi_settings.cloture_at`).
+
+**Entrée légère séparée** (même dépôt, même déploiement, même domaine, même projet Supabase, même session Google) :
+- `frontend/pudi/index.html` → `dist/pudi/index.html` (2ᵉ entrée de `build.rollupOptions.input`). N'importe **rien** de
+  l'hôte : ni bundle principal, ni `registerSW.js`, ni `sw-custom` (le greffon `pudiEntry()` de `vite.config.ts` retire
+  manifeste et enregistrement du SW injectés par vite-plugin-pwa ; il réécrit aussi /pudi/* en dev et en preview).
+- Code : `frontend/src/modules/pudi/` (imports permis : fichiers PUDi, react, react-dom, react-router-dom,
+  `@supabase/supabase-js` en import **dynamique** seulement ; icônes lucide recopiées dans `composants/Icones.tsx`).
+  Dossiers internes `composants/` et `appels/` (et non components/services) pour que le contrôle d'isolation par grep reste vide.
+- Tailwind dédié : `src/modules/pudi/pudi.css` (`@config "../../../tailwind.pudi.config.js"`), charte PIC.
+- SW propre `public/pudi/sw.js` (portée `/pudi/`, écrit à la main) : coquille en cache à l'installation, navigations
+  réseau d'abord (3 s) puis coquille, `/assets/*` et `/pudi/*` en « périmé puis revalidé », Supabase jamais en cache.
+  Le SW de l'hôte exclut `/pudi` de sa navigation (`denylist`) et `pudi/**` de son précache (`globIgnores`).
+- Routage production : `functions/pudi/_middleware.ts` (Cloudflare) sert `/pudi/` en 200 pour toute route sans
+  extension ; filets `_redirects` et `netlify.toml` avant le repli `/*`.
+- `manualChunks` en forme fonction (mêmes groupes) : React, son runtime JSX et l'aide de préchargement de Vite restent
+  dans `vendor` ; sinon /pudi chargeait `state` et `vendor-supabase`.
+
+**Serveur** (migration `supabase/migrations/20261021000000_pudi_phase1.sql`) : 10 tables `pudi_*`, RLS activée et
+forcée, **aucune** règle ni droit de table pour `anon` / `authenticated` : tout passe par des fonctions SECURITY DEFINER
+(`pudi_etat`, `pudi_ping`, `pudi_mon_vote`, `pudi_soumettre_vote`, `pudi_resultats`). Téléphone jamais stocké en clair
+(HMAC avec le secret Vault `pudi_phone_pepper`). Un vote par compte Google, modifiable jusqu'à la clôture ; un numéro déjà
+utilisé par un AUTRE compte est refusé (renvoyé `{erreur: 'PUDI_NUMERO_DEJA_UTILISE'}` et journalisé dans `pudi_refus`).
+Avant publication (`publie = false`) : découverte et préparation ouvertes, envoi fermé sauf admin (`est_test = true`,
+effacé à la publication, phase 2).
+
+**Côté client** : brouillon `localStorage pudi_brouillon_v1`, provenance `?c=` dans `pudi_canal` (gardée à travers la
+connexion Google, envoyée en `p_canal`), `pudi_etat` lu par simple `fetch` (jeton de la session partagée s'il existe),
+les autres appels par le client Supabase chargé à la demande (page Envoyer, Résultats). Règles pures testées :
+`utils/regles.ts`, correspondance des erreurs : `utils/erreurs.ts`.
+
+**Hôte** (ajouts conditionnés à l'id `pudi`) : entrée « PUDi » du sélecteur pour tout compte connecté jusqu'au
+28/01/2027 (`PUDI_VISIBLE_UNTIL`, `moduleAccess.ts`) ; ouverture en navigation pleine page (`window.location.assign('/pudi/')`) ;
+`pudi` n'est **jamais** module actif ni `lastModule` (local ou compte : gardes dans `writeLocalLastModule`,
+`queuePreferencesPatch`, `pickStartModule`).
+
+**Phase 2** (plus tard) : écrans d'administration, canaux et listes, QR codes, exports, synthèse PDF, bascule de publication.
+
+---
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

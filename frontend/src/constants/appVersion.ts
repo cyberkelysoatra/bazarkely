@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.92.3';
-export const APP_VERSION_NAME = "NAVY ay : l’appli Android se met à jour elle-même, sans jamais ressembler à une première installation.";
-export const LAST_UPDATED = '2026-09-29';
-export const APP_BUILD_DATE = '2026-09-30';
+export const APP_VERSION = '3.93.0';
+export const APP_VERSION_NAME = "PUDi Nosy Be : consultation publique sur la priorisation du PUDi 2026-2040, sur une page légère séparée.";
+export const LAST_UPDATED = '2026-10-21';
+export const APP_BUILD_DATE = '2026-10-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.93.0',
+    date: '2026-10-21',
+    description:
+      "PUDi Nosy Be (phase 1) : page publique légère /pudi pour la consultation des parties prenantes du PIC3 sur la priorisation du PUDi 2026-2040 : découverte des 52 programmes, choix de 3 priorités et des urgents 2026-2030, vote avec le compte Google, résultats pour les votants.",
+    changes: [
+      "La page /pudi ne charge pas l’application de budget : environ 280 Ko à l’ouverture, consultable hors connexion après une première visite.",
+      "Avant la publication, les projets se découvrent et le choix se prépare ; l’envoi n’ouvre qu’à la publication (mode test pour l’administrateur).",
+      "Un vote par compte Google, modifiable jusqu’à la clôture du lundi 26 octobre 2026 à 20 h ; le numéro de téléphone n’est jamais enregistré en clair.",
+      "Entrée « PUDi » dans le sélecteur de modules pour tout compte connecté, jusqu’au 28 janvier 2027."
+    ]
+  },
   {
     version: '3.92.3',
     date: '2026-09-30',

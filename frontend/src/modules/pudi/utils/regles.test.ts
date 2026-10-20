@@ -1,0 +1,142 @@
+import { describe, expect, it } from 'vitest';
+import {
+  BROUILLON_VIDE,
+  basculerPriorite,
+  basculerUrgent,
+  brouillonValide,
+  codeCanalValide,
+  ecartPudi,
+  limiterManquant,
+  normaliserTelephone,
+  normaliserTelephoneAffichage,
+  peutAjouterPriorite,
+  peutAjouterUrgent,
+  type Brouillon
+} from './regles';
+import { extraireCode, messageErreur } from './erreurs';
+import { dateClotureLongue, formatAr, tempsRestant } from './format';
+
+const b = (p: Partial<Brouillon>): Brouillon => ({ ...BROUILLON_VIDE, ...p });
+const DIX = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'T1', 'T2'];
+
+describe('peutAjouterPriorite', () => {
+  it('accepts up to 3 distinct priorities', () => {
+    expect(peutAjouterPriorite(b({ priorites: ['A1', 'A2'] }), 'A3')).toBe(true);
+  });
+  it('refuses a 4th priority', () => {
+    expect(peutAjouterPriorite(b({ priorites: ['A1', 'A2', 'A3'] }), 'T1')).toBe(false);
+  });
+  it('refuses a duplicate', () => {
+    expect(peutAjouterPriorite(b({ priorites: ['A1'] }), 'A1')).toBe(false);
+  });
+  it('basculerPriorite leaves the draft unchanged on a 4th, removes on a second tap', () => {
+    const plein = b({ priorites: ['A1', 'A2', 'A3'] });
+    expect(basculerPriorite(plein, 'T1')).toBe(plein);
+    expect(basculerPriorite(plein, 'A2').priorites).toEqual(['A1', 'A3']);
+  });
+});
+
+describe('peutAjouterUrgent', () => {
+  it('accepts a 10th urgent and refuses an 11th', () => {
+    expect(peutAjouterUrgent(b({ urgents: DIX.slice(0, 9) }), 'T2')).toBe(true);
+    expect(peutAjouterUrgent(b({ urgents: DIX }), 'T3')).toBe(false);
+    expect(basculerUrgent(b({ urgents: DIX }), 'T3').urgents).toHaveLength(10);
+  });
+  it('a programme may be both priority and urgent', () => {
+    expect(peutAjouterUrgent(b({ priorites: ['A1'] }), 'A1')).toBe(true);
+  });
+});
+
+describe('brouillonValide', () => {
+  it('needs exactly 3 priorities', () => {
+    expect(brouillonValide(b({ priorites: ['A1', 'A2'] }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'] }))).toBe(true);
+    expect(brouillonValide(b({ priorites: ['A1', 'A1', 'A3'] }))).toBe(false);
+  });
+  it('limits urgents and text, checks known ids', () => {
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], urgents: [...DIX, 'T3'] }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(301) }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'ZZ'] }), ['A1', 'A2', 'A3'])).toBe(false);
+  });
+  it('limiterManquant makes the 301st character impossible', () => {
+    expect(limiterManquant('x'.repeat(320))).toHaveLength(300);
+  });
+});
+
+describe('telephone', () => {
+  it('normalises Malagasy mobiles like the server', () => {
+    expect(normaliserTelephone('034 12 345 67')).toBe('261341234567');
+    expect(normaliserTelephone('+261 34 12 345 67')).toBe('261341234567');
+    expect(normaliserTelephone('00261341234567')).toBe('261341234567');
+    expect(normaliserTelephone('341234567')).toBe('261341234567');
+  });
+  it('refuses malformed numbers', () => {
+    expect(normaliserTelephone('031 12 345 67')).toBeNull();
+    expect(normaliserTelephone('12345')).toBeNull();
+    expect(normaliserTelephone('0612345678')).toBeNull();
+    expect(normaliserTelephone('')).toBeNull();
+  });
+  it('accepts foreign numbers only with + or 00', () => {
+    expect(normaliserTelephone('+33 6 12 34 56 78')).toBe('33612345678');
+  });
+  it('display form', () => {
+    expect(normaliserTelephoneAffichage('+261341234567')).toBe('034 12 345 67');
+    expect(normaliserTelephoneAffichage('abc')).toBeNull();
+  });
+});
+
+describe('ecartPudi and provenance', () => {
+  it('flags programmes planned after 2030', () => {
+    expect(ecartPudi('2026-2030')).toBe(false);
+    expect(ecartPudi('2031-2035')).toBe(true);
+    expect(ecartPudi('2036-2040')).toBe(true);
+  });
+  it('validates channel codes', () => {
+    expect(codeCanalValide('test-canal')).toBe(true);
+    expect(codeCanalValide('Bad Code')).toBe(false);
+    expect(codeCanalValide('x'.repeat(25))).toBe(false);
+    expect(codeCanalValide(null)).toBe(false);
+  });
+});
+
+describe('error mapper', () => {
+  it('maps PUDI_NUMERO_DEJA_UTILISE (returned, not raised) to the phone field', () => {
+    const e = messageErreur({ erreur: 'PUDI_NUMERO_DEJA_UTILISE' });
+    expect(e.code).toBe('NUMERO_DEJA_UTILISE');
+    expect(e.champ).toBe('telephone');
+    expect(e.message).toContain('a déjà servi à voter avec un autre compte Google');
+  });
+  it('maps raised errors from their message', () => {
+    expect(messageErreur({ message: 'PUDI_NUMERO_INVALIDE' }).message).toBe(
+      "Ce numéro n'est pas valide. Exemple : 034 12 345 67."
+    );
+    expect(messageErreur(new Error('PUDI_RESIDENCE')).champ).toBe('resident');
+    expect(messageErreur({ message: 'PUDI_NON_PUBLIE' }).message).toBe("La consultation n'est pas encore ouverte.");
+    expect(messageErreur({ message: 'PUDI_CLOS' }).message).toBe('La consultation est close.');
+  });
+  it('maps network timeouts and unknown errors', () => {
+    expect(extraireCode(new Error('timeout'))).toBe('RESEAU');
+    expect(messageErreur(new Error('boom')).message).toBe('Une erreur est survenue. Votre choix est gardé sur ce téléphone.');
+  });
+});
+
+describe('format', () => {
+  it('formats amounts with spaces and Ar', () => {
+    expect(formatAr(610000000)).toBe('610 000 000 Ar');
+  });
+  it('writes the closing date in full, Madagascar time', () => {
+    expect(dateClotureLongue('2026-10-26T17:00:00+00:00')).toBe('lundi 26 octobre 2026 à 20 h (heure de Madagascar)');
+  });
+  it('countdown', () => {
+    const fin = Date.parse('2026-10-26T17:00:00Z');
+    expect(tempsRestant(fin, fin - (2 * 1440 + 3 * 60 + 4) * 60000)).toEqual({ jours: 2, heures: 3, minutes: 4, fini: false });
+    expect(tempsRestant(fin, fin + 1).fini).toBe(true);
+  });
+});
+
+describe('charter', () => {
+  it('no em dash in the French dictionary', async () => {
+    const { fr } = await import('../i18n/fr');
+    expect(JSON.stringify(fr)).not.toContain(String.fromCharCode(0x2014));
+  });
+});

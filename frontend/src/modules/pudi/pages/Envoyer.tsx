@@ -1,0 +1,296 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import type { Session } from '@supabase/supabase-js';
+import { Icone } from '../composants/Icones';
+import { BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
+import { PROFIL_VALEURS } from '../data';
+import { fr } from '../i18n/fr';
+import { usePudi, useDonnees } from '../PudiContexte';
+import { lireEtatConnecte, lireMonVote, ping, soumettreVote, type FormulaireVote, type MonVote } from '../appels/api';
+import { brouillonVide } from '../appels/brouillon';
+import { lireCanal } from '../appels/provenance';
+import { getSupabase, withTimeout } from '../appels/supabaseClient';
+import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
+import { dateCourte } from '../utils/format';
+import { brouillonValide, normaliserTelephone } from '../utils/regles';
+
+const FORM_VIDE: FormulaireVote = { fokontany: '', fokontanyAutre: '', profil: '', telephone: '', resident: false };
+
+function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormulaire }) {
+  if (!e || e.champ !== champ) return null;
+  return (
+    <p role="alert" className="mt-1.5 flex gap-1.5 items-start text-[14px] font-bold text-[#9C3F21]">
+      <Icone nom="alerte" className="w-4 h-4 mt-0.5" />
+      {e.message}
+    </p>
+  );
+}
+
+export default function Envoyer() {
+  const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
+  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert } = usePudi();
+  const navigate = useNavigate();
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [vote, setVote] = useState<MonVote | null>(null);
+  const [form, setForm] = useState<FormulaireVote>(FORM_VIDE);
+  const [erreur, setErreur] = useState<ErreurAffichee | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const [redirection, setRedirection] = useState(false);
+  const initialise = useRef<string | null>(null);
+
+  // Session (shared with 1sakely.org). supabase-js is loaded here only.
+  useEffect(() => {
+    let actif = true;
+    let desabonner: (() => void) | undefined;
+    getSupabase()
+      .then(async (sb) => {
+        const { data } = await withTimeout(sb.auth.getSession());
+        if (actif) setSession(data.session);
+        const abo = sb.auth.onAuthStateChange((_ev, s) => {
+          if (actif) setSession(s);
+        });
+        desabonner = () => abo.data.subscription.unsubscribe();
+      })
+      .catch(() => {
+        if (actif) {
+          setSession(null);
+          setErreur(messageErreur(new Error('timeout')));
+        }
+      });
+    return () => {
+      actif = false;
+      desabonner?.();
+    };
+  }, []);
+
+  // After sign-in: ping once, authenticated state, own vote (prefill).
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || initialise.current === uid) return;
+    initialise.current = uid;
+    (async () => {
+      try {
+        const cle = `pudi_ping:${uid}`;
+        let deja = false;
+        try {
+          deja = sessionStorage.getItem(cle) === '1';
+        } catch {
+          /* no storage */
+        }
+        if (!deja) {
+          await ping();
+          try {
+            sessionStorage.setItem(cle, '1');
+          } catch {
+            /* no storage */
+          }
+        }
+        const e = await lireEtatConnecte();
+        definirEtat(e);
+        if (e.a_vote) {
+          const v = await lireMonVote();
+          setVote(v);
+          if (v) {
+            if (brouillonVide(brouillon)) {
+              majBrouillon({ priorites: v.priorites, urgents: v.urgents, manquant: v.manquant ?? '' });
+            }
+            setForm((f) => ({
+              ...f,
+              fokontany: v.fokontany,
+              fokontanyAutre: v.fokontany_autre ?? '',
+              profil: v.profil,
+              resident: true
+            }));
+          }
+        }
+      } catch (e) {
+        setErreur(messageErreur(e));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
+
+  const connexionGoogle = async () => {
+    setRedirection(true);
+    setErreur(null);
+    try {
+      const sb = await withTimeout(getSupabase());
+      const canal = lireCanal();
+      const redirectTo = `${window.location.origin}/pudi/envoyer${canal ? `?c=${encodeURIComponent(canal)}` : ''}`;
+      const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+      if (error) throw error;
+    } catch (e) {
+      setRedirection(false);
+      setErreur(messageErreur(e));
+    }
+  };
+
+  const valider = (): ErreurAffichee | null => {
+    if (!brouillonValide(brouillon)) return messageErreur('PUDI_PRIORITES');
+    if (!form.fokontany || (form.fokontany === 'AUTRE' && !form.fokontanyAutre.trim())) return messageErreur('PUDI_FOKONTANY');
+    if (!form.profil) return messageErreur('PUDI_PROFIL');
+    const tel = form.telephone.trim();
+    if (!tel && !vote) return messageErreur('PUDI_NUMERO_INVALIDE');
+    if (tel && !normaliserTelephone(tel)) return messageErreur('PUDI_NUMERO_INVALIDE');
+    if (!form.resident) return messageErreur('PUDI_RESIDENCE');
+    return null;
+  };
+
+  const envoyer = async (ev: FormEvent) => {
+    ev.preventDefault();
+    const local = valider();
+    setErreur(local);
+    if (local) return;
+    setEnvoi(true);
+    try {
+      const v = await soumettreVote(brouillon, form, lireCanal());
+      setVote(v);
+      navigate('/merci', { state: { test: v.est_test } });
+    } catch (e) {
+      setErreur(messageErreur(e));
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  if (erreurDonnees) return <Page titre={fr.envoi.titre}><ErreurDonnees reessayer={reessayer} /></Page>;
+
+  const champ = 'w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 text-[16px]';
+  const choixValide = brouillonValide(brouillon);
+
+  return (
+    <Page titre={fr.envoi.titre}>
+      <div className="mb-4">
+        <BandeauxEtat />
+      </div>
+
+      {!choixValide && (
+        <div className="mb-4 bg-white border border-filet rounded-xl p-3 space-y-3">
+          <p className="text-[15px]">{fr.choix.incomplet}</p>
+          <Link to="/choix" className={`${boutonSecondaire} w-full`}>
+            <Icone nom="liste" />
+            {fr.envoi.verifierChoix}
+          </Link>
+        </div>
+      )}
+
+      {session === undefined || !donnees ? (
+        <Chargement />
+      ) : !session ? (
+        <div className="space-y-4">
+          <p className="text-[16px] flex gap-2 items-start">
+            <Icone nom="personnes" className="w-5 h-5 text-marine mt-0.5" />
+            {fr.envoi.unVote}
+          </p>
+          <button type="button" className={`${boutonPrincipal} w-full`} onClick={connexionGoogle} disabled={redirection}>
+            <Icone nom="connexion" />
+            {redirection ? fr.envoi.connexionEnCours : fr.envoi.google}
+          </button>
+          {erreur && <ErreurChamp e={erreur} champ={erreur.champ} />}
+        </div>
+      ) : (
+        <form onSubmit={envoyer} noValidate className="space-y-5">
+          <p className="text-[13px] text-gris">{fr.envoi.connecteEn(session.user.email ?? '')}</p>
+          {vote && (
+            <p className="bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 text-[15px]">
+              {fr.envoi.dejaVote(dateCourte(vote.created_at))}
+            </p>
+          )}
+
+          <div>
+            <label htmlFor="pudi-fkt" className="block font-bold text-[15px] mb-1.5">
+              {fr.envoi.fokontany}
+            </label>
+            <select
+              id="pudi-fkt"
+              className={champ}
+              value={form.fokontany}
+              onChange={(e) => setForm({ ...form, fokontany: e.target.value })}
+            >
+              <option value="">{fr.envoi.fokontanyChoisir}</option>
+              {donnees.fokontany.map((f) => (
+                <option key={f.n} value={f.ceni ?? 'AUTRE'}>
+                  {f.affichage}
+                </option>
+              ))}
+            </select>
+            {form.fokontany === 'AUTRE' && (
+              <input
+                aria-label={fr.envoi.fokontanyAutre}
+                placeholder={fr.envoi.fokontanyAutre}
+                className={`${champ} mt-2`}
+                maxLength={80}
+                value={form.fokontanyAutre}
+                onChange={(e) => setForm({ ...form, fokontanyAutre: e.target.value })}
+              />
+            )}
+            <ErreurChamp e={erreur} champ="fokontany" />
+          </div>
+
+          <fieldset>
+            <legend className="font-bold text-[15px] mb-1.5">{fr.envoi.profil}</legend>
+            <div className="space-y-1.5">
+              {PROFIL_VALEURS.map((p) => (
+                <label key={p} className="flex items-center gap-3 min-h-[44px] bg-white border border-filet rounded-xl px-3">
+                  <input
+                    type="radio"
+                    name="profil"
+                    value={p}
+                    checked={form.profil === p}
+                    onChange={() => setForm({ ...form, profil: p })}
+                    className="w-5 h-5 accent-[#0B2A8C]"
+                  />
+                  <span className="text-[16px]">{fr.envoi.profils[p]}</span>
+                </label>
+              ))}
+            </div>
+            <ErreurChamp e={erreur} champ="profil" />
+          </fieldset>
+
+          <div>
+            <label htmlFor="pudi-tel" className="block font-bold text-[15px] mb-1.5">
+              {fr.envoi.telephone}
+            </label>
+            <input
+              id="pudi-tel"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              className={champ}
+              value={form.telephone}
+              onChange={(e) => setForm({ ...form, telephone: e.target.value })}
+              aria-describedby="pudi-tel-aide"
+            />
+            <p id="pudi-tel-aide" className="mt-1 text-[13px] text-gris">
+              {vote ? fr.envoi.telephoneGarde : fr.envoi.telephoneAide}
+            </p>
+            <ErreurChamp e={erreur} champ="telephone" />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-3 min-h-[48px] bg-white border border-filet rounded-xl px-3">
+              <input
+                type="checkbox"
+                checked={form.resident}
+                onChange={(e) => setForm({ ...form, resident: e.target.checked })}
+                className="w-5 h-5 accent-[#0B2A8C]"
+              />
+              <span className="text-[16px]">{fr.envoi.resident}</span>
+            </label>
+            <ErreurChamp e={erreur} champ="resident" />
+          </div>
+
+          <p className="text-[13px] leading-relaxed text-gris bg-white border border-filet rounded-xl p-3">{fr.envoi.notice}</p>
+
+          <ErreurChamp e={erreur} champ="choix" />
+          <ErreurChamp e={erreur} champ="general" />
+          {!envoiOuvert && etat && !etat.clos && <p className="text-[14px] text-gris">{fr.envoi.envoiFerme}</p>}
+          <button type="submit" className={`${boutonPrincipal} w-full`} disabled={envoi || !envoiOuvert || !choixValide}>
+            <Icone nom="envoyer" />
+            {envoi ? fr.envoi.envoiEnCours : vote ? fr.envoi.modifierVote : fr.envoi.envoyer}
+          </button>
+        </form>
+      )}
+    </Page>
+  );
+}

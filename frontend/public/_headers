@@ -37,6 +37,21 @@
 /index.html
   Cache-Control: no-cache
 
+# PUDi (v3.93.0) : page d'entrée légère et son service worker (portée /pudi/).
+/pudi/
+  Cache-Control: no-cache
+
+/pudi/index.html
+  Cache-Control: no-cache
+
+/pudi/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /pudi/
+
+/pudi/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
 # HTML — jamais en cache (revalidation systématique).
 /*.html
   Cache-Control: public, max-age=0, must-revalidate

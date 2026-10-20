@@ -1,0 +1,3410 @@
+{
+ "meta": {
+  "titre": "Priorisation du PUDi de Nosy Be 2026-2040",
+  "version": "v2",
+  "dateExtraction": "2026-10-20",
+  "extraitPar": "projet CRÉATEUR Apps",
+  "statut": "Relu et validé par le projet GIHTNB le 20/10/2026 (demande n°4)",
+  "sources": [
+   "20261016_PRES_PUDi-Liste-Projets_v1.pptx (B, 137 codes, diapos 8 à 19)",
+   "20261016_PRES_PUDi-Couts-Investissement_v1.pptx (A, 42 projets, diapos 7 à 15)",
+   "20261020_NOTE_Cahier-charges-App_v3.md (§8 regroupement, §9 correspondance)",
+   "20261020_LISTE_Fokontany-NosyBe_v1.md",
+   "20261020_LISTE_Resumes-Programmes_v1.md (résumés rédigés par le GIHTNB)"
+  ],
+  "tranches": [
+   {
+    "id": 1,
+    "libelle": "2026-2030",
+    "couleur": "#3F5FB0"
+   },
+   {
+    "id": 2,
+    "libelle": "2031-2035",
+    "couleur": "#2F4FB2"
+   },
+   {
+    "id": 3,
+    "libelle": "2036-2040",
+    "couleur": "#0B2A8C"
+   }
+  ],
+  "coutTotalA": {
+   "montantAr": 35023042371,
+   "projets": 42,
+   "tauxUSD": 4200
+  },
+  "controles": {
+   "codes": 137,
+   "programmes": 52,
+   "parTranche": {
+    "2026-2030": 71,
+    "2031-2035": 52,
+    "2036-2040": 22
+   }
+  }
+ },
+ "secteurs": [
+  {
+   "id": "AME",
+   "nom": "Aménagement",
+   "couleur": "#C2512D",
+   "couleurFoncee": "#9C3F21",
+   "images": [
+    "amenagement.webp"
+   ]
+  },
+  {
+   "id": "TOU",
+   "nom": "Tourisme",
+   "couleur": "#0B93A1",
+   "couleurFoncee": "#087581",
+   "images": [
+    "tourisme.webp"
+   ]
+  },
+  {
+   "id": "ENV",
+   "nom": "Environnement",
+   "couleur": "#2E8B4E",
+   "couleurFoncee": "#236F3E",
+   "images": [
+    "environnement.webp"
+   ]
+  },
+  {
+   "id": "SAN",
+   "nom": "Santé",
+   "couleur": "#D0386A",
+   "couleurFoncee": "#AC2A54",
+   "images": [
+    "sante.webp"
+   ]
+  },
+  {
+   "id": "EDU",
+   "nom": "Éducation",
+   "couleur": "#6A4DC4",
+   "couleurFoncee": "#6A4DC4",
+   "images": [
+    "education.webp"
+   ]
+  },
+  {
+   "id": "ASS",
+   "nom": "Assainissement, eau, déchets",
+   "couleur": "#1C7DC4",
+   "couleurFoncee": "#14629E",
+   "images": [
+    "assainissement-1.webp",
+    "assainissement-2.webp"
+   ],
+   "forfait": {
+    "numero": 41,
+    "intitule": "Assainissement durable",
+    "montantAr": 7673542371,
+    "detail": "Forfait · 32,1 %",
+    "programmes": [
+     "W3",
+     "W5"
+    ]
+   }
+  },
+  {
+   "id": "ENE",
+   "nom": "Énergie",
+   "couleur": "#D3940E",
+   "couleurFoncee": "#926407",
+   "images": [
+    "energie-transport-securite.webp"
+   ]
+  },
+  {
+   "id": "ROU",
+   "nom": "Route",
+   "couleur": "#55678A",
+   "couleurFoncee": "#3D4C6A",
+   "images": [
+    "route-1.webp",
+    "route-2.webp"
+   ],
+   "forfait": {
+    "numero": 42,
+    "intitule": "Voies urbaines et pistes rurales",
+    "montantAr": 14755750000,
+    "detail": "59 023 ml × 250 000 Ar · 61,7 %",
+    "programmes": [
+     "R3",
+     "R5",
+     "R6"
+    ]
+   }
+  },
+  {
+   "id": "TRA",
+   "nom": "Transport",
+   "couleur": "#E16A22",
+   "couleurFoncee": "#B85317",
+   "images": [
+    "energie-transport-securite.webp"
+   ]
+  },
+  {
+   "id": "EQU",
+   "nom": "Équipement",
+   "couleur": "#A53A8D",
+   "couleurFoncee": "#80296E",
+   "images": [
+    "equipement-1.webp",
+    "equipement-2.webp"
+   ]
+  },
+  {
+   "id": "SEC",
+   "nom": "Sécurité",
+   "couleur": "#2C3C82",
+   "couleurFoncee": "#2C3C82",
+   "images": [
+    "energie-transport-securite.webp"
+   ]
+  }
+ ],
+ "programmes": [
+  {
+   "id": "A1",
+   "secteur": "AME",
+   "nom": "Centre historique et front de mer de Hell-Ville",
+   "resume": "Protéger et mettre en valeur le centre historique de Hell-Ville : périmètre patrimonial, promenade littorale rue Docteur Manceau, Jardin du Hell, édifices emblématiques, axes structurants et boulevard Général de Gaulle (arbres, mobilier urbain, signalétique, éclairage).",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Hell-Ville : front de mer, cour du Hell, rue Docteur Manceau, boulevard Général de Gaulle"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAM01",
+     "libelle": "Périmètre de protection patrimoniale",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 1,
+      "intitule": "Périmètre de protection patrimoniale",
+      "description": "Front de mer, cour du Hell, rues coloniales adjacentes et principaux édifices publics anciens",
+      "montantAr": 60000000,
+      "detail": "Étude · 11,8 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PAM02",
+     "libelle": "Promenade littorale, rue Docteur Manceau",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 2,
+      "intitule": "Promenade littorale patrimoniale",
+      "description": "Rue Docteur Manceau : traitement paysager, mobilier urbain homogène, éclairage et signalétique",
+      "montantAr": 370000000,
+      "detail": "740 ml × 500 000 Ar · 72,5 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PAM03",
+     "libelle": "Réhabilitation du Jardin du Hell",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 3,
+      "intitule": "Jardin du Hell",
+      "description": "Réhabilitation et aménagement en espace vert public durable, esthétique et attractif",
+      "montantAr": 80000000,
+      "detail": "Forfait · 15,7 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PAM04",
+     "libelle": "Réhabilitation des édifices emblématiques",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "AME"
+    },
+    {
+     "code": "PAM05",
+     "libelle": "Mise en valeur des axes structurants",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "AME"
+    },
+    {
+     "code": "PAM07",
+     "libelle": "Embellissement du boulevard Général de Gaulle",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 4,
+      "intitule": "Boulevard Général de Gaulle",
+      "description": "Arbres, mobilier urbain, signalétique, éclairage",
+      "montantAr": 100000000,
+      "detail": "Forfait · 14,8 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 610000000,
+    "auMoins": true,
+    "mention": "Au moins 610 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A2",
+   "secteur": "AME",
+   "nom": "Voies de dégagement Est et Ouest",
+   "resume": "Créer deux voies de dégagement autour du centre de Hell-Ville : à l'ouest (marché couvert, rue Reine Binao, Route de l'Est) et à l'est (Assurance Mama, Route de l'Est, Maroakatsaka).",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Hell-Ville : marché couvert, rue Reine Binao, Route de l’Est, Maroakatsaka"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAM08",
+     "libelle": "Voie de dégagement Ouest (868 m)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 5,
+      "intitule": "Voie de dégagement Ouest",
+      "description": "Marché couvert, rue Reine Binao, Route de l’Est",
+      "montantAr": 204000000,
+      "detail": "816 ml × 250 000 Ar · 30,3 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PAM09",
+     "libelle": "Voie de dégagement Est (816 m)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 6,
+      "intitule": "Voie de dégagement Est",
+      "description": "Assurance Mama – Route de l’Est (Maroakatsaka)",
+      "montantAr": 149750000,
+      "detail": "599 ml × 250 000 Ar · 22,2 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 353750000,
+    "auMoins": false,
+    "mention": "353 750 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A3",
+   "secteur": "AME",
+   "nom": "Place centrale et bloc administratif (Dzamandzar)",
+   "resume": "Aménager à Dzamandzar une place centrale avec un bloc administratif réunissant arrondissement, fokontany, services techniques de l'État, formation et culture.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dzamandzar"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAM10",
+     "libelle": "Place centrale et bloc administratif",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME",
+     "coutA": {
+      "numero": 9,
+      "intitule": "Place centrale et bloc administratif",
+      "description": "Arrondissement, fokontany, STD, formation, culture",
+      "montantAr": 300000000,
+      "detail": "Forfait · 5,3 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 300000000,
+    "auMoins": false,
+    "mention": "300 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A4",
+   "secteur": "AME",
+   "nom": "Organisation de l'occupation commerciale",
+   "resume": "Organiser l'occupation commerciale de l'espace urbain.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAM11",
+     "libelle": "Organisation de l’occupation commerciale",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "AME"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A5",
+   "secteur": "AME",
+   "nom": "Reconversion de la prison en lieu culturel",
+   "resume": "Reconvertir la prison en lieu culturel.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2036-2040",
+   "codes": [
+    {
+     "code": "PAM06",
+     "libelle": "Reconversion de la prison en lieu culturel",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "AME"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A6",
+   "secteur": "AME",
+   "nom": "Nouvelle ville de Madiro",
+   "resume": "Créer une nouvelle ville à Madiro : habitat organisé, équipements publics, zone sportive, parc solaire et gare routière.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Madiro"
+   ],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PAM12",
+     "libelle": "Création d’une nouvelle ville à Madiro",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "AME"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A7",
+   "secteur": "AME",
+   "nom": "Centre intermédiaire de Fascène",
+   "resume": "Créer près de l'aéroport de Fascène un centre intermédiaire : village artisanal, restauration, services, location et navettes.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Fascène"
+   ],
+   "trancheAffichee": "2036-2040",
+   "codes": [
+    {
+     "code": "PAM13",
+     "libelle": "Centre intermédiaire à Fascène",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "AME"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "A8",
+   "secteur": "AME",
+   "nom": "Corniche et espace public d'Andavakotoko",
+   "resume": "Aménager une corniche et un espace public à Andavakotoko.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Andavakotoko"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAM14",
+     "libelle": "Corniche et espace public à Andavakotoko",
+     "tranches": [
+      "2026-2030",
+      "2031-2035"
+     ],
+     "secteurOrigine": "AME"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T1",
+   "secteur": "TOU",
+   "nom": "Stations balnéaires (six sites et plage d'Ampasy)",
+   "resume": "Aménager des stations balnéaires (parkings, sanitaires, restauration, kiosques) sur six sites : Ambatoloaka, Dzamandzar, Mahazandry, Mangirankirana, Antafianambitry et Befotaka ; puis sur la plage d'Ampasy.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambatoloaka",
+    "Dzamandzar",
+    "Mahazandry",
+    "Mangirankirana",
+    "Antafianambitry",
+    "Befotaka",
+    "plage d’Ampasy"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO05",
+     "libelle": "Stations balnéaires sur six sites",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 32,
+      "intitule": "Stations balnéaires",
+      "description": "Ambatoloaka, Dzamandzar, Mahazandry, Mangirankirana, Antafianambitry et Befotaka",
+      "montantAr": 960000000,
+      "detail": "6 × 160 000 000 Ar · 66,7 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PTO01",
+     "libelle": "Station balnéaire de la plage d’Ampasy",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "TOU"
+    }
+   ],
+   "cout": {
+    "montantAr": 960000000,
+    "auMoins": true,
+    "mention": "Au moins 960 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T2",
+   "secteur": "TOU",
+   "nom": "Extension du port de Hell-Ville (croisières)",
+   "resume": "Étendre et aménager le port de Hell-Ville pour accueillir les croisières.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Port de Hell-Ville"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO04",
+     "libelle": "Extension du port de Hell-Ville (croisières)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 31,
+      "intitule": "Port de Hell-Ville",
+      "description": "Extension et aménagement pour les croisières",
+      "montantAr": null,
+      "detail": null,
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T3",
+   "secteur": "TOU",
+   "nom": "Aéroport : tarmac, nouvelles lignes, salle d'embarquement",
+   "resume": "Développer l'aéroport : tarmac, nouvelles lignes et salle d'embarquement.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Aéroport de Fascène"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO08",
+     "libelle": "Tarmac, nouvelles lignes, salle d’embarquement",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T4",
+   "secteur": "TOU",
+   "nom": "Axe commercial, éclairage et signalétique touristiques",
+   "resume": "Embellir l'axe commercial d'Ambatoloaka (arbres, mobilier urbain, éclairage) et installer un éclairage et une signalétique touristiques.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambatoloaka"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO02",
+     "libelle": "Embellissement de l’axe commercial",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 15,
+      "intitule": "Axe commercial",
+      "description": "Embellissement : alignement arboré, mobilier urbain, signalétique touristique et éclairage public",
+      "montantAr": 80000000,
+      "detail": "Forfait · 15,4 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PTO03",
+     "libelle": "Éclairage et signalétique touristiques",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU"
+    }
+   ],
+   "cout": {
+    "montantAr": 80000000,
+    "auMoins": true,
+    "mention": "Au moins 80 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T5",
+   "secteur": "TOU",
+   "nom": "Formation professionnelle et formation permanente",
+   "resume": "Créer des centres de formation professionnelle (tourisme, BTP, agriculture) à Befotaka et Apombolava, et un centre de formation permanent (langues, écoguides, numérique).",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Befotaka",
+    "Apombolava"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO06",
+     "libelle": "Centres de formation professionnelle",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 33,
+      "intitule": "Centres de formation professionnelle",
+      "description": "Tourisme, BTP, agriculture : Befotaka, Apombolava",
+      "montantAr": 80000000,
+      "detail": "Forfait · 5,6 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PTO11",
+     "libelle": "Centre de formation permanent",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 36,
+      "intitule": "Centre de formation permanent",
+      "description": "Langues, écoguides, numérique, formations croisées",
+      "montantAr": 100000000,
+      "detail": "Forfait · 6,9 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 180000000,
+    "auMoins": false,
+    "mention": "180 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T6",
+   "secteur": "TOU",
+   "nom": "Musée immersif du Mont Passot",
+   "resume": "Créer au Mont Passot un musée immersif : scénographie numérique et exposition interactive.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Mont Passot"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO07",
+     "libelle": "Musée immersif du Mont Passot",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 34,
+      "intitule": "Musée immersif du Mont Passot",
+      "description": "Scénographie numérique, exposition interactive",
+      "montantAr": 250000000,
+      "detail": "Forfait · 17,4 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 250000000,
+    "auMoins": false,
+    "mention": "250 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T7",
+   "secteur": "TOU",
+   "nom": "Hotspots Wi-Fi publics",
+   "resume": "Installer des points d'accès Wi-Fi publics dans les lieux les plus fréquentés.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Lieux les plus fréquentés"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO10",
+     "libelle": "Hotspots Wi-Fi publics",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU",
+     "coutA": {
+      "numero": 35,
+      "intitule": "Hotspots Wi-Fi publics",
+      "description": "Dans les lieux les plus fréquentés",
+      "montantAr": 50000000,
+      "detail": "Forfait · 3,5 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 50000000,
+    "auMoins": false,
+    "mention": "50 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T8",
+   "secteur": "TOU",
+   "nom": "Station-service, tri-compostage, secours",
+   "resume": "Implanter une station-service, une unité de tri-compostage et un service de secours.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO09",
+     "libelle": "Station-service, tri-compostage, secours",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "T9",
+   "secteur": "TOU",
+   "nom": "Préservation des récifs coralliens",
+   "resume": "Préserver les récifs coralliens.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTO12",
+     "libelle": "Préservation des récifs coralliens",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TOU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "E1",
+   "secteur": "ENV",
+   "nom": "Espaces verts urbains, normes de végétalisation, jardins publics",
+   "resume": "Développer les espaces verts urbains et les jardins publics, et imposer des normes de végétalisation dans les projets urbains.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "ENV-PEN01",
+     "libelle": "Espaces verts urbains structurants",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN08",
+     "libelle": "Espaces verts urbains structurants",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN02",
+     "libelle": "Normes de végétalisation dans les projets urbains",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN09",
+     "libelle": "Normes de végétalisation dans les projets urbains",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "PEQ10",
+     "libelle": "Espace vert et jardin public",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ14",
+     "libelle": "Espace vert et jardin public",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ17",
+     "libelle": "Espace vert et jardin public",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [
+    "EQU"
+   ],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "E2",
+   "secteur": "ENV",
+   "nom": "Jardins communautaires et entretien par les communautés (TGRN)",
+   "resume": "Créer des jardins communautaires et associer les communautés à l'entretien, par transfert de gestion des ressources naturelles (TGRN).",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "ENV-PEN03",
+     "libelle": "Jardins communautaires et verdissement participatif",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN10",
+     "libelle": "Jardins communautaires et verdissement participatif",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN04",
+     "libelle": "Communautés associées à l’entretien (TGRN)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN11",
+     "libelle": "Communautés associées à l’entretien (TGRN)",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "E3",
+   "secteur": "ENV",
+   "nom": "Reboisement des bassins versants et des berges",
+   "resume": "Reboiser les bassins versants et les berges.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "ENV-PEN05",
+     "libelle": "Reboisement des bassins versants et des berges",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN12",
+     "libelle": "Reboisement des bassins versants et des berges",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "H1",
+   "secteur": "SAN",
+   "nom": "Nouveaux centres de santé de base (Senganinga, Ambodivanio, Antanamitarana, Djabala Be)",
+   "resume": "Construire quatre centres de santé de base : Senganinga, Ambodivanio, Antanamitarana et Djabala Be.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Senganinga",
+    "Ambodivanio",
+    "Antanamitarana",
+    "Djabala Be"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PSA01",
+     "libelle": "CSB du fokontany de Senganinga",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "SAN"
+    },
+    {
+     "code": "PSA04",
+     "libelle": "CSB II à Ambodivanio",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "SAN",
+     "coutA": {
+      "numero": 18,
+      "intitule": "CSB II à Ambodivanio",
+      "description": "Construction d’un centre de santé de base",
+      "montantAr": 150000000,
+      "detail": "Forfait · 9,4 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PSA05",
+     "libelle": "CSB II à Antanamitarana",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "SAN",
+     "coutA": {
+      "numero": 22,
+      "intitule": "CSB II à Antanamitarana",
+      "description": "Construction d’un centre de santé de base",
+      "montantAr": 150000000,
+      "detail": "Forfait · 9,4 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PSA06",
+     "libelle": "CSB II à Djabala Be",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "SAN"
+    }
+   ],
+   "cout": {
+    "montantAr": 300000000,
+    "auMoins": true,
+    "mention": "Au moins 300 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "H2",
+   "secteur": "SAN",
+   "nom": "Réhabilitation et passage de CSB I en CSB II",
+   "resume": "Réhabiliter et moderniser les centres de santé de base, et faire passer en CSB II ceux d'Ambatoloaka, Ambatozavavy et Befotaka.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambatoloaka",
+    "Ambatozavavy",
+    "Befotaka"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PSA02",
+     "libelle": "Réhabilitation et modernisation des CSB",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "SAN"
+    },
+    {
+     "code": "PSA03",
+     "libelle": "CSB I requalifié en CSB II (Ambatoloaka)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "SAN",
+     "coutA": {
+      "numero": 16,
+      "intitule": "Centre de santé de base",
+      "description": "Requalification du CSB I en CSB II",
+      "montantAr": 40000000,
+      "detail": "Forfait · 7,7 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PSA07",
+     "libelle": "CSB I en CSB II : Ambatozavavy, Befotaka",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "SAN",
+     "coutA": {
+      "numero": 28,
+      "intitule": "Centres de santé de base",
+      "description": "Requalification en CSB II : Ambatozavavy, Befotaka",
+      "montantAr": 50000000,
+      "detail": "Forfait · 6,9 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 90000000,
+    "auMoins": true,
+    "mention": "Au moins 90 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "D1",
+   "secteur": "EDU",
+   "nom": "Écoles primaires publiques",
+   "resume": "Construire ou agrandir des écoles primaires publiques à La Batterie, Dzamandzar Usine (4 salles de classe) et Antsatrabevoa.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "La Batterie",
+    "Dzamandzar Usine",
+    "Antsatrabevoa"
+   ],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PED01",
+     "libelle": "EPP du fokontany de La Batterie",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EDU"
+    },
+    {
+     "code": "PED03",
+     "libelle": "4 salles de classe, EPP de Dzamandzar Usine",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EDU"
+    },
+    {
+     "code": "PED10",
+     "libelle": "EPP à Antsatrabevoa",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EDU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "D2",
+   "secteur": "EDU",
+   "nom": "Collèges (CEG)",
+   "resume": "Construire des collèges (CEG) à Antanamitarana, Djabala Be, Ambondrona, Bemalandy et Ampangorina, et ajouter 4 salles de classe à un CEG.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Antanamitarana",
+    "Djabala Be",
+    "Ambondrona",
+    "Bemalandy",
+    "Ampangorina"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PED04",
+     "libelle": "4 salles de classe pour le CEG",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EDU"
+    },
+    {
+     "code": "PED06",
+     "libelle": "CEG à Antanamitarana",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EDU",
+     "coutA": {
+      "numero": 21,
+      "intitule": "CEG à Antanamitarana",
+      "description": "Construction d’un collège d’enseignement général",
+      "montantAr": 150000000,
+      "detail": "Forfait · 9,4 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PED07",
+     "libelle": "CEG à Djabala Be et Ambondrona",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EDU"
+    },
+    {
+     "code": "PED11",
+     "libelle": "CEG à Bemalandy et Ampangorina",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EDU"
+    }
+   ],
+   "cout": {
+    "montantAr": 150000000,
+    "auMoins": true,
+    "mention": "Au moins 150 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "D3",
+   "secteur": "EDU",
+   "nom": "Lycées",
+   "resume": "Réhabiliter le lycée technique et le lycée mixte, et construire des lycées à Miadana Commune, Ambatozavavy et Bemanondrobe.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dzamandzar",
+    "Miadana Commune",
+    "Ambatozavavy",
+    "Bemanondrobe"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PED02",
+     "libelle": "Lycée technique et lycée mixte (réhabilitation)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EDU",
+     "coutA": {
+      "numero": 12,
+      "intitule": "Lycée technique et lycée mixte",
+      "description": "Réhabilitation et embellissement des enceintes",
+      "montantAr": 60000000,
+      "detail": "Forfait · 1,1 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PED05",
+     "libelle": "Lycée à Miadana Commune",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EDU"
+    },
+    {
+     "code": "PED08",
+     "libelle": "Lycée à Ambatozavavy",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EDU",
+     "coutA": {
+      "numero": 27,
+      "intitule": "Lycée d’Ambatozavavy",
+      "description": "Construction",
+      "montantAr": 180000000,
+      "detail": "Forfait · 25,0 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PED09",
+     "libelle": "Lycée à Bemanondrobe",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EDU"
+    }
+   ],
+   "cout": {
+    "montantAr": 240000000,
+    "auMoins": true,
+    "mention": "Au moins 240 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "W1",
+   "secteur": "ASS",
+   "nom": "Eau potable (extension des réseaux, branchements JIRAMA, gestion locale de l'eau)",
+   "resume": "Étendre les réseaux d'eau potable dans les zones d'habitation, développer les branchements particuliers JIRAMA et confier aux communautés une gestion locale de l'eau.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Zones d’habitation"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAS05",
+     "libelle": "Extension des réseaux d’eau potable",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ASS",
+     "coutA": {
+      "numero": 19,
+      "intitule": "Réseaux d’eau potable",
+      "description": "Extension dans les zones d’habitation",
+      "montantAr": 200000000,
+      "detail": "Forfait · 12,5 %",
+      "correspondanceIncertaine": true
+     }
+    },
+    {
+     "code": "PAS07",
+     "libelle": "Extension des réseaux d’eau potable",
+     "tranches": [
+      "2031-2035",
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS09",
+     "libelle": "Extension des réseaux d’eau potable",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ASS",
+     "coutA": {
+      "numero": 24,
+      "intitule": "Réseaux d’eau potable",
+      "description": "Extension dans les zones d’habitation",
+      "montantAr": 500000000,
+      "detail": "Forfait · 31,3 %",
+      "correspondanceIncertaine": true
+     }
+    },
+    {
+     "code": "PAS11",
+     "libelle": "Extension des réseaux d’eau potable",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "ENE-PEN01",
+     "libelle": "Branchements particuliers en eau (JIRAMA)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENE"
+    },
+    {
+     "code": "ENV-PEN07",
+     "libelle": "Gestion locale de l’eau par TGRN",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN14",
+     "libelle": "Gestion locale de l’eau par TGRN",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    }
+   ],
+   "cout": {
+    "montantAr": 700000000,
+    "auMoins": true,
+    "mention": "Au moins 700 000 000 Ar"
+   },
+   "incluAussi": [
+    "ENE",
+    "ENV"
+   ],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "W2",
+   "secteur": "ASS",
+   "nom": "Bacs à ordures avec tri dans les fokontany",
+   "resume": "Installer des bacs à ordures avec tri dans les fokontany.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Tous les fokontany"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAS06",
+     "libelle": "Bacs à ordures avec tri dans les fokontany",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ASS",
+     "coutA": {
+      "numero": 20,
+      "intitule": "Bacs à ordures avec tri",
+      "description": "Dans tous les fokontany",
+      "montantAr": 50000000,
+      "detail": "Forfait · 3,1 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PAS08",
+     "libelle": "Bacs à ordures avec tri dans les fokontany",
+     "tranches": [
+      "2031-2035",
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS10",
+     "libelle": "Bacs à ordures avec tri dans les fokontany",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS12",
+     "libelle": "Bacs à ordures avec tri dans les fokontany",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    }
+   ],
+   "cout": {
+    "montantAr": 50000000,
+    "auMoins": true,
+    "mention": "Au moins 50 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "W3",
+   "secteur": "ASS",
+   "nom": "Eaux usées (raccordement, lagunage, réseau projeté, systèmes adaptés)",
+   "resume": "Traiter les eaux usées : raccordement des bâtiments aux réseaux, lagunage à Dzamandzar, nouveau réseau d'assainissement et systèmes adaptés.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dzamandzar (lagunage)"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAS03",
+     "libelle": "Raccordement des bâtis aux réseaux",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS04",
+     "libelle": "Lagunage des eaux usées à Dzamandzar",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS18",
+     "libelle": "Réseau d’assainissement projeté",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "ENV-PEN06",
+     "libelle": "Systèmes d’assainissement adaptés",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENV"
+    },
+    {
+     "code": "ENV-PEN13",
+     "libelle": "Systèmes d’assainissement adaptés",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENV"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Compris dans le forfait n°41 du secteur (non réparti entre programmes)"
+   },
+   "incluAussi": [
+    "ENV"
+   ],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "W4",
+   "secteur": "ASS",
+   "nom": "Blocs sanitaires (La Batterie, Senganinga)",
+   "resume": "Construire quatre blocs sanitaires : deux à La Batterie, deux à Senganinga.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "La Batterie",
+    "Senganinga"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAS01",
+     "libelle": "Blocs sanitaires, La Batterie et Senganinga",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ASS",
+     "coutA": {
+      "numero": 7,
+      "intitule": "Blocs sanitaires",
+      "description": "Deux blocs à La Batterie, deux à Senganinga",
+      "montantAr": 120000000,
+      "detail": "4 × 30 000 000 Ar · 17,8 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 120000000,
+    "auMoins": false,
+    "mention": "120 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "W5",
+   "secteur": "ASS",
+   "nom": "Drainage et eaux pluviales (curage, réseaux et ouvrages existants)",
+   "resume": "Curer les canaux d'eaux pluviales et réhabiliter le drainage, le réseau enterré et les ouvrages hydrauliques existants.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PAS02",
+     "libelle": "Curage des canaux d’eaux pluviales",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS13",
+     "libelle": "Réhabilitation du réseau enterré existant",
+     "tranches": [
+      "2026-2030",
+      "2031-2035"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS14",
+     "libelle": "Réhabilitation du drainage existant",
+     "tranches": [
+      "2026-2030",
+      "2031-2035",
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS15",
+     "libelle": "Réhabilitation des ouvrages hydrauliques",
+     "tranches": [
+      "2026-2030",
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS16",
+     "libelle": "Réhabilitation des ouvrages de rétablissement",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    },
+    {
+     "code": "PAS17",
+     "libelle": "Grands ouvrages hydrauliques (réhabilitation)",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ASS"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Compris dans le forfait n°41 du secteur (non réparti entre programmes)"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "N1",
+   "secteur": "ENE",
+   "nom": "Extension du réseau électrique",
+   "resume": "Étendre le réseau électrique.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "ENE-PEN02",
+     "libelle": "Extension du réseau électrique",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ENE"
+    },
+    {
+     "code": "ENE-PEN04",
+     "libelle": "Extension du réseau électrique",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENE"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "N2",
+   "secteur": "ENE",
+   "nom": "Parc solaire de 3 MW à Madiro",
+   "resume": "Installer un parc solaire de 3 MW à Madiro.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Madiro"
+   ],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "ENE-PEN03",
+     "libelle": "Parc solaire de 3 MW à Madiro",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ENE"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "N3",
+   "secteur": "ENE",
+   "nom": "Éclairage public photovoltaïque",
+   "resume": "Installer un éclairage public photovoltaïque sur les voies secondaires et tertiaires de deux fokontany du centre-ville.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Voies secondaires et tertiaires de deux fokontany du centre-ville"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ01",
+     "libelle": "Éclairage public photovoltaïque",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 8,
+      "intitule": "Éclairage public photovoltaïque",
+      "description": "Voies secondaires et tertiaires des 2 fokontany",
+      "montantAr": 100000000,
+      "detail": "Forfait · 14,8 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 100000000,
+    "auMoins": false,
+    "mention": "100 000 000 Ar"
+   },
+   "incluAussi": [
+    "EQU"
+   ],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R1",
+   "secteur": "ROU",
+   "nom": "Routes d'accès aux plages et signalétique",
+   "resume": "Améliorer les routes d'accès aux plages (2 000 mètres) et leur signalétique.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Accès aux plages"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PRO01",
+     "libelle": "Routes d’accès aux plages et signalétique",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU",
+     "coutA": {
+      "numero": 10,
+      "intitule": "Routes d’accès aux plages",
+      "description": "Amélioration des accès, avec signalétique",
+      "montantAr": 2000000000,
+      "detail": "2 000 ml × 1 000 000 Ar · 35,3 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 2000000000,
+    "auMoins": false,
+    "mention": "2 000 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R2",
+   "secteur": "ROU",
+   "nom": "Contournement CNAPS-Antanambao (974 m)",
+   "resume": "Aménager une route de contournement de 974 mètres entre la CNAPS et Antanambao.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "CNAPS",
+    "Antanambao"
+   ],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PRO02",
+     "libelle": "Contournement de 974 m, CNAPS – Antanambao",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R3",
+   "secteur": "ROU",
+   "nom": "Voies urbaines (15 069 ml)",
+   "resume": "Réhabiliter 15 069 mètres de voies urbaines.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PRO03",
+     "libelle": "Voies urbaines (15 069 ml)",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R4",
+   "secteur": "ROU",
+   "nom": "Voie circulaire à Nosy Komba",
+   "resume": "Aménager une voie circulaire à Nosy Komba.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Nosy Komba"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PRO04",
+     "libelle": "Voie circulaire à Nosy Komba",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R5",
+   "secteur": "ROU",
+   "nom": "Routes d'intérêt communal",
+   "resume": "Réhabiliter les routes d'intérêt communal : Ambanoro à Ambatozavavy, Befotaka à Maromaniry, Antotoro à Ambalahonko, Rapale à Ankatrokatroka, Ambonara à Andilamavo, Dar-es-Salam à Dzamandzar.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambanoro – Ambatozavavy",
+    "Befotaka – Maromaniry",
+    "Antotoro – Ambalahonko",
+    "Rapale – Ankatrokatroka",
+    "Ambonara – Andilamavo",
+    "Dar-es-Salam – Dzamandzar"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PRO08",
+     "libelle": "RIC Ambanoro – Ambatozavavy",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO09",
+     "libelle": "RIC Befotaka – Maromaniry",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO10",
+     "libelle": "RIC Antotoro – Ambalahonko",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO11",
+     "libelle": "RIC Rapale – Ankatrokatroka",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO12",
+     "libelle": "RIC Ambonara – Andilamavo",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO13",
+     "libelle": "RIC Dar-es-Salam – Dzamandzar",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO19",
+     "libelle": "Routes d’intérêt communal",
+     "tranches": [
+      "2031-2035",
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "R6",
+   "secteur": "ROU",
+   "nom": "Voies primaires et secondaires des quartiers",
+   "resume": "Réhabiliter les voies primaires et secondaires de 13 quartiers, de Senganinga et La Batterie jusqu'à Djabala Be et Maroakatsaka.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Senganinga",
+    "La Batterie",
+    "Camp Vert",
+    "Befitina",
+    "Andavakotoko",
+    "Miadana Commune",
+    "Ambatoloaka",
+    "Ambodivanio",
+    "Ambonara",
+    "Ambondrona",
+    "Djabala Be",
+    "Dzamandzar",
+    "Maroakatsaka"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PRO05",
+     "libelle": "Voies secondaires · Senganinga",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO06",
+     "libelle": "Voies secondaires · La Batterie",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO07",
+     "libelle": "Voies secondaires · Camp Vert",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO14",
+     "libelle": "Voies secondaires · Befitina",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO15",
+     "libelle": "Voies primaires · Andavakotoko",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO16",
+     "libelle": "Voies secondaires · Andavakotoko",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO17",
+     "libelle": "Voies primaires · Miadana Commune",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO18",
+     "libelle": "Voies secondaires · Miadana Commune",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO20",
+     "libelle": "Voies secondaires · Ambatoloaka",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO21",
+     "libelle": "Voies secondaires · Ambodivanio",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO22",
+     "libelle": "Voies secondaires · Ambonara",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO23",
+     "libelle": "Voies secondaires · Ambondrona",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO24",
+     "libelle": "Voies secondaires · Djabala Be",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO25",
+     "libelle": "Voies secondaires · Dzamandzar",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    },
+    {
+     "code": "PRO26",
+     "libelle": "Voies secondaires · Maroakatsaka",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "ROU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "M1",
+   "secteur": "TRA",
+   "nom": "Embarcadère et mouillages écologiques",
+   "resume": "Aménager à Ambatoloaka un embarcadère et des mouillages écologiques, avec des couloirs de navigation pour protéger les fonds marins et sécuriser la baignade.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambatoloaka"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTR01",
+     "libelle": "Embarcadère et mouillages écologiques",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TRA",
+     "coutA": {
+      "numero": 17,
+      "intitule": "Embarcadère et mouillages écologiques",
+      "description": "Couloirs de navigation pour structurer les flux, protéger les fonds marins et sécuriser la baignade",
+      "montantAr": 400000000,
+      "detail": "Forfait · 76,9 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 400000000,
+    "auMoins": false,
+    "mention": "400 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "M2",
+   "secteur": "TRA",
+   "nom": "Gares routières dans quatre pôles",
+   "resume": "Construire des gares routières dans quatre pôles : Ambonara, Sarimasina, Dzamandzar Usine et Fasenina.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambonara",
+    "Sarimasina",
+    "Dzamandzar Usine",
+    "Fasenina"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTR02",
+     "libelle": "Gares routières dans quatre pôles",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TRA",
+     "coutA": {
+      "numero": 37,
+      "intitule": "Gares routières",
+      "description": "Ambonara, Sarimasina, Dzamandzar Usine et Fasenina",
+      "montantAr": 720000000,
+      "detail": "4 × 180 000 000 Ar · 3,0 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 720000000,
+    "auMoins": false,
+    "mention": "720 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "M3",
+   "secteur": "TRA",
+   "nom": "Aires de stationnement structurées",
+   "resume": "Aménager des aires de stationnement à Dar-es-Salam, Andilana et Fasenina (Pont Mena).",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dar-es-Salam",
+    "Andilana",
+    "Fasenina (Pont Mena)"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PTR03",
+     "libelle": "Aires de stationnement structurées",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "TRA",
+     "coutA": {
+      "numero": 38,
+      "intitule": "Aires de stationnement",
+      "description": "Dar-Es-Salam, Andilana et Fasenina (Pont Mena)",
+      "montantAr": 300000000,
+      "detail": "4 × 75 000 000 Ar · 1,3 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 300000000,
+    "auMoins": false,
+    "mention": "300 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q1",
+   "secteur": "EQU",
+   "nom": "Marché à étage",
+   "resume": "Transformer le marché actuel en marché à étage, avec stationnement et livraisons.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dzamandzar"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ02",
+     "libelle": "Marché à étage, stationnement et livraisons",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ03",
+     "libelle": "Transformation du marché en marché à étage",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 11,
+      "intitule": "Marché à étage",
+      "description": "Réhabilitation et transformation du marché actuel",
+      "montantAr": 3000000000,
+      "detail": "2 000 × 1 500 000 Ar · 53,0 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 3000000000,
+    "auMoins": true,
+    "mention": "Au moins 3 000 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q2",
+   "secteur": "EQU",
+   "nom": "Halle marchande de 700 m²",
+   "resume": "Construire une halle marchande de 700 m² avec stationnement.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PEQ06",
+     "libelle": "Halle marchande de 700 m² et stationnement",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q3",
+   "secteur": "EQU",
+   "nom": "Marchés de quartier",
+   "resume": "Réhabiliter, agrandir ou créer des marchés de quartier : Andavakotoko, Ambonara, Djabala Be, Ambodiatafana, Ambanoro, Bemanondrobe, Befotaka et Ambatozavavy.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Andavakotoko",
+    "Ambonara",
+    "Djabala Be",
+    "Ambodiatafana",
+    "Ambanoro",
+    "Bemanondrobe",
+    "Befotaka",
+    "Ambatozavavy"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ11",
+     "libelle": "Marchés d’Andavakotoko et d’Ambonara",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ13",
+     "libelle": "Marchés de Djabala Be et d’Ambodiatafana",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 23,
+      "intitule": "Extension des marchés de quartier",
+      "description": "Djabala Be et Ambodiatafana, avec réhabilitation",
+      "montantAr": 200000000,
+      "detail": "2 × 100 000 000 Ar · 12,5 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ16",
+     "libelle": "Marché de quartier d’Ambanoro",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ20",
+     "libelle": "Marchés de Bemanondrobe et de Befotaka",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 29,
+      "intitule": "Extension des marchés de quartier",
+      "description": "Bemanondrobe et Befotaka, avec réhabilitation",
+      "montantAr": 90000000,
+      "detail": "2 × 45 000 000 Ar · 12,5 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ22",
+     "libelle": "Marché de quartier d’Ambatozavavy",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": 290000000,
+    "auMoins": true,
+    "mention": "Au moins 290 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q4",
+   "secteur": "EQU",
+   "nom": "Terrains et complexes sportifs",
+   "resume": "Créer des terrains de sport (football, basket, moraingy) et des complexes sportifs dans plusieurs quartiers, dont un complexe associant commerces et coworking.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dar-es-Salam",
+    "Ambondrona",
+    "Ambonara",
+    "Ambodivanio",
+    "Ambanoro",
+    "Ambatozavavy",
+    "Befotaka",
+    "Bemanondrobe"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ04",
+     "libelle": "Terrains de football, basket et moraingy",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 13,
+      "intitule": "Terrains de sport",
+      "description": "Football, basketball et espaces de moraingy",
+      "montantAr": 100000000,
+      "detail": "Forfait · 1,8 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ09",
+     "libelle": "Complexe sportif, commerces et coworking",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ12",
+     "libelle": "Complexe sportif, Ambonara et Ambodivanio",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ15",
+     "libelle": "Complexe sportif à Dar Es Salam, Ambondrona",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 25,
+      "intitule": "Complexe sportif",
+      "description": "Dar Es Salam – Ambondrona",
+      "montantAr": 200000000,
+      "detail": "Forfait · 12,5 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ18",
+     "libelle": "Complexe sportif à Ambanoro",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    },
+    {
+     "code": "PEQ21",
+     "libelle": "Terrains de sport, Ambatozavavy et Befotaka",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 30,
+      "intitule": "Terrains de sport",
+      "description": "Ambatozavavy et Befotaka",
+      "montantAr": 100000000,
+      "detail": "2 × 50 000 000 Ar · 13,9 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ23",
+     "libelle": "Terrain de sport à Bemanondrobe",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": 400000000,
+    "auMoins": true,
+    "mention": "Au moins 400 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q5",
+   "secteur": "EQU",
+   "nom": "Sécurité incendie (casernes, bouches d'incendie)",
+   "resume": "Construire des casernes de sapeurs-pompiers (Dzamandzar Usine, Djabala) et installer des bouches d'incendie.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Dzamandzar Usine",
+    "Djabala",
+    "Madirokely",
+    "Orangea"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ05",
+     "libelle": "Caserne de pompiers, Dzamandzar Usine",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 14,
+      "intitule": "Caserne de sapeurs-pompiers",
+      "description": "Dzamandzar Usine",
+      "montantAr": 200000000,
+      "detail": "Forfait · 3,5 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ25",
+     "libelle": "Caserne et bouches d’incendie (Djabala)",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 39,
+      "intitule": "Caserne et bouches d’incendie",
+      "description": "Djabala, Madirokely et Orangea",
+      "montantAr": 250000000,
+      "detail": "Forfait · 1,0 %",
+      "correspondanceIncertaine": false
+     }
+    }
+   ],
+   "cout": {
+    "montantAr": 450000000,
+    "auMoins": false,
+    "mention": "450 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q6",
+   "secteur": "EQU",
+   "nom": "Abattoirs",
+   "resume": "Réhabiliter l'abattoir de Befitina (parc à bœufs, froid, eau courante) et créer des abattoirs modernes à Dzamandzar et Ampasikely.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Befitina",
+    "Dzamandzar",
+    "Ampasikely"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ26",
+     "libelle": "Réhabilitation de l’abattoir de Befitina",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 40,
+      "intitule": "Abattoir de Befitina",
+      "description": "Réhabilitation : parc à bœufs, froid, eau courante",
+      "montantAr": 200000000,
+      "detail": "Forfait · 0,8 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ27",
+     "libelle": "Abattoirs modernes, Dzamandzar et Ampasikely",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": 200000000,
+    "auMoins": true,
+    "mention": "Au moins 200 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q7",
+   "secteur": "EQU",
+   "nom": "Bureaux d'arrondissement, maisons des jeunes, centres villageois",
+   "resume": "Construire des bureaux d'arrondissement avec bibliothèque et maison des jeunes (Ambatozavavy, Bemanondrobe, Befotaka) et de petits centres villageois dans les fokontany ruraux.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [
+    "Ambatozavavy",
+    "Bemanondrobe",
+    "Befotaka",
+    "fokontany ruraux"
+   ],
+   "trancheAffichee": "2026-2030",
+   "codes": [
+    {
+     "code": "PEQ19",
+     "libelle": "Bureaux d’arrondissement, maisons des jeunes",
+     "tranches": [
+      "2026-2030"
+     ],
+     "secteurOrigine": "EQU",
+     "coutA": {
+      "numero": 26,
+      "intitule": "Bureaux d’arrondissement",
+      "description": "Avec bibliothèque et maison des jeunes : Ambatozavavy, Bemanondrobe et Befotaka",
+      "montantAr": 300000000,
+      "detail": "3 × 100 000 000 Ar · 41,7 %",
+      "correspondanceIncertaine": false
+     }
+    },
+    {
+     "code": "PEQ24",
+     "libelle": "Petits centres villageois (fokontany ruraux)",
+     "tranches": [
+      "2036-2040"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": 300000000,
+    "auMoins": true,
+    "mention": "Au moins 300 000 000 Ar"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q8",
+   "secteur": "EQU",
+   "nom": "Services urbains nocturnes",
+   "resume": "Mettre en place des services urbains de nuit.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PEQ07",
+     "libelle": "Services urbains nocturnes",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "Q9",
+   "secteur": "EQU",
+   "nom": "Espaces publics et zones tampons paysagères",
+   "resume": "Aménager des espaces publics et des zones tampons paysagères.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PEQ08",
+     "libelle": "Espaces publics et zones tampons paysagères",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "EQU"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  },
+  {
+   "id": "S1",
+   "secteur": "SEC",
+   "nom": "Renforcement des dispositifs de sécurité (police, caméras, flux nocturnes)",
+   "resume": "Renforcer la sécurité : présence policière, caméras de surveillance et gestion des flux nocturnes.",
+   "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
+   "sites": [],
+   "trancheAffichee": "2031-2035",
+   "codes": [
+    {
+     "code": "PSE01",
+     "libelle": "Renforcement des dispositifs de sécurité",
+     "tranches": [
+      "2031-2035"
+     ],
+     "secteurOrigine": "SEC"
+    }
+   ],
+   "cout": {
+    "montantAr": null,
+    "mention": "Non chiffré dans le PUDi"
+   },
+   "incluAussi": [],
+   "sitesStatut": "validé GIHTNB"
+  }
+ ],
+ "projetsCoutA": [
+  {
+   "numero": 1,
+   "axe": "Patrimoine et front de mer",
+   "intitule": "Périmètre de protection patrimoniale",
+   "description": "Front de mer, cour du Hell, rues coloniales adjacentes et principaux édifices publics anciens",
+   "montantAr": 60000000,
+   "detail": "Étude · 11,8 %",
+   "codeB": "PAM01",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 2,
+   "axe": "Patrimoine et front de mer",
+   "intitule": "Promenade littorale patrimoniale",
+   "description": "Rue Docteur Manceau : traitement paysager, mobilier urbain homogène, éclairage et signalétique",
+   "montantAr": 370000000,
+   "detail": "740 ml × 500 000 Ar · 72,5 %",
+   "codeB": "PAM02",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 3,
+   "axe": "Patrimoine et front de mer",
+   "intitule": "Jardin du Hell",
+   "description": "Réhabilitation et aménagement en espace vert public durable, esthétique et attractif",
+   "montantAr": 80000000,
+   "detail": "Forfait · 15,7 %",
+   "codeB": "PAM03",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 4,
+   "axe": "Centre-ville de Hell-Ville",
+   "intitule": "Boulevard Général de Gaulle",
+   "description": "Arbres, mobilier urbain, signalétique, éclairage",
+   "montantAr": 100000000,
+   "detail": "Forfait · 14,8 %",
+   "codeB": "PAM07",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 5,
+   "axe": "Centre-ville de Hell-Ville",
+   "intitule": "Voie de dégagement Ouest",
+   "description": "Marché couvert, rue Reine Binao, Route de l’Est",
+   "montantAr": 204000000,
+   "detail": "816 ml × 250 000 Ar · 30,3 %",
+   "codeB": "PAM08",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 6,
+   "axe": "Centre-ville de Hell-Ville",
+   "intitule": "Voie de dégagement Est",
+   "description": "Assurance Mama – Route de l’Est (Maroakatsaka)",
+   "montantAr": 149750000,
+   "detail": "599 ml × 250 000 Ar · 22,2 %",
+   "codeB": "PAM09",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 7,
+   "axe": "Centre-ville de Hell-Ville",
+   "intitule": "Blocs sanitaires",
+   "description": "Deux blocs à La Batterie, deux à Senganinga",
+   "montantAr": 120000000,
+   "detail": "4 × 30 000 000 Ar · 17,8 %",
+   "codeB": "PAS01",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 8,
+   "axe": "Centre-ville de Hell-Ville",
+   "intitule": "Éclairage public photovoltaïque",
+   "description": "Voies secondaires et tertiaires des 2 fokontany",
+   "montantAr": 100000000,
+   "detail": "Forfait · 14,8 %",
+   "codeB": "PEQ01",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 9,
+   "axe": "Dzamandzar",
+   "intitule": "Place centrale et bloc administratif",
+   "description": "Arrondissement, fokontany, STD, formation, culture",
+   "montantAr": 300000000,
+   "detail": "Forfait · 5,3 %",
+   "codeB": "PAM10",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 10,
+   "axe": "Dzamandzar",
+   "intitule": "Routes d’accès aux plages",
+   "description": "Amélioration des accès, avec signalétique",
+   "montantAr": 2000000000,
+   "detail": "2 000 ml × 1 000 000 Ar · 35,3 %",
+   "codeB": "PRO01",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 11,
+   "axe": "Dzamandzar",
+   "intitule": "Marché à étage",
+   "description": "Réhabilitation et transformation du marché actuel",
+   "montantAr": 3000000000,
+   "detail": "2 000 × 1 500 000 Ar · 53,0 %",
+   "codeB": "PEQ03",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 12,
+   "axe": "Dzamandzar",
+   "intitule": "Lycée technique et lycée mixte",
+   "description": "Réhabilitation et embellissement des enceintes",
+   "montantAr": 60000000,
+   "detail": "Forfait · 1,1 %",
+   "codeB": "PED02",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 13,
+   "axe": "Dzamandzar",
+   "intitule": "Terrains de sport",
+   "description": "Football, basketball et espaces de moraingy",
+   "montantAr": 100000000,
+   "detail": "Forfait · 1,8 %",
+   "codeB": "PEQ04",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 14,
+   "axe": "Dzamandzar",
+   "intitule": "Caserne de sapeurs-pompiers",
+   "description": "Dzamandzar Usine",
+   "montantAr": 200000000,
+   "detail": "Forfait · 3,5 %",
+   "codeB": "PEQ05",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 15,
+   "axe": "Ambatoloaka",
+   "intitule": "Axe commercial",
+   "description": "Embellissement : alignement arboré, mobilier urbain, signalétique touristique et éclairage public",
+   "montantAr": 80000000,
+   "detail": "Forfait · 15,4 %",
+   "codeB": "PTO02",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 16,
+   "axe": "Ambatoloaka",
+   "intitule": "Centre de santé de base",
+   "description": "Requalification du CSB I en CSB II",
+   "montantAr": 40000000,
+   "detail": "Forfait · 7,7 %",
+   "codeB": "PSA03",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 17,
+   "axe": "Ambatoloaka",
+   "intitule": "Embarcadère et mouillages écologiques",
+   "description": "Couloirs de navigation pour structurer les flux, protéger les fonds marins et sécuriser la baignade",
+   "montantAr": 400000000,
+   "detail": "Forfait · 76,9 %",
+   "codeB": "PTR01",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 18,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "CSB II à Ambodivanio",
+   "description": "Construction d’un centre de santé de base",
+   "montantAr": 150000000,
+   "detail": "Forfait · 9,4 %",
+   "codeB": "PSA04",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 19,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "Réseaux d’eau potable",
+   "description": "Extension dans les zones d’habitation",
+   "montantAr": 200000000,
+   "detail": "Forfait · 12,5 %",
+   "codeB": "PAS05",
+   "correspondanceIncertaine": true
+  },
+  {
+   "numero": 20,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "Bacs à ordures avec tri",
+   "description": "Dans tous les fokontany",
+   "montantAr": 50000000,
+   "detail": "Forfait · 3,1 %",
+   "codeB": "PAS06",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 21,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "CEG à Antanamitarana",
+   "description": "Construction d’un collège d’enseignement général",
+   "montantAr": 150000000,
+   "detail": "Forfait · 9,4 %",
+   "codeB": "PED06",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 22,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "CSB II à Antanamitarana",
+   "description": "Construction d’un centre de santé de base",
+   "montantAr": 150000000,
+   "detail": "Forfait · 9,4 %",
+   "codeB": "PSA05",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 23,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "Extension des marchés de quartier",
+   "description": "Djabala Be et Ambodiatafana, avec réhabilitation",
+   "montantAr": 200000000,
+   "detail": "2 × 100 000 000 Ar · 12,5 %",
+   "codeB": "PEQ13",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 24,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "Réseaux d’eau potable",
+   "description": "Extension dans les zones d’habitation",
+   "montantAr": 500000000,
+   "detail": "Forfait · 31,3 %",
+   "codeB": "PAS09",
+   "correspondanceIncertaine": true
+  },
+  {
+   "numero": 25,
+   "axe": "Quartiers péricentraux et zones relais",
+   "intitule": "Complexe sportif",
+   "description": "Dar Es Salam – Ambondrona",
+   "montantAr": 200000000,
+   "detail": "Forfait · 12,5 %",
+   "codeB": "PEQ15",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 26,
+   "axe": "Pôles ruraux et villageois",
+   "intitule": "Bureaux d’arrondissement",
+   "description": "Avec bibliothèque et maison des jeunes : Ambatozavavy, Bemanondrobe et Befotaka",
+   "montantAr": 300000000,
+   "detail": "3 × 100 000 000 Ar · 41,7 %",
+   "codeB": "PEQ19",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 27,
+   "axe": "Pôles ruraux et villageois",
+   "intitule": "Lycée d’Ambatozavavy",
+   "description": "Construction",
+   "montantAr": 180000000,
+   "detail": "Forfait · 25,0 %",
+   "codeB": "PED08",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 28,
+   "axe": "Pôles ruraux et villageois",
+   "intitule": "Centres de santé de base",
+   "description": "Requalification en CSB II : Ambatozavavy, Befotaka",
+   "montantAr": 50000000,
+   "detail": "Forfait · 6,9 %",
+   "codeB": "PSA07",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 29,
+   "axe": "Pôles ruraux et villageois",
+   "intitule": "Extension des marchés de quartier",
+   "description": "Bemanondrobe et Befotaka, avec réhabilitation",
+   "montantAr": 90000000,
+   "detail": "2 × 45 000 000 Ar · 12,5 %",
+   "codeB": "PEQ20",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 30,
+   "axe": "Pôles ruraux et villageois",
+   "intitule": "Terrains de sport",
+   "description": "Ambatozavavy et Befotaka",
+   "montantAr": 100000000,
+   "detail": "2 × 50 000 000 Ar · 13,9 %",
+   "codeB": "PEQ21",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 31,
+   "axe": "Tourisme et services",
+   "intitule": "Port de Hell-Ville",
+   "description": "Extension et aménagement pour les croisières",
+   "montantAr": null,
+   "detail": null,
+   "codeB": "PTO04",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 32,
+   "axe": "Tourisme et services",
+   "intitule": "Stations balnéaires",
+   "description": "Ambatoloaka, Dzamandzar, Mahazandry, Mangirankirana, Antafianambitry et Befotaka",
+   "montantAr": 960000000,
+   "detail": "6 × 160 000 000 Ar · 66,7 %",
+   "codeB": "PTO05",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 33,
+   "axe": "Tourisme et services",
+   "intitule": "Centres de formation professionnelle",
+   "description": "Tourisme, BTP, agriculture : Befotaka, Apombolava",
+   "montantAr": 80000000,
+   "detail": "Forfait · 5,6 %",
+   "codeB": "PTO06",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 34,
+   "axe": "Tourisme et services",
+   "intitule": "Musée immersif du Mont Passot",
+   "description": "Scénographie numérique, exposition interactive",
+   "montantAr": 250000000,
+   "detail": "Forfait · 17,4 %",
+   "codeB": "PTO07",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 35,
+   "axe": "Tourisme et services",
+   "intitule": "Hotspots Wi-Fi publics",
+   "description": "Dans les lieux les plus fréquentés",
+   "montantAr": 50000000,
+   "detail": "Forfait · 3,5 %",
+   "codeB": "PTO10",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 36,
+   "axe": "Tourisme et services",
+   "intitule": "Centre de formation permanent",
+   "description": "Langues, écoguides, numérique, formations croisées",
+   "montantAr": 100000000,
+   "detail": "Forfait · 6,9 %",
+   "codeB": "PTO11",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 37,
+   "axe": "Transport et connectivité",
+   "intitule": "Gares routières",
+   "description": "Ambonara, Sarimasina, Dzamandzar Usine et Fasenina",
+   "montantAr": 720000000,
+   "detail": "4 × 180 000 000 Ar · 3,0 %",
+   "codeB": "PTR02",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 38,
+   "axe": "Transport et connectivité",
+   "intitule": "Aires de stationnement",
+   "description": "Dar-Es-Salam, Andilana et Fasenina (Pont Mena)",
+   "montantAr": 300000000,
+   "detail": "4 × 75 000 000 Ar · 1,3 %",
+   "codeB": "PTR03",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 39,
+   "axe": "Transport et connectivité",
+   "intitule": "Caserne et bouches d’incendie",
+   "description": "Djabala, Madirokely et Orangea",
+   "montantAr": 250000000,
+   "detail": "Forfait · 1,0 %",
+   "codeB": "PEQ25",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 40,
+   "axe": "Transport et connectivité",
+   "intitule": "Abattoir de Befitina",
+   "description": "Réhabilitation : parc à bœufs, froid, eau courante",
+   "montantAr": 200000000,
+   "detail": "Forfait · 0,8 %",
+   "codeB": "PEQ26",
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 41,
+   "axe": "Transport et connectivité",
+   "intitule": "Assainissement durable",
+   "description": "Programme d’ensemble, chiffré au forfait",
+   "montantAr": 7673542371,
+   "detail": "Forfait · 32,1 %",
+   "codeB": null,
+   "correspondanceIncertaine": false
+  },
+  {
+   "numero": 42,
+   "axe": "Transport et connectivité",
+   "intitule": "Voies urbaines et pistes rurales",
+   "description": "Réhabilitation sur 59 023 mètres linéaires",
+   "montantAr": 14755750000,
+   "detail": "59 023 ml × 250 000 Ar · 61,7 %",
+   "codeB": null,
+   "correspondanceIncertaine": false
+  }
+ ],
+ "fokontany": [
+  {
+   "n": 1,
+   "ceni": "AMBANORO",
+   "affichage": "Ambanoro",
+   "electeurs2023": 673,
+   "variantesPUDi": []
+  },
+  {
+   "n": 2,
+   "ceni": "AMBATOLOAKA",
+   "affichage": "Ambatoloaka",
+   "electeurs2023": 1588,
+   "variantesPUDi": []
+  },
+  {
+   "n": 3,
+   "ceni": "AMBATOZAVAVY",
+   "affichage": "Ambatozavavy",
+   "electeurs2023": 681,
+   "variantesPUDi": []
+  },
+  {
+   "n": 4,
+   "ceni": "AMBODIVOANIO",
+   "affichage": "Ambodivoanio",
+   "electeurs2023": 1845,
+   "variantesPUDi": [
+    "Ambodivanio"
+   ]
+  },
+  {
+   "n": 5,
+   "ceni": "AMBONARA",
+   "affichage": "Ambonara",
+   "electeurs2023": 2118,
+   "variantesPUDi": []
+  },
+  {
+   "n": 6,
+   "ceni": "AMBONDRONA",
+   "affichage": "Ambondrona",
+   "electeurs2023": 1228,
+   "variantesPUDi": []
+  },
+  {
+   "n": 7,
+   "ceni": "AMPANGORIANA",
+   "affichage": "Ampangoriana",
+   "electeurs2023": 820,
+   "variantesPUDi": [
+    "Ampangorina"
+   ]
+  },
+  {
+   "n": 8,
+   "ceni": "AMPASIBE",
+   "affichage": "Ampasibe",
+   "electeurs2023": 541,
+   "variantesPUDi": []
+  },
+  {
+   "n": 9,
+   "ceni": "AMPASIPOHY",
+   "affichage": "Ampasipohy",
+   "electeurs2023": 176,
+   "variantesPUDi": []
+  },
+  {
+   "n": 10,
+   "ceni": "ANDAVAKOTOKO",
+   "affichage": "Andavakotoko",
+   "electeurs2023": 2637,
+   "variantesPUDi": []
+  },
+  {
+   "n": 11,
+   "ceni": "ANDILAMAVO",
+   "affichage": "Andilamavo",
+   "electeurs2023": 133,
+   "variantesPUDi": []
+  },
+  {
+   "n": 12,
+   "ceni": "ANDIMAKABO",
+   "affichage": "Andimakabo",
+   "electeurs2023": 302,
+   "variantesPUDi": []
+  },
+  {
+   "n": 13,
+   "ceni": "ANDRAHIBO",
+   "affichage": "Andrahibo",
+   "electeurs2023": 923,
+   "variantesPUDi": []
+  },
+  {
+   "n": 14,
+   "ceni": "ANDRANOBE",
+   "affichage": "Andranobe",
+   "electeurs2023": 502,
+   "variantesPUDi": []
+  },
+  {
+   "n": 15,
+   "ceni": "ANDROADROATRA",
+   "affichage": "Androadroatra",
+   "electeurs2023": 392,
+   "variantesPUDi": []
+  },
+  {
+   "n": 16,
+   "ceni": "ANJIABE",
+   "affichage": "Anjiabe",
+   "electeurs2023": 949,
+   "variantesPUDi": []
+  },
+  {
+   "n": 17,
+   "ceni": "ANTAFIANAMBITRY",
+   "affichage": "Antafianambitry",
+   "electeurs2023": 268,
+   "variantesPUDi": []
+  },
+  {
+   "n": 18,
+   "ceni": "ANTAFONDRO",
+   "affichage": "Antafondro",
+   "electeurs2023": 195,
+   "variantesPUDi": []
+  },
+  {
+   "n": 19,
+   "ceni": "ANTAMOTAMO",
+   "affichage": "Antamotamo",
+   "electeurs2023": 383,
+   "variantesPUDi": []
+  },
+  {
+   "n": 20,
+   "ceni": "ANTANAMINTARANA",
+   "affichage": "Antanamintarana",
+   "electeurs2023": 986,
+   "variantesPUDi": [
+    "Antanamitarana"
+   ]
+  },
+  {
+   "n": 21,
+   "ceni": "ANTITORONA",
+   "affichage": "Antitorona",
+   "electeurs2023": 503,
+   "variantesPUDi": []
+  },
+  {
+   "n": 22,
+   "ceni": "ANTSATRABEVOA",
+   "affichage": "Antsatrabevoa",
+   "electeurs2023": 184,
+   "variantesPUDi": []
+  },
+  {
+   "n": 23,
+   "ceni": "BEFITINA",
+   "affichage": "Befitina",
+   "electeurs2023": 2596,
+   "variantesPUDi": []
+  },
+  {
+   "n": 24,
+   "ceni": "BEFOTAKA",
+   "affichage": "Befotaka",
+   "electeurs2023": 584,
+   "variantesPUDi": []
+  },
+  {
+   "n": 25,
+   "ceni": "BELAMANDY",
+   "affichage": "Belamandy",
+   "electeurs2023": 599,
+   "variantesPUDi": []
+  },
+  {
+   "n": 26,
+   "ceni": "BEMANONDROBE",
+   "affichage": "Bemanondrobe",
+   "electeurs2023": 417,
+   "variantesPUDi": []
+  },
+  {
+   "n": 27,
+   "ceni": "CAMP-VERT",
+   "affichage": "Camp-Vert",
+   "electeurs2023": 1824,
+   "variantesPUDi": []
+  },
+  {
+   "n": 28,
+   "ceni": "DAR-ES-SALAM",
+   "affichage": "Dar-es-Salam",
+   "electeurs2023": 5606,
+   "variantesPUDi": [
+    "Dar Es Salam"
+   ]
+  },
+  {
+   "n": 29,
+   "ceni": "DJABALABE",
+   "affichage": "Djabalabe",
+   "electeurs2023": 2890,
+   "variantesPUDi": [
+    "Djabala Be"
+   ]
+  },
+  {
+   "n": 30,
+   "ceni": "DZAMANDZAR AMPASY",
+   "affichage": "Dzamandzar Ampasy",
+   "electeurs2023": 2742,
+   "variantesPUDi": []
+  },
+  {
+   "n": 31,
+   "ceni": "DZAMANDZAR USINE",
+   "affichage": "Dzamandzar Usine",
+   "electeurs2023": 3837,
+   "variantesPUDi": []
+  },
+  {
+   "n": 32,
+   "ceni": "FASCENE GARE",
+   "affichage": "Fascene Gare",
+   "electeurs2023": 477,
+   "variantesPUDi": []
+  },
+  {
+   "n": 33,
+   "ceni": "LA BATTERIE",
+   "affichage": "La Batterie",
+   "electeurs2023": 3616,
+   "variantesPUDi": []
+  },
+  {
+   "n": 34,
+   "ceni": "MAHAZANDRY",
+   "affichage": "Mahazandry",
+   "electeurs2023": 490,
+   "variantesPUDi": []
+  },
+  {
+   "n": 35,
+   "ceni": "MAROAKATSAKA",
+   "affichage": "Maroakatsaka",
+   "electeurs2023": 874,
+   "variantesPUDi": []
+  },
+  {
+   "n": 36,
+   "ceni": "MAROKINDRO",
+   "affichage": "Marokindro",
+   "electeurs2023": 308,
+   "variantesPUDi": []
+  },
+  {
+   "n": 37,
+   "ceni": "MAROMANIRY",
+   "affichage": "Maromaniry",
+   "electeurs2023": 296,
+   "variantesPUDi": []
+  },
+  {
+   "n": 38,
+   "ceni": "MIADANA COMMUNE",
+   "affichage": "Miadana Commune",
+   "electeurs2023": 2466,
+   "variantesPUDi": []
+  },
+  {
+   "n": 39,
+   "ceni": "NAVETSY",
+   "affichage": "Navetsy",
+   "electeurs2023": 311,
+   "variantesPUDi": []
+  },
+  {
+   "n": 40,
+   "ceni": "ORANGEA",
+   "affichage": "Orangea",
+   "electeurs2023": 1427,
+   "variantesPUDi": []
+  },
+  {
+   "n": 41,
+   "ceni": "SAKATIA",
+   "affichage": "Sakatia",
+   "electeurs2023": 378,
+   "variantesPUDi": []
+  },
+  {
+   "n": 42,
+   "ceni": "SENGANINGA",
+   "affichage": "Senganinga",
+   "electeurs2023": 2119,
+   "variantesPUDi": []
+  },
+  {
+   "n": 43,
+   "ceni": null,
+   "affichage": "Autre fokontany de Nosy Be",
+   "electeurs2023": null,
+   "variantesPUDi": [],
+   "champLibre": true
+  }
+ ],
+ "profils": [
+  "Opérateur touristique",
+  "Autre entreprise",
+  "Habitant",
+  "Association ou OSC",
+  "Autre"
+ ],
+ "notes": [
+  "Voies de dégagement : longueurs différentes entre A (Ouest 816 ml, Est 599 ml) et B (Ouest 868 m, Est 816 m).",
+  "Projet A n°38 (aires de stationnement) : trois sites cités mais quatre comptés (4 × 75 000 000 Ar).",
+  "Projet A n°39 (caserne et bouches d’incendie) : A cite Djabala, Madirokely et Orangea ; B (PEQ25) ne cite que Djabala.",
+  "Électricité, sécurité et port non chiffrés.",
+  "Correspondances A n°19 → PAS05 et A n°24 → PAS09 incertaines (cahier v3 §9)."
+ ]
+}

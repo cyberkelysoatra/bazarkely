@@ -571,7 +571,9 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
     /^\/sw\.js$/i,
     /^\/workbox-.*\.js$/i,
     /^\/manifest\.json$/i,
-    /^\/manifest\.webmanifest$/i
+    /^\/manifest\.webmanifest$/i,
+    // PUDi (v3.93.0) : page légère séparée, jamais servie par la coquille de l'hôte.
+    /^\/pudi(\/|$|\?)/
   ]
 });
 registerRoute(navigationRoute);

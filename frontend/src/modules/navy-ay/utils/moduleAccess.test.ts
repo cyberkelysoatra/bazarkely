@@ -5,11 +5,16 @@ import {
   mergePreferences,
   combinePatches,
   hasResolvedModules,
+  isPudiVisible,
+  PUDI_VISIBLE_UNTIL,
 } from './moduleAccess';
+
+/** After the PUDi purge date: the original four-module rules. */
+const AFTER_PUDI = new Date('2027-02-01T00:00:00+03:00');
 
 describe('resolveAccessibleModules (A1)', () => {
   it('new account without preferences.modules → navy-ay only', () => {
-    expect(resolveAccessibleModules({ role: 'user', preferences: { theme: 'system' } }, null, null)).toEqual([
+    expect(resolveAccessibleModules({ role: 'user', preferences: { theme: 'system' } }, null, null, AFTER_PUDI)).toEqual([
       'navy-ay',
     ]);
   });
@@ -23,7 +28,7 @@ describe('resolveAccessibleModules (A1)', () => {
   });
 
   it('admin → all 4 modules', () => {
-    expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false)).toEqual([
+    expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false, AFTER_PUDI)).toEqual([
       'bazarkely',
       'construction',
       'gestion-eau',
@@ -48,6 +53,32 @@ describe('resolveAccessibleModules (A1)', () => {
 
   it('no user → nothing', () => {
     expect(resolveAccessibleModules(null, null, null)).toEqual([]);
+  });
+});
+
+describe('PUDi (v3.93.0)', () => {
+  const BEFORE = new Date('2026-10-22T08:00:00+03:00');
+  it('every connected account sees pudi until 28/01/2027', () => {
+    expect(resolveAccessibleModules({ role: 'user', preferences: {} }, null, null, BEFORE)).toEqual(['navy-ay', 'pudi']);
+    expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false, BEFORE)).toEqual([
+      'bazarkely',
+      'construction',
+      'gestion-eau',
+      'navy-ay',
+      'pudi',
+    ]);
+  });
+  it('nobody sees pudi from the purge date, and never without an account', () => {
+    expect(isPudiVisible(new Date(PUDI_VISIBLE_UNTIL))).toBe(false);
+    expect(isPudiVisible(new Date(Date.parse(PUDI_VISIBLE_UNTIL) - 1))).toBe(true);
+    expect(resolveAccessibleModules({ role: 'user', preferences: {} }, null, null, AFTER_PUDI)).not.toContain('pudi');
+    expect(resolveAccessibleModules(null, null, null, BEFORE)).toEqual([]);
+  });
+  it('pudi is never a start module, even when stored as last module', () => {
+    const accessible = ['bazarkely', 'navy-ay', 'pudi'];
+    const pudi = { id: 'pudi', at: '2026-10-22T10:00:00Z' };
+    expect(pickStartModule(pudi, null, accessible)).toBe('bazarkely');
+    expect(pickStartModule(pudi, { id: 'navy-ay', at: '2026-10-01T00:00:00Z' }, accessible)).toBe('navy-ay');
   });
 });
 

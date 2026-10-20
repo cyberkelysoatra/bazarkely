@@ -79,8 +79,19 @@ const DEFAULT_MODULES: Module[] = [
     name: 'NAVY ay',
     icon: 'N',
     path: '/navy'
+  },
+  {
+    // PUDi (v3.93.0) : entrée légère séparée (/pudi, build dédié). L'hôte ne rend jamais
+    // /pudi : pas de préfixe de route, ouverture en navigation pleine page, jamais mémorisé.
+    id: 'pudi',
+    name: 'PUDi',
+    icon: 'P',
+    path: '/pudi'
   }
 ];
+
+/** PUDi est une page séparée : jamais module actif ni dernier module (local ou compte). */
+const EXTERNAL_MODULE_IDS = ['pudi'];
 
 /**
  * Préfixes de route propres à chaque module (hors bazarkely qui est le défaut).
@@ -353,7 +364,14 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
    */
   const setActiveModule = useCallback((moduleId: string) => {
     const module = availableModules.find(m => m.id === moduleId);
-    
+
+    // PUDi : navigation pleine page vers l'entrée légère, rien n'est mémorisé.
+    if (module && EXTERNAL_MODULE_IDS.includes(module.id)) {
+      setIsSwitcherMode(false);
+      window.location.assign('/pudi/');
+      return;
+    }
+
     if (module) {
       setActiveModuleState(module);
       // Utiliser navigate de React Router pour la navigation

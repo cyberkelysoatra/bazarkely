@@ -33,8 +33,21 @@ import { CSS } from '@dnd-kit/utilities';
  * Icône d'un module dans le sélecteur : emoji, sauf NAVY ay (symbole du logo,
  * repli « N » sur pastille jaune si le fichier manque).
  */
+/** PUDi (v3.93.0) : pastille aux 11 couleurs des secteurs (signature de la charte PIC). */
+const PUDI_SECTOR_COLORS = ['#C2512D', '#0B93A1', '#2E8B4E', '#D0386A', '#6A4DC4', '#1C7DC4', '#D3940E', '#55678A', '#E16A22', '#A53A8D', '#2C3C82'];
+
 const ModuleIcon = ({ module }: { module: Module }) =>
-  module.id === 'navy-ay' ? (
+  module.id === 'pudi' ? (
+    <span
+      className="flex w-5 h-5 rounded-md overflow-hidden"
+      role="img"
+      aria-label={module.name}
+    >
+      {PUDI_SECTOR_COLORS.map((c) => (
+        <span key={c} className="flex-1 h-full" style={{ background: c }} />
+      ))}
+    </span>
+  ) : module.id === 'navy-ay' ? (
     <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>
       <NavySymbol className="w-5 h-5 text-[11px]" rounded="rounded-md" />
     </span>

@@ -20,6 +20,17 @@
   path = "/og-invite.png"
   function = "og-invite"
 
+# PUDi (v3.93.0) : page légère séparée (dist/pudi/index.html), avant le repli de l'hôte.
+[[redirects]]
+  from = "/pudi"
+  to = "/pudi/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/pudi/*"
+  to = "/pudi/index.html"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

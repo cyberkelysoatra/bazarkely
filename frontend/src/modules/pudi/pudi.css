@@ -1,0 +1,54 @@
+@config "../../../tailwind.pudi.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Archivo Black';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/pudi/polices/archivo-black-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/pudi/polices/lato-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/pudi/polices/lato-latin-700-normal.woff2') format('woff2');
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  @apply bg-creme text-texte font-corps;
+  margin: 0;
+}
+/* Signature: thin vertical band of the 11 sector colours on the right edge. */
+.pudi-bande {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 40;
+  pointer-events: none;
+}
+.pudi-focus:focus-visible,
+.pudi-page a:focus-visible,
+.pudi-page button:focus-visible,
+.pudi-page input:focus-visible,
+.pudi-page select:focus-visible,
+.pudi-page textarea:focus-visible {
+  outline: 3px solid #0B2A8C;
+  outline-offset: 2px;
+}

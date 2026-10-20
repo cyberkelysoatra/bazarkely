@@ -144,7 +144,8 @@ Quatre modules : `bazarkely` (budget), `construction`, `gestion-eau`, `navy-ay` 
 | `bazarkely` | Si `users.preferences.modules` contient `bazarkely` (posé par le lien `/ouvrir/budget` ; tous les comptes existants au 2026-09-24 migrés en SQL) |
 | `gestion-eau` | Logique d'accès Eau existante (inchangée) |
 | `construction` | `hasConstructionAccess` (inchangé) |
-| admin (`role = 'admin'`) | Les quatre |
+| `pudi` | Tout compte connecté jusqu'au 28/01/2027 · entrée légère séparée `/pudi` (navigation pleine page, jamais `lastModule`) |
+| admin (`role = 'admin'`) | Les quatre (+ `pudi` jusqu'au 28/01/2027) |
 
 - Règles pures : `modules/navy-ay/utils/moduleAccess.ts` (`resolveAccessibleModules`,
   `pickStartModule`, `mergePreferences`, testées). Synchro : `modules/navy-ay/services/modulePrefsSync.ts`

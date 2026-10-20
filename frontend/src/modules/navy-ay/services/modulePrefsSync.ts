@@ -121,6 +121,11 @@ function scheduleRetry() {
  *   (e.g. server confirmed the account has no module list yet).
  */
 export function queuePreferencesPatch(userId: string, patch: PreferencesPatch, localAuthoritative = false) {
+  // PUDi (separate /pudi page) is never stored as last module on the account.
+  if (patch.lastModule?.id === 'pudi') {
+    patch = { ...patch };
+    delete patch.lastModule;
+  }
   if (!userId || isEmptyPatch(patch)) return;
   const current = state.pending?.userId === userId ? state.pending.patch : null;
   setState({ pending: { userId, patch: combinePatches(current, patch) } });
@@ -219,6 +224,8 @@ export function readLocalLastModule(): LastModule | null {
 }
 
 export function writeLocalLastModule(last: LastModule) {
+  // PUDi (separate /pudi page) is never stored as last module.
+  if (last.id === 'pudi') return;
   try {
     localStorage.setItem(LEGACY_ACTIVE_MODULE_KEY, last.id);
     localStorage.setItem(LOCAL_LAST_MODULE_KEY, JSON.stringify(last));

@@ -14,7 +14,18 @@ export const MODULE_IDS = {
   CONSTRUCTION: 'construction',
   GESTION_EAU: 'gestion-eau',
   NAVY_AY: 'navy-ay',
+  PUDI: 'pudi',
 } as const;
+
+/**
+ * PUDi (v3.93.0): shown to every connected account (and admin) until the data purge date.
+ * PUDi is a separate light page (/pudi): never an active module, never `lastModule`.
+ */
+export const PUDI_VISIBLE_UNTIL = '2027-01-28T00:00:00+03:00';
+
+export function isPudiVisible(now: Date = new Date()): boolean {
+  return now.getTime() < Date.parse(PUDI_VISIBLE_UNTIL);
+}
 
 /** Canonical module order (same order as DEFAULT_MODULES). */
 export const ALL_MODULE_IDS: string[] = [
@@ -22,6 +33,7 @@ export const ALL_MODULE_IDS: string[] = [
   MODULE_IDS.CONSTRUCTION,
   MODULE_IDS.GESTION_EAU,
   MODULE_IDS.NAVY_AY,
+  MODULE_IDS.PUDI,
 ];
 
 /** Last used module, stored locally and on the account (`preferences.lastModule`). */
@@ -52,10 +64,12 @@ export function hasResolvedModules(prefs: Record<string, any> | null | undefined
 export function resolveAccessibleModules(
   user: AccessUser | null | undefined,
   eauConfirmed: boolean | null,
-  constructionAccess: boolean | null
+  constructionAccess: boolean | null,
+  now: Date = new Date()
 ): string[] {
   if (!user) return [];
-  if (user.role === 'admin') return [...ALL_MODULE_IDS];
+  const pudi = isPudiVisible(now);
+  if (user.role === 'admin') return ALL_MODULE_IDS.filter((id) => id !== MODULE_IDS.PUDI || pudi);
 
   const stored: string[] = Array.isArray(user.preferences?.modules) ? user.preferences!.modules : [];
   const out = new Set<string>([MODULE_IDS.NAVY_AY]);
@@ -68,6 +82,8 @@ export function resolveAccessibleModules(
   const construction =
     constructionAccess === null ? stored.includes(MODULE_IDS.CONSTRUCTION) : constructionAccess;
   if (construction) out.add(MODULE_IDS.CONSTRUCTION);
+
+  if (pudi) out.add(MODULE_IDS.PUDI);
 
   return ALL_MODULE_IDS.filter((id) => out.has(id));
 }
@@ -99,7 +115,7 @@ export function pickStartModule(
   accessible: string[]
 ): string {
   const candidates = [local, account].filter(
-    (m): m is LastModule => !!m?.id && accessible.includes(m.id)
+    (m): m is LastModule => !!m?.id && m.id !== MODULE_IDS.PUDI && accessible.includes(m.id)
   );
   const best = candidates.reduce<LastModule | null>((acc, m) => mostRecent(acc, m), null);
   if (best) return best.id;

@@ -9,4 +9,11 @@
 #   - /og-invite.png  -> functions/og-invite.png.ts   (image PNG 1200x630)
 #   - /api/ocr-receipt-> functions/api/ocr-receipt.ts  (OCR Google Vision)
 # Elles ne sont donc PAS avalées par ce catch-all SPA.
+#   - /pudi, /pudi/*  -> functions/pudi/_middleware.ts (sert la page légère PUDi,
+#                        dist/pudi/index.html, pour toute route PUDi sans extension)
+#
+# PUDi (v3.93.0) : page légère séparée, AVANT le repli de l'hôte. Les fichiers existants
+# (/pudi/sw.js, /pudi/images/*…) sont servis tels quels ; les routes vont à la page PUDi.
+/pudi      /pudi/   200
+/pudi/*    /pudi/   200
 /*    /index.html   200
