@@ -4,7 +4,7 @@
  * - same-origin GET of /assets/* and /pudi/*: stale-while-revalidate
  * - Supabase (other origin) is never cached
  * Bump VERSION to drop old caches. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = 'pudi-shell-' + VERSION;
 const RUNTIME = 'pudi-runtime-' + VERSION;
 const SHELL_URLS = [
@@ -13,9 +13,9 @@ const SHELL_URLS = [
   '/pudi/polices/archivo-black-latin-400-normal.woff2',
   '/pudi/polices/lato-latin-400-normal.woff2',
   '/pudi/polices/lato-latin-700-normal.woff2',
-  '/pudi/icones/pudi-icone-192.png',
-  '/pudi/icones/pudi-icone-512.png',
-  '/pudi/icones/pudi-icone-maskable-512.png'
+  '/pudi/icones/pudi-icone-192.png'
+  // The 512 px icons are fetched by the browser itself when installing: not cached here,
+  // they would add 23 kB to the first visit on 3G for nothing offline.
 ];
 
 self.addEventListener('install', (event) => {
