@@ -11,9 +11,7 @@
 # Elles ne sont donc PAS avalées par ce catch-all SPA.
 #   - /pudi, /pudi/*  -> functions/pudi/_middleware.ts (sert la page légère PUDi,
 #                        dist/pudi/index.html, pour toute route PUDi sans extension)
-#
-# PUDi (v3.93.0) : page légère séparée, AVANT le repli de l'hôte. Les fichiers existants
-# (/pudi/sw.js, /pudi/images/*…) sont servis tels quels ; les routes vont à la page PUDi.
-/pudi      /pudi/   200
-/pudi/*    /pudi/   200
+#   PUDi : AUCUNE règle ici. Vérifié en production (v3.93.0) : une réécriture 200
+#   `/pudi/* /pudi/` passe AVANT les fichiers statiques (/pudi/sw.js, /pudi/og.jpg… servis
+#   en HTML). Le middleware ci-dessus suffit et laisse passer les fichiers.
 /*    /index.html   200
