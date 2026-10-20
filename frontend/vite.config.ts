@@ -1,40 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { resolve } from 'node:path'
 import type { Plugin } from 'vite'
 
 /**
- * PUDi light entry (frontend/pudi/index.html, served under /pudi).
+ * PUDi light entry (frontend/pudi/index.html, served under /pudi). Built separately by
+ * vite.pudi.config.ts (production React, own chunks in assets/pudi/): see that file.
  * - Never lets vite-plugin-pwa inject the host manifest / registerSW.js into the PUDi page
  *   (PUDi registers its own /pudi/sw.js, scope /pudi/).
  * - Dev and preview servers: /pudi, /pudi?x and /pudi/<route> serve the PUDi page
- *   (same behaviour as _redirects / the Cloudflare function in production).
+ *   (same behaviour as functions/pudi/_middleware.ts in production).
  */
-/** Vendor chunk groups (package name → chunk). */
-const VENDOR_CHUNKS: [string, (pkg: string) => boolean][] = [
-  // Core React framework
-  ['vendor', (p) => ['react', 'react-dom', 'scheduler'].includes(p)],
-  // Supabase client (~250KB) - largest dependency
-  ['vendor-supabase', (p) => p.startsWith('@supabase/')],
-  // React Router (~50KB)
-  ['vendor-router', (p) => ['react-router', 'react-router-dom', 'cookie', 'set-cookie-parser'].includes(p)],
-  // UI components and icons
-  ['ui', (p) => p === 'lucide-react'],
-  // Charts library
-  ['vendor-charts', (p) => p === 'recharts' || p.startsWith('d3-') || ['victory-vendor', 'recharts-scale', 'react-smooth', 'internmap', 'decimal.js-light'].includes(p)],
-  // State management
-  ['state', (p) => p === 'zustand' || p.startsWith('@tanstack/') || p === 'use-sync-external-store'],
-  // Form handling
-  ['forms', (p) => ['react-hook-form', 'zod'].includes(p) || p.startsWith('@hookform/')],
-  // Database (IndexedDB wrapper)
-  ['db', (p) => p === 'dexie'],
-  // PDF generation (lazy-loaded)
-  ['vendor-pdf', (p) => ['jspdf', 'html2canvas'].includes(p)],
-  // Drag and drop
-  ['vendor-dnd', (p) => p.startsWith('@dnd-kit/')]
-]
-
 function pudiEntry(): Plugin {
   const isPudiRoute = (url: string) => {
     const path = url.split('?')[0]
@@ -174,21 +150,33 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 500, // Reduced from default 1000 to catch large chunks earlier
     rollupOptions: {
-      // Host entry unchanged + PUDi light entry (dist/pudi/index.html).
-      input: {
-        index: resolve(__dirname, 'index.html'),
-        pudi: resolve(__dirname, 'pudi/index.html')
-      },
       output: {
-        // Same groups as before, written as a function (v3.93.0) so that React, its JSX
-        // runtime and Vite's helpers always sit in 'vendor': with the object form Rollup put
-        // them in 'state' / 'vendor-supabase', which made the light /pudi entry load those.
-        manualChunks(id: string) {
-          if (id.startsWith('\0vite/') || id.startsWith('\0commonjsHelpers')) return 'vendor'
-          const m = /[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)/.exec(id)
-          if (!m) return undefined
-          const pkg = m[1].replace('\\', '/')
-          return VENDOR_CHUNKS.find(([, test]) => test(pkg))?.[0]
+        manualChunks: {
+          // Core React framework
+          vendor: ['react', 'react-dom'],
+          // Supabase client (~250KB) - largest dependency
+          // Includes all Supabase packages for optimal chunking
+          'vendor-supabase': [
+            '@supabase/supabase-js',
+            '@supabase/functions-js',
+            '@supabase/realtime-js'
+          ],
+          // React Router (~50KB)
+          'vendor-router': ['react-router-dom'],
+          // UI components and icons
+          ui: ['lucide-react'],
+          // Charts library
+          'vendor-charts': ['recharts'],
+          // State management
+          state: ['zustand', '@tanstack/react-query'],
+          // Form handling
+          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          // Database (IndexedDB wrapper)
+          db: ['dexie'],
+          // PDF generation (lazy-loaded)
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+          // Drag and drop
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities']
         }
       }
     }
