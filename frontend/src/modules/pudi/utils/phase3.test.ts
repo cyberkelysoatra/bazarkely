@@ -119,7 +119,7 @@ describe('synthesis with proposals (B10)', () => {
   });
   it('method sentence on proposals, no em dash, CSV section apart', () => {
     expect(METHODE).toContain(
-      'Les propositions sont des demandes des parties prenantes absentes de la liste du PIC ; elles sont comptées à part et certaines ont été exposées moins longtemps que les programmes.'
+      'Les propositions sont des demandes des parties prenantes absentes de la liste retenue dans le PUDi ; elles sont comptées à part et certaines ont été exposées moins longtemps que les programmes.'
     );
     const tout = JSON.stringify(s) + csvSynthese(s);
     expect(tout).not.toContain('\u2014');

@@ -29,6 +29,21 @@
 html {
   -webkit-text-size-adjust: 100%;
 }
+/* Installed app (viewport-fit=cover, full screen): the page is drawn under the phone's status
+   bar. Every top-anchored element adds this inset. --pudi-test-inset-top lets the bench
+   simulate a status bar in a desktop browser, where env() is 0. */
+:root {
+  --pudi-inset-top: max(env(safe-area-inset-top, 0px), var(--pudi-test-inset-top, 0px));
+}
+/* Header: its navy background extends under the status bar, the content starts below it. */
+.pudi-entete {
+  padding-top: var(--pudi-inset-top);
+}
+/* Full-screen veil of the admin dialogs: keeps the dialog clear of both system bars. */
+.pudi-voile {
+  padding-top: max(0.75rem, var(--pudi-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
 body {
   @apply bg-creme text-texte font-corps;
   margin: 0;

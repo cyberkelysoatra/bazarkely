@@ -46,7 +46,7 @@ function Barre({ donnees, l, rang, urgent }: { donnees: PudiDonnees; l: LigneRes
   );
 }
 
-/** Proposals outside the PIC list, counted apart: priority share with a bar, urgent share. */
+/** Proposals outside the PUDi list, counted apart: priority share with a bar, urgent share. */
 function LignePropositionResultat({ l, rang }: { l: LigneProposition; rang: number }) {
   const pct = (v: number) => `${String(v).replace('.', ',')} %`;
   return (

@@ -124,12 +124,12 @@ export function FormulaireProposition({
   );
 
   return createPortal(
-    <div className="pudi-page fixed inset-0 z-[80] bg-[#0B2A8C]/40 flex items-end sm:items-center justify-center p-3 font-corps text-texte" role="presentation">
+    <div className="pudi-page pudi-voile fixed inset-0 z-[80] bg-[#0B2A8C]/40 flex items-end sm:items-center justify-center p-3 font-corps text-texte" role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-t`}
-        className="w-full max-w-md max-h-[calc(100vh-24px)] overflow-y-auto bg-white rounded-2xl shadow-xl p-4 space-y-3"
+        className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-2xl shadow-xl p-4 space-y-3"
       >
         <h2 id={`${id}-t`} className="font-bold text-[18px] text-marine">
           {titre}

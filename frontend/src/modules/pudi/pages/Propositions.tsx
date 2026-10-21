@@ -1,4 +1,4 @@
-// « Propositions »: projects asked by the stakeholders and absent from the PIC list (counted
+// « Propositions »: projects asked by the stakeholders and absent from the list retained in the PUDi (counted
 // apart in the results). The list comes from the server and is kept on the device for offline use.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';

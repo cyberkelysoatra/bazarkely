@@ -1,4 +1,4 @@
-// Sheet of one proposal (outside the PIC list): same choice buttons as a programme, with
+// Sheet of one proposal (outside the PUDi list): same choice buttons as a programme, with
 // « Hors PUDi » in place of a PUDi tranche.
 import { Link, useParams } from 'react-router-dom';
 import { BoutonsChoix } from '../composants/BoutonsChoix';

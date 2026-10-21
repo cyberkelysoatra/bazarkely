@@ -18,7 +18,7 @@ export interface ResultatsSynthese {
   manquants: string[];
   /** Time of the first publication (null while not published). */
   publie_at?: string | null;
-  /** Proposals outside the PIC list, counted apart. */
+  /** Proposals outside the PUDi list, counted apart. */
   propositions?: {
     id: string;
     intitule: string;
@@ -98,7 +98,7 @@ export const METHODE = [
   'Le numéro de téléphone est comparé, sous forme codée, aux listes de contacts fournies par les partenaires ; il n’est jamais publié ni enregistré en clair.',
   'Les votes masqués par les organisateurs sont exclus des résultats ; chaque masquage et son motif figurent dans le journal des actions.',
   "Les résultats ne sont pas représentatifs de l'ensemble de la population de Nosy Be.",
-  'Les propositions sont des demandes des parties prenantes absentes de la liste du PIC ; elles sont comptées à part et certaines ont été exposées moins longtemps que les programmes.'
+  'Les propositions sont des demandes des parties prenantes absentes de la liste retenue dans le PUDi ; elles sont comptées à part et certaines ont été exposées moins longtemps que les programmes.'
 ];
 
 /** Opening of the consultation from publie_at: « jeudi 22 octobre 2026 à 9 h 14 », or not published yet. */

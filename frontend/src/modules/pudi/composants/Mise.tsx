@@ -56,7 +56,7 @@ export function BandeSecteursHorizontale() {
 
 export function EnTete() {
   return (
-    <header className="sticky top-0 z-30 bg-marine text-white">
+    <header className="pudi-entete sticky top-0 z-30 bg-marine text-white">
       <div className="mx-auto max-w-5xl pl-3 pr-5 h-16 flex items-center gap-3">
         <Logo />
         <span className="font-titre text-[17px] tracking-tight flex-1 min-w-0 truncate">{fr.app.titreCourt}</span>

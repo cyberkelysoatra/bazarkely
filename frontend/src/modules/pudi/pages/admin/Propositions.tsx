@@ -1,4 +1,4 @@
-// Administration · « Propositions » (own lazy chunk): projects outside the PIC list, their real
+// Administration · « Propositions » (own lazy chunk): projects outside the PUDi list, their real
 // votes, withdrawal (deleted when nobody chose it, masked otherwise), and the voters' free texts
 // that can become proposals.
 import { useMemo, useState } from 'react';
@@ -80,7 +80,7 @@ export default function Propositions() {
   const liste = appel.donnees?.propositions ?? [];
   return (
     <div>
-      <Aide titre="Propositions hors liste du PIC">
+      <Aide titre="Propositions hors liste du PUDi">
         <p>
           Une demande déjà prévue dans le PUDi ne devient pas une proposition : retrouvez son programme avec « Trouver un projet ». Une
           proposition ajoutée tard est signalée comme telle dans la synthèse.

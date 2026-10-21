@@ -14,7 +14,7 @@ type Etape = '1' | '2' | '3' | 'resume';
 /** Accent-insensitive search key. */
 const cle = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-/** A line of the choice: one of the 52 programmes or a proposal outside the PIC list. */
+/** A line of the choice: one of the 52 programmes or a proposal outside the PUDi list. */
 interface Choisissable {
   id: string;
   nom: string;

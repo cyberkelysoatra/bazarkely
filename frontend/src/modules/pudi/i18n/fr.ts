@@ -72,7 +72,7 @@ export const fr = {
       `${intitule}. Ce montant couvre les programmes suivants sans être réparti entre eux : ${programmes}.`,
     listeTitre: 'Programmes du secteur',
     rechercher: 'Trouver un projet (lieu, mot, code…)',
-    carteProposition: 'Propositions (hors liste du PIC)',
+    carteProposition: 'Propositions (hors liste du PUDi)',
     propositions: (n: number) => (n > 1 ? `${n} propositions` : `${n} proposition`)
   },
   programme: {
@@ -100,10 +100,10 @@ export const fr = {
     pageOuvre: (n: number) => `Ouvrir le PUDi à la page ${n} (nouvel onglet)`
   },
   propositions: {
-    titre: 'Propositions hors liste du PIC',
+    titre: 'Propositions hors liste du PUDi',
     intro:
-      'Projets demandés par les parties prenantes et absents de la liste du PIC. Ils sont comptés à part dans les résultats.',
-    badge: 'Proposition, hors liste du PIC',
+      'Projets demandés par les parties prenantes et absents de la liste retenue dans le PUDi. Ils sont comptés à part dans les résultats.',
+    badge: 'Proposition, hors liste du PUDi',
     badgeCourt: 'Proposition',
     lieu: 'Lieu',
     source: 'Source',
@@ -160,7 +160,7 @@ export const fr = {
     etape3Aide: 'Facultatif : décrivez en quelques mots un projet absent du PUDi.',
     etape3Verifier: 'Vérifiez d’abord avec « Trouver un projet » : il est peut-être déjà prévu.',
     filtrePropositions: 'Propositions',
-    filtrePropositionsAide: 'Afficher seulement les propositions hors liste du PIC',
+    filtrePropositionsAide: 'Afficher seulement les propositions hors liste du PUDi',
     etape3Placeholder:
       'Par exemple : sécurité sur le littoral (bande des 300 m), nuisances sonores, déchets, animaux errants, électricité…',
     caracteres: (n: number) => `${n} / 300 caractères`,
@@ -268,7 +268,7 @@ export const fr = {
     pdf: 'Synthèse PDF : disponible prochainement',
     connexionRequise: 'Connectez-vous avec le compte Google qui a voté pour voir les résultats.',
     aucunVote: 'Aucun vote compté pour le moment.',
-    propositionsTitre: 'Propositions hors liste du PIC',
+    propositionsTitre: 'Propositions hors liste du PUDi',
     propositionsAide:
       'Comptées à part : part des votants qui ont placé la proposition dans leurs 3 priorités, et part qui la veulent urgente.',
     urgentPct: (pct: string) => `urgent : ${pct}`,

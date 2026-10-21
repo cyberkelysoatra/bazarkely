@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.95.0';
-export const APP_VERSION_NAME = "PUDi Nosy Be : propositions hors liste du PIC, « Trouver un projet », fiches enrichies et documents du PUDi.";
+export const APP_VERSION = '3.95.1';
+export const APP_VERSION_NAME = "PUDi Nosy Be : en-tête et changement de module corrigés dans l’appli installée, propositions hors liste du PUDi.";
 export const LAST_UPDATED = '2026-10-21';
 export const APP_BUILD_DATE = '2026-10-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.95.1',
+    date: '2026-10-21',
+    description:
+      "PUDi Nosy Be : corrections pour l’appli installée sur téléphone avant la publication, et la liste est bien celle retenue dans le PUDi.",
+    changes: [
+      "Appli PUDi installée : l’en-tête commence sous la barre d’état du téléphone (heure, batterie), la bande bleue passe dessous.",
+      "Appli PUDi installée : les autres modules (NAVY ay, Gestion Eau, BazarKELY, Construction) s’ouvrent dans la même fenêtre, sans barre d’adresse.",
+      "Textes : « Propositions hors liste du PUDi » partout (écrans, synthèse PDF, aide des organisateurs). Le PIC est un partenaire technique et financier, il n’a pas de liste à lui."
+    ]
+  },
   {
     version: '3.95.0',
     date: '2026-10-21',

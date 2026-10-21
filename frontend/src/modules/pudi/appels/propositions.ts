@@ -1,4 +1,4 @@
-// Public proposals (projects asked by the stakeholders, outside the PIC list). Plain fetch of
+// Public proposals (projects asked by the stakeholders, outside the PUDi list). Plain fetch of
 // rpc/pudi_propositions_publiques (no supabase-js on public pages), kept in localStorage
 // pudi_propositions_v1 for offline display and refreshed on each online visit.
 import { useSyncExternalStore } from 'react';
