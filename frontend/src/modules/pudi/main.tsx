@@ -5,12 +5,14 @@ import './pudi.css';
 import PudiApp from './PudiApp';
 import { ecouterInstallation } from './appels/installation';
 import { capturerCanal } from './appels/provenance';
-import { signalerSession } from './appels/session';
+import { signalerSession, synchroniserSessionNative } from './appels/session';
 import { getSupabase } from './appels/supabaseClient';
 import { ping } from './appels/api';
 
 capturerCanal();
 ecouterInstallation();
+// NAVY ay app only: the header reads the session the app holds (no-op on the web).
+synchroniserSessionNative();
 
 // Back from the Google sign-in on any PUDi page: let supabase-js store the session from the
 // address (loaded only in that case), then refresh the header.

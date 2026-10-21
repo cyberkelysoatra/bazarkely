@@ -31,9 +31,13 @@ html {
 }
 /* Installed app (viewport-fit=cover, full screen): the page is drawn under the phone's status
    bar. Every top-anchored element adds this inset. --pudi-test-inset-top lets the bench
-   simulate a status bar in a desktop browser, where env() is 0. */
+   simulate a status bar in a desktop browser, where env() is 0.
+   NAVY ay Android app (Capacitor 8 SystemBars, insetsHandling "css"): with WebView 140+ and
+   viewport-fit=cover the page is edge-to-edge and env() carries the bar; on older WebViews the
+   app pads the WebView itself (page already below the bar, env() = 0). In both cases it also
+   writes the right value into --safe-area-inset-top, read here as a fallback. */
 :root {
-  --pudi-inset-top: max(env(safe-area-inset-top, 0px), var(--pudi-test-inset-top, 0px));
+  --pudi-inset-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px), var(--pudi-test-inset-top, 0px));
 }
 /* Header: its navy background extends under the status bar, the content starts below it. */
 .pudi-entete {

@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.95.1';
-export const APP_VERSION_NAME = "PUDi Nosy Be : en-tête et changement de module corrigés dans l’appli installée, propositions hors liste du PUDi.";
+export const APP_VERSION = '3.95.2';
+export const APP_VERSION_NAME = "PUDi dans l’appli NAVY ay : connexion Google qui reste dans l’appli, même session que NAVY ay.";
 export const LAST_UPDATED = '2026-10-21';
 export const APP_BUILD_DATE = '2026-10-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.95.2',
+    date: '2026-10-21',
+    description:
+      "PUDi dans l’appli NAVY ay (Android) : la connexion Google reste dans l’appli et PUDi utilise la même session que NAVY ay.",
+    changes: [
+      "Dans l’appli NAVY ay, « Se connecter » dans PUDi passe par la connexion de l’appli (fenêtre Google de l’appli) puis revient sur la même page PUDi, au lieu d’ouvrir le navigateur du téléphone.",
+      "PUDi lit la session tenue par l’appli : l’avatar s’affiche à la place de « Se connecter » et la liste des modules du logo PUDi est celle du compte.",
+      "Une session renouvelée par PUDi est remise à l’appli, une déconnexion depuis PUDi déconnecte aussi l’appli : jamais deux renouvellements concurrents.",
+      "Lien /ouvrir/pudi : ouvre la page PUDi demandée (seulement une adresse /pudi/…), après connexion si besoin.",
+      "En-tête PUDi : lit aussi la hauteur de barre d’état transmise par l’appli."
+    ]
+  },
   {
     version: '3.95.1',
     date: '2026-10-21',

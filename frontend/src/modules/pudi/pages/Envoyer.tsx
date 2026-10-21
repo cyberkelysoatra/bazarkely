@@ -9,6 +9,7 @@ import { usePudi, useDonnees } from '../PudiContexte';
 import { lireEtatConnecte, lireMonVote, ping, soumettreVote, type FormulaireVote, type MonVote } from '../appels/api';
 import { brouillonVide } from '../appels/brouillon';
 import { lireCanal } from '../appels/provenance';
+import { connexionGoogle as connexionGoogleSession } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
 import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
 import { dateCourte } from '../utils/format';
@@ -114,11 +115,8 @@ export default function Envoyer() {
     setRedirection(true);
     setErreur(null);
     try {
-      const sb = await withTimeout(getSupabase());
-      const canal = lireCanal();
-      const redirectTo = `${window.location.origin}/pudi/envoyer${canal ? `?c=${encodeURIComponent(canal)}` : ''}`;
-      const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
-      if (error) throw error;
+      // Same return address as before on the web; inside the NAVY ay app the host signs in.
+      await connexionGoogleSession('/pudi/envoyer');
     } catch (e) {
       setRedirection(false);
       setErreur(messageErreur(e));

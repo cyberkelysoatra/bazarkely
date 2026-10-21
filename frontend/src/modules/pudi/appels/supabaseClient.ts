@@ -1,7 +1,9 @@
 // Lazy Supabase client of PUDi. @supabase/supabase-js is loaded by dynamic import only, so the
 // home and discovery pages never download it. Same project, same anon key and DEFAULT storage
 // key as the host: the Google session is shared with the rest of 1sakely.org.
+// Inside the NAVY ay app the storage is the one shared with the app (appels/pontNavy.ts).
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { stockageNavy } from './pontNavy';
 
 export const SUPABASE_URL = 'https://ofzmwrzatcztoekrpvkj.supabase.co';
 export const SUPABASE_ANON_KEY =
@@ -18,7 +20,7 @@ export function getSupabase(): Promise<SupabaseClient> {
     clientPromise = import('@supabase/supabase-js')
       .then(({ createClient }) =>
         createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: stockageNavy() }
         })
       )
       .catch((e) => {

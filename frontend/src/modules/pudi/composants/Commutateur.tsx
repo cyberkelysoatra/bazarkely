@@ -6,6 +6,7 @@ import { Icone } from './Icones';
 import { fermerCommutateur, oublierCommutateur } from '../appels/commutateur';
 import { connexionGoogle, sessionLocale } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
+import { lireSessionNative } from '../appels/pontNavy';
 import { modulesDuCompte, type IdModule, type ModuleHote, type CompteModules } from '../utils/modulesCompte';
 
 type Etat = { t: 'chargement' } | { t: 'deconnecte' } | { t: 'erreur' } | { t: 'pret'; modules: ModuleHote[] };
@@ -35,6 +36,8 @@ export default function Commutateur() {
   const nav = useRef<HTMLElement>(null);
 
   const charger = useCallback(async () => {
+    // NAVY ay app: the app's session first (no-op on the web).
+    if (!sessionLocale()) await lireSessionNative();
     if (!sessionLocale()) {
       setEtat({ t: 'deconnecte' });
       return;
