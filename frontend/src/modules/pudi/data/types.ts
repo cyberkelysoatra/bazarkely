@@ -57,6 +57,8 @@ export interface Fokontany {
   ceni: string | null;
   affichage: string;
   champLibre?: boolean;
+  /** Registered voters 2023 (CENI), for the representativeness of the administration. */
+  electeurs2023?: number;
 }
 
 export interface PudiDonnees {

@@ -65,7 +65,7 @@ export interface FormulaireVote {
 }
 
 /** Access token of the shared session, read from the default storage (no network). */
-function jetonLocal(): string | null {
+export function jetonLocal(): string | null {
   try {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
@@ -101,7 +101,7 @@ export async function lireEtat(): Promise<EtatConsultation> {
   return (await r.json()) as EtatConsultation;
 }
 
-async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
+export async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const sb = await withTimeout(getSupabase());
   const { data, error } = await withTimeout(sb.rpc(fn, args ?? {}));
   if (error) throw error;
@@ -112,6 +112,13 @@ export const lireEtatConnecte = () => rpc<EtatConsultation>('pudi_etat');
 export const ping = () => rpc<null>('pudi_ping');
 export const lireMonVote = () => rpc<MonVote | null>('pudi_mon_vote');
 export const lireResultats = () => rpc<Resultats>('pudi_resultats');
+
+/** Administrators only: same aggregates including the test votes (preview before publication). */
+export interface ResultatsApercu extends Resultats {
+  apercu_avec_tests: true;
+  nb_tests: number;
+}
+export const lireApercu = () => rpc<ResultatsApercu>('pudi_admin_resultats_apercu');
 
 /** Submits or modifies the vote. Throws the server error (or {erreur} for PUDI_NUMERO_DEJA_UTILISE). */
 export async function soumettreVote(

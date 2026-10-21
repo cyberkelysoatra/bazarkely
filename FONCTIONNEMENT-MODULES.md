@@ -1175,7 +1175,32 @@ les autres appels par le client Supabase chargé à la demande (page Envoyer, R�
 `pudi` n'est **jamais** module actif ni `lastModule` (local ou compte : gardes dans `writeLocalLastModule`,
 `queuePreferencesPatch`, `pickStartModule`).
 
-**Phase 2** (plus tard) : écrans d'administration, canaux et listes, QR codes, exports, synthèse PDF, bascule de publication.
+### PUDi · Phase 2, v3.94.0 : administration
+
+**Serveur** (migration `supabase/migrations/20261021100000_pudi_phase2.sql`) : 17 fonctions `pudi_admin_*`
+SECURITY DEFINER, chacune vérifie l'appelant (`pudi_exiger_admin()` → `PUDI_ADMIN_REQUIS`) ; aides
+`pudi_exiger_admin` et `pudi_journaliser` non exécutables par `anon` / `authenticated`. **Seul Joël** (`is_joel()`)
+nomme les organisateurs (`pudi_admin_set_admin`), publie (`pudi_admin_set_publie`, qui supprime les votes de test) et
+purge (`pudi_purger`). Toute action est inscrite dans `pudi_journal`. Purge planifiée par pg_cron (tâche `pudi-purge`,
+28/01/2027 00 h 05 heure de Madagascar). Listes de numéros des partenaires : transformées en empreintes à l'arrivée,
+jamais stockées en clair. Libérer un numéro masque le vote qui le détenait (motif obligatoire).
+
+**Client** (toujours dans `frontend/src/modules/pudi/`, aucun fichier hôte importé) :
+- `/admin` (Suivi, Votes, Refus, Canaux, Paramètres, Journal) : chunk chargé à la demande (`pages/admin/`), jamais
+  téléchargé par un visiteur ; garde = `pudi_etat().est_admin` lu avec la session, indicateur tant que non résolu.
+- `jspdf` (synthèse PDF, `appels/pdf.ts`) et `qrcode` (QR 1024 px, `appels/qr.ts`) en imports dynamiques, chunks séparés.
+- Exports CSV (`utils/exports.ts`) : UTF-8 avec BOM, `;`, heure de Madagascar, jamais d'e-mail ni de numéro (textes libres
+  nettoyés, cellules « formule » neutralisées). Synthèse (`utils/synthese.ts`, pure) partagée par le PDF et le CSV.
+- Résultats : aperçu « avec les votes de test » pour les organisateurs (`pudi_admin_resultats_apercu`) ; « Synthèse
+  provisoire (PDF) » avant la clôture (organisateurs), « Télécharger la synthèse (PDF) » pour tous après.
+- **Logo PUDi = sélecteur de modules** (comme le logo de l'hôte) : bascule la barre du bas en rangée des autres modules
+  du compte (`utils/modulesCompte.ts`, réécriture pure de `resolveAccessibleModules`, testée), navigation pleine page ;
+  code et client Supabase chargés au premier toucher.
+- **Menu en haut à droite** (`composants/MenuCompte.tsx` + panneau `MenuPanneau.tsx` chargé à l'ouverture) : compte,
+  mon vote, résultats, partager (code `?c=` conservé), aide, `/donnees` (notice publique), installer, administration
+  (pastille des refus non vus), aperçu, mise à jour, déconnexion (prévient qu'elle vaut pour tout 1sakely.org).
+  Connecté ou non se lit dans `localStorage` (clé de session), sans charger Supabase.
+- Toute connexion Google depuis PUDi revient sur la page en cours et inscrit le compte dans `pudi_connexions` (`pudi_ping`).
 
 ---
 

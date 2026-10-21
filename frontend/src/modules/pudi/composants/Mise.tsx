@@ -1,11 +1,16 @@
 // Layout pieces shared by every PUDi page: sector band, header, state banners, footer with
 // partner logos, bottom bar, tranche badge, image with clean fallback.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { NavLink } from 'react-router-dom';
 import { COULEURS_SECTEURS, COULEURS_TRANCHES } from '../data';
 import { fr } from '../i18n/fr';
 import { usePudi } from '../PudiContexte';
 import { Icone, type NomIcone } from './Icones';
+import { basculerCommutateur, useCommutateurOuvert } from '../appels/commutateur';
+import { DeclencheurMenu } from './MenuCompte';
+
+// Loaded on the first tap on the logo only (with the Supabase client it needs).
+const Commutateur = lazy(() => import('./Commutateur'));
 
 export function BandeSecteurs() {
   const pas = 100 / COULEURS_SECTEURS.length;
@@ -15,13 +20,47 @@ export function BandeSecteurs() {
   return <div className="pudi-bande" style={{ background: fond }} aria-hidden="true" />;
 }
 
+/** PUDi logo = module switcher (same gesture as the host header logo). */
+function Logo() {
+  const ouvert = useCommutateurOuvert();
+  const [onde, setOnde] = useState(false);
+  return (
+    <button
+      type="button"
+      data-pudi-logo
+      onClick={(e) => {
+        e.stopPropagation();
+        basculerCommutateur();
+        setOnde(true);
+        window.setTimeout(() => setOnde(false), 600);
+      }}
+      aria-label="Basculer entre les modules"
+      aria-pressed={ouvert}
+      title="Cliquez pour changer de module"
+      className="pudi-focus relative flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden shadow-lg bg-white border border-white/40"
+    >
+      {onde && <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping z-10" aria-hidden="true" />}
+      <img src="/pudi/icones/pudi-icone-192.png" alt="" width={48} height={48} className="w-12 h-12 block" />
+    </button>
+  );
+}
+
+/** Thin horizontal band of the 11 sector colours (top of the menu panel). */
+export function BandeSecteursHorizontale() {
+  const pas = 100 / COULEURS_SECTEURS.length;
+  const fond = `linear-gradient(to right, ${COULEURS_SECTEURS.map(
+    (c, i) => `${c} ${(i * pas).toFixed(2)}% ${((i + 1) * pas).toFixed(2)}%`
+  ).join(', ')})`;
+  return <div className="h-1.5 w-full" style={{ background: fond }} aria-hidden="true" />;
+}
+
 export function EnTete() {
   return (
     <header className="sticky top-0 z-30 bg-marine text-white">
-      <div className="mx-auto max-w-2xl pl-4 pr-6 h-12 flex items-center">
-        <Link to="/" className="font-titre text-[17px] tracking-tight min-h-[44px] flex items-center">
-          {fr.app.titreCourt}
-        </Link>
+      <div className="mx-auto max-w-5xl pl-3 pr-5 h-16 flex items-center gap-3">
+        <Logo />
+        <span className="font-titre text-[17px] tracking-tight flex-1 min-w-0 truncate">{fr.app.titreCourt}</span>
+        <DeclencheurMenu />
       </div>
     </header>
   );
@@ -131,6 +170,13 @@ function Onglet({ to, icone, libelle, badge, fin }: { to: string; icone: NomIcon
 
 export function BarreBas() {
   const { brouillon } = usePudi();
+  const commutateur = useCommutateurOuvert();
+  if (commutateur)
+    return (
+      <Suspense fallback={<BarreCommutateur><p className="py-4 text-center text-[14px] text-gris">{fr.app.chargement}</p></BarreCommutateur>}>
+        <Commutateur />
+      </Suspense>
+    );
   return (
     <nav
       aria-label={fr.nav.principale}
@@ -146,9 +192,33 @@ export function BarreBas() {
   );
 }
 
-export function Page({ children, titre, logosPied = true }: { children: ReactNode; titre?: string; logosPied?: boolean }) {
+/** Frame of the switcher mode (same layout as the host switcher bar). */
+export function BarreCommutateur({ children, refNav }: { children: ReactNode; refNav?: Ref<HTMLElement> }) {
   return (
-    <main className="pudi-page mx-auto max-w-2xl pl-4 pr-6 pt-4 pb-24">
+    <nav
+      ref={refNav}
+      aria-label="Changer de module"
+      className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 border-t border-filet shadow-xl pb-[env(safe-area-inset-bottom)]"
+      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+    >
+      <div className="mx-auto max-w-2xl pr-[6px]">{children}</div>
+    </nav>
+  );
+}
+
+export function Page({
+  children,
+  titre,
+  logosPied = true,
+  large = false
+}: {
+  children: ReactNode;
+  titre?: string;
+  logosPied?: boolean;
+  large?: boolean;
+}) {
+  return (
+    <main className={`pudi-page mx-auto ${large ? 'max-w-5xl' : 'max-w-2xl'} pl-4 pr-6 pt-4 pb-24`}>
       {titre && <h1 className="font-titre text-[24px] leading-tight text-marine mb-4">{titre}</h1>}
       {children}
       <PiedDePage logos={logosPied} />

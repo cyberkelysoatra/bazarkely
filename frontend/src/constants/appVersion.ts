@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.93.0';
-export const APP_VERSION_NAME = "PUDi Nosy Be : consultation publique sur la priorisation du PUDi 2026-2040, sur une page légère séparée.";
+export const APP_VERSION = '3.94.0';
+export const APP_VERSION_NAME = "PUDi Nosy Be : administration de la consultation, canaux et QR codes, listes de numéros, exports et synthèse PDF.";
 export const LAST_UPDATED = '2026-10-21';
 export const APP_BUILD_DATE = '2026-10-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.94.0',
+    date: '2026-10-21',
+    description:
+      "PUDi Nosy Be (phase 2) : espace d’administration de la consultation dans la page /pudi, menu du compte en haut à droite et logo PUDi qui ouvre les autres modules comme dans le reste de 1sakely.org.",
+    changes: [
+      "Six écrans réservés aux organisateurs : suivi en direct, votes un par un avec masquage motivé, tentatives refusées et libération d’un numéro, canaux avec lien, partage WhatsApp et QR code, paramètres (publication, clôture, organisateurs, données personnelles) et journal des actions.",
+      "Import des listes de numéros des partenaires (fichier CSV ou colonne collée) : les numéros sont transformés en empreintes sur le serveur et jamais gardés sur l’appareil.",
+      "Exports CSV sans adresse e-mail ni numéro de téléphone, et synthèse PDF de la consultation (provisoire avant la clôture, ouverte à tous après).",
+      "Aperçu des résultats avec les votes de test pour les organisateurs avant la publication.",
+      "Nouvelle page publique « Données personnelles ». La publication reste désactivée jusqu’à la confirmation écrite du PIC."
+    ]
+  },
   {
     version: '3.93.0',
     date: '2026-10-21',

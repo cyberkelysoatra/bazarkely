@@ -5,6 +5,7 @@ import { lireEtat, type EtatConsultation } from './appels/api';
 import { ecrireBrouillon, lireBrouillon } from './appels/brouillon';
 import type { Brouillon } from './utils/regles';
 import { CLOTURE_PAR_DEFAUT } from './utils/format';
+import { useSessionLocale } from './appels/session';
 
 interface PudiContexteValeur {
   brouillon: Brouillon;
@@ -46,8 +47,13 @@ export function PudiProvider({ children }: { children: ReactNode }) {
     }
   }, [definirEtat]);
 
+  // Re-read the state when the visitor signs in or out (est_admin, a_vote change).
+  const email = useSessionLocale()?.email ?? null;
   useEffect(() => {
     void rechargerEtat();
+  }, [email, rechargerEtat]);
+
+  useEffect(() => {
     const enLigne = () => void rechargerEtat();
     const horsLigneEv = () => setHorsLigne(true);
     window.addEventListener('online', enLigne);

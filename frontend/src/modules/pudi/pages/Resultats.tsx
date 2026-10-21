@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { PROFIL_VALEURS, programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
-import { useDonnees } from '../PudiContexte';
-import { lireResultats, type LigneResultat, type Resultats as Res } from '../appels/api';
+import { useDonnees, usePudi } from '../PudiContexte';
+import { lireApercu, lireResultats, type LigneResultat, type Resultats as Res } from '../appels/api';
+import { csvSynthese, preparerSynthese } from '../utils/synthese';
+import { nomFichierSyntheseCsv, nomFichierSynthesePdf, telechargerFichier } from '../utils/exports';
 import { extraireCode, messageErreur } from '../utils/erreurs';
 import { heureCourte } from '../utils/format';
 
@@ -64,27 +66,83 @@ function Repartition({ titre, lignes }: { titre: string; lignes: { nom: string; 
   );
 }
 
+/** Switch of the administrators' preview (test votes counted). */
+function Interrupteur({ actif, basculer }: { actif: boolean; basculer: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={actif}
+      onClick={basculer}
+      className="w-full min-h-[48px] flex items-center justify-between gap-3 bg-white border border-filet rounded-xl px-3 text-left"
+    >
+      <span className="flex items-center gap-2 font-bold text-[15px] text-marine">
+        <Icone nom="oeil" />
+        Aperçu avec les votes de test
+      </span>
+      <span className={`relative w-12 h-7 rounded-full transition-colors ${actif ? 'bg-marine' : 'bg-filet'}`} aria-hidden="true">
+        <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${actif ? 'left-6' : 'left-1'}`} />
+      </span>
+    </button>
+  );
+}
+
 export default function Resultats() {
   const { donnees } = useDonnees();
+  const { etat } = usePudi();
+  const [params] = useSearchParams();
   const [res, setRes] = useState<Res | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [charge, setCharge] = useState(true);
+  const admin = !!etat?.est_admin;
+  // Preview: on by default for an administrator while the consultation is not published.
+  const [apercu, setApercu] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (apercu !== null || !etat) return;
+    setApercu(etat.est_admin && (!etat.publie || params.get('apercu') === '1'));
+  }, [etat, apercu, params]);
+  useEffect(() => {
+    if (params.get('apercu') === '1' && etat?.est_admin) setApercu(true);
+  }, [params, etat?.est_admin]);
+  const enApercu = admin && apercu === true;
+  const [fichier, setFichier] = useState<'pdf' | 'csv' | null>(null);
+  const [erreurFichier, setErreurFichier] = useState(false);
 
   const charger = useCallback(async () => {
     setCharge(true);
     try {
-      setRes(await lireResultats());
+      setRes(enApercu ? await lireApercu() : await lireResultats());
       setCode(null);
     } catch (e) {
       setCode(extraireCode(e) ?? 'AUTRE');
     } finally {
       setCharge(false);
     }
-  }, []);
+  }, [enApercu]);
 
   useEffect(() => {
+    // Wait for the state of the consultation when an administrator may get the preview.
+    if (etat?.est_admin && apercu === null) return;
     void charger();
-  }, [charger]);
+  }, [charger, etat?.est_admin, apercu]);
+
+  const exporter = async (type: 'pdf' | 'csv') => {
+    if (!res || !donnees) return;
+    setFichier(type);
+    setErreurFichier(false);
+    try {
+      const s = preparerSynthese(res, donnees, { provisoire: !res.clos });
+      if (type === 'csv') telechargerFichier(csvSynthese(s), nomFichierSyntheseCsv(), 'text/csv;charset=utf-8');
+      else {
+        const { genererPdf } = await import('../appels/pdf');
+        telechargerFichier(await genererPdf(s), nomFichierSynthesePdf(), 'application/pdf');
+      }
+    } catch {
+      setErreurFichier(true);
+    } finally {
+      setFichier(null);
+    }
+  };
 
   const libelleFkt = (ceni: string) =>
     ceni === 'AUTRE' ? fr.resultats.autreFokontany : donnees?.fokontany.find((f) => f.ceni === ceni)?.affichage ?? ceni;
@@ -194,11 +252,20 @@ export default function Resultats() {
           )}
         </section>
 
-        {res.clos && (
-          <p className="mt-6 flex items-center gap-2 text-[14px] text-gris">
-            <Icone nom="document" className="w-4 h-4" />
-            {fr.resultats.pdf}
-          </p>
+        {(res.clos || admin) && (
+          <section className="mt-6 flex flex-col gap-2">
+            <button type="button" className={`${boutonPrincipal} w-full`} disabled={fichier !== null} onClick={() => void exporter('pdf')}>
+              <Icone nom="document" />
+              {fichier === 'pdf' ? 'Préparation du PDF…' : res.clos ? 'Télécharger la synthèse (PDF)' : 'Synthèse provisoire (PDF)'}
+            </button>
+            {admin && (
+              <button type="button" className={`${boutonSecondaire} w-full`} disabled={fichier !== null} onClick={() => void exporter('csv')}>
+                <Icone nom="telecharger" />
+                Exporter la synthèse (CSV)
+              </button>
+            )}
+            {erreurFichier && <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">Le fichier n'a pas pu être préparé. Réessayez.</p>}
+          </section>
         )}
       </>
     );
@@ -207,8 +274,15 @@ export default function Resultats() {
   return (
     <Page titre={fr.resultats.titre}>
       <p className="text-[14px] text-gris mb-3">{fr.resultats.indicative}</p>
-      <div className="mb-4">
+      <div className="mb-4 space-y-2">
         <BandeauxEtat masquerPreparation />
+        {admin && apercu !== null && <Interrupteur actif={apercu} basculer={() => setApercu(!apercu)} />}
+        {enApercu && (
+          <div role="status" className="border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
+            <Icone nom="oeil" className="w-5 h-5 mt-0.5" />
+            <p className="text-[15px] leading-snug">Aperçu : vos votes de test sont comptés ; ils seront effacés à la publication</p>
+          </div>
+        )}
       </div>
       {contenu}
     </Page>

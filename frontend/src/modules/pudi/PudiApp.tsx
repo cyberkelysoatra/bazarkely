@@ -13,6 +13,9 @@ const Choix = lazy(() => import('./pages/Choix'));
 const Envoyer = lazy(() => import('./pages/Envoyer'));
 const Merci = lazy(() => import('./pages/Merci'));
 const Resultats = lazy(() => import('./pages/Resultats'));
+const Donnees = lazy(() => import('./pages/Donnees'));
+// Administration: its own chunk, never downloaded by a public visitor.
+const Admin = lazy(() => import('./pages/admin/Admin'));
 
 function SuiviNavigation() {
   const { pathname, search } = useLocation();
@@ -42,6 +45,8 @@ export default function PudiApp() {
             <Route path="/envoyer" element={<Envoyer />} />
             <Route path="/merci" element={<Merci />} />
             <Route path="/resultats" element={<Resultats />} />
+            <Route path="/donnees" element={<Donnees />} />
+            <Route path="/admin/*" element={<Admin />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

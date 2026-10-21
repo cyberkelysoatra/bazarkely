@@ -1,5 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { BandeauxEtat, Image, Page, RangeeLogos, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
@@ -48,6 +48,16 @@ function BoutonInstaller() {
 export default function Accueil() {
   const { etat, clotureAt } = usePudi();
   const clos = !!etat?.clos;
+  // « Comment ça marche ? » of the account menu opens and shows the help block.
+  const { state } = useLocation() as { state: { aide?: number } | null };
+  const [aideOuverte, setAideOuverte] = useState(false);
+  const aide = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!state?.aide) return;
+    setAideOuverte(true);
+    const id = window.setTimeout(() => aide.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    return () => window.clearTimeout(id);
+  }, [state?.aide]);
   return (
     <Page logosPied={false}>
       <div className="-ml-4 -mr-6 -mt-4 mb-4 sm:mx-0 sm:mt-0 sm:rounded-xl overflow-hidden">
@@ -101,7 +111,13 @@ export default function Accueil() {
         <BoutonInstaller />
       </div>
 
-      <details className="mt-5 bg-white border border-filet rounded-xl group">
+      <details
+        id="aide"
+        ref={aide}
+        open={aideOuverte}
+        onToggle={(e) => setAideOuverte((e.currentTarget as HTMLDetailsElement).open)}
+        className="mt-5 bg-white border border-filet rounded-xl group scroll-mt-20"
+      >
         <summary className="min-h-[48px] px-3 flex items-center gap-2 cursor-pointer font-bold text-marine list-none">
           <Icone nom="info" />
           {fr.accueil.aideTitre}

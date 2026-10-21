@@ -7,12 +7,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 
 process.env.NODE_ENV = 'production'
+
+// App version shown in the account menu (« Mise à jour vX »).
+const version = (JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as { version: string }).version
 
 export default defineConfig({
   mode: 'production',
   plugins: [react()],
+  define: { __PUDI_VERSION__: JSON.stringify(version) },
   base: '/',
   // public/ is already copied by the host build.
   publicDir: false,

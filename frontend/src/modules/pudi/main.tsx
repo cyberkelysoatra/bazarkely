@@ -5,9 +5,38 @@ import './pudi.css';
 import PudiApp from './PudiApp';
 import { ecouterInstallation } from './appels/installation';
 import { capturerCanal } from './appels/provenance';
+import { signalerSession } from './appels/session';
+import { getSupabase } from './appels/supabaseClient';
+import { ping } from './appels/api';
 
 capturerCanal();
 ecouterInstallation();
+
+// Back from the Google sign-in on any PUDi page: let supabase-js store the session from the
+// address (loaded only in that case), then refresh the header.
+if (/[#&](access_token|error_description)=/.test(window.location.hash) || /[?&]code=/.test(window.location.search)) {
+  getSupabase()
+    .then((sb) => sb.auth.getSession())
+    .then(async ({ data }) => {
+      signalerSession();
+      // Records the account in the PUDi sign-ins (list of the administrators screen), once per session.
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      const cle = `pudi_ping:${uid}`;
+      try {
+        if (sessionStorage.getItem(cle) === '1') return;
+      } catch {
+        /* no storage */
+      }
+      await ping();
+      try {
+        sessionStorage.setItem(cle, '1');
+      } catch {
+        /* no storage */
+      }
+    })
+    .catch(signalerSession);
+}
 
 createRoot(document.getElementById('pudi-root')!).render(
   <StrictMode>
