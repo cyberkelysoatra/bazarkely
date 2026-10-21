@@ -1,6 +1,6 @@
 // Vote by vote (administrators only): filters, masking with a reason, CSV export.
 // No e-mail and no phone number ever reach this screen (server contract).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '../../composants/Icones';
 import { PROFIL_VALEURS } from '../../data';
 import { fr } from '../../i18n/fr';
@@ -8,6 +8,8 @@ import { useDonnees } from '../../PudiContexte';
 import { lireCanaux, lireVotes, masquerVote, type VoteAdmin } from '../../appels/admin';
 import { csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier } from '../../utils/exports';
 import { Aide, Dialogue, Erreur, champ, petitBouton, useAppel, type DemandeConfirmation } from './communs';
+import { FormulaireProposition, type DemandeProposition } from './FormulaireProposition';
+import { usePudi } from '../../PudiContexte';
 
 type Tri = 'tous' | 'oui' | 'non';
 
@@ -35,6 +37,14 @@ export default function Votes() {
   const [test, setTest] = useState<Tri>('tous');
   const [recherche, setRecherche] = useState('');
   const [demande, setDemande] = useState<DemandeConfirmation | null>(null);
+  const [formulaire, setFormulaire] = useState<DemandeProposition | null>(null);
+  const [transforme, setTransforme] = useState<string | null>(null);
+  const { etat } = usePudi();
+  useEffect(() => {
+    if (!transforme) return;
+    const id = window.setTimeout(() => setTransforme(null), 6000);
+    return () => window.clearTimeout(id);
+  }, [transforme]);
 
   const votes = appel.donnees?.votes ?? [];
   const filtres = useMemo(() => {
@@ -187,7 +197,18 @@ export default function Votes() {
                 {v.manquant && (
                   <>
                     <dt className="text-gris">Manquant</dt>
-                    <dd className="break-words whitespace-pre-wrap">{v.manquant}</dd>
+                    <dd className="break-words whitespace-pre-wrap">
+                      {v.manquant}
+                      <button
+                        type="button"
+                        className={`${petitBouton} mt-1 flex`}
+                        disabled={!!etat?.clos}
+                        onClick={() => setFormulaire({ t: 'transformer', idAnonyme: v.id_anonyme, texte: v.manquant ?? '' })}
+                      >
+                        <Icone nom="ampoule" className="w-4 h-4" />
+                        Transformer en proposition
+                      </button>
+                    </dd>
                   </>
                 )}
                 <dt className="text-gris">Envoyé</dt>
@@ -213,6 +234,12 @@ export default function Votes() {
         </ul>
       )}
       <Dialogue demande={demande} fermer={() => setDemande(null)} />
+      <FormulaireProposition demande={formulaire} fermer={() => setFormulaire(null)} enregistre={(id) => setTransforme(id)} />
+      {transforme && (
+        <p role="status" className="fixed bottom-20 left-3 right-3 sm:left-auto sm:w-96 z-[60] bg-marine text-white rounded-xl px-4 py-3 text-[15px] font-bold shadow-xl">
+          Proposition {transforme} créée : voir l'onglet Propositions.
+        </p>
+      )}
     </div>
   );
 }

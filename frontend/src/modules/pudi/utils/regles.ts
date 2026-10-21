@@ -95,3 +95,21 @@ export function ecartPudi(trancheAffichee: string): boolean {
 export function codeCanalValide(code: string | null | undefined): code is string {
   return typeof code === 'string' && /^[a-z0-9-]{1,24}$/.test(code);
 }
+
+/**
+ * Removes from the draft the proposal ids that are no longer in the public list (withdrawn).
+ * Programme ids are never touched. Returns the cleaned draft and the removed ids (in order).
+ */
+export function retirerPropositionsAbsentes(
+  b: Brouillon,
+  actives: readonly string[],
+  estProposition: (id: string) => boolean
+): { brouillon: Brouillon; retires: string[] } {
+  const garder = (id: string) => !estProposition(id) || actives.includes(id);
+  const retires = [...new Set([...b.priorites, ...b.urgents].filter((id) => !garder(id)))];
+  if (!retires.length) return { brouillon: b, retires };
+  return {
+    brouillon: { ...b, priorites: b.priorites.filter(garder), urgents: b.urgents.filter(garder) },
+    retires
+  };
+}

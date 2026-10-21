@@ -3,7 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { chargerDonnees, donneesChargees, type PudiDonnees } from './data';
 import { lireEtat, type EtatConsultation } from './appels/api';
 import { ecrireBrouillon, lireBrouillon } from './appels/brouillon';
-import type { Brouillon } from './utils/regles';
+import { retirerPropositionsAbsentes, type Brouillon } from './utils/regles';
+import { estProposition, propositionParId, rafraichirPropositions } from './appels/propositions';
 import { CLOTURE_PAR_DEFAUT } from './utils/format';
 import { useSessionLocale } from './appels/session';
 
@@ -22,6 +23,9 @@ interface PudiContexteValeur {
   definirEtat: (e: EtatConsultation) => void;
   /** True when the final sending is allowed for this visitor. */
   envoiOuvert: boolean;
+  /** Titles of the proposals removed from the draft because they were withdrawn. */
+  propositionsRetirees: string[];
+  effacerPropositionsRetirees: () => void;
 }
 
 const Ctx = createContext<PudiContexteValeur | null>(null);
@@ -69,6 +73,27 @@ export function PudiProvider({ children }: { children: ReactNode }) {
     setBrouillon(lireBrouillon());
   }, []);
 
+  // Proposals: refreshed on each online visit; a withdrawn proposal leaves the draft with a message.
+  const [propositionsRetirees, setPropositionsRetirees] = useState<string[]>([]);
+  const verifierPropositions = useCallback(async () => {
+    try {
+      const { liste, avant } = await rafraichirPropositions();
+      const { brouillon: b, retires } = retirerPropositionsAbsentes(lireBrouillon(), liste.map((p) => p.id), estProposition);
+      if (!retires.length) return;
+      ecrireBrouillon(b);
+      setBrouillon(lireBrouillon());
+      setPropositionsRetirees(retires.map((id) => propositionParId(avant, id)?.intitule ?? id));
+    } catch {
+      /* offline: the cached list is shown, the draft is kept as it is */
+    }
+  }, []);
+  useEffect(() => {
+    void verifierPropositions();
+    window.addEventListener('online', verifierPropositions);
+    return () => window.removeEventListener('online', verifierPropositions);
+  }, [verifierPropositions]);
+  const effacerPropositionsRetirees = useCallback(() => setPropositionsRetirees([]), []);
+
   const valeur = useMemo<PudiContexteValeur>(
     () => ({
       brouillon,
@@ -79,9 +104,11 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       clotureAt: etat?.cloture_at ?? CLOTURE_PAR_DEFAUT,
       rechargerEtat,
       definirEtat,
-      envoiOuvert: !!etat && !etat.clos && (etat.publie || etat.est_admin)
+      envoiOuvert: !!etat && !etat.clos && (etat.publie || etat.est_admin),
+      propositionsRetirees,
+      effacerPropositionsRetirees
     }),
-    [brouillon, majBrouillon, etat, horsLigne, decalage, rechargerEtat, definirEtat]
+    [brouillon, majBrouillon, etat, horsLigne, decalage, rechargerEtat, definirEtat, propositionsRetirees, effacerPropositionsRetirees]
   );
 
   return <Ctx.Provider value={valeur}>{children}</Ctx.Provider>;

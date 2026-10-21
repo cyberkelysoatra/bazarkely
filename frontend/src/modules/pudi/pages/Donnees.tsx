@@ -3,7 +3,9 @@
 import { Page } from '../composants/Mise';
 import { Icone, type NomIcone } from '../composants/Icones';
 
-const SECTIONS: { icone: NomIcone; titre: string; textes: string[] }[] = [
+export const EMAIL_GIHTNB = 'info.gihtnb@gmail.com';
+
+const SECTIONS: { icone: NomIcone; titre: string; textes: string[]; contact?: boolean }[] = [
   {
     icone: 'personnes',
     titre: 'Qui est responsable ?',
@@ -66,9 +68,10 @@ const SECTIONS: { icone: NomIcone; titre: string; textes: string[] }[] = [
     icone: 'aide',
     titre: 'Poser une question au GIHTNB',
     textes: [
-      'Pour accéder à vos données, les corriger ou demander leur suppression avant la date prévue, adressez-vous au GIHTNB, par la personne ou le groupe qui vous a transmis le lien de la consultation.',
+      'Pour accéder à vos données, les corriger ou demander leur suppression avant la date prévue, écrivez au GIHTNB.',
       'Indiquez l’adresse e-mail du compte Google utilisé pour voter. Ne publiez jamais votre numéro dans un groupe.'
-    ]
+    ],
+    contact: true
   }
 ];
 
@@ -87,6 +90,14 @@ export default function Donnees() {
                 {t}
               </p>
             ))}
+            {s.contact && (
+              <p className="mt-2 text-[15px] leading-relaxed">
+                Pour toute question sur vos données ou sur la consultation :{' '}
+                <a href={`mailto:${EMAIL_GIHTNB}`} className="font-bold text-marine underline underline-offset-2 break-all">
+                  {EMAIL_GIHTNB}
+                </a>
+              </p>
+            )}
           </section>
         ))}
       </div>

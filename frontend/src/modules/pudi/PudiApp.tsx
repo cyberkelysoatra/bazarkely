@@ -14,6 +14,11 @@ const Envoyer = lazy(() => import('./pages/Envoyer'));
 const Merci = lazy(() => import('./pages/Merci'));
 const Resultats = lazy(() => import('./pages/Resultats'));
 const Donnees = lazy(() => import('./pages/Donnees'));
+// Phase 3: search (index built on the device), proposals, public PUDi documents.
+const Recherche = lazy(() => import('./pages/Recherche'));
+const Propositions = lazy(() => import('./pages/Propositions'));
+const Proposition = lazy(() => import('./pages/Proposition'));
+const Documents = lazy(() => import('./pages/Documents'));
 // Administration: its own chunk, never downloaded by a public visitor.
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
@@ -46,6 +51,10 @@ export default function PudiApp() {
             <Route path="/merci" element={<Merci />} />
             <Route path="/resultats" element={<Resultats />} />
             <Route path="/donnees" element={<Donnees />} />
+            <Route path="/recherche" element={<Recherche />} />
+            <Route path="/propositions" element={<Propositions />} />
+            <Route path="/proposition/:id" element={<Proposition />} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/admin/*" element={<Admin />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

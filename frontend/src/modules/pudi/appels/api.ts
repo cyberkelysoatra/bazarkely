@@ -12,6 +12,8 @@ import {
 
 export interface EtatConsultation {
   publie: boolean;
+  /** Time of the FIRST publication (null before). */
+  publie_at?: string | null;
   cloture_at: string;
   maintenant: string;
   clos: boolean;
@@ -43,9 +45,21 @@ export interface LigneResultat {
   ecart?: boolean;
 }
 
+/** Proposal of the results, counted SEPARATELY from the 52 programmes. */
+export interface LigneProposition {
+  id: string;
+  intitule: string;
+  ajoute_at: string;
+  n_priorite: number;
+  pct_priorite: number;
+  n_urgent: number;
+  pct_urgent: number;
+}
+
 export interface Resultats {
   clos: boolean;
   cloture_at: string;
+  publie_at?: string | null;
   calcule_at: string;
   nb_votants: number;
   priorites: LigneResultat[];
@@ -54,6 +68,7 @@ export interface Resultats {
   par_fokontany: Record<string, number>;
   reseaux: { dans_nos_reseaux: number; hors_reseaux: number };
   manquants: string[];
+  propositions?: LigneProposition[];
 }
 
 export interface FormulaireVote {
@@ -78,7 +93,7 @@ export function jetonLocal(): string | null {
   }
 }
 
-async function rpcFetch(fn: string, jeton: string | null): Promise<Response> {
+export async function rpcFetch(fn: string, jeton: string | null): Promise<Response> {
   return withTimeout(
     fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
       method: 'POST',

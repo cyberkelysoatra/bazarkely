@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.94.0';
-export const APP_VERSION_NAME = "PUDi Nosy Be : administration de la consultation, canaux et QR codes, listes de numéros, exports et synthèse PDF.";
+export const APP_VERSION = '3.95.0';
+export const APP_VERSION_NAME = "PUDi Nosy Be : propositions hors liste du PIC, « Trouver un projet », fiches enrichies et documents du PUDi.";
 export const LAST_UPDATED = '2026-10-21';
 export const APP_BUILD_DATE = '2026-10-21';
 export const VERSION_HISTORY = [
+  {
+    version: '3.95.0',
+    date: '2026-10-21',
+    description:
+      "PUDi Nosy Be (phase 3) : les projets demandés hors de la liste du PIC deviennent des « Propositions » que l’on peut choisir, et la recherche « Trouver un projet » aide à retrouver un projet déjà prévu dans le PUDi.",
+    changes: [
+      "Nouvelle carte « Propositions (hors liste du PIC) » : 5 propositions de départ, sélectionnables comme priorités ou urgences, comptées à part dans les résultats et la synthèse.",
+      "« Trouver un projet » : recherche par lieu, mot ou code, sans connexion, avec les correspondances directes (Nosy Komba, toilettes, CHRD, eau…).",
+      "Fiches des programmes enrichies : libellé officiel complet de chaque code, renvois vers les pages du PUDi et précisions.",
+      "Page « Documents du PUDi » : le PUDi complet et ses règlements d’urbanisme, à ouvrir ou télécharger (jamais gardés hors ligne).",
+      "Contact du GIHTNB dans « Données personnelles », date réelle d’ouverture dans la synthèse, onglet « Propositions » pour les organisateurs."
+    ]
+  },
   {
     version: '3.94.0',
     date: '2026-10-21',

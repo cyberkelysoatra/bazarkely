@@ -17,7 +17,11 @@ const ACTIONS: Record<string, string> = {
   nommer_admin: 'Organisateur nommé',
   retirer_admin: 'Organisateur retiré',
   liberer_numero: 'Numéro libéré',
-  purge: 'Données personnelles purgées'
+  purge: 'Données personnelles purgées',
+  ajouter_proposition: 'Proposition ajoutée',
+  modifier_proposition: 'Proposition modifiée',
+  retirer_proposition: 'Proposition retirée',
+  retablir_proposition: 'Proposition rétablie'
 };
 
 const CLES: Record<string, string> = {
@@ -33,7 +37,10 @@ const CLES: Record<string, string> = {
   votes_test_supprimes: 'votes de test supprimés',
   votes: 'votes',
   contacts: 'numéros codés',
-  liste: 'liste'
+  liste: 'liste',
+  intitule: 'titre',
+  origine_vote: 'vote d’origine',
+  efface: 'supprimée'
 };
 
 function details(e: EntreeJournal): string {

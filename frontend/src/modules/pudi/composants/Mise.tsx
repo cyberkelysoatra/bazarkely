@@ -85,8 +85,22 @@ function Bandeau({ icone, titre, texte, ton }: { icone: NomIcone; titre?: string
 
 /** Banners from pudi_etat(): preparation (D4 B), admin test mode, closed, offline. */
 export function BandeauxEtat({ masquerPreparation = false }: { masquerPreparation?: boolean }) {
-  const { etat, horsLigne } = usePudi();
+  const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees } = usePudi();
   const items: ReactNode[] = [];
+  if (propositionsRetirees.length)
+    items.push(
+      <div key="retrait" role="alert" className="border-l-4 bg-white border-[#B85317] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
+        <Icone nom="alerte" className="w-5 h-5 mt-0.5 text-[#B85317]" />
+        <div className="flex-1 min-w-0 text-[15px] leading-snug space-y-1">
+          {propositionsRetirees.map((t) => (
+            <p key={t}>{fr.etats.propositionRetiree(t)}</p>
+          ))}
+        </div>
+        <button type="button" onClick={effacerPropositionsRetirees} className="min-h-[44px] -my-2 px-2 text-marine font-bold text-[14px]">
+          {fr.etats.compris}
+        </button>
+      </div>
+    );
   if (horsLigne) items.push(<Bandeau key="hl" icone="horsLigne" texte={fr.etats.horsConnexion} ton="alerte" />);
   if (etat?.clos) items.push(<Bandeau key="clos" icone="cadenas" texte={fr.etats.clos} ton="alerte" />);
   else if (etat && !etat.publie) {

@@ -236,6 +236,9 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
               : "Vous n'avez pas encore voté"}
           </Element>
         )}
+        <Element icone="recherche" onClick={() => aller('/recherche', { focus: true })}>
+          Trouver un projet
+        </Element>
         <Element
           icone={reserve ? 'cadenas' : 'graphique'}
           desactive={!enLigne}
@@ -267,6 +270,9 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         )}
         <Element icone="aide" onClick={() => aller('/', { aide: Date.now() })}>
           Comment ça marche ?
+        </Element>
+        <Element icone="document" onClick={() => aller('/documents')}>
+          Documents du PUDi
         </Element>
         <Element icone="bouclier" onClick={() => aller('/donnees')}>
           Données personnelles

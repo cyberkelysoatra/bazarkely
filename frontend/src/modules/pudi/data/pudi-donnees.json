@@ -1,7 +1,7 @@
 {
  "meta": {
   "titre": "Priorisation du PUDi de Nosy Be 2026-2040",
-  "version": "v2",
+  "version": "v3",
   "dateExtraction": "2026-10-20",
   "extraitPar": "projet CRÉATEUR Apps",
   "statut": "Relu et validé par le projet GIHTNB le 20/10/2026 (demande n°4)",
@@ -10,7 +10,8 @@
    "20261016_PRES_PUDi-Couts-Investissement_v1.pptx (A, 42 projets, diapos 7 à 15)",
    "20261020_NOTE_Cahier-charges-App_v3.md (§8 regroupement, §9 correspondance)",
    "20261020_LISTE_Fokontany-NosyBe_v1.md",
-   "20261020_LISTE_Resumes-Programmes_v1.md (résumés rédigés par le GIHTNB)"
+   "20261020_LISTE_Resumes-Programmes_v1.md (résumés rédigés par le GIHTNB)",
+   "20261021_LISTE_References-PUDi_v1.md (libellés complets du .docx du PIC, pages et précisions)"
   ],
   "tranches": [
    {
@@ -42,7 +43,26 @@
     "2031-2035": 52,
     "2036-2040": 22
    }
-  }
+  },
+  "documents": [
+   {
+    "id": "pudi",
+    "titre": "Plan d'Urbanisme Directeur de Nosy Be 2025-2040, version 2.0",
+    "fichier": "pudi-nosy-be-2025-2040-v2.pdf",
+    "taille": "14,6 Mo",
+    "octets": 14638893,
+    "pages": 167,
+    "decalagePage": 8
+   },
+   {
+    "id": "reglements",
+    "titre": "Règlements d'urbanisme du PUDi de Nosy Be",
+    "fichier": "reglements-urbanisme-pudi-nosy-be.pdf",
+    "taille": "1,2 Mo",
+    "octets": 1175328
+   }
+  ],
+  "notePages": "pagesPudi = numéros imprimés ; page du fichier PDF = page imprimée + 8 (lien #page=N), repérage indicatif"
  },
  "secteurs": [
   {
@@ -195,7 +215,13 @@
       "montantAr": 60000000,
       "detail": "Étude · 11,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre en place un périmètre de protection patrimoniale couvrant le front de mer, la cour du Hell, les rues coloniales adjacentes et les principaux édifices publics anciens. (Water Front Nosy Be)",
+     "pagesPudi": [
+      66,
+      136,
+      140
+     ]
     },
     {
      "code": "PAM02",
@@ -211,7 +237,13 @@
       "montantAr": 370000000,
       "detail": "740 ml × 500 000 Ar · 72,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager une promenade littorale patrimoniale sur la rue Docteur Manceau en intégrant traitement paysager, mobilier urbain homogène, éclairage et signalétique.",
+     "pagesPudi": [
+      67,
+      136,
+      140
+     ]
     },
     {
      "code": "PAM03",
@@ -227,7 +259,13 @@
       "montantAr": 80000000,
       "detail": "Forfait · 15,7 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et aménager le Jardin du Hell",
+     "pagesPudi": [
+      67,
+      136,
+      140
+     ]
     },
     {
      "code": "PAM04",
@@ -235,7 +273,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Réhabiliter les édifices emblématiques, tribunal, sous-préfecture, bâtiments administratifs, maisons à arcades selon les principes de conservation",
+     "pagesPudi": [
+      66,
+      144
+     ]
     },
     {
      "code": "PAM05",
@@ -243,7 +286,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Mettre en valeur les axes structurants (Boulevard de l’Indépendance, rue Cours de Hell, avenue Augagneur, rue Albert Ier) par un traitement homogène des revêtements, des alignements arborés et du mobilier urbain",
+     "pagesPudi": [
+      68,
+      144
+     ]
     },
     {
      "code": "PAM07",
@@ -259,7 +307,12 @@
       "montantAr": 100000000,
       "detail": "Forfait · 14,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Embellir le boulevard Générale de Gaulle par la mise place d’un alignement arboré, de mobilier urbain, des signalétiques et éclairage public.",
+     "pagesPudi": [
+      136,
+      140
+     ]
     }
    ],
    "cout": {
@@ -268,7 +321,16 @@
     "mention": "Au moins 610 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    66,
+    67,
+    68,
+    136,
+    140,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "A2",
@@ -295,7 +357,12 @@
       "montantAr": 204000000,
       "detail": "816 ml × 250 000 Ar · 30,3 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager la voie de dégagement Ouest au niveau du marché couvert, empruntant la rue Reine Binao jusqu’à la pharmacie Nouroudine, puis se prolonge le long de la Route de l’Est jusqu’au PK 0 d’une longueur de 868m.",
+     "pagesPudi": [
+      136,
+      140
+     ]
     },
     {
      "code": "PAM09",
@@ -311,7 +378,12 @@
       "montantAr": 149750000,
       "detail": "599 ml × 250 000 Ar · 22,2 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager la voie de dégagement Est reliant le secteur de l’Assurance Mama à la Route de l’Est, au niveau du fokontany de Maroakatsaka d’une longueur de 816m.",
+     "pagesPudi": [
+      136,
+      140
+     ]
     }
    ],
    "cout": {
@@ -320,7 +392,12 @@
     "mention": "353 750 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    136,
+    140
+   ],
+   "precision": null
   },
   {
    "id": "A3",
@@ -347,7 +424,13 @@
       "montantAr": 300000000,
       "detail": "Forfait · 5,3 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Requalifier et aménager le site actuellement occupé par le stationnement en une place centrale, qui accueillera, d’une part, un bloc administratif capable d’accueillir le bureau d’Arrondissement, le bureau du Chef Fokontany, des bureaux de STD, le Tranom-pokonolona, des centres de formation professionnelle, ainsi que d’une bibliothèque municipale ou une maison de la culture.",
+     "pagesPudi": [
+      80,
+      136,
+      140
+     ]
     }
    ],
    "cout": {
@@ -356,7 +439,13 @@
     "mention": "300 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    80,
+    136,
+    140
+   ],
+   "precision": null
   },
   {
    "id": "A4",
@@ -373,7 +462,12 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Réguler et organiser l’occupation commerciale de l’espace public afin de garantir la fluidité des circulations et la qualité paysagère",
+     "pagesPudi": [
+      90,
+      137
+     ]
     }
    ],
    "cout": {
@@ -381,7 +475,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    90,
+    137
+   ],
+   "precision": null
   },
   {
    "id": "A5",
@@ -398,7 +497,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Réaffecter (adaptive reuse) la prison actuelle en équipements culturels, musées ou galeries, et requalifier les façades",
+     "pagesPudi": [
+      148
+     ]
     }
    ],
    "cout": {
@@ -406,7 +509,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    148
+   ],
+   "precision": null
   },
   {
    "id": "A6",
@@ -425,7 +532,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Créer une nouvelle ville à Madiro",
+     "pagesPudi": [
+      104,
+      105,
+      144
+     ]
     }
    ],
    "cout": {
@@ -433,7 +546,13 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    104,
+    105,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "A7",
@@ -452,7 +571,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Développer un centre intermédiaire à Fascène : village artisanal, food courts, centre commercial et de service (agence de voyage, agence de location, Navette) station-service",
+     "pagesPudi": [
+      148
+     ]
     }
    ],
    "cout": {
@@ -460,7 +583,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    148
+   ],
+   "precision": null
   },
   {
    "id": "A8",
@@ -480,7 +607,13 @@
       "2026-2030",
       "2031-2035"
      ],
-     "secteurOrigine": "AME"
+     "secteurOrigine": "AME",
+     "libelleComplet": "Aménager une corniche et un espace public à Andavakotoko",
+     "pagesPudi": [
+      76,
+      77,
+      136
+     ]
     }
    ],
    "cout": {
@@ -488,7 +621,13 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    76,
+    77,
+    136
+   ],
+   "precision": null
   },
   {
    "id": "T1",
@@ -521,7 +660,13 @@
       "montantAr": 960000000,
       "detail": "6 × 160 000 000 Ar · 66,7 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager des stations balnéaires à Ambatolaoka, Dzamandzar, Mahazandry, Mangirankirana, Antafianambitry, Befotaka, afin de proposer un espace aménagé, accessible et dédié aux loisirs, participant à la valorisation du littoral dans une logique de développement équilibré.",
+     "pagesPudi": [
+      114,
+      137,
+      142
+     ]
     },
     {
      "code": "PTO01",
@@ -529,7 +674,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "TOU"
+     "secteurOrigine": "TOU",
+     "libelleComplet": "Aménager une station balnéaire avec parking, bloc sanitaire, restauration et pique-nique sur la plage derrière le terrain de Foot à Ampasy",
+     "pagesPudi": [
+      81,
+      144
+     ]
     }
    ],
    "cout": {
@@ -538,7 +688,15 @@
     "mention": "Au moins 960 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    81,
+    114,
+    137,
+    142,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "T2",
@@ -565,7 +723,13 @@
       "montantAr": null,
       "detail": null,
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Etendre et aménager le port de Hell Ville afin de soutenir l’accueil de croisières, contribuant à diversifier les flux touristiques.",
+     "pagesPudi": [
+      114,
+      137,
+      142
+     ]
     }
    ],
    "cout": {
@@ -573,7 +737,13 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    114,
+    137,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "T3",
@@ -592,7 +762,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "TOU"
+     "secteurOrigine": "TOU",
+     "libelleComplet": "Etendre le tarmac, ouverture de nouvelles lignes aériennes régionales et européennes, Création d’une nouvelle salle d’embarquement",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -600,7 +774,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138
+   ],
+   "precision": null
   },
   {
    "id": "T4",
@@ -627,7 +805,12 @@
       "montantAr": 80000000,
       "detail": "Forfait · 15,4 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Embellir l’axe commercial actuel par la mise place d’un alignement arboré, de mobilier urbain, des signalétiques touristiques et éclairage public.",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PTO03",
@@ -635,7 +818,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "TOU"
+     "secteurOrigine": "TOU",
+     "libelleComplet": "Mettre en place des éclairages public et des signalétiques urbaines et touristiques le long des principaux axes touristiques et commerciaux",
+     "pagesPudi": [
+      137
+     ]
     }
    ],
    "cout": {
@@ -644,7 +831,12 @@
     "mention": "Au moins 80 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    137,
+    141
+   ],
+   "precision": null
   },
   {
    "id": "T5",
@@ -672,7 +864,13 @@
       "montantAr": 80000000,
       "detail": "Forfait · 5,6 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et développer de centres de formation professionnelle spécialisés, notamment dans les domaines du tourisme, du BTP et de l’agriculture à Befotaka et Apombolava, afin de mieux répondre aux besoins du marché local.",
+     "pagesPudi": [
+      115,
+      137,
+      142
+     ]
     },
     {
      "code": "PTO11",
@@ -688,7 +886,11 @@
       "montantAr": 100000000,
       "detail": "Forfait · 6,9 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre en place d’un centre de formation permanent (langues, éco-guides, numérique) ; Formations croisées avec autres destinations",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -697,7 +899,14 @@
     "mention": "180 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    115,
+    137,
+    138,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "T6",
@@ -724,7 +933,12 @@
       "montantAr": 250000000,
       "detail": "Forfait · 17,4 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Créer un musée immersif au Mont Passot (scénographie numérique, exposition interactive, soirées culturelles)",
+     "pagesPudi": [
+      138,
+      142
+     ]
     }
    ],
    "cout": {
@@ -733,7 +947,12 @@
     "mention": "250 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "T7",
@@ -760,7 +979,11 @@
       "montantAr": 50000000,
       "detail": "Forfait · 3,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Installer des hotspots Wi-Fi publics dans les lieux les plus fréquentés",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -769,7 +992,11 @@
     "mention": "50 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138
+   ],
+   "precision": null
   },
   {
    "id": "T8",
@@ -786,7 +1013,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "TOU"
+     "secteurOrigine": "TOU",
+     "libelleComplet": "Installer une station-service au port, d’un centre de tri-compostage, sécurisation énergétique, équipements publics de secours (plages, cascades…)",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -794,7 +1025,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138
+   ],
+   "precision": null
   },
   {
    "id": "T9",
@@ -811,7 +1046,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "TOU"
+     "secteurOrigine": "TOU",
+     "libelleComplet": "Mettre en œuvre des campagnes de préservation des récifs coralliens et zones sensibles ; Réglementation stricte des ancrages ; Programme participatif de suivi écologique avec ONG",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -819,7 +1058,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138
+   ],
+   "precision": null
   },
   {
    "id": "E1",
@@ -836,7 +1079,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Créer des espaces verts urbains structurants.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN08",
@@ -844,7 +1093,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Créer des espaces verts urbains structurants.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN02",
@@ -852,7 +1107,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Imposer des normes de végétalisation dans les projets urbains.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN09",
@@ -860,7 +1121,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Imposer des normes de végétalisation dans les projets urbains.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "PEQ10",
@@ -868,7 +1135,17 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Espace vert et jardin public",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      137,
+      145,
+      153,
+      154
+     ]
     },
     {
      "code": "PEQ14",
@@ -876,7 +1153,17 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Espace vert et jardin public",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      137,
+      145,
+      153,
+      154
+     ]
     },
     {
      "code": "PEQ17",
@@ -884,7 +1171,17 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Espace vert et jardin public",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      137,
+      145,
+      153,
+      154
+     ]
     }
    ],
    "cout": {
@@ -894,7 +1191,19 @@
    "incluAussi": [
     "EQU"
    ],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    100,
+    102,
+    103,
+    123,
+    137,
+    138,
+    145,
+    153,
+    154
+   ],
+   "precision": null
   },
   {
    "id": "E2",
@@ -911,7 +1220,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Promouvoir des initiatives locales (jardins communautaires, verdissement participatif).",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN10",
@@ -919,7 +1234,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Promouvoir des initiatives locales (jardins communautaires, verdissement participatif).",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN04",
@@ -927,7 +1248,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Associer les communautés bénéficiaires dans l’entretien des espaces via des approches inspirées des TGRN.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     },
     {
      "code": "ENV-PEN11",
@@ -935,7 +1262,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Associer les communautés bénéficiaires dans l’entretien des espaces via des approches inspirées des TGRN.",
+     "pagesPudi": [
+      123,
+      138,
+      145
+     ]
     }
    ],
    "cout": {
@@ -943,7 +1276,13 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    123,
+    138,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "E3",
@@ -960,7 +1299,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Reboiser les bassins versants et berges.",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     },
     {
      "code": "ENV-PEN12",
@@ -968,7 +1313,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Reboiser les bassins versants et berges.",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     }
    ],
    "cout": {
@@ -976,7 +1327,13 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    124,
+    138,
+    146
+   ],
+   "precision": null
   },
   {
    "id": "H1",
@@ -998,7 +1355,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "SAN"
+     "secteurOrigine": "SAN",
+     "libelleComplet": "Construire un (01) CSB pour le Fokontany de Senganinga",
+     "pagesPudi": [
+      78,
+      144
+     ]
     },
     {
      "code": "PSA04",
@@ -1014,7 +1376,12 @@
       "montantAr": 150000000,
       "detail": "Forfait · 9,4 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un CSBII à Ambodivanio",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PSA05",
@@ -1030,7 +1397,12 @@
       "montantAr": 150000000,
       "detail": "Forfait · 9,4 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un CSBII à Antanamitarana",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PSA06",
@@ -1038,7 +1410,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "SAN"
+     "secteurOrigine": "SAN",
+     "libelleComplet": "Construire un CSBII à Djabala Be",
+     "pagesPudi": [
+      145
+     ]
     }
    ],
    "cout": {
@@ -1047,7 +1423,15 @@
     "mention": "Au moins 300 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    137,
+    141,
+    144,
+    145
+   ],
+   "precision": "Le PUDi recense 1 CHRD II et 12 centres de santé publics (7 CSB I, 4 CSB II), p. 34. Aucun nouveau CHRD n'y est programmé."
   },
   {
    "id": "H2",
@@ -1068,7 +1452,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "SAN"
+     "secteurOrigine": "SAN",
+     "libelleComplet": "Réhabiliter et de moderniser les Centres de Santé de Base (CSB)",
+     "pagesPudi": [
+      85,
+      144
+     ]
     },
     {
      "code": "PSA03",
@@ -1084,7 +1473,12 @@
       "montantAr": 40000000,
       "detail": "Forfait · 7,7 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Requalifier le CSBI en CSBII",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PSA07",
@@ -1100,7 +1494,11 @@
       "montantAr": 50000000,
       "detail": "Forfait · 6,9 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Requalifier les CSBI d’Ambatozavavy, et Befotaka en CSBII",
+     "pagesPudi": [
+      137
+     ]
     }
    ],
    "cout": {
@@ -1109,7 +1507,14 @@
     "mention": "Au moins 90 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    85,
+    137,
+    141,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "D1",
@@ -1130,7 +1535,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire une (01) EPP pour le Fokontany de La Batterie",
+     "pagesPudi": [
+      78,
+      144
+     ]
     },
     {
      "code": "PED03",
@@ -1138,7 +1548,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Réhabiliter et construire 4 salles de classes pour l’EPP de Dzamandzar Usine",
+     "pagesPudi": [
+      85,
+      148
+     ]
     },
     {
      "code": "PED10",
@@ -1146,7 +1561,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire des EPP à Antsatrabevoa",
+     "pagesPudi": [
+      148
+     ]
     }
    ],
    "cout": {
@@ -1154,7 +1573,14 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    85,
+    144,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "D2",
@@ -1177,7 +1603,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire 4 salles de classes pour le CEG",
+     "pagesPudi": [
+      85,
+      148
+     ]
     },
     {
      "code": "PED06",
@@ -1193,7 +1624,12 @@
       "montantAr": 150000000,
       "detail": "Forfait · 9,4 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un CEG à Antanamitarana",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PED07",
@@ -1201,7 +1637,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire un CEG à Djabala Be et Ambondrona",
+     "pagesPudi": [
+      145
+     ]
     },
     {
      "code": "PED11",
@@ -1209,7 +1649,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire des CEG à Bemalandy et Ampangorina",
+     "pagesPudi": [
+      148
+     ]
     }
    ],
    "cout": {
@@ -1218,7 +1662,15 @@
     "mention": "Au moins 150 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    85,
+    137,
+    141,
+    145,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "D3",
@@ -1248,7 +1700,12 @@
       "montantAr": 60000000,
       "detail": "Forfait · 1,1 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et embellir l’enceinte du Lycée technique et du lycée Mixte.",
+     "pagesPudi": [
+      85,
+      136
+     ]
     },
     {
      "code": "PED05",
@@ -1256,7 +1713,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire un Lycée à Miadana Commune",
+     "pagesPudi": [
+      145
+     ]
     },
     {
      "code": "PED08",
@@ -1272,7 +1733,12 @@
       "montantAr": 180000000,
       "detail": "Forfait · 25,0 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un lycée à Ambatozavavy,",
+     "pagesPudi": [
+      137,
+      141
+     ]
     },
     {
      "code": "PED09",
@@ -1280,7 +1746,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EDU"
+     "secteurOrigine": "EDU",
+     "libelleComplet": "Construire un lycée à Bemanondrobe",
+     "pagesPudi": [
+      145
+     ]
     }
    ],
    "cout": {
@@ -1289,7 +1759,15 @@
     "mention": "Au moins 240 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    85,
+    136,
+    137,
+    141,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "W1",
@@ -1316,7 +1794,17 @@
       "montantAr": 200000000,
       "detail": "Forfait · 12,5 %",
       "correspondanceIncertaine": true
-     }
+     },
+     "libelleComplet": "Etendre des réseaux d’eau potable à l’intérieur des Zones d’habitation",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      111,
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS07",
@@ -1325,7 +1813,17 @@
       "2031-2035",
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Etendre des réseaux d’eau potable à l’intérieur des Zones d’habitation",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      111,
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS09",
@@ -1341,7 +1839,17 @@
       "montantAr": 500000000,
       "detail": "Forfait · 31,3 %",
       "correspondanceIncertaine": true
-     }
+     },
+     "libelleComplet": "Etendre des réseaux d’eau potable à l’intérieur des Zones d’habitation",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      111,
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS11",
@@ -1349,7 +1857,17 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Etendre des réseaux d’eau potable à l’intérieur des Zones d’habitation",
+     "pagesPudi": [
+      100,
+      102,
+      103,
+      111,
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "ENE-PEN01",
@@ -1357,7 +1875,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENE"
+     "secteurOrigine": "ENE",
+     "libelleComplet": "Promouvoir le branchement particulier en Eau de la JIRAMA à l’intérieur des Fokontany",
+     "pagesPudi": [
+      136
+     ]
     },
     {
      "code": "ENV-PEN07",
@@ -1365,7 +1887,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Intégrer des TGRN pour une gestion locale des ressources en eau (surveillance, entretien, sensibilisation).",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     },
     {
      "code": "ENV-PEN14",
@@ -1373,7 +1901,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Intégrer des TGRN pour une gestion locale des ressources en eau (surveillance, entretien, sensibilisation)",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     }
    ],
    "cout": {
@@ -1385,7 +1919,21 @@
     "ENE",
     "ENV"
    ],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    100,
+    102,
+    103,
+    111,
+    124,
+    136,
+    137,
+    138,
+    145,
+    146,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "W2",
@@ -1412,7 +1960,13 @@
       "montantAr": 50000000,
       "detail": "Forfait · 3,1 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre en place de bacs à ordure avec dispositifs de tri dans tous les Fokontany",
+     "pagesPudi": [
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS08",
@@ -1421,7 +1975,13 @@
       "2031-2035",
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Mettre en place de bacs à ordure avec dispositifs de tri dans tous les Fokontany",
+     "pagesPudi": [
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS10",
@@ -1429,7 +1989,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Mettre en place de bacs à ordure avec dispositifs de tri dans tous les Fokontany",
+     "pagesPudi": [
+      137,
+      145,
+      148
+     ]
     },
     {
      "code": "PAS12",
@@ -1437,7 +2003,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Mettre en place de bacs à ordure avec dispositifs de tri dans tous les Fokontany",
+     "pagesPudi": [
+      137,
+      145,
+      148
+     ]
     }
    ],
    "cout": {
@@ -1446,7 +2018,13 @@
     "mention": "Au moins 50 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    137,
+    145,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "W3",
@@ -1465,7 +2043,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Raccorder les bâtis au système d’évacuation des eaux usées et eaux pluviales",
+     "pagesPudi": [
+      78,
+      144
+     ]
     },
     {
      "code": "PAS04",
@@ -1473,7 +2056,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Aménager un centre de traitement des eaux usées et des eaux vannes à Dzamandzar (bassin de lagunage)",
+     "pagesPudi": [
+      87,
+      144
+     ]
     },
     {
      "code": "PAS18",
@@ -1481,7 +2069,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Mettre en oeuvre le Réseau d'assainissement projeté",
+     "pagesPudi": [
+      130
+     ]
     },
     {
      "code": "ENV-PEN06",
@@ -1489,7 +2081,13 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Mettre en place des systèmes d’assainissement adaptés.",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     },
     {
      "code": "ENV-PEN13",
@@ -1497,7 +2095,13 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENV"
+     "secteurOrigine": "ENV",
+     "libelleComplet": "Mettre en place des systèmes d’assainissement adaptés.",
+     "pagesPudi": [
+      124,
+      138,
+      146
+     ]
     }
    ],
    "cout": {
@@ -1507,7 +2111,17 @@
    "incluAussi": [
     "ENV"
    ],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    87,
+    124,
+    130,
+    138,
+    144,
+    146
+   ],
+   "precision": "Volet assainissement du PUDi, tiré du Schéma directeur d'assainissement : p. 126 à 130 (carte 10, p. 130)."
   },
   {
    "id": "W4",
@@ -1535,7 +2149,12 @@
       "montantAr": 120000000,
       "detail": "4 × 30 000 000 Ar · 17,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire deux (02) blocs sanitaires de chaque pour La Batterie et Senganinga",
+     "pagesPudi": [
+      78,
+      136
+     ]
     }
    ],
    "cout": {
@@ -1544,7 +2163,12 @@
     "mention": "120 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    136
+   ],
+   "precision": "Le PUDi prévoit aussi 9 latrines publiques (marchés de Bazar-Be, Bazar-Kely et Ambonara, port, place centrale de Dar-es-Salam, terrains de sport), deux camions de vidange et une station de traitement des boues, dans le volet assainissement (p. 126-127)."
   },
   {
    "id": "W5",
@@ -1561,7 +2185,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabilitation et curage des canaux d’évacuation des eaux pluviales (Détail dans le volet assainissement)",
+     "pagesPudi": [
+      78,
+      144
+     ]
     },
     {
      "code": "PAS13",
@@ -1570,7 +2199,11 @@
       "2026-2030",
       "2031-2035"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabiliter le réseau enterré existant",
+     "pagesPudi": [
+      139
+     ]
     },
     {
      "code": "PAS14",
@@ -1580,7 +2213,11 @@
       "2031-2035",
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabiliter le réseau de drainage à ciel ouvert/ couvert existant",
+     "pagesPudi": [
+      139
+     ]
     },
     {
      "code": "PAS15",
@@ -1589,7 +2226,11 @@
       "2026-2030",
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabiliter les ouvrages hydrauliques existants",
+     "pagesPudi": [
+      139
+     ]
     },
     {
      "code": "PAS16",
@@ -1597,7 +2238,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabiliter les ouvrages de rétablissements existants",
+     "pagesPudi": [
+      128,
+      129
+     ]
     },
     {
      "code": "PAS17",
@@ -1605,7 +2251,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ASS"
+     "secteurOrigine": "ASS",
+     "libelleComplet": "Réhabiliter les grands ouvrages hydrauliques existants",
+     "pagesPudi": [
+      128,
+      129
+     ]
     }
    ],
    "cout": {
@@ -1613,7 +2264,15 @@
     "mention": "Compris dans le forfait n°41 du secteur (non réparti entre programmes)"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    128,
+    129,
+    139,
+    144
+   ],
+   "precision": "Réseau de drainage du centre-ville (environ 1 706 ml, 60 % en mauvais état) : p. 127 à 130."
   },
   {
    "id": "N1",
@@ -1630,7 +2289,12 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ENE"
+     "secteurOrigine": "ENE",
+     "libelleComplet": "Etendre des réseaux électriques dans les zones non desservies et zones d’extension résidentielle (Cf carte énérgie)",
+     "pagesPudi": [
+      138,
+      145
+     ]
     },
     {
      "code": "ENE-PEN04",
@@ -1638,7 +2302,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENE"
+     "secteurOrigine": "ENE",
+     "libelleComplet": "Etendre des réseaux électriques dans les zones non desservies et zones d’extension résidentielle (Cf carte énérgie)",
+     "pagesPudi": [
+      138,
+      145
+     ]
     }
    ],
    "cout": {
@@ -1646,7 +2315,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "N2",
@@ -1665,7 +2339,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ENE"
+     "secteurOrigine": "ENE",
+     "libelleComplet": "Mettre en place un parc solaire de 3 MW à Madiro, permettant de diversifier les sources d’énergie et de réduire la dépendance aux énergies fossiles.",
+     "pagesPudi": [
+      117,
+      145
+     ]
     }
    ],
    "cout": {
@@ -1673,7 +2352,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    117,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "N3",
@@ -1700,7 +2384,13 @@
       "montantAr": 100000000,
       "detail": "Forfait · 14,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Etendre le réseau d’éclairage publique avec l’utilisation de la lampe photovoltaïque le long des voies secondaires et tertiaires dans les 2 Fokontany",
+     "pagesPudi": [
+      78,
+      136,
+      140
+     ]
     }
    ],
    "cout": {
@@ -1711,7 +2401,13 @@
    "incluAussi": [
     "EQU"
    ],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    78,
+    136,
+    140
+   ],
+   "precision": null
   },
   {
    "id": "R1",
@@ -1738,7 +2434,12 @@
       "montantAr": 2000000000,
       "detail": "2 000 ml × 1 000 000 Ar · 35,3 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Améliorer les routes d’accès vers les plages avec la mise en place de signalétique",
+     "pagesPudi": [
+      136,
+      140
+     ]
     }
    ],
    "cout": {
@@ -1747,7 +2448,12 @@
     "mention": "2 000 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    136,
+    140
+   ],
+   "precision": null
   },
   {
    "id": "R2",
@@ -1767,7 +2473,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Aménager une voie de contournement de 974m partant du côté du CNAPS jusqu’à Antanambao",
+     "pagesPudi": [
+      82,
+      144
+     ]
     }
    ],
    "cout": {
@@ -1775,7 +2486,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    82,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "R3",
@@ -1792,7 +2508,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies urbaines (15 069 ml)",
+     "pagesPudi": [
+      144
+     ]
     }
    ],
    "cout": {
@@ -1800,7 +2520,11 @@
     "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    144
+   ],
+   "precision": null
   },
   {
    "id": "R4",
@@ -1819,7 +2543,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Aménager une voie circulaire à Nosy Komba",
+     "pagesPudi": [
+      138
+     ]
     }
    ],
    "cout": {
@@ -1827,7 +2555,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    138
+   ],
+   "precision": "Nosy Komba : seul projet du PUDi pour l'île, la voie circulaire (p. 117 et 138)."
   },
   {
    "id": "R5",
@@ -1851,7 +2583,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Ambanoro - Ambatozavavy",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO09",
@@ -1859,7 +2595,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Befotaka - Maromaniry",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO10",
@@ -1867,7 +2607,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Antotoro - Ambalahonko",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO11",
@@ -1875,7 +2619,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Rapale - Ankatrokatroka",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO12",
@@ -1883,7 +2631,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Ambonara - Andilamavo",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO13",
@@ -1891,7 +2643,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale Dar-es-Salam - Dzamadzar",
+     "pagesPudi": [
+      121
+     ]
     },
     {
      "code": "PRO19",
@@ -1900,7 +2656,11 @@
       "2031-2035",
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les routes d'Interêt Communale",
+     "pagesPudi": [
+      121
+     ]
     }
    ],
    "cout": {
@@ -1908,7 +2668,11 @@
     "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    121
+   ],
+   "precision": null
   },
   {
    "id": "R6",
@@ -1939,7 +2703,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Senganinga",
+     "pagesPudi": [
+      76
+     ]
     },
     {
      "code": "PRO06",
@@ -1947,7 +2715,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à la Batterie",
+     "pagesPudi": [
+      76
+     ]
     },
     {
      "code": "PRO07",
@@ -1955,7 +2727,11 @@
      "tranches": [
       "2026-2030"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Camp vert",
+     "pagesPudi": [
+      76
+     ]
     },
     {
      "code": "PRO14",
@@ -1963,7 +2739,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Befitina",
+     "pagesPudi": [
+      98
+     ]
     },
     {
      "code": "PRO15",
@@ -1971,7 +2751,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies primaires à Andavakotoko",
+     "pagesPudi": [
+      98
+     ]
     },
     {
      "code": "PRO16",
@@ -1979,7 +2763,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Andavakotoko",
+     "pagesPudi": [
+      98
+     ]
     },
     {
      "code": "PRO17",
@@ -1987,7 +2775,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies primaires à Miadana Commune",
+     "pagesPudi": [
+      98
+     ]
     },
     {
      "code": "PRO18",
@@ -1995,7 +2787,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Miadana Commune",
+     "pagesPudi": [
+      98
+     ]
     },
     {
      "code": "PRO20",
@@ -2003,7 +2799,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Ambatoloaka",
+     "pagesPudi": [
+      94
+     ]
     },
     {
      "code": "PRO21",
@@ -2011,7 +2811,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Ambodivanio",
+     "pagesPudi": [
+      98,
+      103
+     ]
     },
     {
      "code": "PRO22",
@@ -2019,7 +2824,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Ambonara",
+     "pagesPudi": [
+      98,
+      103
+     ]
     },
     {
      "code": "PRO23",
@@ -2027,7 +2837,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Ambondrona",
+     "pagesPudi": [
+      98,
+      103
+     ]
     },
     {
      "code": "PRO24",
@@ -2035,7 +2850,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Djabalabe",
+     "pagesPudi": [
+      98,
+      103
+     ]
     },
     {
      "code": "PRO25",
@@ -2043,7 +2863,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Dzamandzar",
+     "pagesPudi": [
+      84
+     ]
     },
     {
      "code": "PRO26",
@@ -2051,7 +2875,12 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "ROU"
+     "secteurOrigine": "ROU",
+     "libelleComplet": "Réhabiliter les voies secondaires à Maroakatsaka",
+     "pagesPudi": [
+      98,
+      103
+     ]
     }
    ],
    "cout": {
@@ -2059,7 +2888,15 @@
     "mention": "Compris dans le forfait n°42 du secteur (non réparti entre programmes)"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    76,
+    84,
+    94,
+    98,
+    103
+   ],
+   "precision": null
   },
   {
    "id": "M1",
@@ -2086,7 +2923,13 @@
       "montantAr": 400000000,
       "detail": "Forfait · 76,9 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager un embarcadère dédié de zones de mouillage écologiques et de couloirs de navigation permettrait de structurer les flux, de limiter les dégradations des fonds marins et d’améliorer la sécurité des baigneurs.",
+     "pagesPudi": [
+      92,
+      137,
+      141
+     ]
     }
    ],
    "cout": {
@@ -2095,7 +2938,13 @@
     "mention": "400 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    92,
+    137,
+    141
+   ],
+   "precision": null
   },
   {
    "id": "M2",
@@ -2125,7 +2974,13 @@
       "montantAr": 720000000,
       "detail": "4 × 180 000 000 Ar · 3,0 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire de gares routières dans les principaux pôles Ambonara, Sarimasina, Dzamandzar Usine et Fasenina",
+     "pagesPudi": [
+      117,
+      138,
+      142
+     ]
     }
    ],
    "cout": {
@@ -2134,7 +2989,13 @@
     "mention": "720 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    117,
+    138,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "M3",
@@ -2163,7 +3024,13 @@
       "montantAr": 300000000,
       "detail": "4 × 75 000 000 Ar · 1,3 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Aménager des aires de stationnement structurées à Dar-Es-Salam, Andilana et Fasenina au Pont Mena",
+     "pagesPudi": [
+      117,
+      138,
+      142
+     ]
     }
    ],
    "cout": {
@@ -2172,7 +3039,13 @@
     "mention": "300 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    117,
+    138,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "Q1",
@@ -2191,7 +3064,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Transformer et aménager le marché actuel en marché à étage avec des espaces de stationnement et des zones de livraison pour les commerçants",
+     "pagesPudi": [
+      144
+     ]
     },
     {
      "code": "PEQ03",
@@ -2207,7 +3084,12 @@
       "montantAr": 3000000000,
       "detail": "2 000 × 1 500 000 Ar · 53,0 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et transformer le marché actuel en marché à étage",
+     "pagesPudi": [
+      136,
+      144
+     ]
     }
    ],
    "cout": {
@@ -2216,7 +3098,12 @@
     "mention": "Au moins 3 000 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    136,
+    144
+   ],
+   "precision": null
   },
   {
    "id": "Q2",
@@ -2233,7 +3120,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Construire une halle marchande de 700 m², ainsi qu’une aire de stationnement d’environ 500 m², devant le bloc administratif",
+     "pagesPudi": [
+      144
+     ]
     }
    ],
    "cout": {
@@ -2241,7 +3132,11 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    144
+   ],
+   "precision": null
   },
   {
    "id": "Q3",
@@ -2267,7 +3162,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Réhabiliter et agrandir le marché de quartier : Andavakotoko et Amboanara",
+     "pagesPudi": [
+      145
+     ]
     },
     {
      "code": "PEQ13",
@@ -2283,7 +3182,11 @@
       "montantAr": 200000000,
       "detail": "2 × 100 000 000 Ar · 12,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et agrandir le marché de quartier : Djabala Be, et Ambodiatafana",
+     "pagesPudi": [
+      137
+     ]
     },
     {
      "code": "PEQ16",
@@ -2291,7 +3194,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Réhabiliter et agrandir le marché de quartier : Ambanoro",
+     "pagesPudi": [
+      145
+     ]
     },
     {
      "code": "PEQ20",
@@ -2307,7 +3214,11 @@
       "montantAr": 90000000,
       "detail": "2 × 45 000 000 Ar · 12,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter et agrandir le marché de quartier : Bemanondrobe et Befotaka",
+     "pagesPudi": [
+      137
+     ]
     },
     {
      "code": "PEQ22",
@@ -2315,7 +3226,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Réhabiliter et agrandir le marché de quartier : Ambatozavavy,",
+     "pagesPudi": [
+      145
+     ]
     }
    ],
    "cout": {
@@ -2324,7 +3239,12 @@
     "mention": "Au moins 290 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    137,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "Q4",
@@ -2358,7 +3278,13 @@
       "montantAr": 100000000,
       "detail": "Forfait · 1,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre aux normes, et moderniser les terrains de football, de basketball ainsi que des espaces dédiés au Moraingy",
+     "pagesPudi": [
+      85,
+      136,
+      141
+     ]
     },
     {
      "code": "PEQ09",
@@ -2366,7 +3292,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Aménager un complexe sportif, un centre commercial et un espace de coworking sur le terrain en face de Henri fraise",
+     "pagesPudi": [
+      145
+     ]
     },
     {
      "code": "PEQ12",
@@ -2374,7 +3304,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Construire un complexe sportif à Amboanara et Ambodivanio",
+     "pagesPudi": [
+      148
+     ]
     },
     {
      "code": "PEQ15",
@@ -2390,7 +3324,12 @@
       "montantAr": 200000000,
       "detail": "Forfait · 12,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un complexe sportif à Dar Es Salam, Ambondrona",
+     "pagesPudi": [
+      137,
+      145
+     ]
     },
     {
      "code": "PEQ18",
@@ -2398,7 +3337,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Construire un complexe sportif à Ambanoro",
+     "pagesPudi": [
+      102,
+      103
+     ]
     },
     {
      "code": "PEQ21",
@@ -2414,7 +3358,11 @@
       "montantAr": 100000000,
       "detail": "2 × 50 000 000 Ar · 13,9 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un terrain de sport à Ambatozavavy, Befotaka",
+     "pagesPudi": [
+      137
+     ]
     },
     {
      "code": "PEQ23",
@@ -2422,7 +3370,11 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Construire un terrain de sport à Bemanondrobe",
+     "pagesPudi": [
+      145
+     ]
     }
    ],
    "cout": {
@@ -2431,7 +3383,18 @@
     "mention": "Au moins 400 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    85,
+    102,
+    103,
+    136,
+    137,
+    141,
+    145,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "Q5",
@@ -2461,7 +3424,12 @@
       "montantAr": 200000000,
       "detail": "Forfait · 3,5 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre en place une caserne des sapeurs-pompiers à Dzamandzar Usine",
+     "pagesPudi": [
+      88,
+      136
+     ]
     },
     {
      "code": "PEQ25",
@@ -2477,7 +3445,13 @@
       "montantAr": 250000000,
       "detail": "Forfait · 1,0 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Mettre en place une caserne de pompiers et l’installation de bouches d’incendie sur des sites stratégiques tels que Djabala afin d’améliorer la sécurité urbaine.",
+     "pagesPudi": [
+      117,
+      138,
+      142
+     ]
     }
    ],
    "cout": {
@@ -2486,7 +3460,15 @@
     "mention": "450 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    88,
+    117,
+    136,
+    138,
+    142
+   ],
+   "precision": null
   },
   {
    "id": "Q6",
@@ -2515,7 +3497,12 @@
       "montantAr": 200000000,
       "detail": "Forfait · 0,8 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Réhabiliter l’abattoir de Befitina avec mise en place de parc à bœuf, dispositif de froid et eau courante",
+     "pagesPudi": [
+      138,
+      142
+     ]
     },
     {
      "code": "PEQ27",
@@ -2523,7 +3510,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Construire des abattoirs modernes à Dzamandzar et Ampasikely (Hell-Ville).",
+     "pagesPudi": [
+      117,
+      145
+     ]
     }
    ],
    "cout": {
@@ -2532,7 +3524,14 @@
     "mention": "Au moins 200 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    117,
+    138,
+    142,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "Q7",
@@ -2562,7 +3561,13 @@
       "montantAr": 300000000,
       "detail": "3 × 100 000 000 Ar · 41,7 %",
       "correspondanceIncertaine": false
-     }
+     },
+     "libelleComplet": "Construire un bureau d’arrondissement équipé de bibliothèque et de maison des jeunes à Ambatozavavy, Bemanondrobe et Befotaka",
+     "pagesPudi": [
+      111,
+      137,
+      141
+     ]
     },
     {
      "code": "PEQ24",
@@ -2570,7 +3575,11 @@
      "tranches": [
       "2036-2040"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Aménagement des petits centres villageois (Bureau Fokontany, marchés de Quartier, espaces publics) dans les Fokontany ruraux",
+     "pagesPudi": [
+      148
+     ]
     }
    ],
    "cout": {
@@ -2579,7 +3588,14 @@
     "mention": "Au moins 300 000 000 Ar"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    111,
+    137,
+    141,
+    148
+   ],
+   "precision": null
   },
   {
    "id": "Q8",
@@ -2596,7 +3612,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Améliorer les services urbains nocturnes, notamment la gestion des déchets, les wc publics et la maintenance des espaces publics.",
+     "pagesPudi": [
+      90,
+      145
+     ]
     }
    ],
    "cout": {
@@ -2604,7 +3625,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    90,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "Q9",
@@ -2621,7 +3647,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "EQU"
+     "secteurOrigine": "EQU",
+     "libelleComplet": "Aménager d’espaces publics structurants et des zones tampons paysagères",
+     "pagesPudi": [
+      91,
+      145
+     ]
     }
    ],
    "cout": {
@@ -2629,7 +3660,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    91,
+    145
+   ],
+   "precision": null
   },
   {
    "id": "S1",
@@ -2646,7 +3682,12 @@
      "tranches": [
       "2031-2035"
      ],
-     "secteurOrigine": "SEC"
+     "secteurOrigine": "SEC",
+     "libelleComplet": "Renforcer les dispositifs de sécurité (présence policière, caméras de surveillance, gestion des flux nocturnes)",
+     "pagesPudi": [
+      90,
+      145
+     ]
     }
    ],
    "cout": {
@@ -2654,7 +3695,12 @@
     "mention": "Non chiffré dans le PUDi"
    },
    "incluAussi": [],
-   "sitesStatut": "validé GIHTNB"
+   "sitesStatut": "validé GIHTNB",
+   "pagesPudi": [
+    90,
+    145
+   ],
+   "precision": null
   }
  ],
  "projetsCoutA": [
@@ -3406,5 +4452,98 @@
   "Projet A n°39 (caserne et bouches d’incendie) : A cite Djabala, Madirokely et Orangea ; B (PEQ25) ne cite que Djabala.",
   "Électricité, sécurité et port non chiffrés.",
   "Correspondances A n°19 → PAS05 et A n°24 → PAS09 incertaines (cahier v3 §9)."
+ ],
+ "synonymes": [
+  {
+   "mots": [
+    "chrd",
+    "hopital",
+    "hôpital"
+   ],
+   "cibles": [
+    "P1",
+    "H1"
+   ]
+  },
+  {
+   "mots": [
+    "nosy komba",
+    "komba"
+   ],
+   "cibles": [
+    "R4"
+   ]
+  },
+  {
+   "mots": [
+    "sakatia"
+   ],
+   "cibles": [
+    "P2"
+   ]
+  },
+  {
+   "mots": [
+    "blocs sanitaires",
+    "bloc sanitaire",
+    "toilettes",
+    "latrines",
+    "wc"
+   ],
+   "cibles": [
+    "W4"
+   ]
+  },
+  {
+   "mots": [
+    "adduction",
+    "eau",
+    "jirama"
+   ],
+   "cibles": [
+    "W1"
+   ]
+  },
+  {
+   "mots": [
+    "dechets",
+    "déchets",
+    "ordures",
+    "poubelles"
+   ],
+   "cibles": [
+    "W2"
+   ]
+  },
+  {
+   "mots": [
+    "securite",
+    "sécurité",
+    "police",
+    "cameras",
+    "caméras"
+   ],
+   "cibles": [
+    "S1",
+    "P3"
+   ]
+  },
+  {
+   "mots": [
+    "bruit"
+   ],
+   "cibles": [
+    "P4"
+   ]
+  },
+  {
+   "mots": [
+    "chiens",
+    "animaux"
+   ],
+   "cibles": [
+    "P5"
+   ]
+  }
  ]
 }

@@ -108,7 +108,15 @@ export default function Accueil() {
             </Link>
           </>
         )}
+        <Link to="/recherche" state={{ focus: true }} className={boutonSecondaire}>
+          <Icone nom="recherche" />
+          {fr.accueil.trouver}
+        </Link>
         <BoutonInstaller />
+        <Link to="/documents" className="self-center inline-flex items-center gap-1.5 min-h-[44px] px-2 text-[14px] font-bold text-marine underline underline-offset-2 decoration-[#9AA3BD]">
+          <Icone nom="document" className="w-4 h-4" />
+          {fr.accueil.documents}
+        </Link>
       </div>
 
       <details

@@ -3,8 +3,11 @@
  * - navigations under /pudi: network first (3 s), fallback to the cached shell
  * - same-origin GET of /assets/* and /pudi/*: stale-while-revalidate
  * - Supabase (other origin) is never cached
+ * - the public PUDi documents (/pudi/documents/, PDFs of 1 to 15 MB) are never cached: network
+ *   only, opened in a tab or downloaded (v3: they must not fill the phone, nor replace the shell)
  * Bump VERSION to drop old caches. */
-const VERSION = 'v2';
+const VERSION = 'v3';
+const DOCUMENTS = '/pudi/documents/';
 const SHELL = 'pudi-shell-' + VERSION;
 const RUNTIME = 'pudi-runtime-' + VERSION;
 const SHELL_URLS = [
@@ -76,6 +79,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // Supabase and other hosts: never cached
+  if (url.pathname.startsWith(DOCUMENTS)) return; // PDFs: network only, never stored
   if (request.mode === 'navigate') {
     if (url.pathname === '/pudi' || url.pathname.startsWith('/pudi/')) event.respondWith(navigation(request));
     return;

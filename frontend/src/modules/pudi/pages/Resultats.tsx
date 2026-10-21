@@ -9,7 +9,9 @@ import { lireApercu, lireResultats, type LigneResultat, type Resultats as Res } 
 import { csvSynthese, preparerSynthese } from '../utils/synthese';
 import { nomFichierSyntheseCsv, nomFichierSynthesePdf, telechargerFichier } from '../utils/exports';
 import { extraireCode, messageErreur } from '../utils/erreurs';
-import { heureCourte } from '../utils/format';
+import { dateClotureLongue, dateJour, dateLongue, heureCourte } from '../utils/format';
+import { propositionsConnues } from '../appels/propositions';
+import type { LigneProposition } from '../appels/api';
 
 const TRANCHES = ['2026-2030', '2031-2035', '2036-2040'];
 
@@ -40,6 +42,31 @@ function Barre({ donnees, l, rang, urgent }: { donnees: PudiDonnees; l: LigneRes
           )}
         </div>
       )}
+    </li>
+  );
+}
+
+/** Proposals outside the PIC list, counted apart: priority share with a bar, urgent share. */
+function LignePropositionResultat({ l, rang }: { l: LigneProposition; rang: number }) {
+  const pct = (v: number) => `${String(v).replace('.', ',')} %`;
+  return (
+    <li className="py-2">
+      <div className="flex items-baseline gap-2 text-[14px]">
+        <span className="font-titre text-gris w-6 text-right shrink-0">{rang}</span>
+        <Link to={`/proposition/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
+          {l.intitule}
+        </Link>
+        <span className="font-titre text-marine shrink-0">{pct(l.pct_priorite)}</span>
+      </div>
+      <div className="ml-8 mt-1 h-3 rounded-full bg-vide overflow-hidden" aria-hidden="true">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${Math.min(100, l.pct_priorite)}%`, background: 'repeating-linear-gradient(135deg, #0B2A8C 0 6px, #3F5FB0 6px 12px)' }}
+        />
+      </div>
+      <p className="ml-8 mt-1 text-[13px] text-gris">
+        {fr.resultats.urgentPct(pct(l.pct_urgent))} · {fr.propositions.ajoutee(dateJour(l.ajoute_at))}
+      </p>
     </li>
   );
 }
@@ -131,7 +158,7 @@ export default function Resultats() {
     setFichier(type);
     setErreurFichier(false);
     try {
-      const s = preparerSynthese(res, donnees, { provisoire: !res.clos });
+      const s = preparerSynthese(res, donnees, { provisoire: !res.clos, propositions: propositionsConnues() ?? [] });
       if (type === 'csv') telechargerFichier(csvSynthese(s), nomFichierSyntheseCsv(), 'text/csv;charset=utf-8');
       else {
         const { genererPdf } = await import('../appels/pdf');
@@ -194,6 +221,10 @@ export default function Resultats() {
             </button>
           </div>
         </div>
+        <p className="mt-2 text-[13px] text-gris">
+          {fr.resultats.ouverture} : {res.publie_at ? dateLongue(res.publie_at) : fr.resultats.nonPubliee} · {fr.accueil.cloture} :{' '}
+          {dateClotureLongue(res.cloture_at)}
+        </p>
         {res.nb_votants === 0 && <p className="mt-3 text-gris">{fr.resultats.aucunVote}</p>}
 
         <section className="mt-6">
@@ -215,6 +246,18 @@ export default function Resultats() {
             ))}
           </ol>
         </section>
+
+        {res.propositions && res.propositions.length > 0 && (
+          <section className="mt-6 bg-sable border-2 border-dashed border-marine/50 rounded-xl p-3">
+            <h2 className="font-bold text-[17px] text-marine">{fr.resultats.propositionsTitre}</h2>
+            <p className="text-[13px] text-gris">{fr.resultats.propositionsAide}</p>
+            <ol className="mt-1 divide-y divide-filet">
+              {res.propositions.map((l, i) => (
+                <LignePropositionResultat key={l.id} l={l} rang={i + 1} />
+              ))}
+            </ol>
+          </section>
+        )}
 
         <Repartition
           titre={fr.resultats.profilTitre}

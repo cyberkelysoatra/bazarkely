@@ -3,7 +3,7 @@
 // prepared by utils/synthese.ts (pure, unit tested).
 import type jsPDFType from 'jspdf';
 import { COULEURS_SECTEURS } from '../data';
-import { MENTION_PROVISOIRE, type LigneClassement, type Synthese } from '../utils/synthese';
+import { MENTION_PROVISOIRE, NON_PUBLIEE, type LigneClassement, type Synthese } from '../utils/synthese';
 
 type Doc = jsPDFType;
 type Rgb = [number, number, number];
@@ -215,7 +215,12 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     doc.text(pourPdf(lib), x + lc / 2, m.y + 12.5, { align: 'center' });
   });
   m.y += 20;
-  m.paragraphe(`Ouverture de la consultation : ${s.ouverture}.`, 10);
+  m.paragraphe(
+    s.ouverture === NON_PUBLIEE
+      ? `Ouverture de la consultation : ${NON_PUBLIEE}.`
+      : `Ouverture de la consultation : ${s.ouverture} (heure de Madagascar).`,
+    10
+  );
   m.paragraphe(`Clôture de la consultation : ${s.cloture}.`, 10);
   m.paragraphe(
     'Part « dans nos réseaux » : votes dont le numéro figure, sous forme codée, dans au moins une liste de contacts fournie par les partenaires.',
@@ -238,6 +243,42 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
   );
   m.y += 1;
   classement(m, s.urgents, true);
+
+  m.titre('Propositions hors liste du PIC');
+  m.paragraphe(
+    'Projets demandés par les parties prenantes et absents de la liste du PIC, comptés à part : ils ne figurent pas dans les deux classements des 52 programmes.',
+    9,
+    false,
+    GRIS
+  );
+  m.y += 1;
+  if (!s.propositions.length) m.paragraphe('Aucune proposition.', 10, false, GRIS);
+  else {
+    m.tableau(
+      [
+        { titre: 'Rang', l: 11, droite: true },
+        { titre: 'Id', l: 9 },
+        { titre: 'Proposition', l: 52 },
+        { titre: 'Source', l: 40 },
+        { titre: 'Ajoutée le', l: 22 },
+        { titre: 'Priorité', l: 23, droite: true },
+        { titre: 'Urgent', l: 23, droite: true }
+      ],
+      s.propositions.map((l) => [
+        String(l.rang),
+        l.id,
+        l.intitule,
+        l.source,
+        l.ajoutee,
+        `${l.nPriorite} (${l.pctPriorite})`,
+        `${l.nUrgent} (${l.pctUrgent})`
+      ])
+    );
+    const notes = s.propositions.filter((l) => l.note);
+    notes.forEach((l) => {
+      m.paragraphe(`${l.id} : ${l.note}.`, 9, false, GRIS, UTILE - 4, M + 2);
+    });
+  }
 
   m.titre('Répartition par profil');
   m.tableau(

@@ -111,6 +111,54 @@ export const definirCloture = (iso: string) => rpc<null>('pudi_admin_set_cloture
 export const definirPublie = (publie: boolean) =>
   rpc<{ publie: boolean; votes_test_supprimes: number }>('pudi_admin_set_publie', { p_publie: publie });
 export const lireJournal = () => rpc<EntreeJournal[]>('pudi_admin_journal');
+
+/** Proposal as seen by the administrators (masked ones included, real votes counted). */
+export interface PropositionAdmin {
+  id: string;
+  intitule: string;
+  lieu: string | null;
+  source: string;
+  date_source: string | null;
+  precision_texte: string | null;
+  origine_vote: string | null;
+  ajoute_at: string;
+  masque: boolean;
+  masque_motif: string | null;
+  nb_priorite: number;
+  nb_urgent: number;
+}
+
+export interface SaisieProposition {
+  id: string | null;
+  intitule: string;
+  lieu: string;
+  source: string;
+  dateSource: string;
+  precision: string;
+}
+
+export const lirePropositionsAdmin = () => rpc<PropositionAdmin[]>('pudi_admin_propositions');
+/** id null = new proposal (next free Pn); returns the id. */
+export const enregistrerProposition = (s: SaisieProposition) =>
+  rpc<string>('pudi_admin_proposition_enregistrer', {
+    p_id: s.id,
+    p_intitule: s.intitule,
+    p_lieu: s.lieu || null,
+    p_source: s.source,
+    p_date_source: s.dateSource || null,
+    p_precision: s.precision || null
+  });
+export const retirerProposition = (id: string, motif: string) =>
+  rpc<{ id: string; votes: number; efface: boolean }>('pudi_admin_proposition_retirer', { p_id: id, p_motif: motif });
+export const retablirProposition = (id: string) => rpc<null>('pudi_admin_proposition_retablir', { p_id: id });
+/** Free text of a voter -> proposal. An empty precision lets the server quote the text. */
+export const transformerManquant = (idAnonyme: string, intitule: string, lieu: string, precision: string) =>
+  rpc<string>('pudi_admin_transformer_manquant', {
+    p_id_anonyme: idAnonyme,
+    p_intitule: intitule,
+    p_lieu: lieu || null,
+    p_precision: precision.trim() || null
+  });
 export const purger = () => rpc<{ purge: boolean; votes?: number; contacts?: number }>('pudi_purger', { p_forcer: true });
 
 /**

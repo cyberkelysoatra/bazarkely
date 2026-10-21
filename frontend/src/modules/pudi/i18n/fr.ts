@@ -42,7 +42,9 @@ export const fr = {
       'Choisissez vos 3 priorités absolues (et, si vous le souhaitez, les projets urgents pour 2026-2030).',
       'Envoyez votre choix avec votre compte Google : un vote par compte, modifiable jusqu’à la clôture.'
     ],
-    installer: "Installer l'application"
+    installer: "Installer l'application",
+    trouver: 'Trouver un projet',
+    documents: 'Documents du PUDi'
   },
   logos: {
     republique: 'République de Madagascar',
@@ -57,7 +59,9 @@ export const fr = {
       'Le vote ouvrira prochainement. Vous pouvez déjà découvrir les projets et préparer votre choix.',
     modeTest: 'Mode test : ce vote sera effacé à la publication',
     clos: 'La consultation est close.',
-    horsConnexion: "Hors connexion : l'envoi et les résultats demandent une connexion."
+    horsConnexion: "Hors connexion : l'envoi et les résultats demandent une connexion.",
+    propositionRetiree: (intitule: string) => `La proposition ${intitule} a été retirée. Choisissez un autre projet.`,
+    compris: 'Compris'
   },
   secteurs: {
     titre: 'Les projets du PUDi',
@@ -66,7 +70,10 @@ export const fr = {
     forfaitTitre: (numero: number) => `Forfait n°${numero}`,
     forfaitTexte: (intitule: string, programmes: string) =>
       `${intitule}. Ce montant couvre les programmes suivants sans être réparti entre eux : ${programmes}.`,
-    listeTitre: 'Programmes du secteur'
+    listeTitre: 'Programmes du secteur',
+    rechercher: 'Trouver un projet (lieu, mot, code…)',
+    carteProposition: 'Propositions (hors liste du PIC)',
+    propositions: (n: number) => (n > 1 ? `${n} propositions` : `${n} proposition`)
   },
   programme: {
     secteur: 'Secteur',
@@ -85,7 +92,62 @@ export const fr = {
     marquerUrgent: 'Marquer urgent 2026-2030',
     retirerUrgent: 'Retirer des urgents',
     estPriorite: 'Dans mes 3 priorités',
-    estUrgent: 'Urgent 2026-2030'
+    estUrgent: 'Urgent 2026-2030',
+    precision: 'Précision',
+    enSavoirPlus: 'Pour en savoir plus',
+    renvoi: 'Renvoi indicatif. PDF de 14,6 Mo.',
+    tousDocuments: 'Documents du PUDi',
+    pageOuvre: (n: number) => `Ouvrir le PUDi à la page ${n} (nouvel onglet)`
+  },
+  propositions: {
+    titre: 'Propositions hors liste du PIC',
+    intro:
+      'Projets demandés par les parties prenantes et absents de la liste du PIC. Ils sont comptés à part dans les résultats.',
+    badge: 'Proposition, hors liste du PIC',
+    badgeCourt: 'Proposition',
+    lieu: 'Lieu',
+    source: 'Source',
+    ajoutee: (date: string) => `ajoutée le ${date}`,
+    horsPudi: 'Hors PUDi',
+    aucune: 'Aucune proposition pour le moment.',
+    indisponibles: 'Les propositions ne peuvent pas être affichées pour le moment. Vérifiez la connexion et réessayez.',
+    retour: 'Propositions',
+    introuvable: "Cette proposition n'est plus dans la liste."
+  },
+  recherche: {
+    titre: 'Trouver un projet',
+    intro:
+      'Un lieu, un mot, un code : le projet que vous cherchez est peut-être déjà prévu dans le PUDi. La recherche marche aussi sans connexion.',
+    champ: 'Rechercher un projet',
+    exemple: 'Par exemple : Nosy Komba, toilettes, eau, Ambatoloaka',
+    direct: 'Correspondance directe',
+    resultats: (n: number) => (n > 1 ? `${n} résultats` : `${n} résultat`),
+    limite: (n: number) => `Les ${n} premiers sont affichés : précisez la recherche.`,
+    aucun: 'Aucun projet trouvé. Vérifiez l’orthographe, ou indiquez-le dans « Un projet manque au PUDi ? » (étape 3 du choix).',
+    allerEtape3: 'Aller à l’étape 3 du choix',
+    champs: {
+      nom: 'dans le nom',
+      intitule: 'dans le titre',
+      resume: 'dans le résumé',
+      sites: 'dans les sites',
+      secteur: 'dans le secteur',
+      code: 'dans les codes du PUDi',
+      libelleComplet: 'dans le libellé officiel',
+      precision: 'dans la précision',
+      lieu: 'dans le lieu',
+      source: 'dans la source',
+      fokontany: (nom: string) => `fokontany ${nom}`
+    }
+  },
+  documents: {
+    titre: 'Documents du PUDi',
+    lourds: 'Fichiers lourds : le PUDi complet pèse 14,6 Mo. Sur réseau mobile, préférez le Wi-Fi.',
+    ouvrir: 'Ouvrir',
+    telecharger: 'Télécharger',
+    pages: (n: number) => `${n} pages`,
+    pdf: 'PDF',
+    horsLigne: 'Connexion nécessaire pour ouvrir les documents',
+    intro: 'Les deux documents publics du Plan d’Urbanisme Directeur de Nosy Be, en accès libre.'
   },
   choix: {
     titre: 'Mon choix',
@@ -96,6 +158,9 @@ export const fr = {
     etape2Aide: 'Facultatif, recommandé : jusqu’à 10 programmes à réaliser dès 2026-2030.',
     etape3Titre: 'Un projet manque au PUDi ?',
     etape3Aide: 'Facultatif : décrivez en quelques mots un projet absent du PUDi.',
+    etape3Verifier: 'Vérifiez d’abord avec « Trouver un projet » : il est peut-être déjà prévu.',
+    filtrePropositions: 'Propositions',
+    filtrePropositionsAide: 'Afficher seulement les propositions hors liste du PIC',
     etape3Placeholder:
       'Par exemple : sécurité sur le littoral (bande des 300 m), nuisances sonores, déchets, animaux errants, électricité…',
     caracteres: (n: number) => `${n} / 300 caractères`,
@@ -202,7 +267,13 @@ export const fr = {
     aucunManquant: 'Aucune proposition pour le moment.',
     pdf: 'Synthèse PDF : disponible prochainement',
     connexionRequise: 'Connectez-vous avec le compte Google qui a voté pour voir les résultats.',
-    aucunVote: 'Aucun vote compté pour le moment.'
+    aucunVote: 'Aucun vote compté pour le moment.',
+    propositionsTitre: 'Propositions hors liste du PIC',
+    propositionsAide:
+      'Comptées à part : part des votants qui ont placé la proposition dans leurs 3 priorités, et part qui la veulent urgente.',
+    urgentPct: (pct: string) => `urgent : ${pct}`,
+    ouverture: 'Ouverture',
+    nonPubliee: 'Consultation non encore publiée'
   },
   temps: {
     jours: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'],

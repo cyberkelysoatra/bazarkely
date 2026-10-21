@@ -1,6 +1,6 @@
 // Administration of the PUDi consultation (lazy chunk). Guard: pudi_etat().est_admin read with
 // the session; a spinner while unknown, never a redirect on an unconfirmed state.
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { Icone, type NomIcone } from '../../composants/Icones';
 import { Page, boutonPrincipal } from '../../composants/Mise';
@@ -18,6 +18,9 @@ import Canaux from './Canaux';
 import Parametres from './Parametres';
 import Journal from './Journal';
 
+// Phase 3: proposals tab in its own chunk (loaded when the tab opens).
+const Propositions = lazy(() => import('./Propositions'));
+
 type Acces = { t: 'verif' } | { t: 'deconnecte' } | { t: 'refuse' } | { t: 'erreur' } | { t: 'ok'; email: string };
 
 const ONGLETS: { to: string; libelle: string; icone: NomIcone }[] = [
@@ -26,7 +29,8 @@ const ONGLETS: { to: string; libelle: string; icone: NomIcone }[] = [
   { to: '/admin/refus', libelle: 'Refus', icone: 'refus' },
   { to: '/admin/canaux', libelle: 'Canaux', icone: 'diffusion' },
   { to: '/admin/parametres', libelle: 'Paramètres', icone: 'reglages' },
-  { to: '/admin/journal', libelle: 'Journal', icone: 'journal' }
+  { to: '/admin/journal', libelle: 'Journal', icone: 'journal' },
+  { to: '/admin/propositions', libelle: 'Propositions', icone: 'ampoule' }
 ];
 
 export default function Admin() {
@@ -142,6 +146,14 @@ export default function Admin() {
         <Route path="canaux" element={<Canaux />} />
         <Route path="parametres" element={<Parametres email={acces.email} />} />
         <Route path="journal" element={<Journal />} />
+        <Route
+          path="propositions"
+          element={
+            <Suspense fallback={<p className="text-gris py-6 text-center">Chargement…</p>}>
+              <Propositions />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </Page>

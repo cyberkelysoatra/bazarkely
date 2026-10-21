@@ -18,6 +18,9 @@ const MESSAGES: Record<string, string> = {
   LISTE_TROP_LONGUE: '20 000 numéros au plus par envoi : découpez le fichier.',
   LISTE_INCONNUE: "Cette liste n'existe plus.",
   DATE: 'Indiquez une date et une heure.',
+  INTITULE: 'Indiquez un titre (3 caractères au moins).',
+  PROPOSITION_INCONNUE: "Cette proposition n'existe plus.",
+  CLOS: 'La consultation est close : plus aucun ajout possible.',
   RESEAU: 'Le réseau ne répond pas. Réessayez.'
 };
 

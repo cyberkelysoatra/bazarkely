@@ -7,21 +7,38 @@ import { programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { MAX_MANQUANT, MAX_PRIORITES, MAX_URGENTS, brouillonValide, ecartPudi, limiterManquant } from '../utils/regles';
+import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
 
 type Etape = '1' | '2' | '3' | 'resume';
 
 /** Accent-insensitive search key. */
 const cle = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+/** A line of the choice: one of the 52 programmes or a proposal outside the PIC list. */
+interface Choisissable {
+  id: string;
+  nom: string;
+  secteur?: string;
+  tranche?: string;
+  proposition: boolean;
+}
+
 function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'priorite' | 'urgent' }) {
   const { brouillon, priorite, urgent, message } = useBasculeChoix();
   const { etat } = usePudi();
+  const { liste: propositions } = usePropositions();
   const [secteur, setSecteur] = useState('');
+  const [seulesPropositions, setSeulesPropositions] = useState(false);
   const [recherche, setRecherche] = useState('');
   const liste = useMemo(() => {
     const q = cle(recherche.trim());
-    return donnees.programmes.filter((p) => (!secteur || p.secteur === secteur) && (!q || cle(p.nom).includes(q)));
-  }, [donnees, secteur, recherche]);
+    const prog: Choisissable[] = donnees.programmes
+      .filter((p) => !secteur || p.secteur === secteur)
+      .map((p) => ({ id: p.id, nom: p.nom, secteur: p.secteur, tranche: p.trancheAffichee, proposition: false }));
+    const props: Choisissable[] = (propositions ?? []).map((p: Proposition) => ({ id: p.id, nom: p.intitule, proposition: true }));
+    const tout = seulesPropositions ? props : secteur ? prog : [...prog, ...props];
+    return tout.filter((p) => !q || cle(p.nom).includes(q));
+  }, [donnees, propositions, secteur, seulesPropositions, recherche]);
   const choisis = mode === 'priorite' ? brouillon.priorites : brouillon.urgents;
   const basculer = mode === 'priorite' ? priorite : urgent;
   const clos = !!etat?.clos;
@@ -29,11 +46,15 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
   return (
     <div>
       <div className="flex flex-col gap-2 mb-3">
-        <label className="block">
+        <div className="flex gap-2">
+        <label className="block flex-1 min-w-0">
           <span className="sr-only">{fr.choix.filtreSecteur}</span>
           <select
             value={secteur}
-            onChange={(e) => setSecteur(e.target.value)}
+            onChange={(e) => {
+              setSecteur(e.target.value);
+              if (e.target.value) setSeulesPropositions(false);
+            }}
             className="w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 text-[16px]"
           >
             <option value="">{fr.choix.tousSecteurs}</option>
@@ -44,6 +65,22 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          aria-pressed={seulesPropositions}
+          title={fr.choix.filtrePropositionsAide}
+          onClick={() => {
+            setSeulesPropositions(!seulesPropositions);
+            setSecteur('');
+          }}
+          className={`shrink-0 min-h-[48px] px-3 rounded-xl border-2 border-dashed font-bold text-[15px] inline-flex items-center gap-1.5 ${
+            seulesPropositions ? 'bg-marine border-marine text-white' : 'bg-sable border-marine text-marine'
+          }`}
+        >
+          <Icone nom="ampoule" className="w-4 h-4" />
+          {fr.choix.filtrePropositions}
+        </button>
+        </div>
         <label className="relative block">
           <span className="sr-only">{fr.choix.recherche}</span>
           <Icone nom="recherche" className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gris" />
@@ -59,12 +96,14 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
       {liste.length === 0 && <p className="text-gris py-4">{fr.choix.aucunResultat}</p>}
       <ul className="space-y-2">
         {liste.map((p) => {
-          const s = secteurParId(donnees, p.secteur);
+          const s = p.secteur ? secteurParId(donnees, p.secteur) : undefined;
           const actif = choisis.includes(p.id);
           return (
             <li key={p.id}>
               <div
-                className={`bg-white rounded-xl border-2 p-3 flex gap-3 items-start ${actif ? 'border-marine' : 'border-filet'}`}
+                className={`rounded-xl border-2 p-3 flex gap-3 items-start ${
+                  p.proposition ? `bg-sable border-dashed ${actif ? 'border-marine' : 'border-marine/50'}` : `bg-white ${actif ? 'border-marine' : 'border-filet'}`
+                }`}
               >
                 <button
                   type="button"
@@ -83,16 +122,27 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
                   <Icone nom={actif ? 'coche' : mode === 'priorite' ? 'etoile' : 'horloge'} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <Link to={`/programme/${p.id}`} className="font-bold text-[15px] leading-snug block">
+                  <Link to={p.proposition ? `/proposition/${p.id}` : `/programme/${p.id}`} className="font-bold text-[15px] leading-snug block">
                     {p.nom}
                   </Link>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <span className="text-[12px] font-bold" style={{ color: s?.couleurFoncee }}>
-                      {s?.nom}
-                    </span>
-                    {mode === 'urgent' && <BadgeTranche tranche={p.trancheAffichee} />}
+                    {p.proposition ? (
+                      <span className="text-[12px] font-bold text-marine">{fr.propositions.badge}</span>
+                    ) : (
+                      <span className="text-[12px] font-bold" style={{ color: s?.couleurFoncee }}>
+                        {s?.nom}
+                      </span>
+                    )}
+                    {mode === 'urgent' &&
+                      (p.tranche ? (
+                        <BadgeTranche tranche={p.tranche} />
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[12px] font-bold text-marine">
+                          {fr.propositions.horsPudi}
+                        </span>
+                      ))}
                   </div>
-                  {mode === 'urgent' && actif && ecartPudi(p.trancheAffichee) && (
+                  {mode === 'urgent' && actif && p.tranche && ecartPudi(p.tranche) && (
                     <p className="text-[13px] text-gris mt-1">{fr.choix.avance}</p>
                   )}
                   {message?.id === p.id && <MessageBlocage texte={message.texte} />}
@@ -119,13 +169,14 @@ function Compteur({ n, max }: { n: number; max: number }) {
 }
 
 function NomsProgrammes({ donnees, ids }: { donnees: PudiDonnees; ids: string[] }) {
+  const { liste: propositions } = usePropositions();
   if (!ids.length) return <p className="text-gris text-[15px]">{fr.choix.aucun}</p>;
   return (
     <ol className="space-y-1.5">
       {ids.map((id, i) => (
         <li key={id} className="flex gap-2 text-[15px]">
           <span className="font-titre text-marine">{i + 1}</span>
-          <span>{programmeParId(donnees, id)?.nom ?? id}</span>
+          <span>{programmeParId(donnees, id)?.nom ?? propositionParId(propositions, id)?.intitule ?? id}</span>
         </li>
       ))}
     </ol>
@@ -208,7 +259,16 @@ export default function Choix() {
             <Icone nom="ampoule" />
             {fr.choix.etape3Titre}
           </h2>
-          <p className="text-[15px] mb-3">{fr.choix.etape3Aide}</p>
+          <p className="text-[15px] mb-2">{fr.choix.etape3Aide}</p>
+          <p className="text-[14px] mb-3 flex gap-2 items-start bg-white border border-filet rounded-xl px-3 py-2">
+            <Icone nom="recherche" className="w-4 h-4 mt-0.5 text-marine shrink-0" />
+            <span>
+              {fr.choix.etape3Verifier}{' '}
+              <Link to="/recherche" className="font-bold text-marine underline underline-offset-2">
+                {fr.recherche.titre}
+              </Link>
+            </span>
+          </p>
           <label className="block">
             <span className="sr-only">{fr.choix.etape3Titre}</span>
             <textarea

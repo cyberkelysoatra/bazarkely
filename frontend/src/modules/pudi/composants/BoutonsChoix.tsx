@@ -37,7 +37,8 @@ export function MessageBlocage({ texte }: { texte: string }) {
   );
 }
 
-export function BoutonsChoix({ id, tranche, desactive = false }: { id: string; tranche: string; desactive?: boolean }) {
+/** `tranche` undefined = proposal outside the PUDi: no « vous avancez ce projet » note. */
+export function BoutonsChoix({ id, tranche, desactive = false }: { id: string; tranche?: string; desactive?: boolean }) {
   const { brouillon, priorite, urgent, message } = useBasculeChoix();
   const estP = brouillon.priorites.includes(id);
   const estU = brouillon.urgents.includes(id);
@@ -65,7 +66,7 @@ export function BoutonsChoix({ id, tranche, desactive = false }: { id: string; t
         <Icone nom={estU ? 'croix' : 'horloge'} />
         {estU ? fr.programme.retirerUrgent : fr.programme.marquerUrgent}
       </button>
-      {estU && ecartPudi(tranche) && <p className="text-[14px] text-gris">{fr.choix.avance}</p>}
+      {estU && tranche && ecartPudi(tranche) && <p className="text-[14px] text-gris">{fr.choix.avance}</p>}
       {message?.id === id && <MessageBlocage texte={message.texte} />}
     </div>
   );

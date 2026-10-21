@@ -1202,6 +1202,32 @@ jamais stockées en clair. Libérer un numéro masque le vote qui le détenait (
   Connecté ou non se lit dans `localStorage` (clé de session), sans charger Supabase.
 - Toute connexion Google depuis PUDi revient sur la page en cours et inscrit le compte dans `pudi_connexions` (`pudi_ping`).
 
+### PUDi · Phase 3, v3.95.0 : propositions, « Trouver un projet », documents
+
+**Serveur** (migration `supabase/migrations/20261021200000_pudi_phase3.sql`) : table `pudi_propositions` (P1, P2…,
+RLS activée et forcée, aucun droit de table) pour les projets demandés **hors de la liste du PIC** ; ids de choix
+valides = 52 programmes + propositions non retirées (`pudi_ids_valides`, privée). Propositions comptées **à part**
+dans les résultats (`propositions`), jamais dans les deux classements des programmes. `pudi_settings.publie_at` =
+heure de la **première** publication (gardée). `pudi_propositions_publiques()` (anon) ; administration :
+`pudi_admin_propositions`, `_proposition_enregistrer` (id null = numéro suivant, refusé après la clôture),
+`_proposition_retirer` (motif ; supprimée si aucun vote ne la cite, sinon masquée, votes gardés), `_retablir`,
+`pudi_admin_transformer_manquant` (texte libre d'un votant → proposition, vote d'origine gardé).
+
+**Client** :
+- `/propositions`, `/proposition/:id` : liste lue par simple `fetch` (pas de client Supabase), gardée dans
+  `localStorage` `pudi_propositions_v1`, relue à chaque visite en ligne ; une proposition retirée quitte le brouillon
+  avec un message. 12ᵉ carte crème à bord pointillé sur la page des secteurs ; filtre « Propositions » du choix.
+- `/recherche` « Trouver un projet » : recherche sur l'appareil (`utils/recherche.ts`, pure et testée, index construit
+  à l'ouverture de la page, chunk à part) : sans accents, ET entre les mots, préfixes, synonymes du fichier de données
+  (« Correspondance directe »), graphies PUDi des fokontany (`variantesPUDi`).
+- Fiches : libellé officiel complet de chaque code, liens « PUDi p. X » vers le PDF (`#page=` page imprimée + 8,
+  `utils/documents.ts`), encadrés « Précision » et « Pour en savoir plus ».
+- `/documents` : le PUDi complet (14,6 Mo) et ses règlements, servis depuis `public/pudi/documents/`
+  (`_headers` : `application/pdf`) et **jamais mis en cache** par le service worker PUDi (réseau seulement, cache v3).
+- Contact GIHTNB sur `/donnees` (info.gihtnb@gmail.com) ; date d'ouverture de la synthèse lue dans `publie_at`
+  (« Consultation non encore publiée » avant) ; section « Propositions hors liste du PIC » dans les résultats et le PDF.
+- Administration : 7ᵉ onglet « Propositions » (chunk à part) et « Transformer en proposition » sur les textes libres.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

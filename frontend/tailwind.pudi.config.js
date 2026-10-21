@@ -7,6 +7,7 @@ export default {
     extend: {
       colors: {
         creme: '#FBFAF7',
+        sable: '#F5EEDB',
         marine: '#0B2A8C',
         profond: '#08206E',
         texte: '#2F3547',
