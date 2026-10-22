@@ -1,7 +1,7 @@
 // Channels: links, WhatsApp sharing, QR codes, import of the partners' phone lists.
 // Privacy: the numbers of a list live only in this component state until they are sent, then
 // the state is cleared. Never stored on the device, never logged, never displayed back.
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icone, type NomIcone } from '../../composants/Icones';
 import { boutonPrincipal, boutonSecondaire } from '../../composants/Mise';
 import { fr } from '../../i18n/fr';
@@ -17,6 +17,8 @@ import {
   type TypeCanal
 } from '../../appels/admin';
 import { genererQrPng, lienCanal, nomFichierQr } from '../../appels/qr';
+import { ajouterResponsable, lireResponsables, retirerResponsable, type Responsable } from '../../appels/groupe';
+import { EMAIL_VALIDE } from '../../utils/groupe';
 import { apercuNumeros, lireCollage, lireCsvNumeros, suggererCode } from '../../utils/listes';
 import { dateHeureMada, telechargerFichier } from '../../utils/exports';
 import { codeCanalValide } from '../../utils/regles';
@@ -125,6 +127,108 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Group managers of one channel (PUDI-CC-07): Google e-mails allowed to keep the channel's member
+ * list in « Mon groupe ». A channel may have several managers; a manager may manage several channels.
+ */
+function Responsables({ canal, demander }: { canal: Canal; demander: (d: DemandeConfirmation) => void }) {
+  const [liste, setListe] = useState<Responsable[] | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [cours, setCours] = useState(false);
+  const charger = useCallback(async () => {
+    try {
+      setListe(await lireResponsables(canal.code));
+      setErreur(null);
+    } catch (e) {
+      setErreur(messageAdmin(e));
+    }
+  }, [canal.code]);
+  useEffect(() => {
+    void charger();
+  }, [charger]);
+  const ajouter = async (e: FormEvent) => {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!EMAIL_VALIDE.test(v)) return setErreur(messageAdmin('PUDI_EMAIL_INVALIDE'));
+    setCours(true);
+    setErreur(null);
+    try {
+      await ajouterResponsable(canal.code, v);
+      setEmail('');
+      await charger();
+    } catch (er) {
+      setErreur(messageAdmin(er));
+    } finally {
+      setCours(false);
+    }
+  };
+  return (
+    <div className="mt-3 border-t border-filet pt-2" data-responsables={canal.code}>
+      <p className="font-bold text-[14px] text-marine flex items-center gap-1.5">
+        <Icone nom="personnes" className="w-4 h-4" />
+        Responsables
+      </p>
+      {liste === null && !erreur ? (
+        <p className="text-[13px] text-gris">{fr.app.chargement}</p>
+      ) : liste && !liste.length ? (
+        <p className="text-[13px] text-gris">Aucun responsable désigné.</p>
+      ) : (
+        <ul className="mt-1 space-y-1">
+          {(liste ?? []).map((r) => (
+            <li key={r.email} className="flex items-center gap-2 text-[14px]">
+              <span className="min-w-0 flex-1 break-all">{r.email}</span>
+              <button
+                type="button"
+                className={petitBouton}
+                aria-label={`Retirer ${r.email} des responsables de ${canal.nom}`}
+                onClick={() =>
+                  demander({
+                    titre: 'Retirer ce responsable ?',
+                    texte: `${r.email} ne verra plus la liste des membres de « ${canal.nom} ». La liste reste en place.`,
+                    libelleOk: 'Retirer',
+                    danger: true,
+                    action: async () => {
+                      await retirerResponsable(canal.code, r.email);
+                      await charger();
+                    }
+                  })
+                }
+              >
+                <Icone nom="croix" className="w-4 h-4" />
+                Retirer
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={ajouter} className="mt-2 flex gap-1.5" aria-label={`Ajouter un responsable à ${canal.nom}`} noValidate>
+        <input
+          className={`${champ} flex-1 min-w-0`}
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          placeholder="adresse@gmail.com"
+          aria-label={`E-mail Gmail du responsable de ${canal.nom}`}
+          value={email}
+          maxLength={120}
+          onChange={(e) => setEmail(e.target.value)}
+          name="responsable_email"
+        />
+        <button type="submit" className={petitBouton} disabled={cours || !email.trim()}>
+          <Icone nom="plus" className="w-4 h-4" />
+          {cours ? '…' : 'Ajouter'}
+        </button>
+      </form>
+      {erreur && (
+        <p role="alert" className="mt-1 text-[14px] font-bold text-[#9C3F21]">
+          {erreur}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -324,7 +428,7 @@ export default function Canaux() {
     setQr(c.code);
     setErreurQr(null);
     try {
-      telechargerFichier(await genererQrPng(c.code, c.nom), nomFichierQr(c.code), 'image/png');
+      telechargerFichier(await genererQrPng(c.code, c.nom, c.type), nomFichierQr(c.code), 'image/png');
     } catch {
       setErreurQr(c.code);
     } finally {
@@ -337,6 +441,7 @@ export default function Canaux() {
       <Aide titre="Canaux et listes">
         <p>Un canal = un groupe WhatsApp, une réunion, une affiche… Chaque canal a son lien et son QR code : les votes arrivés par ce lien sont comptés pour le canal.</p>
         <p>« Importer une liste » : les numéros de téléphone des membres d'un groupe, fournis par un partenaire. Ils servent à mesurer la portée des réseaux et à repérer un lien utilisé hors de son groupe.</p>
+        <p>« Responsables » : les adresses Gmail des personnes qui tiennent la liste des membres du groupe (menu en haut à droite, « Mon groupe »). Les numéros qu'elles saisissent sont reconnus comme pour une liste importée.</p>
         <p>Le code d'un canal ne change plus après sa création (il est dans les liens et les QR codes déjà diffusés). Pour arrêter un canal, décochez « Canal actif ».</p>
       </Aide>
       {appel.erreur && <Erreur texte={appel.erreur} reessayer={() => void appel.recharger()} />}
@@ -437,6 +542,7 @@ export default function Canaux() {
                     Le QR code n'a pas pu être créé. Réessayez.
                   </p>
                 )}
+                <Responsables canal={c} demander={setDemande} />
                 {import_ === c.code && (
                   <div className="mt-3">
                     <Import canal={c} fermer={() => setImport(null)} termine={() => void appel.recharger()} />

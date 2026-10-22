@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.95.2';
-export const APP_VERSION_NAME = "PUDi dans l’appli NAVY ay : connexion Google qui reste dans l’appli, même session que NAVY ay.";
-export const LAST_UPDATED = '2026-10-21';
-export const APP_BUILD_DATE = '2026-10-21';
+export const APP_VERSION = '3.96.0';
+export const APP_VERSION_NAME = 'PUDi : responsables de groupe et listes des membres, textes demandés par le PIC.';
+export const LAST_UPDATED = '2026-10-22';
+export const APP_BUILD_DATE = '2026-10-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.96.0',
+    date: '2026-10-22',
+    description: 'PUDi : responsables de groupe (« Mon groupe ») et retouches demandées par le PIC.',
+    changes: [
+      'Administration > Canaux : chaque canal a ses « Responsables » (adresses Gmail), ajout et retrait.',
+      'Menu du compte > « Mon groupe » : le responsable tient la liste des membres de son groupe (1 à 3 numéros, Gmail, établissement, fokontany) ; leurs votes comptent « dans nos réseaux ».',
+      '« Propositions de nouveaux projets » remplace « Propositions hors liste du PUDi » (écrans, administration, synthèse PDF).',
+      'Textes des programmes A6, H1, H2 précisés ; « hôpital » et « CHRD » mènent d’abord à la nouvelle ville de Madiro (A6), « csb » à H2.',
+      'QR code : « Groupe « nom » » sans le mot WhatsApp ; onglets d’administration sur plusieurs lignes sur téléphone ; clôture par défaut hors ligne à 8 h.'
+    ]
+  },
   {
     version: '3.95.2',
     date: '2026-10-21',

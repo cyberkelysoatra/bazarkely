@@ -102,7 +102,7 @@ export default function Parametres({ email }: { email: string }) {
   const purgerMaintenant = () =>
     setDemande({
       titre: 'Purger maintenant ?',
-      texte: 'Tous les votes, listes de numéros, refus, connexions, administrateurs et le journal seront supprimés définitivement.',
+      texte: 'Tous les votes, listes de numéros, listes des membres des groupes, responsables de groupe, refus, connexions, administrateurs et le journal seront supprimés définitivement.',
       libelleOk: 'Continuer',
       danger: true,
       action: async () => {
@@ -231,6 +231,9 @@ export default function Parametres({ email }: { email: string }) {
         </p>
         <Titre2>Ce qui est supprimé</Titre2>
         <p className="text-[14px]">Votes, listes de numéros codés, tentatives refusées, connexions, organisateurs nommés et journal. Les canaux et le réglage de la consultation sont gardés.</p>
+        <p className="text-[14px] mt-1">
+          Les listes des membres saisies par les responsables de groupe (numéros, e-mails, établissements, fokontany) et la liste des responsables sont supprimées à la purge avec tout le reste.
+        </p>
         {joel && (
           <button type="button" className={`${boutonSecondaire} mt-3 w-full sm:w-auto !border-[#B42318] !text-[#B42318]`} onClick={purgerMaintenant}>
             <Icone nom="poubelle" />

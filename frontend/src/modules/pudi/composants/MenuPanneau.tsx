@@ -15,6 +15,7 @@ import { lireCanal } from '../appels/provenance';
 import { VERSION_PUDI, rechercherMiseAJour, type ResultatMiseAJour } from '../appels/miseAJour';
 import { refusVus } from '../appels/refusVus';
 import { dateCourte } from '../utils/format';
+import { fr } from '../i18n/fr';
 
 const LARGEUR = 300;
 
@@ -189,6 +190,8 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
   if (!pos) return null;
   const clos = !!etat?.clos;
   const admin = !!session && !!etat?.est_admin;
+  // Group managers (and administrators, for every channel) keep the member lists.
+  const responsable = !!session && (!!etat?.est_responsable || admin);
   const reserve = !clos && !etat?.a_vote && !admin;
   const connexionNecessaire = 'Connexion nécessaire';
   const badge = nbRefus === null ? 0 : Math.max(0, nbRefus - refusVus());
@@ -289,9 +292,17 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
           </Element>
         )}
 
-        {admin && (
+        {responsable && (
           <>
             <hr className="my-1 border-filet" />
+            <Element icone="personnes" desactive={!enLigne} note={!enLigne ? connexionNecessaire : fr.groupe.menuNote} onClick={() => aller('/groupe')}>
+              {fr.groupe.menu}
+            </Element>
+          </>
+        )}
+        {admin && (
+          <>
+            {!responsable && <hr className="my-1 border-filet" />}
             <Element
               icone="admin"
               desactive={!enLigne}

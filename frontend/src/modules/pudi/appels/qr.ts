@@ -1,8 +1,21 @@
 // QR code of a channel link: PNG 1024 px wide, generated in the browser with the existing
 // `qrcode` dependency (dynamic import: own chunk). Quiet zone around the code, channel name and
-// link printed under it.
+// link printed under it (see libelleQr).
 export const lienCanal = (code: string) => `https://1sakely.org/pudi/?c=${code}`;
 export const nomFichierQr = (code: string) => `QR_PUDi_${code}.png`;
+
+/**
+ * Line printed under the QR code: the channel NAME, never the channel type word. A WhatsApp
+ * group reads `Groupe « Opérateurs nosybe »` (the type word is removed from the start of the
+ * name, then « Groupe » is put in front); any other type (affiche, reunion, autre) shows its
+ * name alone. The type stays visible in the admin list.
+ */
+export function libelleQr(nom: string, type: string): string {
+  const n = nom.trim().replace(/\s+/g, ' ');
+  if (type !== 'groupe_whatsapp') return n;
+  const reste = n.replace(/^(?:groupe\s+)?whats\s?app\b[\s,:.-]*/i, '').replace(/^groupe(?:\s+|$)/i, '').trim();
+  return reste ? `Groupe ${reste}` : 'Groupe';
+}
 
 function lignesTexte(ctx: CanvasRenderingContext2D, texte: string, largeur: number): string[] {
   const mots = texte.split(/\s+/);
@@ -19,7 +32,7 @@ function lignesTexte(ctx: CanvasRenderingContext2D, texte: string, largeur: numb
   return lignes.slice(0, 3);
 }
 
-export async function genererQrPng(code: string, nom: string): Promise<Blob> {
+export async function genererQrPng(code: string, nom: string, type: string): Promise<Blob> {
   const QR = (await import('qrcode')).default;
   const L = 1024;
   const qr = document.createElement('canvas');
@@ -28,7 +41,7 @@ export async function genererQrPng(code: string, nom: string): Promise<Blob> {
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d')!;
   ctx.font = 'bold 44px Arial, Helvetica, sans-serif';
-  const titre = lignesTexte(ctx, nom, L - 120);
+  const titre = lignesTexte(ctx, libelleQr(nom, type), L - 120);
   const hauteur = L + titre.length * 56 + 110;
   c.width = L;
   c.height = hauteur;

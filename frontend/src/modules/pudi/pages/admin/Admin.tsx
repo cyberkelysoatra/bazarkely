@@ -111,15 +111,16 @@ export default function Admin() {
   const rappelPurge = Date.now() >= Date.parse(RAPPEL_PURGE_DES);
   return (
     <Page titre="Administration" large>
-      <nav aria-label="Écrans d'administration" className="-mx-1 mb-4 overflow-x-auto">
-        <ul className="flex gap-1 px-1 min-w-max">
+      {/* Wrapped rows (3 per row on phones): every tab stays visible, no horizontal scroll. */}
+      <nav aria-label="Écrans d'administration" className="mb-4">
+        <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
           {ONGLETS.map((o) => (
-            <li key={o.to}>
+            <li key={o.to} className="min-w-0">
               <NavLink
                 to={o.to}
                 end
                 className={({ isActive }) =>
-                  `min-h-[44px] px-3 rounded-xl flex items-center gap-1.5 text-[14px] font-bold whitespace-nowrap border ${
+                  `min-h-[52px] h-full px-1.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[13px] leading-tight font-bold text-center border ${
                     isActive ? 'bg-marine text-white border-marine' : 'bg-white text-marine border-filet'
                   }`
                 }

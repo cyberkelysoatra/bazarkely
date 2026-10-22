@@ -80,7 +80,7 @@ export default function Propositions() {
   const liste = appel.donnees?.propositions ?? [];
   return (
     <div>
-      <Aide titre="Propositions hors liste du PUDi">
+      <Aide titre="Propositions de nouveaux projets">
         <p>
           Une demande déjà prévue dans le PUDi ne devient pas une proposition : retrouvez son programme avec « Trouver un projet ». Une
           proposition ajoutée tard est signalée comme telle dans la synthèse.

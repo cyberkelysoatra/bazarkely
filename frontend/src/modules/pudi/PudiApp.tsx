@@ -19,6 +19,8 @@ const Recherche = lazy(() => import('./pages/Recherche'));
 const Propositions = lazy(() => import('./pages/Propositions'));
 const Proposition = lazy(() => import('./pages/Proposition'));
 const Documents = lazy(() => import('./pages/Documents'));
+// Group managers' member lists (PUDI-CC-07): own chunk, reached from the account menu only.
+const Groupe = lazy(() => import('./pages/Groupe'));
 // Administration: its own chunk, never downloaded by a public visitor.
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
@@ -55,6 +57,8 @@ export default function PudiApp() {
             <Route path="/propositions" element={<Propositions />} />
             <Route path="/proposition/:id" element={<Proposition />} />
             <Route path="/documents" element={<Documents />} />
+            <Route path="/groupe" element={<Groupe />} />
+            <Route path="/groupe/:code" element={<Groupe />} />
             <Route path="/admin/*" element={<Admin />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

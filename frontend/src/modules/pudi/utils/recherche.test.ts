@@ -34,10 +34,17 @@ describe('rechercher (B6)', () => {
     expect(ids('toilettes')[0]).toBe('W4');
   });
 
-  it('« CHRD » gives P1 and H1', () => {
-    const r = rechercher(index, 'CHRD');
-    expect(r.directs.map((x) => x.id)).toEqual(['P1', 'H1']);
-    expect(r.directs[0].type).toBe('proposition');
+  it('« CHRD », « hôpital », « hopital » give A6 first, then H1 (PUDI-CC-07)', () => {
+    for (const q of ['CHRD', 'chrd', 'hôpital', 'hopital']) {
+      const r = rechercher(index, q);
+      expect(r.directs.map((x) => x.id)).toEqual(['A6', 'H1']);
+      expect(ids(q)[0]).toBe('A6');
+    }
+  });
+
+  it('« csb » gives H2 first, then H1', () => {
+    expect(rechercher(index, 'csb').directs.map((x) => x.id)).toEqual(['H2', 'H1']);
+    expect(ids('CSB')[0]).toBe('H2');
   });
 
   it('« eau » gives W1 first', () => {
@@ -92,7 +99,9 @@ describe('rechercher (B6)', () => {
 
   it('a withdrawn proposal is never a direct match', () => {
     const sansP1 = construireIndex(D, PROPOSITIONS.filter((p) => p.id !== 'P1'));
-    expect(rechercher(sansP1, 'CHRD').directs.map((x) => x.id)).toEqual(['H1']);
+    expect(rechercher(sansP1, 'sakatia').directs.map((x) => x.id)).toEqual(['P2']);
+    const sansP2 = construireIndex(D, PROPOSITIONS.filter((p) => p.id !== 'P2'));
+    expect(rechercher(sansP2, 'sakatia').directs).toEqual([]);
   });
 
   it('at most 30 results shown, the count is the full number', () => {

@@ -519,7 +519,7 @@
    "id": "A6",
    "secteur": "AME",
    "nom": "Nouvelle ville de Madiro",
-   "resume": "Créer une nouvelle ville à Madiro : habitat organisé, équipements publics, zone sportive, parc solaire et gare routière.",
+   "resume": "Créer une nouvelle ville à Madiro : habitat organisé, équipements publics dont un hôpital, zone sportive, parc solaire et gare routière.",
    "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
    "sites": [
     "Madiro"
@@ -552,7 +552,7 @@
     105,
     144
    ],
-   "precision": null
+   "precision": "Le PUDi y prévoit un hôpital (2,67 ha) et la construction d'un nouvel hôpital dans la deuxième phase (p. 104). C'est là que figure le projet de nouveau CHRD."
   },
   {
    "id": "A7",
@@ -1431,13 +1431,13 @@
     144,
     145
    ],
-   "precision": "Le PUDi recense 1 CHRD II et 12 centres de santé publics (7 CSB I, 4 CSB II), p. 34. Aucun nouveau CHRD n'y est programmé."
+   "precision": "Le PUDi recense 1 CHRD II et 12 centres de santé publics (7 CSB I, 4 CSB II), p. 34. Le nouvel hôpital est prévu dans la nouvelle ville de Madiro (programme A6)."
   },
   {
    "id": "H2",
    "secteur": "SAN",
    "nom": "Réhabilitation et passage de CSB I en CSB II",
-   "resume": "Réhabiliter et moderniser les centres de santé de base, et faire passer en CSB II ceux d'Ambatoloaka, Ambatozavavy et Befotaka.",
+   "resume": "Réhabiliter et moderniser les centres de santé de base dans tous les arrondissements, et faire passer les CSB I en CSB II (dont Ambatoloaka, Ambatozavavy et Befotaka).",
    "resumeStatut": "validé GIHTNB (20261020_LISTE_Resumes-Programmes_v1.md)",
    "sites": [
     "Ambatoloaka",
@@ -1514,7 +1514,7 @@
     141,
     144
    ],
-   "precision": null
+   "precision": "Selon le PIC, la transformation des CSB I en CSB II fait partie de ce programme et concerne tous les arrondissements (voir PUDi p. 104)."
   },
   {
    "id": "D1",
@@ -4461,7 +4461,16 @@
     "hôpital"
    ],
    "cibles": [
-    "P1",
+    "A6",
+    "H1"
+   ]
+  },
+  {
+   "mots": [
+    "csb"
+   ],
+   "cibles": [
+    "H2",
     "H1"
    ]
   },

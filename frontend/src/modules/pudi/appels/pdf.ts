@@ -244,7 +244,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
   m.y += 1;
   classement(m, s.urgents, true);
 
-  m.titre('Propositions hors liste du PUDi');
+  m.titre('Propositions de nouveaux projets');
   m.paragraphe(
     'Projets demandés par les parties prenantes et absents de la liste retenue dans le PUDi, comptés à part : ils ne figurent pas dans les deux classements des 52 programmes.',
     9,

@@ -21,6 +21,8 @@ const MESSAGES: Record<string, string> = {
   INTITULE: 'Indiquez un titre (3 caractères au moins).',
   PROPOSITION_INCONNUE: "Cette proposition n'existe plus.",
   CLOS: 'La consultation est close : plus aucun ajout possible.',
+  EMAIL_INVALIDE: 'Adresse e-mail non reconnue : écrivez-la comme nom@gmail.com',
+  RESPONSABLE_REQUIS: "Vous n'êtes pas responsable de ce groupe.",
   RESEAU: 'Le réseau ne répond pas. Réessayez.'
 };
 

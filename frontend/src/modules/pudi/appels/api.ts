@@ -20,6 +20,8 @@ export interface EtatConsultation {
   connecte: boolean;
   a_vote: boolean;
   est_admin: boolean;
+  /** Manager of at least one channel (PUDI-CC-07); absent on an older server answer. */
+  est_responsable?: boolean;
 }
 
 export interface MonVote {

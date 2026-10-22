@@ -72,7 +72,7 @@ export const fr = {
       `${intitule}. Ce montant couvre les programmes suivants sans être réparti entre eux : ${programmes}.`,
     listeTitre: 'Programmes du secteur',
     rechercher: 'Trouver un projet (lieu, mot, code…)',
-    carteProposition: 'Propositions (hors liste du PUDi)',
+    carteProposition: 'Propositions de nouveaux projets',
     propositions: (n: number) => (n > 1 ? `${n} propositions` : `${n} proposition`)
   },
   programme: {
@@ -100,10 +100,10 @@ export const fr = {
     pageOuvre: (n: number) => `Ouvrir le PUDi à la page ${n} (nouvel onglet)`
   },
   propositions: {
-    titre: 'Propositions hors liste du PUDi',
+    titre: 'Propositions de nouveaux projets',
     intro:
       'Projets demandés par les parties prenantes et absents de la liste retenue dans le PUDi. Ils sont comptés à part dans les résultats.',
-    badge: 'Proposition, hors liste du PUDi',
+    badge: 'Proposition de nouveau projet',
     badgeCourt: 'Proposition',
     lieu: 'Lieu',
     source: 'Source',
@@ -160,7 +160,7 @@ export const fr = {
     etape3Aide: 'Facultatif : décrivez en quelques mots un projet absent du PUDi.',
     etape3Verifier: 'Vérifiez d’abord avec « Trouver un projet » : il est peut-être déjà prévu.',
     filtrePropositions: 'Propositions',
-    filtrePropositionsAide: 'Afficher seulement les propositions hors liste du PUDi',
+    filtrePropositionsAide: 'Afficher seulement les propositions de nouveaux projets',
     etape3Placeholder:
       'Par exemple : sécurité sur le littoral (bande des 300 m), nuisances sonores, déchets, animaux errants, électricité…',
     caracteres: (n: number) => `${n} / 300 caractères`,
@@ -268,12 +268,67 @@ export const fr = {
     pdf: 'Synthèse PDF : disponible prochainement',
     connexionRequise: 'Connectez-vous avec le compte Google qui a voté pour voir les résultats.',
     aucunVote: 'Aucun vote compté pour le moment.',
-    propositionsTitre: 'Propositions hors liste du PUDi',
+    propositionsTitre: 'Propositions de nouveaux projets',
     propositionsAide:
       'Comptées à part : part des votants qui ont placé la proposition dans leurs 3 priorités, et part qui la veulent urgente.',
     urgentPct: (pct: string) => `urgent : ${pct}`,
     ouverture: 'Ouverture',
     nonPubliee: 'Consultation non encore publiée'
+  },
+  groupe: {
+    titre: 'Mon groupe',
+    menu: 'Mon groupe',
+    menuNote: 'Liste des membres de vos groupes',
+    aideTitre: 'À quoi sert cette liste ?',
+    aide: [
+      'Les votes des personnes de votre groupe sont reconnus.',
+      'Une personne vote une seule fois, même si elle a plusieurs numéros ou figure dans plusieurs groupes.'
+    ],
+    aideDetail:
+      "Les numéros sont visibles seulement par les responsables de ce groupe et par les organisateurs. Ils sont supprimés le 28 janvier 2027 avec toutes les données de la consultation.",
+    mesGroupes: 'Mes groupes',
+    aucunGroupe: "Vous n'êtes responsable d'aucun groupe pour le moment. Demandez aux organisateurs de vous désigner.",
+    membres: (n: number) => (n > 1 ? `${n} membres` : `${n} membre`),
+    tousLesGroupes: 'Organisateur : vous voyez tous les groupes.',
+    ajouter: 'Ajouter un membre',
+    nouveau: 'Nouveau membre',
+    modifierTitre: 'Modifier le membre',
+    numeros: 'Numéros de téléphone',
+    numero: (i: number) => `Numéro ${i}`,
+    numeroAide: 'Au moins un numéro, trois au plus. Exemple : 034 12 345 67 ou +33 6 12 34 56 78.',
+    ajouterNumero: 'Ajouter un autre numéro',
+    retirerNumero: 'Retirer ce numéro',
+    email: 'Adresse Gmail (facultatif)',
+    etablissement: 'Établissement : hôtel ou autre (facultatif)',
+    fokontany: 'Fokontany (facultatif)',
+    fokontanyAucun: 'Non précisé',
+    fokontanyAutre: 'Précisez le fokontany',
+    enregistrer: 'Enregistrer',
+    enregistrement: 'Enregistrement…',
+    annuler: 'Annuler',
+    modifier: 'Modifier',
+    supprimer: 'Supprimer',
+    supprimerTitre: 'Supprimer ce membre ?',
+    supprimerTexte: 'Ses numéros ne seront plus reconnus pour ce groupe. Son vote, s’il a voté, reste compté.',
+    rechercher: 'Rechercher (numéro, nom, établissement, fokontany)',
+    resultats: (n: number, total: number) => (n === total ? `${total} membre${total > 1 ? 's' : ''}` : `${n} sur ${total}`),
+    aucunMembre: 'Aucun membre pour le moment. Touchez « Ajouter un membre ».',
+    aucunResultat: 'Aucun membre ne correspond à la recherche.',
+    retour: 'Mes groupes',
+    connexion: 'Connectez-vous avec le compte Google désigné par les organisateurs.',
+    seConnecter: 'Se connecter avec Google',
+    horsLigne: 'La liste des membres demande une connexion internet. Reconnectez-vous puis touchez « Réessayer ».',
+    enregistre: 'Membre enregistré.',
+    supprime: 'Membre supprimé.',
+    erreurs: {
+      RESPONSABLE_REQUIS: "Vous n'êtes pas responsable de ce groupe.",
+      NUMERO_INVALIDE: 'Numéro non reconnu : écrivez-le comme 034 12 345 67 ou +33 6 12 34 56 78',
+      NUMERO_DEJA_DANS_LE_GROUPE: 'Ce numéro est déjà dans la liste de ce groupe.',
+      EMAIL_INVALIDE: 'Adresse e-mail non reconnue : écrivez-la comme nom@gmail.com',
+      NUMERO_REQUIS: 'Indiquez au moins un numéro de téléphone.',
+      RESEAU: 'Le réseau ne répond pas. Réessayez.',
+      AUTRE: 'Une erreur est survenue. Réessayez.'
+    }
   },
   temps: {
     jours: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'],
