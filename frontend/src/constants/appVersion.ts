@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.98.0';
-export const APP_VERSION_NAME = 'PUDi : parcours des visiteurs, résultats au retour, aperçu « Voir comme ».';
-export const LAST_UPDATED = '2026-10-22';
-export const APP_BUILD_DATE = '2026-10-22';
+export const APP_VERSION = '3.99.0';
+export const APP_VERSION_NAME = 'PUDi : une discussion publique pour tous.';
+export const LAST_UPDATED = '2026-10-23';
+export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.99.0',
+    date: '2026-10-23',
+    description: 'PUDi : une discussion publique, lisible par tous, où écrivent les personnes connectées (prénom et initiale).',
+    changes: [
+      'Bouton « Discussion » dans la barre du bas, point rouge quand un message est nouveau.',
+      'Messages en direct (actualisés toutes les 15 secondes), réponses, « Ce message a été supprimé ».',
+      'Suppression par l’auteur, le responsable du groupe de l’auteur ou un organisateur ; suspension d’un compte par les organisateurs ; compteurs au Suivi.'
+    ]
+  },
   {
     version: '3.98.0',
     date: '2026-10-22',

@@ -24,7 +24,11 @@ const ACTIONS: Record<string, string> = {
   retablir_proposition: 'Proposition rétablie',
   masquage_auto: 'Vote masqué automatiquement (même personne)',
   masquage_retabli: 'Vote masqué rétabli',
-  vote_refuse: 'Vote refusé'
+  vote_refuse: 'Vote refusé',
+  message_ecrire: 'Message de discussion écrit',
+  message_supprimer: 'Message de discussion supprimé',
+  discussion_suspendre: 'Auteur suspendu de la discussion',
+  discussion_retablir: 'Suspension de la discussion levée'
 };
 
 const CLES: Record<string, string> = {
@@ -46,6 +50,7 @@ const CLES: Record<string, string> = {
   efface: 'supprimée',
   masquage: 'référence',
   canal: 'canal',
+  role: 'par',
   automatique: 'automatique',
   whatsapp: 'numéro WhatsApp',
   membre: 'ligne',

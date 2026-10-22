@@ -10,6 +10,7 @@ import { basculerCommutateur, useCommutateurOuvert } from '../appels/commutateur
 import { DeclencheurMenu } from './MenuCompte';
 import { BandeauMasquage } from './Masquage';
 import { definirApercu } from '../appels/apercu';
+import { useDiscussionNonLue } from '../appels/discussionNonLue';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
 const Commutateur = lazy(() => import('./Commutateur'));
@@ -192,13 +193,13 @@ export function PiedDePage({ logos = true }: { logos?: boolean }) {
   );
 }
 
-function Onglet({ to, icone, libelle, badge, fin }: { to: string; icone: NomIcone; libelle: string; badge?: number; fin?: boolean }) {
+function Onglet({ to, icone, libelle, badge, fin, point }: { to: string; icone: NomIcone; libelle: string; badge?: number; fin?: boolean; point?: boolean }) {
   return (
     <NavLink
       to={to}
       end={fin}
       className={({ isActive }) =>
-        `flex-1 min-h-[56px] flex flex-col items-center justify-center gap-0.5 text-[12px] ${
+        `flex-1 min-w-0 min-h-[56px] flex flex-col items-center justify-center gap-0.5 text-[11px] min-[360px]:text-[12px] whitespace-nowrap ${
           isActive ? 'text-marine font-bold' : 'text-gris'
         }`
       }
@@ -215,6 +216,9 @@ function Onglet({ to, icone, libelle, badge, fin }: { to: string; icone: NomIcon
             {badge}
           </span>
         )}
+        {point && (
+          <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-[#E5484D] ring-2 ring-white" data-point-non-lu="" aria-label="Nouveaux messages" />
+        )}
       </span>
       {libelle}
     </NavLink>
@@ -224,6 +228,7 @@ function Onglet({ to, icone, libelle, badge, fin }: { to: string; icone: NomIcon
 export function BarreBas() {
   const { brouillon } = usePudi();
   const commutateur = useCommutateurOuvert();
+  const nonLue = useDiscussionNonLue();
   if (commutateur)
     return (
       <Suspense fallback={<BarreCommutateur><p className="py-4 text-center text-[14px] text-gris">{fr.app.chargement}</p></BarreCommutateur>}>
@@ -239,6 +244,7 @@ export function BarreBas() {
         <Onglet to="/" icone="accueil" libelle={fr.nav.accueil} fin />
         <Onglet to="/secteurs" icone="grille" libelle={fr.nav.projets} />
         <Onglet to="/choix" icone="liste" libelle={fr.nav.monChoix} badge={brouillon.priorites.length} />
+        <Onglet to="/discussion" icone="discussion" libelle={fr.nav.discussion} point={nonLue} />
         <Onglet to="/resultats" icone="graphique" libelle={fr.nav.resultats} />
       </div>
     </nav>

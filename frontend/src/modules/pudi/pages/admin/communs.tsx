@@ -27,6 +27,9 @@ const MESSAGES: Record<string, string> = {
   LISTES_FIGEES: 'Les listes sont figées depuis le mardi 27/10/2026 à 18 h.',
   MASQUAGE_INCONNU: "Ce masquage n'existe plus.",
   DEJA_RETABLI: 'Ce vote a déjà été rétabli.',
+  MESSAGE_INCONNU: "Ce message n'existe plus.",
+  SUPPRESSION_INTERDITE: 'Vous ne pouvez pas supprimer ce message.',
+  NON_CONNECTE: 'Connectez-vous avec Google.',
   RESEAU: 'Le réseau ne répond pas. Réessayez.'
 };
 

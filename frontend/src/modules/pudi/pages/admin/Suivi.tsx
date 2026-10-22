@@ -9,6 +9,7 @@ import { pourcent } from '../../utils/synthese';
 import { fr } from '../../i18n/fr';
 import { Aide, Chiffre, Erreur, Titre2, petitBouton, useAppel } from './communs';
 import ParcoursVisiteurs, { SANS_CANAL } from './Parcours';
+import { lireSuiviDiscussion } from '../../appels/discussion';
 
 const PERSONNE = libelleMotifRefus('personne_deja_votee');
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -21,8 +22,14 @@ export default function Suivi() {
   const { etat } = usePudi();
   const { donnees } = useDonnees();
   const appel = useAppel(async () => {
-    const [suivi, votes, canaux, refus] = await Promise.all([lireSuivi(), lireVotes(), lireCanaux(), lireRefus()]);
-    return { suivi, votes, canaux, refus };
+    const [suivi, votes, canaux, refus, discussion] = await Promise.all([
+      lireSuivi(),
+      lireVotes(),
+      lireCanaux(),
+      lireRefus(),
+      lireSuiviDiscussion().catch(() => null)
+    ]);
+    return { suivi, votes, canaux, refus, discussion };
   });
   const { recharger } = appel;
 
@@ -102,6 +109,20 @@ export default function Suivi() {
               </Link>
             )}
           </div>
+
+          {d?.discussion && (
+            <>
+              <Titre2 aide="Discussion publique : messages écrits depuis l'ouverture, auteurs différents, messages supprimés.">Discussion</Titre2>
+              <div className="grid grid-cols-3 gap-2" data-suivi-discussion="">
+                <Chiffre valeur={d.discussion.nb_messages} libelle="Messages" icone="discussion" />
+                <Chiffre valeur={d.discussion.nb_auteurs} libelle="Auteurs" icone="personnes" />
+                <Chiffre valeur={d.discussion.nb_supprimes} libelle="Supprimés" icone="poubelle" />
+              </div>
+              {d.discussion.nb_suspendus > 0 && (
+                <p className="mt-1 text-[13px] text-gris">{d.discussion.nb_suspendus} compte{d.discussion.nb_suspendus > 1 ? 's' : ''} suspendu{d.discussion.nb_suspendus > 1 ? 's' : ''} de la discussion.</p>
+              )}
+            </>
+          )}
 
           <ParcoursVisiteurs nomCanal={nomCanal} codes={d?.canaux.map((c) => c.code) ?? []} />
 
