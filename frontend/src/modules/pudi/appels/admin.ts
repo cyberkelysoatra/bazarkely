@@ -3,6 +3,7 @@
 // (and by the account menu for the refusals badge).
 import { rpc } from './api';
 import type { VoteAdmin } from '../utils/exports';
+import type { EtapeParcours } from '../utils/apercu';
 
 export type { VoteAdmin };
 
@@ -104,6 +105,18 @@ export interface EntreeJournal {
 }
 
 export const lireSuivi = () => rpc<Suivi>('pudi_admin_suivi');
+
+/** PUDI-CC-11: anonymous visit funnel. p_canal: null = all, '(aucun)' = without channel. */
+export interface ParcoursAdmin {
+  calcule_at: string;
+  /** First recorded step (start of the measure), null before any visit. */
+  debut: string | null;
+  etapes: Record<EtapeParcours, number>;
+  /** Real votes (not masked, not test) of the same filter, for comparison. */
+  nb_votes: number;
+  canaux: string[];
+}
+export const lireParcours = (canal: string | null) => rpc<ParcoursAdmin>('pudi_admin_parcours', { p_canal: canal });
 export const lireVotes = () => rpc<VoteAdmin[]>('pudi_admin_votes');
 export const masquerVote = (id: string, masque: boolean, motif: string | null) =>
   rpc<null>('pudi_admin_masquer', { p_id_anonyme: id, p_masque: masque, p_motif: motif });

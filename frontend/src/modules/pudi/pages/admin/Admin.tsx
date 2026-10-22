@@ -34,7 +34,9 @@ const ONGLETS: { to: string; libelle: string; icone: NomIcone }[] = [
 ];
 
 export default function Admin() {
-  const { definirEtat } = usePudi();
+  const { definirEtat, apercu } = usePudi();
+  // PUDI-CC-11: no administration while JOEL previews another role.
+  const enApercu = !!apercu;
   const [acces, setAcces] = useState<Acces>({ t: 'verif' });
   const [connexion, setConnexion] = useState(false);
   const session = useSessionLocale();
@@ -57,11 +59,11 @@ export default function Admin() {
       }
       const e = await lireEtatConnecte();
       definirEtat(e);
-      setAcces(e.est_admin ? { t: 'ok', email: data.session.user.email ?? '' } : { t: 'refuse' });
+      setAcces(e.est_admin && !enApercu ? { t: 'ok', email: data.session.user.email ?? '' } : { t: 'refuse' });
     } catch {
       setAcces({ t: 'erreur' });
     }
-  }, [definirEtat, retourConnexion]);
+  }, [definirEtat, retourConnexion, enApercu]);
 
   useEffect(() => {
     void verifier();

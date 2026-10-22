@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.97.1';
-export const APP_VERSION_NAME = 'PUDi : logos des partenaires répartis sur toute la ligne.';
+export const APP_VERSION = '3.98.0';
+export const APP_VERSION_NAME = 'PUDi : parcours des visiteurs, résultats au retour, aperçu « Voir comme ».';
 export const LAST_UPDATED = '2026-10-22';
 export const APP_BUILD_DATE = '2026-10-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.98.0',
+    date: '2026-10-22',
+    description: 'PUDi : mesure anonyme du parcours des visiteurs, résultats affichés au retour d’une personne qui a voté, aperçu « Voir comme » pour JOEL.',
+    changes: [
+      'Parcours anonyme (identifiant tiré au hasard, sans compte ni numéro) : 7 étapes de la visite au vote, carte au Suivi avec filtre par canal.',
+      'Une personne qui a déjà voté et rouvre la consultation arrive sur « Résultats », avec « Modifier mon choix » et « Accueil ».',
+      '« Voir comme » (JOEL seulement) : Votant, Responsable de groupe ou Super admin, bandeau d’aperçu, rien n’est enregistré.'
+    ]
+  },
   {
     version: '3.97.1',
     date: '2026-10-22',

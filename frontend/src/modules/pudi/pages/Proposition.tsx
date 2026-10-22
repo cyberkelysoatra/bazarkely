@@ -1,10 +1,12 @@
 // Sheet of one proposal (outside the PUDi list): same choice buttons as a programme, with
 // « Hors PUDi » in place of a PUDi tranche.
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BoutonsChoix } from '../composants/BoutonsChoix';
 import { Icone } from '../composants/Icones';
 import { Chargement, Page } from '../composants/Mise';
 import { fr } from '../i18n/fr';
+import { noterEtape } from '../appels/parcours';
 import { usePudi } from '../PudiContexte';
 import { propositionParId } from '../appels/propositions';
 import { dateJour } from '../utils/format';
@@ -12,6 +14,7 @@ import { BadgeProposition, ErreurPropositions, useListePropositions } from './Pr
 
 export default function Proposition() {
   const { id = '' } = useParams();
+  useEffect(() => noterEtape('fiche'), []);
   const { liste, erreur, reessayer } = useListePropositions();
   const { etat } = usePudi();
   const retour = (

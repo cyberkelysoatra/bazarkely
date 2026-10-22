@@ -10,6 +10,8 @@ import { usePudi, useDonnees } from '../PudiContexte';
 import { lireEtatConnecte, lireMonVote, ping, soumettreVote, type FormulaireVote, type MonVote } from '../appels/api';
 import { brouillonVide } from '../appels/brouillon';
 import { lireCanal } from '../appels/provenance';
+import { noterEtape } from '../appels/parcours';
+import { definirApercu } from '../appels/apercu';
 import { connexionGoogle as connexionGoogleSession } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
 import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
@@ -30,7 +32,9 @@ function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormu
 
 export default function Envoyer() {
   const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
-  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages } = usePudi();
+  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu } = usePudi();
+  // PUDI-CC-11: in JOEL's « Votant » preview every client check runs, but nothing reaches the server.
+  const apercuVotant = apercu?.role === 'votant';
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [vote, setVote] = useState<MonVote | null>(null);
@@ -65,6 +69,14 @@ export default function Envoyer() {
     };
   }, []);
 
+  // Funnel (anonymous): the screen is shown, then a session exists on it.
+  useEffect(() => {
+    noterEtape('envoyer');
+  }, []);
+  useEffect(() => {
+    if (session) noterEtape('connecte');
+  }, [session]);
+
   // After sign-in: ping once, authenticated state, own vote (prefill).
   useEffect(() => {
     const uid = session?.user?.id;
@@ -72,6 +84,11 @@ export default function Envoyer() {
     initialise.current = uid;
     (async () => {
       try {
+        if (apercuVotant) {
+          // Preview: no connection record, no prefill from JOEL's real vote.
+          definirEtat(await lireEtatConnecte());
+          return;
+        }
         const cle = `pudi_ping:${uid}`;
         let deja = false;
         try {
@@ -140,10 +157,16 @@ export default function Envoyer() {
     const local = valider();
     setErreur(local);
     if (local) return;
+    if (apercuVotant && apercu) {
+      definirApercu({ ...apercu, voteFictif: true });
+      navigate('/merci', { state: { apercu: true } });
+      return;
+    }
     setEnvoi(true);
     try {
       const v = await soumettreVote(brouillon, form, lireCanal());
       setVote(v);
+      if (!v.est_test) noterEtape('vote');
       navigate('/merci', { state: { test: v.est_test } });
     } catch (e) {
       const er = messageErreur(e);

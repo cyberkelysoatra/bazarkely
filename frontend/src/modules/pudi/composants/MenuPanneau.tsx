@@ -16,6 +16,8 @@ import { VERSION_PUDI, rechercherMiseAJour, type ResultatMiseAJour } from '../ap
 import { refusVus, retablisVus } from '../appels/refusVus';
 import { dateCourte } from '../utils/format';
 import { fr } from '../i18n/fr';
+import { definirApercu } from '../appels/apercu';
+import { lireMesGroupes, type Groupe } from '../appels/groupe';
 
 const LARGEUR = 300;
 
@@ -71,7 +73,18 @@ function Element({
 }
 
 export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLButtonElement | null>; fermer: () => void }) {
-  const { etat, horsLigne, definirEtat, rechargerEtat } = usePudi();
+  const { etat, horsLigne, definirEtat, rechargerEtat, joel, apercu } = usePudi();
+  // PUDI-CC-11: « Voir comme » (JOEL only); channels loaded when « Responsable de groupe » is opened.
+  const [canauxApercu, setCanauxApercu] = useState<Groupe[] | 'cours' | 'erreur' | null>(null);
+  const choisirResponsable = () => {
+    setCanauxApercu('cours');
+    lireMesGroupes().then(setCanauxApercu, () => setCanauxApercu('erreur'));
+  };
+  const voirComme = (a: Parameters<typeof definirApercu>[0]) => {
+    definirApercu(a);
+    fermer();
+    navigate('/');
+  };
   const session = useSessionLocale();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -131,7 +144,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         const e = await lireEtatConnecte();
         if (!actif) return;
         definirEtat(e);
-        if (e.a_vote) {
+        if (e.a_vote && !apercu) {
           const v = await lireMonVote();
           if (actif && v) setDateVote(v.updated_at ?? v.created_at);
         }
@@ -150,7 +163,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
     return () => {
       actif = false;
     };
-  }, [session, enLigne, definirEtat]);
+  }, [session, enLigne, definirEtat, apercu]);
 
   const aller = (chemin: string, etatNav?: unknown) => {
     fermer();
@@ -335,6 +348,50 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
               Aperçu des résultats
             </Element>
           </>
+        )}
+
+        {joel && (
+          <div data-voir-comme="">
+            <hr className="my-1 border-filet" />
+            <p className="px-3 pt-1.5 pb-0.5 text-[12px] font-bold uppercase tracking-wide text-gris">Voir comme</p>
+            <Element
+              icone="personnes"
+              note={apercu?.role === 'votant' ? 'Aperçu en cours' : "Personne connectée qui n'a pas encore voté"}
+              onClick={() => voirComme({ role: 'votant', masque: false, voteFictif: false })}
+            >
+              Votant
+            </Element>
+            <Element
+              icone="liste"
+              desactive={!enLigne}
+              note={apercu?.role === 'responsable' ? `Aperçu en cours : ${apercu.nom}` : 'Choisir un groupe'}
+              onClick={choisirResponsable}
+            >
+              Responsable de groupe
+            </Element>
+            {canauxApercu !== null && (
+              <div className="pl-11 pr-2 pb-1">
+                {canauxApercu === 'cours' && <p className="py-2 text-[14px] text-gris">{fr.app.chargement}</p>}
+                {canauxApercu === 'erreur' && <p className="py-2 text-[14px] text-gris">Liste des groupes indisponible.</p>}
+                {Array.isArray(canauxApercu) &&
+                  canauxApercu.map((g) => (
+                    <button
+                      key={g.code}
+                      type="button"
+                      role="menuitem"
+                      data-apercu-canal={g.code}
+                      onClick={() => voirComme({ role: 'responsable', canal: g.code, nom: g.nom })}
+                      className="w-full min-h-[44px] text-left text-[14px] font-bold text-marine break-words"
+                    >
+                      {g.nom}
+                    </button>
+                  ))}
+              </div>
+            )}
+            <Element icone="admin" note={apercu ? undefined : 'Mode normal'} onClick={() => voirComme(null)}>
+              Super admin
+            </Element>
+          </div>
         )}
 
         <hr className="my-1 border-filet" />

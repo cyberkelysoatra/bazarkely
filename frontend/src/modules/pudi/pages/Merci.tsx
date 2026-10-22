@@ -4,7 +4,10 @@ import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
 
 export default function Merci() {
-  const test = !!(useLocation().state as { test?: boolean } | null)?.test;
+  const etatNav = useLocation().state as { test?: boolean; apercu?: boolean } | null;
+  const test = !!etatNav?.test;
+  // PUDI-CC-11: end of the « Votant » preview, nothing was sent.
+  const apercu = !!etatNav?.apercu;
   return (
     <Page>
       <div className="text-center pt-6">
@@ -13,6 +16,11 @@ export default function Merci() {
         </span>
         <h1 className="font-titre text-[24px] leading-tight text-marine mt-4">{fr.merci.titre}</h1>
         {test && <p className="mt-3 text-[15px] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left">{fr.merci.test}</p>}
+        {apercu && (
+          <p className="mt-3 text-[15px] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left" data-merci-apercu="">
+            Aperçu : rien n'a été enregistré, aucun vote n'a été envoyé.
+          </p>
+        )}
       </div>
       <div className="mt-6 flex flex-col gap-3">
         <Link to="/resultats" className={boutonPrincipal}>

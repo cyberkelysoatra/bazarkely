@@ -8,12 +8,23 @@ import { estProposition, propositionParId, rafraichirPropositions } from './appe
 import { CLOTURE_PAR_DEFAUT } from './utils/format';
 import { useSessionLocale } from './appels/session';
 import { lireMesMasquages, type MonMasquage } from './appels/masquages';
+import { useApercuStocke } from './appels/apercu';
+import { activerParcours, noterEtape } from './appels/parcours';
+import { etapesDuChoix, etatEffectif, masquageApercu, peutApercu, type Apercu } from './utils/apercu';
 
 interface PudiContexteValeur {
   brouillon: Brouillon;
   majBrouillon: (b: Brouillon) => void;
-  /** null while unknown (first load, offline without answer). */
+  /** null while unknown (first load, offline without answer). Seen through JOEL's preview when one is on. */
   etat: EtatConsultation | null;
+  /** Server state, never changed by the preview. */
+  etatReel: EtatConsultation | null;
+  /** JOEL may use « Voir comme » (PUDI-CC-11). */
+  joel: boolean;
+  /** Active preview (always null for anyone but JOEL). */
+  apercu: Apercu | null;
+  /** The maskings were read for the current state (or there is nothing to read). */
+  masquagesLus: boolean;
   /** Server unreachable on the last read. */
   horsLigne: boolean;
   /** Server time minus device time (ms), so the countdown never trusts the phone clock. */
@@ -36,7 +47,7 @@ const Ctx = createContext<PudiContexteValeur | null>(null);
 
 export function PudiProvider({ children }: { children: ReactNode }) {
   const [brouillon, setBrouillon] = useState<Brouillon>(() => lireBrouillon());
-  const [etat, setEtat] = useState<EtatConsultation | null>(null);
+  const [etatReel, setEtat] = useState<EtatConsultation | null>(null);
   const [horsLigne, setHorsLigne] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);
   const [decalage, setDecalage] = useState(0);
 
@@ -100,27 +111,62 @@ export function PudiProvider({ children }: { children: ReactNode }) {
 
   // Maskings: read only for a signed-in account that voted, again on each new server state.
   const [masquages, setMasquages] = useState<MonMasquage[]>([]);
-  const doitLireMasquages = !!etat?.connecte && !!etat?.a_vote;
-  const rechargerMasquages = useCallback(async () => {
+  const doitLireMasquages = !!etatReel?.connecte && !!etatReel?.a_vote;
+  // Key of the state the maskings were read for: the results on return wait for it.
+  const cleMasquages = `${email ?? ''}|${etatReel?.maintenant ?? ''}`;
+  const [masquagesLusPour, setMasquagesLusPour] = useState<string | null>(null);
+  const masquagesLus = !doitLireMasquages || masquagesLusPour === cleMasquages;
+  const lireMasquagesPour = useCallback(async (cle: string) => {
     try {
       setMasquages(await lireMesMasquages());
     } catch {
       /* offline: the last answer stays */
+    } finally {
+      setMasquagesLusPour(cle);
     }
   }, []);
+  const rechargerMasquages = useCallback(() => lireMasquagesPour(cleMasquages), [lireMasquagesPour, cleMasquages]);
   useEffect(() => {
     if (!doitLireMasquages) {
       setMasquages([]);
       return;
     }
-    void rechargerMasquages();
-  }, [doitLireMasquages, email, etat?.maintenant, rechargerMasquages]);
+    void lireMasquagesPour(cleMasquages);
+  }, [doitLireMasquages, cleMasquages, lireMasquagesPour]);
+
+  // PUDI-CC-11: JOEL's preview, ignored for anyone else (the server rights never change).
+  const apercuStocke = useApercuStocke();
+  const joel = peutApercu(etatReel, email) && !!etatReel;
+  const apercu = apercuStocke && peutApercu(etatReel, email) ? apercuStocke : null;
+  const etat = useMemo(() => etatEffectif(etatReel, apercu), [etatReel, apercu]);
+  const masquagesVus = useMemo(
+    () =>
+      apercu ? (apercu.role === 'votant' && apercu.masque ? [masquageApercu()] : []) : masquages,
+    [apercu, masquages]
+  );
+
+  // Anonymous funnel: only once published (no test votes) and never during the preview.
+  const parcoursOk = apercu ? false : etatReel ? etatReel.publie : null;
+  useEffect(() => {
+    activerParcours(parcoursOk);
+  }, [parcoursOk]);
+  useEffect(() => {
+    noterEtape('visite');
+  }, []);
+  useEffect(() => {
+    if (parcoursOk === false) return;
+    for (const e of etapesDuChoix(brouillon.priorites.length)) noterEtape(e);
+  }, [parcoursOk, brouillon.priorites.length]);
 
   const valeur = useMemo<PudiContexteValeur>(
     () => ({
       brouillon,
       majBrouillon,
       etat,
+      etatReel,
+      joel,
+      apercu,
+      masquagesLus,
       horsLigne,
       decalage,
       clotureAt: etat?.cloture_at ?? CLOTURE_PAR_DEFAUT,
@@ -129,20 +175,24 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       envoiOuvert: !!etat && !etat.clos && (etat.publie || etat.est_admin),
       propositionsRetirees,
       effacerPropositionsRetirees,
-      masquages,
+      masquages: masquagesVus,
       rechargerMasquages
     }),
     [
       brouillon,
       majBrouillon,
       etat,
+      etatReel,
+      joel,
+      apercu,
+      masquagesLus,
       horsLigne,
       decalage,
       rechargerEtat,
       definirEtat,
       propositionsRetirees,
       effacerPropositionsRetirees,
-      masquages,
+      masquagesVus,
       rechargerMasquages
     ]
   );

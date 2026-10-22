@@ -8,6 +8,7 @@ import { usePudi } from '../PudiContexte';
 import { marquerMasquagesVus } from '../appels/masquages';
 import { useSessionLocale } from '../appels/session';
 import { dateGel, lienCourrielMasquage, lienWhatsAppMasquage, reclamationsOuvertes } from '../utils/masquage';
+import { REFERENCE_APERCU } from '../utils/apercu';
 import { Icone } from './Icones';
 
 const T = fr.masquage;
@@ -23,14 +24,16 @@ export function BandeauMasquage({ toujoursOuvert = false }: { toujoursOuvert?: b
   const marque = useRef(false);
   const m = masquages[0];
 
+  // PUDI-CC-11: fake masking of JOEL's preview, never marked as seen, links disabled.
+  const apercu = m?.id === REFERENCE_APERCU;
   useEffect(() => {
-    if (!m || marque.current || vusCetteSession) return;
+    if (!m || apercu || marque.current || vusCetteSession) return;
     marque.current = true;
     vusCetteSession = true;
     marquerMasquagesVus().catch(() => {
       vusCetteSession = false;
     });
-  }, [m]);
+  }, [m, apercu]);
 
   if (!m) return null;
   const ouvertes = reclamationsOuvertes(m.gel_listes_at, Date.now() + decalage);
@@ -59,11 +62,26 @@ export function BandeauMasquage({ toujoursOuvert = false }: { toujoursOuvert?: b
           </p>
           <p className="text-[13px] text-gris">{T.reference(m.id)}</p>
           <div className="flex gap-2" data-masquage-boutons="">
-            <a href={lienCourrielMasquage(m.id, email)} className={`${bouton} bg-marine text-white`} data-lien="courriel">
-              <Icone nom="message" className="w-4 h-4 shrink-0" />
-              {T.courriel}
-            </a>
-            {ouvertes && m.whatsapp && (
+            {apercu ? (
+              <>
+                <span aria-disabled="true" title="Aperçu : lien désactivé" className={`${bouton} bg-marine text-white opacity-60 cursor-not-allowed`} data-lien="courriel">
+                  <Icone nom="message" className="w-4 h-4 shrink-0" />
+                  {T.courriel}
+                </span>
+                {ouvertes && (
+                  <span aria-disabled="true" title="Aperçu : lien désactivé" className={`${bouton} bg-white text-marine border-2 border-marine opacity-60 cursor-not-allowed`} data-lien="whatsapp">
+                    <Icone nom="personnes" className="w-4 h-4 shrink-0" />
+                    {T.whatsapp}
+                  </span>
+                )}
+              </>
+            ) : (
+              <a href={lienCourrielMasquage(m.id, email)} className={`${bouton} bg-marine text-white`} data-lien="courriel">
+                <Icone nom="message" className="w-4 h-4 shrink-0" />
+                {T.courriel}
+              </a>
+            )}
+            {!apercu && ouvertes && m.whatsapp && (
               <a
                 href={lienWhatsAppMasquage(m.whatsapp, m.id)}
                 target="_blank"

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { PROFIL_VALEURS, programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
 import { useDonnees, usePudi } from '../PudiContexte';
-import { lireApercu, lireResultats, type LigneResultat, type Resultats as Res } from '../appels/api';
+import { lireApercu, lireMonVote, lireResultats, type LigneResultat, type Resultats as Res } from '../appels/api';
 import { csvSynthese, preparerSynthese } from '../utils/synthese';
 import { nomFichierSyntheseCsv, nomFichierSynthesePdf, telechargerFichier } from '../utils/exports';
 import { extraireCode, messageErreur } from '../utils/erreurs';
-import { dateClotureLongue, dateJour, dateLongue, heureCourte } from '../utils/format';
+import { dateClotureLongue, dateCourte, dateJour, dateLongue, heureCourte } from '../utils/format';
 import { propositionsConnues } from '../appels/propositions';
 import type { LigneProposition } from '../appels/api';
 
@@ -116,8 +116,21 @@ function Interrupteur({ actif, basculer }: { actif: boolean; basculer: () => voi
 
 export default function Resultats() {
   const { donnees } = useDonnees();
-  const { etat } = usePudi();
+  const { etat, apercu: apercuRole } = usePudi();
   const [params] = useSearchParams();
+  // PUDI-CC-11: JOEL's « Votant » preview keeps the results reserved until the (fake) vote.
+  const reserveApercu = apercuRole?.role === 'votant' && !etat?.a_vote && !etat?.clos;
+  // Results on return: « Vous avez voté le … » with « Modifier mon choix » and « Accueil ».
+  const retour = !!(useLocation().state as { retour?: boolean } | null)?.retour;
+  const [dateVote, setDateVote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!retour) return;
+    lireMonVote()
+      .then((v) => v && setDateVote(v.updated_at ?? v.created_at))
+      .catch(() => {
+        /* the line stays without its date */
+      });
+  }, [retour]);
   const [res, setRes] = useState<Res | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [charge, setCharge] = useState(true);
@@ -136,6 +149,12 @@ export default function Resultats() {
   const [erreurFichier, setErreurFichier] = useState(false);
 
   const charger = useCallback(async () => {
+    if (reserveApercu) {
+      setRes(null);
+      setCode('RESULTATS_RESERVES');
+      setCharge(false);
+      return;
+    }
     setCharge(true);
     try {
       setRes(enApercu ? await lireApercu() : await lireResultats());
@@ -145,7 +164,7 @@ export default function Resultats() {
     } finally {
       setCharge(false);
     }
-  }, [enApercu]);
+  }, [enApercu, reserveApercu]);
 
   useEffect(() => {
     // Wait for the state of the consultation when an administrator may get the preview.
@@ -316,6 +335,21 @@ export default function Resultats() {
 
   return (
     <Page titre={fr.resultats.titre}>
+      {retour && (
+        <div className="mb-4 bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 space-y-2" data-retour-resultats="">
+          <p className="text-[15px] font-bold">{dateVote ? `Vous avez voté le ${dateCourte(dateVote)}` : 'Vous avez voté'}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/choix" className={boutonSecondaire}>
+              <Icone nom="crayon" />
+              Modifier mon choix
+            </Link>
+            <Link to="/" className="inline-flex items-center gap-1.5 min-h-[44px] px-2 text-[15px] font-bold text-marine underline underline-offset-2">
+              <Icone nom="accueil" className="w-4 h-4" />
+              Accueil
+            </Link>
+          </div>
+        </div>
+      )}
       <p className="text-[14px] text-gris mb-3">{fr.resultats.indicative}</p>
       <div className="mb-4 space-y-2">
         <BandeauxEtat masquerPreparation />

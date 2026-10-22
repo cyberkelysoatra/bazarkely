@@ -6,7 +6,7 @@
 // v6: each line shows whether the person voted (never what she chose), with the participation
 // of the group and a filter.
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
@@ -35,6 +35,8 @@ import { Aide, Dialogue, champ, petitBouton, type DemandeConfirmation } from './
 
 const T = fr.groupe;
 const AUTRE = '__autre__';
+/** PUDI-CC-11: JOEL's « Responsable de groupe » preview is read-only. */
+const BLOQUE_APERCU = 'Aperçu : modification désactivée';
 
 type Chargement<D> = { t: 'cours' } | { t: 'horsLigne' } | { t: 'erreur'; message: string } | { t: 'ok'; d: D };
 
@@ -286,8 +288,10 @@ function Formulaire({
 }
 
 function ListeGroupes() {
-  const { etat } = usePudi();
-  const { etat: ch, charger } = useChargement(lireMesGroupes, 'groupes');
+  const { etat, apercu } = usePudi();
+  const canalApercu = apercu?.role === 'responsable' ? apercu.canal : null;
+  const { etat: ch0, charger } = useChargement(lireMesGroupes, 'groupes');
+  const ch: typeof ch0 = ch0.t === 'ok' && canalApercu ? { t: 'ok', d: ch0.d.filter((g) => g.code === canalApercu) } : ch0;
   return (
     <Page titre={T.titre}>
       <AideGroupe />
@@ -332,6 +336,7 @@ function ListeGroupes() {
 
 function Membres({ code }: { code: string }) {
   const { donnees } = useDonnees();
+  const lecture = usePudi().apercu?.role === 'responsable';
   const { etat: ch, charger } = useChargement(async () => {
     const [groupes, membres] = await Promise.all([lireMesGroupes(), lireMembres(code)]);
     return { groupe: groupes.find((g) => g.code === code) ?? null, membres };
@@ -368,7 +373,7 @@ function Membres({ code }: { code: string }) {
             <p className="font-bold text-[16px]" data-groupe-compte="">
               {T.membres(membres.length)}
             </p>
-            <button type="button" className={boutonPrincipal} onClick={() => setEdition('nouveau')} disabled={!!edition}>
+            <button type="button" className={boutonPrincipal} onClick={() => setEdition('nouveau')} disabled={!!edition || lecture} title={lecture ? BLOQUE_APERCU : undefined}>
               <Icone nom="plus" />
               {T.ajouter}
             </button>
@@ -420,13 +425,15 @@ function Membres({ code }: { code: string }) {
                     <p className="mt-1 text-[14px] text-gris break-all">{[m.email, m.fokontany ? `Fokontany ${m.fokontany}` : null].filter(Boolean).join(' · ')}</p>
                   )}
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <button type="button" className={petitBouton} onClick={() => setEdition(m)} disabled={!!edition}>
+                    <button type="button" className={petitBouton} onClick={() => setEdition(m)} disabled={!!edition || lecture} title={lecture ? BLOQUE_APERCU : undefined}>
                       <Icone nom="crayon" className="w-4 h-4" />
                       {T.modifier}
                     </button>
                     <button
                       type="button"
                       className={petitBouton}
+                      disabled={lecture}
+                      title={lecture ? BLOQUE_APERCU : undefined}
                       onClick={() =>
                         setDemande({
                           titre: T.supprimerTitre,
@@ -459,6 +466,15 @@ export default function Groupe() {
   const { code } = useParams();
   const session = useSessionLocale();
   const [connexion, setConnexion] = useState(false);
+  const { apercu } = usePudi();
+  // Preview: « Votant » has no group; « Responsable » sees only the chosen channel.
+  if (session && apercu?.role === 'votant')
+    return (
+      <Page titre={T.titre}>
+        <Message texte={T.aucunGroupe} icone="alerte" />
+      </Page>
+    );
+  if (session && apercu?.role === 'responsable' && code && code !== apercu.canal) return <Navigate to={`/groupe/${encodeURIComponent(apercu.canal)}`} replace />;
   if (!session)
     return (
       <Page titre={T.titre}>

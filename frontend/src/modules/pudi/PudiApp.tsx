@@ -1,7 +1,8 @@
-import { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useRef } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { BandeSecteurs, BarreBas, Chargement, EnTete } from './composants/Mise';
-import { PudiProvider } from './PudiContexte';
+import { PudiProvider, usePudi } from './PudiContexte';
+import { doitAllerAuxResultats } from './utils/apercu';
 import Accueil from './pages/Accueil';
 import Secteurs from './pages/Secteurs';
 import Secteur from './pages/Secteur';
@@ -35,11 +36,39 @@ function SuiviNavigation() {
   return null;
 }
 
+/**
+ * PUDI-CC-11: a signed-in person who already voted (vote not masked) and opens the home address
+ * in a new visit goes to « Résultats ». Decided once per page load, only while nothing was
+ * navigated since; offline or unknown state keeps the home page.
+ */
+function RetourResultats() {
+  const { pathname, key } = useLocation();
+  const navigate = useNavigate();
+  const { etat, masquages, masquagesLus, apercu } = usePudi();
+  const premiere = useRef<string | null>(null);
+  const decide = useRef(false);
+  if (premiere.current === null) premiere.current = pathname === '/' ? key : '';
+  const entreeAccueil = !!premiere.current && key === premiere.current && pathname === '/';
+  useEffect(() => {
+    if (decide.current) return;
+    if (!entreeAccueil) {
+      decide.current = true;
+      return;
+    }
+    if (doitAllerAuxResultats({ entreeAccueil, etat, masquagesLus, nbMasquages: masquages.length, apercu: !!apercu })) {
+      decide.current = true;
+      navigate('/resultats', { replace: true, state: { retour: true } });
+    }
+  }, [entreeAccueil, etat, masquagesLus, masquages.length, apercu, navigate]);
+  return null;
+}
+
 export default function PudiApp() {
   return (
     <BrowserRouter basename="/pudi">
       <PudiProvider>
         <SuiviNavigation />
+        <RetourResultats />
         <BandeSecteurs />
         <EnTete />
         <Suspense fallback={<Chargement />}>

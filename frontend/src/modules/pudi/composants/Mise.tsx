@@ -9,6 +9,7 @@ import { Icone, type NomIcone } from './Icones';
 import { basculerCommutateur, useCommutateurOuvert } from '../appels/commutateur';
 import { DeclencheurMenu } from './MenuCompte';
 import { BandeauMasquage } from './Masquage';
+import { definirApercu } from '../appels/apercu';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
 const Commutateur = lazy(() => import('./Commutateur'));
@@ -63,7 +64,40 @@ export function EnTete() {
         <span className="font-titre text-[17px] tracking-tight flex-1 min-w-0 truncate">{fr.app.titreCourt}</span>
         <DeclencheurMenu />
       </div>
+      <BandeauApercu />
     </header>
+  );
+}
+
+/** PUDI-CC-11: JOEL's role preview, pinned under the header while it is on. */
+function BandeauApercu() {
+  const { apercu } = usePudi();
+  if (!apercu) return null;
+  const role = apercu.role === 'votant' ? 'Votant' : `Responsable de groupe (${apercu.nom})`;
+  return (
+    <div className="bg-[#F2B705] text-[#2F3547]" role="status" data-bandeau-apercu="">
+      <div className="mx-auto max-w-5xl px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="flex-1 min-w-0 text-[14px] font-bold leading-snug">Mode aperçu : {role} (rien n'est enregistré)</p>
+        {apercu.role === 'votant' && (
+          <label className="inline-flex items-center gap-1.5 min-h-[36px] text-[13px] font-bold">
+            <input
+              type="checkbox"
+              checked={apercu.masque}
+              onChange={(e) => definirApercu({ ...apercu, masque: e.target.checked })}
+              className="w-4 h-4 accent-[#0B2A8C]"
+            />
+            Voir aussi : vote masqué
+          </label>
+        )}
+        <button
+          type="button"
+          onClick={() => definirApercu(null)}
+          className="min-h-[36px] px-3 rounded-lg bg-[#2F3547] text-white text-[13px] font-bold"
+        >
+          Quitter l'aperçu
+        </button>
+      </div>
+    </div>
   );
 }
 

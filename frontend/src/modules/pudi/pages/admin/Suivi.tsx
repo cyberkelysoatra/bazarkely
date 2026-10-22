@@ -8,6 +8,7 @@ import { dateCourte, heureCourte, libelleMotifRefus } from '../../utils/format';
 import { pourcent } from '../../utils/synthese';
 import { fr } from '../../i18n/fr';
 import { Aide, Chiffre, Erreur, Titre2, petitBouton, useAppel } from './communs';
+import ParcoursVisiteurs, { SANS_CANAL } from './Parcours';
 
 const PERSONNE = libelleMotifRefus('personne_deja_votee');
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -53,7 +54,7 @@ export default function Suivi() {
   }, [d, donnees]);
 
   const s = d?.suivi;
-  const nomCanal = (code: string) => d?.canaux.find((c) => c.code === code)?.nom ?? (code === '(aucun)' ? 'Sans lien de canal' : code);
+  const nomCanal = (code: string) => d?.canaux.find((c) => c.code === code)?.nom ?? (code === SANS_CANAL ? 'Sans lien de canal' : code);
   const numerosRefuses = useMemo(() => {
     const parDetenteur: Record<string, number> = {};
     for (const r of d?.refus ?? []) {
@@ -101,6 +102,8 @@ export default function Suivi() {
               </Link>
             )}
           </div>
+
+          <ParcoursVisiteurs nomCanal={nomCanal} codes={d?.canaux.map((c) => c.code) ?? []} />
 
           <Titre2 aide="Dates de Madagascar.">Votes par jour</Titre2>
           {Object.keys(s.par_jour).length ? (
