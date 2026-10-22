@@ -1,5 +1,6 @@
 // Refused attempts (a number already used by another account, or, since v6, a person who already
-// voted with another number of the same group line) and release of a number.
+// voted with another number of the same group line) and release of a number. Since PUDI-CC-09,
+// also the automatic maskings (section below the refusals).
 import { useEffect, useState } from 'react';
 import { Icone } from '../../composants/Icones';
 import { definirBadgeRefus } from '../../composants/MenuCompte';
@@ -9,6 +10,7 @@ import { marquerRefusVus } from '../../appels/refusVus';
 import { dateHeureMada } from '../../utils/exports';
 import { libelleMotifRefus } from '../../utils/format';
 import { Aide, Dialogue, Erreur, petitBouton, useAppel, type DemandeConfirmation } from './communs';
+import Masquages from './Masquages';
 
 export default function Refus() {
   const appel = useAppel(lireRefus);
@@ -90,6 +92,7 @@ export default function Refus() {
           ))}
         </ul>
       )}
+      <Masquages />
       <Dialogue demande={demande} fermer={() => setDemande(null)} />
     </div>
   );

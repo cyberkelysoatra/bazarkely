@@ -23,6 +23,10 @@ const MESSAGES: Record<string, string> = {
   CLOS: 'La consultation est close : plus aucun ajout possible.',
   EMAIL_INVALIDE: 'Adresse e-mail non reconnue : écrivez-la comme nom@gmail.com',
   RESPONSABLE_REQUIS: "Vous n'êtes pas responsable de ce groupe.",
+  NUMERO_INVALIDE: 'Numéro WhatsApp non reconnu : écrivez-le comme 034 12 345 67 ou +33 6 12 34 56 78',
+  LISTES_FIGEES: 'Les listes sont figées depuis le mardi 27/10/2026 à 18 h.',
+  MASQUAGE_INCONNU: "Ce masquage n'existe plus.",
+  DEJA_RETABLI: 'Ce vote a déjà été rétabli.',
   RESEAU: 'Le réseau ne répond pas. Réessayez.'
 };
 

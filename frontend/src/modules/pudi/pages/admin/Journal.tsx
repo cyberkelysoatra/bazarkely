@@ -21,7 +21,10 @@ const ACTIONS: Record<string, string> = {
   ajouter_proposition: 'Proposition ajoutée',
   modifier_proposition: 'Proposition modifiée',
   retirer_proposition: 'Proposition retirée',
-  retablir_proposition: 'Proposition rétablie'
+  retablir_proposition: 'Proposition rétablie',
+  masquage_auto: 'Vote masqué automatiquement (même personne)',
+  masquage_retabli: 'Vote masqué rétabli',
+  vote_refuse: 'Vote refusé'
 };
 
 const CLES: Record<string, string> = {
@@ -40,7 +43,14 @@ const CLES: Record<string, string> = {
   liste: 'liste',
   intitule: 'titre',
   origine_vote: 'vote d’origine',
-  efface: 'supprimée'
+  efface: 'supprimée',
+  masquage: 'référence',
+  canal: 'canal',
+  automatique: 'automatique',
+  whatsapp: 'numéro WhatsApp',
+  membre: 'ligne',
+  auteur_ligne: 'auteur de la ligne (compte)',
+  date: 'date'
 };
 
 function details(e: EntreeJournal): string {
@@ -49,7 +59,7 @@ function details(e: EntreeJournal): string {
     .filter(([, v]) => v !== null && v !== undefined && v !== '')
     .map(([k, v]) => {
       let val = typeof v === 'boolean' ? (v ? 'oui' : 'non') : String(v);
-      if ((k === 'avant' || k === 'apres') && typeof v === 'string') val = dateHeureMada(v);
+      if ((k === 'avant' || k === 'apres' || k === 'date') && typeof v === 'string') val = dateHeureMada(v);
       return `${CLES[k] ?? k} : ${val}`;
     })
     .join(' · ');

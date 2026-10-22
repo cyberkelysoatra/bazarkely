@@ -7,6 +7,7 @@ import { retirerPropositionsAbsentes, type Brouillon } from './utils/regles';
 import { estProposition, propositionParId, rafraichirPropositions } from './appels/propositions';
 import { CLOTURE_PAR_DEFAUT } from './utils/format';
 import { useSessionLocale } from './appels/session';
+import { lireMesMasquages, type MonMasquage } from './appels/masquages';
 
 interface PudiContexteValeur {
   brouillon: Brouillon;
@@ -26,6 +27,9 @@ interface PudiContexteValeur {
   /** Titles of the proposals removed from the draft because they were withdrawn. */
   propositionsRetirees: string[];
   effacerPropositionsRetirees: () => void;
+  /** Active automatic maskings of the signed-in account (PUDI-CC-09), empty otherwise. */
+  masquages: MonMasquage[];
+  rechargerMasquages: () => Promise<void>;
 }
 
 const Ctx = createContext<PudiContexteValeur | null>(null);
@@ -94,6 +98,24 @@ export function PudiProvider({ children }: { children: ReactNode }) {
   }, [verifierPropositions]);
   const effacerPropositionsRetirees = useCallback(() => setPropositionsRetirees([]), []);
 
+  // Maskings: read only for a signed-in account that voted, again on each new server state.
+  const [masquages, setMasquages] = useState<MonMasquage[]>([]);
+  const doitLireMasquages = !!etat?.connecte && !!etat?.a_vote;
+  const rechargerMasquages = useCallback(async () => {
+    try {
+      setMasquages(await lireMesMasquages());
+    } catch {
+      /* offline: the last answer stays */
+    }
+  }, []);
+  useEffect(() => {
+    if (!doitLireMasquages) {
+      setMasquages([]);
+      return;
+    }
+    void rechargerMasquages();
+  }, [doitLireMasquages, email, etat?.maintenant, rechargerMasquages]);
+
   const valeur = useMemo<PudiContexteValeur>(
     () => ({
       brouillon,
@@ -106,9 +128,23 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       definirEtat,
       envoiOuvert: !!etat && !etat.clos && (etat.publie || etat.est_admin),
       propositionsRetirees,
-      effacerPropositionsRetirees
+      effacerPropositionsRetirees,
+      masquages,
+      rechargerMasquages
     }),
-    [brouillon, majBrouillon, etat, horsLigne, decalage, rechargerEtat, definirEtat, propositionsRetirees, effacerPropositionsRetirees]
+    [
+      brouillon,
+      majBrouillon,
+      etat,
+      horsLigne,
+      decalage,
+      rechargerEtat,
+      definirEtat,
+      propositionsRetirees,
+      effacerPropositionsRetirees,
+      masquages,
+      rechargerMasquages
+    ]
   );
 
   return <Ctx.Provider value={valeur}>{children}</Ctx.Provider>;

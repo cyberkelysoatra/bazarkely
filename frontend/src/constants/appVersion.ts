@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.96.1';
-export const APP_VERSION_NAME = 'PUDi : une personne, un vote ; les responsables voient qui a voté (cahier v6).';
+export const APP_VERSION = '3.97.0';
+export const APP_VERSION_NAME = 'PUDi : masquage automatique de l’ancien vote d’une même personne, avis et réclamations.';
 export const LAST_UPDATED = '2026-10-22';
 export const APP_BUILD_DATE = '2026-10-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.97.0',
+    date: '2026-10-22',
+    description: 'PUDi : quand un responsable relie deux numéros qui ont chacun voté, le vote le plus récent est gardé et l’autre est masqué ; la personne est prévenue et peut réclamer.',
+    changes: [
+      'Masquage automatique (jamais d’effacement) avec une référence M-XXXXXX ; rétabli tout seul si les numéros sont séparés, ou par un organisateur avec un motif.',
+      'Bandeau pour la personne concernée : « Écrire au GIHTNB » et, si le responsable a un numéro, « Contacter le responsable du groupe sur WhatsApp » ; réclamations jusqu’au mardi 27/10/2026 à 18 h, puis listes figées.',
+      'Administration > Refus : liste « Masquages automatiques » (Gmail du compte masqué, jamais le contenu du vote ni un numéro), bouton « Rétablir », compteur au Suivi.',
+      'Responsables de groupe : numéro WhatsApp obligatoire à la désignation, avertissement pour les anciens.',
+      '« Retirer » une proposition la masque toujours (« Rétablir » fonctionne toujours) ; images propres aux secteurs Transport et Sécurité ; clôture de secours le mardi 27/10 à 8 h.'
+    ]
+  },
   {
     version: '3.96.1',
     date: '2026-10-22',

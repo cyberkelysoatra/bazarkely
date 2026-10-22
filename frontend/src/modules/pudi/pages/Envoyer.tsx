@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { Icone } from '../composants/Icones';
 import { BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
+import { BandeauMasquage } from '../composants/Masquage';
 import { PROFIL_VALEURS } from '../data';
 import { fr } from '../i18n/fr';
 import { usePudi, useDonnees } from '../PudiContexte';
@@ -29,7 +30,7 @@ function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormu
 
 export default function Envoyer() {
   const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
-  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert } = usePudi();
+  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages } = usePudi();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [vote, setVote] = useState<MonVote | null>(null);
@@ -145,7 +146,10 @@ export default function Envoyer() {
       setVote(v);
       navigate('/merci', { state: { test: v.est_test } });
     } catch (e) {
-      setErreur(messageErreur(e));
+      const er = messageErreur(e);
+      setErreur(er);
+      // PUDI-CC-09: masked vote, the notice with its two buttons is shown next to the button.
+      if (er.code === 'VOTE_MASQUE') void rechargerMasquages();
     } finally {
       setEnvoi(false);
     }
@@ -281,7 +285,11 @@ export default function Envoyer() {
           <p className="text-[13px] leading-relaxed text-gris bg-white border border-filet rounded-xl p-3">{fr.envoi.notice}</p>
 
           <ErreurChamp e={erreur} champ="choix" />
-          <ErreurChamp e={erreur} champ="general" />
+          {erreur?.code === 'VOTE_MASQUE' && masquages.length ? (
+            <BandeauMasquage toujoursOuvert />
+          ) : (
+            <ErreurChamp e={erreur} champ="general" />
+          )}
           {!envoiOuvert && etat && !etat.clos && <p className="text-[14px] text-gris">{fr.envoi.envoiFerme}</p>}
           <button type="submit" className={`${boutonPrincipal} w-full`} disabled={envoi || !envoiOuvert || !choixValide}>
             <Icone nom="envoyer" />

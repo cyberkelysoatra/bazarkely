@@ -235,6 +235,7 @@ export const fr = {
       "Ce numéro a déjà servi à voter avec un autre compte Google. Si c'est bien votre numéro, contactez le GIHTNB : l'équipe pourra vérifier.",
     PERSONNE_DEJA_VOTEE:
       "Vous avez déjà voté avec un autre numéro. Une personne ne vote qu'une fois. Pour changer vos choix, connectez-vous avec le compte utilisé pour ce vote.",
+    VOTE_MASQUE: 'Votre vote a été remplacé par un vote plus récent attribué à la même personne. Il ne peut plus être modifié.',
     RESEAU: 'Le réseau ne répond pas. Votre choix est gardé sur ce téléphone, réessayez.',
     AUTRE: 'Une erreur est survenue. Votre choix est gardé sur ce téléphone.'
   },
@@ -289,6 +290,8 @@ export const fr = {
     ],
     aideDetail:
       "Les numéros sont visibles seulement par les responsables de ce groupe et par les organisateurs. Ils sont supprimés le 28 janvier 2027 avec toutes les données de la consultation.",
+    aideWhatsApp:
+      "Le responsable est prévenu que son numéro WhatsApp pourra être montré aux seules personnes dont le vote a été masqué à cause d'une ligne qu'il a créée ou modifiée.",
     mesGroupes: 'Mes groupes',
     aucunGroupe: "Vous n'êtes responsable d'aucun groupe pour le moment. Demandez aux organisateurs de vous désigner.",
     membres: (n: number) => (n > 1 ? `${n} membres` : `${n} membre`),
@@ -335,9 +338,22 @@ export const fr = {
       NUMERO_DEJA_DANS_LE_GROUPE: 'Ce numéro est déjà dans la liste de ce groupe.',
       EMAIL_INVALIDE: 'Adresse e-mail non reconnue : écrivez-la comme nom@gmail.com',
       NUMERO_REQUIS: 'Indiquez au moins un numéro de téléphone.',
+      LISTES_FIGEES: 'Les listes sont figées depuis le mardi 27/10/2026 à 18 h.',
       RESEAU: 'Le réseau ne répond pas. Réessayez.',
       AUTRE: 'Une erreur est survenue. Réessayez.'
     }
+  },
+  masquage: {
+    titre: 'Votre vote a été masqué',
+    texte: (date: string) =>
+      `Votre vote a été remplacé par un vote plus récent attribué à la même personne. Si c'est une erreur, vous pouvez réclamer jusqu'au ${date}.`,
+    fige: (date: string) =>
+      `Votre vote a été remplacé par un vote plus récent attribué à la même personne. Les listes sont figées depuis le ${date}. Pour toute question, écrivez au GIHTNB.`,
+    reference: (ref: string) => `Référence : ${ref}`,
+    courriel: 'Écrire au GIHTNB',
+    whatsapp: 'Contacter le responsable du groupe sur WhatsApp',
+    replier: 'Réduire',
+    deplier: 'Afficher'
   },
   temps: {
     jours: ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'],

@@ -151,6 +151,7 @@ function AideGroupe() {
         <p key={p}>{p}</p>
       ))}
       <p>{T.aideDetail}</p>
+      <p data-aide-whatsapp="">{T.aideWhatsApp}</p>
     </Aide>
   );
 }

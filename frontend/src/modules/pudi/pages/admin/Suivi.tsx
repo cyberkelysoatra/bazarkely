@@ -1,5 +1,6 @@
 // Live monitoring: refreshed every 60 s while the tab is visible.
 import { useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Icone } from '../../composants/Icones';
 import { useDonnees, usePudi } from '../../PudiContexte';
 import { lireCanaux, lireRefus, lireSuivi, lireVotes } from '../../appels/admin';
@@ -83,12 +84,22 @@ export default function Suivi() {
 
       {s && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
             <Chiffre valeur={s.nb_votes} libelle="Votes comptés" icone="coche" />
             {(!etat?.publie || s.nb_tests > 0) && <Chiffre valeur={s.nb_tests} libelle="Votes de test" icone="drapeau" ton="test" />}
             <Chiffre valeur={s.nb_masques} libelle="Votes masqués" icone="oeilBarre" />
             <Chiffre valeur={s.nb_connexions} libelle="Comptes connectés" icone="personnes" />
             <Chiffre valeur={s.nb_refus} libelle="Tentatives refusées" icone="refus" ton={s.nb_refus ? 'alerte' : undefined} />
+            {s.nb_masquages_actifs !== undefined && (
+              <Link to="/admin/refus" className="block" data-suivi-masquages="">
+                <Chiffre
+                  valeur={s.nb_masquages_actifs}
+                  libelle={`Masquages automatiques (${s.nb_masquages_retablis ?? 0} rétabli${(s.nb_masquages_retablis ?? 0) > 1 ? 's' : ''})`}
+                  icone="oeilBarre"
+                  ton={s.nb_masquages_actifs ? 'alerte' : undefined}
+                />
+              </Link>
+            )}
           </div>
 
           <Titre2 aide="Dates de Madagascar.">Votes par jour</Titre2>

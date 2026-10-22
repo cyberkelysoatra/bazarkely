@@ -13,6 +13,9 @@ export interface Suivi {
   nb_masques: number;
   nb_connexions: number;
   nb_refus: number;
+  /** Automatic maskings (PUDI-CC-09), absent on an older server answer. */
+  nb_masquages_actifs?: number;
+  nb_masquages_retablis?: number;
   par_jour: Record<string, number>;
   par_canal: { code: string; n: number; hors_liste: number }[];
   dans_nos_reseaux: number;
@@ -76,6 +79,22 @@ export interface Refus {
   id_anonyme_detenteur: string | null;
 }
 
+/** Automatic masking as seen by the organisers: never a vote's content, never a phone number. */
+export interface MasquageAdmin {
+  id: string;
+  at: string;
+  canal_code: string | null;
+  /** Gmail of the person who created or last modified the line. */
+  auteur_email: string | null;
+  /** Gmail of the masked account (to answer a claim). */
+  email_masque: string | null;
+  id_anonyme: string;
+  retabli_at: string | null;
+  retabli_motif: string | null;
+  retabli_par_email: string | null;
+  vu_at: string | null;
+}
+
 export interface EntreeJournal {
   at: string;
   email: string | null;
@@ -91,6 +110,8 @@ export const masquerVote = (id: string, masque: boolean, motif: string | null) =
 export const lireRefus = () => rpc<Refus[]>('pudi_admin_refus');
 export const libererNumero = (id: string, motif: string) =>
   rpc<null>('pudi_admin_liberer_numero', { p_id_anonyme: id, p_motif: motif });
+export const lireMasquages = () => rpc<MasquageAdmin[]>('pudi_admin_masquages');
+export const retablirMasquage = (id: string, motif: string) => rpc<null>('pudi_admin_masquage_retablir', { p_id: id, p_motif: motif });
 export const lireCanaux = () => rpc<Canal[]>('pudi_admin_canaux');
 export const enregistrerCanal = (c: Omit<Canal, 'nb_numeros' | 'nb_votes' | 'nb_votes_hors_liste'>) =>
   rpc<null>('pudi_admin_canal_enregistrer', {

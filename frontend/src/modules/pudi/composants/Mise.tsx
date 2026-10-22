@@ -8,6 +8,7 @@ import { usePudi } from '../PudiContexte';
 import { Icone, type NomIcone } from './Icones';
 import { basculerCommutateur, useCommutateurOuvert } from '../appels/commutateur';
 import { DeclencheurMenu } from './MenuCompte';
+import { BandeauMasquage } from './Masquage';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
 const Commutateur = lazy(() => import('./Commutateur'));
@@ -83,10 +84,11 @@ function Bandeau({ icone, titre, texte, ton }: { icone: NomIcone; titre?: string
   );
 }
 
-/** Banners from pudi_etat(): preparation (D4 B), admin test mode, closed, offline. */
+/** Banners from pudi_etat(): masked vote (PUDI-CC-09), preparation (D4 B), admin test mode, closed, offline. */
 export function BandeauxEtat({ masquerPreparation = false }: { masquerPreparation?: boolean }) {
-  const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees } = usePudi();
+  const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees, masquages } = usePudi();
   const items: ReactNode[] = [];
+  if (masquages.length) items.push(<BandeauMasquage key="masquage" />);
   if (propositionsRetirees.length)
     items.push(
       <div key="retrait" role="alert" className="border-l-4 bg-white border-[#B85317] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">

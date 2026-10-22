@@ -13,6 +13,10 @@
    "20261020_LISTE_Resumes-Programmes_v1.md (résumés rédigés par le GIHTNB)",
    "20261021_LISTE_References-PUDi_v1.md (libellés complets du .docx du PIC, pages et précisions)"
   ],
+  "creditsImages": [
+   "transport.webp : vue aérienne du port de Hell-Ville, présentation du PIC",
+   "securite.webp : caméras de surveillance sur un poteau, photo de Michał Jakubowski sur Unsplash (licence Unsplash, usage libre)"
+  ],
   "tranches": [
    {
     "id": 1,
@@ -166,7 +170,7 @@
    "couleur": "#E16A22",
    "couleurFoncee": "#B85317",
    "images": [
-    "energie-transport-securite.webp"
+    "transport.webp"
    ]
   },
   {
@@ -185,7 +189,7 @@
    "couleur": "#2C3C82",
    "couleurFoncee": "#2C3C82",
    "images": [
-    "energie-transport-securite.webp"
+    "securite.webp"
    ]
   }
  ],

@@ -55,9 +55,9 @@ describe('libelleQr', () => {
 });
 
 describe('CLOTURE_PAR_DEFAUT', () => {
-  it('Monday 26 October 2026 at 8 h, Madagascar time', () => {
-    expect(CLOTURE_PAR_DEFAUT).toBe('2026-10-26T08:00:00+03:00');
-    expect(dateClotureLongue(CLOTURE_PAR_DEFAUT)).toBe('lundi 26 octobre 2026 à 8 h (heure de Madagascar)');
+  it('Tuesday 27 October 2026 at 8 h, Madagascar time', () => {
+    expect(CLOTURE_PAR_DEFAUT).toBe('2026-10-27T08:00:00+03:00');
+    expect(dateClotureLongue(CLOTURE_PAR_DEFAUT)).toBe('mardi 27 octobre 2026 à 8 h (heure de Madagascar)');
   });
 });
 

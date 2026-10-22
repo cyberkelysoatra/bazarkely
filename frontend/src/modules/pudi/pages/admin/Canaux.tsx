@@ -18,10 +18,10 @@ import {
 } from '../../appels/admin';
 import { genererQrPng, lienCanal, nomFichierQr } from '../../appels/qr';
 import { ajouterResponsable, lireResponsables, retirerResponsable, type Responsable } from '../../appels/groupe';
-import { EMAIL_VALIDE } from '../../utils/groupe';
+import { EMAIL_VALIDE, afficherNumero } from '../../utils/groupe';
 import { apercuNumeros, lireCollage, lireCsvNumeros, suggererCode } from '../../utils/listes';
 import { dateHeureMada, telechargerFichier } from '../../utils/exports';
-import { codeCanalValide } from '../../utils/regles';
+import { codeCanalValide, normaliserTelephone } from '../../utils/regles';
 import { Aide, Dialogue, Erreur, Titre2, champ, messageAdmin, petitBouton, useAppel, type DemandeConfirmation } from './communs';
 
 const TYPES: { v: TypeCanal; l: string; icone: NomIcone }[] = [
@@ -133,11 +133,14 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
 /**
  * Group managers of one channel (PUDI-CC-07): Google e-mails allowed to keep the channel's member
  * list in « Mon groupe ». A channel may have several managers; a manager may manage several channels.
+ * PUDI-CC-09: a WhatsApp number is required (shown only to the persons whose vote was masked because
+ * of a line this manager wrote). A manager designated before has a warning and can be completed.
  */
 function Responsables({ canal, demander }: { canal: Canal; demander: (d: DemandeConfirmation) => void }) {
   const [liste, setListe] = useState<Responsable[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [cours, setCours] = useState(false);
   const charger = useCallback(async () => {
     try {
@@ -154,11 +157,13 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
     e.preventDefault();
     const v = email.trim().toLowerCase();
     if (!EMAIL_VALIDE.test(v)) return setErreur(messageAdmin('PUDI_EMAIL_INVALIDE'));
+    if (!normaliserTelephone(whatsapp.trim())) return setErreur(messageAdmin('PUDI_NUMERO_INVALIDE'));
     setCours(true);
     setErreur(null);
     try {
-      await ajouterResponsable(canal.code, v);
+      await ajouterResponsable(canal.code, v, whatsapp);
       setEmail('');
+      setWhatsapp('');
       await charger();
     } catch (er) {
       setErreur(messageAdmin(er));
@@ -179,8 +184,33 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
       ) : (
         <ul className="mt-1 space-y-1">
           {(liste ?? []).map((r) => (
-            <li key={r.email} className="flex items-center gap-2 text-[14px]">
-              <span className="min-w-0 flex-1 break-all">{r.email}</span>
+            <li key={r.email} className="flex flex-wrap items-center gap-2 text-[14px]" data-responsable={r.email}>
+              <span className="min-w-0 flex-1">
+                <span className="block break-all">{r.email}</span>
+                {r.whatsapp ? (
+                  <span className="block text-[13px] text-gris" data-whatsapp="">
+                    WhatsApp : {afficherNumero(r.whatsapp)}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[13px] font-bold text-[#9C3F21]" data-whatsapp-manquant="">
+                    <Icone nom="alerte" className="w-3.5 h-3.5" />
+                    Numéro WhatsApp manquant
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                className={petitBouton}
+                aria-label={`Modifier le numéro WhatsApp de ${r.email}`}
+                onClick={() => {
+                  setEmail(r.email);
+                  setWhatsapp(r.whatsapp ? afficherNumero(r.whatsapp) : '');
+                  setErreur(null);
+                }}
+              >
+                <Icone nom="crayon" className="w-4 h-4" />
+                Modifier
+              </button>
               <button
                 type="button"
                 className={petitBouton}
@@ -205,9 +235,9 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
           ))}
         </ul>
       )}
-      <form onSubmit={ajouter} className="mt-2 flex gap-1.5" aria-label={`Ajouter un responsable à ${canal.nom}`} noValidate>
+      <form onSubmit={ajouter} className="mt-2 flex flex-wrap gap-1.5" aria-label={`Ajouter un responsable à ${canal.nom}`} noValidate>
         <input
-          className={`${champ} flex-1 min-w-0`}
+          className={`${champ} flex-1 min-w-[12rem]`}
           type="email"
           inputMode="email"
           autoComplete="off"
@@ -218,11 +248,26 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
           onChange={(e) => setEmail(e.target.value)}
           name="responsable_email"
         />
-        <button type="submit" className={petitBouton} disabled={cours || !email.trim()}>
+        <input
+          className={`${champ} flex-1 min-w-[9rem]`}
+          type="tel"
+          inputMode="tel"
+          autoComplete="off"
+          placeholder="WhatsApp : 034 12 345 67"
+          aria-label={`Numéro WhatsApp du responsable de ${canal.nom}`}
+          value={whatsapp}
+          maxLength={24}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          name="responsable_whatsapp"
+        />
+        <button type="submit" className={petitBouton} disabled={cours || !email.trim() || !whatsapp.trim()}>
           <Icone nom="plus" className="w-4 h-4" />
-          {cours ? '…' : 'Ajouter'}
+          {cours ? '…' : 'Enregistrer'}
         </button>
       </form>
+      <p className="mt-1 text-[13px] text-gris" data-avis-whatsapp="">
+        {fr.groupe.aideWhatsApp}
+      </p>
       {erreur && (
         <p role="alert" className="mt-1 text-[14px] font-bold text-[#9C3F21]">
           {erreur}
@@ -441,7 +486,7 @@ export default function Canaux() {
       <Aide titre="Canaux et listes">
         <p>Un canal = un groupe WhatsApp, une réunion, une affiche… Chaque canal a son lien et son QR code : les votes arrivés par ce lien sont comptés pour le canal.</p>
         <p>« Importer une liste » : les numéros de téléphone des membres d'un groupe, fournis par un partenaire. Ils servent à mesurer la portée des réseaux et à repérer un lien utilisé hors de son groupe.</p>
-        <p>« Responsables » : les adresses Gmail des personnes qui tiennent la liste des membres du groupe (menu en haut à droite, « Mon groupe »). Les numéros qu'elles saisissent sont reconnus comme pour une liste importée.</p>
+        <p>« Responsables » : les adresses Gmail des personnes qui tiennent la liste des membres du groupe (menu en haut à droite, « Mon groupe »). Les numéros qu'elles saisissent sont reconnus comme pour une liste importée. Chaque responsable a aussi un numéro WhatsApp (obligatoire) : il n'est montré qu'aux personnes dont le vote a été masqué à cause d'une ligne qu'il a créée ou modifiée, pour réclamer.</p>
         <p>Le code d'un canal ne change plus après sa création (il est dans les liens et les QR codes déjà diffusés). Pour arrêter un canal, décochez « Canal actif ».</p>
       </Aide>
       {appel.erreur && <Erreur texte={appel.erreur} reessayer={() => void appel.recharger()} />}

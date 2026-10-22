@@ -36,6 +36,8 @@ export interface SaisieMembre {
 export interface Responsable {
   email: string;
   ajoute_at: string;
+  /** Normalised WhatsApp number (PUDI-CC-09); null for a manager designated before it was required. */
+  whatsapp: string | null;
 }
 
 export const lireMesGroupes = () => rpc<Groupe[]>('pudi_mes_groupes');
@@ -53,7 +55,8 @@ export const enregistrerMembre = (canal: string, s: SaisieMembre) =>
 export const supprimerMembre = (canal: string, id: string) => rpc<null>('pudi_groupe_membre_supprimer', { p_canal: canal, p_id: id });
 
 export const lireResponsables = (canal: string) => rpc<Responsable[]>('pudi_admin_responsables', { p_canal: canal });
-export const ajouterResponsable = (canal: string, email: string) =>
-  rpc<null>('pudi_admin_responsable_ajouter', { p_canal: canal, p_email: email.trim().toLowerCase() });
+/** Designation, or update of the WhatsApp number of an existing manager (same Gmail). */
+export const ajouterResponsable = (canal: string, email: string, whatsapp: string) =>
+  rpc<null>('pudi_admin_responsable_ajouter', { p_canal: canal, p_email: email.trim().toLowerCase(), p_whatsapp: whatsapp.trim() });
 export const retirerResponsable = (canal: string, email: string) =>
   rpc<null>('pudi_admin_responsable_retirer', { p_canal: canal, p_email: email });

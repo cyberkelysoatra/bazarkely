@@ -50,8 +50,8 @@ export default function Propositions() {
         <>
           <p>« {p.intitule} »</p>
           <p>
-            Si aucun vote ne la cite, elle est supprimée. Sinon elle est masquée : elle disparaît du choix et des résultats publics, les votes
-            qui la citent sont conservés. Le motif est inscrit au journal.
+            Elle est masquée, jamais supprimée : elle disparaît du choix et des résultats publics, les votes qui la citent sont conservés, et
+            « Rétablir » la remet en place. Le motif est inscrit au journal.
           </p>
         </>
       ),
@@ -60,7 +60,11 @@ export default function Propositions() {
       danger: true,
       action: async (motif) => {
         const r = await retirerProposition(p.id, motif);
-        setMessage(r.efface ? 'Supprimée (aucun vote)' : `Masquée : ${r.votes} vote${r.votes > 1 ? 's' : ''} la ${r.votes > 1 ? 'citent' : 'cite'}, ${r.votes > 1 ? 'ils sont conservés' : 'il est conservé'}.`);
+        setMessage(
+          r.votes
+            ? `Masquée : ${r.votes} vote${r.votes > 1 ? 's' : ''} la ${r.votes > 1 ? 'citent' : 'cite'}, ${r.votes > 1 ? 'ils sont conservés' : 'il est conservé'}.`
+            : 'Masquée (aucun vote ne la cite). « Rétablir » la remet en place.'
+        );
         await actualiser();
       }
     });
@@ -86,7 +90,7 @@ export default function Propositions() {
           proposition ajoutée tard est signalée comme telle dans la synthèse.
         </p>
         <p>Les propositions sont comptées à part dans les résultats, jamais mêlées aux 52 programmes. Les nombres de votes ci-dessous ne comptent que les votes réels (ni test, ni masqués).</p>
-        <p>« Retirer » demande un motif : la proposition est supprimée si personne ne l'a choisie, sinon masquée (les votes restent).</p>
+        <p>« Retirer » demande un motif : la proposition est masquée, jamais supprimée (les votes restent), et « Rétablir » la remet en place.</p>
       </Aide>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">

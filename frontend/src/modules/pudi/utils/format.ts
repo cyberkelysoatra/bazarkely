@@ -3,9 +3,9 @@ import { fr } from '../i18n/fr';
 
 /**
  * Offline fallback of the closing time only: online, the server value pudi_settings.cloture_at
- * always wins. Monday 26 October 2026 at 8 h (Madagascar time), as set by the organisers.
+ * always wins. Tuesday 27 October 2026 at 8 h (Madagascar time), as set by JOEL on the server.
  */
-export const CLOTURE_PAR_DEFAUT = '2026-10-26T08:00:00+03:00';
+export const CLOTURE_PAR_DEFAUT = '2026-10-27T08:00:00+03:00';
 
 const MADA_OFFSET_MS = 3 * 3600 * 1000; // Madagascar = UTC+3, no daylight saving
 

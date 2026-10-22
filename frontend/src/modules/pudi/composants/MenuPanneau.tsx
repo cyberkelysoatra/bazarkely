@@ -13,11 +13,17 @@ import { abonnerInstallation, installationDisponible, lancerInstallation } from 
 import { connexionGoogle, deconnexion, useSessionLocale } from '../appels/session';
 import { lireCanal } from '../appels/provenance';
 import { VERSION_PUDI, rechercherMiseAJour, type ResultatMiseAJour } from '../appels/miseAJour';
-import { refusVus } from '../appels/refusVus';
+import { refusVus, retablisVus } from '../appels/refusVus';
 import { dateCourte } from '../utils/format';
 import { fr } from '../i18n/fr';
 
 const LARGEUR = 300;
+
+
+/** Refusals and restored maskings not seen yet on the Refus screen (this device). */
+function nonVus(n: { refus: number; retablis: number }): number {
+  return Math.max(0, n.refus - refusVus()) + Math.max(0, n.retablis - retablisVus());
+}
 
 export function lienConsultation(): string {
   const canal = lireCanal();
@@ -72,7 +78,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
   const panneau = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; maxH: number } | null>(null);
   const [dateVote, setDateVote] = useState<string | null>(null);
-  const [nbRefus, setNbRefus] = useState<number | null>(null);
+  const [nbRefus, setNbRefus] = useState<{ refus: number; retablis: number } | null>(null);
   const [partageSecours, setPartageSecours] = useState(false);
   const [copie, setCopie] = useState(false);
   const [confirmerSortie, setConfirmerSortie] = useState(false);
@@ -130,10 +136,12 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
           if (actif && v) setDateVote(v.updated_at ?? v.created_at);
         }
         if (e.est_admin) {
-          const s = await rpc<{ nb_refus: number }>('pudi_admin_suivi');
+          const s = await rpc<{ nb_refus: number; nb_masquages_retablis?: number }>('pudi_admin_suivi');
           if (!actif) return;
-          setNbRefus(s.nb_refus);
-          definirBadgeRefus(s.nb_refus - refusVus());
+          // Unseen refusals + unseen restorations of automatic maskings (both on the Refus screen).
+          const n = { refus: s.nb_refus, retablis: s.nb_masquages_retablis ?? 0 };
+          setNbRefus(n);
+          definirBadgeRefus(nonVus(n));
         }
       } catch {
         /* offline or expired session: the items stay as they are */
@@ -194,7 +202,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
   const responsable = !!session && (!!etat?.est_responsable || admin);
   const reserve = !clos && !etat?.a_vote && !admin;
   const connexionNecessaire = 'Connexion nécessaire';
-  const badge = nbRefus === null ? 0 : Math.max(0, nbRefus - refusVus());
+  const badge = nbRefus === null ? 0 : nonVus(nbRefus);
 
   return createPortal(
     <div
