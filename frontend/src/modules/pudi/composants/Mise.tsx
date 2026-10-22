@@ -128,15 +128,18 @@ export function RangeeLogos({ titre = true }: { titre?: boolean }) {
   return (
     <div>
       {titre && <p className="text-[13px] text-gris mb-2">{fr.accueil.partenaires}</p>}
-      <ul className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      {/* Justified on one line: first logo on the left edge, last on the right edge. Logos shrink
+          below 400 px and still fit from 300 px (about 190 px of logos); narrower, they may wrap,
+          centred, never leaving one stuck on the left. */}
+      <ul className="flex flex-nowrap justify-between items-center gap-x-2 max-[299px]:flex-wrap max-[299px]:justify-evenly max-[299px]:gap-y-3">
         {LOGOS.map((l) => (
-          <li key={l.fichier} className="h-11 flex items-center">
+          <li key={l.fichier} className="shrink-0 flex items-center">
             <Image
               src={`/pudi/images/${l.fichier}`}
               alt={l.alt}
               width={l.l}
               height={l.h}
-              className="h-11 w-auto object-contain"
+              className="h-8 min-[400px]:h-11 w-auto object-contain"
               fondSecours="transparent"
             />
           </li>

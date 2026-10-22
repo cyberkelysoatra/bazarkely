@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.97.0';
-export const APP_VERSION_NAME = 'PUDi : masquage automatique de l’ancien vote d’une même personne, avis et réclamations.';
+export const APP_VERSION = '3.97.1';
+export const APP_VERSION_NAME = 'PUDi : logos des partenaires répartis sur toute la ligne.';
 export const LAST_UPDATED = '2026-10-22';
 export const APP_BUILD_DATE = '2026-10-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.97.1',
+    date: '2026-10-22',
+    description: 'PUDi : les cinq logos des partenaires sont répartis sur toute la largeur, du bord gauche au bord droit.',
+    changes: [
+      'Une seule ligne de logos dès 300 px de large ; logos un peu plus petits sous 400 px, proportions gardées.'
+    ]
+  },
   {
     version: '3.97.0',
     date: '2026-10-22',
