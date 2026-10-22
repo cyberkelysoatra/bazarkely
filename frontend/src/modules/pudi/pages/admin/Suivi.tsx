@@ -3,11 +3,12 @@ import { useEffect, useMemo } from 'react';
 import { Icone } from '../../composants/Icones';
 import { useDonnees, usePudi } from '../../PudiContexte';
 import { lireCanaux, lireRefus, lireSuivi, lireVotes } from '../../appels/admin';
-import { dateCourte, heureCourte } from '../../utils/format';
+import { dateCourte, heureCourte, libelleMotifRefus } from '../../utils/format';
 import { pourcent } from '../../utils/synthese';
 import { fr } from '../../i18n/fr';
 import { Aide, Chiffre, Erreur, Titre2, petitBouton, useAppel } from './communs';
 
+const PERSONNE = libelleMotifRefus('personne_deja_votee');
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const jourCourt = (iso: string) => {
   const [a, m, j] = iso.split('-').map(Number);
@@ -55,7 +56,7 @@ export default function Suivi() {
   const numerosRefuses = useMemo(() => {
     const parDetenteur: Record<string, number> = {};
     for (const r of d?.refus ?? []) {
-      const k = r.id_anonyme_detenteur ?? 'numéro libéré';
+      const k = r.motif === 'personne_deja_votee' ? PERSONNE : (r.id_anonyme_detenteur ?? 'numéro libéré');
       parDetenteur[k] = (parDetenteur[k] ?? 0) + 1;
     }
     return Object.entries(parDetenteur).sort((a, b) => b[1] - a[1]);
@@ -197,7 +198,7 @@ export default function Suivi() {
                 <ul className="text-[14px] space-y-1">
                   {numerosRefuses.map(([k, n]) => (
                     <li key={k}>
-                      Numéro du vote <span className="font-bold">{k}</span> : {n} tentative{n > 1 ? 's' : ''}
+                      {k === PERSONNE ? k : <>Numéro du vote <span className="font-bold">{k}</span></>} : {n} tentative{n > 1 ? 's' : ''}
                     </li>
                   ))}
                 </ul>

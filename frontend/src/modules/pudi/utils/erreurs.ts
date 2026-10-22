@@ -17,7 +17,8 @@ const CHAMPS: Record<string, ChampFormulaire> = {
   URGENTS: 'choix',
   MANQUANT: 'choix',
   NUMERO_INVALIDE: 'telephone',
-  NUMERO_DEJA_UTILISE: 'telephone'
+  NUMERO_DEJA_UTILISE: 'telephone',
+  PERSONNE_DEJA_VOTEE: 'telephone'
 };
 
 /** Extracts the PUDi code from an error (message 'PUDI_X', returned {erreur: 'PUDI_X'}, or a code). */

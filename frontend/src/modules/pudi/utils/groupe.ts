@@ -41,6 +41,19 @@ export function filtrerMembres<T extends MembreAffichable>(membres: T[], requete
   });
 }
 
+export type FiltreVote = 'tous' | 'aVote' | 'pasEncore';
+
+/** Participation of a list (v6): lines that voted, total, rounded percentage (0 for an empty list). */
+export function participation(membres: { a_vote: boolean }[]): { votants: number; total: number; pct: number } {
+  const total = membres.length;
+  const votants = membres.filter((m) => m.a_vote).length;
+  return { votants, total, pct: total ? Math.round((votants * 100) / total) : 0 };
+}
+
+export function filtrerParVote<T extends { a_vote: boolean }>(membres: T[], filtre: FiltreVote): T[] {
+  return filtre === 'tous' ? membres : membres.filter((m) => m.a_vote === (filtre === 'aVote'));
+}
+
 /** Checks the form like the server does. Returns a PUDI_ code or null. */
 export function verifierSaisie(numeros: string[], email: string): string | null {
   const remplis = numeros.map((n) => n.trim()).filter(Boolean);

@@ -9,6 +9,8 @@ export interface Groupe {
   nom: string;
   type: string;
   nb_membres: number;
+  /** Members (lines) with at least one number matching a vote (v6). */
+  nb_ayant_vote: number;
 }
 
 export interface Membre {
@@ -19,6 +21,8 @@ export interface Membre {
   etablissement: string | null;
   fokontany: string | null;
   modifie_at: string;
+  /** True when one number of the line voted. Never the choices, the date or which number. */
+  a_vote: boolean;
 }
 
 export interface SaisieMembre {

@@ -3,6 +3,8 @@
 // Gmail address, establishment and fokontany. The numbers feed the channel's list
 // « Saisie des responsables » on the server, so these members count « dans nos réseaux ».
 // Online only (the list is never kept on the device): offline shows a clear message.
+// v6: each line shows whether the person voted (never what she chose), with the participation
+// of the group and a filter.
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
@@ -19,7 +21,15 @@ import {
   type Membre,
   type SaisieMembre
 } from '../appels/groupe';
-import { afficherNumero, filtrerMembres, messageGroupe, verifierSaisie } from '../utils/groupe';
+import {
+  afficherNumero,
+  filtrerMembres,
+  filtrerParVote,
+  messageGroupe,
+  participation,
+  verifierSaisie,
+  type FiltreVote
+} from '../utils/groupe';
 import { extraireCode } from '../utils/erreurs';
 import { Aide, Dialogue, champ, petitBouton, type DemandeConfirmation } from './admin/communs';
 
@@ -77,6 +87,60 @@ function Message({ texte, reessayer, icone = 'horsLigne' }: { texte: string; ree
         </button>
       )}
     </div>
+  );
+}
+
+function Participation({ membres }: { membres: Membre[] }) {
+  const p = participation(membres);
+  return (
+    <div className="bg-white border border-filet rounded-xl p-3" data-groupe-participation="">
+      <p className="font-bold text-[15px] text-marine">{T.participation(p.votants, p.total, p.pct)}</p>
+      <div
+        className="mt-2 h-2.5 rounded-full bg-filet overflow-hidden"
+        role="progressbar"
+        aria-label={T.participation(p.votants, p.total, p.pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={p.pct}
+      >
+        <div className="h-full rounded-full bg-marine" style={{ width: `${p.pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function FiltresVote({ filtre, choisir }: { filtre: FiltreVote; choisir: (f: FiltreVote) => void }) {
+  const options: FiltreVote[] = ['tous', 'aVote', 'pasEncore'];
+  return (
+    <div role="group" aria-label={T.filtreTitre} className="flex flex-wrap gap-1.5" data-groupe-filtre-vote="">
+      {options.map((f) => (
+        <button
+          key={f}
+          type="button"
+          aria-pressed={filtre === f}
+          onClick={() => choisir(f)}
+          className={`pudi-focus min-h-[40px] px-3 rounded-full border-2 text-[14px] font-bold ${
+            filtre === f ? 'bg-marine border-marine text-white' : 'bg-white border-filet text-marine'
+          }`}
+        >
+          {T.filtres[f]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BadgeVote({ aVote }: { aVote: boolean }) {
+  return aVote ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-marine text-white text-[13px] font-bold px-2.5 py-0.5" data-vote="oui">
+      <Icone nom="coche" className="w-3.5 h-3.5" />
+      {T.aVote}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full border border-gris/40 text-gris text-[13px] px-2.5 py-0.5" data-vote="non">
+      <Icone nom="horloge" className="w-3.5 h-3.5" />
+      {T.pasEncoreVote}
+    </span>
   );
 }
 
@@ -247,7 +311,10 @@ function ListeGroupes() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-bold text-[15px] leading-snug break-words">{g.nom}</span>
-                      <span className="block text-[13px] text-gris">{T.membres(g.nb_membres)}</span>
+                      <span className="block text-[13px] text-gris">
+                        {T.membres(g.nb_membres)}
+                        {g.nb_membres > 0 && ` · ${T.participation(g.nb_ayant_vote, g.nb_membres, Math.round((g.nb_ayant_vote * 100) / g.nb_membres))}`}
+                      </span>
                     </span>
                     <Icone nom="droite" className="w-5 h-5 text-marine shrink-0" />
                   </Link>
@@ -269,12 +336,13 @@ function Membres({ code }: { code: string }) {
     return { groupe: groupes.find((g) => g.code === code) ?? null, membres };
   }, `membres:${code}`);
   const [recherche, setRecherche] = useState('');
+  const [filtre, setFiltre] = useState<FiltreVote>('tous');
   const [edition, setEdition] = useState<Membre | 'nouveau' | null>(null);
   const [demande, setDemande] = useState<DemandeConfirmation | null>(null);
   const [annonce, setAnnonce] = useState<string | null>(null);
   const fokontanyListe = useMemo(() => (donnees?.fokontany ?? []).filter((f) => f.ceni).map((f) => f.affichage), [donnees]);
   const membres = ch.t === 'ok' ? ch.d.membres : [];
-  const visibles = useMemo(() => filtrerMembres(membres, recherche), [membres, recherche]);
+  const visibles = useMemo(() => filtrerParVote(filtrerMembres(membres, recherche), filtre), [membres, recherche, filtre]);
   const groupe: GroupeServeur | null = ch.t === 'ok' ? ch.d.groupe : null;
 
   const recharger = async (message: string) => {
@@ -310,6 +378,7 @@ function Membres({ code }: { code: string }) {
               {annonce}
             </p>
           )}
+          {membres.length > 0 && <Participation membres={membres} />}
           {edition === 'nouveau' && (
             <Formulaire canal={code} membre={null} fokontanyListe={fokontanyListe} fermer={() => setEdition(null)} enregistre={() => void recharger(T.enregistre)} />
           )}
@@ -323,8 +392,9 @@ function Membres({ code }: { code: string }) {
               {recherche.trim() && <span className="block text-[13px] text-gris mt-1" data-groupe-filtre="">{T.resultats(visibles.length, membres.length)}</span>}
             </label>
           )}
+          {membres.length > 0 && <FiltresVote filtre={filtre} choisir={setFiltre} />}
           {!membres.length && edition !== 'nouveau' && <p className="text-gris text-[15px]">{T.aucunMembre}</p>}
-          {membres.length > 0 && !visibles.length && <p className="text-gris text-[15px]">{T.aucunResultat}</p>}
+          {membres.length > 0 && !visibles.length && <p className="text-gris text-[15px]">{recherche.trim() ? T.aucunResultat : T.aucunFiltre}</p>}
           <ul className="space-y-2">
             {visibles.map((m) =>
               edition !== 'nouveau' && edition?.id === m.id ? (
@@ -333,7 +403,10 @@ function Membres({ code }: { code: string }) {
                 </li>
               ) : (
                 <li key={m.id} className="bg-white border border-filet rounded-xl p-3" data-membre={m.id}>
-                  {m.etablissement && <p className="font-bold text-[15px] break-words mb-1">{m.etablissement}</p>}
+                  <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 mb-1">
+                    {m.etablissement ? <p className="font-bold text-[15px] break-words min-w-0">{m.etablissement}</p> : <span />}
+                    <BadgeVote aVote={m.a_vote} />
+                  </div>
                   <ul className="text-[15px] font-mono space-y-0.5">
                     {m.numeros.map((n) => (
                       <li key={n} className="flex items-center gap-1.5">

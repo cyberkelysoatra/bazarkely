@@ -6,7 +6,7 @@ import { MAX_RESULTATS, construireIndex, normaliser, premiers, rechercher, type 
 
 const D = donneesBrutes as unknown as PudiDonnees;
 const PROPOSITIONS: PropositionIndexable[] = [
-  { id: 'P1', intitule: 'Nouveau CHRD (Centre hospitalier de référence de district)', lieu: null, source: 'Réunion PIC3 du 20/10/2026', precision: 'Le PUDi recense le CHRD II existant (p. 34) et ne programme pas de nouveau CHRD.' },
+  { id: 'P1', intitule: 'Hôpital de niveau régional à Nosy Be', lieu: null, source: 'Réunion PIC3 du 20/10/2026', precision: "Demande exprimée en réunion PIC3 : soigner sur place les malades aujourd'hui évacués vers Antsiranana." },
   { id: 'P2', intitule: 'Projets pour Nosy Sakatia', lieu: 'Nosy Sakatia', source: 'Réunion PIC3 du 20/10/2026', precision: null },
   { id: 'P3', intitule: 'Sécurité de la bande littorale des 300 m', lieu: 'Littoral', source: 'Sondage des opérateurs des 18 et 19/10/2026', precision: null },
   { id: 'P4', intitule: 'Lutte contre les nuisances sonores nocturnes', lieu: null, source: 'Sondage des opérateurs des 18 et 19/10/2026', precision: null },
@@ -34,11 +34,11 @@ describe('rechercher (B6)', () => {
     expect(ids('toilettes')[0]).toBe('W4');
   });
 
-  it('« CHRD », « hôpital », « hopital » give A6 first, then H1 (PUDI-CC-07)', () => {
-    for (const q of ['CHRD', 'chrd', 'hôpital', 'hopital']) {
+  it('« CHRD », « CHRR », « hôpital », « évacuation sanitaire » give P1, then A6, then H1 (v6)', () => {
+    for (const q of ['CHRD', 'chrd', 'CHRR', 'hôpital', 'hopital', 'Hôpital', 'évacuation sanitaire', 'Evacuation Sanitaire']) {
       const r = rechercher(index, q);
-      expect(r.directs.map((x) => x.id)).toEqual(['A6', 'H1']);
-      expect(ids(q)[0]).toBe('A6');
+      expect(r.directs.map((x) => x.id)).toEqual(['P1', 'A6', 'H1']);
+      expect(ids(q).slice(0, 3)).toEqual(['P1', 'A6', 'H1']);
     }
   });
 

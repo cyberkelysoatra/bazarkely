@@ -71,6 +71,8 @@ export interface Connexion {
 export interface Refus {
   at: string;
   email_refuse: string | null;
+  /** numero_deja_utilise | personne_deja_votee (v6). */
+  motif: string | null;
   id_anonyme_detenteur: string | null;
 }
 

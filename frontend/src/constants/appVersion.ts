@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.96.0';
-export const APP_VERSION_NAME = 'PUDi : responsables de groupe et listes des membres, textes demandés par le PIC.';
+export const APP_VERSION = '3.96.1';
+export const APP_VERSION_NAME = 'PUDi : une personne, un vote ; les responsables voient qui a voté (cahier v6).';
 export const LAST_UPDATED = '2026-10-22';
 export const APP_BUILD_DATE = '2026-10-22';
 export const VERSION_HISTORY = [
+  {
+    version: '3.96.1',
+    date: '2026-10-22',
+    description: 'PUDi cahier v6 : une personne, un vote ; participation visible par les responsables ; P1 gardée et renommée.',
+    changes: [
+      'Une personne qui a plusieurs numéros sur une ligne de groupe ne vote qu’une fois : un autre numéro de la même ligne est refusé, avec un message clair (refus visible dans l’administration).',
+      '« Mon groupe » : badge « a voté » ou « pas encore voté » par membre, participation du groupe (nombre, pourcentage, barre) et filtre ; jamais le choix de la personne.',
+      'P1 devient « Hôpital de niveau régional à Nosy Be » ; « hôpital », « CHRD », « CHRR » et « évacuation sanitaire » mènent à P1, puis A6, puis H1.',
+      'Textes A6, H1, H2 corrigés (pages 85 et 104 du PUDi) ; la notice avant l’envoi explique le rôle des responsables de groupe.'
+    ]
+  },
   {
     version: '3.96.0',
     date: '2026-10-22',

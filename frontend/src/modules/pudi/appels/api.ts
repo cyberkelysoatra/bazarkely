@@ -137,7 +137,7 @@ export interface ResultatsApercu extends Resultats {
 }
 export const lireApercu = () => rpc<ResultatsApercu>('pudi_admin_resultats_apercu');
 
-/** Submits or modifies the vote. Throws the server error (or {erreur} for PUDI_NUMERO_DEJA_UTILISE). */
+/** Submits or modifies the vote. Throws the server error (or {erreur} for PUDI_NUMERO_DEJA_UTILISE / PUDI_PERSONNE_DEJA_VOTEE). */
 export async function soumettreVote(
   b: Brouillon,
   f: FormulaireVote,

@@ -73,3 +73,8 @@ export function dateJour(iso: string): string {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T00:00:00Z`) : enHeureMada(iso);
   return `${d.getUTCDate()} ${fr.temps.mois[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
+
+/** French label of a refused attempt's reason (pudi_refus.motif). */
+export function libelleMotifRefus(motif: string | null | undefined): string {
+  return motif === 'personne_deja_votee' ? 'Personne ayant déjà voté avec un autre numéro' : 'Numéro déjà utilisé par un autre compte';
+}

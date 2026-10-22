@@ -210,7 +210,7 @@ export const fr = {
     telephoneGarde: 'Laissez vide pour garder le numéro déjà enregistré.',
     resident: 'Je déclare vivre à Nosy Be',
     notice:
-      "Le GIHTNB (Groupement Interprofessionnel de l'Hôtellerie et du Tourisme de Nosy Bé) est responsable de ces données. Votre numéro sert à garantir un vote par personne et à mesurer la portée des réseaux du GIHTNB : il est comparé, sous forme codée, aux listes de contacts fournies par les partenaires de la démarche. Il n'est jamais publié ni enregistré en clair. Votre adresse e-mail n'est jamais publiée. Toutes ces données sont supprimées le 28 janvier 2027. Cadre : loi n° 2014-038 sur la protection des données à caractère personnel. Limites : un compte Google par personne n'est pas garanti ; la résidence est déclarée.",
+      "Le GIHTNB (Groupement Interprofessionnel de l'Hôtellerie et du Tourisme de Nosy Bé) est responsable de ces données. Votre numéro sert à garantir un vote par personne et à mesurer la portée des réseaux du GIHTNB : il est comparé, sous forme codée, aux listes de contacts fournies par les partenaires de la démarche. Il n'est jamais publié ni enregistré en clair. Votre adresse e-mail n'est jamais publiée. Toutes ces données sont supprimées le 28 janvier 2027. Cadre : loi n° 2014-038 sur la protection des données à caractère personnel. Limites : un compte Google par personne n'est pas garanti ; la résidence est déclarée. Votre numéro peut avoir été inscrit par le responsable d'un groupe. Il sert à reconnaître les votes du groupe et à éviter les doubles votes. Le responsable voit si vous avez voté, jamais ce que vous avez choisi.",
     dejaVote: (date: string) =>
       `Vous avez déjà voté le ${date}. Vous pouvez modifier votre vote jusqu'à la clôture.`,
     connecteEn: (email: string) => `Connecté : ${email}`,
@@ -233,6 +233,8 @@ export const fr = {
     NUMERO_INVALIDE: "Ce numéro n'est pas valide. Exemple : 034 12 345 67.",
     NUMERO_DEJA_UTILISE:
       "Ce numéro a déjà servi à voter avec un autre compte Google. Si c'est bien votre numéro, contactez le GIHTNB : l'équipe pourra vérifier.",
+    PERSONNE_DEJA_VOTEE:
+      "Vous avez déjà voté avec un autre numéro. Une personne ne vote qu'une fois. Pour changer vos choix, connectez-vous avec le compte utilisé pour ce vote.",
     RESEAU: 'Le réseau ne répond pas. Votre choix est gardé sur ce téléphone, réessayez.',
     AUTRE: 'Une erreur est survenue. Votre choix est gardé sur ce téléphone.'
   },
@@ -282,7 +284,8 @@ export const fr = {
     aideTitre: 'À quoi sert cette liste ?',
     aide: [
       'Les votes des personnes de votre groupe sont reconnus.',
-      'Une personne vote une seule fois, même si elle a plusieurs numéros ou figure dans plusieurs groupes.'
+      'Une personne vote une seule fois, même si elle a plusieurs numéros ou figure dans plusieurs groupes.',
+      "Chacun est invité à voter, mais son choix n'est pas un sujet de débat. Vous voyez seulement si la personne a voté, jamais ce qu'elle a choisi."
     ],
     aideDetail:
       "Les numéros sont visibles seulement par les responsables de ce groupe et par les organisateurs. Ils sont supprimés le 28 janvier 2027 avec toutes les données de la consultation.",
@@ -290,6 +293,12 @@ export const fr = {
     aucunGroupe: "Vous n'êtes responsable d'aucun groupe pour le moment. Demandez aux organisateurs de vous désigner.",
     membres: (n: number) => (n > 1 ? `${n} membres` : `${n} membre`),
     tousLesGroupes: 'Organisateur : vous voyez tous les groupes.',
+    aVote: 'a voté',
+    pasEncoreVote: 'pas encore voté',
+    participation: (votants: number, total: number, pct: number) => `Participation : ${votants} / ${total} (${pct} %)`,
+    filtreTitre: 'Afficher',
+    filtres: { tous: 'Tous', aVote: 'A voté', pasEncore: 'Pas encore voté' },
+    aucunFiltre: 'Aucun membre dans cette catégorie.',
     ajouter: 'Ajouter un membre',
     nouveau: 'Nouveau membre',
     modifierTitre: 'Modifier le membre',

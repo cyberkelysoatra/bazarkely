@@ -548,11 +548,12 @@
    "incluAussi": [],
    "sitesStatut": "validé GIHTNB",
    "pagesPudi": [
+    85,
     104,
     105,
     144
    ],
-   "precision": "Le PUDi y prévoit un hôpital (2,67 ha) et la construction d'un nouvel hôpital dans la deuxième phase (p. 104). C'est là que figure le projet de nouveau CHRD."
+   "precision": "Le PUDi y prévoit un hôpital de 2,67 ha (p. 104) et annonce la construction d'un nouvel hôpital dans la deuxième phase du PUDi (p. 85). Selon le PIC, c'est là que figure le projet de nouveau CHRD."
   },
   {
    "id": "A7",
@@ -1431,7 +1432,7 @@
     144,
     145
    ],
-   "precision": "Le PUDi recense 1 CHRD II et 12 centres de santé publics (7 CSB I, 4 CSB II), p. 34. Le nouvel hôpital est prévu dans la nouvelle ville de Madiro (programme A6)."
+   "precision": "Le PUDi recense 1 CHRD II et 12 centres de santé publics (7 CSB I, 4 CSB II), p. 34. Un hôpital est prévu dans la nouvelle ville de Madiro (programme A6)."
   },
   {
    "id": "H2",
@@ -1514,7 +1515,7 @@
     141,
     144
    ],
-   "precision": "Selon le PIC, la transformation des CSB I en CSB II fait partie de ce programme et concerne tous les arrondissements (voir PUDi p. 104)."
+   "precision": "Selon le PIC, la transformation des CSB I en CSB II fait partie de ce programme et concerne tous les arrondissements. Le PUDi prévoit un programme de réhabilitation et de modernisation des CSB (p. 85)."
   },
   {
    "id": "D1",
@@ -4457,10 +4458,14 @@
   {
    "mots": [
     "chrd",
+    "chrr",
     "hopital",
-    "hôpital"
+    "hôpital",
+    "evacuation sanitaire",
+    "évacuation sanitaire"
    ],
    "cibles": [
+    "P1",
     "A6",
     "H1"
    ]
@@ -4496,8 +4501,7 @@
     "blocs sanitaires",
     "bloc sanitaire",
     "toilettes",
-    "latrines",
-    "wc"
+    "latrines"
    ],
    "cibles": [
     "W4"
@@ -4552,6 +4556,14 @@
    ],
    "cibles": [
     "P5"
+   ]
+  },
+  {
+   "mots": [
+    "wc"
+   ],
+   "cibles": [
+    "W4"
    ]
   }
  ]

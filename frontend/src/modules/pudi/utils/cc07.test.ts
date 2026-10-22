@@ -27,12 +27,12 @@ describe('programme texts requested by the PIC', () => {
       'Créer une nouvelle ville à Madiro : habitat organisé, équipements publics dont un hôpital, zone sportive, parc solaire et gare routière.'
     );
     expect(P('A6').precision).toContain('nouveau CHRD');
-    expect(P('A6').precision).toContain('(2,67 ha)');
+    expect(P('A6').precision).toContain('2,67 ha (p. 104)');
   });
   it('H1 points to A6, H2 covers every district', () => {
     expect(P('H1').precision).toContain('programme A6');
     expect(P('H2').resume).toContain('dans tous les arrondissements');
-    expect(P('H2').precision).toContain('PUDi p. 104');
+    expect(P('H2').precision).toContain('(p. 85)');
   });
   it('the data file has no em dash', () => {
     expect(JSON.stringify(D)).not.toContain('—');
