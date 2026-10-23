@@ -3,6 +3,8 @@
 import { Suspense, lazy, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import { Icone } from './Icones';
 import { useSessionLocale } from '../appels/session';
+import { usePriveNonLu } from '../appels/priveNonLu';
+import { usePudi } from '../PudiContexte';
 
 const MenuPanneau = lazy(() => import('./MenuPanneau'));
 
@@ -27,6 +29,8 @@ export function useBadgeRefus(): number {
 export function DeclencheurMenu() {
   const session = useSessionLocale();
   const badge = useBadgeRefus();
+  // PUDI-CC-14.2: an organisers' answer is waiting (never read in JOEL's preview).
+  const priveNonLu = usePriveNonLu(!!session && !usePudi().apercu);
   const [ouvert, setOuvert] = useState(false);
   const bouton = useRef<HTMLButtonElement>(null);
   const commun = {
@@ -48,6 +52,9 @@ export function DeclencheurMenu() {
             <Icone nom="utilisateur" className="w-5 h-5" />
           </span>
           <Icone nom={ouvert ? 'haut' : 'bas'} className="w-4 h-4" />
+          {priveNonLu && (
+            <span className="absolute top-0 left-0.5 w-3 h-3 rounded-full bg-[#E5484D] ring-2 ring-marine" data-point-prive-menu="" aria-label="Réponse des organisateurs non lue" />
+          )}
           {badge > 0 && (
             <span
               className="absolute -top-0.5 left-7 min-w-[20px] h-5 px-1 rounded-full bg-[#F2B705] text-[#2F3547] text-[11px] font-bold flex items-center justify-center ring-2 ring-marine"

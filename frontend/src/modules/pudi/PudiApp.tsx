@@ -26,6 +26,8 @@ const Documents = lazy(() => import('./pages/Documents'));
 const Groupe = lazy(() => import('./pages/Groupe'));
 // Public discussion (PUDI-CC-12): own chunk.
 const Discussion = lazy(() => import('./pages/Discussion'));
+// Private messages with the organisers (PUDI-CC-14.2): own chunk.
+const Prive = lazy(() => import('./pages/Prive'));
 // Administration: its own chunk, never downloaded by a public visitor.
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
@@ -129,6 +131,7 @@ export default function PudiApp() {
             <Route path="/groupe" element={<Groupe />} />
             <Route path="/groupe/:code" element={<Groupe />} />
             <Route path="/discussion" element={<Discussion />} />
+            <Route path="/prive" element={<Prive />} />
             <Route path="/admin/*" element={<Admin />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.100.0';
-export const APP_VERSION_NAME = 'PUDi : voter plus vite (toucher une carte pour la cocher, bouton « Envoyer mon vote »).';
+export const APP_VERSION = '3.101.0';
+export const APP_VERSION_NAME = 'PUDi : écrire aux organisateurs (messages privés).';
 export const LAST_UPDATED = '2026-10-23';
 export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.101.0',
+    date: '2026-10-23',
+    description: 'PUDi : « Écrire aux organisateurs », une conversation privée par personne connectée, lue seulement par son auteur et les organisateurs.',
+    changes: [
+      'Entrée « Écrire aux organisateurs » dans le menu en haut à droite, point rouge quand une réponse attend.',
+      'Administration : onglet « Messages » (non lus, adresse Gmail de l’auteur, réponse, suppression avec motif au journal).',
+      'Mentions d’information complétées ; messages effacés le 28/01/2027.',
+      'Lien « Détails » d’une carte ancré à la carte (il ne chevauche plus le message des 3 priorités).'
+    ]
+  },
   {
     version: '3.100.0',
     date: '2026-10-23',

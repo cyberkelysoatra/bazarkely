@@ -11,6 +11,7 @@ import { getSupabase, withTimeout } from '../../appels/supabaseClient';
 import { DATE_PURGE, RAPPEL_PURGE_DES } from '../../appels/admin';
 import { dateClotureLongue } from '../../utils/format';
 import { Erreur } from './communs';
+import Messages, { useNbMessagesNonLus } from './Messages';
 import Suivi from './Suivi';
 import Votes from './Votes';
 import Refus from './Refus';
@@ -30,7 +31,8 @@ const ONGLETS: { to: string; libelle: string; icone: NomIcone }[] = [
   { to: '/admin/canaux', libelle: 'Canaux', icone: 'diffusion' },
   { to: '/admin/parametres', libelle: 'Paramètres', icone: 'reglages' },
   { to: '/admin/journal', libelle: 'Journal', icone: 'journal' },
-  { to: '/admin/propositions', libelle: 'Propositions', icone: 'ampoule' }
+  { to: '/admin/propositions', libelle: 'Propositions', icone: 'ampoule' },
+  { to: '/admin/messages', libelle: 'Messages', icone: 'message' }
 ];
 
 export default function Admin() {
@@ -40,6 +42,8 @@ export default function Admin() {
   const [acces, setAcces] = useState<Acces>({ t: 'verif' });
   const [connexion, setConnexion] = useState(false);
   const session = useSessionLocale();
+  // PUDI-CC-14.2: unread private conversations (badge of the « Messages » tab), organisers only.
+  const nonLus = useNbMessagesNonLus(acces.t === 'ok' && !enApercu);
   // Back from Google: the code is still being exchanged, the session is not stored yet.
   const retourConnexion = /[?&]code=/.test(window.location.search) || /access_token=/.test(window.location.hash);
 
@@ -115,7 +119,7 @@ export default function Admin() {
     <Page titre="Administration" large>
       {/* Wrapped rows (3 per row on phones): every tab stays visible, no horizontal scroll. */}
       <nav aria-label="Écrans d'administration" className="mb-4">
-        <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
+        <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
           {ONGLETS.map((o) => (
             <li key={o.to} className="min-w-0">
               <NavLink
@@ -127,7 +131,14 @@ export default function Admin() {
                   }`
                 }
               >
-                <Icone nom={o.icone} className="w-4 h-4" />
+                <span className="relative">
+                  <Icone nom={o.icone} className="w-4 h-4" />
+                  {o.to === '/admin/messages' && nonLus > 0 && (
+                    <span className="absolute -top-2 -right-4 min-w-[18px] h-[18px] px-1 rounded-full bg-[#E5484D] text-white text-[11px] font-bold flex items-center justify-center" data-badge-messages="" aria-label={`${nonLus} non lu${nonLus > 1 ? 's' : ''}`}>
+                      {nonLus}
+                    </span>
+                  )}
+                </span>
                 {o.libelle}
               </NavLink>
             </li>
@@ -154,6 +165,14 @@ export default function Admin() {
           element={
             <Suspense fallback={<p className="text-gris py-6 text-center">Chargement…</p>}>
               <Propositions />
+            </Suspense>
+          }
+        />
+        <Route
+          path="messages"
+          element={
+            <Suspense fallback={<p className="text-gris py-6 text-center">Chargement…</p>}>
+              <Messages />
             </Suspense>
           }
         />

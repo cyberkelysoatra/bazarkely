@@ -11,6 +11,7 @@ import { usePudi } from '../PudiContexte';
 import { lireEtatConnecte, lireMonVote, rpc } from '../appels/api';
 import { abonnerInstallation, installationDisponible, lancerInstallation } from '../appels/installation';
 import { connexionGoogle, deconnexion, useSessionLocale } from '../appels/session';
+import { usePriveNonLu } from '../appels/priveNonLu';
 import { lireCanal } from '../appels/provenance';
 import { VERSION_PUDI, rechercherMiseAJour, type ResultatMiseAJour } from '../appels/miseAJour';
 import { refusVus, retablisVus } from '../appels/refusVus';
@@ -86,6 +87,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
     navigate('/');
   };
   const session = useSessionLocale();
+  const priveNonLu = usePriveNonLu(!!session && !apercu);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const panneau = useRef<HTMLDivElement>(null);
@@ -292,6 +294,20 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
             </a>
           </div>
         )}
+        <Element
+          icone="message"
+          onClick={() => {
+            if (session) aller('/prive');
+            else {
+              setConnexion(true);
+              connexionGoogle('/pudi/prive').catch(() => setConnexion(false));
+            }
+          }}
+          note={session ? undefined : 'Connexion Google demandée'}
+          fin={priveNonLu ? <span className="w-2.5 h-2.5 rounded-full bg-[#E5484D]" data-point-prive="" aria-label="Réponse non lue" /> : undefined}
+        >
+          Écrire aux organisateurs
+        </Element>
         <Element icone="aide" onClick={() => aller('/', { aide: Date.now() })}>
           Comment ça marche ?
         </Element>

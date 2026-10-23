@@ -44,40 +44,43 @@ export function CarteChoix({
   };
   const couleur = mode === 'priorite' ? 'bg-marine border-marine' : 'bg-[#B85317] border-[#B85317]';
   return (
-    <li className="relative" data-carte-choix={id}>
-      <div
-        role="checkbox"
-        aria-checked={actif}
-        aria-disabled={desactive || undefined}
-        aria-label={titre}
-        tabIndex={0}
-        onClick={basculer}
-        onKeyDown={clavier}
-        className={`pudi-focus min-h-[44px] rounded-xl p-3 pb-12 flex gap-3 items-start select-none ${
-          desactive ? 'cursor-default' : 'cursor-pointer'
-        } ${className} ${actif ? '!border-marine shadow-md' : ''}`}
-        style={style}
-      >
-        <span
-          aria-hidden="true"
-          className={`shrink-0 w-8 h-8 mt-0.5 rounded-lg border-2 flex items-center justify-center ${
-            actif ? `${couleur} text-white` : 'bg-white border-[#9AA3BD] text-transparent'
-          } ${desactive ? 'opacity-50' : ''}`}
+    <li data-carte-choix={id}>
+      {/* The « Détails » link is anchored to the card, never to the message below it. */}
+      <div className="relative">
+        <div
+          role="checkbox"
+          aria-checked={actif}
+          aria-disabled={desactive || undefined}
+          aria-label={titre}
+          tabIndex={0}
+          onClick={basculer}
+          onKeyDown={clavier}
+          className={`pudi-focus min-h-[44px] rounded-xl p-3 pb-12 flex gap-3 items-start select-none ${
+            desactive ? 'cursor-default' : 'cursor-pointer'
+          } ${className} ${actif ? '!border-marine shadow-md' : ''}`}
+          style={style}
         >
-          <Icone nom="coche" className="w-5 h-5" />
-        </span>
-        <div className="flex-1 min-w-0">{children}</div>
+          <span
+            aria-hidden="true"
+            className={`shrink-0 w-8 h-8 mt-0.5 rounded-lg border-2 flex items-center justify-center ${
+              actif ? `${couleur} text-white` : 'bg-white border-[#9AA3BD] text-transparent'
+            } ${desactive ? 'opacity-50' : ''}`}
+          >
+            <Icone nom="coche" className="w-5 h-5" />
+          </span>
+          <div className="flex-1 min-w-0">{children}</div>
+        </div>
+        <Link
+          to={details}
+          state={ETAT_DEPUIS_LISTE}
+          className="absolute right-1.5 bottom-1.5 min-h-[44px] min-w-[44px] px-3 rounded-lg inline-flex items-center justify-center gap-1 text-marine font-bold text-[14px] underline underline-offset-2 decoration-[#9AA3BD]"
+          aria-label={`${fr.carte.details} : ${titre}`}
+          data-details=""
+        >
+          {fr.carte.details}
+          <Icone nom="droite" className="w-4 h-4" />
+        </Link>
       </div>
-      <Link
-        to={details}
-        state={ETAT_DEPUIS_LISTE}
-        className="absolute right-1.5 bottom-1.5 min-h-[44px] min-w-[44px] px-3 rounded-lg inline-flex items-center justify-center gap-1 text-marine font-bold text-[14px] underline underline-offset-2 decoration-[#9AA3BD]"
-        aria-label={`${fr.carte.details} : ${titre}`}
-        data-details=""
-      >
-        {fr.carte.details}
-        <Icone nom="droite" className="w-4 h-4" />
-      </Link>
       {message?.id === id && <MessageBlocage texte={message.texte} />}
     </li>
   );
