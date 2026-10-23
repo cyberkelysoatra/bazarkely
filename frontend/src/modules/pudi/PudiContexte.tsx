@@ -10,6 +10,7 @@ import { useSessionLocale } from './appels/session';
 import { lireMesMasquages, type MonMasquage } from './appels/masquages';
 import { useApercuStocke } from './appels/apercu';
 import { activerParcours, noterEtape } from './appels/parcours';
+import { usePresence } from './appels/presence';
 import { etapesDuChoix, etatEffectif, masquageApercu, peutApercu, type Apercu } from './utils/apercu';
 
 interface PudiContexteValeur {
@@ -153,6 +154,8 @@ export function PudiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     noterEtape('visite');
   }, []);
+  // PUDI-CC-14.3: « En ligne en ce moment », same switch as the funnel.
+  usePresence(parcoursOk === true);
   useEffect(() => {
     if (parcoursOk === false) return;
     for (const e of etapesDuChoix(brouillon.priorites.length)) noterEtape(e);

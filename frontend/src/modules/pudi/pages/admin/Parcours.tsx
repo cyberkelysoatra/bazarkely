@@ -6,6 +6,7 @@ import { lireParcours } from '../../appels/admin';
 import { ETAPES_PARCOURS, pctVisites, type EtapeParcours } from '../../utils/apercu';
 import { dateCourte } from '../../utils/format';
 import { Aide, Erreur, Titre2, champ, useAppel } from './communs';
+import FrequentationEnDirect from './Frequentation';
 
 const LIBELLES: Record<EtapeParcours, string> = {
   visite: 'Ont ouvert la consultation',
@@ -37,6 +38,7 @@ export default function ParcoursVisiteurs({ nomCanal, codes }: { nomCanal: (code
   return (
     <section data-parcours="">
       <Titre2 aide="Aucun compte, aucun numéro : un identifiant tiré au hasard par navigateur.">Parcours des visiteurs (anonyme)</Titre2>
+      <FrequentationEnDirect nomCanal={nomCanal} />
       <Aide titre="Comment lire ce parcours ?">
         <p>Chaque ligne compte les navigateurs qui ont atteint cette étape au moins une fois, et leur part des visites.</p>
         <p>« Ont ouvert la consultation » : première page affichée. « Fiche de projet » : un programme ou une proposition ouvert. « Commencé leur choix » : une première priorité cochée. « 3 priorités » : choix complet. « Écran d'envoi » : la page qui demande la connexion Google. « Connectés » : session Google présente sur cette page. « Envoyé leur vote » : envoi réussi.</p>

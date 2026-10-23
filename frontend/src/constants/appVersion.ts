@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.101.0';
-export const APP_VERSION_NAME = 'PUDi : écrire aux organisateurs (messages privés).';
+export const APP_VERSION = '3.101.1';
+export const APP_VERSION_NAME = 'PUDi : personnes en ligne et tableau de fréquentation.';
 export const LAST_UPDATED = '2026-10-23';
 export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.101.1',
+    date: '2026-10-23',
+    description: 'PUDi : « En ligne en ce moment » et tableau de fréquentation en chiffres pour les organisateurs (Suivi).',
+    changes: [
+      'Présence anonyme (même identifiant tiré au hasard que le parcours), envoyée chaque minute par une page visible, jamais en aperçu.',
+      'Tableau par canal : appareils venus, venus sans coche, choix commencé, choix complet, votes ; jamais de liste d’appareils.'
+    ]
+  },
   {
     version: '3.101.0',
     date: '2026-10-23',
