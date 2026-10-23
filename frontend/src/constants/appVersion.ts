@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.102.0';
-export const APP_VERSION_NAME = 'PUDi : rien n’est perdu sans réseau, taille du texte, accueil après la clôture.';
+export const APP_VERSION = '3.102.1';
+export const APP_VERSION_NAME = 'PUDi : correctif de mise en ligne (fichiers renommés, 404 franc pour un fichier manquant).';
 export const LAST_UPDATED = '2026-10-23';
 export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.102.1',
+    date: '2026-10-23',
+    description: 'PUDi : correctif de mise en ligne (page blanche une fois sur deux à Madagascar après la v3.102.0).',
+    changes: [
+      'Le serveur Cloudflare d’Antananarivo avait gardé une page HTML à la place du fichier principal : nouveaux noms pour tous les fichiers PUDi.',
+      'Un fichier de code PUDi manquant renvoie désormais une vraie erreur que personne ne garde ; le service worker ne garde jamais de page HTML à la place d’un script.'
+    ]
+  },
   {
     version: '3.102.0',
     date: '2026-10-23',

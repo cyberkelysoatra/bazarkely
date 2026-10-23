@@ -5,8 +5,8 @@
  * - Supabase (other origin) is never cached
  * - the public PUDi documents (/pudi/documents/, PDFs of 1 to 15 MB) are never cached: network
  *   only, opened in a tab or downloaded (v3: they must not fill the phone, nor replace the shell)
- * Bump VERSION to drop old caches. */
-const VERSION = 'v3';
+ * Bump VERSION to drop old caches (v4, 23/10/2026: drops any HTML stored in place of a script). */
+const VERSION = 'v4';
 const DOCUMENTS = '/pudi/documents/';
 const SHELL = 'pudi-shell-' + VERSION;
 const RUNTIME = 'pudi-runtime-' + VERSION;
@@ -60,7 +60,10 @@ async function staleWhileRevalidate(event) {
   const cached = await cache.match(event.request);
   const network = fetch(event.request)
     .then((response) => {
-      if (response && response.ok && response.type === 'basic') cache.put(event.request, response.clone());
+      // Never keep an HTML page in place of a code file (v3.102.1: an edge served index.html
+      // for a missing /assets/ file during a deployment).
+      const html = /text\/html/i.test(response?.headers.get('Content-Type') ?? '');
+      if (response && response.ok && response.type === 'basic' && !(html && new URL(event.request.url).pathname.startsWith('/assets/'))) cache.put(event.request, response.clone());
       return response;
     })
     .catch(() => undefined);

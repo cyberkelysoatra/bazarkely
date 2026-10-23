@@ -28,9 +28,12 @@ export default defineConfig({
     rollupOptions: {
       input: { pudi: resolve(__dirname, 'pudi/index.html') },
       output: {
-        entryFileNames: 'assets/pudi/[name]-[hash].js',
-        chunkFileNames: 'assets/pudi/[name]-[hash].js',
-        assetFileNames: 'assets/pudi/[name]-[hash][extname]'
+        // v3.102.1: files under assets/pudi/c/ (new names for every file) after the Antananarivo
+        // edge kept index.html in place of v3.102.0 files; functions/assets/pudi/_middleware.ts
+        // now turns a missing file into a 404 that nobody keeps.
+        entryFileNames: 'assets/pudi/c/[name]-[hash].js',
+        chunkFileNames: 'assets/pudi/c/[name]-[hash].js',
+        assetFileNames: 'assets/pudi/c/[name]-[hash][extname]'
       }
     }
   }
