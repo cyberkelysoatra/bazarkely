@@ -5,7 +5,7 @@ import { BandeauxEtat, Image, Page, RangeeLogos, boutonPrincipal, boutonSecondai
 import { fr } from '../i18n/fr';
 import { usePudi } from '../PudiContexte';
 import { abonnerInstallation, installationDisponible, lancerInstallation } from '../appels/installation';
-import { dateClotureLongue, tempsRestant } from '../utils/format';
+import { dateClotureLongue, tempsRestant, texteRestant } from '../utils/format';
 
 function CompteARebours() {
   const { clotureAt, decalage } = usePudi();
@@ -16,6 +16,7 @@ function CompteARebours() {
   }, []);
   const r = tempsRestant(Date.parse(clotureAt), maintenant + decalage);
   if (r.fini) return null;
+  const court = texteRestant(r);
   const bloc = (valeur: number, unite: string) => (
     <div className="flex-1 bg-white border border-filet rounded-xl py-2 text-center">
       <div className="font-titre text-[28px] leading-none text-marine">{valeur}</div>
@@ -24,6 +25,12 @@ function CompteARebours() {
   );
   return (
     <div aria-label={fr.accueil.restant}>
+      {court && (
+        <p className="mb-2 font-bold text-[16px] text-[#9C3F21] flex items-center gap-1.5" data-restant="">
+          <Icone nom="horloge" className="w-5 h-5" />
+          {court}
+        </p>
+      )}
       <p className="text-[13px] text-gris mb-1.5">{fr.accueil.restant}</p>
       <div className="flex gap-2">
         {bloc(r.jours, r.jours > 1 ? fr.accueil.jours : fr.accueil.jour)}

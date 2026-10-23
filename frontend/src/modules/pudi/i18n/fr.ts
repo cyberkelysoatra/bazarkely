@@ -150,6 +150,30 @@ export const fr = {
     horsLigne: 'Connexion nécessaire pour ouvrir les documents',
     intro: 'Les deux documents publics du Plan d’Urbanisme Directeur de Nosy Be, en accès libre.'
   },
+  carte: {
+    details: 'Détails'
+  },
+  vote: {
+    envoyer: 'Envoyer mon vote',
+    compteur: (n: number) => `${n}/3 priorités`,
+    choisir3: 'Choisissez 3 priorités',
+    encore: (n: number) => `Encore ${n} priorité${n > 1 ? 's' : ''} à choisir`,
+    facultatifTitre: 'Facultatif',
+    facultatifUrgents: 'Signaler des urgences 2026-2030',
+    facultatifManquant: 'Proposer un projet manquant',
+    rappelFacultatif: 'Facultatif : signaler des urgences, proposer un projet manquant',
+    retourPriorites: 'Retour à mes priorités',
+    mesPriorites: 'Mes priorités choisies',
+    etapes: ['Choisir', 'Se connecter', 'Envoyer'],
+    etapesLibelle: 'Étapes du vote',
+    gardees: 'Vos 3 priorités sont gardées :',
+    gardeesPartiel: 'Vos priorités sont gardées :',
+    modification: (date: string) => `Vous modifiez votre vote du ${date}.`,
+    partager: 'Partager à mes contacts',
+    partagerAutre: 'Partager avec une autre application',
+    partageTexte:
+      'Nosy Be 2026-2040 : donnez votre avis sur les priorités du PUDi (plan d’urbanisme) avant la clôture. Trois priorités, deux minutes :'
+  },
   choix: {
     titre: 'Mon choix',
     etape: (n: number) => `Étape ${n} sur 3`,

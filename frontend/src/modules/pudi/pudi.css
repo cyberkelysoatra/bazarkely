@@ -71,3 +71,24 @@ body {
   outline: 3px solid #0B2A8C;
   outline-offset: 2px;
 }
+/* Rule 11 (v8): the first faulty field (or the priorities block) is highlighted for 2 s. */
+.pudi-fautif {
+  outline: 3px solid #b85317 !important;
+  outline-offset: 3px;
+  border-radius: 0.75rem;
+  animation: pudi-fautif 0.5s ease-in-out 3;
+}
+@keyframes pudi-fautif {
+  50% {
+    outline-color: #f2b705;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pudi-fautif {
+    animation: none;
+  }
+}
+/* Pages of the voting path: room for the « Envoyer mon vote » bar above the bottom bar. */
+body.pudi-barre-vote .pudi-page {
+  padding-bottom: 10.5rem;
+}

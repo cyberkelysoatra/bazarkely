@@ -1,7 +1,7 @@
 // Layout pieces shared by every PUDi page: sector band, header, state banners, footer with
 // partner logos, bottom bar, tranche badge, image with clean fallback.
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { COULEURS_SECTEURS, COULEURS_TRANCHES } from '../data';
 import { fr } from '../i18n/fr';
 import { usePudi } from '../PudiContexte';
@@ -14,6 +14,13 @@ import { useDiscussionNonLue } from '../appels/discussionNonLue';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
 const Commutateur = lazy(() => import('./Commutateur'));
+// « Envoyer mon vote » bar (v8, 4.3 bis): own chunk, loaded on the pages of the voting path only.
+const BarreVote = lazy(() => import('./BarreVote'));
+
+/** Pages of the voting path (lists, sheets, search, « Mon choix »): the vote bar is shown there. */
+export function estCheminVote(chemin: string): boolean {
+  return /^\/(secteurs|secteur\/|programme\/|propositions|proposition\/|recherche|choix)/.test(chemin);
+}
 
 export function BandeSecteurs() {
   const pas = 100 / COULEURS_SECTEURS.length;
@@ -226,7 +233,8 @@ function Onglet({ to, icone, libelle, badge, fin, point }: { to: string; icone: 
 }
 
 export function BarreBas() {
-  const { brouillon } = usePudi();
+  const { brouillon, etat } = usePudi();
+  const { pathname } = useLocation();
   const commutateur = useCommutateurOuvert();
   const nonLue = useDiscussionNonLue();
   if (commutateur)
@@ -236,6 +244,12 @@ export function BarreBas() {
       </Suspense>
     );
   return (
+    <>
+    {estCheminVote(pathname) && !etat?.clos && (
+      <Suspense fallback={null}>
+        <BarreVote />
+      </Suspense>
+    )}
     <nav
       aria-label={fr.nav.principale}
       className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-filet pb-[env(safe-area-inset-bottom)]"
@@ -248,6 +262,7 @@ export function BarreBas() {
         <Onglet to="/resultats" icone="graphique" libelle={fr.nav.resultats} />
       </div>
     </nav>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
+import { CarteChoix } from '../composants/CarteChoix';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, Chargement, ErreurDonnees, Image, Page } from '../composants/Mise';
 import { programmesDuSecteur, secteurParId } from '../data';
@@ -9,7 +10,8 @@ import { formatAr } from '../utils/format';
 export default function Secteur() {
   const { id = '' } = useParams();
   const { donnees, erreur, reessayer } = useDonnees();
-  const { brouillon } = usePudi();
+  const { brouillon, etat } = usePudi();
+  const clos = !!etat?.clos;
   if (erreur) return <Page><ErreurDonnees reessayer={reessayer} /></Page>;
   if (!donnees) return <Page><Chargement /></Page>;
   const s = secteurParId(donnees, id);
@@ -57,34 +59,33 @@ export default function Secteur() {
       </h2>
       <ul className="space-y-2.5">
         {programmes.map((p) => (
-          <li key={p.id}>
-            <Link
-              to={`/programme/${p.id}`}
-              className="block bg-white border border-filet rounded-xl p-3 border-l-[6px]"
-              style={{ borderLeftColor: s.couleur }}
-            >
-              <p className="font-bold text-[16px] leading-snug">{p.nom}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <BadgeTranche tranche={p.trancheAffichee} />
-                {brouillon.priorites.includes(p.id) && (
-                  <span className="inline-flex items-center gap-1 text-[12px] font-bold text-marine">
-                    <Icone nom="etoile" className="w-3.5 h-3.5" />
-                    {fr.programme.estPriorite}
-                  </span>
-                )}
-                {brouillon.urgents.includes(p.id) && (
-                  <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#9C3F21]">
-                    <Icone nom="horloge" className="w-3.5 h-3.5" />
-                    {fr.programme.estUrgent}
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 text-[14px] text-gris flex items-center gap-1">
-                {p.cout.mention}
-                <Icone nom="droite" className="w-4 h-4 ml-auto" />
-              </p>
-            </Link>
-          </li>
+          <CarteChoix
+            key={p.id}
+            id={p.id}
+            titre={p.nom}
+            details={`/programme/${p.id}`}
+            desactive={clos}
+            className="bg-white border border-filet border-l-[6px]"
+            style={{ borderLeftColor: s.couleur }}
+          >
+            <p className="font-bold text-[16px] leading-snug">{p.nom}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <BadgeTranche tranche={p.trancheAffichee} />
+              {brouillon.priorites.includes(p.id) && (
+                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-marine">
+                  <Icone nom="etoile" className="w-3.5 h-3.5" />
+                  {fr.programme.estPriorite}
+                </span>
+              )}
+              {brouillon.urgents.includes(p.id) && (
+                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#9C3F21]">
+                  <Icone nom="horloge" className="w-3.5 h-3.5" />
+                  {fr.programme.estUrgent}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[14px] text-gris">{p.cout.mention}</p>
+          </CarteChoix>
         ))}
       </ul>
     </Page>

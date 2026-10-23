@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { MessageBlocage, useBasculeChoix } from '../composants/BoutonsChoix';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { MessageBlocage } from '../composants/BoutonsChoix';
+import { CarteChoix } from '../composants/CarteChoix';
+import { IndicateurEtapes } from '../composants/Etapes';
+import { useSessionLocale } from '../appels/session';
+import { allerAuChamp } from '../utils/champFautif';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { programmeParId, secteurParId, type PudiDonnees } from '../data';
@@ -24,7 +28,7 @@ interface Choisissable {
 }
 
 function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'priorite' | 'urgent' }) {
-  const { brouillon, priorite, urgent, message } = useBasculeChoix();
+  const { brouillon } = usePudi();
   const { etat } = usePudi();
   const { liste: propositions } = usePropositions();
   const [secteur, setSecteur] = useState('');
@@ -40,7 +44,6 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
     return tout.filter((p) => !q || cle(p.nom).includes(q));
   }, [donnees, propositions, secteur, seulesPropositions, recherche]);
   const choisis = mode === 'priorite' ? brouillon.priorites : brouillon.urgents;
-  const basculer = mode === 'priorite' ? priorite : urgent;
   const clos = !!etat?.clos;
 
   return (
@@ -99,56 +102,35 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
           const s = p.secteur ? secteurParId(donnees, p.secteur) : undefined;
           const actif = choisis.includes(p.id);
           return (
-            <li key={p.id}>
-              <div
-                className={`rounded-xl border-2 p-3 flex gap-3 items-start ${
-                  p.proposition ? `bg-sable border-dashed ${actif ? 'border-marine' : 'border-marine/50'}` : `bg-white ${actif ? 'border-marine' : 'border-filet'}`
-                }`}
-              >
-                <button
-                  type="button"
-                  disabled={clos}
-                  aria-pressed={actif}
-                  onClick={() => basculer(p.id)}
-                  className={`shrink-0 w-11 h-11 rounded-lg border-2 flex items-center justify-center disabled:opacity-50 ${
-                    actif
-                      ? mode === 'priorite'
-                        ? 'bg-marine border-marine text-white'
-                        : 'bg-[#B85317] border-[#B85317] text-white'
-                      : 'bg-white border-[#9AA3BD] text-gris'
-                  }`}
-                  aria-label={`${actif ? fr.choix.retirer : mode === 'priorite' ? fr.choix.ajouter : fr.choix.marquer} : ${p.nom}`}
-                >
-                  <Icone nom={actif ? 'coche' : mode === 'priorite' ? 'etoile' : 'horloge'} />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <Link to={p.proposition ? `/proposition/${p.id}` : `/programme/${p.id}`} className="font-bold text-[15px] leading-snug block">
-                    {p.nom}
-                  </Link>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {p.proposition ? (
-                      <span className="text-[12px] font-bold text-marine">{fr.propositions.badge}</span>
-                    ) : (
-                      <span className="text-[12px] font-bold" style={{ color: s?.couleurFoncee }}>
-                        {s?.nom}
-                      </span>
-                    )}
-                    {mode === 'urgent' &&
-                      (p.tranche ? (
-                        <BadgeTranche tranche={p.tranche} />
-                      ) : (
-                        <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[12px] font-bold text-marine">
-                          {fr.propositions.horsPudi}
-                        </span>
-                      ))}
-                  </div>
-                  {mode === 'urgent' && actif && p.tranche && ecartPudi(p.tranche) && (
-                    <p className="text-[13px] text-gris mt-1">{fr.choix.avance}</p>
-                  )}
-                  {message?.id === p.id && <MessageBlocage texte={message.texte} />}
-                </div>
+            <CarteChoix
+              key={p.id}
+              id={p.id}
+              titre={p.nom}
+              details={p.proposition ? `/proposition/${p.id}` : `/programme/${p.id}`}
+              mode={mode}
+              desactive={clos}
+              className={`border-2 ${p.proposition ? `bg-sable border-dashed ${actif ? 'border-marine' : 'border-marine/50'}` : `bg-white ${actif ? 'border-marine' : 'border-filet'}`}`}
+            >
+              <p className="font-bold text-[15px] leading-snug">{p.nom}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {p.proposition ? (
+                  <span className="text-[12px] font-bold text-marine">{fr.propositions.badge}</span>
+                ) : (
+                  <span className="text-[12px] font-bold" style={{ color: s?.couleurFoncee }}>
+                    {s?.nom}
+                  </span>
+                )}
+                {mode === 'urgent' &&
+                  (p.tranche ? (
+                    <BadgeTranche tranche={p.tranche} />
+                  ) : (
+                    <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[12px] font-bold text-marine">
+                      {fr.propositions.horsPudi}
+                    </span>
+                  ))}
               </div>
-            </li>
+              {mode === 'urgent' && actif && p.tranche && ecartPudi(p.tranche) && <p className="text-[13px] text-gris mt-1">{fr.choix.avance}</p>}
+            </CarteChoix>
           );
         })}
       </ul>
@@ -186,75 +168,111 @@ function NomsProgrammes({ donnees, ids }: { donnees: PudiDonnees; ids: string[] 
 export default function Choix() {
   const { donnees, erreur, reessayer } = useDonnees();
   const { brouillon, majBrouillon, etat } = usePudi();
+  const connecte = !!useSessionLocale();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const { state } = useLocation() as { state: { relance?: number } | null };
   const brut = params.get('etape');
   const etape: Etape = brut === '2' || brut === '3' || brut === 'resume' ? brut : '1';
   const aller = (e: Etape) => {
     const p = new URLSearchParams(params);
-    p.set('etape', e);
+    if (e === '1') p.delete('etape');
+    else p.set('etape', e);
     setParams(p);
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
   const valide = brouillonValide(brouillon);
   const clos = !!etat?.clos;
+  const n = brouillon.priorites.length;
+  const manque = MAX_PRIORITES - n;
+
+  // « Envoyer mon vote » pressed with fewer than 3 priorities: scroll to them, highlight, say how many.
+  const [relance, setRelance] = useState(false);
+  const blocPriorites = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!state?.relance || !donnees) return;
+    setRelance(true);
+    const id = window.setTimeout(() => allerAuChamp(blocPriorites.current), 80);
+    return () => window.clearTimeout(id);
+  }, [state?.relance, donnees]);
+  useEffect(() => {
+    if (manque <= 0) setRelance(false);
+  }, [manque]);
 
   if (erreur) return <Page titre={fr.choix.titre}><ErreurDonnees reessayer={reessayer} /></Page>;
   if (!donnees) return <Page titre={fr.choix.titre}><Chargement /></Page>;
 
-  const navigation = (precedent: Etape | null, suivant: Etape, libelle: string = fr.choix.suivant) => (
-    <div className="sticky bottom-[60px] mt-4 -ml-4 -mr-6 px-4 py-3 bg-creme/95 border-t border-filet flex gap-2">
-      {precedent && (
-        <button type="button" className={`${boutonSecondaire} flex-1`} onClick={() => aller(precedent)}>
-          <Icone nom="gauche" />
-          {fr.choix.precedent}
-        </button>
-      )}
-      <button
-        type="button"
-        className={`${boutonPrincipal} flex-1`}
-        disabled={suivant === '2' && brouillon.priorites.length !== MAX_PRIORITES}
-        onClick={() => aller(suivant)}
-      >
-        {libelle}
-        <Icone nom="droite" />
-      </button>
-    </div>
+  const retourPriorites = (
+    <button type="button" className={`${boutonSecondaire} w-full mt-4`} onClick={() => aller('1')}>
+      <Icone nom="gauche" />
+      {fr.vote.retourPriorites}
+    </button>
   );
 
   return (
     <Page titre={fr.choix.titre}>
+      <IndicateurEtapes courante={1} faites={[...(n === MAX_PRIORITES ? [1] : []), ...(connecte ? [2] : [])]} />
       <div className="mb-3">
         <BandeauxEtat />
       </div>
-      {etape !== 'resume' && <p className="text-[13px] text-gris">{fr.choix.etape(Number(etape))}</p>}
 
       {etape === '1' && (
-        <section>
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="font-bold text-[18px] text-marine">{fr.choix.etape1Titre}</h2>
-            <Compteur n={brouillon.priorites.length} max={MAX_PRIORITES} />
+        <>
+          <section ref={blocPriorites} tabIndex={-1} id="pudi-priorites" className="bg-white border border-filet rounded-xl p-3 outline-none" data-priorites="">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="font-bold text-[18px] text-marine">{fr.choix.etape1Titre}</h2>
+              <Compteur n={n} max={MAX_PRIORITES} />
+            </div>
+            <p className="text-[15px] mb-2">{fr.choix.etape1Aide}</p>
+            {n > 0 && (
+              <div className="mt-1">
+                <p className="text-[13px] text-gris mb-1">{fr.vote.mesPriorites}</p>
+                <NomsProgrammes donnees={donnees} ids={brouillon.priorites} />
+              </div>
+            )}
+            {relance && manque > 0 && <MessageBlocage texte={fr.vote.encore(manque)} />}
+          </section>
+
+          <section className="mt-3 bg-white border border-dashed border-filet rounded-xl p-3" aria-labelledby="pudi-facultatif" data-facultatif="">
+            <h2 id="pudi-facultatif" className="font-bold text-[15px] text-profond">{fr.vote.facultatifTitre}</h2>
+            <div className="mt-1 flex flex-col">
+              <button type="button" onClick={() => aller('2')} className="min-h-[44px] flex items-center gap-2 text-left text-marine font-bold text-[15px]" data-facultatif-urgents="">
+                <Icone nom="horloge" className="w-5 h-5 shrink-0" />
+                <span className="flex-1">{fr.vote.facultatifUrgents}</span>
+                <span className="text-[13px] text-gris font-normal">{fr.choix.compteur(brouillon.urgents.length, MAX_URGENTS)}</span>
+                <Icone nom="droite" className="w-4 h-4 shrink-0" />
+              </button>
+              <button type="button" onClick={() => aller('3')} className="min-h-[44px] flex items-center gap-2 text-left text-marine font-bold text-[15px]" data-facultatif-manquant="">
+                <Icone nom="ampoule" className="w-5 h-5 shrink-0" />
+                <span className="flex-1">{fr.vote.facultatifManquant}</span>
+                {brouillon.manquant.trim() && <Icone nom="coche" className="w-4 h-4 text-[#1E7A46] shrink-0" />}
+                <Icone nom="droite" className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+          </section>
+
+          <div className="mt-4">
+            <ListeProgrammes donnees={donnees} mode="priorite" />
           </div>
-          <p className="text-[15px] mb-3">{fr.choix.etape1Aide}</p>
-          <ListeProgrammes donnees={donnees} mode="priorite" />
-          {navigation(null, '2')}
-        </section>
+        </>
       )}
 
       {etape === '2' && (
         <section>
+          <p className="text-[13px] text-gris">{fr.vote.facultatifTitre}</p>
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="font-bold text-[18px] text-marine">{fr.choix.etape2Titre}</h2>
             <Compteur n={brouillon.urgents.length} max={MAX_URGENTS} />
           </div>
           <p className="text-[15px] mb-3">{fr.choix.etape2Aide}</p>
           <ListeProgrammes donnees={donnees} mode="urgent" />
-          {navigation('1', '3')}
+          {retourPriorites}
         </section>
       )}
 
       {etape === '3' && (
         <section>
+          <p className="text-[13px] text-gris">{fr.vote.facultatifTitre}</p>
           <h2 className="font-bold text-[18px] text-marine flex items-center gap-2">
             <Icone nom="ampoule" />
             {fr.choix.etape3Titre}
@@ -284,7 +302,7 @@ export default function Choix() {
           <p className="text-right text-[13px] text-gris" aria-live="polite">
             {fr.choix.caracteres(brouillon.manquant.length)}
           </p>
-          {navigation('2', 'resume', fr.choix.voirResume)}
+          {retourPriorites}
         </section>
       )}
 
@@ -324,6 +342,7 @@ export default function Choix() {
           </button>
         </section>
       )}
+      {etape !== 'resume' && <p className="mt-4 text-[14px] text-gris">{fr.choix.brouillon}</p>}
     </Page>
   );
 }

@@ -6,6 +6,7 @@ import { Icone } from '../../composants/Icones';
 import { boutonPrincipal, boutonSecondaire } from '../../composants/Mise';
 import { enregistrerProposition, transformerManquant, type PropositionAdmin } from '../../appels/admin';
 import { champ, messageAdmin } from './communs';
+import { allerAuChamp } from '../../utils/champFautif';
 
 export const SOURCES_SUGGEREES = [
   "Ajout de l'administrateur",
@@ -92,8 +93,14 @@ export function FormulaireProposition({
   const titre = demande.t === 'ajout' ? 'Ajouter une proposition' : demande.t === 'modif' ? `Modifier ${demande.p.id}` : 'Transformer en proposition';
 
   const valider = async () => {
-    if (intitule.trim().length < 3) return setErreur('Indiquez un titre (3 caractères au moins).');
-    if (!transformer && source.trim().length < 2) return setErreur('Indiquez la source.');
+    if (intitule.trim().length < 3) {
+      allerAuChamp(`${id}-i`);
+      return setErreur('Indiquez un titre (3 caractères au moins).');
+    }
+    if (!transformer && source.trim().length < 2) {
+      allerAuChamp(`${id}-s`);
+      return setErreur('Indiquez la source.');
+    }
     setCours(true);
     setErreur(null);
     try {

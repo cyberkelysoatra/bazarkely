@@ -59,6 +59,16 @@ export function tempsRestant(finMs: number, maintenantMs: number): Restant {
   };
 }
 
+/**
+ * Short countdown shown when less than 3 days remain: « Plus que 2 j 15 h pour voter »,
+ * « Plus que 5 h pour voter », « Moins d'une heure pour voter »; null otherwise or once closed.
+ */
+export function texteRestant(r: Restant): string | null {
+  if (r.fini || r.jours >= 3) return null;
+  if (!r.jours && !r.heures) return 'Moins d’une heure pour voter';
+  return `Plus que ${r.jours ? `${r.jours} j ${r.heures} h` : `${r.heures} h`} pour voter`;
+}
+
 /** "jeudi 22 octobre 2026 à 9 h 14" (Madagascar time, no suffix): opening of the consultation. */
 export function dateLongue(iso: string): string {
   const d = enHeureMada(iso);

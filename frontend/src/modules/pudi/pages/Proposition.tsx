@@ -1,7 +1,7 @@
 // Sheet of one proposal (outside the PUDi list): same choice buttons as a programme, with
 // « Hors PUDi » in place of a PUDi tranche.
 import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BoutonsChoix } from '../composants/BoutonsChoix';
 import { Icone } from '../composants/Icones';
 import { Chargement, Page } from '../composants/Mise';
@@ -12,13 +12,25 @@ import { propositionParId } from '../appels/propositions';
 import { dateJour } from '../utils/format';
 import { BadgeProposition, ErreurPropositions, useListePropositions } from './Propositions';
 
+/** Opened from a list card (« Détails »): the back link returns in the history (same scroll, same checks). */
+function useRetourListe() {
+  const navigate = useNavigate();
+  const depuisListe = !!(useLocation().state as { depuisListe?: boolean } | null)?.depuisListe;
+  return (e: { preventDefault: () => void }) => {
+    if (!depuisListe) return;
+    e.preventDefault();
+    navigate(-1);
+  };
+}
+
 export default function Proposition() {
   const { id = '' } = useParams();
   useEffect(() => noterEtape('fiche'), []);
+  const retourListe = useRetourListe();
   const { liste, erreur, reessayer } = useListePropositions();
   const { etat } = usePudi();
   const retour = (
-    <Link to="/propositions" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
+    <Link to="/propositions" onClick={retourListe} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
       <Icone nom="gauche" />
       {fr.propositions.retour}
     </Link>

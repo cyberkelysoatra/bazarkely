@@ -16,7 +16,26 @@ import { connexionGoogle as connexionGoogleSession } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
 import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
 import { dateCourte } from '../utils/format';
-import { brouillonValide, normaliserTelephone } from '../utils/regles';
+import { brouillonValide, normaliserTelephone, type Brouillon } from '../utils/regles';
+import { allerAuChamp } from '../utils/champFautif';
+import { IndicateurEtapes } from '../composants/Etapes';
+import { programmeParId } from '../data';
+import { propositionParId, usePropositions } from '../appels/propositions';
+
+/** Rule 11: the field each blocking error points at (first faulty field of the form). */
+const CIBLES: Record<ChampFormulaire, string | null> = {
+  fokontany: 'pudi-fkt',
+  profil: 'pudi-profil',
+  telephone: 'pudi-tel',
+  resident: 'pudi-resident',
+  choix: null,
+  general: null
+};
+
+const memeChoix = (a: Brouillon, b: { priorites: string[]; urgents: string[]; manquant: string | null }) =>
+  [...a.priorites].sort().join() === [...b.priorites].sort().join() &&
+  [...a.urgents].sort().join() === [...b.urgents].sort().join() &&
+  a.manquant.trim() === (b.manquant ?? '').trim();
 
 const FORM_VIDE: FormulaireVote = { fokontany: '', fokontanyAutre: '', profil: '', telephone: '', resident: false };
 
@@ -33,6 +52,7 @@ function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormu
 export default function Envoyer() {
   const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
   const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu } = usePudi();
+  const { liste: propositions } = usePropositions();
   // PUDI-CC-11: in JOEL's « Votant » preview every client check runs, but nothing reaches the server.
   const apercuVotant = apercu?.role === 'votant';
   const navigate = useNavigate();
@@ -152,10 +172,18 @@ export default function Envoyer() {
     return null;
   };
 
+  const montrerErreur = (e: ErreurAffichee | null) => {
+    setErreur(e);
+    if (!e) return;
+    // The other « Précisez » box when « Autre fokontany » is chosen and left empty.
+    const cible = e.champ === 'fokontany' && form.fokontany === 'AUTRE' ? 'pudi-fkt-autre' : CIBLES[e.champ];
+    window.setTimeout(() => allerAuChamp(cible), 30);
+  };
+
   const envoyer = async (ev: FormEvent) => {
     ev.preventDefault();
     const local = valider();
-    setErreur(local);
+    montrerErreur(local);
     if (local) return;
     if (apercuVotant && apercu) {
       definirApercu({ ...apercu, voteFictif: true });
@@ -170,7 +198,7 @@ export default function Envoyer() {
       navigate('/merci', { state: { test: v.est_test } });
     } catch (e) {
       const er = messageErreur(e);
-      setErreur(er);
+      montrerErreur(er);
       // PUDI-CC-09: masked vote, the notice with its two buttons is shown next to the button.
       if (er.code === 'VOTE_MASQUE') void rechargerMasquages();
     } finally {
@@ -182,12 +210,19 @@ export default function Envoyer() {
 
   const champ = 'w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 text-[16px]';
   const choixValide = brouillonValide(brouillon);
+  const nomChoix = (id: string) => (donnees ? programmeParId(donnees, id)?.nom : undefined) ?? propositionParId(propositions, id)?.intitule ?? id;
 
   return (
     <Page titre={fr.envoi.titre}>
+      <IndicateurEtapes courante={session ? 3 : 2} faites={[...(choixValide ? [1] : []), ...(session ? [2] : [])]} />
       <div className="mb-4">
         <BandeauxEtat />
       </div>
+      <p className="mb-4 text-[14px] text-gris" data-rappel-facultatif="">
+        <Link to="/choix" className="font-bold text-marine underline underline-offset-2">
+          {fr.vote.rappelFacultatif}
+        </Link>
+      </p>
 
       {!choixValide && (
         <div className="mb-4 bg-white border border-filet rounded-xl p-3 space-y-3">
@@ -207,6 +242,16 @@ export default function Envoyer() {
             <Icone nom="personnes" className="w-5 h-5 text-marine mt-0.5" />
             {fr.envoi.unVote}
           </p>
+          {brouillon.priorites.length > 0 && (
+            <div className="bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5" data-priorites-gardees="">
+              <p className="font-bold text-[15px]">{brouillon.priorites.length === 3 ? fr.vote.gardees : fr.vote.gardeesPartiel}</p>
+              <ol className="mt-1 space-y-0.5 text-[15px] list-decimal pl-5">
+                {brouillon.priorites.map((id) => (
+                  <li key={id}>{nomChoix(id)}</li>
+                ))}
+              </ol>
+            </div>
+          )}
           <button type="button" className={`${boutonPrincipal} w-full`} onClick={connexionGoogle} disabled={redirection}>
             <Icone nom="connexion" />
             {redirection ? fr.envoi.connexionEnCours : fr.envoi.google}
@@ -218,7 +263,7 @@ export default function Envoyer() {
           <p className="text-[13px] text-gris">{fr.envoi.connecteEn(session.user.email ?? '')}</p>
           {vote && (
             <p className="bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 text-[15px]">
-              {fr.envoi.dejaVote(dateCourte(vote.created_at))}
+              {memeChoix(brouillon, vote) ? fr.envoi.dejaVote(dateCourte(vote.created_at)) : fr.vote.modification(dateCourte(vote.created_at))}
             </p>
           )}
 
@@ -243,6 +288,7 @@ export default function Envoyer() {
               <input
                 aria-label={fr.envoi.fokontanyAutre}
                 placeholder={fr.envoi.fokontanyAutre}
+                id="pudi-fkt-autre"
                 className={`${champ} mt-2`}
                 maxLength={80}
                 value={form.fokontanyAutre}
@@ -252,7 +298,7 @@ export default function Envoyer() {
             <ErreurChamp e={erreur} champ="fokontany" />
           </div>
 
-          <fieldset>
+          <fieldset id="pudi-profil">
             <legend className="font-bold text-[15px] mb-1.5">{fr.envoi.profil}</legend>
             <div className="space-y-1.5">
               {PROFIL_VALEURS.map((p) => (
@@ -295,6 +341,7 @@ export default function Envoyer() {
           <div>
             <label className="flex items-center gap-3 min-h-[48px] bg-white border border-filet rounded-xl px-3">
               <input
+                id="pudi-resident"
                 type="checkbox"
                 checked={form.resident}
                 onChange={(e) => setForm({ ...form, resident: e.target.checked })}

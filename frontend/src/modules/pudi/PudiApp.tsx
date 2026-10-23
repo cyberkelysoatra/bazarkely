@@ -1,15 +1,17 @@
-import { Suspense, lazy, useEffect, useRef } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { BandeSecteurs, BarreBas, Chargement, EnTete } from './composants/Mise';
 import { PudiProvider, usePudi } from './PudiContexte';
 import { doitAllerAuxResultats } from './utils/apercu';
 import Accueil from './pages/Accueil';
-import Secteurs from './pages/Secteurs';
-import Secteur from './pages/Secteur';
-import Programme from './pages/Programme';
 import { capturerCanal } from './appels/provenance';
 
 // Pages that need more code (choice, sending, results) are split off the home bundle.
+// PUDI-CC-14: the discovery pages too (sectors, sector list with toggle cards, sheet), so the home
+// first load stays under 350 kB with the new vote bar.
+const Secteurs = lazy(() => import('./pages/Secteurs'));
+const Secteur = lazy(() => import('./pages/Secteur'));
+const Programme = lazy(() => import('./pages/Programme'));
 const Choix = lazy(() => import('./pages/Choix'));
 const Envoyer = lazy(() => import('./pages/Envoyer'));
 const Merci = lazy(() => import('./pages/Merci'));
@@ -27,14 +29,50 @@ const Discussion = lazy(() => import('./pages/Discussion'));
 // Administration: its own chunk, never downloaded by a public visitor.
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
+// Scroll position of each history entry: coming back (browser back, « Détails » then back)
+// restores the list where it was (v8, 4.3 bis). New pages start at the top.
+const positions = new Map<string, number>();
+const defiler = (top: number) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+
 function SuiviNavigation() {
-  const { pathname, search } = useLocation();
+  const { pathname, search, key } = useLocation();
+  const type = useNavigationType();
+  const cheminPrecedent = useRef<string | null>(null);
   useEffect(() => {
     capturerCanal(search);
   }, [search]);
   useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [pathname]);
+    try {
+      window.history.scrollRestoration = 'manual';
+    } catch {
+      /* old browsers */
+    }
+  }, []);
+  // Layout effect: the listener of the previous entry is gone before the new page is painted, so
+  // the scroll clamped by a shorter new page is never stored as the list position.
+  useLayoutEffect(() => {
+    const noter = () => positions.set(key, window.scrollY);
+    window.addEventListener('scroll', noter, { passive: true });
+    return () => window.removeEventListener('scroll', noter);
+  }, [key]);
+  useEffect(() => {
+    const change = cheminPrecedent.current !== pathname;
+    cheminPrecedent.current = pathname;
+    const y = positions.get(key);
+    if (type === 'POP' && y !== undefined) {
+      // The list may still be rendering (lazy page, data): retry until the page is tall enough.
+      let essais = 0;
+      let id = 0;
+      const essayer = () => {
+        defiler(y);
+        if (Math.abs(window.scrollY - y) > 2 && essais++ < 40) id = window.setTimeout(essayer, 25);
+      };
+      essayer();
+      return () => window.clearTimeout(id);
+    }
+    if (change) defiler(0);
+    return undefined;
+  }, [pathname, key, type]);
   return null;
 }
 

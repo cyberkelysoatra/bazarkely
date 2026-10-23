@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.99.0';
-export const APP_VERSION_NAME = 'PUDi : une discussion publique pour tous.';
+export const APP_VERSION = '3.100.0';
+export const APP_VERSION_NAME = 'PUDi : voter plus vite (toucher une carte pour la cocher, bouton « Envoyer mon vote »).';
 export const LAST_UPDATED = '2026-10-23';
 export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.100.0',
+    date: '2026-10-23',
+    description: 'PUDi : aide au vote. Toucher une carte la coche, « Détails » ouvre la fiche, barre « Envoyer mon vote » avec le compteur des 3 priorités.',
+    changes: [
+      'Cartes cochables dans les secteurs, les propositions, la recherche et « Mon choix » ; retour de fiche à la même place.',
+      'Barre « Envoyer mon vote X/3 priorités » sur tout le parcours ; avec moins de 3 priorités, « Encore N priorité(s) à choisir ».',
+      'Toute action bloquée amène au premier champ en cause (envoi, discussion, Mon groupe, administration) ; coches gardées à la connexion Google, « Vous modifiez votre vote du … ».',
+      'Partage WhatsApp avec le lien du canal, compte à rebours court sous 3 jours, priorités rappelées avant la connexion, étapes « Choisir · Se connecter · Envoyer ».'
+    ]
+  },
   {
     version: '3.99.0',
     date: '2026-10-23',

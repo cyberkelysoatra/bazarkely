@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { BoutonsPartage } from '../composants/Partager';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
@@ -362,6 +363,11 @@ export default function Resultats() {
         )}
       </div>
       {contenu}
+      {etat?.a_vote && !etat.clos && (
+        <div className="mt-6">
+          <BoutonsPartage />
+        </div>
+      )}
     </Page>
   );
 }

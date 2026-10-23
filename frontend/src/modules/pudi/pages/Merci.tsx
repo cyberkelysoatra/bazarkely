@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
+import { BoutonsPartage } from '../composants/Partager';
+import { IndicateurEtapes } from '../composants/Etapes';
 
 export default function Merci() {
   const etatNav = useLocation().state as { test?: boolean; apercu?: boolean } | null;
@@ -10,6 +12,7 @@ export default function Merci() {
   const apercu = !!etatNav?.apercu;
   return (
     <Page>
+      <IndicateurEtapes courante={apercu ? 3 : null} faites={[1, 2, 3]} />
       <div className="text-center pt-6">
         <span className="inline-flex w-16 h-16 rounded-full bg-marine text-white items-center justify-center">
           <Icone nom="coche" className="w-9 h-9" />
@@ -32,6 +35,11 @@ export default function Merci() {
           {fr.merci.modifier}
         </Link>
       </div>
+      {!apercu && (
+        <div className="mt-6">
+          <BoutonsPartage />
+        </div>
+      )}
     </Page>
   );
 }

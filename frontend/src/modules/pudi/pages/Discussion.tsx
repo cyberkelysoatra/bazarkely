@@ -18,6 +18,7 @@ import {
 } from '../appels/discussion';
 import { marquerDiscussionVue } from '../appels/discussionNonLue';
 import { extraireCode } from '../utils/erreurs';
+import { allerAuChamp } from '../utils/champFautif';
 import { Dialogue, type DemandeConfirmation } from './admin/communs';
 
 const MAX = 500;
@@ -326,6 +327,7 @@ export default function Discussion() {
     const t = texte.trim();
     if (!t || t.length > MAX) {
       setErreur(ERREURS.MESSAGE_INVALIDE);
+      allerAuChamp(champ.current);
       return;
     }
     setErreur(null);
@@ -555,7 +557,7 @@ export default function Discussion() {
                 <button
                   type="submit"
                   aria-label="Envoyer le message"
-                  disabled={envoi || !enLigne || !texte.trim()}
+                  disabled={envoi || !enLigne}
                   className="w-12 h-12 shrink-0 rounded-full bg-marine text-white flex items-center justify-center disabled:opacity-50"
                   data-envoyer-message=""
                 >

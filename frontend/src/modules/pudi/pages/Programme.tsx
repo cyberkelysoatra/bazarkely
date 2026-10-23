@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { BoutonsChoix } from '../composants/BoutonsChoix';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, Chargement, ErreurDonnees, Page } from '../composants/Mise';
@@ -11,9 +11,21 @@ import { formatAr } from '../utils/format';
 import { LiensPages } from '../composants/LiensPages';
 import { documentPudi } from '../utils/documents';
 
+/** Opened from a list card (« Détails »): the back link returns in the history (same scroll, same checks). */
+function useRetourListe() {
+  const navigate = useNavigate();
+  const depuisListe = !!(useLocation().state as { depuisListe?: boolean } | null)?.depuisListe;
+  return (e: { preventDefault: () => void }) => {
+    if (!depuisListe) return;
+    e.preventDefault();
+    navigate(-1);
+  };
+}
+
 export default function Programme() {
   const { id = '' } = useParams();
   useEffect(() => noterEtape('fiche'), []);
+  const retourListe = useRetourListe();
   const { donnees, erreur, reessayer } = useDonnees();
   const { etat } = usePudi();
   if (erreur) return <Page><ErreurDonnees reessayer={reessayer} /></Page>;
@@ -29,6 +41,7 @@ export default function Programme() {
     <Page>
       <Link
         to={`/secteur/${p.secteur}`}
+        onClick={retourListe}
         className="inline-flex items-center gap-1 min-h-[44px] font-bold text-[15px]"
         style={{ color: fonce }}
       >

@@ -31,6 +31,8 @@ import {
   type FiltreVote
 } from '../utils/groupe';
 import { extraireCode } from '../utils/erreurs';
+import { allerAuChamp } from '../utils/champFautif';
+import { normaliserTelephone } from '../utils/regles';
 import { Aide, Dialogue, champ, petitBouton, type DemandeConfirmation } from './admin/communs';
 
 const T = fr.groupe;
@@ -181,10 +183,24 @@ function Formulaire({
   const [erreur, setErreur] = useState<string | null>(null);
   const [cours, setCours] = useState(false);
 
+  // Rule 11: the first faulty field of the line gets the cursor.
+  const montrer = (formulaire: HTMLFormElement, er: unknown) => {
+    setErreur(messageGroupe(er));
+    const code = extraireCode(er) ?? '';
+    const nom = /EMAIL/.test(code)
+      ? 'email'
+      : /NUMERO/.test(code)
+        ? `numero${Math.max(1, numeros.findIndex((n) => !n.trim() || !normaliserTelephone(n)) + 1)}`
+        : null;
+    const el = nom ? formulaire.querySelector<HTMLElement>(`[name="${nom}"]`) : null;
+    if (el) window.setTimeout(() => allerAuChamp(el), 30);
+  };
+
   const envoyer = async (e: FormEvent) => {
     e.preventDefault();
+    const formulaire = e.currentTarget as HTMLFormElement;
     const code = verifierSaisie(numeros, email);
-    if (code) return setErreur(messageGroupe(code));
+    if (code) return montrer(formulaire, code);
     const s: SaisieMembre = {
       id: membre?.id ?? null,
       numeros,
@@ -199,7 +215,7 @@ function Formulaire({
       enregistre();
       fermer();
     } catch (er) {
-      setErreur(messageGroupe(er));
+      montrer(formulaire, er);
     } finally {
       setCours(false);
     }

@@ -6,7 +6,8 @@ import { Icone } from '../composants/Icones';
 import { Chargement, ErreurDonnees, Page } from '../composants/Mise';
 import { secteurParId } from '../data';
 import { fr } from '../i18n/fr';
-import { useDonnees } from '../PudiContexte';
+import { usePudi, useDonnees } from '../PudiContexte';
+import { CarteChoix } from '../composants/CarteChoix';
 import { usePropositions } from '../appels/propositions';
 import { MAX_RESULTATS, construireIndex, rechercher, type Explication, type ResultatRecherche } from '../utils/recherche';
 import { BadgeProposition } from './Propositions';
@@ -40,18 +41,18 @@ function Pourquoi({ e }: { e: Explication }) {
   );
 }
 
-function Ligne({ r, donnees }: { r: ResultatRecherche; donnees: PudiDonnees }) {
+function Ligne({ r, donnees, clos }: { r: ResultatRecherche; donnees: PudiDonnees; clos: boolean }) {
   const s = r.secteur ? secteurParId(donnees, r.secteur) : undefined;
   const lien = r.type === 'programme' ? `/programme/${r.id}` : `/proposition/${r.id}`;
   return (
-    <li>
-      <Link
-        to={lien}
-        className={`block rounded-xl p-3 border-l-[6px] ${
-          r.type === 'programme' ? 'bg-white border border-filet' : 'bg-sable border-2 border-dashed border-marine/60'
-        }`}
-        style={s ? { borderLeftColor: s.couleur } : undefined}
-      >
+    <CarteChoix
+      id={r.id}
+      titre={r.nom}
+      details={lien}
+      desactive={clos}
+      className={`border-l-[6px] ${r.type === 'programme' ? 'bg-white border border-filet' : 'bg-sable border-2 border-dashed border-marine/60'}`}
+      style={s ? { borderLeftColor: s.couleur } : undefined}
+    >
         <div className="flex flex-wrap items-center gap-2">
           {s ? (
             <span
@@ -69,16 +70,15 @@ function Ligne({ r, donnees }: { r: ResultatRecherche; donnees: PudiDonnees }) {
           <span className="min-w-0 flex-1">
             <Pourquoi e={r.explication} />
           </span>
-          <Icone nom="droite" className="w-4 h-4 shrink-0 mt-0.5" />
         </p>
-      </Link>
-    </li>
+    </CarteChoix>
   );
 }
 
 export default function Recherche() {
   const { donnees, erreur, reessayer } = useDonnees();
   const { liste: propositions } = usePropositions();
+  const clos = !!usePudi().etat?.clos;
   const [params, setParams] = useSearchParams();
   const { state } = useLocation() as { state: { focus?: boolean } | null };
   const [saisie, setSaisie] = useState(() => params.get('q') ?? '');
@@ -148,7 +148,7 @@ export default function Recherche() {
               </h2>
               <ul className="space-y-2">
                 {reponse.directs.map((r) => (
-                  <Ligne key={r.id} r={r} donnees={donnees} />
+                  <Ligne key={r.id} r={r} donnees={donnees} clos={clos} />
                 ))}
               </ul>
             </section>
@@ -157,7 +157,7 @@ export default function Recherche() {
             <ul className="space-y-2">
               {reponse.autres.map((r) => (
                 <Fragment key={r.id}>
-                  <Ligne r={r} donnees={donnees} />
+                  <Ligne r={r} donnees={donnees} clos={clos} />
                 </Fragment>
               ))}
             </ul>

@@ -2,6 +2,7 @@
 // apart in the results). The list comes from the server and is kept on the device for offline use.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CarteChoix } from '../composants/CarteChoix';
 import { Icone } from '../composants/Icones';
 import { BandeauxEtat, Chargement, Page, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
@@ -55,7 +56,8 @@ export function ErreurPropositions({ reessayer }: { reessayer: () => void }) {
 
 export default function Propositions() {
   const { liste, erreur, reessayer } = useListePropositions();
-  const { brouillon } = usePudi();
+  const { brouillon, etat } = usePudi();
+  const clos = !!etat?.clos;
   return (
     <Page>
       <Link to="/secteurs" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
@@ -76,11 +78,14 @@ export default function Propositions() {
       ) : (
         <ul className="space-y-2.5">
           {liste.map((p) => (
-            <li key={p.id}>
-              <Link
-                to={`/proposition/${p.id}`}
-                className="block bg-sable border-2 border-dashed border-marine/60 rounded-xl p-3"
-              >
+            <CarteChoix
+              key={p.id}
+              id={p.id}
+              titre={p.intitule}
+              details={`/proposition/${p.id}`}
+              desactive={clos}
+              className="bg-sable border-2 border-dashed border-marine/60"
+            >
                 <p className="font-bold text-[16px] leading-snug">{p.intitule}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <BadgeProposition court />
@@ -102,10 +107,8 @@ export default function Propositions() {
                     {p.lieu ? `${p.lieu} · ` : ''}
                     {fr.propositions.ajoutee(dateJour(p.ajoute_at))}
                   </span>
-                  <Icone nom="droite" className="w-4 h-4 ml-auto shrink-0" />
                 </p>
-              </Link>
-            </li>
+            </CarteChoix>
           ))}
         </ul>
       )}
