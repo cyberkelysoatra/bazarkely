@@ -93,7 +93,7 @@ export default function Journal() {
       ) : (
         <ul className="bg-white border border-filet rounded-xl divide-y divide-filet">
           {liste.map((e, i) => (
-            <li key={`${e.at}-${i}`} className="px-3 py-2.5 text-[14px]" data-action={e.action}>
+            <li key={`${e.at}-${i}`} className="px-3 py-2.5 text-[0.875rem]" data-action={e.action}>
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-bold text-marine">{ACTIONS[e.action] ?? e.action}</span>
                 {e.cible && <span className="font-mono break-all">{e.cible}</span>}

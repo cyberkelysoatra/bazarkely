@@ -2,6 +2,7 @@
 // replacing the old « Suivant ». Translucent while nothing is checked (still announced to screen
 // readers), fully visible from the first check. Fewer than 3 priorities: nothing is sent, « Mon
 // choix » opens on the priorities with « Encore N priorité(s) à choisir ». Own lazy chunk.
+// Sizes in px: like the bottom bar, it keeps its size whatever « Taille du texte ».
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fr } from '../i18n/fr';
@@ -45,14 +46,14 @@ export default function BarreVote() {
           onClick={envoyer}
           aria-describedby="pudi-barre-vote-etat"
           style={{ opacity: n === 0 ? 0.5 : 1 }}
-          className="w-full min-h-[52px] px-4 rounded-xl bg-marine text-white font-bold text-[16px] shadow-lg flex items-center justify-center gap-2 transition-opacity"
+          className="w-full min-h-[52px] px-[16px] rounded-xl bg-marine text-white font-bold text-[16px] whitespace-nowrap shadow-lg flex items-center justify-center gap-2 transition-opacity"
           data-envoyer-vote=""
           data-nb={n}
         >
-          <Icone nom="envoyer" />
+          <Icone nom="envoyer" className="w-[20px] h-[20px]" />
           <span>{fr.vote.envoyer}</span>
           <span
-            className={`ml-1 rounded-full px-2 py-0.5 text-[13px] ${n === MAX_PRIORITES ? 'bg-white text-marine' : 'bg-white/20 text-white'}`}
+            className={`ml-[4px] rounded-full px-[8px] py-[2px] text-[13px] ${n === MAX_PRIORITES ? 'bg-white text-marine' : 'bg-white/20 text-white'}`}
             data-compteur-vote=""
           >
             {fr.vote.compteur(n)}

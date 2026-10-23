@@ -35,7 +35,7 @@ export function useListePropositions(): { liste: Proposition[] | null; erreur: b
 
 export function BadgeProposition({ court = false }: { court?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-marine bg-sable px-2.5 py-0.5 text-[12px] font-bold text-marine whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-marine bg-sable px-2.5 py-0.5 text-[0.75rem] font-bold text-marine whitespace-nowrap">
       <Icone nom="ampoule" className="w-3.5 h-3.5" />
       {court ? fr.propositions.badgeCourt : fr.propositions.badge}
     </span>
@@ -60,12 +60,12 @@ export default function Propositions() {
   const clos = !!etat?.clos;
   return (
     <Page>
-      <Link to="/secteurs" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
+      <Link to="/secteurs" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
         <Icone nom="gauche" />
         {fr.secteurs.titre}
       </Link>
-      <h1 className="font-titre text-[24px] leading-tight text-marine mt-1 mb-2">{fr.propositions.titre}</h1>
-      <p className="text-[15px] mb-4">{fr.propositions.intro}</p>
+      <h1 className="font-titre text-[1.5rem] leading-tight text-marine mt-1 mb-2">{fr.propositions.titre}</h1>
+      <p className="text-[0.9375rem] mb-4">{fr.propositions.intro}</p>
       <div className="mb-4">
         <BandeauxEtat />
       </div>
@@ -86,23 +86,23 @@ export default function Propositions() {
               desactive={clos}
               className="bg-sable border-2 border-dashed border-marine/60"
             >
-                <p className="font-bold text-[16px] leading-snug">{p.intitule}</p>
+                <p className="font-bold text-[1rem] leading-snug">{p.intitule}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <BadgeProposition court />
                   {brouillon.priorites.includes(p.id) && (
-                    <span className="inline-flex items-center gap-1 text-[12px] font-bold text-marine">
+                    <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
                       <Icone nom="etoile" className="w-3.5 h-3.5" />
                       {fr.programme.estPriorite}
                     </span>
                   )}
                   {brouillon.urgents.includes(p.id) && (
-                    <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#9C3F21]">
+                    <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
                       <Icone nom="horloge" className="w-3.5 h-3.5" />
                       {fr.programme.estUrgent}
                     </span>
                   )}
                 </div>
-                <p className="mt-2 text-[14px] text-gris flex items-center gap-1">
+                <p className="mt-2 text-[0.875rem] text-gris flex items-center gap-1">
                   <span className="min-w-0">
                     {p.lieu ? `${p.lieu} · ` : ''}
                     {fr.propositions.ajoutee(dateJour(p.ajoute_at))}

@@ -27,7 +27,7 @@ function versChampMada(iso: string): string {
 function Bloc({ titre, icone, children }: { titre: string; icone: NomIcone; children: ReactNode }) {
   return (
     <section className="bg-white border border-filet rounded-xl p-4 mb-3">
-      <h2 className="flex items-center gap-2 font-bold text-[17px] text-marine mb-2">
+      <h2 className="flex items-center gap-2 font-bold text-[1.0625rem] text-marine mb-2">
         <Icone nom={icone} />
         {titre}
       </h2>
@@ -133,7 +133,7 @@ export default function Parametres({ email }: { email: string }) {
       </Aide>
 
       <Bloc titre="Publication" icone="drapeau">
-        <p className="text-[15px]">
+        <p className="text-[0.9375rem]">
           État :{' '}
           <span className={`font-bold ${etat?.publie ? 'text-[#1F7A3E]' : 'text-[#7A5306]'}`} data-etat-publication>
             {etat ? (etat.publie ? 'publiée (le vote est ouvert)' : 'non publiée (consultation en préparation)') : '…'}
@@ -148,13 +148,13 @@ export default function Parametres({ email }: { email: string }) {
             onClick={() => publier(!etat?.publie)}
             className="mt-3 w-full min-h-[48px] flex items-center justify-between gap-3 rounded-xl border border-filet px-3"
           >
-            <span className="font-bold text-[15px] text-marine">Consultation publiée</span>
+            <span className="font-bold text-[0.9375rem] text-marine">Consultation publiée</span>
             <span className={`relative w-12 h-7 rounded-full transition-colors ${etat?.publie ? 'bg-marine' : 'bg-filet'}`} aria-hidden="true">
               <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${etat?.publie ? 'left-6' : 'left-1'}`} />
             </span>
           </button>
         ) : (
-          <p className="mt-2 text-[14px] text-gris flex gap-2 items-center">
+          <p className="mt-2 text-[0.875rem] text-gris flex gap-2 items-center">
             <Icone nom="cadenas" className="w-4 h-4" />
             Seul Joël SOATRA peut publier
           </p>
@@ -162,14 +162,14 @@ export default function Parametres({ email }: { email: string }) {
       </Bloc>
 
       <Bloc titre="Clôture" icone="calendrier">
-        {etat && <p className="text-[15px]">Clôture actuelle : {dateClotureLongue(etat.cloture_at)}</p>}
+        {etat && <p className="text-[0.9375rem]">Clôture actuelle : {dateClotureLongue(etat.cloture_at)}</p>}
         {restant && (
-          <p className="text-[14px] text-gris mt-1">
+          <p className="text-[0.875rem] text-gris mt-1">
             {restant.fini ? 'La consultation est close.' : `Temps restant : ${restant.jours} j ${restant.heures} h ${restant.minutes} min`}
           </p>
         )}
         <label className="block mt-3">
-          <span className="block font-bold text-[14px] mb-1">Nouvelle date et heure (heure de Madagascar)</span>
+          <span className="block font-bold text-[0.875rem] mb-1">Nouvelle date et heure (heure de Madagascar)</span>
           <input type="datetime-local" className={champ} value={cloture} onChange={(e) => setCloture(e.target.value)} name="cloture" />
         </label>
         <button type="button" className={`${boutonPrincipal} mt-2 w-full sm:w-auto`} onClick={() => void enregistrerCloture()}>
@@ -177,14 +177,14 @@ export default function Parametres({ email }: { email: string }) {
           Enregistrer la clôture
         </button>
         {messageCloture && (
-          <p role="status" className="mt-2 text-[14px] font-bold">
+          <p role="status" className="mt-2 text-[0.875rem] font-bold">
             {messageCloture}
           </p>
         )}
       </Bloc>
 
       <Bloc titre="Administrateurs" icone="admin">
-        <p className="text-[14px] text-gris mb-2">Comptes qui se sont connectés sur PUDi. Joël SOATRA coche les organisateurs.</p>
+        <p className="text-[0.875rem] text-gris mb-2">Comptes qui se sont connectés sur PUDi. Joël SOATRA coche les organisateurs.</p>
         {connexions.erreur && <Erreur texte={connexions.erreur} reessayer={() => void connexions.recharger()} />}
         {erreurAdmin && <Erreur texte={erreurAdmin} />}
         <ul className="divide-y divide-filet">
@@ -192,13 +192,13 @@ export default function Parametres({ email }: { email: string }) {
             const estJoel = c.email.toLowerCase() === EMAIL_JOEL;
             return (
               <li key={c.user_id} className="py-2.5 flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1">
-                <div className="min-w-0 flex-1 text-[14px]">
+                <div className="min-w-0 flex-1 text-[0.875rem]">
                   <p className="font-bold break-all">{c.email}</p>
                   <p className="text-gris">
                     Première connexion {dateHeureMada(c.premiere)} · dernière {dateHeureMada(c.derniere)} · {c.a_vote ? 'a voté' : "n'a pas voté"}
                   </p>
                 </div>
-                <label className="flex items-center gap-2 min-h-[44px] text-[14px]">
+                <label className="flex items-center gap-2 min-h-[44px] text-[0.875rem]">
                   <input
                     type="checkbox"
                     className="w-5 h-5 accent-[#0B2A8C]"
@@ -223,15 +223,15 @@ export default function Parametres({ email }: { email: string }) {
       </Bloc>
 
       <Bloc titre="Données personnelles" icone="bouclier">
-        <p className="text-[15px]">Purge prévue le {dateClotureLongue(DATE_PURGE)}.</p>
-        <p className="text-[14px] text-gris mt-1">
+        <p className="text-[0.9375rem]">Purge prévue le {dateClotureLongue(DATE_PURGE)}.</p>
+        <p className="text-[0.875rem] text-gris mt-1">
           {PURGE_AUTOMATIQUE
             ? 'Purge automatique programmée sur le serveur (tâche « pudi-purge »). Vérifiez le 28 janvier 2027 que les données ont bien disparu.'
             : 'Aucune purge automatique sur le serveur : Joël SOATRA doit utiliser le bouton ci-dessous le 28 janvier 2027.'}
         </p>
         <Titre2>Ce qui est supprimé</Titre2>
-        <p className="text-[14px]">Votes, listes de numéros codés, tentatives refusées, connexions, organisateurs nommés et journal. Les canaux et le réglage de la consultation sont gardés.</p>
-        <p className="text-[14px] mt-1">
+        <p className="text-[0.875rem]">Votes, listes de numéros codés, tentatives refusées, connexions, organisateurs nommés et journal. Les canaux et le réglage de la consultation sont gardés.</p>
+        <p className="text-[0.875rem] mt-1">
           Les listes des membres saisies par les responsables de groupe (numéros, e-mails, établissements, fokontany) et la liste des responsables sont supprimées à la purge avec tout le reste.
         </p>
         {joel && (

@@ -22,7 +22,7 @@ function Barre({ donnees, l, rang, urgent }: { donnees: PudiDonnees; l: LigneRes
   const tranche = l.tranche_pudi ? TRANCHES[l.tranche_pudi - 1] : p?.trancheAffichee;
   return (
     <li className="py-2">
-      <div className="flex items-baseline gap-2 text-[14px]">
+      <div className="flex items-baseline gap-2 text-[0.875rem]">
         <span className="font-titre text-gris w-6 text-right shrink-0">{rang}</span>
         <Link to={`/programme/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
           {p?.nom ?? l.id}
@@ -36,7 +36,7 @@ function Barre({ donnees, l, rang, urgent }: { donnees: PudiDonnees; l: LigneRes
         <div className="ml-8 mt-1.5 flex flex-wrap items-center gap-2">
           <BadgeTranche tranche={tranche} />
           {l.ecart && (
-            <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#9C3F21]">
+            <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
               <Icone nom="alerte" className="w-3.5 h-3.5" />
               {fr.resultats.ecart}
             </span>
@@ -52,7 +52,7 @@ function LignePropositionResultat({ l, rang }: { l: LigneProposition; rang: numb
   const pct = (v: number) => `${String(v).replace('.', ',')} %`;
   return (
     <li className="py-2">
-      <div className="flex items-baseline gap-2 text-[14px]">
+      <div className="flex items-baseline gap-2 text-[0.875rem]">
         <span className="font-titre text-gris w-6 text-right shrink-0">{rang}</span>
         <Link to={`/proposition/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
           {l.intitule}
@@ -65,7 +65,7 @@ function LignePropositionResultat({ l, rang }: { l: LigneProposition; rang: numb
           style={{ width: `${Math.min(100, l.pct_priorite)}%`, background: 'repeating-linear-gradient(135deg, #0B2A8C 0 6px, #3F5FB0 6px 12px)' }}
         />
       </div>
-      <p className="ml-8 mt-1 text-[13px] text-gris">
+      <p className="ml-8 mt-1 text-[0.8125rem] text-gris">
         {fr.resultats.urgentPct(pct(l.pct_urgent))} · {fr.propositions.ajoutee(dateJour(l.ajoute_at))}
       </p>
     </li>
@@ -76,10 +76,10 @@ function Repartition({ titre, lignes }: { titre: string; lignes: { nom: string; 
   const total = lignes.reduce((a, b) => a + b.n, 0) || 1;
   return (
     <section className="mt-6">
-      <h2 className="font-bold text-[17px] text-marine mb-2">{titre}</h2>
+      <h2 className="font-bold text-[1.0625rem] text-marine mb-2">{titre}</h2>
       <ul className="space-y-1.5">
         {lignes.map((l) => (
-          <li key={l.nom} className="text-[14px]">
+          <li key={l.nom} className="text-[0.875rem]">
             <div className="flex justify-between gap-2">
               <span>{l.nom}</span>
               <span className="font-bold">{l.n}</span>
@@ -104,7 +104,7 @@ function Interrupteur({ actif, basculer }: { actif: boolean; basculer: () => voi
       onClick={basculer}
       className="w-full min-h-[48px] flex items-center justify-between gap-3 bg-white border border-filet rounded-xl px-3 text-left"
     >
-      <span className="flex items-center gap-2 font-bold text-[15px] text-marine">
+      <span className="flex items-center gap-2 font-bold text-[0.9375rem] text-marine">
         <Icone nom="oeil" />
         Aperçu avec les votes de test
       </span>
@@ -199,7 +199,7 @@ export default function Resultats() {
   else if (code === 'RESULTATS_RESERVES')
     contenu = (
       <div className="bg-white border border-filet rounded-xl p-4 space-y-3">
-        <p className="text-[16px] flex gap-2 items-start">
+        <p className="text-[1rem] flex gap-2 items-start">
           <Icone nom="cadenas" className="w-5 h-5 text-marine mt-0.5" />
           {fr.resultats.reserves}
         </p>
@@ -230,26 +230,26 @@ export default function Resultats() {
       <>
         <div className="flex items-end justify-between gap-3 bg-white border border-filet rounded-xl p-3">
           <div>
-            <div className="font-titre text-[34px] leading-none text-marine">{res.nb_votants}</div>
-            <div className="text-[14px] text-gris">{fr.resultats.votants(res.nb_votants)}</div>
+            <div className="font-titre text-[2.125rem] leading-none text-marine">{res.nb_votants}</div>
+            <div className="text-[0.875rem] text-gris">{fr.resultats.votants(res.nb_votants)}</div>
           </div>
           <div className="text-right">
-            <p className="text-[13px] text-gris">{fr.resultats.misAJour(heureCourte(res.calcule_at))}</p>
-            <button type="button" onClick={() => void charger()} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[14px]" disabled={charge}>
+            <p className="text-[0.8125rem] text-gris">{fr.resultats.misAJour(heureCourte(res.calcule_at))}</p>
+            <button type="button" onClick={() => void charger()} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.875rem]" disabled={charge}>
               <Icone nom="actualiser" className="w-4 h-4" />
               {fr.resultats.actualiser}
             </button>
           </div>
         </div>
-        <p className="mt-2 text-[13px] text-gris">
+        <p className="mt-2 text-[0.8125rem] text-gris">
           {fr.resultats.ouverture} : {res.publie_at ? dateLongue(res.publie_at) : fr.resultats.nonPubliee} · {fr.accueil.cloture} :{' '}
           {dateClotureLongue(res.cloture_at)}
         </p>
         {res.nb_votants === 0 && <p className="mt-3 text-gris">{fr.resultats.aucunVote}</p>}
 
         <section className="mt-6">
-          <h2 className="font-bold text-[17px] text-marine">{fr.resultats.prioritesTitre}</h2>
-          <p className="text-[13px] text-gris">{fr.resultats.prioritesAide}</p>
+          <h2 className="font-bold text-[1.0625rem] text-marine">{fr.resultats.prioritesTitre}</h2>
+          <p className="text-[0.8125rem] text-gris">{fr.resultats.prioritesAide}</p>
           <ol className="mt-1 divide-y divide-filet">
             {res.priorites.map((l, i) => (
               <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} />
@@ -258,8 +258,8 @@ export default function Resultats() {
         </section>
 
         <section className="mt-6">
-          <h2 className="font-bold text-[17px] text-marine">{fr.resultats.urgentsTitre}</h2>
-          <p className="text-[13px] text-gris">{fr.resultats.urgentsAide}</p>
+          <h2 className="font-bold text-[1.0625rem] text-marine">{fr.resultats.urgentsTitre}</h2>
+          <p className="text-[0.8125rem] text-gris">{fr.resultats.urgentsAide}</p>
           <ol className="mt-1 divide-y divide-filet">
             {res.urgents.map((l, i) => (
               <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} urgent />
@@ -269,8 +269,8 @@ export default function Resultats() {
 
         {res.propositions && res.propositions.length > 0 && (
           <section className="mt-6 bg-sable border-2 border-dashed border-marine/50 rounded-xl p-3">
-            <h2 className="font-bold text-[17px] text-marine">{fr.resultats.propositionsTitre}</h2>
-            <p className="text-[13px] text-gris">{fr.resultats.propositionsAide}</p>
+            <h2 className="font-bold text-[1.0625rem] text-marine">{fr.resultats.propositionsTitre}</h2>
+            <p className="text-[0.8125rem] text-gris">{fr.resultats.propositionsAide}</p>
             <ol className="mt-1 divide-y divide-filet">
               {res.propositions.map((l, i) => (
                 <LignePropositionResultat key={l.id} l={l} rang={i + 1} />
@@ -286,32 +286,32 @@ export default function Resultats() {
         <Repartition titre={fr.resultats.fokontanyTitre} lignes={top} />
 
         <section className="mt-6">
-          <h2 className="font-bold text-[17px] text-marine mb-2">{fr.resultats.reseauxTitre}</h2>
+          <h2 className="font-bold text-[1.0625rem] text-marine mb-2">{fr.resultats.reseauxTitre}</h2>
           <div className="grid grid-cols-2 gap-2">
             {[
               { n: res.reseaux.dans_nos_reseaux, l: fr.resultats.dansReseaux },
               { n: res.reseaux.hors_reseaux, l: fr.resultats.horsReseaux }
             ].map((x) => (
               <div key={x.l} className="bg-white border border-filet rounded-xl p-3 text-center">
-                <div className="font-titre text-[26px] text-marine">{x.n}</div>
-                <div className="text-[13px] text-gris">{x.l}</div>
+                <div className="font-titre text-[1.625rem] text-marine">{x.n}</div>
+                <div className="text-[0.8125rem] text-gris">{x.l}</div>
               </div>
             ))}
           </div>
         </section>
 
         <section className="mt-6">
-          <h2 className="font-bold text-[17px] text-marine mb-2">{fr.resultats.manquantsTitre}</h2>
+          <h2 className="font-bold text-[1.0625rem] text-marine mb-2">{fr.resultats.manquantsTitre}</h2>
           {res.manquants.length ? (
             <ul className="space-y-2">
               {res.manquants.map((m, i) => (
-                <li key={i} className="bg-white border border-filet rounded-xl p-3 text-[15px] whitespace-pre-wrap break-words">
+                <li key={i} className="bg-white border border-filet rounded-xl p-3 text-[0.9375rem] whitespace-pre-wrap break-words">
                   {m}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-gris text-[15px]">{fr.resultats.aucunManquant}</p>
+            <p className="text-gris text-[0.9375rem]">{fr.resultats.aucunManquant}</p>
           )}
         </section>
 
@@ -327,7 +327,7 @@ export default function Resultats() {
                 Exporter la synthèse (CSV)
               </button>
             )}
-            {erreurFichier && <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">Le fichier n'a pas pu être préparé. Réessayez.</p>}
+            {erreurFichier && <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21]">Le fichier n'a pas pu être préparé. Réessayez.</p>}
           </section>
         )}
       </>
@@ -338,27 +338,27 @@ export default function Resultats() {
     <Page titre={fr.resultats.titre}>
       {retour && (
         <div className="mb-4 bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 space-y-2" data-retour-resultats="">
-          <p className="text-[15px] font-bold">{dateVote ? `Vous avez voté le ${dateCourte(dateVote)}` : 'Vous avez voté'}</p>
+          <p className="text-[0.9375rem] font-bold">{dateVote ? `Vous avez voté le ${dateCourte(dateVote)}` : 'Vous avez voté'}</p>
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/choix" className={boutonSecondaire}>
               <Icone nom="crayon" />
               Modifier mon choix
             </Link>
-            <Link to="/" className="inline-flex items-center gap-1.5 min-h-[44px] px-2 text-[15px] font-bold text-marine underline underline-offset-2">
+            <Link to="/" className="inline-flex items-center gap-1.5 min-h-[44px] px-2 text-[0.9375rem] font-bold text-marine underline underline-offset-2">
               <Icone nom="accueil" className="w-4 h-4" />
               Accueil
             </Link>
           </div>
         </div>
       )}
-      <p className="text-[14px] text-gris mb-3">{fr.resultats.indicative}</p>
+      <p className="text-[0.875rem] text-gris mb-3">{fr.resultats.indicative}</p>
       <div className="mb-4 space-y-2">
         <BandeauxEtat masquerPreparation />
         {admin && apercu !== null && <Interrupteur actif={apercu} basculer={() => setApercu(!apercu)} />}
         {enApercu && (
           <div role="status" className="border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
             <Icone nom="oeil" className="w-5 h-5 mt-0.5" />
-            <p className="text-[15px] leading-snug">Aperçu : vos votes de test sont comptés ; ils seront effacés à la publication</p>
+            <p className="text-[0.9375rem] leading-snug">Aperçu : vos votes de test sont comptés ; ils seront effacés à la publication</p>
           </div>
         )}
       </div>

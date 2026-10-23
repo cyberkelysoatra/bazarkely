@@ -84,17 +84,17 @@ export default function Donnees() {
       <div className="space-y-3">
         {SECTIONS.map((s) => (
           <section key={s.titre} className="bg-white border border-filet rounded-xl p-4">
-            <h2 className="flex items-center gap-2 font-bold text-[16px] text-marine">
+            <h2 className="flex items-center gap-2 font-bold text-[1rem] text-marine">
               <Icone nom={s.icone} className="w-5 h-5" />
               {s.titre}
             </h2>
             {s.textes.map((t) => (
-              <p key={t} className="mt-2 text-[15px] leading-relaxed">
+              <p key={t} className="mt-2 text-[0.9375rem] leading-relaxed">
                 {t}
               </p>
             ))}
             {s.contact && (
-              <p className="mt-2 text-[15px] leading-relaxed">
+              <p className="mt-2 text-[0.9375rem] leading-relaxed">
                 Pour toute question sur vos données ou sur la consultation :{' '}
                 <a href={`mailto:${EMAIL_GIHTNB}`} className="font-bold text-marine underline underline-offset-2 break-all">
                   {EMAIL_GIHTNB}

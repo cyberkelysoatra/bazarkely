@@ -109,9 +109,9 @@ export default function Propositions() {
           Actualiser
         </button>
       </div>
-      {clos && <p className="text-[14px] text-gris mb-3">La consultation est close : plus aucun ajout possible.</p>}
+      {clos && <p className="text-[0.875rem] text-gris mb-3">La consultation est close : plus aucun ajout possible.</p>}
       {message && (
-        <p role="status" className="mb-3 border-l-4 border-marine bg-white rounded-r-lg px-3 py-2.5 text-[15px] font-bold text-marine">
+        <p role="status" className="mb-3 border-l-4 border-marine bg-white rounded-r-lg px-3 py-2.5 text-[0.9375rem] font-bold text-marine">
           {message}
         </p>
       )}
@@ -130,9 +130,9 @@ export default function Propositions() {
               className={`rounded-xl p-3 border-2 border-dashed ${p.masque ? 'bg-white border-gris/40 opacity-80' : 'bg-sable border-marine/50'}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-titre text-[16px] text-marine">{p.id}</span>
+                <span className="font-titre text-[1rem] text-marine">{p.id}</span>
                 {p.masque && (
-                  <span className="inline-flex items-center rounded-full border border-filet bg-vide px-2 py-0.5 text-[12px] font-bold">masquée</span>
+                  <span className="inline-flex items-center rounded-full border border-filet bg-vide px-2 py-0.5 text-[0.75rem] font-bold">masquée</span>
                 )}
                 <span className="ml-auto flex gap-1.5">
                   <button type="button" className={petitBouton} onClick={() => setFormulaire({ t: 'modif', p })} aria-label={`Modifier ${p.id}`}>
@@ -152,8 +152,8 @@ export default function Propositions() {
                   )}
                 </span>
               </div>
-              <p className="mt-1.5 font-bold text-[15px] leading-snug break-words">{p.intitule}</p>
-              <dl className="mt-1.5 grid grid-cols-[auto,1fr] gap-x-3 gap-y-0.5 text-[14px]">
+              <p className="mt-1.5 font-bold text-[0.9375rem] leading-snug break-words">{p.intitule}</p>
+              <dl className="mt-1.5 grid grid-cols-[auto,1fr] gap-x-3 gap-y-0.5 text-[0.875rem]">
                 {p.lieu && (
                   <>
                     <dt className="text-gris">Lieu</dt>
@@ -191,17 +191,17 @@ export default function Propositions() {
 
       <Titre2 aide="Le champ « Un projet manque au PUDi ? » des votes, du plus récent au plus ancien.">Textes libres des votants</Titre2>
       {!textes.length ? (
-        <p className="text-gris text-[15px]">Aucun texte libre pour le moment.</p>
+        <p className="text-gris text-[0.9375rem]">Aucun texte libre pour le moment.</p>
       ) : (
         <ul className="space-y-2">
           {textes.map((v) => (
             <li key={v.id_anonyme} className="bg-white border border-filet rounded-xl p-3" data-texte-libre={v.id_anonyme}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-titre text-[15px] text-marine">{v.id_anonyme}</span>
+                <span className="font-titre text-[0.9375rem] text-marine">{v.id_anonyme}</span>
                 {v.est_test && (
-                  <span className="inline-flex items-center rounded-full border border-[#E9D29A] bg-[#FFF6E0] px-2 py-0.5 text-[12px] font-bold text-[#7A5306]">test</span>
+                  <span className="inline-flex items-center rounded-full border border-[#E9D29A] bg-[#FFF6E0] px-2 py-0.5 text-[0.75rem] font-bold text-[#7A5306]">test</span>
                 )}
-                <span className="text-[13px] text-gris">{dateHeureMada(v.cree_le)}</span>
+                <span className="text-[0.8125rem] text-gris">{dateHeureMada(v.cree_le)}</span>
                 <button
                   type="button"
                   className={`${petitBouton} ml-auto`}
@@ -212,7 +212,7 @@ export default function Propositions() {
                   Transformer en proposition
                 </button>
               </div>
-              <p className="mt-1.5 text-[15px] whitespace-pre-wrap break-words">{v.manquant}</p>
+              <p className="mt-1.5 text-[0.9375rem] whitespace-pre-wrap break-words">{v.manquant}</p>
             </li>
           ))}
         </ul>

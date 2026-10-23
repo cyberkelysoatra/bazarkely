@@ -11,6 +11,7 @@ import { ecrirePrive, lireMaConversation, nouvelIdClient, type MessagePrive } fr
 import { marquerPriveLu } from '../appels/priveNonLu';
 import { extraireCode } from '../utils/erreurs';
 import { Aide } from './admin/communs';
+import { BandeauReseau, useEnvoiFiable } from '../composants/Reseau';
 
 export const ERREURS_PRIVE: Record<string, string> = {
   TROP_DE_MESSAGES: 'Vous écrivez trop vite : attendez quelques secondes (60 messages par jour au plus).',
@@ -49,6 +50,19 @@ export default function Prive() {
     if (session) void charger();
   }, [session, charger]);
 
+  const erreurEnvoi = (e: unknown) => {
+    const code = extraireCode(e) ?? 'AUTRE';
+    setErreur(ERREURS_PRIVE[code] ?? ERREURS_PRIVE.AUTRE);
+  };
+  // PUDI-CC-14.4: network failure = text kept, « Réessayer », one automatic retry when back online
+  // with the same client id (never written twice).
+  const [envoyes, setEnvoyes] = useState(0);
+  const envoi = useEnvoiFiable(async (texte: string, id: string) => {
+    await ecrirePrive(texte, id);
+    setEnvoyes((n) => n + 1);
+    await charger();
+  }, erreurEnvoi);
+
   const envoyer = async (texte: string): Promise<boolean> => {
     setErreur(null);
     if (apercu) {
@@ -59,12 +73,9 @@ export default function Prive() {
       return true;
     }
     try {
-      await ecrirePrive(texte, nouvelIdClient());
-      await charger();
-      return true;
+      return await envoi.lancer(texte, nouvelIdClient());
     } catch (e) {
-      const code = extraireCode(e) ?? 'AUTRE';
-      setErreur(ERREURS_PRIVE[code] ?? ERREURS_PRIVE.AUTRE);
+      erreurEnvoi(e);
       return false;
     }
   };
@@ -76,13 +87,13 @@ export default function Prive() {
         <p>Pour une question de détail que vous ne voulez pas poser à tous dans la discussion. La réponse apparaît ici ; un point rouge sur le menu vous prévient.</p>
       </Aide>
       {apercu && (
-        <p className="mb-3 bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-[14px]" data-prive-apercu="">
+        <p className="mb-3 bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-[0.875rem]" data-prive-apercu="">
           Aperçu : aucune conversation n’est lue ni envoyée.
         </p>
       )}
       {!session ? (
         <div className="bg-white border border-filet rounded-xl p-4 space-y-3">
-          <p className="text-[15px]">Connectez-vous avec Google pour écrire aux organisateurs.</p>
+          <p className="text-[0.9375rem]">Connectez-vous avec Google pour écrire aux organisateurs.</p>
           <button
             type="button"
             className={`${boutonPrincipal} w-full`}
@@ -101,9 +112,10 @@ export default function Prive() {
         <Chargement />
       ) : (
         <div className="space-y-4">
-          {erreurLecture && <p className="text-[14px] text-gris">Conversation indisponible pour le moment (réseau).</p>}
+          {erreurLecture && <p className="text-[0.875rem] text-gris">Conversation indisponible pour le moment (réseau).</p>}
           <FilPrive messages={messages} vide="Aucun message pour l’instant. Écrivez votre question ci-dessous." />
-          <ComposeurPrive envoyer={envoyer} erreur={erreur} effacerErreur={() => setErreur(null)} placeholder="Votre question aux organisateurs…" />
+          {envoi.enAttente && <BandeauReseau reessayer={() => void envoi.reessayer().catch(erreurEnvoi)} />}
+          <ComposeurPrive envoyer={envoyer} erreur={erreur} effacerErreur={() => setErreur(null)} placeholder="Votre question aux organisateurs…" envoyes={envoyes} />
         </div>
       )}
     </Page>

@@ -82,7 +82,7 @@ export default function Suivi() {
       </Aide>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <p className="text-[13px] text-gris">{appel.le ? `Mis à jour à ${heureCourte(appel.le.toISOString())}` : fr.app.chargement}</p>
+        <p className="text-[0.8125rem] text-gris">{appel.le ? `Mis à jour à ${heureCourte(appel.le.toISOString())}` : fr.app.chargement}</p>
         <button type="button" className={petitBouton} onClick={() => void recharger()} disabled={appel.charge}>
           <Icone nom="actualiser" className="w-4 h-4" />
           Actualiser
@@ -119,7 +119,7 @@ export default function Suivi() {
                 <Chiffre valeur={d.discussion.nb_supprimes} libelle="Supprimés" icone="poubelle" />
               </div>
               {d.discussion.nb_suspendus > 0 && (
-                <p className="mt-1 text-[13px] text-gris">{d.discussion.nb_suspendus} compte{d.discussion.nb_suspendus > 1 ? 's' : ''} suspendu{d.discussion.nb_suspendus > 1 ? 's' : ''} de la discussion.</p>
+                <p className="mt-1 text-[0.8125rem] text-gris">{d.discussion.nb_suspendus} compte{d.discussion.nb_suspendus > 1 ? 's' : ''} suspendu{d.discussion.nb_suspendus > 1 ? 's' : ''} de la discussion.</p>
               )}
             </>
           )}
@@ -132,7 +132,7 @@ export default function Suivi() {
               {Object.entries(s.par_jour)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([j, n]) => (
-                  <li key={j} className="px-3 py-2 flex items-center gap-3 text-[14px]">
+                  <li key={j} className="px-3 py-2 flex items-center gap-3 text-[0.875rem]">
                     <span className="w-28 shrink-0">{jourCourt(j)}</span>
                     <span className="flex-1 h-2.5 rounded-full bg-vide overflow-hidden" aria-hidden="true">
                       <span className="block h-full bg-marine" style={{ width: `${(100 * n) / Math.max(...Object.values(s.par_jour))}%` }} />
@@ -142,13 +142,13 @@ export default function Suivi() {
                 ))}
             </ul>
           ) : (
-            <p className="text-gris text-[15px]">Aucun vote compté pour le moment.</p>
+            <p className="text-gris text-[0.9375rem]">Aucun vote compté pour le moment.</p>
           )}
 
           <Titre2 aide="Part = votes du canal sur l'ensemble des votes comptés.">Votes par canal</Titre2>
           {s.par_canal.length ? (
             <div className="bg-white border border-filet rounded-xl overflow-hidden">
-              <table className="w-full text-[14px]">
+              <table className="w-full text-[0.875rem]">
                 <thead className="bg-vide text-left">
                   <tr>
                     <th className="px-3 py-2">Canal</th>
@@ -170,7 +170,7 @@ export default function Suivi() {
               </table>
             </div>
           ) : (
-            <p className="text-gris text-[15px]">Aucun vote compté pour le moment.</p>
+            <p className="text-gris text-[0.9375rem]">Aucun vote compté pour le moment.</p>
           )}
 
           <Titre2>Portée des réseaux</Titre2>
@@ -181,7 +181,7 @@ export default function Suivi() {
 
           <Titre2 aide="Votes comptés pour 1 000 électeurs inscrits en 2023 (liste CENI).">Représentativité par fokontany</Titre2>
           <div className="bg-white border border-filet rounded-xl overflow-hidden">
-            <table className="w-full text-[14px]">
+            <table className="w-full text-[0.875rem]">
               <thead className="bg-vide text-left">
                 <tr>
                   <th className="px-3 py-2">Fokontany</th>
@@ -214,9 +214,9 @@ export default function Suivi() {
           </Titre2>
           <div className="grid md:grid-cols-2 gap-2">
             <div className="bg-white border border-filet rounded-xl p-3">
-              <p className="font-bold text-[15px] mb-1">Adresses internet avec 5 votes ou plus</p>
+              <p className="font-bold text-[0.9375rem] mb-1">Adresses internet avec 5 votes ou plus</p>
               {s.indices_ip.length ? (
-                <ul className="text-[14px] space-y-1">
+                <ul className="text-[0.875rem] space-y-1">
                   {s.indices_ip.map((g) => (
                     <li key={g.groupe}>
                       Groupe <span className="font-bold">{g.groupe}</span> : {g.n} votes, du {dateCourte(g.du)} au {dateCourte(g.au)}
@@ -224,13 +224,13 @@ export default function Suivi() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[14px] text-gris">Aucun groupe de 5 votes ou plus.</p>
+                <p className="text-[0.875rem] text-gris">Aucun groupe de 5 votes ou plus.</p>
               )}
             </div>
             <div className="bg-white border border-filet rounded-xl p-3">
-              <p className="font-bold text-[15px] mb-1">Numéros refusés (empreintes)</p>
+              <p className="font-bold text-[0.9375rem] mb-1">Numéros refusés (empreintes)</p>
               {numerosRefuses.length ? (
-                <ul className="text-[14px] space-y-1">
+                <ul className="text-[0.875rem] space-y-1">
                   {numerosRefuses.map(([k, n]) => (
                     <li key={k}>
                       {k === PERSONNE ? k : <>Numéro du vote <span className="font-bold">{k}</span></>} : {n} tentative{n > 1 ? 's' : ''}
@@ -238,7 +238,7 @@ export default function Suivi() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[14px] text-gris">Aucune tentative refusée.</p>
+                <p className="text-[0.875rem] text-gris">Aucune tentative refusée.</p>
               )}
             </div>
           </div>

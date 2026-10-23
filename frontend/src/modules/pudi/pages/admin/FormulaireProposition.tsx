@@ -124,7 +124,7 @@ export function FormulaireProposition({
   };
 
   const etiquette = (pour: string, texte: string, aide?: string) => (
-    <label htmlFor={pour} className="block font-bold text-[14px] mb-1">
+    <label htmlFor={pour} className="block font-bold text-[0.875rem] mb-1">
       {texte}
       {aide && <span className="font-normal text-gris"> {aide}</span>}
     </label>
@@ -138,15 +138,15 @@ export function FormulaireProposition({
         aria-labelledby={`${id}-t`}
         className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-2xl shadow-xl p-4 space-y-3"
       >
-        <h2 id={`${id}-t`} className="font-bold text-[18px] text-marine">
+        <h2 id={`${id}-t`} className="font-bold text-[1.125rem] text-marine">
           {titre}
         </h2>
         {transformer && (
           <>
-            <blockquote className="border-l-4 border-filet pl-3 text-[14px] text-gris whitespace-pre-wrap break-words">
+            <blockquote className="border-l-4 border-filet pl-3 text-[0.875rem] text-gris whitespace-pre-wrap break-words">
               {demande.texte}
             </blockquote>
-            <p role="note" className="flex gap-2 items-start text-[14px] font-bold text-[#9C3F21]">
+            <p role="note" className="flex gap-2 items-start text-[0.875rem] font-bold text-[#9C3F21]">
               <Icone nom="alerte" className="w-4 h-4 mt-0.5 shrink-0" />
               Relisez : aucun nom ni information personnelle ne doit apparaître.
             </p>
@@ -185,11 +185,11 @@ export function FormulaireProposition({
             maxLength={MAX_PRECISION}
             value={precision}
             onChange={(e) => setPrecision(e.target.value)}
-            className="w-full rounded-xl border border-filet px-3 py-2 text-[16px]"
+            className="w-full rounded-xl border border-filet px-3 py-2 text-[1rem]"
           />
         </div>
         {erreur && (
-          <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">
+          <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21]">
             {erreur}
           </p>
         )}

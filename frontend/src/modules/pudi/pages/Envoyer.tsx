@@ -18,6 +18,7 @@ import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../uti
 import { dateCourte } from '../utils/format';
 import { brouillonValide, normaliserTelephone, type Brouillon } from '../utils/regles';
 import { allerAuChamp } from '../utils/champFautif';
+import { BandeauReseau, useEnvoiFiable } from '../composants/Reseau';
 import { IndicateurEtapes } from '../composants/Etapes';
 import { programmeParId } from '../data';
 import { propositionParId, usePropositions } from '../appels/propositions';
@@ -42,7 +43,7 @@ const FORM_VIDE: FormulaireVote = { fokontany: '', fokontanyAutre: '', profil: '
 function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormulaire }) {
   if (!e || e.champ !== champ) return null;
   return (
-    <p role="alert" className="mt-1.5 flex gap-1.5 items-start text-[14px] font-bold text-[#9C3F21]">
+    <p role="alert" className="mt-1.5 flex gap-1.5 items-start text-[0.875rem] font-bold text-[#9C3F21]">
       <Icone nom="alerte" className="w-4 h-4 mt-0.5" />
       {e.message}
     </p>
@@ -180,6 +181,26 @@ export default function Envoyer() {
     window.setTimeout(() => allerAuChamp(cible), 30);
   };
 
+  const erreurEnvoi = (e: unknown) => {
+    const er = messageErreur(e);
+    montrerErreur(er);
+    // PUDI-CC-09: masked vote, the notice with its two buttons is shown next to the button.
+    if (er.code === 'VOTE_MASQUE') void rechargerMasquages();
+  };
+  // PUDI-CC-14.4: a network failure keeps the form and retries once when back online. The vote
+  // is one per account on the server, so a retry never makes two votes.
+  const envoiVote = useEnvoiFiable(async (b: Brouillon, f: FormulaireVote, c: string | null) => {
+    setEnvoi(true);
+    try {
+      const v = await soumettreVote(b, f, c);
+      setVote(v);
+      if (!v.est_test) noterEtape('vote');
+      navigate('/merci', { state: { test: v.est_test } });
+    } finally {
+      setEnvoi(false);
+    }
+  }, erreurEnvoi);
+
   const envoyer = async (ev: FormEvent) => {
     ev.preventDefault();
     const local = valider();
@@ -190,25 +211,16 @@ export default function Envoyer() {
       navigate('/merci', { state: { apercu: true } });
       return;
     }
-    setEnvoi(true);
     try {
-      const v = await soumettreVote(brouillon, form, lireCanal());
-      setVote(v);
-      if (!v.est_test) noterEtape('vote');
-      navigate('/merci', { state: { test: v.est_test } });
+      if (!(await envoiVote.lancer(brouillon, form, lireCanal()))) setErreur(null);
     } catch (e) {
-      const er = messageErreur(e);
-      montrerErreur(er);
-      // PUDI-CC-09: masked vote, the notice with its two buttons is shown next to the button.
-      if (er.code === 'VOTE_MASQUE') void rechargerMasquages();
-    } finally {
-      setEnvoi(false);
+      erreurEnvoi(e);
     }
   };
 
   if (erreurDonnees) return <Page titre={fr.envoi.titre}><ErreurDonnees reessayer={reessayer} /></Page>;
 
-  const champ = 'w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 text-[16px]';
+  const champ = 'w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 text-[1rem]';
   const choixValide = brouillonValide(brouillon);
   const nomChoix = (id: string) => (donnees ? programmeParId(donnees, id)?.nom : undefined) ?? propositionParId(propositions, id)?.intitule ?? id;
 
@@ -218,7 +230,7 @@ export default function Envoyer() {
       <div className="mb-4">
         <BandeauxEtat />
       </div>
-      <p className="mb-4 text-[14px] text-gris" data-rappel-facultatif="">
+      <p className="mb-4 text-[0.875rem] text-gris" data-rappel-facultatif="">
         <Link to="/choix" className="font-bold text-marine underline underline-offset-2">
           {fr.vote.rappelFacultatif}
         </Link>
@@ -226,7 +238,7 @@ export default function Envoyer() {
 
       {!choixValide && (
         <div className="mb-4 bg-white border border-filet rounded-xl p-3 space-y-3">
-          <p className="text-[15px]">{fr.choix.incomplet}</p>
+          <p className="text-[0.9375rem]">{fr.choix.incomplet}</p>
           <Link to="/choix" className={`${boutonSecondaire} w-full`}>
             <Icone nom="liste" />
             {fr.envoi.verifierChoix}
@@ -238,14 +250,14 @@ export default function Envoyer() {
         <Chargement />
       ) : !session ? (
         <div className="space-y-4">
-          <p className="text-[16px] flex gap-2 items-start">
+          <p className="text-[1rem] flex gap-2 items-start">
             <Icone nom="personnes" className="w-5 h-5 text-marine mt-0.5" />
             {fr.envoi.unVote}
           </p>
           {brouillon.priorites.length > 0 && (
             <div className="bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5" data-priorites-gardees="">
-              <p className="font-bold text-[15px]">{brouillon.priorites.length === 3 ? fr.vote.gardees : fr.vote.gardeesPartiel}</p>
-              <ol className="mt-1 space-y-0.5 text-[15px] list-decimal pl-5">
+              <p className="font-bold text-[0.9375rem]">{brouillon.priorites.length === 3 ? fr.vote.gardees : fr.vote.gardeesPartiel}</p>
+              <ol className="mt-1 space-y-0.5 text-[0.9375rem] list-decimal pl-5">
                 {brouillon.priorites.map((id) => (
                   <li key={id}>{nomChoix(id)}</li>
                 ))}
@@ -260,15 +272,15 @@ export default function Envoyer() {
         </div>
       ) : (
         <form onSubmit={envoyer} noValidate className="space-y-5">
-          <p className="text-[13px] text-gris">{fr.envoi.connecteEn(session.user.email ?? '')}</p>
+          <p className="text-[0.8125rem] text-gris">{fr.envoi.connecteEn(session.user.email ?? '')}</p>
           {vote && (
-            <p className="bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 text-[15px]">
+            <p className="bg-white border-l-4 border-marine rounded-r-lg px-3 py-2.5 text-[0.9375rem]">
               {memeChoix(brouillon, vote) ? fr.envoi.dejaVote(dateCourte(vote.created_at)) : fr.vote.modification(dateCourte(vote.created_at))}
             </p>
           )}
 
           <div>
-            <label htmlFor="pudi-fkt" className="block font-bold text-[15px] mb-1.5">
+            <label htmlFor="pudi-fkt" className="block font-bold text-[0.9375rem] mb-1.5">
               {fr.envoi.fokontany}
             </label>
             <select
@@ -299,7 +311,7 @@ export default function Envoyer() {
           </div>
 
           <fieldset id="pudi-profil">
-            <legend className="font-bold text-[15px] mb-1.5">{fr.envoi.profil}</legend>
+            <legend className="font-bold text-[0.9375rem] mb-1.5">{fr.envoi.profil}</legend>
             <div className="space-y-1.5">
               {PROFIL_VALEURS.map((p) => (
                 <label key={p} className="flex items-center gap-3 min-h-[44px] bg-white border border-filet rounded-xl px-3">
@@ -311,7 +323,7 @@ export default function Envoyer() {
                     onChange={() => setForm({ ...form, profil: p })}
                     className="w-5 h-5 accent-[#0B2A8C]"
                   />
-                  <span className="text-[16px]">{fr.envoi.profils[p]}</span>
+                  <span className="text-[1rem]">{fr.envoi.profils[p]}</span>
                 </label>
               ))}
             </div>
@@ -319,7 +331,7 @@ export default function Envoyer() {
           </fieldset>
 
           <div>
-            <label htmlFor="pudi-tel" className="block font-bold text-[15px] mb-1.5">
+            <label htmlFor="pudi-tel" className="block font-bold text-[0.9375rem] mb-1.5">
               {fr.envoi.telephone}
             </label>
             <input
@@ -332,7 +344,7 @@ export default function Envoyer() {
               onChange={(e) => setForm({ ...form, telephone: e.target.value })}
               aria-describedby="pudi-tel-aide"
             />
-            <p id="pudi-tel-aide" className="mt-1 text-[13px] text-gris">
+            <p id="pudi-tel-aide" className="mt-1 text-[0.8125rem] text-gris">
               {vote ? fr.envoi.telephoneGarde : fr.envoi.telephoneAide}
             </p>
             <ErreurChamp e={erreur} champ="telephone" />
@@ -347,12 +359,12 @@ export default function Envoyer() {
                 onChange={(e) => setForm({ ...form, resident: e.target.checked })}
                 className="w-5 h-5 accent-[#0B2A8C]"
               />
-              <span className="text-[16px]">{fr.envoi.resident}</span>
+              <span className="text-[1rem]">{fr.envoi.resident}</span>
             </label>
             <ErreurChamp e={erreur} champ="resident" />
           </div>
 
-          <p className="text-[13px] leading-relaxed text-gris bg-white border border-filet rounded-xl p-3">{fr.envoi.notice}</p>
+          <p className="text-[0.8125rem] leading-relaxed text-gris bg-white border border-filet rounded-xl p-3">{fr.envoi.notice}</p>
 
           <ErreurChamp e={erreur} champ="choix" />
           {erreur?.code === 'VOTE_MASQUE' && masquages.length ? (
@@ -360,7 +372,8 @@ export default function Envoyer() {
           ) : (
             <ErreurChamp e={erreur} champ="general" />
           )}
-          {!envoiOuvert && etat && !etat.clos && <p className="text-[14px] text-gris">{fr.envoi.envoiFerme}</p>}
+          {envoiVote.enAttente && <BandeauReseau cours={envoi} reessayer={() => void envoiVote.reessayer().catch(erreurEnvoi)} />}
+          {!envoiOuvert && etat && !etat.clos && <p className="text-[0.875rem] text-gris">{fr.envoi.envoiFerme}</p>}
           <button type="submit" className={`${boutonPrincipal} w-full`} disabled={envoi || !envoiOuvert || !choixValide}>
             <Icone nom="envoyer" />
             {envoi ? fr.envoi.envoiEnCours : vote ? fr.envoi.modifierVote : fr.envoi.envoyer}

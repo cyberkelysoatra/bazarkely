@@ -41,8 +41,9 @@ export async function lireMessages(avant: string | null = null, limite = LIMITE_
   return (await r.json()) as MessageDiscussion[];
 }
 
-export const ecrireMessage = (texte: string, reponseA: string | null) =>
-  rpc<{ id: string }>('pudi_discussion_ecrire', { p_texte: texte, p_reponse_a: reponseA });
+/** PUDI-CC-14.4: the client id makes a retried send idempotent on the server. */
+export const ecrireMessage = (texte: string, reponseA: string | null, clientId: string) =>
+  rpc<{ id: string }>('pudi_discussion_ecrire', { p_texte: texte, p_reponse_a: reponseA, p_client_id: clientId });
 export const supprimerMessage = (id: string) => rpc<{ id: string; role?: string }>('pudi_discussion_supprimer', { p_id: id });
 export const suspendreAuteur = (message: string, motif: string) => rpc<null>('pudi_admin_discussion_suspendre', { p_message: message, p_motif: motif });
 export const retablirAuteur = (message: string) => rpc<null>('pudi_admin_discussion_retablir_auteur', { p_message: message });

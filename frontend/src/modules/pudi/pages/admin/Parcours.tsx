@@ -46,7 +46,7 @@ export default function ParcoursVisiteurs({ nomCanal, codes }: { nomCanal: (code
         <p>« Votes réels comptés » vient de la liste des votes (sans votes masqués ni votes de test) : il peut dépasser « Ont envoyé leur vote » pour les votes arrivés avant le début de la mesure.</p>
       </Aide>
       <label className="block mb-3">
-        <span className="block text-[13px] text-gris mb-1">Canal</span>
+        <span className="block text-[0.8125rem] text-gris mb-1">Canal</span>
         <select className={champ} value={canal} onChange={(e) => setCanal(e.target.value)} data-parcours-canal="">
           <option value="">Tous les canaux</option>
           {options.map((c) => (
@@ -66,7 +66,7 @@ export default function ParcoursVisiteurs({ nomCanal, codes }: { nomCanal: (code
               const pct = pctVisites(n, visites);
               return (
                 <li key={e} data-etape={e}>
-                  <div className="flex items-baseline justify-between gap-2 text-[14px]">
+                  <div className="flex items-baseline justify-between gap-2 text-[0.875rem]">
                     <span className="min-w-0">{LIBELLES[e]}</span>
                     <span className="shrink-0 font-bold">
                       {n} <span className="font-normal text-gris">({pct} %)</span>
@@ -79,11 +79,11 @@ export default function ParcoursVisiteurs({ nomCanal, codes }: { nomCanal: (code
               );
             })}
           </ol>
-          <p className="mt-3 pt-3 border-t border-filet text-[14px] flex justify-between gap-2" data-parcours-votes="">
+          <p className="mt-3 pt-3 border-t border-filet text-[0.875rem] flex justify-between gap-2" data-parcours-votes="">
             <span>Votes réels comptés</span>
             <span className="font-bold">{p.nb_votes}</span>
           </p>
-          <p className="mt-2 text-[13px] text-gris" data-parcours-debut="">
+          <p className="mt-2 text-[0.8125rem] text-gris" data-parcours-debut="">
             {p.debut
               ? `Mesure commencée le ${dateCourte(p.debut)} : les visites antérieures ne sont pas comptées.`
               : 'Mesure pas encore commencée : aucune visite enregistrée.'}

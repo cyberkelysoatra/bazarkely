@@ -17,10 +17,10 @@ export default function Merci() {
         <span className="inline-flex w-16 h-16 rounded-full bg-marine text-white items-center justify-center">
           <Icone nom="coche" className="w-9 h-9" />
         </span>
-        <h1 className="font-titre text-[24px] leading-tight text-marine mt-4">{fr.merci.titre}</h1>
-        {test && <p className="mt-3 text-[15px] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left">{fr.merci.test}</p>}
+        <h1 className="font-titre text-[1.5rem] leading-tight text-marine mt-4">{fr.merci.titre}</h1>
+        {test && <p className="mt-3 text-[0.9375rem] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left">{fr.merci.test}</p>}
         {apercu && (
-          <p className="mt-3 text-[15px] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left" data-merci-apercu="">
+          <p className="mt-3 text-[0.9375rem] bg-[#FFF6E0] border-l-4 border-[#926407] rounded-r-lg px-3 py-2 text-left" data-merci-apercu="">
             Aperçu : rien n'a été enregistré, aucun vote n'a été envoyé.
           </p>
         )}

@@ -61,9 +61,9 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
   };
   return (
     <form onSubmit={envoyer} className="bg-white border-2 border-marine rounded-xl p-3 space-y-3" aria-label={nouveau ? 'Nouveau canal' : `Modifier ${initial.nom}`}>
-      <p className="font-bold text-marine text-[16px]">{nouveau ? 'Nouveau canal' : 'Modifier le canal'}</p>
+      <p className="font-bold text-marine text-[1rem]">{nouveau ? 'Nouveau canal' : 'Modifier le canal'}</p>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">Nom</span>
+        <span className="block font-bold text-[0.875rem] mb-1">Nom</span>
         <input
           className={champ}
           value={f.nom}
@@ -73,7 +73,7 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
         />
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">Code du lien {nouveau ? '(proposé à partir du nom)' : '(ne change plus)'}</span>
+        <span className="block font-bold text-[0.875rem] mb-1">Code du lien {nouveau ? '(proposé à partir du nom)' : '(ne change plus)'}</span>
         <input
           className={`${champ} font-mono ${nouveau ? '' : 'bg-vide text-gris'}`}
           value={f.code}
@@ -85,10 +85,10 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
           }}
           name="code"
         />
-        <span className="block text-[13px] text-gris mt-1 break-all">{lienCanal(f.code || 'code')}</span>
+        <span className="block text-[0.8125rem] text-gris mt-1 break-all">{lienCanal(f.code || 'code')}</span>
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">Type</span>
+        <span className="block font-bold text-[0.875rem] mb-1">Type</span>
         <select className={champ} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as TypeCanal })} name="type">
           {TYPES.map((t) => (
             <option key={t.v} value={t.v}>
@@ -99,22 +99,22 @@ function FormCanal({ initial, nouveau, fermer, enregistre }: { initial: Formulai
       </label>
       <label className="flex items-center gap-3 min-h-[44px]">
         <input type="checkbox" className="w-5 h-5 accent-[#0B2A8C]" checked={f.liste_membres} onChange={(e) => setF({ ...f, liste_membres: e.target.checked })} />
-        <span className="text-[15px]">Le groupe a une liste de membres (permet de repérer un lien utilisé hors du groupe)</span>
+        <span className="text-[0.9375rem]">Le groupe a une liste de membres (permet de repérer un lien utilisé hors du groupe)</span>
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">Responsable</span>
+        <span className="block font-bold text-[0.875rem] mb-1">Responsable</span>
         <input className={champ} value={f.responsable ?? ''} maxLength={120} onChange={(e) => setF({ ...f, responsable: e.target.value })} name="responsable" />
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">Remarque</span>
+        <span className="block font-bold text-[0.875rem] mb-1">Remarque</span>
         <input className={champ} value={f.remarque ?? ''} maxLength={300} onChange={(e) => setF({ ...f, remarque: e.target.value })} name="remarque" />
       </label>
       <label className="flex items-center gap-3 min-h-[44px]">
         <input type="checkbox" className="w-5 h-5 accent-[#0B2A8C]" checked={f.actif} onChange={(e) => setF({ ...f, actif: e.target.checked })} name="actif" />
-        <span className="text-[15px]">Canal actif</span>
+        <span className="text-[0.9375rem]">Canal actif</span>
       </label>
       {erreur && (
-        <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">
+        <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21]">
           {erreur}
         </p>
       )}
@@ -173,26 +173,26 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
   };
   return (
     <div className="mt-3 border-t border-filet pt-2" data-responsables={canal.code}>
-      <p className="font-bold text-[14px] text-marine flex items-center gap-1.5">
+      <p className="font-bold text-[0.875rem] text-marine flex items-center gap-1.5">
         <Icone nom="personnes" className="w-4 h-4" />
         Responsables
       </p>
       {liste === null && !erreur ? (
-        <p className="text-[13px] text-gris">{fr.app.chargement}</p>
+        <p className="text-[0.8125rem] text-gris">{fr.app.chargement}</p>
       ) : liste && !liste.length ? (
-        <p className="text-[13px] text-gris">Aucun responsable désigné.</p>
+        <p className="text-[0.8125rem] text-gris">Aucun responsable désigné.</p>
       ) : (
         <ul className="mt-1 space-y-1">
           {(liste ?? []).map((r) => (
-            <li key={r.email} className="flex flex-wrap items-center gap-2 text-[14px]" data-responsable={r.email}>
+            <li key={r.email} className="flex flex-wrap items-center gap-2 text-[0.875rem]" data-responsable={r.email}>
               <span className="min-w-0 flex-1">
                 <span className="block break-all">{r.email}</span>
                 {r.whatsapp ? (
-                  <span className="block text-[13px] text-gris" data-whatsapp="">
+                  <span className="block text-[0.8125rem] text-gris" data-whatsapp="">
                     WhatsApp : {afficherNumero(r.whatsapp)}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-[13px] font-bold text-[#9C3F21]" data-whatsapp-manquant="">
+                  <span className="flex items-center gap-1 text-[0.8125rem] font-bold text-[#9C3F21]" data-whatsapp-manquant="">
                     <Icone nom="alerte" className="w-3.5 h-3.5" />
                     Numéro WhatsApp manquant
                   </span>
@@ -265,11 +265,11 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
           {cours ? '…' : 'Enregistrer'}
         </button>
       </form>
-      <p className="mt-1 text-[13px] text-gris" data-avis-whatsapp="">
+      <p className="mt-1 text-[0.8125rem] text-gris" data-avis-whatsapp="">
         {fr.groupe.aideWhatsApp}
       </p>
       {erreur && (
-        <p role="alert" className="mt-1 text-[14px] font-bold text-[#9C3F21]">
+        <p role="alert" className="mt-1 text-[0.875rem] font-bold text-[#9C3F21]">
           {erreur}
         </p>
       )}
@@ -325,14 +325,14 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
 
   return (
     <div className="bg-white border-2 border-marine rounded-xl p-3 space-y-3" aria-label={`Importer une liste pour ${canal.nom}`} role="region">
-      <p className="font-bold text-marine text-[16px]">Importer une liste : {canal.nom}</p>
-      <p className="text-[14px] bg-vide rounded-lg p-2.5 flex gap-2">
+      <p className="font-bold text-marine text-[1rem]">Importer une liste : {canal.nom}</p>
+      <p className="text-[0.875rem] bg-vide rounded-lg p-2.5 flex gap-2">
         <Icone nom="cadenas" className="w-4 h-4 mt-0.5 text-marine" />
         Les numéros sont envoyés de façon chiffrée au serveur, transformés en empreintes et jamais enregistrés en clair. Ne mettez aucun nom dans le fichier.
       </p>
       {resultat ? (
         <div className="space-y-2" role="status">
-          <p className="font-bold text-[15px]">Liste enregistrée</p>
+          <p className="font-bold text-[0.9375rem]">Liste enregistrée</p>
           <ul className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
             {(
               [
@@ -344,8 +344,8 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
               ] as const
             ).map(([l, n]) => (
               <li key={l} className="bg-vide rounded-lg p-2">
-                <span className="block font-titre text-[22px] text-marine">{n}</span>
-                <span className="block text-[12px] text-gris">{l}</span>
+                <span className="block font-titre text-[1.375rem] text-marine">{n}</span>
+                <span className="block text-[0.75rem] text-gris">{l}</span>
               </li>
             ))}
           </ul>
@@ -357,7 +357,7 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
         <>
           <div className="grid sm:grid-cols-2 gap-2">
             <label className="block">
-              <span className="block font-bold text-[14px] mb-1">Source (obligatoire)</span>
+              <span className="block font-bold text-[0.875rem] mb-1">Source (obligatoire)</span>
               <input className={champ} list="pudi-sources" value={source} onChange={(e) => setSource(e.target.value)} maxLength={80} name="source" />
               <datalist id="pudi-sources">
                 {SOURCES.map((s) => (
@@ -366,7 +366,7 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
               </datalist>
             </label>
             <label className="block">
-              <span className="block font-bold text-[14px] mb-1">Date de la liste</span>
+              <span className="block font-bold text-[0.875rem] mb-1">Date de la liste</span>
               <input type="date" className={champ} value={date} onChange={(e) => setDate(e.target.value)} name="date" />
             </label>
           </div>
@@ -381,7 +381,7 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
                   setMode(m);
                   vider();
                 }}
-                className={`flex-1 min-h-[44px] rounded-xl border font-bold text-[14px] ${mode === m ? 'bg-marine text-white border-marine' : 'bg-white text-marine border-filet'}`}
+                className={`flex-1 min-h-[44px] rounded-xl border font-bold text-[0.875rem] ${mode === m ? 'bg-marine text-white border-marine' : 'bg-white text-marine border-filet'}`}
               >
                 {m === 'collage' ? 'Coller une colonne' : 'Fichier CSV'}
               </button>
@@ -389,10 +389,10 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
           </div>
           {mode === 'collage' ? (
             <label className="block">
-              <span className="block text-[13px] text-gris mb-1">Un numéro par ligne (une colonne d'Excel peut être copiée puis collée ici).</span>
+              <span className="block text-[0.8125rem] text-gris mb-1">Un numéro par ligne (une colonne d'Excel peut être copiée puis collée ici).</span>
               <textarea
                 rows={6}
-                className="w-full rounded-xl border border-filet px-3 py-2 text-[16px] font-mono"
+                className="w-full rounded-xl border border-filet px-3 py-2 text-[1rem] font-mono"
                 value={collage}
                 autoComplete="off"
                 spellCheck={false}
@@ -405,21 +405,21 @@ function Import({ canal, fermer, termine }: { canal: Canal; fermer: () => void; 
             </label>
           ) : (
             <label className="block">
-              <span className="block text-[13px] text-gris mb-1">
+              <span className="block text-[0.8125rem] text-gris mb-1">
                 Colonne « numero » (ou la première colonne s'il n'y a pas d'en-tête), séparateur virgule ou point-virgule. Les autres colonnes sont ignorées et ne sont jamais envoyées.
               </span>
-              <input ref={entree} type="file" accept=".csv,.txt,text/csv,text/plain" className="block w-full text-[14px]" onChange={(e) => lireFichier(e.target.files?.[0])} />
-              {nomFichier && <span className="block text-[13px] text-gris mt-1">{nomFichier}</span>}
+              <input ref={entree} type="file" accept=".csv,.txt,text/csv,text/plain" className="block w-full text-[0.875rem]" onChange={(e) => lireFichier(e.target.files?.[0])} />
+              {nomFichier && <span className="block text-[0.8125rem] text-gris mt-1">{nomFichier}</span>}
             </label>
           )}
           {numeros.length > 0 && (
-            <p className="text-[14px] bg-vide rounded-lg p-2.5" role="status">
+            <p className="text-[0.875rem] bg-vide rounded-lg p-2.5" role="status">
               Aperçu : <span className="font-bold">{apercu.total}</span> ligne{apercu.total > 1 ? 's' : ''}, dont{' '}
               <span className="font-bold">{apercu.invalides}</span> invalide{apercu.invalides > 1 ? 's' : ''} (numéro malgache 03x ou international avec +).
             </p>
           )}
           {erreur && (
-            <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">
+            <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21]">
               {erreur}
             </p>
           )}
@@ -522,8 +522,8 @@ export default function Canaux() {
                     <Icone nom={t.icone} className="w-5 h-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-[15px] leading-snug break-words">{c.nom}</p>
-                    <p className="text-[13px] text-gris">
+                    <p className="font-bold text-[0.9375rem] leading-snug break-words">{c.nom}</p>
+                    <p className="text-[0.8125rem] text-gris">
                       {t.l} · <span className="font-mono">{c.code}</span> · {c.actif ? 'actif' : 'inactif'}
                       {c.responsable ? ` · ${c.responsable}` : ''}
                     </p>
@@ -531,19 +531,19 @@ export default function Canaux() {
                 </div>
                 <dl className="mt-2 grid grid-cols-3 gap-1 text-center">
                   <div className="bg-vide rounded-lg py-1.5">
-                    <dt className="text-[12px] text-gris">Numéros</dt>
+                    <dt className="text-[0.75rem] text-gris">Numéros</dt>
                     <dd className="font-bold">{c.nb_numeros}</dd>
                   </div>
                   <div className="bg-vide rounded-lg py-1.5">
-                    <dt className="text-[12px] text-gris">Votes</dt>
+                    <dt className="text-[0.75rem] text-gris">Votes</dt>
                     <dd className="font-bold">{c.nb_votes}</dd>
                   </div>
                   <div className="bg-vide rounded-lg py-1.5">
-                    <dt className="text-[12px] text-gris">Hors liste</dt>
+                    <dt className="text-[0.75rem] text-gris">Hors liste</dt>
                     <dd className="font-bold">{c.nb_votes_hors_liste}</dd>
                   </div>
                 </dl>
-                <p className="mt-2 text-[13px] break-all font-mono text-texte">{lienCanal(c.code)}</p>
+                <p className="mt-2 text-[0.8125rem] break-all font-mono text-texte">{lienCanal(c.code)}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <button type="button" className={petitBouton} onClick={() => void copier(c)} aria-label={`Copier le lien de ${c.nom}`}>
                     <Icone nom="copier" className="w-4 h-4" />
@@ -583,7 +583,7 @@ export default function Canaux() {
                   </button>
                 </div>
                 {erreurQr === c.code && (
-                  <p role="alert" className="mt-1 text-[14px] font-bold text-[#9C3F21]">
+                  <p role="alert" className="mt-1 text-[0.875rem] font-bold text-[#9C3F21]">
                     Le QR code n'a pas pu être créé. Réessayez.
                   </p>
                 )}
@@ -601,12 +601,12 @@ export default function Canaux() {
 
       <Titre2 aide="Chaque import est gardé avec sa source. Supprimer une liste retire ses numéros codés (action inscrite au journal).">Listes importées</Titre2>
       {d && !d.listes.length ? (
-        <p className="text-gris text-[15px]">Aucune liste importée.</p>
+        <p className="text-gris text-[0.9375rem]">Aucune liste importée.</p>
       ) : (
         <ul className="space-y-2">
           {(d?.listes ?? []).map((l) => (
             <li key={l.id} className="bg-white border border-filet rounded-xl p-3 flex flex-wrap items-center gap-2">
-              <div className="min-w-0 flex-1 text-[14px]">
+              <div className="min-w-0 flex-1 text-[0.875rem]">
                 <p className="font-bold break-words">{nomCanal(l.canal_code)}</p>
                 <p className="text-gris">
                   Source : {l.source}
@@ -641,7 +641,7 @@ export default function Canaux() {
 
       <Titre2 aide="Un même numéro peut figurer dans les listes de plusieurs canaux.">Numéros présents dans plusieurs canaux</Titre2>
       {d && (
-        <div className="bg-white border border-filet rounded-xl p-3 text-[14px] space-y-2">
+        <div className="bg-white border border-filet rounded-xl p-3 text-[0.875rem] space-y-2">
           <p>
             <span className="font-bold">{d.multi.numeros_multi_canaux}</span> numéro{d.multi.numeros_multi_canaux > 1 ? 's' : ''} sur{' '}
             <span className="font-bold">{d.multi.numeros_total}</span> figurent dans plusieurs canaux.

@@ -19,6 +19,8 @@ import {
 import { marquerDiscussionVue } from '../appels/discussionNonLue';
 import { extraireCode } from '../utils/erreurs';
 import { allerAuChamp } from '../utils/champFautif';
+import { BandeauReseau, useEnvoiFiable } from '../composants/Reseau';
+import { nouvelIdClient } from '../appels/prives';
 import { Dialogue, type DemandeConfirmation } from './admin/communs';
 
 const MAX = 500;
@@ -130,10 +132,10 @@ function Bulle({
           }`}
         >
           <div className="flex items-center gap-2">
-            <span className={`text-[13px] font-bold truncate ${moi ? 'text-white/90' : 'text-marine'}`} data-auteur="">
+            <span className={`text-[0.8125rem] font-bold truncate ${moi ? 'text-white/90' : 'text-marine'}`} data-auteur="">
               {m.auteur_nom}
             </span>
-            <span className={`ml-auto text-[12px] shrink-0 ${moi ? 'text-white/75' : 'text-gris'}`}>{heureHHmm(m.cree_at)}</span>
+            <span className={`ml-auto text-[0.75rem] shrink-0 ${moi ? 'text-white/75' : 'text-gris'}`}>{heureHHmm(m.cree_at)}</span>
             {!m.supprime && (
               <button
                 type="button"
@@ -147,24 +149,24 @@ function Bulle({
             )}
           </div>
           {m.reponse_a && (
-            <div className={`mt-1 border-l-[3px] rounded-r px-2 py-1 text-[13px] ${moi ? 'border-white/70 bg-white/10' : 'border-marine bg-vide'}`} data-citation="">
+            <div className={`mt-1 border-l-[3px] rounded-r px-2 py-1 text-[0.8125rem] ${moi ? 'border-white/70 bg-white/10' : 'border-marine bg-vide'}`} data-citation="">
               <span className="block font-bold">{m.reponse_a.auteur_nom}</span>
               <span className={`block ${m.reponse_a.supprime ? 'italic opacity-80' : ''} break-words`}>{m.reponse_a.supprime ? SUPPRIME : m.reponse_a.extrait}</span>
             </div>
           )}
           {m.supprime ? (
-            <p className={`mt-0.5 text-[15px] italic ${moi ? 'text-white/75' : 'text-gris'}`} data-supprime="">
+            <p className={`mt-0.5 text-[0.9375rem] italic ${moi ? 'text-white/75' : 'text-gris'}`} data-supprime="">
               {SUPPRIME}
             </p>
           ) : (
-            <p className="mt-0.5 text-[15px] leading-snug whitespace-pre-wrap break-words" data-texte="">
+            <p className="mt-0.5 text-[0.9375rem] leading-snug whitespace-pre-wrap break-words" data-texte="">
               {m.texte}
             </p>
           )}
         </div>
         {ouvert && (
           <div role="menu" className={`absolute z-30 ${versLeHaut ? 'bottom-full mb-1' : 'top-full mt-1'} ${moi ? 'right-0' : 'left-0'} w-56 rounded-xl border border-filet bg-white shadow-xl p-1 text-texte`} data-menu-message="">
-            <button type="button" role="menuitem" onClick={repondre} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[15px] font-bold hover:bg-vide">
+            <button type="button" role="menuitem" onClick={repondre} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold hover:bg-vide">
               <Icone nom="repondre" className="w-4 h-4 text-marine" />
               Répondre
             </button>
@@ -175,14 +177,14 @@ function Bulle({
                 onClick={supprimer}
                 disabled={verrouille}
                 title={verrouille ? BLOQUE_APERCU : undefined}
-                className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[15px] font-bold text-[#B42318] hover:bg-[#FDECEA] disabled:opacity-50"
+                className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold text-[#B42318] hover:bg-[#FDECEA] disabled:opacity-50"
               >
                 <Icone nom="poubelle" className="w-4 h-4" />
                 Supprimer
               </button>
             )}
             {organisateur && !m.est_moi && (
-              <button type="button" role="menuitem" onClick={suspendre} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[15px] font-bold hover:bg-vide">
+              <button type="button" role="menuitem" onClick={suspendre} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold hover:bg-vide">
                 <Icone nom={m.auteur_suspendu ? 'deverrouiller' : 'cadenas'} className="w-4 h-4 text-marine" />
                 {m.auteur_suspendu ? 'Lever la suspension' : "Suspendre l'auteur"}
               </button>
@@ -322,6 +324,25 @@ export default function Discussion() {
     }
   };
 
+  const erreurEnvoi = (er: unknown) => {
+    const code = extraireCode(er) ?? 'AUTRE';
+    setErreur(ERREURS[code] ?? ERREURS.AUTRE);
+  };
+  // PUDI-CC-14.4: network failure = text kept, « Réessayer », one automatic retry when back
+  // online, same client id (never written twice).
+  const envoiMessage = useEnvoiFiable(async (t: string, rep: string | null, id: string) => {
+    setEnvoi(true);
+    try {
+      await ecrireMessage(t, rep, id);
+      setTexte('');
+      setReponse(null);
+      allerEnBas.current = true;
+      await rafraichir();
+    } finally {
+      setEnvoi(false);
+    }
+  }, erreurEnvoi);
+
   const envoyer = async (e?: FormEvent) => {
     e?.preventDefault();
     const t = texte.trim();
@@ -352,18 +373,10 @@ export default function Discussion() {
       setReponse(null);
       return;
     }
-    setEnvoi(true);
     try {
-      await ecrireMessage(t, reponse?.id ?? null);
-      setTexte('');
-      setReponse(null);
-      allerEnBas.current = true;
-      await rafraichir();
+      if (!(await envoiMessage.lancer(t, reponse?.id ?? null, nouvelIdClient()))) setErreur(null);
     } catch (er) {
-      const code = extraireCode(er) ?? 'AUTRE';
-      setErreur(ERREURS[code] ?? ERREURS.AUTRE);
-    } finally {
-      setEnvoi(false);
+      erreurEnvoi(er);
     }
   };
 
@@ -430,20 +443,20 @@ export default function Discussion() {
   const n = texte.length;
   return (
     <main className="pudi-page mx-auto max-w-2xl pl-4 pr-6 pt-4 pb-[190px]">
-      <h1 className="font-titre text-[24px] leading-tight text-marine">Discussion</h1>
+      <h1 className="font-titre text-[1.5rem] leading-tight text-marine">Discussion</h1>
       <details className="mt-1 mb-3 group" data-aide-discussion="">
-        <summary className="min-h-[44px] flex items-center gap-2 cursor-pointer list-none text-[15px] font-bold text-profond">
+        <summary className="min-h-[44px] flex items-center gap-2 cursor-pointer list-none text-[0.9375rem] font-bold text-profond">
           Discussion ouverte à tous
           <Icone nom="info" className="w-5 h-5 text-marine" />
         </summary>
-        <p className="text-[14px] leading-relaxed bg-white border border-filet rounded-xl p-3">
+        <p className="text-[0.875rem] leading-relaxed bg-white border border-filet rounded-xl p-3">
           Tout le monde peut lire. Pour écrire, connectez-vous avec Google. Votre prénom et l'initiale de votre nom s'affichent, jamais votre numéro ni votre adresse.
           Restez courtois : les messages déplacés peuvent être supprimés par les responsables de groupe et les organisateurs.
         </p>
       </details>
 
       {!enLigne && (
-        <p role="status" className="mb-3 border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2 text-[14px] font-bold" data-hors-ligne="">
+        <p role="status" className="mb-3 border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2 text-[0.875rem] font-bold" data-hors-ligne="">
           Hors connexion : messages non à jour
         </p>
       )}
@@ -465,7 +478,7 @@ export default function Discussion() {
             type="button"
             onClick={() => void chargerAnciens()}
             disabled={chargeAnciens || !enLigne}
-            className="min-h-[44px] px-4 rounded-full border border-filet bg-white text-[14px] font-bold text-marine disabled:opacity-60"
+            className="min-h-[44px] px-4 rounded-full border border-filet bg-white text-[0.875rem] font-bold text-marine disabled:opacity-60"
             data-plus-anciens=""
           >
             {chargeAnciens ? 'Chargement…' : 'Charger les messages plus anciens'}
@@ -477,7 +490,7 @@ export default function Discussion() {
         {lignes.map((l) =>
           l.t === 'jour' ? (
             <li key={`j-${l.cle}`} className="flex justify-center py-1" data-separateur={l.libelle}>
-              <span className="px-3 py-0.5 rounded-full bg-vide text-[12px] font-bold text-gris">{l.libelle}</span>
+              <span className="px-3 py-0.5 rounded-full bg-vide text-[0.75rem] font-bold text-gris">{l.libelle}</span>
             </li>
           ) : (
             <Bulle
@@ -522,9 +535,10 @@ export default function Discussion() {
             </button>
           ) : (
             <form onSubmit={(e) => void envoyer(e)} className="space-y-1.5">
+              {envoiMessage.enAttente && <BandeauReseau cours={envoi} reessayer={() => void envoiMessage.reessayer().catch(erreurEnvoi)} />}
               {reponse && (
                 <div className="flex items-start gap-2 bg-white border-l-[3px] border-marine rounded-r-lg px-2 py-1" data-reponse-a="">
-                  <div className="min-w-0 flex-1 text-[13px]">
+                  <div className="min-w-0 flex-1 text-[0.8125rem]">
                     <span className="block font-bold text-marine">Réponse à {reponse.auteur_nom}</span>
                     <span className="block truncate text-gris">{reponse.texte.slice(0, 80)}</span>
                   </div>
@@ -550,7 +564,7 @@ export default function Discussion() {
                     }}
                     placeholder={enLigne ? 'Écrire un message…' : 'Hors connexion'}
                     disabled={!enLigne}
-                    className="w-full max-h-32 rounded-xl border border-filet bg-white px-3 py-2 text-[16px] leading-snug resize-none"
+                    className="w-full max-h-32 rounded-xl border border-filet bg-white px-3 py-2 text-[1rem] leading-snug resize-none"
                     data-champ-message=""
                   />
                 </label>
@@ -566,14 +580,14 @@ export default function Discussion() {
               </div>
               <div className="flex items-start justify-between gap-2 min-h-[16px]">
                 {erreur ? (
-                  <p role="alert" className="text-[13px] font-bold text-[#9C3F21]" data-erreur-message="">
+                  <p role="alert" className="text-[0.8125rem] font-bold text-[#9C3F21]" data-erreur-message="">
                     {erreur}
                   </p>
                 ) : (
                   <span />
                 )}
                 {n >= COMPTEUR_DES && (
-                  <span className={`text-[12px] shrink-0 ${n >= MAX ? 'text-[#9C3F21] font-bold' : 'text-gris'}`} data-compteur="">
+                  <span className={`text-[0.75rem] shrink-0 ${n >= MAX ? 'text-[#9C3F21] font-bold' : 'text-gris'}`} data-compteur="">
                     {n} / {MAX}
                   </span>
                 )}

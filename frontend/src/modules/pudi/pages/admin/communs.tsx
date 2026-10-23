@@ -68,12 +68,12 @@ export function useAppel<T>(fn: () => Promise<T>) {
 export function Aide({ children, titre = 'Aide' }: { children: ReactNode; titre?: string }) {
   return (
     <details className="bg-white border border-filet rounded-xl group mb-4">
-      <summary className="min-h-[44px] px-3 flex items-center gap-2 cursor-pointer font-bold text-marine list-none text-[15px]">
+      <summary className="min-h-[44px] px-3 flex items-center gap-2 cursor-pointer font-bold text-marine list-none text-[0.9375rem]">
         <Icone nom="info" />
         {titre}
         <Icone nom="bas" className="w-5 h-5 ml-auto transition-transform group-open:rotate-180" />
       </summary>
-      <div className="px-4 pb-3 space-y-2 text-[14px] leading-relaxed">{children}</div>
+      <div className="px-4 pb-3 space-y-2 text-[0.875rem] leading-relaxed">{children}</div>
     </details>
   );
 }
@@ -82,11 +82,11 @@ export function Chiffre({ valeur, libelle, icone, ton }: { valeur: ReactNode; li
   const fond = ton === 'test' ? 'bg-[#FFF6E0] border-[#E9D29A]' : ton === 'alerte' ? 'bg-[#FDF1EC] border-[#F0CDBF]' : 'bg-white border-filet';
   return (
     <div className={`border rounded-xl p-3 ${fond}`}>
-      <div className="flex items-center gap-1.5 text-[13px] text-gris">
+      <div className="flex items-center gap-1.5 text-[0.8125rem] text-gris">
         {icone && <Icone nom={icone} className="w-4 h-4" />}
         {libelle}
       </div>
-      <div className="font-titre text-[28px] leading-tight text-marine mt-0.5">{valeur}</div>
+      <div className="font-titre text-[1.75rem] leading-tight text-marine mt-0.5">{valeur}</div>
     </div>
   );
 }
@@ -94,9 +94,9 @@ export function Chiffre({ valeur, libelle, icone, ton }: { valeur: ReactNode; li
 export function Erreur({ texte, reessayer }: { texte: string; reessayer?: () => void }) {
   return (
     <div role="alert" className="my-3 border-l-4 border-[#B85317] bg-white rounded-r-lg px-3 py-2.5 flex flex-wrap items-center gap-2 justify-between">
-      <p className="text-[15px] font-bold text-[#9C3F21]">{texte}</p>
+      <p className="text-[0.9375rem] font-bold text-[#9C3F21]">{texte}</p>
       {reessayer && (
-        <button type="button" onClick={reessayer} className="min-h-[44px] inline-flex items-center gap-1 text-marine font-bold text-[14px]">
+        <button type="button" onClick={reessayer} className="min-h-[44px] inline-flex items-center gap-1 text-marine font-bold text-[0.875rem]">
           <Icone nom="actualiser" className="w-4 h-4" />
           Réessayer
         </button>
@@ -108,8 +108,8 @@ export function Erreur({ texte, reessayer }: { texte: string; reessayer?: () => 
 export function Titre2({ children, aide }: { children: ReactNode; aide?: ReactNode }) {
   return (
     <div className="mt-6 mb-2">
-      <h2 className="font-bold text-[17px] text-marine">{children}</h2>
-      {aide && <p className="text-[13px] text-gris">{aide}</p>}
+      <h2 className="font-bold text-[1.0625rem] text-marine">{children}</h2>
+      {aide && <p className="text-[0.8125rem] text-gris">{aide}</p>}
     </div>
   );
 }
@@ -173,13 +173,13 @@ export function Dialogue({ demande, fermer }: { demande: DemandeConfirmation | n
   return createPortal(
     <div className="pudi-page pudi-voile fixed inset-0 z-[80] bg-[#0B2A8C]/40 flex items-end sm:items-center justify-center p-3 font-corps text-texte" role="presentation">
       <div role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} className="w-full max-w-md bg-white rounded-2xl shadow-xl p-4 space-y-3">
-        <h2 id={`${id}-t`} className="font-bold text-[18px] text-marine">
+        <h2 id={`${id}-t`} className="font-bold text-[1.125rem] text-marine">
           {demande.titre}
         </h2>
-        {demande.texte && <div className="text-[15px] leading-relaxed space-y-2">{demande.texte}</div>}
+        {demande.texte && <div className="text-[0.9375rem] leading-relaxed space-y-2">{demande.texte}</div>}
         {demande.motif && (
           <div>
-            <label htmlFor={`${id}-m`} className="block font-bold text-[14px] mb-1">
+            <label htmlFor={`${id}-m`} className="block font-bold text-[0.875rem] mb-1">
               Motif (obligatoire)
             </label>
             <textarea
@@ -189,12 +189,12 @@ export function Dialogue({ demande, fermer }: { demande: DemandeConfirmation | n
               maxLength={300}
               value={motif}
               onChange={(e) => setMotif(e.target.value)}
-              className="w-full rounded-xl border border-filet px-3 py-2 text-[16px]"
+              className="w-full rounded-xl border border-filet px-3 py-2 text-[1rem]"
             />
           </div>
         )}
         {erreur && (
-          <p role="alert" className="text-[14px] font-bold text-[#9C3F21]">
+          <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21]">
             {erreur}
           </p>
         )}
@@ -218,6 +218,6 @@ export function Dialogue({ demande, fermer }: { demande: DemandeConfirmation | n
   );
 }
 
-export const champ = 'w-full min-h-[44px] rounded-xl border border-filet bg-white px-3 text-[16px]';
+export const champ = 'w-full min-h-[44px] rounded-xl border border-filet bg-white px-3 text-[1rem]';
 export const petitBouton =
-  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-filet bg-white text-marine font-bold text-[14px] active:bg-vide disabled:opacity-50';
+  'inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-filet bg-white text-marine font-bold text-[0.875rem] active:bg-vide disabled:opacity-50';

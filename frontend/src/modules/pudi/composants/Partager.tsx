@@ -28,7 +28,7 @@ export function BoutonsPartage() {
       {natif && (
         <button
           type="button"
-          className="self-center min-h-[44px] px-3 text-marine font-bold text-[14px] underline underline-offset-2"
+          className="self-center min-h-[44px] px-3 text-marine font-bold text-[0.875rem] underline underline-offset-2"
           onClick={() => void navigator.share({ title: fr.app.titreCourt, text: fr.vote.partageTexte, url: lienPartage(origine, canal) }).catch(() => undefined)}
           data-partage-natif=""
         >

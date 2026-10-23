@@ -5,7 +5,7 @@
 // Online only (the list is never kept on the device): offline shows a clear message.
 // v6: each line shows whether the person voted (never what she chose), with the participation
 // of the group and a filter.
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
@@ -32,6 +32,7 @@ import {
 } from '../utils/groupe';
 import { extraireCode } from '../utils/erreurs';
 import { allerAuChamp } from '../utils/champFautif';
+import { BandeauReseau, estErreurReseau, useEnvoiFiable } from '../composants/Reseau';
 import { normaliserTelephone } from '../utils/regles';
 import { Aide, Dialogue, champ, petitBouton, type DemandeConfirmation } from './admin/communs';
 
@@ -62,25 +63,28 @@ function useChargement<D>(fn: () => Promise<D>, cle: string) {
   const enLigne = useEnLigne();
   const [etat, setEtat] = useState<Chargement<D>>({ t: 'cours' });
   const charger = useCallback(async () => {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return setEtat({ t: 'horsLigne' });
+    // PUDI-CC-14.4: a list already shown stays (with a line being typed) when the network drops.
+    const garderOuHorsLigne = (e: Chargement<D>): Chargement<D> => (e.t === 'ok' ? e : { t: 'horsLigne' });
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return setEtat(garderOuHorsLigne);
     setEtat((e) => (e.t === 'ok' ? e : { t: 'cours' }));
     try {
       setEtat({ t: 'ok', d: await fn() });
     } catch (e) {
-      setEtat(extraireCode(e) === 'RESEAU' ? { t: 'horsLigne' } : { t: 'erreur', message: messageGroupe(e) });
+      if (extraireCode(e) === 'RESEAU') setEtat(garderOuHorsLigne);
+      else setEtat({ t: 'erreur', message: messageGroupe(e) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cle]);
   useEffect(() => {
     void charger();
   }, [charger, enLigne]);
-  return { etat: enLigne ? etat : ({ t: 'horsLigne' } as Chargement<D>), charger };
+  return { etat: enLigne || etat.t === 'ok' ? etat : ({ t: 'horsLigne' } as Chargement<D>), charger, horsLigne: !enLigne };
 }
 
 function Message({ texte, reessayer, icone = 'horsLigne' }: { texte: string; reessayer?: () => void; icone?: 'horsLigne' | 'alerte' }) {
   return (
     <div role="status" className="bg-white border border-filet rounded-xl p-4 space-y-3" data-groupe-message="">
-      <p className="text-[16px] flex gap-2 items-start">
+      <p className="text-[1rem] flex gap-2 items-start">
         <Icone nom={icone} className="w-5 h-5 text-marine mt-0.5 shrink-0" />
         {texte}
       </p>
@@ -98,7 +102,7 @@ function Participation({ membres }: { membres: Membre[] }) {
   const p = participation(membres);
   return (
     <div className="bg-white border border-filet rounded-xl p-3" data-groupe-participation="">
-      <p className="font-bold text-[15px] text-marine">{T.participation(p.votants, p.total, p.pct)}</p>
+      <p className="font-bold text-[0.9375rem] text-marine">{T.participation(p.votants, p.total, p.pct)}</p>
       <div
         className="mt-2 h-2.5 rounded-full bg-filet overflow-hidden"
         role="progressbar"
@@ -123,7 +127,7 @@ function FiltresVote({ filtre, choisir }: { filtre: FiltreVote; choisir: (f: Fil
           type="button"
           aria-pressed={filtre === f}
           onClick={() => choisir(f)}
-          className={`pudi-focus min-h-[40px] px-3 rounded-full border-2 text-[14px] font-bold ${
+          className={`pudi-focus min-h-[40px] px-3 rounded-full border-2 text-[0.875rem] font-bold ${
             filtre === f ? 'bg-marine border-marine text-white' : 'bg-white border-filet text-marine'
           }`}
         >
@@ -136,12 +140,12 @@ function FiltresVote({ filtre, choisir }: { filtre: FiltreVote; choisir: (f: Fil
 
 function BadgeVote({ aVote }: { aVote: boolean }) {
   return aVote ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-marine text-white text-[13px] font-bold px-2.5 py-0.5" data-vote="oui">
+    <span className="inline-flex items-center gap-1 rounded-full bg-marine text-white text-[0.8125rem] font-bold px-2.5 py-0.5" data-vote="oui">
       <Icone nom="coche" className="w-3.5 h-3.5" />
       {T.aVote}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full border border-gris/40 text-gris text-[13px] px-2.5 py-0.5" data-vote="non">
+    <span className="inline-flex items-center gap-1 rounded-full border border-gris/40 text-gris text-[0.8125rem] px-2.5 py-0.5" data-vote="non">
       <Icone nom="horloge" className="w-3.5 h-3.5" />
       {T.pasEncoreVote}
     </span>
@@ -196,6 +200,31 @@ function Formulaire({
     if (el) window.setTimeout(() => allerAuChamp(el), 30);
   };
 
+  // PUDI-CC-14.4: network failure = form kept, « Réessayer », one automatic retry when back
+  // online. A new line already written by the lost attempt comes back as « numéro déjà dans le
+  // groupe »: it is then the same line, saved once, and the form closes.
+  const formulaireRef = useRef<HTMLFormElement>(null);
+  const echecReseau = useRef(false);
+  const envoiLigne = useEnvoiFiable(
+    async (s: SaisieMembre) => {
+      setCours(true);
+      try {
+        await enregistrerMembre(canal, s);
+      } catch (er) {
+        if (estErreurReseau(er)) {
+          echecReseau.current = true;
+          throw er;
+        }
+        if (!(echecReseau.current && !s.id && extraireCode(er) === 'NUMERO_DEJA_DANS_LE_GROUPE')) throw er;
+      } finally {
+        setCours(false);
+      }
+      enregistre();
+      fermer();
+    },
+    (er) => formulaireRef.current && montrer(formulaireRef.current, er)
+  );
+
   const envoyer = async (e: FormEvent) => {
     e.preventDefault();
     const formulaire = e.currentTarget as HTMLFormElement;
@@ -208,24 +237,19 @@ function Formulaire({
       etablissement,
       fokontany: fkt === AUTRE ? fktAutre : fkt
     };
-    setCours(true);
     setErreur(null);
     try {
-      await enregistrerMembre(canal, s);
-      enregistre();
-      fermer();
+      if (!(await envoiLigne.lancer(s))) setErreur(null);
     } catch (er) {
       montrer(formulaire, er);
-    } finally {
-      setCours(false);
     }
   };
 
   return (
-    <form onSubmit={envoyer} className="bg-white border-2 border-marine rounded-xl p-3 space-y-3" aria-label={membre ? T.modifierTitre : T.nouveau} noValidate>
-      <p className="font-bold text-marine text-[16px]">{membre ? T.modifierTitre : T.nouveau}</p>
+    <form ref={formulaireRef} onSubmit={envoyer} className="bg-white border-2 border-marine rounded-xl p-3 space-y-3" aria-label={membre ? T.modifierTitre : T.nouveau} noValidate>
+      <p className="font-bold text-marine text-[1rem]">{membre ? T.modifierTitre : T.nouveau}</p>
       <fieldset className="space-y-2">
-        <legend className="block font-bold text-[14px] mb-1">{T.numeros}</legend>
+        <legend className="block font-bold text-[0.875rem] mb-1">{T.numeros}</legend>
         {numeros.map((n, i) => (
           <div key={i} className="flex gap-2">
             <input
@@ -246,7 +270,7 @@ function Formulaire({
             )}
           </div>
         ))}
-        <p className="text-[13px] text-gris">{T.numeroAide}</p>
+        <p className="text-[0.8125rem] text-gris">{T.numeroAide}</p>
         {numeros.length < 3 && (
           <button type="button" className={petitBouton} onClick={() => setNumeros([...numeros, ''])}>
             <Icone nom="plus" className="w-4 h-4" />
@@ -255,15 +279,15 @@ function Formulaire({
         )}
       </fieldset>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">{T.email}</span>
+        <span className="block font-bold text-[0.875rem] mb-1">{T.email}</span>
         <input className={champ} type="email" inputMode="email" autoComplete="off" value={email} maxLength={120} onChange={(e) => setEmail(e.target.value)} name="email" />
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">{T.etablissement}</span>
+        <span className="block font-bold text-[0.875rem] mb-1">{T.etablissement}</span>
         <input className={champ} value={etablissement} maxLength={120} onChange={(e) => setEtablissement(e.target.value)} name="etablissement" />
       </label>
       <label className="block">
-        <span className="block font-bold text-[14px] mb-1">{T.fokontany}</span>
+        <span className="block font-bold text-[0.875rem] mb-1">{T.fokontany}</span>
         <select className={champ} value={fkt} onChange={(e) => setFkt(e.target.value)} name="fokontany">
           <option value="">{T.fokontanyAucun}</option>
           {fokontanyListe.map((f) => (
@@ -286,11 +310,12 @@ function Formulaire({
         )}
       </label>
       {erreur && (
-        <p role="alert" className="text-[14px] font-bold text-[#9C3F21] flex gap-1.5 items-start">
+        <p role="alert" className="text-[0.875rem] font-bold text-[#9C3F21] flex gap-1.5 items-start">
           <Icone nom="alerte" className="w-4 h-4 mt-0.5 shrink-0" />
           {erreur}
         </p>
       )}
+      {envoiLigne.enAttente && <BandeauReseau cours={cours} reessayer={() => void envoiLigne.reessayer().catch((er) => formulaireRef.current && montrer(formulaireRef.current, er))} />}
       <div className="flex flex-col-reverse sm:flex-row gap-2">
         <button type="button" className={boutonSecondaire} onClick={fermer}>
           {T.annuler}
@@ -317,8 +342,8 @@ function ListeGroupes() {
       {ch.t === 'ok' &&
         (ch.d.length ? (
           <>
-            <h2 className="font-bold text-[17px] text-marine mb-2">{T.mesGroupes}</h2>
-            {etat?.est_admin && <p className="text-[14px] text-gris mb-2">{T.tousLesGroupes}</p>}
+            <h2 className="font-bold text-[1.0625rem] text-marine mb-2">{T.mesGroupes}</h2>
+            {etat?.est_admin && <p className="text-[0.875rem] text-gris mb-2">{T.tousLesGroupes}</p>}
             <ul className="space-y-2">
               {ch.d.map((g) => (
                 <li key={g.code}>
@@ -331,8 +356,8 @@ function ListeGroupes() {
                       <Icone nom="personnes" className="w-5 h-5" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-bold text-[15px] leading-snug break-words">{g.nom}</span>
-                      <span className="block text-[13px] text-gris">
+                      <span className="block font-bold text-[0.9375rem] leading-snug break-words">{g.nom}</span>
+                      <span className="block text-[0.8125rem] text-gris">
                         {T.membres(g.nb_membres)}
                         {g.nb_membres > 0 && ` · ${T.participation(g.nb_ayant_vote, g.nb_membres, Math.round((g.nb_ayant_vote * 100) / g.nb_membres))}`}
                       </span>
@@ -353,7 +378,7 @@ function ListeGroupes() {
 function Membres({ code }: { code: string }) {
   const { donnees } = useDonnees();
   const lecture = usePudi().apercu?.role === 'responsable';
-  const { etat: ch, charger } = useChargement(async () => {
+  const { etat: ch, charger, horsLigne } = useChargement(async () => {
     const [groupes, membres] = await Promise.all([lireMesGroupes(), lireMembres(code)]);
     return { groupe: groupes.find((g) => g.code === code) ?? null, membres };
   }, `membres:${code}`);
@@ -375,18 +400,19 @@ function Membres({ code }: { code: string }) {
 
   return (
     <Page titre={groupe?.nom ?? T.titre}>
-      <Link to="/groupe" className="pudi-focus inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px] mb-2">
+      <Link to="/groupe" className="pudi-focus inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem] mb-2">
         <Icone nom="gauche" className="w-4 h-4" />
         {T.retour}
       </Link>
       <AideGroupe />
-      {ch.t === 'horsLigne' && <Message texte={T.horsLigne} reessayer={() => void charger()} />}
+      {/* PUDI-CC-14.4: offline, the list already shown and a line being typed stay under the message. */}
+      {(ch.t === 'horsLigne' || (ch.t === 'ok' && horsLigne)) && <Message texte={T.horsLigne} reessayer={() => void charger()} />}
       {ch.t === 'erreur' && <Message texte={ch.message} icone="alerte" reessayer={() => void charger()} />}
       {ch.t === 'cours' && <p className="text-gris py-6 text-center">{fr.app.chargement}</p>}
       {ch.t === 'ok' && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-bold text-[16px]" data-groupe-compte="">
+            <p className="font-bold text-[1rem]" data-groupe-compte="">
               {T.membres(membres.length)}
             </p>
             <button type="button" className={boutonPrincipal} onClick={() => setEdition('nouveau')} disabled={!!edition || lecture} title={lecture ? BLOQUE_APERCU : undefined}>
@@ -395,7 +421,7 @@ function Membres({ code }: { code: string }) {
             </button>
           </div>
           {annonce && (
-            <p role="status" className="text-[14px] font-bold text-marine flex gap-1.5 items-center">
+            <p role="status" className="text-[0.875rem] font-bold text-marine flex gap-1.5 items-center">
               <Icone nom="coche" className="w-4 h-4" />
               {annonce}
             </p>
@@ -411,12 +437,12 @@ function Membres({ code }: { code: string }) {
                 <Icone nom="recherche" className="w-5 h-5 text-gris absolute left-3 top-1/2 -translate-y-1/2" />
                 <input type="search" className={`${champ} pl-10`} placeholder={T.rechercher} value={recherche} onChange={(e) => setRecherche(e.target.value)} name="recherche" />
               </span>
-              {recherche.trim() && <span className="block text-[13px] text-gris mt-1" data-groupe-filtre="">{T.resultats(visibles.length, membres.length)}</span>}
+              {recherche.trim() && <span className="block text-[0.8125rem] text-gris mt-1" data-groupe-filtre="">{T.resultats(visibles.length, membres.length)}</span>}
             </label>
           )}
           {membres.length > 0 && <FiltresVote filtre={filtre} choisir={setFiltre} />}
-          {!membres.length && edition !== 'nouveau' && <p className="text-gris text-[15px]">{T.aucunMembre}</p>}
-          {membres.length > 0 && !visibles.length && <p className="text-gris text-[15px]">{recherche.trim() ? T.aucunResultat : T.aucunFiltre}</p>}
+          {!membres.length && edition !== 'nouveau' && <p className="text-gris text-[0.9375rem]">{T.aucunMembre}</p>}
+          {membres.length > 0 && !visibles.length && <p className="text-gris text-[0.9375rem]">{recherche.trim() ? T.aucunResultat : T.aucunFiltre}</p>}
           <ul className="space-y-2">
             {visibles.map((m) =>
               edition !== 'nouveau' && edition?.id === m.id ? (
@@ -426,10 +452,10 @@ function Membres({ code }: { code: string }) {
               ) : (
                 <li key={m.id} className="bg-white border border-filet rounded-xl p-3" data-membre={m.id}>
                   <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 mb-1">
-                    {m.etablissement ? <p className="font-bold text-[15px] break-words min-w-0">{m.etablissement}</p> : <span />}
+                    {m.etablissement ? <p className="font-bold text-[0.9375rem] break-words min-w-0">{m.etablissement}</p> : <span />}
                     <BadgeVote aVote={m.a_vote} />
                   </div>
-                  <ul className="text-[15px] font-mono space-y-0.5">
+                  <ul className="text-[0.9375rem] font-mono space-y-0.5">
                     {m.numeros.map((n) => (
                       <li key={n} className="flex items-center gap-1.5">
                         <Icone nom="message" className="w-4 h-4 text-gris shrink-0" />
@@ -438,7 +464,7 @@ function Membres({ code }: { code: string }) {
                     ))}
                   </ul>
                   {(m.email || m.fokontany) && (
-                    <p className="mt-1 text-[14px] text-gris break-all">{[m.email, m.fokontany ? `Fokontany ${m.fokontany}` : null].filter(Boolean).join(' · ')}</p>
+                    <p className="mt-1 text-[0.875rem] text-gris break-all">{[m.email, m.fokontany ? `Fokontany ${m.fokontany}` : null].filter(Boolean).join(' · ')}</p>
                   )}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button type="button" className={petitBouton} onClick={() => setEdition(m)} disabled={!!edition || lecture} title={lecture ? BLOQUE_APERCU : undefined}>
@@ -496,7 +522,7 @@ export default function Groupe() {
       <Page titre={T.titre}>
         <AideGroupe />
         <div className="bg-white border border-filet rounded-xl p-4 space-y-3">
-          <p className="text-[16px] flex gap-2 items-start">
+          <p className="text-[1rem] flex gap-2 items-start">
             <Icone nom="cadenas" className="w-5 h-5 text-marine mt-0.5" />
             {T.connexion}
           </p>

@@ -68,7 +68,7 @@ export default function Masquages() {
         </p>
       </Aide>
       <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="text-[14px] text-gris" data-masquages-compte="">
+        <p className="text-[0.875rem] text-gris" data-masquages-compte="">
           {liste.length ? `${actifs} actif${actifs > 1 ? 's' : ''} · ${liste.length - actifs} rétabli${liste.length - actifs > 1 ? 's' : ''}` : ''}
         </p>
         <button type="button" className={petitBouton} onClick={() => void appel.recharger()} disabled={appel.charge}>
@@ -94,10 +94,10 @@ export default function Masquages() {
                   nouveau ? 'bg-[#FFF6E0] border-[#E9D29A]' : 'bg-white border-filet'
                 }`}
               >
-                <div className="min-w-0 flex-1 text-[14px] space-y-0.5">
+                <div className="min-w-0 flex-1 text-[0.875rem] space-y-0.5">
                   <p className="font-bold">
                     {m.id} · {dateHeureMada(m.at)}
-                    {nouveau && <span className="ml-2 rounded-full bg-[#926407] text-white text-[12px] px-2 py-0.5">Nouveau</span>}
+                    {nouveau && <span className="ml-2 rounded-full bg-[#926407] text-white text-[0.75rem] px-2 py-0.5">Nouveau</span>}
                   </p>
                   <p>Canal : {m.canal_code ?? '(aucun)'}</p>
                   <p className="break-all">Ligne créée ou modifiée par : {m.auteur_email ?? 'compte supprimé'}</p>

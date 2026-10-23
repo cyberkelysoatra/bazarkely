@@ -28,15 +28,15 @@ export default function Documents() {
   const docs = documentsPudi(donnees);
   return (
     <Page titre={fr.documents.titre}>
-      <p className="text-[15px] text-gris mb-3">{fr.documents.intro}</p>
+      <p className="text-[0.9375rem] text-gris mb-3">{fr.documents.intro}</p>
       <div role="note" className="mb-4 border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start">
         <Icone nom="alerte" className="w-5 h-5 mt-0.5" />
-        <p className="text-[15px] leading-snug">{fr.documents.lourds}</p>
+        <p className="text-[0.9375rem] leading-snug">{fr.documents.lourds}</p>
       </div>
       {!enLigne && (
         <div role="status" className="mb-4 border-l-4 border-[#B85317] bg-white rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
           <Icone nom="horsLigne" className="w-5 h-5 mt-0.5" />
-          <p className="text-[15px] leading-snug">{fr.documents.horsLigne}</p>
+          <p className="text-[0.9375rem] leading-snug">{fr.documents.horsLigne}</p>
         </div>
       )}
       <ul className="space-y-3">
@@ -50,8 +50,8 @@ export default function Documents() {
                   <Icone nom="document" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-bold text-[16px] leading-snug text-marine break-words">{d.titre}</h2>
-                  <p className="text-[13px] text-gris mt-0.5">{details}</p>
+                  <h2 className="font-bold text-[1rem] leading-snug text-marine break-words">{d.titre}</h2>
+                  <p className="text-[0.8125rem] text-gris mt-0.5">{details}</p>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -76,7 +76,7 @@ export default function Documents() {
                       <Icone nom="telecharger" />
                       {fr.documents.telecharger}
                     </button>
-                    <p id={`pudi-doc-${d.id}`} className="col-span-2 text-[13px] text-gris">
+                    <p id={`pudi-doc-${d.id}`} className="col-span-2 text-[0.8125rem] text-gris">
                       {fr.documents.horsLigne}
                     </p>
                   </>

@@ -66,7 +66,7 @@ export default function FrequentationEnDirect({ nomCanal }: { nomCanal: (code: s
   return (
     <div className="mb-3 space-y-3" data-frequentation="">
       {erreur && <Erreur texte={erreur} reessayer={() => void lire()} />}
-      <p className="bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5 text-[16px] flex items-center gap-2" data-en-ligne="">
+      <p className="bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5 text-[1rem] flex items-center gap-2" data-en-ligne="">
         <span className="w-2.5 h-2.5 rounded-full bg-[#1E7A46] animate-pulse" aria-hidden="true" />
         En ligne en ce moment : <strong>{f ? f.en_ligne : '…'}</strong>
       </p>
@@ -76,7 +76,7 @@ export default function FrequentationEnDirect({ nomCanal }: { nomCanal: (code: s
       </Aide>
       {f && (
         <div className="bg-white border border-filet rounded-xl p-3 overflow-hidden">
-          <table className="w-full text-[13px] table-fixed" data-tableau-frequentation="">
+          <table className="w-full text-[0.8125rem] table-fixed" data-tableau-frequentation="">
             <caption className="sr-only">Appareils et votes, par canal</caption>
             <colgroup>
               <col className="w-[30%]" />
@@ -88,7 +88,7 @@ export default function FrequentationEnDirect({ nomCanal }: { nomCanal: (code: s
               <tr className="text-gris">
                 <th scope="col" className="text-left font-normal pb-1">Canal</th>
                 {COLONNES.map((k) => (
-                  <th key={k.cle} scope="col" className="text-right font-normal pb-1 pl-1 leading-tight text-[11px]" lang="fr">
+                  <th key={k.cle} scope="col" className="text-right font-normal pb-1 pl-1 leading-tight text-[0.6875rem]" lang="fr">
                     {k.libelle}
                   </th>
                 ))}

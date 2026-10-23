@@ -42,28 +42,28 @@ export default function Programme() {
       <Link
         to={`/secteur/${p.secteur}`}
         onClick={retourListe}
-        className="inline-flex items-center gap-1 min-h-[44px] font-bold text-[15px]"
+        className="inline-flex items-center gap-1 min-h-[44px] font-bold text-[0.9375rem]"
         style={{ color: fonce }}
       >
         <Icone nom="gauche" />
         {s?.nom}
       </Link>
       <div className="border-l-[6px] pl-3 mt-1" style={{ borderColor: couleur }}>
-        <p className="text-[13px] text-gris">
+        <p className="text-[0.8125rem] text-gris">
           {fr.programme.secteur} : <span className="font-bold" style={{ color: fonce }}>{s?.nom}</span>
         </p>
-        <h1 className="font-titre text-[23px] leading-tight text-marine mt-1">{p.nom}</h1>
+        <h1 className="font-titre text-[1.4375rem] leading-tight text-marine mt-1">{p.nom}</h1>
       </div>
 
-      <p className="mt-4 text-[16px] leading-relaxed">{p.resume}</p>
+      <p className="mt-4 text-[1rem] leading-relaxed">{p.resume}</p>
 
       {p.sites.length > 0 && (
         <section className="mt-4">
-          <h2 className="font-bold text-[16px] text-marine flex items-center gap-1.5">
+          <h2 className="font-bold text-[1rem] text-marine flex items-center gap-1.5">
             <Icone nom="lieu" className="w-4 h-4" />
             {fr.programme.sites}
           </h2>
-          <ul className="mt-1 list-disc pl-5 text-[15px] space-y-0.5">
+          <ul className="mt-1 list-disc pl-5 text-[0.9375rem] space-y-0.5">
             {p.sites.map((x) => (
               <li key={x}>{x}</li>
             ))}
@@ -72,22 +72,22 @@ export default function Programme() {
       )}
 
       <section className="mt-4 bg-white border border-filet rounded-xl p-3">
-        <h2 className="font-bold text-[16px] text-marine">{fr.programme.tranche}</h2>
+        <h2 className="font-bold text-[1rem] text-marine">{fr.programme.tranche}</h2>
         <div className="mt-2">
           <BadgeTranche tranche={p.trancheAffichee} />
         </div>
-        <h3 className="mt-3 text-[14px] font-bold text-gris">{fr.programme.detail}</h3>
+        <h3 className="mt-3 text-[0.875rem] font-bold text-gris">{fr.programme.detail}</h3>
         <ul className="mt-1 divide-y divide-filet">
           {p.codes.map((c) => (
-            <li key={c.code} className="py-2 text-[14px]">
+            <li key={c.code} className="py-2 text-[0.875rem]">
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-bold text-profond">{c.code}</span>
                 <span className="flex-1 min-w-[10rem]">{c.libelle}</span>
                 <span className="text-gris whitespace-nowrap">{c.tranches.join(', ')}</span>
               </div>
-              {c.libelleComplet && <p className="mt-1 text-[14px] leading-relaxed break-words">{c.libelleComplet}</p>}
+              {c.libelleComplet && <p className="mt-1 text-[0.875rem] leading-relaxed break-words">{c.libelleComplet}</p>}
               {c.pagesPudi && c.pagesPudi.length > 0 && (
-                <LiensPages doc={doc} pages={c.pagesPudi} className="block mt-0.5 text-[13px] text-gris" />
+                <LiensPages doc={doc} pages={c.pagesPudi} className="block mt-0.5 text-[0.8125rem] text-gris" />
               )}
               {c.coutA && (
                 <p className="mt-1 text-gris">
@@ -104,29 +104,29 @@ export default function Programme() {
       </section>
 
       <section className="mt-4">
-        <h2 className="font-bold text-[16px] text-marine">{fr.programme.cout}</h2>
-        <p className="mt-1 font-titre text-[19px] text-profond">{p.cout.mention}</p>
-        {inclut && <p className="mt-1 text-[14px] text-gris">{fr.programme.inclutAussi(inclut)}</p>}
+        <h2 className="font-bold text-[1rem] text-marine">{fr.programme.cout}</h2>
+        <p className="mt-1 font-titre text-[1.1875rem] text-profond">{p.cout.mention}</p>
+        {inclut && <p className="mt-1 text-[0.875rem] text-gris">{fr.programme.inclutAussi(inclut)}</p>}
       </section>
 
       {p.precision && (
         <section className="mt-4 bg-[#FFF6E0] border border-[#E9D29A] rounded-xl p-3">
-          <h2 className="font-bold text-[16px] text-marine flex items-center gap-1.5">
+          <h2 className="font-bold text-[1rem] text-marine flex items-center gap-1.5">
             <Icone nom="info" className="w-4 h-4" />
             {fr.programme.precision}
           </h2>
-          <p className="mt-1 text-[15px] leading-relaxed">{p.precision}</p>
+          <p className="mt-1 text-[0.9375rem] leading-relaxed">{p.precision}</p>
         </section>
       )}
 
       {p.pagesPudi && p.pagesPudi.length > 0 && (
         <section className="mt-4 bg-white border border-filet rounded-xl p-3">
-          <h2 className="font-bold text-[16px] text-marine flex items-center gap-1.5">
+          <h2 className="font-bold text-[1rem] text-marine flex items-center gap-1.5">
             <Icone nom="document" className="w-4 h-4" />
             {fr.programme.enSavoirPlus}
           </h2>
-          <LiensPages doc={doc} pages={p.pagesPudi} className="block mt-1 text-[15px]" />
-          <p className="mt-1 text-[13px] text-gris">
+          <LiensPages doc={doc} pages={p.pagesPudi} className="block mt-1 text-[0.9375rem]" />
+          <p className="mt-1 text-[0.8125rem] text-gris">
             {fr.programme.renvoi}{' '}
             <Link to="/documents" className="font-bold text-marine underline underline-offset-2">
               {fr.programme.tousDocuments}

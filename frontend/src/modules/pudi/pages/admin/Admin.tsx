@@ -92,7 +92,7 @@ export default function Admin() {
     return (
       <Page titre="Administration" large>
         <div className="bg-white border border-filet rounded-xl p-4 space-y-3">
-          <p className="text-[16px] flex gap-2 items-start">
+          <p className="text-[1rem] flex gap-2 items-start">
             <Icone nom="cadenas" className="w-5 h-5 text-marine mt-0.5" />
             Espace réservé aux organisateurs.
           </p>
@@ -126,7 +126,7 @@ export default function Admin() {
                 to={o.to}
                 end
                 className={({ isActive }) =>
-                  `min-h-[52px] h-full px-1.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[13px] leading-tight font-bold text-center border ${
+                  `min-h-[52px] h-full px-1.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[0.8125rem] leading-tight font-bold text-center border ${
                     isActive ? 'bg-marine text-white border-marine' : 'bg-white text-marine border-filet'
                   }`
                 }
@@ -134,7 +134,7 @@ export default function Admin() {
                 <span className="relative">
                   <Icone nom={o.icone} className="w-4 h-4" />
                   {o.to === '/admin/messages' && nonLus > 0 && (
-                    <span className="absolute -top-2 -right-4 min-w-[18px] h-[18px] px-1 rounded-full bg-[#E5484D] text-white text-[11px] font-bold flex items-center justify-center" data-badge-messages="" aria-label={`${nonLus} non lu${nonLus > 1 ? 's' : ''}`}>
+                    <span className="absolute -top-2 -right-4 min-w-[18px] h-[18px] px-1 rounded-full bg-[#E5484D] text-white text-[0.6875rem] font-bold flex items-center justify-center" data-badge-messages="" aria-label={`${nonLus} non lu${nonLus > 1 ? 's' : ''}`}>
                       {nonLus}
                     </span>
                   )}
@@ -148,7 +148,7 @@ export default function Admin() {
       {rappelPurge && (
         <div role="status" className="mb-4 border-l-4 border-[#B85317] bg-white rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
           <Icone nom="alerte" className="w-5 h-5 mt-0.5 text-[#B85317]" />
-          <p className="text-[15px]">
+          <p className="text-[0.9375rem]">
             Rappel : les données personnelles de la consultation doivent être supprimées le {dateClotureLongue(DATE_PURGE)}. Voir Paramètres, Données personnelles.
           </p>
         </div>

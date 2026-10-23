@@ -19,7 +19,7 @@ export default function Secteur() {
   const programmes = programmesDuSecteur(donnees, s.id);
   return (
     <Page>
-      <Link to="/secteurs" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
+      <Link to="/secteurs" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
         <Icone nom="gauche" />
         {fr.secteurs.titre}
       </Link>
@@ -38,23 +38,23 @@ export default function Secteur() {
             />
           ))}
         </div>
-        <h1 className="font-titre text-[24px] leading-tight text-white px-4 py-3">{s.nom}</h1>
+        <h1 className="font-titre text-[1.5rem] leading-tight text-white px-4 py-3">{s.nom}</h1>
       </div>
 
       {s.forfait && (
         <div className="mt-4 bg-white border-2 rounded-xl p-3" style={{ borderColor: s.couleur }}>
-          <p className="font-bold text-[15px]" style={{ color: s.couleurFoncee }}>
+          <p className="font-bold text-[0.9375rem]" style={{ color: s.couleurFoncee }}>
             {fr.secteurs.forfaitTitre(s.forfait.numero)}
           </p>
-          <p className="font-titre text-[22px] text-marine mt-1">{formatAr(s.forfait.montantAr)}</p>
-          <p className="text-[14px] mt-1">{fr.secteurs.forfaitTexte(
+          <p className="font-titre text-[1.375rem] text-marine mt-1">{formatAr(s.forfait.montantAr)}</p>
+          <p className="text-[0.875rem] mt-1">{fr.secteurs.forfaitTexte(
               s.forfait.intitule,
               s.forfait.programmes.map((id) => programmes.find((p) => p.id === id)?.nom ?? id).join(', ')
             )}</p>
         </div>
       )}
 
-      <h2 className="mt-5 mb-2 font-bold text-[17px] text-marine">
+      <h2 className="mt-5 mb-2 font-bold text-[1.0625rem] text-marine">
         {fr.secteurs.listeTitre} ({programmes.length})
       </h2>
       <ul className="space-y-2.5">
@@ -68,23 +68,23 @@ export default function Secteur() {
             className="bg-white border border-filet border-l-[6px]"
             style={{ borderLeftColor: s.couleur }}
           >
-            <p className="font-bold text-[16px] leading-snug">{p.nom}</p>
+            <p className="font-bold text-[1rem] leading-snug">{p.nom}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <BadgeTranche tranche={p.trancheAffichee} />
               {brouillon.priorites.includes(p.id) && (
-                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-marine">
+                <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
                   <Icone nom="etoile" className="w-3.5 h-3.5" />
                   {fr.programme.estPriorite}
                 </span>
               )}
               {brouillon.urgents.includes(p.id) && (
-                <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#9C3F21]">
+                <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
                   <Icone nom="horloge" className="w-3.5 h-3.5" />
                   {fr.programme.estUrgent}
                 </span>
               )}
             </div>
-            <p className="mt-2 text-[14px] text-gris">{p.cout.mention}</p>
+            <p className="mt-2 text-[0.875rem] text-gris">{p.cout.mention}</p>
           </CarteChoix>
         ))}
       </ul>

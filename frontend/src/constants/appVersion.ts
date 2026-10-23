@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.101.1';
-export const APP_VERSION_NAME = 'PUDi : personnes en ligne et tableau de fréquentation.';
+export const APP_VERSION = '3.102.0';
+export const APP_VERSION_NAME = 'PUDi : rien n’est perdu sans réseau, taille du texte, accueil après la clôture.';
 export const LAST_UPDATED = '2026-10-23';
 export const APP_BUILD_DATE = '2026-10-23';
 export const VERSION_HISTORY = [
+  {
+    version: '3.102.0',
+    date: '2026-10-23',
+    description: 'PUDi : envoi qui résiste aux coupures de réseau, « Taille du texte », page d’accueil « Résultats et synthèse » après la clôture.',
+    changes: [
+      'Vote, message public, message privé, ligne de « Mon groupe » : « Pas de réseau : rien n’est perdu » avec « Réessayer », nouvel essai automatique au retour du réseau, jamais d’envoi en double.',
+      '« Taille du texte » A / A+ / A++ dans le menu, gardée sur le téléphone, appliquée dès l’ouverture.',
+      'Après la clôture : accueil « Résultats et synthèse » (résumé, synthèse PDF, résultats complets, documents), « Résultats » remplace « Mon choix », la discussion et les messages restent ouverts.',
+      '« Mon groupe » garde la liste et la ligne en cours de saisie quand le réseau tombe.'
+    ]
+  },
   {
     version: '3.101.1',
     date: '2026-10-23',

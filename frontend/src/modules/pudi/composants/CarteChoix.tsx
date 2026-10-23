@@ -73,7 +73,7 @@ export function CarteChoix({
         <Link
           to={details}
           state={ETAT_DEPUIS_LISTE}
-          className="absolute right-1.5 bottom-1.5 min-h-[44px] min-w-[44px] px-3 rounded-lg inline-flex items-center justify-center gap-1 text-marine font-bold text-[14px] underline underline-offset-2 decoration-[#9AA3BD]"
+          className="absolute right-1.5 bottom-1.5 min-h-[44px] min-w-[44px] px-3 rounded-lg inline-flex items-center justify-center gap-1 text-marine font-bold text-[0.875rem] underline underline-offset-2 decoration-[#9AA3BD]"
           aria-label={`${fr.carte.details} : ${titre}`}
           data-details=""
         >

@@ -30,7 +30,7 @@ export function useBasculeChoix() {
 
 export function MessageBlocage({ texte }: { texte: string }) {
   return (
-    <p role="alert" className="mt-2 flex gap-2 items-start text-[14px] text-[#9C3F21] font-bold">
+    <p role="alert" className="mt-2 flex gap-2 items-start text-[0.875rem] text-[#9C3F21] font-bold">
       <Icone nom="alerte" className="w-4 h-4 mt-0.5" />
       {texte}
     </p>
@@ -43,7 +43,7 @@ export function BoutonsChoix({ id, tranche, desactive = false }: { id: string; t
   const estP = brouillon.priorites.includes(id);
   const estU = brouillon.urgents.includes(id);
   const base =
-    'w-full min-h-[48px] px-4 rounded-xl font-bold text-[15px] inline-flex items-center justify-center gap-2 border-2 disabled:opacity-50';
+    'w-full min-h-[48px] px-4 rounded-xl font-bold text-[0.9375rem] inline-flex items-center justify-center gap-2 border-2 disabled:opacity-50';
   return (
     <div className="space-y-2">
       <button
@@ -66,7 +66,7 @@ export function BoutonsChoix({ id, tranche, desactive = false }: { id: string; t
         <Icone nom={estU ? 'croix' : 'horloge'} />
         {estU ? fr.programme.retirerUrgent : fr.programme.marquerUrgent}
       </button>
-      {estU && tranche && ecartPudi(tranche) && <p className="text-[14px] text-gris">{fr.choix.avance}</p>}
+      {estU && tranche && ecartPudi(tranche) && <p className="text-[0.875rem] text-gris">{fr.choix.avance}</p>}
       {message?.id === id && <MessageBlocage texte={message.texte} />}
     </div>
   );

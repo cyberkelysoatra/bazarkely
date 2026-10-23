@@ -14,12 +14,12 @@ export default function Secteurs() {
       <Link
         to="/recherche"
         state={{ focus: true }}
-        className="mb-3 w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 flex items-center gap-2 text-[16px] text-gris"
+        className="mb-3 w-full min-h-[48px] rounded-xl border border-filet bg-white px-3 flex items-center gap-2 text-[1rem] text-gris"
       >
         <Icone nom="recherche" className="w-5 h-5" />
         <span className="flex-1 min-w-0 truncate">{fr.secteurs.rechercher}</span>
       </Link>
-      <p className="text-[15px] text-gris mb-4">{fr.secteurs.intro}</p>
+      <p className="text-[0.9375rem] text-gris mb-4">{fr.secteurs.intro}</p>
       <div className="mb-4">
         <BandeauxEtat />
       </div>
@@ -46,10 +46,10 @@ export default function Secteurs() {
                     fondSecours={s.couleur}
                   />
                   <div className="px-3 py-2.5 border-t-[5px]" style={{ borderColor: s.couleur }}>
-                    <p className="font-bold text-[15px] leading-tight" style={{ color: s.couleurFoncee }}>
+                    <p className="font-bold text-[0.9375rem] leading-tight" style={{ color: s.couleurFoncee }}>
                       {s.nom}
                     </p>
-                    <p className="text-[13px] text-gris mt-1 flex items-center gap-1">
+                    <p className="text-[0.8125rem] text-gris mt-1 flex items-center gap-1">
                       {fr.secteurs.programmes(n)}
                       <Icone nom="droite" className="w-4 h-4 ml-auto" />
                     </p>
@@ -67,8 +67,8 @@ export default function Secteurs() {
                 <Icone nom="ampoule" className="w-10 h-10" />
               </span>
               <div className="px-3 py-2.5 border-t-2 border-dashed border-marine/50">
-                <p className="font-bold text-[15px] leading-tight text-marine">{fr.secteurs.carteProposition}</p>
-                <p className="text-[13px] text-gris mt-1 flex items-center gap-1">
+                <p className="font-bold text-[0.9375rem] leading-tight text-marine">{fr.secteurs.carteProposition}</p>
+                <p className="text-[0.8125rem] text-gris mt-1 flex items-center gap-1">
                   {propositions ? fr.secteurs.propositions(propositions.length) : fr.app.chargement}
                   <Icone nom="droite" className="w-4 h-4 ml-auto" />
                 </p>

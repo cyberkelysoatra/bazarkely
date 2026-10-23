@@ -14,7 +14,7 @@ type Etat = { t: 'chargement' } | { t: 'deconnecte' } | { t: 'erreur' } | { t: '
 /** Simple coloured tiles in each module colour (never the host components). */
 function Tuile({ id }: { id: IdModule }) {
   const base = 'w-11 h-11 rounded-xl flex items-center justify-center shadow-sm';
-  if (id === 'bazarkely') return <span className={`${base} bg-[#7C3AED] text-white font-titre text-[20px]`}>B</span>;
+  if (id === 'bazarkely') return <span className={`${base} bg-[#7C3AED] text-white font-titre text-[1.25rem]`}>B</span>;
   if (id === 'construction')
     return (
       <span className={`${base} bg-[#C2410C] text-white`}>
@@ -27,7 +27,7 @@ function Tuile({ id }: { id: IdModule }) {
         <Icone nom="goutte" className="w-6 h-6" />
       </span>
     );
-  return <span className={`${base} bg-[#FACC15] text-[#1F2937] font-titre text-[20px]`}>N</span>;
+  return <span className={`${base} bg-[#FACC15] text-[#1F2937] font-titre text-[1.25rem]`}>N</span>;
 }
 
 export default function Commutateur() {
@@ -92,7 +92,7 @@ export default function Commutateur() {
   let contenu;
   if (etat.t === 'chargement')
     contenu = (
-      <p className="py-4 flex items-center justify-center gap-2 text-[14px] text-gris" role="status">
+      <p className="py-4 flex items-center justify-center gap-2 text-[0.875rem] text-gris" role="status">
         <span className="w-4 h-4 rounded-full border-2 border-marine border-t-transparent animate-spin" aria-hidden="true" />
         Chargement de vos modules…
       </p>
@@ -100,7 +100,7 @@ export default function Commutateur() {
   else if (etat.t === 'deconnecte')
     contenu = (
       <div className="px-4 py-3 space-y-2 text-center" role="status">
-        <p className="text-[14px] text-texte">Connectez-vous avec Google pour retrouver vos autres modules de 1sakely.org</p>
+        <p className="text-[0.875rem] text-texte">Connectez-vous avec Google pour retrouver vos autres modules de 1sakely.org</p>
         <button
           type="button"
           className={`${boutonPrincipal} w-full`}
@@ -118,7 +118,7 @@ export default function Commutateur() {
   else if (etat.t === 'erreur')
     contenu = (
       <div className="px-4 py-3 flex items-center justify-between gap-3" role="status">
-        <p className="text-[14px] text-texte">Réseau indisponible, réessayez</p>
+        <p className="text-[0.875rem] text-texte">Réseau indisponible, réessayez</p>
         <button type="button" className={`${boutonSecondaire} min-h-[44px] px-3`} onClick={() => void charger()}>
           <Icone nom="actualiser" />
           Réessayer
@@ -127,7 +127,7 @@ export default function Commutateur() {
     );
   else if (!etat.modules.length)
     contenu = (
-      <p className="px-4 py-4 text-center text-[14px] font-bold text-gris" role="status">
+      <p className="px-4 py-4 text-center text-[0.875rem] font-bold text-gris" role="status">
         PUDi est votre seul module pour l’instant
       </p>
     );

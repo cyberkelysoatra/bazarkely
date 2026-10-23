@@ -71,7 +71,7 @@ export default function Refus() {
         <ul className="space-y-2">
           {liste.map((r, i) => (
             <li key={`${r.at}-${i}`} className="bg-white border border-filet rounded-xl p-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="min-w-0 flex-1 text-[14px] space-y-0.5">
+              <div className="min-w-0 flex-1 text-[0.875rem] space-y-0.5">
                 <p className="font-bold">{dateHeureMada(r.at)}</p>
                 <p className="break-all">Compte refusé : {r.email_refuse ?? 'compte supprimé'}</p>
                 <p data-refus-motif={r.motif ?? ''}>Motif : {libelleMotifRefus(r.motif)}</p>

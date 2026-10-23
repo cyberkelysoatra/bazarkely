@@ -18,6 +18,7 @@ import { refusVus, retablisVus } from '../appels/refusVus';
 import { dateCourte } from '../utils/format';
 import { fr } from '../i18n/fr';
 import { definirApercu } from '../appels/apercu';
+import { TAILLES, appliquerTaille, lireTaille, type CleTaille } from '../utils/tailleTexte';
 import { lireMesGroupes, type Groupe } from '../appels/groupe';
 
 const LARGEUR = 300;
@@ -59,14 +60,14 @@ function Element({
       role="menuitem"
       disabled={desactive}
       onClick={onClick}
-      className={`w-full min-h-[44px] flex items-center gap-3 rounded-xl px-3 py-2 text-left text-[15px] disabled:opacity-50 ${
+      className={`w-full min-h-[44px] flex items-center gap-3 rounded-xl px-3 py-2 text-left text-[0.9375rem] disabled:opacity-50 ${
         danger ? 'text-[#B42318] hover:bg-[#FDECEA]' : 'text-texte hover:bg-vide'
       }`}
     >
       <Icone nom={icone} className={`w-5 h-5 ${danger ? '' : 'text-marine'}`} />
       <span className="flex-1 min-w-0">
         <span className="block font-bold leading-snug">{children}</span>
-        {note && <span className="block text-[13px] text-gris leading-snug">{note}</span>}
+        {note && <span className="block text-[0.8125rem] text-gris leading-snug">{note}</span>}
       </span>
       {fin}
     </button>
@@ -99,6 +100,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
   const [confirmerSortie, setConfirmerSortie] = useState(false);
   const [maj, setMaj] = useState<ResultatMiseAJour | 'cours' | null>(null);
   const [connexion, setConnexion] = useState(false);
+  const [taille, setTaille] = useState<CleTaille>(() => lireTaille());
   const installable = useSyncExternalStore(abonnerInstallation, installationDisponible, () => false);
   const enLigne = !horsLigne && (typeof navigator === 'undefined' || navigator.onLine !== false);
 
@@ -231,16 +233,16 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
       <BandeSecteursHorizontale />
       <div className="p-1.5 space-y-0.5">
         <div className="m-1 rounded-xl bg-vide px-3 py-2.5">
-          <p className="text-[12px] font-bold uppercase tracking-wide text-gris">{session ? 'Compte actif' : 'Non connecté'}</p>
+          <p className="text-[0.75rem] font-bold uppercase tracking-wide text-gris">{session ? 'Compte actif' : 'Non connecté'}</p>
           {session ? (
-            <p className="text-[14px] font-bold break-all">{session.email}</p>
+            <p className="text-[0.875rem] font-bold break-all">{session.email}</p>
           ) : (
             <button
               type="button"
               role="menuitem"
               disabled={!enLigne || connexion}
               onClick={seConnecter}
-              className="mt-1.5 w-full min-h-[44px] rounded-xl bg-marine text-white font-bold text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
+              className="mt-1.5 w-full min-h-[44px] rounded-xl bg-marine text-white font-bold text-[0.9375rem] flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Icone nom="connexion" />
               {connexion ? 'Connexion en cours…' : enLigne ? 'Se connecter avec Google' : connexionNecessaire}
@@ -278,7 +280,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         </Element>
         {partageSecours && (
           <div className="pl-11 pr-2 pb-1 flex flex-col gap-1">
-            <button type="button" role="menuitem" onClick={() => void copier()} className="min-h-[44px] flex items-center gap-2 text-[14px] font-bold text-marine">
+            <button type="button" role="menuitem" onClick={() => void copier()} className="min-h-[44px] flex items-center gap-2 text-[0.875rem] font-bold text-marine">
               <Icone nom="copier" className="w-4 h-4" />
               {copie ? 'Lien copié' : 'Copier le lien'}
             </button>
@@ -287,7 +289,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
               href={`https://wa.me/?text=${encodeURIComponent(`${TEXTE_PARTAGE} ${lienConsultation()}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-h-[44px] flex items-center gap-2 text-[14px] font-bold text-marine"
+              className="min-h-[44px] flex items-center gap-2 text-[0.875rem] font-bold text-marine"
             >
               <Icone nom="message" className="w-4 h-4" />
               Envoyer sur WhatsApp
@@ -308,6 +310,28 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         >
           Écrire aux organisateurs
         </Element>
+        <div className="px-3 py-1.5" role="group" aria-labelledby="pudi-taille-texte" data-taille-texte="">
+          <p id="pudi-taille-texte" className="text-[0.8125rem] font-bold text-gris mb-1">Taille du texte</p>
+          <div className="flex gap-2">
+            {TAILLES.map((t, i) => (
+              <button
+                key={t.cle}
+                type="button"
+                aria-pressed={taille === t.cle}
+                aria-label={`Taille du texte ${t.pct} %`}
+                onClick={() => {
+                  appliquerTaille(t.cle);
+                  setTaille(t.cle);
+                }}
+                className={`flex-1 min-h-[44px] rounded-xl border-2 font-bold ${taille === t.cle ? 'bg-marine border-marine text-white' : 'bg-white border-filet text-marine'}`}
+                style={{ fontSize: `${15 + i * 2}px` }}
+                data-taille={t.cle}
+              >
+                {t.libelle}
+              </button>
+            ))}
+          </div>
+        </div>
         <Element icone="aide" onClick={() => aller('/', { aide: Date.now() })}>
           Comment ça marche ?
         </Element>
@@ -347,7 +371,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
               onClick={() => aller('/admin')}
               fin={
                 badge > 0 ? (
-                  <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#F2B705] text-[#2F3547] text-[12px] font-bold flex items-center justify-center">
+                  <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#F2B705] text-[#2F3547] text-[0.75rem] font-bold flex items-center justify-center">
                     {badge}
                   </span>
                 ) : undefined
@@ -369,7 +393,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         {joel && (
           <div data-voir-comme="">
             <hr className="my-1 border-filet" />
-            <p className="px-3 pt-1.5 pb-0.5 text-[12px] font-bold uppercase tracking-wide text-gris">Voir comme</p>
+            <p className="px-3 pt-1.5 pb-0.5 text-[0.75rem] font-bold uppercase tracking-wide text-gris">Voir comme</p>
             <Element
               icone="personnes"
               note={apercu?.role === 'votant' ? 'Aperçu en cours' : "Personne connectée qui n'a pas encore voté"}
@@ -387,8 +411,8 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
             </Element>
             {canauxApercu !== null && (
               <div className="pl-11 pr-2 pb-1">
-                {canauxApercu === 'cours' && <p className="py-2 text-[14px] text-gris">{fr.app.chargement}</p>}
-                {canauxApercu === 'erreur' && <p className="py-2 text-[14px] text-gris">Liste des groupes indisponible.</p>}
+                {canauxApercu === 'cours' && <p className="py-2 text-[0.875rem] text-gris">{fr.app.chargement}</p>}
+                {canauxApercu === 'erreur' && <p className="py-2 text-[0.875rem] text-gris">Liste des groupes indisponible.</p>}
                 {Array.isArray(canauxApercu) &&
                   canauxApercu.map((g) => (
                     <button
@@ -397,7 +421,7 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
                       role="menuitem"
                       data-apercu-canal={g.code}
                       onClick={() => voirComme({ role: 'responsable', canal: g.code, nom: g.nom })}
-                      className="w-full min-h-[44px] text-left text-[14px] font-bold text-marine break-words"
+                      className="w-full min-h-[44px] text-left text-[0.875rem] font-bold text-marine break-words"
                     >
                       {g.nom}
                     </button>
@@ -433,12 +457,12 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         {session &&
           (confirmerSortie ? (
             <div className="m-1 rounded-xl border border-[#F3C5BF] bg-[#FDECEA] p-3 space-y-2" role="alert">
-              <p className="text-[14px]">Vous serez aussi déconnecté des autres modules de 1sakely.org (même compte Google).</p>
+              <p className="text-[0.875rem]">Vous serez aussi déconnecté des autres modules de 1sakely.org (même compte Google).</p>
               <div className="flex gap-2">
-                <button type="button" role="menuitem" onClick={() => void sortir()} className="flex-1 min-h-[44px] rounded-xl bg-[#B42318] text-white font-bold text-[14px]">
+                <button type="button" role="menuitem" onClick={() => void sortir()} className="flex-1 min-h-[44px] rounded-xl bg-[#B42318] text-white font-bold text-[0.875rem]">
                   Se déconnecter
                 </button>
-                <button type="button" role="menuitem" onClick={() => setConfirmerSortie(false)} className="flex-1 min-h-[44px] rounded-xl bg-white border border-filet font-bold text-[14px]">
+                <button type="button" role="menuitem" onClick={() => setConfirmerSortie(false)} className="flex-1 min-h-[44px] rounded-xl bg-white border border-filet font-bold text-[0.875rem]">
                   Annuler
                 </button>
               </div>

@@ -57,7 +57,7 @@ export function DeclencheurMenu() {
           )}
           {badge > 0 && (
             <span
-              className="absolute -top-0.5 left-7 min-w-[20px] h-5 px-1 rounded-full bg-[#F2B705] text-[#2F3547] text-[11px] font-bold flex items-center justify-center ring-2 ring-marine"
+              className="absolute -top-0.5 left-7 min-w-[20px] h-5 px-1 rounded-full bg-[#F2B705] text-[#2F3547] text-[0.6875rem] font-bold flex items-center justify-center ring-2 ring-marine"
               aria-label={`${badge} tentative${badge > 1 ? 's' : ''} refusée${badge > 1 ? 's' : ''} à examiner`}
             >
               {badge}
@@ -65,7 +65,7 @@ export function DeclencheurMenu() {
           )}
         </button>
       ) : (
-        <button {...commun} className="pudi-focus flex-shrink-0 min-h-[44px] px-3.5 rounded-full bg-white text-marine font-bold text-[14px] flex items-center gap-1.5">
+        <button {...commun} className="pudi-focus flex-shrink-0 min-h-[44px] px-3.5 rounded-full bg-white text-marine font-bold text-[0.875rem] flex items-center gap-1.5">
           <Icone nom="connexion" className="w-4 h-4" />
           Se connecter
           <Icone nom={ouvert ? 'haut' : 'bas'} className="w-4 h-4" />

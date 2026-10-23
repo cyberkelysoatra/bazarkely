@@ -77,7 +77,7 @@ function Conversation({ id, retour }: { id: string; retour: () => void }) {
   };
   return (
     <section data-conversation-admin={id}>
-      <button type="button" onClick={retour} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
+      <button type="button" onClick={retour} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
         <Icone nom="gauche" />
         Toutes les conversations
       </button>
@@ -87,9 +87,9 @@ function Conversation({ id, retour }: { id: string; retour: () => void }) {
       ) : (
         <div className="space-y-4">
           <div className="bg-white border border-filet rounded-xl p-3">
-            <p className="font-bold text-[16px] text-marine">{c.auteur_nom}</p>
+            <p className="font-bold text-[1rem] text-marine">{c.auteur_nom}</p>
             {c.auteur_email && (
-              <a href={`mailto:${c.auteur_email}`} className="text-[14px] text-marine underline break-all" data-conversation-email="">
+              <a href={`mailto:${c.auteur_email}`} className="text-[0.875rem] text-marine underline break-all" data-conversation-email="">
                 {c.auteur_email}
               </a>
             )}
@@ -140,7 +140,7 @@ export default function Messages() {
   if (ouverte) return <Conversation id={ouverte} retour={() => setOuverte(null)} />;
   return (
     <section>
-      <h2 className="font-bold text-[18px] text-marine mb-2">Messages aux organisateurs</h2>
+      <h2 className="font-bold text-[1.125rem] text-marine mb-2">Messages aux organisateurs</h2>
       <Aide>
         <p>Chaque personne connectée peut écrire aux organisateurs. Seuls les organisateurs lisent ces conversations (ni les responsables de groupe, ni les autres votants).</p>
         <p>L’adresse Gmail de l’auteur permet de répondre par e-mail si besoin. Les messages sont effacés le 28/01/2027.</p>
@@ -162,12 +162,12 @@ export default function Messages() {
               >
                 <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${c.non_lu ? 'bg-[#E5484D]' : 'bg-transparent'}`} aria-hidden="true" />
                 <span className="flex-1 min-w-0">
-                  <span className="block font-bold text-[15px]">
+                  <span className="block font-bold text-[0.9375rem]">
                     {c.auteur_nom}
                     {c.non_lu && <span className="sr-only"> (non lu)</span>}
                   </span>
-                  <span className="block text-[13px] text-gris break-all">{c.auteur_email ?? ''}</span>
-                  <span className="block text-[13px] text-gris">
+                  <span className="block text-[0.8125rem] text-gris break-all">{c.auteur_email ?? ''}</span>
+                  <span className="block text-[0.8125rem] text-gris">
                     {c.dernier_at ? `Dernier message le ${dateCourte(c.dernier_at)}` : ''} · {c.nb_messages} message{c.nb_messages > 1 ? 's' : ''}
                   </span>
                 </span>

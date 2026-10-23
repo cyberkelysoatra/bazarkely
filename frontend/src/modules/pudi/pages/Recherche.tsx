@@ -56,7 +56,7 @@ function Ligne({ r, donnees, clos }: { r: ResultatRecherche; donnees: PudiDonnee
         <div className="flex flex-wrap items-center gap-2">
           {s ? (
             <span
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-bold text-white"
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold text-white"
               style={{ background: s.couleurFoncee }}
             >
               {s.nom}
@@ -65,8 +65,8 @@ function Ligne({ r, donnees, clos }: { r: ResultatRecherche; donnees: PudiDonnee
             <BadgeProposition court />
           )}
         </div>
-        <p className="mt-1.5 font-bold text-[16px] leading-snug">{r.nom}</p>
-        <p className="mt-1 text-[14px] text-gris leading-snug break-words flex gap-1">
+        <p className="mt-1.5 font-bold text-[1rem] leading-snug">{r.nom}</p>
+        <p className="mt-1 text-[0.875rem] text-gris leading-snug break-words flex gap-1">
           <span className="min-w-0 flex-1">
             <Pourquoi e={r.explication} />
           </span>
@@ -104,7 +104,7 @@ export default function Recherche() {
 
   return (
     <Page titre={fr.recherche.titre}>
-      <p className="text-[15px] text-gris mb-3">{fr.recherche.intro}</p>
+      <p className="text-[0.9375rem] text-gris mb-3">{fr.recherche.intro}</p>
       <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4">
         <label className="relative block">
           <span className="sr-only">{fr.recherche.champ}</span>
@@ -117,7 +117,7 @@ export default function Recherche() {
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
             placeholder={fr.recherche.exemple}
-            className="w-full min-h-[48px] rounded-xl border-2 border-marine bg-white pl-10 pr-3 text-[16px]"
+            className="w-full min-h-[48px] rounded-xl border-2 border-marine bg-white pl-10 pr-3 text-[1rem]"
           />
         </label>
       </form>
@@ -128,21 +128,21 @@ export default function Recherche() {
         <Chargement />
       ) : !saisie.trim() ? null : reponse.total === 0 ? (
         <div className="bg-white border border-filet rounded-xl p-4 space-y-2" role="status">
-          <p className="text-[15px]">{fr.recherche.aucun}</p>
-          <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[15px]">
+          <p className="text-[0.9375rem]">{fr.recherche.aucun}</p>
+          <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
             <Icone nom="ampoule" className="w-4 h-4" />
             {fr.recherche.allerEtape3}
           </Link>
         </div>
       ) : (
         <>
-          <p className="text-[14px] text-gris mb-2" role="status" aria-live="polite">
+          <p className="text-[0.875rem] text-gris mb-2" role="status" aria-live="polite">
             {fr.recherche.resultats(reponse.total)}
             {reponse.total > MAX_RESULTATS && ` · ${fr.recherche.limite(MAX_RESULTATS)}`}
           </p>
           {reponse.directs.length > 0 && (
             <section className="mb-4">
-              <h2 className="font-bold text-[16px] text-marine mb-2 flex items-center gap-1.5">
+              <h2 className="font-bold text-[1rem] text-marine mb-2 flex items-center gap-1.5">
                 <Icone nom="etoile" className="w-4 h-4" />
                 {fr.recherche.direct}
               </h2>

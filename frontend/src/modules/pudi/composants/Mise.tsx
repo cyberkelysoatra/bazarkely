@@ -69,7 +69,7 @@ export function EnTete() {
     <header className="pudi-entete sticky top-0 z-30 bg-marine text-white">
       <div className="mx-auto max-w-5xl pl-3 pr-5 h-16 flex items-center gap-3">
         <Logo />
-        <span className="font-titre text-[17px] tracking-tight flex-1 min-w-0 truncate">{fr.app.titreCourt}</span>
+        <span className="font-titre text-[1.0625rem] tracking-tight flex-1 min-w-0 truncate">{fr.app.titreCourt}</span>
         <DeclencheurMenu />
       </div>
       <BandeauApercu />
@@ -85,9 +85,9 @@ function BandeauApercu() {
   return (
     <div className="bg-[#F2B705] text-[#2F3547]" role="status" data-bandeau-apercu="">
       <div className="mx-auto max-w-5xl px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="flex-1 min-w-0 text-[14px] font-bold leading-snug">Mode aperçu : {role} (rien n'est enregistré)</p>
+        <p className="flex-1 min-w-0 text-[0.875rem] font-bold leading-snug">Mode aperçu : {role} (rien n'est enregistré)</p>
         {apercu.role === 'votant' && (
-          <label className="inline-flex items-center gap-1.5 min-h-[36px] text-[13px] font-bold">
+          <label className="inline-flex items-center gap-1.5 min-h-[36px] text-[0.8125rem] font-bold">
             <input
               type="checkbox"
               checked={apercu.masque}
@@ -100,7 +100,7 @@ function BandeauApercu() {
         <button
           type="button"
           onClick={() => definirApercu(null)}
-          className="min-h-[36px] px-3 rounded-lg bg-[#2F3547] text-white text-[13px] font-bold"
+          className="min-h-[36px] px-3 rounded-lg bg-[#2F3547] text-white text-[0.8125rem] font-bold"
         >
           Quitter l'aperçu
         </button>
@@ -118,7 +118,7 @@ function Bandeau({ icone, titre, texte, ton }: { icone: NomIcone; titre?: string
   return (
     <div role="status" className={`border-l-4 ${styles} rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm`}>
       <Icone nom={icone} className="w-5 h-5 mt-0.5" />
-      <div className="text-[15px] leading-snug">
+      <div className="text-[0.9375rem] leading-snug">
         {titre && <p className="font-bold">{titre}</p>}
         <p>{texte}</p>
       </div>
@@ -135,12 +135,12 @@ export function BandeauxEtat({ masquerPreparation = false }: { masquerPreparatio
     items.push(
       <div key="retrait" role="alert" className="border-l-4 bg-white border-[#B85317] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
         <Icone nom="alerte" className="w-5 h-5 mt-0.5 text-[#B85317]" />
-        <div className="flex-1 min-w-0 text-[15px] leading-snug space-y-1">
+        <div className="flex-1 min-w-0 text-[0.9375rem] leading-snug space-y-1">
           {propositionsRetirees.map((t) => (
             <p key={t}>{fr.etats.propositionRetiree(t)}</p>
           ))}
         </div>
-        <button type="button" onClick={effacerPropositionsRetirees} className="min-h-[44px] -my-2 px-2 text-marine font-bold text-[14px]">
+        <button type="button" onClick={effacerPropositionsRetirees} className="min-h-[44px] -my-2 px-2 text-marine font-bold text-[0.875rem]">
           {fr.etats.compris}
         </button>
       </div>
@@ -169,7 +169,7 @@ const LOGOS: { fichier: string; alt: string; l: number; h: number }[] = [
 export function RangeeLogos({ titre = true }: { titre?: boolean }) {
   return (
     <div>
-      {titre && <p className="text-[13px] text-gris mb-2">{fr.accueil.partenaires}</p>}
+      {titre && <p className="text-[0.8125rem] text-gris mb-2">{fr.accueil.partenaires}</p>}
       {/* Justified on one line: first logo on the left edge, last on the right edge. Logos shrink
           below 400 px and still fit from 300 px (about 190 px of logos); narrower, they may wrap,
           centred, never leaving one stuck on the left. */}
@@ -195,7 +195,7 @@ export function PiedDePage({ logos = true }: { logos?: boolean }) {
   return (
     <footer className="mt-10 border-t border-filet pt-5 pb-4 space-y-4">
       {logos && <RangeeLogos titre={false} />}
-      <p className="text-[13px] leading-relaxed text-gris">{fr.app.pied}</p>
+      <p className="text-[0.8125rem] leading-relaxed text-gris">{fr.app.pied}</p>
     </footer>
   );
 }
@@ -211,11 +211,12 @@ function Onglet({ to, icone, libelle, badge, fin, point }: { to: string; icone: 
         }`
       }
     >
+      {/* Fixed sizes (px): the bar keeps its size whatever « Taille du texte » (PUDI-CC-14.4). */}
       <span className="relative">
-        <Icone nom={icone} className="w-6 h-6" />
+        <Icone nom={icone} className="w-[24px] h-[24px]" />
         {badge !== undefined && (
           <span
-            className={`absolute -top-1.5 -right-3 min-w-[20px] h-5 px-1 rounded-full text-[11px] font-bold flex items-center justify-center ${
+            className={`absolute -top-[6px] -right-[12px] min-w-[20px] h-[20px] px-[4px] rounded-full text-[11px] font-bold flex items-center justify-center ${
               badge === 3 ? 'bg-marine text-white' : 'bg-vide text-profond border border-filet'
             }`}
             aria-label={`${badge} sur 3`}
@@ -239,7 +240,7 @@ export function BarreBas() {
   const nonLue = useDiscussionNonLue();
   if (commutateur)
     return (
-      <Suspense fallback={<BarreCommutateur><p className="py-4 text-center text-[14px] text-gris">{fr.app.chargement}</p></BarreCommutateur>}>
+      <Suspense fallback={<BarreCommutateur><p className="py-4 text-center text-[0.875rem] text-gris">{fr.app.chargement}</p></BarreCommutateur>}>
         <Commutateur />
       </Suspense>
     );
@@ -257,9 +258,14 @@ export function BarreBas() {
       <div className="mx-auto max-w-2xl flex pr-[6px]">
         <Onglet to="/" icone="accueil" libelle={fr.nav.accueil} fin />
         <Onglet to="/secteurs" icone="grille" libelle={fr.nav.projets} />
-        <Onglet to="/choix" icone="liste" libelle={fr.nav.monChoix} badge={brouillon.priorites.length} />
+        {etat?.clos ? (
+          // PUDI-CC-14.4: once closed, « Résultats » takes the place of « Mon choix » (voting path hidden).
+          <Onglet to="/resultats" icone="graphique" libelle={fr.nav.resultats} />
+        ) : (
+          <Onglet to="/choix" icone="liste" libelle={fr.nav.monChoix} badge={brouillon.priorites.length} />
+        )}
         <Onglet to="/discussion" icone="discussion" libelle={fr.nav.discussion} point={nonLue} />
-        <Onglet to="/resultats" icone="graphique" libelle={fr.nav.resultats} />
+        {!etat?.clos && <Onglet to="/resultats" icone="graphique" libelle={fr.nav.resultats} />}
       </div>
     </nav>
     </>
@@ -293,7 +299,7 @@ export function Page({
 }) {
   return (
     <main className={`pudi-page mx-auto ${large ? 'max-w-5xl' : 'max-w-2xl'} pl-4 pr-6 pt-4 pb-24`}>
-      {titre && <h1 className="font-titre text-[24px] leading-tight text-marine mb-4">{titre}</h1>}
+      {titre && <h1 className="font-titre text-[1.5rem] leading-tight text-marine mb-4">{titre}</h1>}
       {children}
       <PiedDePage logos={logosPied} />
     </main>
@@ -303,7 +309,7 @@ export function Page({
 export function BadgeTranche({ tranche }: { tranche: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-bold text-white whitespace-nowrap"
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold text-white whitespace-nowrap"
       style={{ background: COULEURS_TRANCHES[tranche] ?? '#0B2A8C' }}
     >
       <Icone nom="calendrier" className="w-3.5 h-3.5" />
@@ -377,9 +383,9 @@ export function Image({
 }
 
 export const boutonPrincipal =
-  'inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl bg-marine text-white font-bold text-[16px] active:bg-profond disabled:bg-vide disabled:text-gris';
+  'inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl bg-marine text-white font-bold text-[1rem] active:bg-profond disabled:bg-vide disabled:text-gris';
 export const boutonSecondaire =
-  'inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl bg-white text-marine font-bold text-[16px] border-2 border-marine active:bg-vide disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl bg-white text-marine font-bold text-[1rem] border-2 border-marine active:bg-vide disabled:opacity-50';
 
 export function Chargement() {
   return <p className="text-gris py-8 text-center">{fr.app.chargement}</p>;

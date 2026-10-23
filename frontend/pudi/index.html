@@ -26,6 +26,13 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preload" href="/pudi/polices/archivo-black-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/pudi/polices/lato-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- PUDI-CC-14.4: « Taille du texte » applied before the first paint (utils/tailleTexte.ts). -->
+    <script>
+      try {
+        var t = { 'a+': '115%', 'a++': '130%' }[localStorage.getItem('pudi_taille_texte')];
+        if (t) document.documentElement.style.fontSize = t;
+      } catch (e) {}
+    </script>
   </head>
   <body class="notranslate">
     <div id="pudi-root"></div>

@@ -20,7 +20,7 @@ function Badge({ children, ton }: { children: string; ton: 'test' | 'masque' | '
     info: 'bg-[#EAF0FF] text-marine border-[#C9D6F5]',
     alerte: 'bg-[#FDF1EC] text-[#9C3F21] border-[#F0CDBF]'
   }[ton];
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-bold ${c}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.75rem] font-bold ${c}`}>{children}</span>;
 }
 
 export default function Votes() {
@@ -86,7 +86,7 @@ export default function Votes() {
 
   const selection = (id: string, valeur: string, set: (v: string) => void, options: [string, string][], libelle: string) => (
     <label className="block min-w-0" htmlFor={id}>
-      <span className="block text-[13px] text-gris mb-0.5">{libelle}</span>
+      <span className="block text-[0.8125rem] text-gris mb-0.5">{libelle}</span>
       <select id={id} className={champ} value={valeur} onChange={(e) => set(e.target.value)}>
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -114,7 +114,7 @@ export default function Votes() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
         <label className="block col-span-2 lg:col-span-1" htmlFor="pudi-v-q">
-          <span className="block text-[13px] text-gris mb-0.5">Rechercher un code</span>
+          <span className="block text-[0.8125rem] text-gris mb-0.5">Rechercher un code</span>
           <input id="pudi-v-q" className={champ} placeholder="V-…" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
         </label>
         {selection('pudi-v-c', canal, setCanal, [['', 'Tous les canaux'], ...(appel.donnees?.canaux ?? []).map((c): [string, string] => [c.code, c.nom]), ['(aucun)', 'Sans lien de canal']], 'Canal')}
@@ -132,7 +132,7 @@ export default function Votes() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <p className="text-[14px] text-gris">
+        <p className="text-[0.875rem] text-gris">
           {filtres.length} vote{filtres.length > 1 ? 's' : ''} sur {votes.length}
         </p>
         <div className="flex gap-2">
@@ -161,7 +161,7 @@ export default function Votes() {
           {filtres.map((v) => (
             <li key={v.id_anonyme} className={`bg-white border rounded-xl p-3 ${v.masque ? 'border-dashed border-gris/40 opacity-80' : 'border-filet'}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-titre text-[16px] text-marine">{v.id_anonyme}</span>
+                <span className="font-titre text-[1rem] text-marine">{v.id_anonyme}</span>
                 {v.est_test && <Badge ton="test">test</Badge>}
                 {v.masque && <Badge ton="masque">masqué</Badge>}
                 {v.dans_nos_reseaux && <Badge ton="info">dans nos réseaux</Badge>}
@@ -177,7 +177,7 @@ export default function Votes() {
                   {v.masque ? 'Réafficher' : 'Masquer'}
                 </button>
               </div>
-              <dl className="mt-2 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-[14px]">
+              <dl className="mt-2 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-[0.875rem]">
                 <dt className="text-gris">Fokontany</dt>
                 <dd className="break-words">{nomFkt(v)}</dd>
                 <dt className="text-gris">Profil</dt>
@@ -236,7 +236,7 @@ export default function Votes() {
       <Dialogue demande={demande} fermer={() => setDemande(null)} />
       <FormulaireProposition demande={formulaire} fermer={() => setFormulaire(null)} enregistre={(id) => setTransforme(id)} />
       {transforme && (
-        <p role="status" className="fixed bottom-20 left-3 right-3 sm:left-auto sm:w-96 z-[60] bg-marine text-white rounded-xl px-4 py-3 text-[15px] font-bold shadow-xl">
+        <p role="status" className="fixed bottom-20 left-3 right-3 sm:left-auto sm:w-96 z-[60] bg-marine text-white rounded-xl px-4 py-3 text-[0.9375rem] font-bold shadow-xl">
           Proposition {transforme} créée : voir l'onglet Propositions.
         </p>
       )}

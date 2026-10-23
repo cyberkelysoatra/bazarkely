@@ -5,7 +5,7 @@ import { Icone } from './Icones';
 
 export function IndicateurEtapes({ courante, faites }: { courante: 1 | 2 | 3 | null; faites: number[] }) {
   return (
-    <ol aria-label={fr.vote.etapesLibelle} className="mb-3 flex items-center gap-1 text-[13px] min-[360px]:text-[14px]" data-etapes="">
+    <ol aria-label={fr.vote.etapesLibelle} className="mb-3 flex items-center gap-1 text-[0.8125rem] min-[360px]:text-[0.875rem]" data-etapes="">
       {fr.vote.etapes.map((libelle, i) => {
         const n = i + 1;
         const fait = faites.includes(n) && n !== courante;
@@ -20,7 +20,7 @@ export function IndicateurEtapes({ courante, faites }: { courante: 1 | 2 | 3 | n
           >
             {i > 0 && <span aria-hidden="true" className="text-gris px-0.5">·</span>}
             <span
-              className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold ${
+              className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[0.75rem] font-bold ${
                 actif ? 'bg-marine text-white' : fait ? 'bg-[#1E7A46] text-white' : 'bg-white border border-filet text-gris'
               }`}
             >

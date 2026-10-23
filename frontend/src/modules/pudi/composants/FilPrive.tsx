@@ -21,7 +21,7 @@ export function FilPrive({
   supprimer?: (m: MessagePrive) => void;
   verrouille?: boolean;
 }) {
-  if (!messages.length) return <p className="py-6 text-center text-[15px] text-gris">{vide}</p>;
+  if (!messages.length) return <p className="py-6 text-center text-[0.9375rem] text-gris">{vide}</p>;
   let jour = '';
   return (
     <ol className="space-y-2" data-fil-prive="">
@@ -31,27 +31,27 @@ export function FilPrive({
         jour = j;
         return (
           <li key={m.id}>
-            {sep && <p className="my-2 text-center text-[12px] font-bold text-gris">{j}</p>}
+            {sep && <p className="my-2 text-center text-[0.75rem] font-bold text-gris">{j}</p>}
             <div className={`flex ${m.est_moi ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-3 py-2 shadow-sm ${m.est_moi ? 'bg-marine text-white rounded-br-md' : 'bg-white border border-filet rounded-bl-md'}`}
                 data-message-prive={m.id}
                 data-cote={m.est_moi ? 'droite' : 'gauche'}
               >
-                {!m.est_moi && <p className="text-[12px] font-bold text-marine">{m.auteur_nom}</p>}
-                <p className={`text-[15px] whitespace-pre-wrap break-words ${m.supprime ? 'italic opacity-70' : ''}`}>{m.supprime ? SUPPRIME : m.texte}</p>
+                {!m.est_moi && <p className="text-[0.75rem] font-bold text-marine">{m.auteur_nom}</p>}
+                <p className={`text-[0.9375rem] whitespace-pre-wrap break-words ${m.supprime ? 'italic opacity-70' : ''}`}>{m.supprime ? SUPPRIME : m.texte}</p>
                 <div className="mt-0.5 flex items-center justify-end gap-2">
                   {supprimer && !m.supprime && (
                     <button
                       type="button"
                       disabled={verrouille}
                       onClick={() => supprimer(m)}
-                      className={`min-h-[32px] px-1 text-[12px] font-bold underline disabled:opacity-50 ${m.est_moi ? 'text-white' : 'text-[#B42318]'}`}
+                      className={`min-h-[32px] px-1 text-[0.75rem] font-bold underline disabled:opacity-50 ${m.est_moi ? 'text-white' : 'text-[#B42318]'}`}
                     >
                       Supprimer
                     </button>
                   )}
-                  <span className={`text-[11px] ${m.est_moi ? 'text-white/80' : 'text-gris'}`}>{heureHHmm(m.cree_at)}</span>
+                  <span className={`text-[0.6875rem] ${m.est_moi ? 'text-white/80' : 'text-gris'}`}>{heureHHmm(m.cree_at)}</span>
                 </div>
               </div>
             </div>
@@ -68,13 +68,16 @@ export function ComposeurPrive({
   desactive = false,
   erreur,
   effacerErreur,
-  placeholder = 'Écrire un message…'
+  placeholder = 'Écrire un message…',
+  envoyes = 0
 }: {
   envoyer: (texte: string) => Promise<boolean>;
   desactive?: boolean;
   erreur: string | null;
   effacerErreur: () => void;
   placeholder?: string;
+  /** Count of sends that succeeded later (automatic retry): the field is emptied each time. */
+  envoyes?: number;
 }) {
   const [texte, setTexte] = useState('');
   const [cours, setCours] = useState(false);
@@ -83,6 +86,12 @@ export function ComposeurPrive({
   useEffect(() => {
     if (texte.trim()) setVide(false);
   }, [texte]);
+  const envoyesVus = useRef(envoyes);
+  useEffect(() => {
+    if (envoyes === envoyesVus.current) return;
+    envoyesVus.current = envoyes;
+    setTexte('');
+  }, [envoyes]);
   const soumettre = async (e?: FormEvent) => {
     e?.preventDefault();
     const t = texte.trim();
@@ -115,7 +124,7 @@ export function ComposeurPrive({
             }}
             placeholder={placeholder}
             disabled={desactive}
-            className="w-full max-h-40 rounded-xl border border-filet bg-white px-3 py-2 text-[16px] leading-snug resize-none"
+            className="w-full max-h-40 rounded-xl border border-filet bg-white px-3 py-2 text-[1rem] leading-snug resize-none"
             data-champ-prive=""
           />
         </label>
@@ -131,13 +140,13 @@ export function ComposeurPrive({
       </div>
       <div className="flex items-start justify-between gap-2 min-h-[16px]">
         {message ? (
-          <p role="alert" className="text-[13px] font-bold text-[#9C3F21]" data-erreur-prive="">
+          <p role="alert" className="text-[0.8125rem] font-bold text-[#9C3F21]" data-erreur-prive="">
             {message}
           </p>
         ) : (
           <span />
         )}
-        {texte.length >= 800 && <span className="text-[12px] shrink-0 text-gris">{texte.length} / {MAX_PRIVE}</span>}
+        {texte.length >= 800 && <span className="text-[0.75rem] shrink-0 text-gris">{texte.length} / {MAX_PRIVE}</span>}
       </div>
     </form>
   );
