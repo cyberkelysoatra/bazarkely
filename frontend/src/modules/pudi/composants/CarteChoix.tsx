@@ -1,9 +1,8 @@
 // Card of a programme or proposal in the voting path (specification v9, 4.3 bis and 4.5).
 // Votes (PUDI-CC-17): a « − n + » stepper at the bottom of the card, and a tap anywhere else on
-// the card adds one vote (13th refused with a message). Urgents (question 2): the card is a
-// checkbox, a tap checks or unchecks it (10 at most). The separate « Détails » link opens the
+// the card adds one vote (13th refused with a message). The separate « Détails » link opens the
 // sheet without changing the choice; it is never nested in another control.
-import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { fr } from '../i18n/fr';
 import { voixPour } from '../utils/regles';
@@ -18,7 +17,6 @@ export function CarteChoix({
   id,
   titre,
   details,
-  mode = 'priorite',
   desactive = false,
   className = '',
   style,
@@ -29,7 +27,6 @@ export function CarteChoix({
   id: string;
   titre: string;
   details: string;
-  mode?: 'priorite' | 'urgent';
   desactive?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -39,20 +36,11 @@ export function CarteChoix({
   pied?: ReactNode;
   children?: ReactNode;
 }) {
-  const { brouillon, ajouter, retirer, urgent, message } = useBasculeChoix();
-  const voix = mode === 'priorite';
-  const n = voix ? voixPour(brouillon, id) : 0;
-  const actif = voix ? n > 0 : brouillon.urgents.includes(id);
+  const { brouillon, ajouter, retirer, message } = useBasculeChoix();
+  const n = voixPour(brouillon, id);
+  const actif = n > 0;
   const toucher = () => {
-    if (desactive) return;
-    if (voix) ajouter(id);
-    else urgent(id);
-  };
-  const clavier = (e: KeyboardEvent) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      toucher();
-    }
+    if (!desactive) ajouter(id);
   };
   // The right column floats over the top right corner; a spacer of its size, floated at the start
   // of the content, makes the title wrap beside it while the lines below take the full width.
@@ -72,50 +60,23 @@ export function CarteChoix({
     <div className="flex-1 min-w-0 flow-root">
       <span aria-hidden="true" className="float-right" style={{ width: place.l, height: place.h }} data-place-colonne="" />
       {children}
-      {voix ? (
-        <div className="mt-2 clear-right flex items-center gap-3" data-ligne-voix="">
-          <CompteurVoix titre={titre} n={n} ajouter={() => ajouter(id)} retirer={() => retirer(id)} desactive={desactive} />
-          {pied && <div className="min-w-0 flex-1">{pied}</div>}
-        </div>
-      ) : (
-        pied && <div className="mt-2">{pied}</div>
-      )}
+      <div className="mt-2 clear-right flex items-center gap-3" data-ligne-voix="">
+        <CompteurVoix titre={titre} n={n} ajouter={() => ajouter(id)} retirer={() => retirer(id)} desactive={desactive} />
+        {pied && <div className="min-w-0 flex-1">{pied}</div>}
+      </div>
     </div>
   );
   return (
-    <li data-carte-choix={id} data-voix-carte={voix ? n : undefined}>
+    <li data-carte-choix={id} data-voix-carte={n}>
       <div className={`relative rounded-xl select-none ${className} ${actif ? '!border-marine shadow-md' : ''}`} style={style}>
-        {voix ? (
-          // Votes: the card body only adds a vote on a tap (pointer shortcut); keyboard and screen
-          // readers use the « − » and « + » buttons, so the body is not a control of its own.
-          <div onClick={toucher} className={`rounded-xl p-3 flex ${desactive ? 'cursor-default' : 'cursor-pointer'}`} data-corps-carte="">
-            {contenu}
-          </div>
-        ) : (
-          <div
-            role="checkbox"
-            aria-checked={actif}
-            aria-disabled={desactive || undefined}
-            aria-label={titre}
-            tabIndex={0}
-            onClick={toucher}
-            onKeyDown={clavier}
-            className={`pudi-focus min-h-[44px] rounded-xl p-3 flex gap-3 items-start ${desactive ? 'cursor-default' : 'cursor-pointer'}`}
-          >
-            <span
-              aria-hidden="true"
-              className={`shrink-0 w-8 h-8 mt-0.5 rounded-lg border-2 flex items-center justify-center ${
-                actif ? 'bg-[#B85317] border-[#B85317] text-white' : 'bg-white border-[#9AA3BD] text-transparent'
-              } ${desactive ? 'opacity-50' : ''}`}
-            >
-              <Icone nom="coche" className="w-5 h-5" />
-            </span>
-            {contenu}
-          </div>
-        )}
+        {/* The card body only adds a vote on a tap (pointer shortcut); keyboard and screen
+            readers use the « − » and « + » buttons, so the body is not a control of its own. */}
+        <div onClick={toucher} className={`rounded-xl p-3 flex ${desactive ? 'cursor-default' : 'cursor-pointer'}`} data-corps-carte="">
+          {contenu}
+        </div>
         {/* PUDI-CC-17 retouch: badge (line 1) and « Détails » (line 2) one normal line break apart,
             same right edge; « Détails » keeps a 44 x 44 px target through an invisible area below
-            its text (never over the badge, whose tap still adds a vote or checks). */}
+            its text (never over the badge, whose tap still adds a vote). */}
         <div
           ref={colonne}
           className={`absolute top-0 right-0 max-w-[45%] pt-3 pr-1.5 flex flex-col items-end gap-0 ${desactive ? 'cursor-default' : 'cursor-pointer'}`}

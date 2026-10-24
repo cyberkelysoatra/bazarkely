@@ -3,9 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import donneesBrutes from '../data/pudi-donnees.json';
 import type { PudiDonnees } from '../data/types';
 import { frPages } from '../i18n/frPages';
-import { CHANGEMENT_REGLE, csvSynthese, preparerSynthese, texteVotes3Voix, type ResultatsSynthese } from './synthese';
-import { voteA3Voix } from './exports';
-import { voteAvantRegle } from './monVote';
+import { CHANGEMENT_REGLE, csvSynthese, preparerSynthese, texteVotesConvertis, type ResultatsSynthese } from './synthese';
+import { classementUrgentsArchive, voteConverti } from './exports';
 import { CLOTURE_PAR_DEFAUT, ecrireDatesCache, lireDatesCache } from './format';
 import { dateGel } from './masquage';
 
@@ -28,7 +27,6 @@ describe('synthesis by votes', () => {
     cloture_at: '2026-10-27T05:00:00Z',
     calcule_at: '2026-10-25T08:00:00Z',
     priorites: [ligne('A4', 17, 2, 1), ligne('T3', 6, 3), ligne('A1', 2, 2)],
-    urgents: [],
     par_profil: { habitant: 5 },
     par_fokontany: {},
     reseaux: { dans_nos_reseaux: 0, hors_reseaux: 5 },
@@ -36,7 +34,7 @@ describe('synthesis by votes', () => {
     voix_placees: 40,
     repartition: { '1': 1, '3': 1, '12': 3 },
     concentration: { votes: 1, pct_votes: 20, voix: 12, pct_voix: 30 },
-    nb_votes_3_voix: 1
+    nb_votes_convertis: 1
   };
   const s = preparerSynthese(r, D, { provisoire: true });
   it('votes, voters, shares and concentration per programme (figures checked by hand)', () => {
@@ -46,20 +44,21 @@ describe('synthesis by votes', () => {
     expect(s.concentration).toBe('1 vote (20 % des votes) a placé 6 voix ou plus sur un seul programme.');
     expect(s.repartition.map((l) => l.n)).toEqual([1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3]);
   });
-  it('method: verbatim sentence of the specification v9 and the votes left at 3', () => {
+  it('method: verbatim sentence of PUDI-CC-18 and the converted votes kept as they are', () => {
     expect(CHANGEMENT_REGLE).toBe(
-      'La règle a changé le 24/10/2026 à la demande des votants : 12 voix à répartir au lieu de 3 priorités. Les votes antérieurs comptent pour 3 voix, sauf si leur auteur les a complétés.'
+      "La règle a changé le 24/10/2026 à la demande des votants : 12 voix à répartir au lieu de 3 priorités, sans question séparée sur l'urgence. Les votes antérieurs ont été convertis en 4 voix sur chacun de leurs 3 programmes, sauf si leur auteur les a modifiés."
     );
     expect(s.methode).toContain(CHANGEMENT_REGLE);
-    expect(s.methode).toContain(texteVotes3Voix(1));
+    expect(s.methode).toContain(texteVotesConvertis(1));
   });
   it('CSV columns voix, votants, % voix, % votants, concentration', () => {
     const l = csvSynthese(s).split('\r\n');
     expect(l[0].replace('﻿', '')).toMatch(/;voix;votants;pct_voix;pct_votants;concentration$/);
-    expect(l[1]).toMatch(/^voix;1;A4;/);
-    expect(l[1]).toMatch(/;17;2;42,5 %;40 %;1$/);
+    expect(l[1]).toMatch(/^note;/);
+    expect(l[2]).toMatch(/^voix;1;A4;/);
+    expect(l[2]).toMatch(/;17;2;42,5 %;40 %;1$/);
     expect(l.filter((x) => x.startsWith('voix_utilisees;'))).toHaveLength(12);
-    expect(l.some((x) => x.startsWith('votes_restes_a_3_voix;') && x.includes(';1;'))).toBe(true);
+    expect(l.some((x) => x.startsWith('votes_convertis_4_4_4;') && x.includes(';1;'))).toBe(true);
   });
   it('no em dash in the new texts', () => {
     expect(JSON.stringify(frPages.voix) + JSON.stringify(frPages.resultats) + CHANGEMENT_REGLE).not.toContain('—');
@@ -67,17 +66,27 @@ describe('synthesis by votes', () => {
 });
 
 describe('votes sent before the rule', () => {
-  it('a vote of 3 distinct programmes not modified since = « vote à 3 voix »', () => {
-    expect(voteA3Voix({ priorites: ['T3', 'A1', 'W3'], modifie_le: '2026-10-23T10:00:00Z' }, REGLE)).toBe(true);
-    expect(voteA3Voix({ priorites: ['T3', 'A1', 'W3'], modifie_le: '2026-10-25T10:00:00Z' }, REGLE)).toBe(false);
-    expect(voteA3Voix({ priorites: ['T3', 'T3', 'W3'], modifie_le: '2026-10-23T10:00:00Z' }, REGLE)).toBe(false);
-    expect(voteA3Voix({ priorites: ['T3', 'A1', 'W3'], modifie_le: '2026-10-23T10:00:00Z' }, null)).toBe(false);
+  it('PUDI-CC-18: an old vote converted to 4 + 4 + 4 and not sent again = « converti 4 + 4 + 4 »', () => {
+    const c = ['A1', 'A1', 'A1', 'A1', 'T3', 'T3', 'T3', 'T3', 'W3', 'W3', 'W3', 'W3'];
+    expect(voteConverti({ priorites: c, modifie_le: '2026-10-23T10:00:00Z' }, REGLE)).toBe(true);
+    expect(voteConverti({ priorites: c, modifie_le: '2026-10-25T10:00:00Z' }, REGLE)).toBe(false);
+    expect(voteConverti({ priorites: ['T3', 'A1', 'W3'], modifie_le: '2026-10-23T10:00:00Z' }, REGLE)).toBe(false);
+    expect(voteConverti({ priorites: [...c.slice(0, 11), 'A1'], modifie_le: '2026-10-23T10:00:00Z' }, REGLE)).toBe(false);
+    expect(voteConverti({ priorites: c, modifie_le: '2026-10-23T10:00:00Z' }, null)).toBe(false);
   });
-  it('banner: own vote of 3 votes or fewer sent before the rule, until sent again', () => {
-    expect(voteAvantRegle({ priorites: ['T3', 'A1', 'W3'], date: '2026-10-23T10:00:00Z' }, REGLE)).toBe(true);
-    expect(voteAvantRegle({ priorites: ['T3', 'A1', 'W3', 'A4'], date: '2026-10-23T10:00:00Z' }, REGLE)).toBe(false);
-    expect(voteAvantRegle({ priorites: ['T3', 'A1', 'W3'], date: '2026-10-25T10:00:00Z' }, REGLE)).toBe(false);
-    expect(frPages.voix.banniere(12 - 3)).toBe('Vous pouvez maintenant placer jusqu’à 9 voix de plus.');
+  it('PUDI-CC-18: archive of the old urgents, votes kept only', () => {
+    expect(
+      classementUrgentsArchive([
+        { urgents: ['A6', 'N2'], masque: false, est_test: false },
+        { urgents: ['N2'], masque: false, est_test: false },
+        { urgents: ['A1'], masque: true, est_test: false },
+        { urgents: ['A2'], masque: false, est_test: true },
+        { urgents: [], masque: false, est_test: false }
+      ])
+    ).toEqual([
+      { id: 'N2', n: 2 },
+      { id: 'A6', n: 1 }
+    ]);
   });
 });
 

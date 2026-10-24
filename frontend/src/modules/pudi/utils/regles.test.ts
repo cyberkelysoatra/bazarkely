@@ -3,14 +3,12 @@ import {
   BROUILLON_VIDE,
   VOIX,
   ajouterVoix,
-  basculerUrgent,
   brouillonValide,
   codeCanalValide,
   ecartPudi,
   limiterManquant,
   normaliserTelephone,
   normaliserTelephoneAffichage,
-  peutAjouterUrgent,
   peutAjouterVoix,
   regrouperVoix,
   retirerVoix,
@@ -23,7 +21,6 @@ import { extraireCode, messageErreur } from './erreurs';
 import { dateClotureLongue, formatAr, tempsRestant } from './format';
 
 const b = (p: Partial<Brouillon>): Brouillon => ({ ...BROUILLON_VIDE, ...p });
-const DIX = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'T1', 'T2'];
 
 // PUDI-CC-17: 12 votes, several (up to 12) on the same programme.
 const DOUZE = ['A1', 'A2', 'A3', 'A5', 'A6', 'A7', 'A8', 'T1', 'T2', 'T4', 'T5', 'T6'];
@@ -70,17 +67,6 @@ describe('12 voix', () => {
   });
 });
 
-describe('peutAjouterUrgent', () => {
-  it('accepts a 10th urgent and refuses an 11th', () => {
-    expect(peutAjouterUrgent(b({ urgents: DIX.slice(0, 9) }), 'T2')).toBe(true);
-    expect(peutAjouterUrgent(b({ urgents: DIX }), 'T3')).toBe(false);
-    expect(basculerUrgent(b({ urgents: DIX }), 'T3').urgents).toHaveLength(10);
-  });
-  it('a programme may be both priority and urgent', () => {
-    expect(peutAjouterUrgent(b({ priorites: ['A1'] }), 'A1')).toBe(true);
-  });
-});
-
 describe('brouillonValide', () => {
   it('needs 1 to 12 votes, repeats allowed', () => {
     expect(brouillonValide(b({ priorites: [] }))).toBe(false);
@@ -88,8 +74,7 @@ describe('brouillonValide', () => {
     expect(brouillonValide(b({ priorites: ['A1', 'A1', 'A3'] }))).toBe(true);
     expect(brouillonValide(b({ priorites: repete('A1', 13) }))).toBe(false);
   });
-  it('limits urgents and text, checks known ids', () => {
-    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], urgents: [...DIX, 'T3'] }))).toBe(false);
+  it('limits the text, checks known ids', () => {
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(1001) }))).toBe(false);
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(1000) }))).toBe(true);
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'ZZ'] }), ['A1', 'A2', 'A3'])).toBe(false);

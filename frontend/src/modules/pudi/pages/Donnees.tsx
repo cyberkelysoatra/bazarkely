@@ -17,7 +17,7 @@ const SECTIONS: { icone: NomIcone; titre: string; textes: string[]; contact?: bo
     icone: 'info',
     titre: 'Pourquoi ces données ?',
     textes: [
-      'Recueillir l’avis des parties prenantes du PIC3 sur les programmes du PUDi de Nosy Be les plus urgents.',
+      'Recueillir l’avis des parties prenantes du PIC3 sur les programmes du PUDi de Nosy Be à réaliser en premier.',
       'Garantir un vote par compte Google et éviter qu’un même numéro serve à plusieurs comptes.',
       'Mesurer la portée des réseaux des partenaires de la démarche.'
     ]
@@ -26,7 +26,7 @@ const SECTIONS: { icone: NomIcone; titre: string; textes: string[]; contact?: bo
     icone: 'liste',
     titre: 'Quelles données ?',
     textes: [
-      'Votre adresse e-mail Google, votre fokontany, votre profil, votre choix (12 voix, urgents, projet manquant) et votre numéro de téléphone.',
+      'Votre adresse e-mail Google, votre fokontany, votre profil, votre choix (12 voix, projet manquant ; pour un vote envoyé avant le 25 octobre 2026, les programmes cochés à l’ancienne question sur l’urgence) et votre numéro de téléphone.',
       'Le numéro et l’adresse internet sont transformés aussitôt en empreintes codées : ils ne sont jamais enregistrés en clair.',
       'La fréquentation est mesurée de façon anonyme (étapes du parcours, sans compte ni numéro).',
       'Les choix cochés sur un appareil sont enregistrés de façon anonyme (sans compte ni numéro) pour mesurer les choix non envoyés ; ils ne sont jamais comptés comme des votes et sont effacés le 28/01/2027.',

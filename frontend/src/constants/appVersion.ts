@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.107.0';
-export const APP_VERSION_NAME = 'PUDi 12 voix à répartir';
-export const LAST_UPDATED = '2026-10-24';
-export const APP_BUILD_DATE = '2026-10-24';
+export const APP_VERSION = '3.108.0';
+export const APP_VERSION_NAME = 'PUDi sans question sur l’urgence, votes convertis 4 + 4 + 4';
+export const LAST_UPDATED = '2026-10-25';
+export const APP_BUILD_DATE = '2026-10-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.108.0',
+    date: '2026-10-25',
+    description: 'PUDi : la question « Lesquels sont urgents ? » est supprimée, l’urgence se déduit des 12 voix ; les anciens votes de 3 programmes sont convertis en 4 + 4 + 4',
+    changes: [
+      'PUDi : « Mon choix » en 2 questions (12 voix, puis projet manquant facultatif) ; plus aucun bouton, badge ni filtre « urgent »',
+      'PUDi : votes envoyés avant la règle des 12 voix convertis une fois en 4 voix sur chacun de leurs 3 programmes (sauvegarde gardée sur le serveur) ; bandeau « Vos 3 programmes ont reçu 4 voix chacun »',
+      'PUDi : un seul classement, par voix reçues, avec la colonne « Écart avec le PUDi » (parmi les 15 premiers alors que le PUDi les prévoit après 2030)',
+      'PUDi : résultats, CSV et synthèse PDF disent que l’urgence n’est pas demandée à part et se déduit des voix',
+      'PUDi : organisateurs, mention « converti 4 + 4 + 4 » et carte « Urgences de l’ancienne question, non comptées »'
+    ]
+  },
   {
     version: '3.107.0',
     date: '2026-10-24',

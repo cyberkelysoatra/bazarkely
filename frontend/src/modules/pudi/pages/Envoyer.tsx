@@ -8,7 +8,6 @@ import { PROFIL_VALEURS } from '../data';
 import { fr } from '../i18n/fr';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { lireEtatConnecte, lireMonVote, ping, soumettreVote, type FormulaireVote, type MonVote } from '../appels/api';
-import { brouillonVide } from '../appels/brouillon';
 import { lireCanal } from '../appels/provenance';
 import { noterEtape } from '../appels/parcours';
 import { definirApercu } from '../appels/apercu';
@@ -16,6 +15,7 @@ import { connexionGoogle as connexionGoogleSession } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
 import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
 import { dateCourte } from '../utils/format';
+import { brouillonDuVote, doitRemplirDepuisServeur } from '../utils/monVote';
 import { brouillonValide, normaliserTelephone, regrouperVoix, type Brouillon } from '../utils/regles';
 import { frPages } from '../i18n/frPages';
 import { etapeSuivante } from '../appels/questions';
@@ -37,9 +37,8 @@ const CIBLES: Record<ChampFormulaire, string | null> = {
   general: null
 };
 
-const memeChoix = (a: Brouillon, b: { priorites: string[]; urgents: string[]; manquant: string | null }) =>
+const memeChoix = (a: Brouillon, b: { priorites: string[]; manquant: string | null }) =>
   [...a.priorites].sort().join() === [...b.priorites].sort().join() &&
-  [...a.urgents].sort().join() === [...b.urgents].sort().join() &&
   a.manquant.trim() === (b.manquant ?? '').trim();
 
 const FORM_VIDE: FormulaireVote = { fokontany: '', fokontanyAutre: '', profil: '', telephone: '', resident: false };
@@ -94,7 +93,7 @@ export default function Envoyer() {
     };
   }, []);
 
-  // PUDI-CC-17: no sending before questions 2 and 3 were shown once (one tap skips each).
+  // PUDI-CC-17/18: no sending before question 2 (missing project) was shown once (one tap skips it).
   const questionsVues = etapeSuivante() === 'resume';
   const choixPret = brouillonValide(brouillon);
   useEffect(() => {
@@ -143,9 +142,7 @@ export default function Envoyer() {
           setVote(v);
           if (v) {
             noterMonVote(v);
-            if (brouillonVide(brouillon)) {
-              majBrouillon({ priorites: v.priorites, urgents: v.urgents, manquant: v.manquant ?? '' });
-            }
+            if (doitRemplirDepuisServeur(brouillon, v)) majBrouillon(brouillonDuVote(v));
             setForm((f) => ({
               ...f,
               fokontany: v.fokontany,

@@ -9,18 +9,18 @@ import { useSessionLocale } from '../appels/session';
 import { etapeSuivante, noterQuestionVue } from '../appels/questions';
 import { allerAuChamp } from '../utils/champFautif';
 import { Icone } from '../composants/Icones';
-import { BadgeTranche, BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
+import { BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
 import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
-import { MAX_MANQUANT, MAX_URGENTS, VOIX, brouillonValide, ecartPudi, limiterManquant, regrouperVoix } from '../utils/regles';
+import { MAX_MANQUANT, VOIX, brouillonValide, limiterManquant, regrouperVoix } from '../utils/regles';
 import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
 
-// PUDI-CC-17 (specification v9 4.5): three numbered screens, « Question 1 sur 3 : Répartissez vos
-// 12 voix », « Question 2 sur 3 : Lesquels sont urgents (2026-2030) ? » and « Question 3 sur 3 :
-// Un projet manque au PUDi ? » (both optional, one tap to skip), then the summary and the sending.
-type Etape = '1' | '2' | '3' | 'resume';
+// PUDI-CC-18: two numbered screens, « Question 1 sur 2 : Répartissez vos 12 voix » and
+// « Question 2 sur 2 : Un projet manque au PUDi ? » (optional, one tap to skip), then the summary
+// and the sending. The « urgents » question is gone: urgency is read from the votes ranking.
+type Etape = '1' | '2' | 'resume';
 
 /** Accent-insensitive search key. */
 const cle = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -34,7 +34,7 @@ interface Choisissable {
   proposition: boolean;
 }
 
-function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'priorite' | 'urgent' }) {
+function ListeProgrammes({ donnees }: { donnees: PudiDonnees }) {
   const { brouillon } = usePudi();
   const { etat } = usePudi();
   const { liste: propositions } = usePropositions();
@@ -50,7 +50,7 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
     const tout = seulesPropositions ? props : secteur ? prog : [...prog, ...props];
     return tout.filter((p) => !q || cle(p.nom).includes(q));
   }, [donnees, propositions, secteur, seulesPropositions, recherche]);
-  const choisis = mode === 'priorite' ? brouillon.priorites : brouillon.urgents;
+  const choisis = brouillon.priorites;
   const clos = !!etat?.clos;
 
   return (
@@ -114,7 +114,6 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
               id={p.id}
               titre={p.nom}
               details={p.proposition ? `/proposition/${p.id}` : `/programme/${p.id}`}
-              mode={mode}
               desactive={clos}
               className={`border-2 ${p.proposition ? `bg-sable border-dashed ${actif ? 'border-marine' : 'border-marine/50'}` : `bg-white ${actif ? 'border-marine' : 'border-filet'}`}`}
               etiquette={
@@ -128,17 +127,6 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
               }
             >
               <p className="font-bold text-[0.9375rem] leading-snug" data-titre-carte="">{p.nom}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 empty:hidden">
-                {mode === 'urgent' &&
-                  (p.tranche ? (
-                    <BadgeTranche tranche={p.tranche} />
-                  ) : (
-                    <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[0.75rem] font-bold text-marine">
-                      {frPages.propositions.horsPudi}
-                    </span>
-                  ))}
-              </div>
-              {mode === 'urgent' && actif && p.tranche && ecartPudi(p.tranche) && <p className="text-[0.8125rem] text-gris mt-1">{fr.choix.avance}</p>}
             </CarteChoix>
           );
         })}
@@ -147,36 +135,9 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
   );
 }
 
-function Compteur({ n, max }: { n: number; max: number }) {
-  return (
-    <span
-      className={`font-titre text-[1.375rem] shrink-0 ${n === max ? 'text-marine' : 'text-gris'}`}
-      aria-live="polite"
-      aria-label={`${n} sur ${max}`}
-    >
-      {fr.choix.compteur(n, max)}
-    </span>
-  );
-}
-
 function useNom(donnees: PudiDonnees) {
   const { liste: propositions } = usePropositions();
   return (id: string) => programmeParId(donnees, id)?.nom ?? propositionParId(propositions, id)?.intitule ?? id;
-}
-
-function NomsProgrammes({ donnees, ids }: { donnees: PudiDonnees; ids: string[] }) {
-  const nom = useNom(donnees);
-  if (!ids.length) return <p className="text-gris text-[0.9375rem]">{fr.choix.aucun}</p>;
-  return (
-    <ol className="space-y-1.5">
-      {ids.map((id, i) => (
-        <li key={id} className="flex gap-2 text-[0.9375rem]">
-          <span className="font-titre text-marine">{i + 1}</span>
-          <span>{nom(id)}</span>
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 /** Votes grouped by programme (« ×5 »), most votes first. */
@@ -195,7 +156,7 @@ function NomsVoix({ donnees, priorites }: { donnees: PudiDonnees; priorites: str
   );
 }
 
-/** « Question 2 sur 3 : … » heading (the number is read with the title). */
+/** « Question 2 sur 2 : … » heading (the number is read with the title). */
 function TitreQuestion({ i, titre, facultatif = false }: { i: number; titre: string; facultatif?: boolean }) {
   return (
     <h2 className="font-bold text-[1.125rem] text-marine leading-snug min-w-0" data-question={i}>
@@ -228,7 +189,8 @@ export default function Choix() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: { relance?: number } | null };
   const brut = params.get('etape');
-  const etape: Etape = brut === '2' || brut === '3' || brut === 'resume' ? brut : '1';
+  // An old link to « ?etape=3 » (missing project before PUDI-CC-18) opens question 2.
+  const etape: Etape = brut === '2' || brut === '3' ? '2' : brut === 'resume' ? 'resume' : '1';
   const aller = (e: Etape) => {
     const p = new URLSearchParams(params);
     if (e === '1') p.delete('etape');
@@ -236,10 +198,9 @@ export default function Choix() {
     setParams(p);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
-  // Questions 2 and 3: each shown once before any sending.
+  // Question 2 (missing project): shown once before any sending.
   useEffect(() => {
-    if (etape === '2') noterQuestionVue(2);
-    if (etape === '3') noterQuestionVue(3);
+    if (etape === '2') noterQuestionVue();
   }, [etape]);
   const suivante = () => aller(etapeSuivante());
   const valide = brouillonValide(brouillon);
@@ -282,7 +243,7 @@ export default function Choix() {
       </button>
     </div>
   );
-  // One tap to skip, also at the top (the list of question 2 is long).
+  // One tap to skip, also at the top.
   const passerHaut = (libelle: string) => (
     <button type="button" onClick={suivante} className={`${boutonSecondaire} w-full mt-3`} data-passer-haut="">
       {libelle}
@@ -331,29 +292,14 @@ export default function Choix() {
           <p className="mt-2 text-[0.8125rem] text-gris" data-ensuite="">{frPages.voix.ensuite}</p>
 
           <div className="mt-4">
-            <ListeProgrammes donnees={donnees} mode="priorite" />
+            <ListeProgrammes donnees={donnees} />
           </div>
         </>
       )}
 
       {etape === '2' && (
         <section data-question-ecran="2">
-          <div className="flex items-start justify-between gap-2">
-            <TitreQuestion i={2} titre={frPages.voix.q2Titre} facultatif />
-            <Compteur n={brouillon.urgents.length} max={MAX_URGENTS} />
-          </div>
-          <p className="text-[0.9375rem] mt-1">{frPages.voix.q2Aide}</p>
-          {passerHaut(frPages.voix.passerQuestion)}
-          <div className="mt-3">
-            <ListeProgrammes donnees={donnees} mode="urgent" />
-          </div>
-          {boutonsQuestion(frPages.voix.passerQuestion)}
-        </section>
-      )}
-
-      {etape === '3' && (
-        <section data-question-ecran="3">
-          <TitreQuestion i={3} titre={frPages.voix.q3Titre} facultatif />
+          <TitreQuestion i={2} titre={frPages.voix.q3Titre} facultatif />
           <p className="text-[0.9375rem] mt-1 mb-2">{frPages.voix.q3Aide}</p>
           {passerHaut(frPages.voix.passer)}
           <p className="text-[0.875rem] my-3 flex gap-2 items-start bg-white border border-filet rounded-xl px-3 py-2">
@@ -398,10 +344,9 @@ export default function Choix() {
                 </>
               )
             },
-            { titre: fr.choix.resumeUrgents, e: '2' as Etape, contenu: <NomsProgrammes donnees={donnees} ids={brouillon.urgents} /> },
             {
               titre: fr.choix.resumeManquant,
-              e: '3' as Etape,
+              e: '2' as Etape,
               contenu: <p className="text-[0.9375rem] whitespace-pre-wrap break-words">{brouillon.manquant.trim() || fr.choix.aucun}</p>
             }
           ].map((b) => (

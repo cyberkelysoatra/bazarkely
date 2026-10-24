@@ -1,16 +1,17 @@
 // Vote by vote (administrators only): filters, masking with a reason, CSV export.
 // No e-mail reaches this screen. PUDI-CC-17: « Numéro connu » shows a number only when it is
 // already in a manager's member list (server function, journaled); never exported.
+// PUDI-CC-18: « converti 4 + 4 + 4 » on the old votes converted, and the archive of the urgents
+// stored by the old question (organisers only, never counted).
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '../../composants/Icones';
-import { PROFIL_VALEURS } from '../../data';
+import { PROFIL_VALEURS, programmeParId } from '../../data';
 import { fr } from '../../i18n/fr';
 import { frPages } from '../../i18n/frPages';
 import { useDonnees } from '../../PudiContexte';
 import { lireCanaux, lireNumerosConnus, lireVotes, masquerVote, type VoteAdmin } from '../../appels/admin';
-import { csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier, voteA3Voix } from '../../utils/exports';
+import { classementUrgentsArchive, csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier, voteConverti } from '../../utils/exports';
 import { normaliserTelephoneAffichage, texteVoix } from '../../utils/regles';
-import { dateJour } from '../../utils/format';
 import { Aide, Dialogue, Erreur, champ, petitBouton, useAppel, type DemandeConfirmation } from './communs';
 import { FormulaireProposition, type DemandeProposition } from './FormulaireProposition';
 import { usePudi } from '../../PudiContexte';
@@ -25,6 +26,43 @@ function Badge({ children, ton }: { children: string; ton: 'test' | 'masque' | '
     alerte: 'bg-[#FDF1EC] text-[#9C3F21] border-[#F0CDBF]'
   }[ton];
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.75rem] font-bold ${c}`}>{children}</span>;
+}
+
+/** PUDI-CC-18: urgents of the old question, organisers only, never counted in the results. */
+function ArchiveUrgents({ votes, nom }: { votes: VoteAdmin[]; nom: (id: string) => string }) {
+  const lignes = classementUrgentsArchive(votes);
+  return (
+    <section className="bg-white border border-filet rounded-xl p-3 mb-4" data-archive-urgents={lignes.length}>
+      <h2 className="font-bold text-[1rem] text-marine">Urgences de l'ancienne question, non comptées</h2>
+      <Aide titre="À quoi sert cette carte ?">
+        <p>
+          Jusqu'au 24 octobre 2026, une question facultative demandait quels programmes étaient urgents (2026-2030). Elle a été supprimée : l'urgence se
+          déduit maintenant des 12 voix (ordre du classement et colonne « Écart avec le PUDi »).
+        </p>
+        <p>
+          Les réponses déjà envoyées sont gardées ici pour les organisateurs seulement. Elles ne sont comptées dans aucun résultat, ni dans le CSV de la
+          synthèse, ni dans le PDF. Votes masqués et votes de test exclus.
+        </p>
+      </Aide>
+      {lignes.length ? (
+        <ol className="space-y-1 text-[0.875rem]">
+          {lignes.map((l, i) => (
+            <li key={l.id} className="flex gap-2" data-urgent-archive={l.id}>
+              <span className="font-titre text-gris w-6 text-right shrink-0">{i + 1}</span>
+              <span className="flex-1 min-w-0">
+                <span className="font-bold">{l.id}</span> {nom(l.id)}
+              </span>
+              <span className="font-bold shrink-0">
+                {l.n} vote{l.n > 1 ? 's' : ''}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-[0.875rem] text-gris">Aucune réponse à l'ancienne question.</p>
+      )}
+    </section>
+  );
 }
 
 export default function Votes() {
@@ -64,7 +102,7 @@ export default function Votes() {
         tri(masque, v.masque) &&
         tri(reseau, v.dans_nos_reseaux) &&
         tri(test, v.est_test) &&
-        tri(trois, voteA3Voix(v, regleAt)) &&
+        tri(trois, voteConverti(v, regleAt)) &&
         (!q || v.id_anonyme.toUpperCase().includes(q))
     );
   }, [votes, canal, profil, fkt, masque, reseau, test, trois, regleAt, recherche]);
@@ -116,10 +154,12 @@ export default function Votes() {
         <p>« Masquer » retire un vote des résultats sans le supprimer, avec un motif obligatoire inscrit au journal. « Réafficher » le remet.</p>
         <p>« Plusieurs groupes » : le numéro figure dans les listes de plusieurs canaux.</p>
         <p>Le fichier CSV s'ouvre dans Excel (séparateur point-virgule, dates en heure de Madagascar).</p>
-        <p>« Voix » : depuis le changement de règle, chaque votant a 12 voix et peut en mettre plusieurs sur un même programme (A4 ×5 = 5 voix sur A4). Les votes envoyés avant n'ont que 3 voix : le filtre « Votes à 3 voix » les retrouve, pour proposer à leurs auteurs de compléter.</p>
+        <p>« Voix » : depuis le changement de règle, chaque votant a 12 voix et peut en mettre plusieurs sur un même programme (A4 ×5 = 5 voix sur A4). Les votes envoyés avant (3 programmes) ont été convertis une fois en 4 voix sur chacun de leurs 3 programmes : ils portent la mention « converti 4 + 4 + 4 » tant que leur auteur ne les a pas renvoyés, et le filtre « Votes convertis » les retrouve.</p>
+        <p>« Urgents (ancienne question) » : programmes cochés à la question sur l'urgence, supprimée le 25 octobre 2026. Ils sont gardés pour les organisateurs seulement et ne sont comptés dans aucun résultat.</p>
         <p>« Numéro connu » : le numéro du votant s'affiche seulement s'il figure déjà dans la liste d'un groupe saisie par un responsable (Mon groupe), sinon « inconnu ». Chaque consultation de cet écran est inscrite au journal. Le numéro n'est jamais exporté.</p>
       </Aide>
       {appel.erreur && <Erreur texte={appel.erreur} reessayer={() => void appel.recharger()} />}
+      <ArchiveUrgents votes={votes} nom={(id) => (donnees ? programmeParId(donnees, id)?.nom : undefined) ?? id} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
         <label className="block col-span-2 lg:col-span-1" htmlFor="pudi-v-q">
@@ -142,7 +182,7 @@ export default function Votes() {
           'pudi-v-3',
           trois,
           (v) => setTrois(v as Tri),
-          triOptions(regleAt ? `Votes à 3 voix (avant le ${dateJour(regleAt)})` : 'Votes à 3 voix', 'Votes à la nouvelle règle'),
+          triOptions('Votes convertis 4 + 4 + 4', 'Votes envoyés avec 12 voix'),
           'Voix'
         )}
       </div>
@@ -209,7 +249,11 @@ export default function Votes() {
                 <dt className="text-gris">Voix</dt>
                 <dd className="break-words" data-voix-admin={v.priorites.length}>
                   {v.priorites.length}/12 · {texteVoix(v.priorites)}
-                  {voteA3Voix(v, regleAt) && ' (vote à 3 voix)'}
+                  {voteConverti(v, regleAt) && (
+                    <span className="ml-1" data-converti="">
+                      <Badge ton="info">converti 4 + 4 + 4</Badge>
+                    </span>
+                  )}
                 </dd>
                 <dt className="text-gris">Numéro connu</dt>
                 <dd data-numero-connu={appel.donnees?.numeros.get(v.id_anonyme) ? 'oui' : 'non'}>
@@ -219,8 +263,12 @@ export default function Votes() {
                     return n ? normaliserTelephoneAffichage(n) ?? n : 'inconnu';
                   })()}
                 </dd>
-                <dt className="text-gris">Urgents</dt>
-                <dd className="break-words">{v.urgents.length ? v.urgents.join(', ') : 'aucun'}</dd>
+                {v.urgents.length > 0 && (
+                  <>
+                    <dt className="text-gris">Urgents (ancienne question, non comptés)</dt>
+                    <dd className="break-words">{v.urgents.join(', ')}</dd>
+                  </>
+                )}
                 {v.manquant && (
                   <>
                     <dt className="text-gris">Manquant</dt>

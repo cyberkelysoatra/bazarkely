@@ -34,7 +34,7 @@ const TYPES: { v: TypeCanal; l: string; icone: NomIcone }[] = [
 const SOURCES = ['PIC', 'Préfecture', 'Ministère', 'ORT', 'GIHTNB', 'Autre'];
 const typeDe = (t: string) => TYPES.find((x) => x.v === t) ?? TYPES[3];
 const messageWhatsApp = (c: Canal) =>
-  `Priorisation du PUDi de Nosy Be 2026-2040 : donnez votre avis sur les projets les plus urgents. ${lienCanal(c.code)}`;
+  `Priorisation du PUDi de Nosy Be 2026-2040 : donnez votre avis sur les projets à réaliser en premier. ${lienCanal(c.code)}`;
 
 type Formulaire = Omit<Canal, 'nb_numeros' | 'nb_votes' | 'nb_votes_hors_liste'>;
 const VIDE: Formulaire = { code: '', nom: '', type: 'groupe_whatsapp', liste_membres: true, responsable: '', remarque: '', actif: true };

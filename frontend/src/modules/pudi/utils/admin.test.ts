@@ -80,7 +80,7 @@ describe('csvVotes', () => {
     const csv = csvVotes([vote({})]);
     expect(csv.startsWith('\uFEFF')).toBe(true);
     expect(csv.slice(1).split('\r\n')[0]).toBe(
-      'id_anonyme;cree_le;modifie_le;nb_modifications;fokontany;fokontany_autre;profil;canal;dans_nos_reseaux;groupes;hors_liste_du_canal;nb_voix;voix;urgents;manquant;masque;motif;test;groupe_ip'
+      'id_anonyme;cree_le;modifie_le;nb_modifications;fokontany;fokontany_autre;profil;canal;dans_nos_reseaux;groupes;hors_liste_du_canal;nb_voix;voix;urgents_ancienne_question;manquant;masque;motif;test;groupe_ip'
     );
     expect(ENTETE_VOTES).toHaveLength(19);
   });
@@ -123,8 +123,7 @@ const res: ResultatsSynthese = {
   nb_votants: 4,
   cloture_at: '2026-10-26T17:00:00+00:00',
   calcule_at: '2026-10-21T11:00:00+00:00',
-  priorites: D.programmes.map((p, i) => ({ id: p.id, n: i < 3 ? 4 - i : 0, pct: i < 3 ? (100 * (4 - i)) / 4 : 0 })),
-  urgents: D.programmes.map((p, i) => ({ id: p.id, n: i === 0 ? 2 : 0, pct: i === 0 ? 50 : 0, tranche_pudi: 2, ecart: i === 0 })),
+  priorites: D.programmes.map((p, i) => ({ id: p.id, n: i < 3 ? 4 - i : 0, pct: i < 3 ? (100 * (4 - i)) / 4 : 0, tranche_pudi: 2, ecart_pudi: i === 0 })),
   par_profil: { habitant: 3, autre: 1 },
   par_fokontany: { BEFITINA: 3, AUTRE: 1 },
   reseaux: { dans_nos_reseaux: 1, hors_reseaux: 3 },
@@ -139,8 +138,9 @@ describe('preparerSynthese', () => {
     expect(s.priorites[1].pct).toBe('75 %');
     expect(s.priorites[0].secteur).not.toBe('');
   });
-  it('carries the PUDi tranche and the gap of the urgent ranking', () => {
-    expect(s.urgents[0]).toMatchObject({ tranche: '2031-2035', ecart: true, pct: '50 %' });
+  it('carries the PUDi tranche and the « écart avec le PUDi » flag of the votes ranking', () => {
+    expect(s.priorites[0]).toMatchObject({ tranche: '2031-2035', ecart: 'Avancé par les votants (PUDi : 2031-2035)' });
+    expect(s.priorites[1].ecart).toBe('');
   });
   it('computes the distributions, networks and the provisional state', () => {
     expect(s.provisoire).toBe(true);
@@ -156,11 +156,11 @@ describe('preparerSynthese', () => {
     expect(tout).not.toContain('\u2014');
     expect(tout).not.toMatch(/\d(?:[\s.]?\d){8,}/);
   });
-  it('exports the two rankings and the distributions as CSV', () => {
+  it('exports the ranking and the distributions as CSV', () => {
     const lignes = csvSynthese(s).slice(1).trim().split('\r\n');
     expect(lignes[0]).toBe('section;rang;id;libelle;secteur;n;part;tranche_pudi;ecart_avec_le_pudi;voix;votants;pct_voix;pct_votants;concentration');
     expect(lignes.filter((l) => l.startsWith('voix;'))).toHaveLength(52);
-    expect(lignes.filter((l) => l.startsWith('urgent_2026_2030;'))).toHaveLength(52);
+    expect(lignes.some((l) => l.startsWith('urgent'))).toBe(false);
     expect(lignes.some((l) => l.startsWith('profil;'))).toBe(true);
   });
 });

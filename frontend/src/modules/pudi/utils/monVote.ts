@@ -2,12 +2,13 @@
 // The server vote fills an EMPTY draft only; a different draft is kept (rule of PUDI-CC-14.1 d).
 import type { Brouillon } from './regles';
 
-/** Own vote as kept on the device (pudi_mon_vote_cache): priorities, urgents and date only. */
+/** Own vote as kept on the device (pudi_mon_vote_cache): votes, date and « converted » flag only. */
 export interface VoteResume {
   /** Account the copy belongs to (e-mail of the shared session), never shown. */
   compte: string;
   priorites: string[];
-  urgents: string[];
+  /** PUDI-CC-18: old 3-programme vote converted to 4 + 4 + 4, not sent again since. */
+  converti?: boolean;
   /** Last version of the vote (updated_at, else created_at). */
   date: string;
   /** Known only after an online read (never cached): compared when present. */
@@ -23,26 +24,37 @@ export function comparerAuVote(b: Brouillon, v: VoteResume | null): ComparaisonV
   if (!v) return 'aucun';
   const meme =
     trie(b.priorites) === trie(v.priorites) &&
-    trie(b.urgents) === trie(v.urgents) &&
     (v.manquant === undefined || b.manquant.trim() === (v.manquant ?? '').trim());
   return meme ? 'identique' : 'modifie';
 }
 
 /** Draft rebuilt from the server vote (used only when the local draft is empty). */
-export function brouillonDuVote(v: { priorites: string[]; urgents: string[]; manquant?: string | null }): Brouillon {
-  return { priorites: [...v.priorites], urgents: [...v.urgents], manquant: v.manquant ?? '' };
+export function brouillonDuVote(v: { priorites: string[]; manquant?: string | null }): Brouillon {
+  return { priorites: [...v.priorites], manquant: v.manquant ?? '' };
 }
 
 /**
- * The server vote fills the draft when it is empty, or when it only lacks the missing project
- * (draft taken from the device copy offline, which never keeps that text). Any other draft is kept.
+ * PUDI-CC-18: the device still holds the old 3 programmes at 1 vote each while the server vote
+ * was converted to 4 + 4 + 4 (same 3 programmes): that draft is replaced by the server vote.
+ */
+export function brouillonAncien111(b: Brouillon, v: { priorites: string[] }): boolean {
+  const distincts = [...new Set(v.priorites)];
+  return b.priorites.length === distincts.length && new Set(b.priorites).size === b.priorites.length && trie(b.priorites) === trie(distincts);
+}
+
+/**
+ * The server vote fills the draft when it is empty, when it only lacks the missing project
+ * (draft taken from the device copy offline, which never keeps that text), or (PUDI-CC-18) when
+ * the vote was converted and the draft is the old 1 + 1 + 1. Any other draft is kept.
  */
 export function doitRemplirDepuisServeur(
   b: Brouillon,
-  v: { priorites: string[]; urgents: string[]; manquant?: string | null }
+  v: { priorites: string[]; manquant?: string | null; converti_4x?: boolean; converti?: boolean }
 ): boolean {
-  if (!b.priorites.length && !b.urgents.length && !b.manquant.trim()) return true;
-  return !b.manquant.trim() && !!(v.manquant ?? '').trim() && trie(b.priorites) === trie(v.priorites) && trie(b.urgents) === trie(v.urgents);
+  if (!b.priorites.length && !b.manquant.trim()) return true;
+  if ((v.converti_4x || v.converti) && brouillonAncien111(b, v) && (!b.manquant.trim() || b.manquant.trim() === (v.manquant ?? '').trim()))
+    return true;
+  return !b.manquant.trim() && !!(v.manquant ?? '').trim() && trie(b.priorites) === trie(v.priorites);
 }
 
 /** Cached copy valid for this account only (another account signed in on the same device = ignored). */
@@ -58,9 +70,4 @@ export function titreCourt(nom: string, max = 28): string {
   const coupe = t.slice(0, max);
   const espace = coupe.lastIndexOf(' ');
   return `${(espace > max * 0.6 ? coupe.slice(0, espace) : coupe).replace(/[\s,;:.–-]+$/, '')}…`;
-}
-
-/** PUDI-CC-17: own vote of 3 votes or fewer sent before the 12-vote rule (never modified since). */
-export function voteAvantRegle(v: { priorites: string[]; date: string }, regleAt: string | null | undefined): boolean {
-  return !!regleAt && v.priorites.length <= 3 && Date.parse(v.date) <= Date.parse(regleAt);
 }

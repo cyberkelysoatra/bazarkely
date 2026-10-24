@@ -23,7 +23,7 @@ export const fr = {
   },
   accueil: {
     invitation:
-      'La population et les opérateurs économiques de Nosy Be sont invités à dire quels programmes du PUDi sont les plus urgents.',
+      'La population et les opérateurs économiques de Nosy Be sont invités à dire quels programmes du PUDi doivent passer en premier.',
     indicative:
       'Consultation indicative des parties prenantes du PIC3 : elle éclaire la priorisation sans la remplacer.',
     chiffres: '52 programmes, 11 secteurs',
@@ -88,9 +88,6 @@ export const fr = {
     incertaine: 'correspondance incertaine',
     cout: 'Coût',
     inclutAussi: (noms: string) => `inclut aussi : ${noms}`,
-    marquerUrgent: 'Marquer urgent 2026-2030',
-    retirerUrgent: 'Retirer des urgents',
-    estUrgent: 'Urgent 2026-2030',
     precision: 'Précision',
     enSavoirPlus: 'Pour en savoir plus',
     renvoi: 'Renvoi indicatif. PDF de 14,6 Mo.',
@@ -123,14 +120,11 @@ export const fr = {
       'Par exemple : sécurité sur le littoral (bande des 300 m), nuisances sonores, déchets, animaux errants, électricité…',
     caracteres: (n: number) => `${n} / 1000 caractères`,
     compteur: (n: number, max: number) => `${n} / ${max}`,
-    maxUrgents: 'Vous avez déjà marqué 10 programmes urgents. Retirez-en un pour en marquer un autre.',
-    avance: 'Vous avancez ce projet par rapport au PUDi',
     filtreSecteur: 'Secteur',
     tousSecteurs: 'Tous les secteurs',
     recherche: 'Rechercher un programme',
     aucunResultat: 'Aucun programme ne correspond.',
     resumeTitre: 'Résumé de mon choix',
-    resumeUrgents: 'Urgents 2026-2030',
     resumeManquant: 'Projet manquant proposé',
     aucun: 'Aucun',
     modifier: 'Modifier',
@@ -177,7 +171,6 @@ export const fr = {
     PROFIL: 'Choisissez votre profil.',
     FOKONTANY: 'Choisissez votre fokontany (ou précisez-le).',
     PRIORITES: 'Placez entre 1 et 12 voix.',
-    URGENTS: '10 programmes urgents au maximum.',
     MANQUANT: '1000 caractères au maximum.',
     NUMERO_INVALIDE: "Ce numéro n'est pas valide. Exemple : 034 12 345 67.",
     NUMERO_DEJA_UTILISE:

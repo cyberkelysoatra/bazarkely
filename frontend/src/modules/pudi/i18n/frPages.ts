@@ -3,7 +3,7 @@
 // Same writing rule as fr.ts: never the em dash character.
 
 export const frPages = {
-  // PUDI-CC-17 (specification v9 4.5): 12 votes to spread, three questions.
+  // PUDI-CC-17 (specification v9 4.5): 12 votes to spread; PUDI-CC-18: two questions, no urgents.
   voix: {
     retirer: (titre: string) => `Retirer une voix à ${titre}`,
     ajouter: (titre: string) => `Ajouter une voix à ${titre}`,
@@ -16,30 +16,28 @@ export const frPages = {
         ? `Il vous reste ${n} voix non utilisées : vous pouvez les placer ou envoyer tel quel.`
         : 'Il vous reste 1 voix non utilisée : vous pouvez la placer ou envoyer tel quel.',
     toutes: 'Vos 12 voix sont placées.',
-    question: (i: number) => `Question ${i} sur 3`,
+    question: (i: number) => `Question ${i} sur 2`,
     q1Titre: 'Répartissez vos 12 voix',
     q1Aide:
       'Vous avez 12 voix. Répartissez-les comme vous voulez : 12 programmes différents, ou plusieurs voix sur ceux qui comptent le plus pour vous, jusqu’à 12 sur un seul.',
     q1Geste: 'Touchez une carte pour lui ajouter une voix, ou utilisez − et +.',
-    q2Titre: 'Lesquels sont urgents (2026-2030) ?',
-    q2Aide: 'Facultatif : jusqu’à 10 programmes à réaliser dès 2026-2030.',
     q3Titre: 'Un projet manque au PUDi ?',
     q3Aide: 'Facultatif : décrivez en quelques mots un projet absent du PUDi.',
     facultatif: 'Facultatif',
-    passerQuestion: 'Passer cette question',
     passer: 'Passer',
     continuer: 'Continuer',
     retourQ1: 'Retour à la question 1',
-    ensuite: 'Ensuite : 2 questions facultatives (urgences et projet manquant), puis le résumé.',
+    ensuite: 'Ensuite : 1 question facultative (un projet manque au PUDi ?), puis le résumé.',
     mesVoix: 'Mes voix',
     mesVoixFiche: 'Mes voix pour ce projet',
     resumeVoix: (n: number) => `Mes voix (${n}/12)`,
     aVote: (date: string, n: number, programmes: number) =>
       `Vous avez voté le ${date} · ${n} voix sur ${programmes} programme${programmes > 1 ? 's' : ''}`,
     detailVoix: (texte: string) => `Vos voix : ${texte}`,
-    banniere: (n: number) => `Vous pouvez maintenant placer jusqu’à ${n} voix de plus.`,
-    banniereTexte: (date: string) => `Votre vote du ${date} reste compté tel quel si vous ne faites rien.`,
-    completer: 'Compléter mon vote',
+    // PUDI-CC-18: old 3-programme vote converted to 4 + 4 + 4.
+    banniere: 'Vos 3 programmes ont reçu 4 voix chacun.',
+    banniereTexte: "Vous pouvez les répartir autrement jusqu'à la clôture.",
+    completer: 'Répartir mes voix',
     fermer: 'Fermer ce message'
   },
   groupe: {
@@ -157,12 +155,15 @@ export const frPages = {
     votants: (n: number) => (n > 1 ? 'votants' : 'votant'),
     misAJour: (h: string) => `Mis à jour à ${h}`,
     actualiser: 'Actualiser',
-    prioritesTitre: 'Classement par voix',
+    prioritesTitre: 'Classement des programmes par voix reçues (ordre de priorité)',
+    // PUDI-CC-18: always visible under the ranking title (not only in an ⓘ).
+    urgenceDeduite:
+      "L'urgence n'est pas demandée à part : elle se déduit des voix. Plus un programme reçoit de voix, plus les votants le jugent prioritaire.",
     prioritesAide: 'Nombre de voix reçues et nombre de votants différents qui ont donné au moins une voix.',
     voixVotants: (voix: number, votants: number) => `${voix} voix · ${votants} votant${votants > 1 ? 's' : ''}`,
     regleAideTitre: 'Comment lire ce classement ?',
     regleAide:
-      'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme. Le nombre de votants indique combien de personnes différentes l’ont soutenu.',
+      'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme. Le nombre de votants indique combien de personnes différentes l’ont soutenu. Il n’y a pas de question séparée sur l’urgence : l’ordre du classement indique les programmes que les votants veulent voir réalisés en premier.',
     voixPlacees: (n: number) => `${n} voix placées`,
     concentrationTitre: 'Votes concentrés',
     concentration: (votes: number, pct: string) =>
@@ -170,10 +171,11 @@ export const frPages = {
     concentrationLigne: (n: number) => `${n} vote${n > 1 ? 's' : ''} à 6 voix ou plus`,
     repartitionTitre: 'Voix utilisées par votant',
     repartitionLigne: (k: number) => `${k} voix`,
-    troisVoix: (n: number) => `${n} vote${n > 1 ? 's' : ''} envoyé${n > 1 ? 's' : ''} avant le changement de règle (3 voix) ${n > 1 ? 'sont restés' : 'est resté'} tel${n > 1 ? 's' : ''} quel${n > 1 ? 's' : ''}.`,
-    urgentsTitre: 'Classement « Urgent 2026-2030 »',
-    urgentsAide: 'Part des votants qui veulent le programme dès 2026-2030.',
-    ecart: 'écart avec le PUDi',
+    convertis: (n: number) =>
+      `${n} vote${n > 1 ? 's' : ''} envoyé${n > 1 ? 's' : ''} avant le changement de règle ${n > 1 ? 'ont été convertis' : 'a été converti'} en 4 voix sur chacun de leurs 3 programmes et ${n > 1 ? 'sont restés' : 'est resté'} tel${n > 1 ? 's' : ''} quel${n > 1 ? 's' : ''}.`,
+    ecartTitre: 'Écart avec le PUDi',
+    ecart: (tranche: string) => `Avancé par les votants (PUDi : ${tranche})`,
+    ecartAide: 'Programme parmi les 15 qui ont reçu le plus de voix alors que le PUDi le prévoit après 2030.',
     profilTitre: 'Répartition par profil',
     fokontanyTitre: 'Répartition par fokontany',
     autres: 'Autres',
@@ -187,9 +189,7 @@ export const frPages = {
     connexionRequise: 'Connectez-vous avec le compte Google qui a voté pour voir les résultats.',
     aucunVote: 'Aucun vote compté pour le moment.',
     propositionsTitre: 'Propositions de nouveaux projets',
-    propositionsAide:
-      'Comptées à part : voix reçues, votants différents, et part des votants qui la veulent urgente.',
-    urgentPct: (pct: string) => `urgent : ${pct}`,
+    propositionsAide: 'Comptées à part : voix reçues et votants différents.',
     ouverture: 'Ouverture',
     nonPubliee: 'Consultation non encore publiée'
   },

@@ -3,7 +3,7 @@
 // prepared by utils/synthese.ts (pure, unit tested).
 import type jsPDFType from 'jspdf';
 import { COULEURS_SECTEURS } from '../data';
-import { MENTION_PROVISOIRE, NON_PUBLIEE, type LigneClassement, type Synthese } from '../utils/synthese';
+import { COMMENT_URGENCE, MENTION_PROVISOIRE, NON_PUBLIEE, TITRE_CLASSEMENT, TITRE_URGENCE, type LigneClassement, type Synthese } from '../utils/synthese';
 
 type Doc = jsPDFType;
 type Rgb = [number, number, number];
@@ -145,43 +145,32 @@ class Mise {
   }
 }
 
-function classement(m: Mise, lignes: LigneClassement[], urgent: boolean) {
-  if (urgent)
-    m.tableau(
-      [
-        { titre: 'Rang', l: 11, droite: true },
-        { titre: 'Id', l: 10 },
-        { titre: 'Programme', l: 74 },
-        { titre: 'Tranche PUDi', l: 23 },
-        { titre: 'Votes', l: 13, droite: true },
-        { titre: 'Part', l: 17, droite: true },
-        { titre: 'Écart avec le PUDi', l: 32 }
-      ],
-      lignes.map((l) => [String(l.rang), l.id, l.nom, l.tranche ?? '', String(l.n), l.pct, l.ecart ? 'oui, avancé' : ''])
-    );
-  else
-    m.tableau(
-      [
-        { titre: 'Rang', l: 11, droite: true },
-        { titre: 'Id', l: 10 },
-        { titre: 'Programme', l: 62 },
-        { titre: 'Secteur', l: 31 },
-        { titre: 'Voix', l: 13, droite: true },
-        { titre: '% voix', l: 16, droite: true },
-        { titre: 'Votants', l: 21, droite: true },
-        { titre: '6 voix et +', l: 16, droite: true }
-      ],
-      lignes.map((l) => [
-        String(l.rang),
-        l.id,
-        l.nom,
-        l.secteur,
-        String(l.voix ?? l.n),
-        l.pctVoix ?? l.pct,
-        `${l.votants ?? l.n} (${l.pctVotants ?? l.pct})`,
-        String(l.concentration ?? 0)
-      ])
-    );
+/** PUDI-CC-18: one ranking, by votes, with the « Écart avec le PUDi » column. */
+function classement(m: Mise, lignes: LigneClassement[]) {
+  m.tableau(
+    [
+      { titre: 'Rang', l: 10, droite: true },
+      { titre: 'Id', l: 9 },
+      { titre: 'Programme', l: 48 },
+      { titre: 'Secteur', l: 22 },
+      { titre: 'Voix', l: 11, droite: true },
+      { titre: '% voix', l: 14, droite: true },
+      { titre: 'Votants', l: 20, droite: true },
+      { titre: '6 voix et +', l: 16, droite: true },
+      { titre: 'Écart avec le PUDi', l: 30 }
+    ],
+    lignes.map((l) => [
+      String(l.rang),
+      l.id,
+      l.nom,
+      l.secteur,
+      String(l.voix ?? l.n),
+      l.pctVoix ?? l.pct,
+      `${l.votants ?? l.n} (${l.pctVotants ?? l.pct})`,
+      String(l.concentration ?? 0),
+      l.ecart ?? ''
+    ])
+  );
 }
 
 /** Builds the PDF and returns it as bytes (the caller saves it). */
@@ -241,7 +230,10 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     GRIS
   );
 
-  m.titre('Classement par voix');
+  m.titre(TITRE_URGENCE);
+  m.paragraphe(COMMENT_URGENCE, 9.5);
+
+  m.titre(TITRE_CLASSEMENT);
   m.paragraphe(
     'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme (52 programmes). « Voix » : voix reçues ; « Votants » : personnes différentes qui lui ont donné au moins une voix (part des votants) ; « 6 voix et + » : votes qui ont placé 6 voix ou plus sur ce programme.',
     9,
@@ -249,7 +241,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     GRIS
   );
   m.y += 1;
-  classement(m, s.priorites, false);
+  classement(m, s.priorites);
   m.paragraphe(`Votes concentrés : ${s.concentration}`, 9.5);
   m.y += 1;
 
@@ -263,19 +255,9 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     s.repartition.map((p) => [p.libelle, String(p.n), p.pct])
   );
 
-  m.titre('Classement « Urgent 2026-2030 »');
-  m.paragraphe(
-    'Part des votants qui veulent le programme dès la tranche 2026-2030. « Écart avec le PUDi » : programme que le PUDi place plus tard et que des votants veulent avancer.',
-    9,
-    false,
-    GRIS
-  );
-  m.y += 1;
-  classement(m, s.urgents, true);
-
   m.titre('Propositions de nouveaux projets');
   m.paragraphe(
-    'Projets demandés par les parties prenantes et absents de la liste retenue dans le PUDi, comptés à part : ils ne figurent pas dans les deux classements des 52 programmes.',
+    'Projets demandés par les parties prenantes et absents de la liste retenue dans le PUDi, comptés à part : ils ne figurent pas dans le classement des 52 programmes.',
     9,
     false,
     GRIS
@@ -287,12 +269,11 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
       [
         { titre: 'Rang', l: 11, droite: true },
         { titre: 'Id', l: 9 },
-        { titre: 'Proposition', l: 46 },
-        { titre: 'Source', l: 34 },
+        { titre: 'Proposition', l: 58 },
+        { titre: 'Source', l: 40 },
         { titre: 'Ajoutée le', l: 20 },
-        { titre: 'Voix', l: 13, droite: true },
-        { titre: 'Votants', l: 24, droite: true },
-        { titre: 'Urgent', l: 23, droite: true }
+        { titre: 'Voix', l: 15, droite: true },
+        { titre: 'Votants', l: 27, droite: true }
       ],
       s.propositions.map((l) => [
         String(l.rang),
@@ -301,8 +282,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
         l.source,
         l.ajoutee,
         String(l.voix),
-        `${l.votants} (${l.pctVotants})`,
-        `${l.nUrgent} (${l.pctUrgent})`
+        `${l.votants} (${l.pctVotants})`
       ])
     );
     const notes = s.propositions.filter((l) => l.note);

@@ -36,7 +36,7 @@ export function lienConsultation(): string {
 }
 
 export const TEXTE_PARTAGE =
-  'Priorisation du PUDi de Nosy Be 2026-2040 : quels projets sont urgents ? Donnez votre avis.';
+  'Priorisation du PUDi de Nosy Be 2026-2040 : quels projets doivent passer en premier ? Donnez votre avis.';
 
 function Element({
   icone,

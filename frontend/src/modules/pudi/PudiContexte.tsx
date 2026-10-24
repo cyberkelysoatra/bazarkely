@@ -13,7 +13,7 @@ import { activerParcours, noterEtape } from './appels/parcours';
 import { usePresence } from './appels/presence';
 import { etapesDuChoix, etatEffectif, masquageApercu, peutApercu, type Apercu } from './utils/apercu';
 import { effacerVoteCache, ecrireVoteCache, lireMonVoteServeur, lireVoteCache, resumeDuVote } from './appels/monVote';
-import { brouillonDuVote, doitRemplirDepuisServeur, voteDuCompte, type VoteResume } from './utils/monVote';
+import { brouillonAncien111, brouillonDuVote, doitRemplirDepuisServeur, voteDuCompte, type VoteResume } from './utils/monVote';
 import { brouillonVide } from './appels/brouillon';
 import type { MonVote } from './appels/api';
 
@@ -212,9 +212,12 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       });
   }, [email, etatReel, avecApercu, noterMonVote]);
   const monVote = avecApercu ? null : voteDuCompte(monVoteReel, email);
-  // Offline on a device that already showed the vote: an empty draft takes the device copy.
+  // Offline on a device that already showed the vote: an empty draft takes the device copy
+  // (PUDI-CC-18: so does the old 1 + 1 + 1 draft of a vote converted to 4 + 4 + 4).
   useEffect(() => {
-    if (!monVote || !brouillonVide(lireBrouillon())) return;
+    if (!monVote) return;
+    const b = lireBrouillon();
+    if (!brouillonVide(b) && !(monVote.converti && !b.manquant.trim() && brouillonAncien111(b, monVote))) return;
     ecrireBrouillon(brouillonDuVote(monVote));
     setBrouillon(lireBrouillon());
   }, [monVote]);

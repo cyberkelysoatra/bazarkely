@@ -32,7 +32,8 @@ export interface MonVote {
   fokontany_autre: string | null;
   profil: string;
   priorites: string[];
-  urgents: string[];
+  /** Stored by the old question (before PUDI-CC-18); never sent again by the client. */
+  urgents?: string[];
   manquant: string | null;
   canal_code: string | null;
   created_at: string;
@@ -40,6 +41,8 @@ export interface MonVote {
   nb_modifications: number;
   est_test: boolean;
   masque: boolean;
+  /** PUDI-CC-18: old 3-programme vote converted once to 4 + 4 + 4, not sent again since. */
+  converti_4x?: boolean;
 }
 
 export interface LigneResultat {
@@ -54,7 +57,8 @@ export interface LigneResultat {
   pct_votants?: number;
   concentration?: number;
   tranche_pudi?: number;
-  ecart?: boolean;
+  /** PUDI-CC-18: among the `top_ecart` programmes with the most votes while the PUDi plans it after 2030. */
+  ecart_pudi?: boolean;
 }
 
 /** Proposal of the results, counted SEPARATELY from the 52 programmes. */
@@ -64,8 +68,6 @@ export interface LigneProposition {
   ajoute_at: string;
   n_priorite: number;
   pct_priorite: number;
-  n_urgent: number;
-  pct_urgent: number;
   voix?: number;
   votants?: number;
   pct_voix?: number;
@@ -88,7 +90,6 @@ export interface Resultats {
   calcule_at: string;
   nb_votants: number;
   priorites: LigneResultat[];
-  urgents: LigneResultat[];
   par_profil: Record<string, number>;
   par_fokontany: Record<string, number>;
   reseaux: { dans_nos_reseaux: number; hors_reseaux: number };
@@ -98,8 +99,10 @@ export interface Resultats {
   /** Voters who used 1, 2… 12 votes (keys "1" to "12"). */
   repartition?: Record<string, number>;
   concentration?: Concentration;
-  /** Votes still exactly as sent before the rule changed (3 votes). */
-  nb_votes_3_voix?: number;
+  /** PUDI-CC-18: old 3-programme votes converted to 4 + 4 + 4 and kept as they are since. */
+  nb_votes_convertis?: number;
+  /** PUDI-CC-18: size of the « écart avec le PUDi » window (15). */
+  top_ecart?: number;
   regle_voix_at?: string | null;
 }
 
@@ -180,7 +183,8 @@ export async function soumettreVote(
     p_telephone: f.telephone.trim() || null,
     p_resident: f.resident,
     p_priorites: b.priorites,
-    p_urgents: b.urgents,
+    // PUDI-CC-18: no urgents question any more; null keeps what an old vote stored.
+    p_urgents: null,
     p_manquant: b.manquant.trim() || null,
     p_canal: canal
   });

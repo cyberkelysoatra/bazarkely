@@ -1289,6 +1289,41 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
   46 px de haut (`before:h-[46px]`) qui ne couvre jamais le badge ni le compteur ; ligne du compteur avec le coût ou la
   date (`pied`) pour garder les cartes courtes.
 
+### PUDi · PUDI-CC-18, v3.108.0 : plus de question sur l'urgence, anciens votes convertis 4 + 4 + 4
+
+- **Parcours en 2 questions** : « Question 1 sur 2 : Répartissez vos 12 voix », « Question 2 sur 2 : Un projet manque au
+  PUDi ? » (facultative, « Passer »), puis résumé et « Envoyer mon vote ». Plus aucun bouton « Marquer urgent », badge,
+  filtre, compteur ni étape « urgent ». `Brouillon` = `{ priorites, manquant }` (un ancien brouillon se lit sans erreur, ses
+  urgents sont ignorés) ; `?etape=3` d'une ancienne adresse ouvre la question 2 ; `?b=` ne transporte plus que les voix.
+  La question 2 est notée vue sous le numéro 3 dans `pudi_questions_vues` (une visite qui n'avait vu que l'ancienne
+  question 2 voit quand même la question du projet manquant). Le client envoie `p_urgents: null` (vote et choix d'appareil).
+- **Comment l'urgence est déterminée** (à dire en clair partout où ça compte) : il n'y a pas de question séparée sur
+  l'urgence. L'ordre du classement, établi par le nombre de voix reçues, indique les programmes que les votants veulent
+  voir réalisés en premier. La colonne « Écart avec le PUDi » signale les programmes classés parmi les 15 premiers alors
+  que le PUDi les prévoit en 2031-2035 ou 2036-2040 : les votants souhaitent les avancer (« Avancé par les votants (PUDi :
+  2031-2035) »). Résultats : ligne toujours visible sous le titre « Classement des programmes par voix reçues (ordre de
+  priorité) » : « L'urgence n'est pas demandée à part : elle se déduit des voix. Plus un programme reçoit de voix, plus
+  les votants le jugent prioritaire. » ; CSV : ligne `note` juste sous l'en-tête ; PDF : paragraphe « Comment l'urgence
+  est déterminée » avant le classement. Un seul classement public (plus de classement « Urgent 2026-2030 »).
+- **Serveur** (migration `20261025010000_pudi_sans_urgents_conversion.sql`) :
+  - sauvegarde `pudi_votes_sauvegarde_20261024` (copie de tous les votes avant conversion, RLS activée et forcée, aucune
+    règle, aucun droit pour `public`/`anon`/`authenticated`), supprimée par `pudi_purger` le 28/01/2027 ;
+  - colonne `pudi_votes.converti_4x` ; conversion **unique** des votes de 3 programmes distincts non modifiés depuis
+    `regle_voix_at` : chaque programme répété 4 fois (12 voix), `updated_at` / `nb_modifications` / `masque` inchangés,
+    une ligne `vote_converti_4x` au journal par vote (avant / après) ;
+  - `pudi_soumettre_vote` : `p_urgents` nul = urgents enregistrés **gardés** ; un nouvel envoi remet `converti_4x` à faux ;
+  - `pudi_calculer_resultats` : plus de clé `urgents` ni `n_urgent` ; `ecart_pudi` et `tranche_pudi` par programme,
+    `top_ecart: 15`, `nb_votes_convertis` (remplace `nb_votes_3_voix`) ; `pudi_mon_vote` renvoie `converti_4x` ;
+  - `pudi_choix_noter` : `p_urgents` accepté et ignoré (signature gardée).
+- **Votant converti** : bandeau `BandeauDouzeVoix` « Vos 3 programmes ont reçu 4 voix chacun. Vous pouvez les répartir
+  autrement jusqu'à la clôture. » tant que `converti_4x` est vrai (copie d'appareil `pudi_mon_vote_cache.converti`). Un
+  brouillon vide **ou égal aux 3 programmes à 1 voix** est remplacé par le vote du serveur (`brouillonAncien111`,
+  `doitRemplirDepuisServeur`) : la personne voit 12/12.
+- **Organisateurs** : Votes = badge « converti 4 + 4 + 4 » (`voteConverti` : 12 voix, 3 programmes × 4, non modifié depuis
+  la règle), filtre « Votes convertis 4 + 4 + 4 » ; carte « Urgences de l'ancienne question, non comptées »
+  (`classementUrgentsArchive`, votes non masqués et non test) ; CSV votes : colonne `urgents_ancienne_question`. Les
+  urgents enregistrés ne figurent jamais dans les résultats publics, le CSV de synthèse ni le PDF.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

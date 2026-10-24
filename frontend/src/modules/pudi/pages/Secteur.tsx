@@ -10,7 +10,7 @@ import { formatAr } from '../utils/format';
 export default function Secteur() {
   const { id = '' } = useParams();
   const { donnees, erreur, reessayer } = useDonnees();
-  const { brouillon, etat } = usePudi();
+  const { etat } = usePudi();
   const clos = !!etat?.clos;
   if (erreur) return <Page><ErreurDonnees reessayer={reessayer} /></Page>;
   if (!donnees) return <Page><Chargement /></Page>;
@@ -71,14 +71,6 @@ export default function Secteur() {
             pied={<p className="text-[0.875rem] text-gris leading-snug">{p.cout.mention}</p>}
           >
             <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.nom}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-              {brouillon.urgents.includes(p.id) && (
-                <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
-                  <Icone nom="horloge" className="w-3.5 h-3.5" />
-                  {fr.programme.estUrgent}
-                </span>
-              )}
-            </div>
           </CarteChoix>
         ))}
       </ul>

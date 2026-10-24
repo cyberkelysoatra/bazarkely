@@ -13,7 +13,6 @@ import { definirApercu } from '../appels/apercu';
 import { useDiscussionNonLue } from '../appels/discussionNonLue';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
-import { voteAvantRegle } from '../utils/monVote';
 const Commutateur = lazy(() => import('./Commutateur'));
 const BandeauDouzeVoix = lazy(() => import('./BandeauDouzeVoix'));
 // « Envoyer mon vote » bar (v8, 4.3 bis): own chunk, loaded on the pages of the voting path only.
@@ -133,11 +132,11 @@ export function BandeauxEtat({ masquerPreparation = false }: { masquerPreparatio
   const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees, masquages, monVote } = usePudi();
   const items: ReactNode[] = [];
   if (masquages.length) items.push(<BandeauMasquage key="masquage" />);
-  // PUDI-CC-17: vote of 3 votes sent before the 12-vote rule, until its author sends again.
-  else if (monVote && !etat?.clos && voteAvantRegle(monVote, etat?.regle_voix_at))
+  // PUDI-CC-18: old 3-programme vote converted to 4 + 4 + 4, until its author sends again.
+  else if (monVote?.converti && !etat?.clos)
     items.push(
       <Suspense key="douze" fallback={null}>
-        <BandeauDouzeVoix utilisees={monVote.priorites.length} date={monVote.date} />
+        <BandeauDouzeVoix />
       </Suspense>
     );
   if (propositionsRetirees.length)
@@ -226,9 +225,9 @@ function Onglet({ to, icone, libelle, badge, fin, point }: { to: string; icone: 
         {badge !== undefined && (
           <span
             className={`absolute -top-[6px] -right-[12px] min-w-[20px] h-[20px] px-[4px] rounded-full text-[11px] font-bold flex items-center justify-center ${
-              badge === 3 ? 'bg-marine text-white' : 'bg-vide text-profond border border-filet'
+              badge === 12 ? 'bg-marine text-white' : 'bg-vide text-profond border border-filet'
             }`}
-            aria-label={`${badge} sur 3`}
+            aria-label={`${badge} voix sur 12`}
           >
             {badge}
           </span>

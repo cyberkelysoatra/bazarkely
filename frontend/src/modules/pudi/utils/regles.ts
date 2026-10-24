@@ -1,19 +1,19 @@
 // Pure choice rules of the PUDi consultation (mirrors of the server checks in
-// pudi_soumettre_vote, PUDI-CC-17: 12 votes). No side effects, no imports: unit tested in regles.test.ts.
+// pudi_soumettre_vote, PUDI-CC-17: 12 votes; PUDI-CC-18: no urgents question). No side effects, no imports:
+// unit tested in regles.test.ts.
 
 /** PUDI-CC-17 (specification v9 4.5): 12 votes to spread, several on one programme allowed. */
 export const VOIX = 12;
-export const MAX_URGENTS = 10;
 export const MAX_MANQUANT = 1000;
-export const TRANCHE_URGENTE = '2026-2030';
+/** First tranche of the PUDi: a programme planned later and ranked in the top 15 is « avancé par les votants ». */
+export const PREMIERE_TRANCHE = '2026-2030';
 
 export interface Brouillon {
   priorites: string[];
-  urgents: string[];
   manquant: string;
 }
 
-export const BROUILLON_VIDE: Brouillon = { priorites: [], urgents: [], manquant: '' };
+export const BROUILLON_VIDE: Brouillon = { priorites: [], manquant: '' };
 
 /** Votes placed (one element of `priorites` per vote, the same id repeated for stacked votes). */
 export function voixUtilisees(b: Brouillon): number {
@@ -57,30 +57,10 @@ export function texteVoix(priorites: readonly string[], nom: (id: string) => str
   return regrouperVoix(priorites).map((l) => `${nom(l.id)} ×${l.n}`).join(', ');
 }
 
-/** An 11th urgent (or a duplicate) is refused. A programme may be both priority and urgent. */
-export function peutAjouterUrgent(b: Brouillon, id: string): boolean {
-  return !b.urgents.includes(id) && b.urgents.length < MAX_URGENTS;
-}
-
-/** Ready to send: 1 to 12 votes on known ids (repeats allowed), at most 10 distinct urgents, text within 1000 characters. */
+/** Ready to send: 1 to 12 votes on known ids (repeats allowed), text within 1000 characters. */
 export function brouillonValide(b: Brouillon, idsConnus?: readonly string[]): boolean {
-  const distinct = (l: string[]) => new Set(l).size === l.length;
   const connus = (l: string[]) => !idsConnus || l.every((id) => idsConnus.includes(id));
-  return (
-    b.priorites.length >= 1 &&
-    b.priorites.length <= VOIX &&
-    connus(b.priorites) &&
-    b.urgents.length <= MAX_URGENTS &&
-    distinct(b.urgents) &&
-    connus(b.urgents) &&
-    b.manquant.length <= MAX_MANQUANT
-  );
-}
-
-/** Toggle helper returning a new draft (unchanged when the rule refuses). */
-export function basculerUrgent(b: Brouillon, id: string): Brouillon {
-  if (b.urgents.includes(id)) return { ...b, urgents: b.urgents.filter((x) => x !== id) };
-  return peutAjouterUrgent(b, id) ? { ...b, urgents: [...b.urgents, id] } : b;
+  return b.priorites.length >= 1 && b.priorites.length <= VOIX && connus(b.priorites) && b.manquant.length <= MAX_MANQUANT;
 }
 
 /** Text of the "missing project" field cut at 1000 characters (the 1001st is impossible). */
@@ -119,9 +99,9 @@ export function normaliserTelephoneAffichage(saisie: string): string | null {
   return '+' + n;
 }
 
-/** True when marking the programme urgent moves it ahead of the PUDi (tranche 2031-2035 or 2036-2040). */
+/** True when the PUDi plans the programme after 2030 (tranche 2031-2035 or 2036-2040). */
 export function ecartPudi(trancheAffichee: string): boolean {
-  return trancheAffichee !== TRANCHE_URGENTE;
+  return trancheAffichee !== PREMIERE_TRANCHE;
 }
 
 /** Valid provenance code (?c=), same pattern as the server. */
@@ -139,10 +119,7 @@ export function retirerPropositionsAbsentes(
   estProposition: (id: string) => boolean
 ): { brouillon: Brouillon; retires: string[] } {
   const garder = (id: string) => !estProposition(id) || actives.includes(id);
-  const retires = [...new Set([...b.priorites, ...b.urgents].filter((id) => !garder(id)))];
+  const retires = [...new Set(b.priorites.filter((id) => !garder(id)))];
   if (!retires.length) return { brouillon: b, retires };
-  return {
-    brouillon: { ...b, priorites: b.priorites.filter(garder), urgents: b.urgents.filter(garder) },
-    retires
-  };
+  return { brouillon: { ...b, priorites: b.priorites.filter(garder) }, retires };
 }

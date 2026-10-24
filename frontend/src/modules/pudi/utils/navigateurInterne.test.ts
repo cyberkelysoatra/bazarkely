@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adresseChrome, decoderBrouillon, encoderBrouillon, estNavigateurInterne } from './navigateurInterne';
 
-const B = { priorites: ['T3', 'A4', 'P1'], urgents: ['N3', 'W1'], manquant: 'jamais dans l’adresse' };
+const B = { priorites: ['T3', 'A4', 'P1'], manquant: 'jamais dans l’adresse' };
 
 describe('PUDI-CC-16.2 built-in browsers', () => {
   it('detects the messaging apps, not Chrome', () => {
@@ -13,18 +13,20 @@ describe('PUDI-CC-16.2 built-in browsers', () => {
     expect(estNavigateurInterne('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15 Version/17.0 Mobile Safari/604.1')).toBe(false);
   });
   it('draft in the address: ids only, round trip', () => {
-    expect(encoderBrouillon(B)).toBe('T3.A4.P1-N3.W1');
-    expect(decoderBrouillon('T3.A4.P1-N3.W1')).toEqual({ priorites: ['T3', 'A4', 'P1'], urgents: ['N3', 'W1'], manquant: '' });
-    // PUDI-CC-17: stacked votes travel as repeated ids (12 at most), urgents stay distinct.
-    expect(decoderBrouillon('T3.T3.A4.P1.T1')).toEqual({ priorites: ['T3', 'T3', 'A4', 'P1', 'T1'], urgents: [], manquant: '' });
-    expect(decoderBrouillon(`${Array(13).fill('A4').join('.')}-N3.N3`)).toEqual({ priorites: Array(12).fill('A4'), urgents: ['N3'], manquant: '' });
+    expect(encoderBrouillon(B)).toBe('T3.A4.P1');
+    expect(decoderBrouillon('T3.A4.P1')).toEqual({ priorites: ['T3', 'A4', 'P1'], manquant: '' });
+    // PUDI-CC-18: an old address with former urgents after « - » keeps the votes only.
+    expect(decoderBrouillon('T3.A4.P1-N3.W1')).toEqual({ priorites: ['T3', 'A4', 'P1'], manquant: '' });
+    // PUDI-CC-17: stacked votes travel as repeated ids (12 at most).
+    expect(decoderBrouillon('T3.T3.A4.P1.T1')).toEqual({ priorites: ['T3', 'T3', 'A4', 'P1', 'T1'], manquant: '' });
+    expect(decoderBrouillon(`${Array(13).fill('A4').join('.')}-N3.N3`)).toEqual({ priorites: Array(12).fill('A4'), manquant: '' });
     expect(decoderBrouillon('<script>')).toBeNull();
     expect(decoderBrouillon(null)).toBeNull();
   });
   it('Chrome address keeps the channel and adds the draft', () => {
     expect(adresseChrome('https://1sakely.org/pudi/envoyer?c=old#x', B, 'gihtnb', true)).toBe(
-      'intent://1sakely.org/pudi/envoyer?c=gihtnb&b=T3.A4.P1-N3.W1#Intent;scheme=https;package=com.android.chrome;end'
+      'intent://1sakely.org/pudi/envoyer?c=gihtnb&b=T3.A4.P1#Intent;scheme=https;package=com.android.chrome;end'
     );
-    expect(adresseChrome('https://1sakely.org/pudi/envoyer', B, null, false)).toBe('https://1sakely.org/pudi/envoyer?b=T3.A4.P1-N3.W1');
+    expect(adresseChrome('https://1sakely.org/pudi/envoyer', B, null, false)).toBe('https://1sakely.org/pudi/envoyer?b=T3.A4.P1');
   });
 });

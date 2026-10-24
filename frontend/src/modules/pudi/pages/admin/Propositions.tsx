@@ -168,9 +168,7 @@ export default function Propositions() {
                 <dt className="text-gris">Ajoutée</dt>
                 <dd>{dateHeureMada(p.ajoute_at)}</dd>
                 <dt className="text-gris">Votes</dt>
-                <dd>
-                  priorité {p.nb_priorite} · urgent {p.nb_urgent}
-                </dd>
+                <dd>votants {p.nb_priorite}</dd>
                 {p.origine_vote && (
                   <>
                     <dt className="text-gris">Vote d'origine</dt>

@@ -57,7 +57,7 @@ export function ErreurPropositions({ reessayer }: { reessayer: () => void }) {
 
 export default function Propositions() {
   const { liste, erreur, reessayer } = useListePropositions();
-  const { brouillon, etat } = usePudi();
+  const { etat } = usePudi();
   const clos = !!etat?.clos;
   return (
     <Page>
@@ -95,14 +95,6 @@ export default function Propositions() {
               }
             >
                 <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.intitule}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-                  {brouillon.urgents.includes(p.id) && (
-                    <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
-                      <Icone nom="horloge" className="w-3.5 h-3.5" />
-                      {fr.programme.estUrgent}
-                    </span>
-                  )}
-                </div>
             </CarteChoix>
           ))}
         </ul>

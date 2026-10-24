@@ -14,7 +14,6 @@ const CHAMPS: Record<string, ChampFormulaire> = {
   PROFIL: 'profil',
   FOKONTANY: 'fokontany',
   PRIORITES: 'choix',
-  URGENTS: 'choix',
   MANQUANT: 'choix',
   NUMERO_INVALIDE: 'telephone',
   NUMERO_DEJA_UTILISE: 'telephone',

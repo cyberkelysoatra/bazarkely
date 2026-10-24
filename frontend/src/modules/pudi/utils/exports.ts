@@ -15,6 +15,7 @@ export interface VoteAdmin {
   groupes: string[];
   hors_liste_du_canal: boolean;
   priorites: string[];
+  /** Stored by the old question (before PUDI-CC-18): organisers only, never counted. */
   urgents: string[];
   manquant: string | null;
   cree_le: string;
@@ -28,14 +29,34 @@ export interface VoteAdmin {
 
 export const ENTETE_VOTES = [
   'id_anonyme', 'cree_le', 'modifie_le', 'nb_modifications', 'fokontany', 'fokontany_autre', 'profil', 'canal',
-  'dans_nos_reseaux', 'groupes', 'hors_liste_du_canal', 'nb_voix', 'voix', 'urgents',
+  'dans_nos_reseaux', 'groupes', 'hors_liste_du_canal', 'nb_voix', 'voix', 'urgents_ancienne_question',
   'manquant', 'masque', 'motif', 'test', 'groupe_ip'
 ] as const;
 
-/** PUDI-CC-17: a vote still exactly as sent before the 12-vote rule (3 distinct programmes, not modified since). */
-export function voteA3Voix(v: Pick<VoteAdmin, 'priorites' | 'modifie_le'>, regleAt: string | null | undefined): boolean {
+/**
+ * PUDI-CC-18: an old 3-programme vote converted once to 4 + 4 + 4 and not sent again since (same
+ * test as the server flag converti_4x: a vote sent again is modified after the 12-vote rule).
+ */
+export function voteConverti(v: Pick<VoteAdmin, 'priorites' | 'modifie_le'>, regleAt: string | null | undefined): boolean {
   const p = v.priorites ?? [];
-  return !!regleAt && p.length === 3 && new Set(p).size === 3 && Date.parse(v.modifie_le) <= Date.parse(regleAt);
+  const ids = [...new Set(p)];
+  return (
+    !!regleAt &&
+    p.length === 12 &&
+    ids.length === 3 &&
+    ids.every((id) => p.filter((x) => x === id).length === 4) &&
+    Date.parse(v.modifie_le) <= Date.parse(regleAt)
+  );
+}
+
+/**
+ * PUDI-CC-18: urgents stored by the old question (organisers only, never counted in the results):
+ * counted on the votes kept (not masked, not test), most cited first, then by id.
+ */
+export function classementUrgentsArchive(votes: readonly Pick<VoteAdmin, 'urgents' | 'masque' | 'est_test'>[]): { id: string; n: number }[] {
+  const n = new Map<string, number>();
+  for (const v of votes) if (!v.masque && !v.est_test) for (const id of new Set(v.urgents ?? [])) n.set(id, (n.get(id) ?? 0) + 1);
+  return [...n].map(([id, k]) => ({ id, n: k })).sort((a, b) => b.n - a.n || a.id.localeCompare(b.id));
 }
 
 const MADA_MS = 3 * 3600 * 1000;

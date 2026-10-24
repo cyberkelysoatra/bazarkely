@@ -40,7 +40,8 @@ async function envoyer(b: Brouillon, contenu: string): Promise<void> {
     const r = await appeler('pudi_choix_noter', {
       p_visiteur: await visiteurPret(),
       p_priorites: b.priorites,
-      p_urgents: b.urgents,
+      // PUDI-CC-18: no urgents any more (the server ignores the parameter, kept for its signature).
+      p_urgents: null,
       p_manquant: b.manquant.trim() || null,
       p_canal: lireCanal()
     });
@@ -57,7 +58,7 @@ async function envoyer(b: Brouillon, contenu: string): Promise<void> {
 export function planifierChoix(b: Brouillon): void {
   window.clearTimeout(minuteur);
   if (!b.priorites.length) return;
-  const contenu = JSON.stringify([b.priorites, b.urgents, b.manquant.trim()]);
+  const contenu = JSON.stringify([b.priorites, b.manquant.trim()]);
   minuteur = window.setTimeout(() => void envoyer(b, contenu), DELAI_CHOIX_MS);
 }
 

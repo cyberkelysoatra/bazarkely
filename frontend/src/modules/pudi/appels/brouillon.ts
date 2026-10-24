@@ -10,8 +10,8 @@ function nettoyer(v: unknown): Brouillon {
   const liste = (l: unknown) => (Array.isArray(l) ? l.filter((x): x is string => typeof x === 'string') : []);
   return {
     // PUDI-CC-17: one element per vote (repeats = stacked votes); an old draft of 3 reads as is.
+    // PUDI-CC-18: an old draft's « urgents » are dropped silently.
     priorites: liste(o.priorites).slice(0, VOIX),
-    urgents: [...new Set(liste(o.urgents))].slice(0, 10),
     manquant: typeof o.manquant === 'string' ? o.manquant.slice(0, MAX_MANQUANT) : ''
   };
 }
@@ -36,5 +36,5 @@ export function ecrireBrouillon(b: Brouillon): void {
 }
 
 export function brouillonVide(b: Brouillon): boolean {
-  return !b.priorites.length && !b.urgents.length && !b.manquant.trim();
+  return !b.priorites.length && !b.manquant.trim();
 }

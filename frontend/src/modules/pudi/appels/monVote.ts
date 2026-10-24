@@ -1,6 +1,6 @@
 // PUDI-CC-16.1: own vote of the signed-in voter, read once from the server (plain fetch, no
 // supabase-js on the home page) and kept on the device for offline display
-// (localStorage pudi_mon_vote_cache: priorities, urgents, date; cleared on sign-out).
+// (localStorage pudi_mon_vote_cache: votes, date, « converted » flag; cleared on sign-out).
 import { jetonLocal, rpcFetch, type MonVote } from './api';
 import type { VoteResume } from '../utils/monVote';
 
@@ -13,7 +13,7 @@ export function lireVoteCache(): VoteResume | null {
     const o = JSON.parse(raw) as Partial<VoteResume>;
     const liste = (l: unknown) => (Array.isArray(l) ? l.filter((x): x is string => typeof x === 'string') : []);
     if (typeof o.compte !== 'string' || typeof o.date !== 'string') return null;
-    return { compte: o.compte, priorites: liste(o.priorites).slice(0, 12), urgents: liste(o.urgents).slice(0, 10), date: o.date };
+    return { compte: o.compte, priorites: liste(o.priorites).slice(0, 12), converti: o.converti === true, date: o.date };
   } catch {
     return null;
   }
@@ -21,7 +21,7 @@ export function lireVoteCache(): VoteResume | null {
 
 export function ecrireVoteCache(v: VoteResume): void {
   try {
-    localStorage.setItem(CLE, JSON.stringify({ compte: v.compte, priorites: v.priorites, urgents: v.urgents, date: v.date }));
+    localStorage.setItem(CLE, JSON.stringify({ compte: v.compte, priorites: v.priorites, converti: !!v.converti, date: v.date }));
   } catch {
     /* no storage: memory only */
   }
@@ -37,7 +37,7 @@ export function effacerVoteCache(): void {
 
 /** Server vote as a summary (with the missing project, never cached). */
 export function resumeDuVote(v: MonVote, compte: string): VoteResume {
-  return { compte, priorites: v.priorites ?? [], urgents: v.urgents ?? [], date: v.updated_at ?? v.created_at, manquant: v.manquant ?? null };
+  return { compte, priorites: v.priorites ?? [], converti: !!v.converti_4x, date: v.updated_at ?? v.created_at, manquant: v.manquant ?? null };
 }
 
 /** pudi_mon_vote with the stored session. Throws offline or when the session is refused. */

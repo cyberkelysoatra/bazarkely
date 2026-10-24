@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BoutonsPartage } from '../composants/Partager';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
-import { BadgeTranche, BandeauxEtat, Chargement, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
+import { BandeauxEtat, Chargement, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { PROFIL_VALEURS, programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
 import { frPages } from '../i18n/frPages';
@@ -19,13 +19,16 @@ const TRANCHES = ['2026-2030', '2031-2035', '2036-2040'];
 
 const virgule = (v: number) => String(v).replace('.', ',');
 
-/** « 34 voix · 11 votants » under the name, bar proportional to the votes (PUDI-CC-17). */
-function Barre({ donnees, l, rang, urgent, maxVoix = 0 }: { donnees: PudiDonnees; l: LigneResultat; rang: number; urgent?: boolean; maxVoix?: number }) {
+/**
+ * « 34 voix · 11 votants » under the name, bar proportional to the votes (PUDI-CC-17), and the
+ * « Écart avec le PUDi » flag (PUDI-CC-18: top 15 by votes while the PUDi plans it after 2030).
+ */
+function Barre({ donnees, l, rang, maxVoix = 0 }: { donnees: PudiDonnees; l: LigneResultat; rang: number; maxVoix?: number }) {
   const p = programmeParId(donnees, l.id);
   const s = p ? secteurParId(donnees, p.secteur) : undefined;
   const tranche = l.tranche_pudi ? TRANCHES[l.tranche_pudi - 1] : p?.trancheAffichee;
   const voix = l.voix ?? l.n;
-  const largeur = urgent ? l.pct : maxVoix ? (100 * voix) / maxVoix : 0;
+  const largeur = maxVoix ? (100 * voix) / maxVoix : 0;
   return (
     <li className="py-2" data-ligne-resultat={l.id}>
       <div className="flex items-baseline gap-2 text-[0.875rem]">
@@ -33,33 +36,26 @@ function Barre({ donnees, l, rang, urgent, maxVoix = 0 }: { donnees: PudiDonnees
         <Link to={`/programme/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
           {p?.nom ?? l.id}
         </Link>
-        <span className="font-titre text-marine shrink-0">{virgule(urgent ? l.pct : l.pct_voix ?? l.pct)} %</span>
+        <span className="font-titre text-marine shrink-0">{virgule(l.pct_voix ?? l.pct)} %</span>
       </div>
       <div className="ml-8 mt-1 h-3 rounded-full bg-vide overflow-hidden" aria-hidden="true">
         <div className="h-full rounded-full" style={{ width: `${Math.min(100, largeur)}%`, background: s?.couleur ?? '#0B2A8C' }} />
       </div>
-      {!urgent && (
-        <p className="ml-8 mt-1 text-[0.8125rem] text-gris" data-voix-votants="">
-          {frPages.resultats.voixVotants(voix, l.votants ?? l.n)}
-          {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`}
+      <p className="ml-8 mt-1 text-[0.8125rem] text-gris" data-voix-votants="">
+        {frPages.resultats.voixVotants(voix, l.votants ?? l.n)}
+        {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`}
+      </p>
+      {l.ecart_pudi && tranche && (
+        <p className="ml-8 mt-1 inline-flex items-center gap-1 text-[0.8125rem] font-bold text-[#9C3F21]" data-ecart-pudi={l.id}>
+          <Icone nom="alerte" className="w-3.5 h-3.5 shrink-0" />
+          {frPages.resultats.ecart(tranche)}
         </p>
-      )}
-      {urgent && tranche && (
-        <div className="ml-8 mt-1.5 flex flex-wrap items-center gap-2">
-          <BadgeTranche tranche={tranche} />
-          {l.ecart && (
-            <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
-              <Icone nom="alerte" className="w-3.5 h-3.5" />
-              {frPages.resultats.ecart}
-            </span>
-          )}
-        </div>
       )}
     </li>
   );
 }
 
-/** Proposals outside the PUDi list, counted apart: priority share with a bar, urgent share. */
+/** Proposals outside the PUDi list, counted apart: share of the votes with a bar, voters. */
 function LignePropositionResultat({ l, rang, maxVoix = 0 }: { l: LigneProposition; rang: number; maxVoix?: number }) {
   const pct = (v: number) => `${String(v).replace('.', ',')} %`;
   return (
@@ -82,7 +78,7 @@ function LignePropositionResultat({ l, rang, maxVoix = 0 }: { l: LignePropositio
       </div>
       <p className="ml-8 mt-1 text-[0.8125rem] text-gris" data-voix-votants="">
         {frPages.resultats.voixVotants(l.voix ?? l.n_priorite, l.votants ?? l.n_priorite)}
-        {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`} · {frPages.resultats.urgentPct(pct(l.pct_urgent))} ·{' '}
+        {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`} ·{' '}
         {frPages.propositions.ajoutee(dateJour(l.ajoute_at))}
       </p>
     </li>
@@ -102,6 +98,19 @@ function AideRegle() {
   );
 }
 
+/** ⓘ of the « Écart avec le PUDi » column (PUDI-CC-18). */
+function AideEcart() {
+  return (
+    <details className="text-[0.8125rem]" data-aide-ecart="">
+      <summary className="min-h-[44px] inline-flex items-center gap-1.5 cursor-pointer text-marine font-bold">
+        <Icone nom="info" className="w-4 h-4" />
+        {frPages.resultats.ecartTitre}
+      </summary>
+      <p className="mt-1 text-profond">{frPages.resultats.ecartAide}</p>
+    </details>
+  );
+}
+
 /** Concentration (votes with 6 or more on one programme), votes used per voter, votes left at 3. */
 function Transparence({ res }: { res: Res }) {
   if (!res.concentration && !res.repartition) return null;
@@ -113,9 +122,9 @@ function Transparence({ res }: { res: Res }) {
           <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.concentrationTitre}</h2>
           <p className="text-[0.9375rem] mt-1">{frPages.resultats.concentration(res.concentration.votes, pct(res.concentration.pct_votes))}</p>
           {res.voix_placees !== undefined && <p className="text-[0.8125rem] text-gris mt-1">{frPages.resultats.voixPlacees(res.voix_placees)}</p>}
-          {!!res.nb_votes_3_voix && (
-            <p className="text-[0.8125rem] text-gris mt-1" data-trois-voix={res.nb_votes_3_voix}>
-              {frPages.resultats.troisVoix(res.nb_votes_3_voix)}
+          {!!res.nb_votes_convertis && (
+            <p className="text-[0.8125rem] text-gris mt-1" data-votes-convertis={res.nb_votes_convertis}>
+              {frPages.resultats.convertis(res.nb_votes_convertis)}
             </p>
           )}
         </div>
@@ -308,8 +317,10 @@ export default function Resultats() {
 
         <section className="mt-6">
           <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.prioritesTitre}</h2>
-          <p className="text-[0.8125rem] text-gris">{frPages.resultats.prioritesAide}</p>
+          <p className="text-[0.9375rem] text-profond mt-1" data-urgence-deduite="">{frPages.resultats.urgenceDeduite}</p>
+          <p className="text-[0.8125rem] text-gris mt-1">{frPages.resultats.prioritesAide}</p>
           <AideRegle />
+          <AideEcart />
           <ol className="mt-1 divide-y divide-filet">
             {res.priorites.map((l, i) => (
               <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} maxVoix={maxVoix} />
@@ -317,16 +328,6 @@ export default function Resultats() {
           </ol>
         </section>
         <Transparence res={res} />
-
-        <section className="mt-6">
-          <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.urgentsTitre}</h2>
-          <p className="text-[0.8125rem] text-gris">{frPages.resultats.urgentsAide}</p>
-          <ol className="mt-1 divide-y divide-filet">
-            {res.urgents.map((l, i) => (
-              <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} urgent />
-            ))}
-          </ol>
-        </section>
 
         {res.propositions && res.propositions.length > 0 && (
           <section className="mt-6 bg-sable border-2 border-dashed border-marine/50 rounded-xl p-3">

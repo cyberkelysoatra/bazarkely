@@ -174,7 +174,6 @@ export interface PropositionAdmin {
   masque: boolean;
   masque_motif: string | null;
   nb_priorite: number;
-  nb_urgent: number;
 }
 
 export interface SaisieProposition {
