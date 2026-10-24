@@ -11,6 +11,9 @@ import {
   LIMITE_PAGE,
   ecrireMessage,
   lireMessages,
+  lireVersions,
+  modifierMessage,
+  type VersionsMessage,
   retablirAuteur,
   supprimerMessage,
   suspendreAuteur,
@@ -35,7 +38,10 @@ const ERREURS: Record<string, string> = {
   MESSAGE_INVALIDE: 'Écrivez un message de 1 à 500 caractères.',
   NON_CONNECTE: 'Connectez-vous avec Google pour écrire.',
   RESEAU: 'Le réseau ne répond pas. Votre message est gardé : réessayez.',
-  AUTRE: 'Le message n’a pas pu être envoyé. Réessayez.'
+  AUTRE: 'Le message n’a pas pu être envoyé. Réessayez.',
+  DELAI_MODIFICATION: 'Les 10 minutes sont passées : ce message ne peut plus être modifié.',
+  MESSAGE_NON_MODIFIABLE: 'Ce message ne peut plus être modifié.',
+  TROP_DE_MODIFICATIONS: 'Un message peut être modifié 5 fois au plus.'
 };
 
 /** Day key and labels in Madagascar time. */
@@ -82,7 +88,12 @@ function Bulle({
   supprimer,
   suspendre,
   verrouille,
-  organisateur
+  organisateur,
+  modifiable,
+  modifier,
+  allerCitation,
+  voirVersions,
+  surligne
 }: {
   m: MessageDiscussion;
   ouvert: boolean;
@@ -94,6 +105,15 @@ function Bulle({
   /** Preview: delete visible but disabled. */
   verrouille: boolean;
   organisateur: boolean;
+  /** PUDI-CC-16.3: own message still inside its 10-minute edit window. */
+  modifiable: boolean;
+  modifier: () => void;
+  /** Jump to the quoted message. */
+  allerCitation: (id: string) => void;
+  /** Organisers: previous texts of an edited message. */
+  voirVersions: (() => void) | null;
+  /** Highlighted for 2 s after a jump. */
+  surligne: boolean;
 }) {
   const appui = useRef<number | null>(null);
   const longFait = useRef(false);
@@ -127,15 +147,19 @@ function Bulle({
               ouvrir();
             }
           }}
-          className={`rounded-2xl px-3 py-2 shadow-sm select-text ${
+          className={`rounded-2xl px-3 py-2 shadow-sm select-text transition-shadow duration-300 ${
             moi ? 'bg-marine text-white rounded-br-md' : 'bg-white border border-filet text-texte rounded-bl-md'
-          }`}
+          } ${surligne ? 'ring-4 ring-[#F5B301]' : ''}`}
+          data-surligne={surligne ? '1' : undefined}
         >
           <div className="flex items-center gap-2">
             <span className={`text-[0.8125rem] font-bold truncate ${moi ? 'text-white/90' : 'text-marine'}`} data-auteur="">
               {m.auteur_nom}
             </span>
-            <span className={`ml-auto text-[0.75rem] shrink-0 ${moi ? 'text-white/75' : 'text-gris'}`}>{heureHHmm(m.cree_at)}</span>
+            <span className={`ml-auto text-[0.75rem] shrink-0 ${moi ? 'text-white/75' : 'text-gris'}`}>
+              {m.modifie && !m.supprime && <span data-modifie="">modifié · </span>}
+              {heureHHmm(m.cree_at)}
+            </span>
             {!m.supprime && (
               <button
                 type="button"
@@ -149,10 +173,17 @@ function Bulle({
             )}
           </div>
           {m.reponse_a && (
-            <div className={`mt-1 border-l-[3px] rounded-r px-2 py-1 text-[0.8125rem] ${moi ? 'border-white/70 bg-white/10' : 'border-marine bg-vide'}`} data-citation="">
+            <button
+              type="button"
+              onClick={() => m.reponse_a && allerCitation(m.reponse_a.id)}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={`Aller au message de ${m.reponse_a.auteur_nom}`}
+              className={`mt-1 w-full text-left border-l-[3px] rounded-r px-2 py-1 text-[0.8125rem] ${moi ? 'border-white/70 bg-white/10' : 'border-marine bg-vide'}`}
+              data-citation=""
+            >
               <span className="block font-bold">{m.reponse_a.auteur_nom}</span>
               <span className={`block ${m.reponse_a.supprime ? 'italic opacity-80' : ''} break-words`}>{m.reponse_a.supprime ? SUPPRIME : m.reponse_a.extrait}</span>
-            </div>
+            </button>
           )}
           {m.supprime ? (
             <p className={`mt-0.5 text-[0.9375rem] italic ${moi ? 'text-white/75' : 'text-gris'}`} data-supprime="">
@@ -163,6 +194,11 @@ function Bulle({
               {m.texte}
             </p>
           )}
+          {voirVersions && m.modifie && !m.supprime && (
+            <button type="button" onClick={voirVersions} className={`mt-1 min-h-[32px] text-[0.8125rem] font-bold underline underline-offset-2 ${moi ? 'text-white' : 'text-marine'}`} data-voir-versions="">
+              voir les versions
+            </button>
+          )}
         </div>
         {ouvert && (
           <div role="menu" className={`absolute z-30 ${versLeHaut ? 'bottom-full mb-1' : 'top-full mt-1'} ${moi ? 'right-0' : 'left-0'} w-56 rounded-xl border border-filet bg-white shadow-xl p-1 text-texte`} data-menu-message="">
@@ -170,6 +206,20 @@ function Bulle({
               <Icone nom="repondre" className="w-4 h-4 text-marine" />
               Répondre
             </button>
+            {modifiable && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={modifier}
+                disabled={verrouille}
+                title={verrouille ? BLOQUE_APERCU : undefined}
+                className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold hover:bg-vide disabled:opacity-50"
+                data-modifier-message=""
+              >
+                <Icone nom="crayon" className="w-4 h-4 text-marine" />
+                Modifier
+              </button>
+            )}
             {m.peut_supprimer && (
               <button
                 type="button"
@@ -197,7 +247,7 @@ function Bulle({
 }
 
 export default function Discussion() {
-  const { apercu, etat } = usePudi();
+  const { apercu, etat, decalage } = usePudi();
   const session = useSessionLocale();
   const enLigne = useEnLigne();
   const apercuVotant = apercu?.role === 'votant';
@@ -217,6 +267,23 @@ export default function Discussion() {
   const [connexion, setConnexion] = useState(false);
   const allerEnBas = useRef(true);
   const champ = useRef<HTMLTextAreaElement>(null);
+  // PUDI-CC-16.3: edit of an own message, jump to a quoted message, organisers' versions.
+  const [edition, setEdition] = useState<MessageDiscussion | null>(null);
+  const [surligne, setSurligne] = useState<string | null>(null);
+  const [rechercheCitation, setRechercheCitation] = useState<'cours' | 'introuvable' | null>(null);
+  const [versions, setVersions] = useState<{ m: MessageDiscussion; v: VersionsMessage | null; erreur: boolean } | null>(null);
+  const messagesActuels = useRef<MessageDiscussion[]>([]);
+  messagesActuels.current = messages;
+  const [, setTic] = useState(0);
+  // Server time (the phone clock is never trusted): the « Modifier » entry hides itself after 10 min.
+  const modifiable = (m: MessageDiscussion) =>
+    !m.supprime && !!m.modifiable_jusqu_a && Date.parse(m.modifiable_jusqu_a) > Date.now() + decalage;
+  const auMoinsUnModifiable = messages.some(modifiable);
+  useEffect(() => {
+    if (!auMoinsUnModifiable) return;
+    const id = window.setInterval(() => setTic((n) => n + 1), 5000);
+    return () => window.clearInterval(id);
+  }, [auMoinsUnModifiable]);
 
   // In the « Votant » preview the fake messages are local only and survive the polling.
   const locaux = useRef<MessageDiscussion[]>([]);
@@ -324,6 +391,66 @@ export default function Discussion() {
     }
   };
 
+  // PUDI-CC-16.3: tap on a quote = smooth scroll to the original, highlighted 2 s. Older pages are
+  // loaded (10 at most) when it is not on screen yet; deleted originals are found too.
+  const montrer = (id: string): boolean => {
+    const el = document.querySelector(`[data-message="${id}"]`);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setSurligne(id);
+    window.setTimeout(() => setSurligne((s) => (s === id ? null : s)), 2000);
+    return true;
+  };
+  const allerCitation = async (id: string) => {
+    setMenu(null);
+    if (montrer(id)) return;
+    setRechercheCitation('cours');
+    let liste = messagesActuels.current;
+    try {
+      for (let i = 0; i < 10 && liste.length; i++) {
+        const brut = await lireMessages(liste[0].cree_at, LIMITE_PAGE, apercuCanal);
+        const l = apercuVotant ? brut.map((x) => ({ ...x, peut_supprimer: x.est_moi && !x.supprime, auteur_suspendu: null })) : brut;
+        liste = fusionner(liste, l);
+        setMessages((avant) => fusionner(avant, l));
+        setPlusAnciens(l.length >= LIMITE_PAGE);
+        if (l.some((x) => x.id === id)) {
+          setRechercheCitation(null);
+          await new Promise((ok) => window.setTimeout(ok, 60));
+          if (montrer(id)) return;
+          break;
+        }
+        if (l.length < LIMITE_PAGE) break;
+      }
+    } catch {
+      /* not found below */
+    }
+    setRechercheCitation('introuvable');
+    window.setTimeout(() => setRechercheCitation((r) => (r === 'introuvable' ? null : r)), 4000);
+  };
+
+  const commencerModification = (m: MessageDiscussion) => {
+    setMenu(null);
+    setReponse(null);
+    setErreur(null);
+    setEdition(m);
+    setTexte(m.texte);
+    window.setTimeout(() => champ.current?.focus(), 30);
+  };
+  const annulerModification = () => {
+    setEdition(null);
+    setTexte('');
+    setErreur(null);
+  };
+  const ouvrirVersions = async (m: MessageDiscussion) => {
+    setVersions({ m, v: null, erreur: false });
+    try {
+      const v = await lireVersions(m.id);
+      setVersions({ m, v, erreur: false });
+    } catch {
+      setVersions({ m, v: null, erreur: true });
+    }
+  };
+
   const erreurEnvoi = (er: unknown) => {
     const code = extraireCode(er) ?? 'AUTRE';
     setErreur(ERREURS[code] ?? ERREURS.AUTRE);
@@ -352,6 +479,26 @@ export default function Discussion() {
       return;
     }
     setErreur(null);
+    if (edition) {
+      if (edition.id.startsWith('apercu-')) {
+        // Preview: the edit is shown here only, nothing is sent.
+        locaux.current = locaux.current.map((x) => (x.id === edition.id ? { ...x, texte: t, modifie: true } : x));
+        setMessages((avant) => fusionner(avant, locaux.current));
+        annulerModification();
+        return;
+      }
+      setEnvoi(true);
+      try {
+        await modifierMessage(edition.id, t);
+        annulerModification();
+        await rafraichir();
+      } catch (er) {
+        erreurEnvoi(er);
+      } finally {
+        setEnvoi(false);
+      }
+      return;
+    }
     if (apercuVotant) {
       // Preview: the message is shown here only, nothing is sent.
       const faux: MessageDiscussion = {
@@ -364,7 +511,9 @@ export default function Discussion() {
         reponse_a: reponse ? { id: reponse.id, auteur_nom: reponse.auteur_nom, extrait: reponse.texte.slice(0, 80), supprime: reponse.supprime } : null,
         est_moi: true,
         peut_supprimer: true,
-        auteur_suspendu: null
+        auteur_suspendu: null,
+        modifie: false,
+        modifiable_jusqu_a: new Date(Date.now() + decalage + 600000).toISOString()
       };
       locaux.current = [...locaux.current, faux];
       allerEnBas.current = true;
@@ -501,6 +650,7 @@ export default function Discussion() {
               fermer={() => setMenu(null)}
               repondre={() => {
                 setMenu(null);
+                if (edition) annulerModification();
                 setReponse(l.m);
                 window.setTimeout(() => champ.current?.focus(), 30);
               }}
@@ -508,6 +658,11 @@ export default function Discussion() {
               suspendre={() => demanderSuspension(l.m)}
               verrouille={!!apercu && !l.m.id.startsWith('apercu-')}
               organisateur={organisateur}
+              modifiable={modifiable(l.m)}
+              modifier={() => commencerModification(l.m)}
+              allerCitation={(id) => void allerCitation(id)}
+              voirVersions={organisateur && !apercu ? () => void ouvrirVersions(l.m) : null}
+              surligne={surligne === l.m.id}
             />
           )
         )}
@@ -519,6 +674,11 @@ export default function Discussion() {
         data-composeur=""
       >
         <div className="mx-auto max-w-2xl pl-4 pr-6 py-2">
+          {rechercheCitation && (
+            <p role="status" className="mb-1.5 text-center text-[0.8125rem] font-bold text-profond" data-recherche-citation={rechercheCitation}>
+              {rechercheCitation === 'cours' ? 'Recherche du message…' : "Message d'origine introuvable"}
+            </p>
+          )}
           {!session ? (
             <button
               type="button"
@@ -536,6 +696,17 @@ export default function Discussion() {
           ) : (
             <form onSubmit={(e) => void envoyer(e)} className="space-y-1.5">
               {envoiMessage.enAttente && <BandeauReseau cours={envoi} reessayer={() => void envoiMessage.reessayer().catch(erreurEnvoi)} />}
+              {edition && (
+                <div className="flex items-start gap-2 bg-white border-l-[3px] border-[#B85317] rounded-r-lg px-2 py-1" data-modification="">
+                  <div className="min-w-0 flex-1 text-[0.8125rem]">
+                    <span className="block font-bold text-[#B85317]">Modification du message</span>
+                    <span className="block truncate text-gris">{edition.texte.slice(0, 80)}</span>
+                  </div>
+                  <button type="button" onClick={annulerModification} className="min-h-[32px] px-2 text-[0.8125rem] font-bold text-marine underline underline-offset-2" data-annuler-modification="">
+                    Annuler
+                  </button>
+                </div>
+              )}
               {reponse && (
                 <div className="flex items-start gap-2 bg-white border-l-[3px] border-marine rounded-r-lg px-2 py-1" data-reponse-a="">
                   <div className="min-w-0 flex-1 text-[0.8125rem]">
@@ -597,6 +768,32 @@ export default function Discussion() {
         </div>
       </div>
       <Dialogue demande={demande} fermer={() => setDemande(null)} />
+      {versions && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-label="Versions du message" data-versions="">
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white p-4 space-y-3">
+            <h2 className="font-bold text-[1.0625rem] text-marine">Versions du message de {versions.m.auteur_nom}</h2>
+            {versions.erreur && <p className="text-[0.875rem] text-[#9C3F21] font-bold">Les versions n'ont pas pu être chargées.</p>}
+            {!versions.v && !versions.erreur && <p className="text-gris">Chargement…</p>}
+            {versions.v && (
+              <ol className="space-y-2">
+                {versions.v.versions.map((x, i) => (
+                  <li key={i} className="border border-filet rounded-xl p-2 text-[0.875rem]">
+                    <span className="block text-[0.75rem] text-gris">Version {i + 1}, remplacée à {heureHHmm(x.cree_at)}</span>
+                    <span className="whitespace-pre-wrap break-words">{x.texte}</span>
+                  </li>
+                ))}
+                <li className="border-2 border-marine rounded-xl p-2 text-[0.875rem]">
+                  <span className="block text-[0.75rem] text-gris">Texte actuel</span>
+                  <span className="whitespace-pre-wrap break-words">{versions.v.actuel}</span>
+                </li>
+              </ol>
+            )}
+            <button type="button" onClick={() => setVersions(null)} className="w-full min-h-[44px] rounded-xl border border-filet font-bold text-marine">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

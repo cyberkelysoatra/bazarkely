@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.105.0';
-export const APP_VERSION_NAME = 'PUDi : choix jamais envoyés comptés pour les organisateurs, ouverture dans Chrome.';
+export const APP_VERSION = '3.106.0';
+export const APP_VERSION_NAME = 'PUDi : discussion, aller au message cité et modifier son message pendant 10 minutes.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.106.0',
+    date: '2026-10-24',
+    description: 'PUDi : dans la discussion, toucher une citation mène au message d’origine, et chacun peut corriger son propre message pendant 10 minutes.',
+    changes: [
+      'Citation d’une réponse : défilement doux jusqu’au message d’origine, mis en valeur 2 secondes ; les messages plus anciens sont chargés si besoin (« Recherche du message… »), « Message d’origine introuvable » sinon.',
+      '« Modifier » dans le menu de son propre message pendant 10 minutes (contrôlé par le serveur, 5 fois au plus), « Annuler » possible, petite mention « modifié » à côté de l’heure.',
+      'Organisateurs : lien « voir les versions » sur les messages modifiés ; anciennes versions effacées le 28/01/2027.'
+    ]
+  },
   {
     version: '3.105.0',
     date: '2026-10-24',

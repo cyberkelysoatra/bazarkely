@@ -17,6 +17,10 @@ export interface MessageDiscussion {
   peut_supprimer: boolean;
   /** Organisers only (null otherwise). */
   auteur_suspendu: boolean | null;
+  /** PUDI-CC-16.3: edited by its author (absent on an older server answer). */
+  modifie?: boolean;
+  /** Author only: end of the 10-minute edit window (null otherwise). */
+  modifiable_jusqu_a?: string | null;
 }
 
 export const LIMITE_PAGE = 50;
@@ -44,7 +48,15 @@ export async function lireMessages(avant: string | null = null, limite = LIMITE_
 /** PUDI-CC-14.4: the client id makes a retried send idempotent on the server. */
 export const ecrireMessage = (texte: string, reponseA: string | null, clientId: string) =>
   rpc<{ id: string }>('pudi_discussion_ecrire', { p_texte: texte, p_reponse_a: reponseA, p_client_id: clientId });
-export const supprimerMessage = (id: string) => rpc<{ id: string; role?: string }>('pudi_discussion_supprimer', { p_id: id });
+/** PUDI-CC-16.3: own message, 10 minutes after writing at most (checked on the server). */
+export const modifierMessage = (id: string, texte: string) => rpc<{ id: string }>('pudi_discussion_modifier', { p_id: id, p_texte: texte });
+export interface VersionsMessage {
+  actuel: string | null;
+  versions: { texte: string; cree_at: string }[];
+}
+/** Organisers only: previous texts of an edited message. */
+export const lireVersions = (id: string) => rpc<VersionsMessage>('pudi_admin_discussion_versions', { p_message: id });
+export const supprimerMessage =(id: string) => rpc<{ id: string; role?: string }>('pudi_discussion_supprimer', { p_id: id });
 export const suspendreAuteur = (message: string, motif: string) => rpc<null>('pudi_admin_discussion_suspendre', { p_message: message, p_motif: motif });
 export const retablirAuteur = (message: string) => rpc<null>('pudi_admin_discussion_retablir_auteur', { p_message: message });
 
