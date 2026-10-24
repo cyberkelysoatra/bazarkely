@@ -122,24 +122,22 @@ function Ligne({ r, donnees, clos }: { r: ResultatRecherche; donnees: PudiDonnee
       desactive={clos}
       className={`border-l-[6px] ${r.type === 'programme' ? 'bg-white border border-filet' : 'bg-sable border-2 border-dashed border-marine/60'}`}
       style={s ? { borderLeftColor: s.couleur } : undefined}
-    >
-        <div className="flex flex-wrap items-center gap-2">
-          {s ? (
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold text-white"
-              style={{ background: s.couleurFoncee }}
-            >
-              {s.nom}
-            </span>
-          ) : (
-            <BadgeProposition court />
-          )}
-        </div>
-        <p className="mt-1.5 font-bold text-[1rem] leading-snug">{r.nom}</p>
-        <p className="mt-1 text-[0.875rem] text-gris leading-snug break-words flex gap-1">
-          <span className="min-w-0 flex-1">
-            <Pourquoi e={r.explication} />
+      etiquette={
+        s ? (
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold text-white text-right"
+            style={{ background: s.couleurFoncee }}
+          >
+            {s.nom}
           </span>
+        ) : (
+          <BadgeProposition court />
+        )
+      }
+    >
+        <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{r.nom}</p>
+        <p className="mt-1 text-[0.875rem] text-gris leading-snug break-words">
+          <Pourquoi e={r.explication} />
         </p>
     </CarteChoix>
   );

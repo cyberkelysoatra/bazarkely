@@ -67,10 +67,10 @@ export default function Secteur() {
             desactive={clos}
             className="bg-white border border-filet border-l-[6px]"
             style={{ borderLeftColor: s.couleur }}
+            etiquette={<BadgeTranche tranche={p.trancheAffichee} />}
           >
-            <p className="font-bold text-[1rem] leading-snug">{p.nom}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <BadgeTranche tranche={p.trancheAffichee} />
+            <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.nom}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
               {brouillon.priorites.includes(p.id) && (
                 <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
                   <Icone nom="etoile" className="w-3.5 h-3.5" />

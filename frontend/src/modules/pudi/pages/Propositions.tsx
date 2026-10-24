@@ -86,10 +86,10 @@ export default function Propositions() {
               details={`/proposition/${p.id}`}
               desactive={clos}
               className="bg-sable border-2 border-dashed border-marine/60"
+              etiquette={<BadgeProposition court />}
             >
-                <p className="font-bold text-[1rem] leading-snug">{p.intitule}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <BadgeProposition court />
+                <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.intitule}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
                   {brouillon.priorites.includes(p.id) && (
                     <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
                       <Icone nom="etoile" className="w-3.5 h-3.5" />

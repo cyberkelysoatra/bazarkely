@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.106.0';
-export const APP_VERSION_NAME = 'PUDi : discussion, aller au message cité et modifier son message pendant 10 minutes.';
+export const APP_VERSION = '3.106.1';
+export const APP_VERSION_NAME = 'PUDi : cartes de choix plus compactes, badge et « Détails » à droite.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.106.1',
+    date: '2026-10-24',
+    description: 'PUDi : sur les listes de projets, de propositions, de recherche et « Mon choix », le badge principal et « Détails » sont en haut à droite de la carte ; les cartes sont plus courtes.',
+    changes: [
+      'Case à gauche, titre au milieu (sur autant de lignes que nécessaire), badge principal puis « Détails » en haut à droite.',
+      'Plus de grand espace vide en bas de carte ; « Priorité », « Urgent », coût, lieu et date restent sous le titre.',
+      'Toucher la carte (badge compris) coche ou décoche ; « Détails » ouvre la fiche sans rien changer.'
+    ]
+  },
   {
     version: '3.106.0',
     date: '2026-10-24',

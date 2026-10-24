@@ -112,16 +112,18 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
               mode={mode}
               desactive={clos}
               className={`border-2 ${p.proposition ? `bg-sable border-dashed ${actif ? 'border-marine' : 'border-marine/50'}` : `bg-white ${actif ? 'border-marine' : 'border-filet'}`}`}
-            >
-              <p className="font-bold text-[0.9375rem] leading-snug">{p.nom}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                {p.proposition ? (
+              etiquette={
+                p.proposition ? (
                   <span className="text-[0.75rem] font-bold text-marine">{frPages.propositions.badge}</span>
                 ) : (
                   <span className="text-[0.75rem] font-bold" style={{ color: s?.couleurFoncee }}>
                     {s?.nom}
                   </span>
-                )}
+                )
+              }
+            >
+              <p className="font-bold text-[0.9375rem] leading-snug" data-titre-carte="">{p.nom}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 empty:hidden">
                 {mode === 'urgent' &&
                   (p.tranche ? (
                     <BadgeTranche tranche={p.tranche} />
