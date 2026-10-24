@@ -3,7 +3,7 @@
 // (consultation published, no « Voir comme » preview). Fire-and-forget, errors ignored.
 import { useEffect } from 'react';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, withTimeout } from './supabaseClient';
-import { visiteur } from './parcours';
+import { visiteurPret } from './parcours';
 
 export const INTERVALLE_PRESENCE_MS = 60000;
 let dernier = 0;
@@ -12,14 +12,18 @@ function noter(): void {
   if (document.visibilityState !== 'visible' || navigator.onLine === false) return;
   if (Date.now() - dernier < INTERVALLE_PRESENCE_MS - 1000) return;
   dernier = Date.now();
-  void withTimeout(
-    fetch(`${SUPABASE_URL}/rest/v1/rpc/pudi_noter_presence`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_visiteur: visiteur() }),
-      keepalive: true
-    })
-  ).catch(() => undefined);
+  void visiteurPret()
+    .then((id) =>
+      withTimeout(
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/pudi_noter_presence`, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_visiteur: id }),
+          keepalive: true
+        })
+      )
+    )
+    .catch(() => undefined);
 }
 
 /** `actif`: published consultation and no preview (same switch as the funnel). */

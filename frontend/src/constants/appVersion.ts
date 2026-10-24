@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.104.1';
-export const APP_VERSION_NAME = 'PUDi : la connexion expirée est renouvelée, le vote réapparaît.';
+export const APP_VERSION = '3.105.0';
+export const APP_VERSION_NAME = 'PUDi : choix jamais envoyés comptés pour les organisateurs, ouverture dans Chrome.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.105.0',
+    date: '2026-10-24',
+    description: 'PUDi : identifiant d’appareil durable et anonyme, choix cochés mais jamais envoyés comptés (organisateurs seulement, non vérifiés), et passage vers Chrome depuis WhatsApp, Facebook, Instagram ou Messenger.',
+    changes: [
+      'L’identifiant anonyme de l’appareil survit à l’effacement du stockage (cookie et IndexedDB en secours), sans compte ni numéro.',
+      'Le choix coché sur un appareil est noté de façon anonyme 3 secondes après le dernier changement ; il n’est jamais compté comme un vote.',
+      'Suivi : carte « Choix faits sur un appareil mais jamais envoyés » (complets, commencés, classement), chiffres non vérifiés, jamais publics.',
+      'Dans le navigateur de WhatsApp, Facebook, Instagram ou Messenger : « Pour vous connecter avec Google, ouvrez cette page dans Chrome », avec le choix et le canal gardés dans le lien.',
+      'Notice et page « Données » : phrase sur les choix enregistrés de façon anonyme.'
+    ]
+  },
   {
     version: '3.104.1',
     date: '2026-10-24',

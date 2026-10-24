@@ -171,5 +171,14 @@ export const frPages = {
     voirResultats: 'Voir les résultats',
     modifier: 'Modifier mon vote',
     test: 'Vote de test : il sera effacé à la publication de la consultation.'
+  },
+  navigateurInterne: {
+    titre: 'Pour vous connecter avec Google, ouvrez cette page dans Chrome',
+    explication: 'Vous êtes dans le navigateur de WhatsApp, Facebook, Instagram ou Messenger : Google y refuse la connexion.',
+    ouvrir: 'Ouvrir dans Chrome',
+    copier: 'Copier le lien de cette page',
+    copie: 'Lien copié : collez-le dans Safari ou Chrome',
+    copierManuel: 'Copiez ce lien puis ouvrez-le dans Safari ou Chrome :',
+    garde: 'Vos choix cochés suivent le lien : inutile de recommencer.'
   }
 } as const;

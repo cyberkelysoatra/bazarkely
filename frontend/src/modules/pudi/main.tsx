@@ -4,12 +4,13 @@ import { createRoot } from 'react-dom/client';
 import './pudi.css';
 import PudiApp from './PudiApp';
 import { ecouterInstallation } from './appels/installation';
-import { capturerCanal } from './appels/provenance';
+import { capturerBrouillonAdresse, capturerCanal } from './appels/provenance';
 import { signalerSession, synchroniserSessionNative } from './appels/session';
 import { getSupabase } from './appels/supabaseClient';
 import { ping } from './appels/api';
 
 capturerCanal();
+capturerBrouillonAdresse();
 ecouterInstallation();
 // NAVY ay app only: the header reads the session the app holds (no-op on the web).
 synchroniserSessionNative();

@@ -18,6 +18,8 @@ import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../uti
 import { dateCourte } from '../utils/format';
 import { brouillonValide, normaliserTelephone, type Brouillon } from '../utils/regles';
 import { allerAuChamp } from '../utils/champFautif';
+import OuvrirDansChrome from '../composants/OuvrirDansChrome';
+import { lierVote } from '../appels/choixAppareil';
 import { BandeauReseau, useEnvoiFiable } from '../composants/Reseau';
 import { IndicateurEtapes } from '../composants/Etapes';
 import { programmeParId } from '../data';
@@ -196,6 +198,8 @@ export default function Envoyer() {
       const v = await soumettreVote(b, f, c);
       setVote(v);
       noterMonVote(v);
+      // PUDI-CC-16.2: this device's choice is now « sent » (never counted as unsent).
+      void lierVote();
       if (!v.est_test) noterEtape('vote');
       navigate('/merci', { state: { test: v.est_test } });
     } finally {
@@ -266,6 +270,7 @@ export default function Envoyer() {
               </ol>
             </div>
           )}
+          <OuvrirDansChrome />
           <button type="button" className={`${boutonPrincipal} w-full`} onClick={connexionGoogle} disabled={redirection}>
             <Icone nom="connexion" />
             {redirection ? fr.envoi.connexionEnCours : fr.envoi.google}

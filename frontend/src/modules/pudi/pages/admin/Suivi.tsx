@@ -10,6 +10,7 @@ import { fr } from '../../i18n/fr';
 import { frPages } from '../../i18n/frPages';
 import { Aide, Chiffre, Erreur, Titre2, petitBouton, useAppel } from './communs';
 import ParcoursVisiteurs, { SANS_CANAL } from './Parcours';
+import ChoixNonEnvoyes from './ChoixNonEnvoyes';
 import { lireSuiviDiscussion } from '../../appels/discussion';
 
 const PERSONNE = libelleMotifRefus('personne_deja_votee');
@@ -126,6 +127,7 @@ export default function Suivi() {
           )}
 
           <ParcoursVisiteurs nomCanal={nomCanal} codes={d?.canaux.map((c) => c.code) ?? []} />
+          <ChoixNonEnvoyes donnees={donnees} />
 
           <Titre2 aide="Dates de Madagascar.">Votes par jour</Titre2>
           {Object.keys(s.par_jour).length ? (

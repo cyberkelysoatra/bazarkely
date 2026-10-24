@@ -118,6 +118,14 @@ export interface ParcoursAdmin {
 }
 export const lireParcours = (canal: string | null) => rpc<ParcoursAdmin>('pudi_admin_parcours', { p_canal: canal });
 export const lireVotes = () => rpc<VoteAdmin[]>('pudi_admin_votes');
+/** PUDI-CC-16.2: choices made on a device but never sent (figures only, never a list of devices). */
+export interface ChoixNonEnvoyes {
+  calcule_at: string;
+  complets: number;
+  partiels: number;
+  classement: { id: string; n: number }[];
+}
+export const lireChoixNonEnvoyes = () => rpc<ChoixNonEnvoyes>('pudi_admin_choix_non_envoyes');
 export const masquerVote = (id: string, masque: boolean, motif: string | null) =>
   rpc<null>('pudi_admin_masquer', { p_id_anonyme: id, p_masque: masque, p_motif: motif });
 export const lireRefus = () => rpc<Refus[]>('pudi_admin_refus');

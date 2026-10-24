@@ -230,6 +230,18 @@ export function PudiProvider({ children }: { children: ReactNode }) {
     if (parcoursOk === false) return;
     for (const e of etapesDuChoix(brouillon.priorites.length)) noterEtape(e);
   }, [parcoursOk, brouillon.priorites.length]);
+  // PUDI-CC-16.2: choice of this device noted anonymously (unsent choices), lazy module.
+  useEffect(() => {
+    if (parcoursOk !== true || !brouillon.priorites.length) return;
+    void import('./appels/choixAppareil').then((m) => m.planifierChoix(brouillon)).catch(() => undefined);
+  }, [parcoursOk, brouillon]);
+  // An account that voted: this device is « sent » (once per account and page load).
+  const lieAuVote = useRef<string | null>(null);
+  useEffect(() => {
+    if (parcoursOk !== true || !monVote || lieAuVote.current === monVote.compte) return;
+    lieAuVote.current = monVote.compte;
+    void import('./appels/choixAppareil').then((m) => m.lierVote()).catch(() => undefined);
+  }, [parcoursOk, monVote]);
 
   const valeur = useMemo<PudiContexteValeur>(
     () => ({

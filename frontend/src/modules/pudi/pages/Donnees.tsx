@@ -29,6 +29,7 @@ const SECTIONS: { icone: NomIcone; titre: string; textes: string[]; contact?: bo
       'Votre adresse e-mail Google, votre fokontany, votre profil, votre choix (3 priorités, urgents, projet manquant) et votre numéro de téléphone.',
       'Le numéro et l’adresse internet sont transformés aussitôt en empreintes codées : ils ne sont jamais enregistrés en clair.',
       'La fréquentation est mesurée de façon anonyme (étapes du parcours, sans compte ni numéro).',
+      'Les choix cochés sur un appareil sont enregistrés de façon anonyme (sans compte ni numéro) pour mesurer les choix non envoyés ; ils ne sont jamais comptés comme des votes et sont effacés le 28/01/2027.',
       'Les messages de la discussion sont publics (prénom et initiale) et effacés le 28/01/2027.',
       'Les messages envoyés aux organisateurs ne sont lus que par eux ; ils sont effacés le 28/01/2027.'
     ]
