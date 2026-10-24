@@ -1222,7 +1222,7 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
   (« Correspondance directe »), graphies PUDi des fokontany (`variantesPUDi`).
   **v3.103.0 (PUDI-CC-15)** : cherche aussi dans le texte des deux PDF (`utils/rechercheDocuments.ts`, index des mots
   `data/index-documents-pudi.json` en pages FICHIER, chunk à part gardé hors ligne, régénération `scripts/pudi/genere-index-documents.py`) :
-  0 projet → « ne figure dans aucun des 52 projets retenus » + pages PUDi / règlement ; projets trouvés → `<details>` replié
+  0 projet → « ne figure dans aucun des 52 programmes (137 projets) du PUDi » (v3.106.2, nombres calculés) + pages PUDi / règlement ; projets trouvés → `<details>` replié
   « Aussi dans les documents du PUDi » ; 12 liens par document au plus ; simple citation, sans IA.
 - Fiches : libellé officiel complet de chaque code, liens « PUDi p. X » vers le PDF (`#page=` page imprimée + 8,
   `utils/documents.ts`), encadrés « Précision » et « Pour en savoir plus ».
@@ -1231,6 +1231,30 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
 - Contact GIHTNB sur `/donnees` (info.gihtnb@gmail.com) ; date d'ouverture de la synthèse lue dans `publie_at`
   (« Consultation non encore publiée » avant) ; section « Propositions hors liste du PIC » dans les résultats et le PDF.
 - Administration : 7ᵉ onglet « Propositions » (chunk à part) et « Transformer en proposition » sur les textes libres.
+
+### PUDi · Lot PUDI-CC-16, v3.104.0 → v3.106.2
+
+- **Vote visible partout** (`PudiContexte` + `appels/monVote.ts`, `utils/monVote.ts`) : session connue + « a voté » →
+  `pudi_mon_vote` lu une fois (simple `fetch`), recopié dans `pudi_brouillon_v1` **seulement s'il est vide** ; copie
+  `pudi_mon_vote_cache` (priorités, urgences, date, compte) pour le hors connexion, effacée à la déconnexion, jamais en
+  « Voir comme ». Rappel « Vous avez voté le … » + « Modifier mon vote » (barre, « Mon choix », `RappelVote.tsx`).
+  **Jeton expiré** (accueil et découverte ne chargent pas supabase-js) : renouvelé une fois par `renouvelerSessionExpiree`.
+- **Textes des pages secondaires** dans `i18n/frPages.ts` (chunk à part) : `fr.groupe/recherche/resultats/propositions/
+  documents/merci/navigateurInterne` → `frPages.x`. Nouveau texte d'une page chargée à part : le mettre là.
+- **Appareil** : `pudi_visiteur` aussi en cookie `pudi_v` (400 j, `/pudi`) et IndexedDB `pudi_appareil`
+  (`visiteurPret()`). Choix noté anonymement (`appels/choixAppareil.ts`, chunk à part) → `pudi_choix_noter`
+  (3 s, 1 appel / 5 s), lié au vote par `pudi_choix_lier_vote` ; organisateurs : `pudi_admin_choix_non_envoyes`
+  (carte du Suivi, chiffres non vérifiés, jamais dans les résultats). Table `pudi_choix_appareils` purgée le 28/01/2027.
+- **Navigateurs de WhatsApp / Facebook / Instagram / Messenger** (`utils/navigateurInterne.ts`) : bandeau « ouvrez cette
+  page dans Chrome » sur « Envoyer » (lien `intent://` sur Android, copie ailleurs), choix dans `?b=` (lu au démarrage par
+  `capturerBrouillonAdresse`, retiré de l'adresse, ne remplace jamais un choix présent). Jamais dans l'appli NAVY ay.
+- **Discussion** : citation = bouton vers le message d'origine (pages plus anciennes chargées, 10 au plus) ;
+  `pudi_discussion_modifier` (auteur, 10 min contrôlées sur le serveur, 5 fois), versions pour les organisateurs
+  (`pudi_admin_discussion_versions`, table `pudi_discussion_versions` purgée) ; `pudi_discussion_lire` renvoie
+  `modifie` et `modifiable_jusqu_a` (auteur seulement).
+- **Cartes de choix** : propriété `etiquette` de `CarteChoix` (badge principal), colonne badge + « Détails » en haut à
+  droite, flottante avec un espace réservé de sa taille (le titre s'enroule, les lignes du dessous prennent toute la largeur).
+- **Projet manquant** : 1 000 caractères (`MAX_MANQUANT`, contrainte `pudi_votes_manquant_check`, `pudi_soumettre_vote`).
 
 ---
 
