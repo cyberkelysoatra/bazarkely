@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.102.1';
-export const APP_VERSION_NAME = 'PUDi : correctif de mise en ligne (fichiers renommés, 404 franc pour un fichier manquant).';
-export const LAST_UPDATED = '2026-10-23';
-export const APP_BUILD_DATE = '2026-10-23';
+export const APP_VERSION = '3.103.0';
+export const APP_VERSION_NAME = 'PUDi : « Trouver un projet » cherche aussi dans les deux documents du PUDi.';
+export const LAST_UPDATED = '2026-10-24';
+export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.103.0',
+    date: '2026-10-24',
+    description: 'PUDi : « Trouver un projet » indique aussi les pages des deux documents du PUDi où le mot apparaît (sans intelligence artificielle, hors connexion).',
+    changes: [
+      'Mot absent des 52 projets mais présent dans les documents : « ne figure dans aucun des 52 projets retenus », puis les pages du PUDi et du règlement d’urbanisme, et l’invitation à proposer un projet.',
+      'Projets trouvés : bloc replié « Aussi dans les documents du PUDi » sous les résultats.',
+      'Au plus 12 liens de page par document, chaque lien ouvre le PDF à la bonne page ; index des mots chargé à part, seulement sur la page de recherche.'
+    ]
+  },
   {
     version: '3.102.1',
     date: '2026-10-23',

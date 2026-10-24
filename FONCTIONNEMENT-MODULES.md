@@ -1220,6 +1220,10 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
 - `/recherche` « Trouver un projet » : recherche sur l'appareil (`utils/recherche.ts`, pure et testée, index construit
   à l'ouverture de la page, chunk à part) : sans accents, ET entre les mots, préfixes, synonymes du fichier de données
   (« Correspondance directe »), graphies PUDi des fokontany (`variantesPUDi`).
+  **v3.103.0 (PUDI-CC-15)** : cherche aussi dans le texte des deux PDF (`utils/rechercheDocuments.ts`, index des mots
+  `data/index-documents-pudi.json` en pages FICHIER, chunk à part gardé hors ligne, régénération `scripts/pudi/genere-index-documents.py`) :
+  0 projet → « ne figure dans aucun des 52 projets retenus » + pages PUDi / règlement ; projets trouvés → `<details>` replié
+  « Aussi dans les documents du PUDi » ; 12 liens par document au plus ; simple citation, sans IA.
 - Fiches : libellé officiel complet de chaque code, liens « PUDi p. X » vers le PDF (`#page=` page imprimée + 8,
   `utils/documents.ts`), encadrés « Précision » et « Pour en savoir plus ».
 - `/documents` : le PUDi complet (14,6 Mo) et ses règlements, servis depuis `public/pudi/documents/`

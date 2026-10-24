@@ -118,7 +118,7 @@ export const fr = {
   recherche: {
     titre: 'Trouver un projet',
     intro:
-      'Un lieu, un mot, un code : le projet que vous cherchez est peut-être déjà prévu dans le PUDi. La recherche marche aussi sans connexion.',
+      'Un lieu, un mot, un code : le projet que vous cherchez est peut-être déjà prévu dans le PUDi. La recherche marche aussi sans connexion. La recherche regarde aussi le texte des deux documents du PUDi et indique les pages où le mot apparaît.',
     champ: 'Rechercher un projet',
     exemple: 'Par exemple : Nosy Komba, toilettes, eau, Ambatoloaka',
     direct: 'Correspondance directe',
@@ -126,6 +126,21 @@ export const fr = {
     limite: (n: number) => `Les ${n} premiers sont affichés : précisez la recherche.`,
     aucun: 'Aucun projet trouvé. Vérifiez l’orthographe, ou indiquez-le dans « Un projet manque au PUDi ? » (étape 3 du choix).',
     allerEtape3: 'Aller à l’étape 3 du choix',
+    // PUDI-CC-15: pages of the two PUDi documents where the words appear (plain citation).
+    documents: {
+      aucunProjet: (requete: string, n: number) => `« ${requete} » ne figure dans aucun des ${n} projets retenus.`,
+      enParlent: 'Les documents du PUDi en parlent :',
+      proposer: 'Si un projet vous paraît manquer, proposez-le.',
+      aussi: 'Aussi dans les documents du PUDi',
+      statut: ' et cité dans les documents du PUDi',
+      noms: { pudi: 'PUDi', reglements: 'Règlement d’urbanisme' } as Record<string, string>,
+      p: 'p.',
+      sommaire: 'sommaire',
+      autres: (n: number) => (n > 1 ? `et ${n} autres pages` : 'et 1 autre page'),
+      ouvrirDocument: 'Ouvrir le document',
+      ouvrePage: (id: string, n: number | null) =>
+        `Ouvrir ${id === 'pudi' ? 'le PUDi' : 'le règlement'} ${n === null ? 'au sommaire' : `à la page ${n}`}`
+    },
     champs: {
       nom: 'dans le nom',
       intitule: 'dans le titre',

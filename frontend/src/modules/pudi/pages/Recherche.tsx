@@ -1,5 +1,6 @@
 // « Trouver un projet »: search on the device among the 52 programmes and the proposals
-// (works offline once visited). The index is built when this page opens.
+// (works offline once visited). The index is built when this page opens. PUDI-CC-15: also the
+// pages of the two PUDi documents where the words appear (lazy word index).
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
@@ -11,7 +12,76 @@ import { CarteChoix } from '../composants/CarteChoix';
 import { usePropositions } from '../appels/propositions';
 import { MAX_RESULTATS, construireIndex, rechercher, type Explication, type ResultatRecherche } from '../utils/recherche';
 import { BadgeProposition } from './Propositions';
-import type { PudiDonnees } from '../data/types';
+import type { DocumentPudi, PudiDonnees } from '../data/types';
+import { documentsPudi, urlDocument } from '../utils/documents';
+import { liensPagesDocument, rechercherDocuments, type IndexDocuments, type PagesDocument } from '../utils/rechercheDocuments';
+
+// PUDI-CC-15: word index of the two documents, a lazy chunk (cached offline by the PUDi service
+// worker like the other chunks). A failed load only hides the documents block.
+let indexDocuments: Promise<IndexDocuments | null> | null = null;
+function chargerIndexDocuments(): Promise<IndexDocuments | null> {
+  indexDocuments ??= import('../data/index-documents-pudi.json')
+    .then((m) => m.default as IndexDocuments)
+    .catch(() => {
+      indexDocuments = null;
+      return null;
+    });
+  return indexDocuments;
+}
+
+function useIndexDocuments(): IndexDocuments | null {
+  const [index, setIndex] = useState<IndexDocuments | null>(null);
+  useEffect(() => {
+    let actif = true;
+    void chargerIndexDocuments().then((x) => actif && setIndex(x));
+    return () => {
+      actif = false;
+    };
+  }, []);
+  return index;
+}
+
+/** « PUDi : p. 1, 4, 17… » for each document (at most 12 links, then « et N autres pages »). */
+function PagesDocuments({ resultats, docs }: { resultats: PagesDocument[]; docs: DocumentPudi[] }) {
+  const t = fr.recherche.documents;
+  return (
+    <ul className="space-y-1.5">
+      {resultats.map((r) => {
+        const doc = docs.find((d) => d.id === r.id);
+        if (!doc) return null;
+        const { liens, reste } = liensPagesDocument(doc, r.pages);
+        return (
+          <li key={r.id} className="text-[0.9375rem] leading-snug">
+            <span className="font-bold">{t.noms[r.id] ?? doc.titre}</span> : {t.p}{' '}
+            {liens.map((l, i) => (
+              <span key={l.pageFichier}>
+                {i > 0 && ', '}
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label={t.ouvrePage(r.id, l.pageImprimee)}
+                  className="font-bold text-marine underline underline-offset-2 decoration-[#9AA3BD] inline-block min-w-[24px] py-1 text-center"
+                >
+                  {l.pageImprimee ?? t.sommaire}
+                </a>
+              </span>
+            ))}
+            {reste > 0 && (
+              <>
+                {' '}
+                {t.autres(reste)} ·{' '}
+                <a href={urlDocument(doc)} target="_blank" rel="noopener" className="font-bold text-marine underline underline-offset-2 decoration-[#9AA3BD] inline-block py-1">
+                  {t.ouvrirDocument}
+                </a>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function Surligne({ texte, surlignes }: { texte: string; surlignes: [number, number][] }) {
   const morceaux: ReactNode[] = [];
@@ -101,6 +171,10 @@ export default function Recherche() {
 
   const index = useMemo(() => (donnees ? construireIndex(donnees, propositions ?? []) : null), [donnees, propositions]);
   const reponse = useMemo(() => (index ? rechercher(index, saisie) : null), [index, saisie]);
+  const indexDocs = useIndexDocuments();
+  const pagesDocs = useMemo(() => (indexDocs ? rechercherDocuments(indexDocs, saisie) : []), [indexDocs, saisie]);
+  const docs = useMemo(() => documentsPudi(donnees), [donnees]);
+  const tDocs = fr.recherche.documents;
 
   return (
     <Page titre={fr.recherche.titre}>
@@ -126,7 +200,18 @@ export default function Recherche() {
         <ErreurDonnees reessayer={reessayer} />
       ) : !donnees || !reponse ? (
         <Chargement />
-      ) : !saisie.trim() ? null : reponse.total === 0 ? (
+      ) : !saisie.trim() ? null : reponse.total === 0 && pagesDocs.length > 0 ? (
+        <div className="bg-white border border-filet rounded-xl p-4 space-y-2" role="status">
+          <p className="text-[0.9375rem]">{tDocs.aucunProjet(saisie.trim(), donnees.programmes.length)}</p>
+          <p className="text-[0.9375rem]">{tDocs.enParlent}</p>
+          <PagesDocuments resultats={pagesDocs} docs={docs} />
+          <p className="text-[0.9375rem] pt-1">{tDocs.proposer}</p>
+          <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
+            <Icone nom="ampoule" className="w-4 h-4" />
+            {fr.recherche.allerEtape3}
+          </Link>
+        </div>
+      ) : reponse.total === 0 ? (
         <div className="bg-white border border-filet rounded-xl p-4 space-y-2" role="status">
           <p className="text-[0.9375rem]">{fr.recherche.aucun}</p>
           <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
@@ -138,6 +223,7 @@ export default function Recherche() {
         <>
           <p className="text-[0.875rem] text-gris mb-2" role="status" aria-live="polite">
             {fr.recherche.resultats(reponse.total)}
+            {pagesDocs.length > 0 && tDocs.statut}
             {reponse.total > MAX_RESULTATS && ` · ${fr.recherche.limite(MAX_RESULTATS)}`}
           </p>
           {reponse.directs.length > 0 && (
@@ -161,6 +247,14 @@ export default function Recherche() {
                 </Fragment>
               ))}
             </ul>
+          )}
+          {pagesDocs.length > 0 && (
+            <details className="mt-4 bg-white border border-filet rounded-xl px-4 py-2">
+              <summary className="cursor-pointer min-h-[44px] flex items-center font-bold text-[0.9375rem] text-marine">{tDocs.aussi}</summary>
+              <div className="pb-2">
+                <PagesDocuments resultats={pagesDocs} docs={docs} />
+              </div>
+            </details>
           )}
         </>
       )}
