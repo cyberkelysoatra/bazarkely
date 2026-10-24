@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Icone } from '../composants/Icones';
 import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
-import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { useDonnees, usePudi } from '../PudiContexte';
 import { documentsPudi, urlDocument } from '../utils/documents';
 
@@ -27,22 +27,22 @@ export default function Documents() {
   const enLigne = useEnLigne();
   const docs = documentsPudi(donnees);
   return (
-    <Page titre={fr.documents.titre}>
-      <p className="text-[0.9375rem] text-gris mb-3">{fr.documents.intro}</p>
+    <Page titre={frPages.documents.titre}>
+      <p className="text-[0.9375rem] text-gris mb-3">{frPages.documents.intro}</p>
       <div role="note" className="mb-4 border-l-4 border-[#926407] bg-[#FFF6E0] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start">
         <Icone nom="alerte" className="w-5 h-5 mt-0.5" />
-        <p className="text-[0.9375rem] leading-snug">{fr.documents.lourds}</p>
+        <p className="text-[0.9375rem] leading-snug">{frPages.documents.lourds}</p>
       </div>
       {!enLigne && (
         <div role="status" className="mb-4 border-l-4 border-[#B85317] bg-white rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">
           <Icone nom="horsLigne" className="w-5 h-5 mt-0.5" />
-          <p className="text-[0.9375rem] leading-snug">{fr.documents.horsLigne}</p>
+          <p className="text-[0.9375rem] leading-snug">{frPages.documents.horsLigne}</p>
         </div>
       )}
       <ul className="space-y-3">
         {docs.map((d) => {
           const url = urlDocument(d);
-          const details = [fr.documents.pdf, d.taille, d.pages ? fr.documents.pages(d.pages) : null].filter(Boolean).join(' · ');
+          const details = [frPages.documents.pdf, d.taille, d.pages ? frPages.documents.pages(d.pages) : null].filter(Boolean).join(' · ');
           return (
             <li key={d.id} className="bg-white border border-filet rounded-xl p-4">
               <div className="flex gap-3 items-start">
@@ -59,25 +59,25 @@ export default function Documents() {
                   <>
                     <a href={url} target="_blank" rel="noopener" className={`${boutonPrincipal} px-3`}>
                       <Icone nom="oeil" />
-                      {fr.documents.ouvrir}
+                      {frPages.documents.ouvrir}
                     </a>
                     <a href={url} download={d.fichier} className={`${boutonSecondaire} px-3`}>
                       <Icone nom="telecharger" />
-                      {fr.documents.telecharger}
+                      {frPages.documents.telecharger}
                     </a>
                   </>
                 ) : (
                   <>
                     <button type="button" disabled className={`${boutonPrincipal} px-3`} aria-describedby={`pudi-doc-${d.id}`}>
                       <Icone nom="oeil" />
-                      {fr.documents.ouvrir}
+                      {frPages.documents.ouvrir}
                     </button>
                     <button type="button" disabled className={`${boutonSecondaire} px-3`} aria-describedby={`pudi-doc-${d.id}`}>
                       <Icone nom="telecharger" />
-                      {fr.documents.telecharger}
+                      {frPages.documents.telecharger}
                     </button>
                     <p id={`pudi-doc-${d.id}`} className="col-span-2 text-[0.8125rem] text-gris">
-                      {fr.documents.horsLigne}
+                      {frPages.documents.horsLigne}
                     </p>
                   </>
                 )}

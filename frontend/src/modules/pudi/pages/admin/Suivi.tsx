@@ -7,6 +7,7 @@ import { lireCanaux, lireRefus, lireSuivi, lireVotes } from '../../appels/admin'
 import { dateCourte, heureCourte, libelleMotifRefus } from '../../utils/format';
 import { pourcent } from '../../utils/synthese';
 import { fr } from '../../i18n/fr';
+import { frPages } from '../../i18n/frPages';
 import { Aide, Chiffre, Erreur, Titre2, petitBouton, useAppel } from './communs';
 import ParcoursVisiteurs, { SANS_CANAL } from './Parcours';
 import { lireSuiviDiscussion } from '../../appels/discussion';
@@ -200,7 +201,7 @@ export default function Suivi() {
                   </tr>
                 ))}
                 <tr>
-                  <td className="px-3 py-1.5">{fr.resultats.autreFokontany}</td>
+                  <td className="px-3 py-1.5">{frPages.resultats.autreFokontany}</td>
                   <td className="px-2 py-1.5 text-right font-bold">{s.fokontany_autre}</td>
                   <td className="px-2 py-1.5" />
                   <td className="px-3 py-1.5" />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '../../composants/Icones';
 import { PROFIL_VALEURS } from '../../data';
 import { fr } from '../../i18n/fr';
+import { frPages } from '../../i18n/frPages';
 import { useDonnees } from '../../PudiContexte';
 import { lireCanaux, lireVotes, masquerVote, type VoteAdmin } from '../../appels/admin';
 import { csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier } from '../../utils/exports';
@@ -66,7 +67,7 @@ export default function Votes() {
     code ? appel.donnees?.canaux.find((c) => c.code === code)?.nom ?? code : 'Sans lien de canal';
   const nomFkt = (v: VoteAdmin) =>
     v.fokontany === 'AUTRE'
-      ? `${fr.resultats.autreFokontany}${v.fokontany_autre ? ` (${v.fokontany_autre})` : ''}`
+      ? `${frPages.resultats.autreFokontany}${v.fokontany_autre ? ` (${v.fokontany_autre})` : ''}`
       : donnees?.fokontany.find((f) => f.ceni === v.fokontany)?.affichage ?? v.fokontany;
   const nomProfil = (p: string) => (fr.envoi.profils as Record<string, string>)[p] ?? p;
 

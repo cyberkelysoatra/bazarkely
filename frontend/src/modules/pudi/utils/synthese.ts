@@ -2,6 +2,7 @@
 // Pure: no jsPDF here, so the content is unit tested and the PDF code only lays it out.
 import type { PudiDonnees } from '../data/types';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { construireCsv, nettoyerTexteLibre } from './exports';
 import { dateClotureLongue, dateCourte, dateJour, dateLongue } from './format';
 
@@ -148,7 +149,7 @@ export function preparerSynthese(
   const reseau = r.reseaux.dans_nos_reseaux + r.reseaux.hors_reseaux;
   const profils = Object.keys(fr.envoi.profils) as (keyof typeof fr.envoi.profils)[];
   const libelleFkt = (ceni: string) =>
-    ceni === 'AUTRE' ? fr.resultats.autreFokontany : d.fokontany.find((f) => f.ceni === ceni)?.affichage ?? ceni;
+    ceni === 'AUTRE' ? frPages.resultats.autreFokontany : d.fokontany.find((f) => f.ceni === ceni)?.affichage ?? ceni;
   return {
     titre: TITRE_SYNTHESE,
     provisoire: options.provisoire,
@@ -199,7 +200,7 @@ export function csvSynthese(s: Synthese): string {
     lignes.push(['proposition_hors_pic', l.rang, l.id, l.intitule, '', l.nPriorite, l.pctPriorite, '', '']);
   for (const l of s.profils) lignes.push(['profil', '', '', l.libelle, '', l.n, l.pct, '', '']);
   for (const l of s.fokontany) lignes.push(['fokontany', '', '', l.libelle, '', l.n, l.pct, '', '']);
-  lignes.push(['reseaux', '', '', fr.resultats.dansReseaux, '', s.reseaux.dans, s.reseaux.pctDans, '', '']);
-  lignes.push(['reseaux', '', '', fr.resultats.horsReseaux, '', s.reseaux.hors, s.reseaux.pctHors, '', '']);
+  lignes.push(['reseaux', '', '', frPages.resultats.dansReseaux, '', s.reseaux.dans, s.reseaux.pctDans, '', '']);
+  lignes.push(['reseaux', '', '', frPages.resultats.horsReseaux, '', s.reseaux.hors, s.reseaux.pctHors, '', '']);
   return construireCsv(['section', 'rang', 'id', 'libelle', 'secteur', 'n', 'part', 'tranche_pudi', 'ecart_avec_le_pudi'], lignes);
 }

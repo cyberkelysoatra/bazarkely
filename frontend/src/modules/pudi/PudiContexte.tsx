@@ -1,5 +1,5 @@
 // Shared state of the PUDi entry: draft of the choice, state of the consultation, data file.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chargerDonnees, donneesChargees, type PudiDonnees } from './data';
 import { lireEtat, type EtatConsultation } from './appels/api';
 import { ecrireBrouillon, lireBrouillon } from './appels/brouillon';
@@ -12,6 +12,10 @@ import { useApercuStocke } from './appels/apercu';
 import { activerParcours, noterEtape } from './appels/parcours';
 import { usePresence } from './appels/presence';
 import { etapesDuChoix, etatEffectif, masquageApercu, peutApercu, type Apercu } from './utils/apercu';
+import { effacerVoteCache, ecrireVoteCache, lireMonVoteServeur, lireVoteCache, resumeDuVote } from './appels/monVote';
+import { brouillonDuVote, doitRemplirDepuisServeur, voteDuCompte, type VoteResume } from './utils/monVote';
+import { brouillonVide } from './appels/brouillon';
+import type { MonVote } from './appels/api';
 
 interface PudiContexteValeur {
   brouillon: Brouillon;
@@ -42,6 +46,10 @@ interface PudiContexteValeur {
   /** Active automatic maskings of the signed-in account (PUDI-CC-09), empty otherwise. */
   masquages: MonMasquage[];
   rechargerMasquages: () => Promise<void>;
+  /** Own vote of the signed-in account (server, or the device copy offline); null in the preview. */
+  monVote: VoteResume | null;
+  /** Call after a vote was sent or read on the sending page. */
+  noterMonVote: (v: MonVote) => void;
 }
 
 const Ctx = createContext<PudiContexteValeur | null>(null);
@@ -146,6 +154,60 @@ export function PudiProvider({ children }: { children: ReactNode }) {
     [apercu, masquages]
   );
 
+  // PUDI-CC-16.1: own vote on every device. Read once per account as soon as the server says
+  // « a_vote »; an EMPTY draft is filled with it, a different draft is kept (« Vous modifiez… »).
+  // Never in the preview; the device copy is cleared on sign-out.
+  const [monVoteReel, setMonVoteReel] = useState<VoteResume | null>(() => lireVoteCache());
+  const voteLuPour = useRef<string | null>(null);
+  const noterMonVote = useCallback(
+    (v: MonVote) => {
+      if (!email) return;
+      const r = resumeDuVote(v, email);
+      ecrireVoteCache(r);
+      setMonVoteReel(r);
+    },
+    [email]
+  );
+  useEffect(() => {
+    if (email) return;
+    voteLuPour.current = null;
+    effacerVoteCache();
+    setMonVoteReel(null);
+  }, [email]);
+  const avecApercu = !!apercuStocke && joel;
+  useEffect(() => {
+    if (!email || !etatReel?.connecte || avecApercu) return;
+    if (!etatReel.a_vote) {
+      // Confirmed by the server: no vote for this account (e.g. vote removed).
+      effacerVoteCache();
+      setMonVoteReel(null);
+      return;
+    }
+    if (voteLuPour.current === email) return;
+    voteLuPour.current = email;
+    const pour = email;
+    lireMonVoteServeur()
+      .then((v) => {
+        if (voteLuPour.current !== pour || !v) return;
+        noterMonVote(v);
+        if (doitRemplirDepuisServeur(lireBrouillon(), v)) {
+          ecrireBrouillon(brouillonDuVote(v));
+          setBrouillon(lireBrouillon());
+        }
+      })
+      .catch(() => {
+        // Offline or refused: the device copy stays, another try on the next state.
+        if (voteLuPour.current === pour) voteLuPour.current = null;
+      });
+  }, [email, etatReel, avecApercu, noterMonVote]);
+  const monVote = avecApercu ? null : voteDuCompte(monVoteReel, email);
+  // Offline on a device that already showed the vote: an empty draft takes the device copy.
+  useEffect(() => {
+    if (!monVote || !brouillonVide(lireBrouillon())) return;
+    ecrireBrouillon(brouillonDuVote(monVote));
+    setBrouillon(lireBrouillon());
+  }, [monVote]);
+
   // Anonymous funnel: only once published (no test votes) and never during the preview.
   const parcoursOk = apercu ? false : etatReel ? etatReel.publie : null;
   useEffect(() => {
@@ -179,7 +241,9 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       propositionsRetirees,
       effacerPropositionsRetirees,
       masquages: masquagesVus,
-      rechargerMasquages
+      rechargerMasquages,
+      monVote,
+      noterMonVote
     }),
     [
       brouillon,
@@ -196,7 +260,9 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       propositionsRetirees,
       effacerPropositionsRetirees,
       masquagesVus,
-      rechargerMasquages
+      rechargerMasquages,
+      monVote,
+      noterMonVote
     ]
   );
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import donneesBrutes from '../data/pudi-donnees.json';
 import type { PudiDonnees } from '../data/types';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { libelleQr } from '../appels/qr';
 import { CLOTURE_PAR_DEFAUT, dateClotureLongue } from './format';
 import { afficherNumero, filtrerMembres, messageGroupe, verifierSaisie } from './groupe';
@@ -12,9 +13,9 @@ const P = (id: string) => D.programmes.find((p) => p.id === id)!;
 
 describe('wording requested by the PIC', () => {
   it('« Propositions de nouveaux projets » everywhere, no « hors liste », no em dash', () => {
-    expect(fr.propositions.titre).toBe('Propositions de nouveaux projets');
+    expect(frPages.propositions.titre).toBe('Propositions de nouveaux projets');
     expect(fr.secteurs.carteProposition).toBe('Propositions de nouveaux projets');
-    expect(fr.resultats.propositionsTitre).toBe('Propositions de nouveaux projets');
+    expect(frPages.resultats.propositionsTitre).toBe('Propositions de nouveaux projets');
     const tout = JSON.stringify(fr);
     expect(tout).not.toMatch(/hors liste/i);
     expect(tout).not.toContain('—');

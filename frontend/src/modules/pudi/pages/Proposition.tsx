@@ -6,6 +6,7 @@ import { BoutonsChoix } from '../composants/BoutonsChoix';
 import { Icone } from '../composants/Icones';
 import { Chargement, Page } from '../composants/Mise';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { noterEtape } from '../appels/parcours';
 import { usePudi } from '../PudiContexte';
 import { propositionParId } from '../appels/propositions';
@@ -32,7 +33,7 @@ export default function Proposition() {
   const retour = (
     <Link to="/propositions" onClick={retourListe} className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
       <Icone nom="gauche" />
-      {fr.propositions.retour}
+      {frPages.propositions.retour}
     </Link>
   );
   if (erreur) return <Page>{retour}<ErreurPropositions reessayer={reessayer} /></Page>;
@@ -42,7 +43,7 @@ export default function Proposition() {
     return (
       <Page>
         {retour}
-        <p className="mt-4 text-[1rem]">{fr.propositions.introuvable}</p>
+        <p className="mt-4 text-[1rem]">{frPages.propositions.introuvable}</p>
       </Page>
     );
   return (
@@ -58,12 +59,12 @@ export default function Proposition() {
           <>
             <dt className="text-gris flex items-center gap-1">
               <Icone nom="lieu" className="w-4 h-4" />
-              {fr.propositions.lieu}
+              {frPages.propositions.lieu}
             </dt>
             <dd className="break-words">{p.lieu}</dd>
           </>
         )}
-        <dt className="text-gris">{fr.propositions.source}</dt>
+        <dt className="text-gris">{frPages.propositions.source}</dt>
         <dd className="break-words">
           {p.source}
           {p.date_source && !/\d{4}/.test(p.source) ? ` (${dateJour(p.date_source)})` : ''}
@@ -71,11 +72,11 @@ export default function Proposition() {
         <dt className="text-gris">{fr.programme.tranche}</dt>
         <dd>
           <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[0.75rem] font-bold text-marine">
-            {fr.propositions.horsPudi}
+            {frPages.propositions.horsPudi}
           </span>
         </dd>
       </dl>
-      <p className="mt-2 text-[0.8125rem] text-gris">{fr.propositions.ajoutee(dateJour(p.ajoute_at))}</p>
+      <p className="mt-2 text-[0.8125rem] text-gris">{frPages.propositions.ajoutee(dateJour(p.ajoute_at))}</p>
 
       {p.precision && (
         <section className="mt-4 bg-[#FFF6E0] border border-[#E9D29A] rounded-xl p-3">

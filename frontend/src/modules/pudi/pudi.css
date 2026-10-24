@@ -92,3 +92,6 @@ body {
 body.pudi-barre-vote .pudi-page {
   padding-bottom: 10.5rem;
 }
+body.pudi-barre-vote.pudi-rappel-vote .pudi-page {
+  padding-bottom: 13.5rem;
+}

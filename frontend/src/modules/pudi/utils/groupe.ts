@@ -1,6 +1,6 @@
 // Pure helpers of the group managers' screen (PUDI-CC-07): display of the numbers, search,
 // check of the form before sending, French messages of the server errors.
-import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { extraireCode } from './erreurs';
 import { normaliserTelephone, normaliserTelephoneAffichage } from './regles';
 
@@ -65,6 +65,6 @@ export function verifierSaisie(numeros: string[], email: string): string | null 
 
 export function messageGroupe(e: unknown): string {
   const code = extraireCode(e);
-  const messages = fr.groupe.erreurs as Record<string, string>;
+  const messages = frPages.groupe.erreurs as Record<string, string>;
   return (code && messages[code]) || messages.AUTRE;
 }

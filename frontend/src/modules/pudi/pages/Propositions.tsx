@@ -6,6 +6,7 @@ import { CarteChoix } from '../composants/CarteChoix';
 import { Icone } from '../composants/Icones';
 import { BandeauxEtat, Chargement, Page, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { usePudi } from '../PudiContexte';
 import { rafraichirPropositions, usePropositions, type Proposition } from '../appels/propositions';
 import { dateJour } from '../utils/format';
@@ -37,7 +38,7 @@ export function BadgeProposition({ court = false }: { court?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-marine bg-sable px-2.5 py-0.5 text-[0.75rem] font-bold text-marine whitespace-nowrap">
       <Icone nom="ampoule" className="w-3.5 h-3.5" />
-      {court ? fr.propositions.badgeCourt : fr.propositions.badge}
+      {court ? frPages.propositions.badgeCourt : frPages.propositions.badge}
     </span>
   );
 }
@@ -45,7 +46,7 @@ export function BadgeProposition({ court = false }: { court?: boolean }) {
 export function ErreurPropositions({ reessayer }: { reessayer: () => void }) {
   return (
     <div className="py-6 space-y-3">
-      <p>{fr.propositions.indisponibles}</p>
+      <p>{frPages.propositions.indisponibles}</p>
       <button type="button" className={boutonSecondaire} onClick={reessayer}>
         <Icone nom="actualiser" />
         {fr.app.reessayer}
@@ -64,8 +65,8 @@ export default function Propositions() {
         <Icone nom="gauche" />
         {fr.secteurs.titre}
       </Link>
-      <h1 className="font-titre text-[1.5rem] leading-tight text-marine mt-1 mb-2">{fr.propositions.titre}</h1>
-      <p className="text-[0.9375rem] mb-4">{fr.propositions.intro}</p>
+      <h1 className="font-titre text-[1.5rem] leading-tight text-marine mt-1 mb-2">{frPages.propositions.titre}</h1>
+      <p className="text-[0.9375rem] mb-4">{frPages.propositions.intro}</p>
       <div className="mb-4">
         <BandeauxEtat />
       </div>
@@ -74,7 +75,7 @@ export default function Propositions() {
       ) : !liste ? (
         <Chargement />
       ) : !liste.length ? (
-        <p className="text-gris py-4">{fr.propositions.aucune}</p>
+        <p className="text-gris py-4">{frPages.propositions.aucune}</p>
       ) : (
         <ul className="space-y-2.5">
           {liste.map((p) => (
@@ -105,7 +106,7 @@ export default function Propositions() {
                 <p className="mt-2 text-[0.875rem] text-gris flex items-center gap-1">
                   <span className="min-w-0">
                     {p.lieu ? `${p.lieu} · ` : ''}
-                    {fr.propositions.ajoutee(dateJour(p.ajoute_at))}
+                    {frPages.propositions.ajoutee(dateJour(p.ajoute_at))}
                   </span>
                 </p>
             </CarteChoix>

@@ -6,7 +6,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { Chargement, ErreurDonnees, Page } from '../composants/Mise';
 import { secteurParId } from '../data';
-import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { CarteChoix } from '../composants/CarteChoix';
 import { usePropositions } from '../appels/propositions';
@@ -43,7 +43,7 @@ function useIndexDocuments(): IndexDocuments | null {
 
 /** « PUDi : p. 1, 4, 17… » for each document (at most 12 links, then « et N autres pages »). */
 function PagesDocuments({ resultats, docs }: { resultats: PagesDocument[]; docs: DocumentPudi[] }) {
-  const t = fr.recherche.documents;
+  const t = frPages.recherche.documents;
   return (
     <ul className="space-y-1.5">
       {resultats.map((r) => {
@@ -105,8 +105,8 @@ function Pourquoi({ e }: { e: Explication }) {
     );
   return (
     <>
-      {fr.recherche.champs[e.champ]} : <Surligne texte={e.texte} surlignes={e.surlignes} />
-      {e.fokontany && ` (${fr.recherche.champs.fokontany(e.fokontany)})`}
+      {frPages.recherche.champs[e.champ]} : <Surligne texte={e.texte} surlignes={e.surlignes} />
+      {e.fokontany && ` (${frPages.recherche.champs.fokontany(e.fokontany)})`}
     </>
   );
 }
@@ -174,14 +174,14 @@ export default function Recherche() {
   const indexDocs = useIndexDocuments();
   const pagesDocs = useMemo(() => (indexDocs ? rechercherDocuments(indexDocs, saisie) : []), [indexDocs, saisie]);
   const docs = useMemo(() => documentsPudi(donnees), [donnees]);
-  const tDocs = fr.recherche.documents;
+  const tDocs = frPages.recherche.documents;
 
   return (
-    <Page titre={fr.recherche.titre}>
-      <p className="text-[0.9375rem] text-gris mb-3">{fr.recherche.intro}</p>
+    <Page titre={frPages.recherche.titre}>
+      <p className="text-[0.9375rem] text-gris mb-3">{frPages.recherche.intro}</p>
       <form role="search" onSubmit={(e) => e.preventDefault()} className="mb-4">
         <label className="relative block">
-          <span className="sr-only">{fr.recherche.champ}</span>
+          <span className="sr-only">{frPages.recherche.champ}</span>
           <Icone nom="recherche" className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gris" />
           <input
             ref={champ}
@@ -190,7 +190,7 @@ export default function Recherche() {
             autoComplete="off"
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
-            placeholder={fr.recherche.exemple}
+            placeholder={frPages.recherche.exemple}
             className="w-full min-h-[48px] rounded-xl border-2 border-marine bg-white pl-10 pr-3 text-[1rem]"
           />
         </label>
@@ -208,29 +208,29 @@ export default function Recherche() {
           <p className="text-[0.9375rem] pt-1">{tDocs.proposer}</p>
           <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
             <Icone nom="ampoule" className="w-4 h-4" />
-            {fr.recherche.allerEtape3}
+            {frPages.recherche.allerEtape3}
           </Link>
         </div>
       ) : reponse.total === 0 ? (
         <div className="bg-white border border-filet rounded-xl p-4 space-y-2" role="status">
-          <p className="text-[0.9375rem]">{fr.recherche.aucun}</p>
+          <p className="text-[0.9375rem]">{frPages.recherche.aucun}</p>
           <Link to="/choix?etape=3" className="inline-flex items-center gap-1 min-h-[44px] text-marine font-bold text-[0.9375rem]">
             <Icone nom="ampoule" className="w-4 h-4" />
-            {fr.recherche.allerEtape3}
+            {frPages.recherche.allerEtape3}
           </Link>
         </div>
       ) : (
         <>
           <p className="text-[0.875rem] text-gris mb-2" role="status" aria-live="polite">
-            {fr.recherche.resultats(reponse.total)}
+            {frPages.recherche.resultats(reponse.total)}
             {pagesDocs.length > 0 && tDocs.statut}
-            {reponse.total > MAX_RESULTATS && ` · ${fr.recherche.limite(MAX_RESULTATS)}`}
+            {reponse.total > MAX_RESULTATS && ` · ${frPages.recherche.limite(MAX_RESULTATS)}`}
           </p>
           {reponse.directs.length > 0 && (
             <section className="mb-4">
               <h2 className="font-bold text-[1rem] text-marine mb-2 flex items-center gap-1.5">
                 <Icone nom="etoile" className="w-4 h-4" />
-                {fr.recherche.direct}
+                {frPages.recherche.direct}
               </h2>
               <ul className="space-y-2">
                 {reponse.directs.map((r) => (

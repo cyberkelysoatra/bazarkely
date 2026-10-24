@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { MessageBlocage } from '../composants/BoutonsChoix';
 import { CarteChoix } from '../composants/CarteChoix';
 import { IndicateurEtapes } from '../composants/Etapes';
+import { RappelVote, useComparaisonVote } from '../composants/RappelVote';
 import { useSessionLocale } from '../appels/session';
 import { allerAuChamp } from '../utils/champFautif';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { MAX_MANQUANT, MAX_PRIORITES, MAX_URGENTS, brouillonValide, ecartPudi, limiterManquant } from '../utils/regles';
 import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
@@ -114,7 +116,7 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
               <p className="font-bold text-[0.9375rem] leading-snug">{p.nom}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 {p.proposition ? (
-                  <span className="text-[0.75rem] font-bold text-marine">{fr.propositions.badge}</span>
+                  <span className="text-[0.75rem] font-bold text-marine">{frPages.propositions.badge}</span>
                 ) : (
                   <span className="text-[0.75rem] font-bold" style={{ color: s?.couleurFoncee }}>
                     {s?.nom}
@@ -125,7 +127,7 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
                     <BadgeTranche tranche={p.tranche} />
                   ) : (
                     <span className="inline-flex items-center rounded-full border border-marine px-2.5 py-0.5 text-[0.75rem] font-bold text-marine">
-                      {fr.propositions.horsPudi}
+                      {frPages.propositions.horsPudi}
                     </span>
                   ))}
               </div>
@@ -185,6 +187,7 @@ export default function Choix() {
   const clos = !!etat?.clos;
   const n = brouillon.priorites.length;
   const manque = MAX_PRIORITES - n;
+  const comparaison = useComparaisonVote();
 
   // « Envoyer mon vote » pressed with fewer than 3 priorities: scroll to them, highlight, say how many.
   const [relance, setRelance] = useState(false);
@@ -216,6 +219,7 @@ export default function Choix() {
         <BandeauxEtat />
       </div>
 
+      {(etape === '1' || etape === 'resume') && <RappelVote donnees={donnees} />}
       {etape === '1' && (
         <>
           <section ref={blocPriorites} tabIndex={-1} id="pudi-priorites" className="bg-white border border-filet rounded-xl p-3 outline-none" data-priorites="">
@@ -283,7 +287,7 @@ export default function Choix() {
             <span>
               {fr.choix.etape3Verifier}{' '}
               <Link to="/recherche" className="font-bold text-marine underline underline-offset-2">
-                {fr.recherche.titre}
+                {frPages.recherche.titre}
               </Link>
             </span>
           </p>
@@ -338,7 +342,7 @@ export default function Choix() {
             onClick={() => navigate('/envoyer')}
           >
             <Icone nom="envoyer" />
-            {fr.choix.envoyer}
+            {comparaison === 'identique' ? fr.vote.modifierMonVote : fr.choix.envoyer}
           </button>
         </section>
       )}

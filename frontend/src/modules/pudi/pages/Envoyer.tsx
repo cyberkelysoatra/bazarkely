@@ -52,7 +52,7 @@ function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormu
 
 export default function Envoyer() {
   const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
-  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu } = usePudi();
+  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu, noterMonVote } = usePudi();
   const { liste: propositions } = usePropositions();
   // PUDI-CC-11: in JOEL's « Votant » preview every client check runs, but nothing reaches the server.
   const apercuVotant = apercu?.role === 'votant';
@@ -131,6 +131,7 @@ export default function Envoyer() {
           const v = await lireMonVote();
           setVote(v);
           if (v) {
+            noterMonVote(v);
             if (brouillonVide(brouillon)) {
               majBrouillon({ priorites: v.priorites, urgents: v.urgents, manquant: v.manquant ?? '' });
             }
@@ -194,6 +195,7 @@ export default function Envoyer() {
     try {
       const v = await soumettreVote(b, f, c);
       setVote(v);
+      noterMonVote(v);
       if (!v.est_test) noterEtape('vote');
       navigate('/merci', { state: { test: v.est_test } });
     } finally {

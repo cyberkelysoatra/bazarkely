@@ -104,6 +104,8 @@ export async function deconnexion(): Promise<void> {
   } finally {
     try {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      // PUDI-CC-16.1: the device copy of the own vote leaves with the session.
+      localStorage.removeItem('pudi_mon_vote_cache');
     } catch {
       /* no storage */
     }

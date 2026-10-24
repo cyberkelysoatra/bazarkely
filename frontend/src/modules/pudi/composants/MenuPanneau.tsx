@@ -17,6 +17,7 @@ import { VERSION_PUDI, rechercherMiseAJour, type ResultatMiseAJour } from '../ap
 import { refusVus, retablisVus } from '../appels/refusVus';
 import { dateCourte } from '../utils/format';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { definirApercu } from '../appels/apercu';
 import { TAILLES, appliquerTaille, lireTaille, type CleTaille } from '../utils/tailleTexte';
 import { lireMesGroupes, type Groupe } from '../appels/groupe';
@@ -356,8 +357,8 @@ export default function MenuPanneau({ ancre, fermer }: { ancre: RefObject<HTMLBu
         {responsable && (
           <>
             <hr className="my-1 border-filet" />
-            <Element icone="personnes" desactive={!enLigne} note={!enLigne ? connexionNecessaire : fr.groupe.menuNote} onClick={() => aller('/groupe')}>
-              {fr.groupe.menu}
+            <Element icone="personnes" desactive={!enLigne} note={!enLigne ? connexionNecessaire : frPages.groupe.menuNote} onClick={() => aller('/groupe')}>
+              {frPages.groupe.menu}
             </Element>
           </>
         )}

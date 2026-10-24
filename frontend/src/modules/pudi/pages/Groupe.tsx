@@ -10,6 +10,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { Icone } from '../composants/Icones';
 import { Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { connexionGoogle, useSessionLocale } from '../appels/session';
 import {
@@ -36,7 +37,7 @@ import { BandeauReseau, estErreurReseau, useEnvoiFiable } from '../composants/Re
 import { normaliserTelephone } from '../utils/regles';
 import { Aide, Dialogue, champ, petitBouton, type DemandeConfirmation } from './admin/communs';
 
-const T = fr.groupe;
+const T = frPages.groupe;
 const AUTRE = '__autre__';
 /** PUDI-CC-11: JOEL's « Responsable de groupe » preview is read-only. */
 const BLOQUE_APERCU = 'Aperçu : modification désactivée';
@@ -295,7 +296,7 @@ function Formulaire({
               {f}
             </option>
           ))}
-          <option value={AUTRE}>{fr.resultats.autreFokontany}</option>
+          <option value={AUTRE}>{frPages.resultats.autreFokontany}</option>
         </select>
         {fkt === AUTRE && (
           <input

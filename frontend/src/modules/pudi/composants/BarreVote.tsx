@@ -4,16 +4,22 @@
 // choix » opens on the priorities with « Encore N priorité(s) à choisir ». Own lazy chunk.
 // Sizes in px: like the bottom bar, it keeps its size whatever « Taille du texte ».
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fr } from '../i18n/fr';
-import { usePudi } from '../PudiContexte';
+import { usePudi, useDonnees } from '../PudiContexte';
 import { MAX_PRIORITES } from '../utils/regles';
 import { tempsRestant, texteRestant } from '../utils/format';
 import { Icone } from './Icones';
+import { RappelVote, useComparaisonVote } from './RappelVote';
 
 export default function BarreVote() {
   const { brouillon, clotureAt, decalage } = usePudi();
   const navigate = useNavigate();
+  // PUDI-CC-16.1: a signed-in voter who changed nothing sees « Modifier mon vote » and a reminder.
+  const { donnees } = useDonnees();
+  const comparaison = useComparaisonVote();
+  // « Mon choix » shows the full reminder in the page itself.
+  const surMonChoix = useLocation().pathname.startsWith('/choix');
   const n = brouillon.priorites.length;
   const [maintenant, setMaintenant] = useState(() => Date.now());
   useEffect(() => {
@@ -36,6 +42,7 @@ export default function BarreVote() {
       data-barre-vote=""
     >
       <div className="mx-auto max-w-2xl pr-[6px] pointer-events-auto">
+        {!surMonChoix && <RappelVote donnees={donnees} compact />}
         {court && (
           <p className="mb-1 mx-auto w-fit rounded-full bg-white/95 border border-filet px-3 py-0.5 text-[13px] font-bold text-[#9C3F21] shadow-sm" data-restant-barre="">
             {court}
@@ -51,7 +58,7 @@ export default function BarreVote() {
           data-nb={n}
         >
           <Icone nom="envoyer" className="w-[20px] h-[20px]" />
-          <span>{fr.vote.envoyer}</span>
+          <span>{comparaison === 'identique' ? fr.vote.modifierMonVote : fr.vote.envoyer}</span>
           <span
             className={`ml-[4px] rounded-full px-[8px] py-[2px] text-[13px] ${n === MAX_PRIORITES ? 'bg-white text-marine' : 'bg-white/20 text-white'}`}
             data-compteur-vote=""

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import donneesBrutes from '../data/pudi-donnees.json';
 import type { PudiDonnees } from '../data/types';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { messageErreur } from './erreurs';
 import { libelleMotifRefus } from './format';
 import { filtrerParVote, participation } from './groupe';
@@ -68,7 +69,7 @@ describe('participation of a group', () => {
   it('counts, rounds, handles an empty list', () => {
     expect(participation(m)).toEqual({ votants: 2, total: 3, pct: 67 });
     expect(participation([])).toEqual({ votants: 0, total: 0, pct: 0 });
-    expect(fr.groupe.participation(2, 3, 67)).toBe('Participation : 2 / 3 (67 %)');
+    expect(frPages.groupe.participation(2, 3, 67)).toBe('Participation : 2 / 3 (67 %)');
   });
   it('filters Tous / A voté / Pas encore voté', () => {
     expect(filtrerParVote(m, 'tous')).toHaveLength(3);
@@ -76,7 +77,7 @@ describe('participation of a group', () => {
     expect(filtrerParVote(m, 'pasEncore')).toHaveLength(1);
   });
   it('the help says the choice is never shown', () => {
-    expect(fr.groupe.aide).toContain(
+    expect(frPages.groupe.aide).toContain(
       "Chacun est invité à voter, mais son choix n'est pas un sujet de débat. Vous voyez seulement si la personne a voté, jamais ce qu'elle a choisi."
     );
   });

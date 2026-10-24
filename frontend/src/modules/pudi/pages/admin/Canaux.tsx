@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Icone, type NomIcone } from '../../composants/Icones';
 import { boutonPrincipal, boutonSecondaire } from '../../composants/Mise';
 import { fr } from '../../i18n/fr';
+import { frPages } from '../../i18n/frPages';
 import {
   enregistrerCanal,
   importerListe,
@@ -266,7 +267,7 @@ function Responsables({ canal, demander }: { canal: Canal; demander: (d: Demande
         </button>
       </form>
       <p className="mt-1 text-[0.8125rem] text-gris" data-avis-whatsapp="">
-        {fr.groupe.aideWhatsApp}
+        {frPages.groupe.aideWhatsApp}
       </p>
       {erreur && (
         <p role="alert" className="mt-1 text-[0.875rem] font-bold text-[#9C3F21]">

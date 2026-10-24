@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import donneesBrutes from '../data/pudi-donnees.json';
 import type { PudiDonnees } from '../data/types';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
 import { messageErreur } from './erreurs';
 import { CLOTURE_PAR_DEFAUT } from './format';
 import {
@@ -24,12 +25,12 @@ describe('notice texts', () => {
     expect(fr.masquage.texte(dateGel(GEL))).toBe(
       "Votre vote a été remplacé par un vote plus récent attribué à la même personne. Si c'est une erreur, vous pouvez réclamer jusqu'au mardi 27/10/2026 à 18 h."
     );
-    expect(fr.groupe.erreurs.LISTES_FIGEES).toBe('Les listes sont figées depuis le mardi 27/10/2026 à 18 h.');
+    expect(frPages.groupe.erreurs.LISTES_FIGEES).toBe('Les listes sont figées depuis le mardi 27/10/2026 à 18 h.');
     expect(fr.masquage.courriel).toBe('Écrire au GIHTNB');
     expect(fr.masquage.whatsapp).toBe('Contacter le responsable du groupe sur WhatsApp');
   });
   it('the words are « masqué », never « annulé »', () => {
-    const tout = JSON.stringify(fr.masquage) + fr.erreurs.VOTE_MASQUE + fr.groupe.aideWhatsApp;
+    const tout = JSON.stringify(fr.masquage) + fr.erreurs.VOTE_MASQUE + frPages.groupe.aideWhatsApp;
     expect(tout).not.toMatch(/annul/i);
   });
   it('claims open until the freeze', () => {

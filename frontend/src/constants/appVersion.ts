@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.103.0';
-export const APP_VERSION_NAME = 'PUDi : « Trouver un projet » cherche aussi dans les deux documents du PUDi.';
+export const APP_VERSION = '3.104.0';
+export const APP_VERSION_NAME = 'PUDi : le vote déjà envoyé apparaît sur tous les appareils.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.104.0',
+    date: '2026-10-24',
+    description: 'PUDi : une personne connectée qui a déjà voté retrouve son vote partout (barre de vote, cartes cochées, « Mon choix »), même sur un nouveau téléphone ou hors connexion.',
+    changes: [
+      'Dès la connexion, le vote enregistré est relu une fois et recopie le choix sur l’appareil s’il était vide ; un choix différent est gardé avec « Vous modifiez votre vote du … ».',
+      '« Vous avez voté le … · Vos 3 priorités : … » dans la barre et dans « Mon choix », bouton « Modifier mon vote ».',
+      'Copie du vote (priorités, urgences, date) gardée sur l’appareil pour l’afficher sans réseau, effacée à la déconnexion ; jamais dans « Voir comme ».',
+      'Textes des pages secondaires rangés à part pour garder l’accueil léger.'
+    ]
+  },
   {
     version: '3.103.0',
     date: '2026-10-24',
