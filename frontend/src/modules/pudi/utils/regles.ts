@@ -3,7 +3,7 @@
 
 export const MAX_PRIORITES = 3;
 export const MAX_URGENTS = 10;
-export const MAX_MANQUANT = 300;
+export const MAX_MANQUANT = 1000;
 export const TRANCHE_URGENTE = '2026-2030';
 
 export interface Brouillon {
@@ -24,7 +24,7 @@ export function peutAjouterUrgent(b: Brouillon, id: string): boolean {
   return !b.urgents.includes(id) && b.urgents.length < MAX_URGENTS;
 }
 
-/** Ready to send: exactly 3 distinct priorities, at most 10 distinct urgents, text within 300 characters. */
+/** Ready to send: exactly 3 distinct priorities, at most 10 distinct urgents, text within 1000 characters. */
 export function brouillonValide(b: Brouillon, idsConnus?: readonly string[]): boolean {
   const distinct = (l: string[]) => new Set(l).size === l.length;
   const connus = (l: string[]) => !idsConnus || l.every((id) => idsConnus.includes(id));
@@ -50,7 +50,7 @@ export function basculerUrgent(b: Brouillon, id: string): Brouillon {
   return peutAjouterUrgent(b, id) ? { ...b, urgents: [...b.urgents, id] } : b;
 }
 
-/** Text of the "missing project" field cut at 300 characters (the 301st is impossible). */
+/** Text of the "missing project" field cut at 1000 characters (the 1001st is impossible). */
 export function limiterManquant(texte: string): string {
   return texte.slice(0, MAX_MANQUANT);
 }

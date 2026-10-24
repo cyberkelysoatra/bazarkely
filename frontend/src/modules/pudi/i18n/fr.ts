@@ -140,7 +140,7 @@ export const fr = {
     filtrePropositionsAide: 'Afficher seulement les propositions de nouveaux projets',
     etape3Placeholder:
       'Par exemple : sécurité sur le littoral (bande des 300 m), nuisances sonores, déchets, animaux errants, électricité…',
-    caracteres: (n: number) => `${n} / 300 caractères`,
+    caracteres: (n: number) => `${n} / 1000 caractères`,
     compteur: (n: number, max: number) => `${n} / ${max}`,
     maxPriorites: 'Vous avez déjà choisi 3 priorités. Retirez-en une pour en choisir une autre.',
     maxUrgents: 'Vous avez déjà marqué 10 programmes urgents. Retirez-en un pour en marquer un autre.',
@@ -206,7 +206,7 @@ export const fr = {
     FOKONTANY: 'Choisissez votre fokontany (ou précisez-le).',
     PRIORITES: 'Choisissez exactement 3 priorités.',
     URGENTS: '10 programmes urgents au maximum.',
-    MANQUANT: '300 caractères au maximum.',
+    MANQUANT: '1000 caractères au maximum.',
     NUMERO_INVALIDE: "Ce numéro n'est pas valide. Exemple : 034 12 345 67.",
     NUMERO_DEJA_UTILISE:
       "Ce numéro a déjà servi à voter avec un autre compte Google. Si c'est bien votre numéro, contactez le GIHTNB : l'équipe pourra vérifier.",

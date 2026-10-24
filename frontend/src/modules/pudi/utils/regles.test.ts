@@ -55,11 +55,13 @@ describe('brouillonValide', () => {
   });
   it('limits urgents and text, checks known ids', () => {
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], urgents: [...DIX, 'T3'] }))).toBe(false);
-    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(301) }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(1001) }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], manquant: 'x'.repeat(1000) }))).toBe(true);
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'ZZ'] }), ['A1', 'A2', 'A3'])).toBe(false);
   });
-  it('limiterManquant makes the 301st character impossible', () => {
-    expect(limiterManquant('x'.repeat(320))).toHaveLength(300);
+  it('limiterManquant makes the 1001st character impossible', () => {
+    expect(limiterManquant('x'.repeat(1000))).toHaveLength(1000);
+    expect(limiterManquant('x'.repeat(1001))).toHaveLength(1000);
   });
 });
 

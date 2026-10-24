@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.106.1';
-export const APP_VERSION_NAME = 'PUDi : cartes de choix plus compactes, badge et « Détails » à droite.';
+export const APP_VERSION = '3.106.2';
+export const APP_VERSION_NAME = 'PUDi : projet manquant jusqu’à 1 000 caractères, phrase de recherche corrigée.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.106.2',
+    date: '2026-10-24',
+    description: 'PUDi : « Proposer un projet manquant » accepte 1 000 caractères au lieu de 300, et la recherche dit « aucun des 52 programmes (137 projets) du PUDi ».',
+    changes: [
+      '« Proposer un projet manquant » : 1 000 caractères (téléphone et serveur).',
+      'Recherche sans résultat : « … ne figure dans aucun des 52 programmes (137 projets) du PUDi. », nombres calculés à partir des données.'
+    ]
+  },
   {
     version: '3.106.1',
     date: '2026-10-24',

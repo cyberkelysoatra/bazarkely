@@ -200,7 +200,7 @@ export default function Recherche() {
         <Chargement />
       ) : !saisie.trim() ? null : reponse.total === 0 && pagesDocs.length > 0 ? (
         <div className="bg-white border border-filet rounded-xl p-4 space-y-2" role="status">
-          <p className="text-[0.9375rem]">{tDocs.aucunProjet(saisie.trim(), donnees.programmes.length)}</p>
+          <p className="text-[0.9375rem]">{tDocs.aucunProjet(saisie.trim(), donnees.programmes.length, donnees.programmes.reduce((n, p) => n + p.codes.length, 0))}</p>
           <p className="text-[0.9375rem]">{tDocs.enParlent}</p>
           <PagesDocuments resultats={pagesDocs} docs={docs} />
           <p className="text-[0.9375rem] pt-1">{tDocs.proposer}</p>

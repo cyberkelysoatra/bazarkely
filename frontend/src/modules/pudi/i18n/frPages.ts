@@ -81,7 +81,8 @@ export const frPages = {
     allerEtape3: 'Aller à l’étape 3 du choix',
     // PUDI-CC-15: pages of the two PUDi documents where the words appear (plain citation).
     documents: {
-      aucunProjet: (requete: string, n: number) => `« ${requete} » ne figure dans aucun des ${n} projets retenus.`,
+      aucunProjet: (requete: string, programmes: number, projets: number) =>
+        `« ${requete} » ne figure dans aucun des ${programmes} programmes (${projets} projets) du PUDi.`,
       enParlent: 'Les documents du PUDi en parlent :',
       proposer: 'Si un projet vous paraît manquer, proposez-le.',
       aussi: 'Aussi dans les documents du PUDi',
