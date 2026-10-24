@@ -1256,6 +1256,39 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
   droite, flottante avec un espace réservé de sa taille (le titre s'enroule, les lignes du dessous prennent toute la largeur).
 - **Projet manquant** : 1 000 caractères (`MAX_MANQUANT`, contrainte `pudi_votes_manquant_check`, `pudi_soumettre_vote`).
 
+### PUDi · PUDI-CC-17, v3.107.0 : 12 voix à répartir (règle B, cahier des charges v9)
+
+- **Règle** : chaque votant a **12 voix** (`VOIX = 12`, `utils/regles.ts`) à répartir sur les 52 programmes et les
+  propositions, plusieurs sur un même programme, jusqu'à 12 sur un seul ; de 1 à 12 voix. Nom interne inchangé :
+  `priorites` = **multiset** (un élément par voix, le même id répété), stocké trié côté serveur. Fonctions pures :
+  `voixUtilisees`, `voixPour`, `peutAjouterVoix`, `ajouterVoix`, `retirerVoix`, `regrouperVoix`, `texteVoix` (« A4 ×5, T3 ×4 »).
+- **Serveur** (migration `20261025000000_pudi_douze_voix_cumul.sql`) : contrainte `pudi_votes_priorites_check` =
+  `cardinality between 1 and 12` ; `pudi_soumettre_vote` et `pudi_choix_noter` réécrites par remplacement exact de leur
+  définition en ligne (tous les autres contrôles inchangés ; `complet` = 1 voix ou plus) ; `pudi_calculer_resultats` :
+  par programme et proposition `voix` (occurrences), `votants` (personnes différentes), `pct_voix`, `pct_votants`,
+  `concentration` (votes à 6 voix ou plus sur le programme), tri voix puis votants puis ordre du PUDi, anciennes clés
+  `n`/`pct` = votants ; en plus `voix_placees`, `repartition` (1 à 12), `concentration` totale, `nb_votes_3_voix`
+  (votes de 3 programmes non modifiés depuis `pudi_settings.regle_voix_at`). Propositions toujours comptées à part.
+- **Anciens votes** (3 programmes) : valables tels quels (3 voix sur 12). Bandeau `BandeauDouzeVoix` (chunk à part)
+  « Vous pouvez maintenant placer jusqu'à 9 voix de plus » tant que l'auteur n'a pas renvoyé (`voteAvantRegle`), fermable
+  pour la visite.
+- **Parcours** : « Mon choix » = Question 1 sur 3 « Répartissez vos 12 voix », Question 2 « Lesquels sont urgents
+  (2026-2030) ? », Question 3 « Un projet manque au PUDi ? » (facultatives, « Passer cette question »), puis résumé. La
+  barre « Envoyer mon vote · X/12 voix » (jauge 12 points) : à 0 voix, retour à la question 1 « Placez au moins 1 voix » ;
+  ensuite questions 2 et 3 **une fois chacune** (`appels/questions.ts`, sessionStorage `pudi_questions_vues`) puis
+  résumé ; `/envoyer` renvoie vers la question non vue. Cartes et fiches : compteur « − n + » (`composants/Voix.tsx`,
+  boutons 44 px), toucher la carte ajoute une voix ; 13ᵉ voix refusée avec message.
+- **Organisateurs** : Votes = voix par vote (« 12/12 · A4 ×5… »), filtre « Votes à 3 voix », « Numéro connu »
+  (`pudi_admin_votes_numeros` : numéro en clair **seulement** s'il figure dans une liste de groupe `pudi_membres`,
+  journalisé `consulter_numeros_votes`, jamais exporté) ; CSV votes : `nb_voix`, `voix`.
+- **Clôture reportable sans nouvelle version** : `pudi_etat` renvoie aussi `gel_listes_at` et `regle_voix_at` ; le
+  client garde les dernières dates reçues (`pudi_cloture_cache`, `lireDatesCache`) et n'utilise `CLOTURE_PAR_DEFAUT`
+  qu'à défaut ; aucun texte ne contient la date en clair. Paramètres : `pudi_admin_set_cloture_gel(p_at, p_deplacer_gel)`
+  décale le gel des listes du même écart (case cochée par défaut), journalisé.
+- **Cartes** : « Détails » sous le badge à une ligne normale (`leading-snug`, sans marge), zone tactile invisible de
+  46 px de haut (`before:h-[46px]`) qui ne couvre jamais le badge ni le compteur ; ligne du compteur avec le coût ou la
+  date (`pied`) pour garder les cartes courtes.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

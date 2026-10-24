@@ -1,8 +1,10 @@
-// PUDI-CC-16.1: « Vous avez voté le … · Vos 3 priorités : … » (draft unchanged) or « Vous modifiez
+// PUDI-CC-16.1: « Vous avez voté le … · 12 voix sur 3 programmes » (draft unchanged) or « Vous modifiez
 // votre vote du … » (draft changed), shown by the vote bar and « Mon choix ». Lazy (shared by
 // those two chunks only).
 import { useEffect } from 'react';
 import { fr } from '../i18n/fr';
+import { frPages } from '../i18n/frPages';
+import { regrouperVoix } from '../utils/regles';
 import { programmeParId, type PudiDonnees } from '../data';
 import { propositionParId, usePropositions } from '../appels/propositions';
 import { usePudi } from '../PudiContexte';
@@ -32,7 +34,11 @@ export function RappelVote({ donnees, compact = false }: { donnees: PudiDonnees 
   const date = compact ? dateJour(monVote.date).replace(/ \d{4}$/, '') : dateCourte(monVote.date);
   const nom = (id: string) =>
     titreCourt((donnees ? programmeParId(donnees, id)?.nom : undefined) ?? propositionParId(propositions, id)?.intitule ?? id, compact ? 18 : 40);
-  const texte = etat === 'identique' ? fr.vote.aVote(date, monVote.priorites.map(nom)) : fr.vote.modification(date);
+  const groupes = regrouperVoix(monVote.priorites);
+  const texte =
+    etat === 'identique'
+      ? `${frPages.voix.aVote(date, monVote.priorites.length, groupes.length)}${compact ? '' : ` · ${frPages.voix.detailVoix(groupes.map((g) => `${nom(g.id)} ×${g.n}`).join(', '))}`}`
+      : fr.vote.modification(date);
   return (
     <p
       className={

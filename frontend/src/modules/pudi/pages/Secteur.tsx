@@ -68,15 +68,10 @@ export default function Secteur() {
             className="bg-white border border-filet border-l-[6px]"
             style={{ borderLeftColor: s.couleur }}
             etiquette={<BadgeTranche tranche={p.trancheAffichee} />}
+            pied={<p className="text-[0.875rem] text-gris leading-snug">{p.cout.mention}</p>}
           >
             <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.nom}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-              {brouillon.priorites.includes(p.id) && (
-                <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
-                  <Icone nom="etoile" className="w-3.5 h-3.5" />
-                  {fr.programme.estPriorite}
-                </span>
-              )}
               {brouillon.urgents.includes(p.id) && (
                 <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
                   <Icone nom="horloge" className="w-3.5 h-3.5" />
@@ -84,7 +79,6 @@ export default function Secteur() {
                 </span>
               )}
             </div>
-            <p className="mt-2 text-[0.875rem] text-gris">{p.cout.mention}</p>
           </CarteChoix>
         ))}
       </ul>

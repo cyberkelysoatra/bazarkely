@@ -16,7 +16,9 @@ import { connexionGoogle as connexionGoogleSession } from '../appels/session';
 import { getSupabase, withTimeout } from '../appels/supabaseClient';
 import { messageErreur, type ChampFormulaire, type ErreurAffichee } from '../utils/erreurs';
 import { dateCourte } from '../utils/format';
-import { brouillonValide, normaliserTelephone, type Brouillon } from '../utils/regles';
+import { brouillonValide, normaliserTelephone, regrouperVoix, type Brouillon } from '../utils/regles';
+import { frPages } from '../i18n/frPages';
+import { etapeSuivante } from '../appels/questions';
 import { allerAuChamp } from '../utils/champFautif';
 import OuvrirDansChrome from '../composants/OuvrirDansChrome';
 import { lierVote } from '../appels/choixAppareil';
@@ -91,6 +93,13 @@ export default function Envoyer() {
       desabonner?.();
     };
   }, []);
+
+  // PUDI-CC-17: no sending before questions 2 and 3 were shown once (one tap skips each).
+  const questionsVues = etapeSuivante() === 'resume';
+  const choixPret = brouillonValide(brouillon);
+  useEffect(() => {
+    if (choixPret && !questionsVues && !apercuVotant) navigate(`/choix?etape=${etapeSuivante()}`, { replace: true });
+  }, [choixPret, questionsVues, apercuVotant, navigate]);
 
   // Funnel (anonymous): the screen is shown, then a session exists on it.
   useEffect(() => {
@@ -212,6 +221,10 @@ export default function Envoyer() {
     const local = valider();
     montrerErreur(local);
     if (local) return;
+    if (etapeSuivante() !== 'resume') {
+      navigate(`/choix?etape=${etapeSuivante()}`);
+      return;
+    }
     if (apercuVotant && apercu) {
       definirApercu({ ...apercu, voteFictif: true });
       navigate('/merci', { state: { apercu: true } });
@@ -237,8 +250,8 @@ export default function Envoyer() {
         <BandeauxEtat />
       </div>
       <p className="mb-4 text-[0.875rem] text-gris" data-rappel-facultatif="">
-        <Link to="/choix" className="font-bold text-marine underline underline-offset-2">
-          {fr.vote.rappelFacultatif}
+        <Link to="/choix?etape=resume" className="font-bold text-marine underline underline-offset-2">
+          {fr.choix.resumeTitre}
         </Link>
       </p>
 
@@ -262,12 +275,16 @@ export default function Envoyer() {
           </p>
           {brouillon.priorites.length > 0 && (
             <div className="bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5" data-priorites-gardees="">
-              <p className="font-bold text-[0.9375rem]">{brouillon.priorites.length === 3 ? fr.vote.gardees : fr.vote.gardeesPartiel}</p>
-              <ol className="mt-1 space-y-0.5 text-[0.9375rem] list-decimal pl-5">
-                {brouillon.priorites.map((id) => (
-                  <li key={id}>{nomChoix(id)}</li>
+              <p className="font-bold text-[0.9375rem]">
+                {fr.vote.gardees} {frPages.voix.compteur(brouillon.priorites.length)}
+              </p>
+              <ul className="mt-1 space-y-0.5 text-[0.9375rem]">
+                {regrouperVoix(brouillon.priorites).map((l) => (
+                  <li key={l.id}>
+                    <span className="font-titre text-marine">×{l.n}</span> {nomChoix(l.id)}
+                  </li>
                 ))}
-              </ol>
+              </ul>
             </div>
           )}
           <OuvrirDansChrome />

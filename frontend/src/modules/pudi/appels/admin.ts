@@ -118,6 +118,8 @@ export interface ParcoursAdmin {
 }
 export const lireParcours = (canal: string | null) => rpc<ParcoursAdmin>('pudi_admin_parcours', { p_canal: canal });
 export const lireVotes = () => rpc<VoteAdmin[]>('pudi_admin_votes');
+/** PUDI-CC-17: clear number of a vote only when it is already in a manager's member list (journaled). */
+export const lireNumerosConnus = () => rpc<{ id_anonyme: string; numero: string | null }[]>('pudi_admin_votes_numeros');
 /** PUDI-CC-16.2: choices made on a device but never sent (figures only, never a list of devices). */
 export interface ChoixNonEnvoyes {
   calcule_at: string;
@@ -152,6 +154,9 @@ export const lireMultiCanaux = () => rpc<MultiCanaux>('pudi_admin_multi_canaux')
 export const lireConnexions = () => rpc<Connexion[]>('pudi_admin_connexions');
 export const definirAdmin = (user: string, admin: boolean) => rpc<null>('pudi_admin_set_admin', { p_user: user, p_admin: admin });
 export const definirCloture = (iso: string) => rpc<null>('pudi_admin_set_cloture', { p_at: iso });
+/** PUDI-CC-17: closing moved, the freeze of the lists optionally by the same delta (journaled). */
+export const definirClotureEtGel = (iso: string, deplacerGel: boolean) =>
+  rpc<{ cloture_at: string; gel_listes_at: string | null }>('pudi_admin_set_cloture_gel', { p_at: iso, p_deplacer_gel: deplacerGel });
 export const definirPublie = (publie: boolean) =>
   rpc<{ publie: boolean; votes_test_supprimes: number }>('pudi_admin_set_publie', { p_publie: publie });
 export const lireJournal = () => rpc<EntreeJournal[]>('pudi_admin_journal');

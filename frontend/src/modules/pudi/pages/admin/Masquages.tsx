@@ -10,10 +10,12 @@ import { fr } from '../../i18n/fr';
 import { lireMasquages, retablirMasquage, type MasquageAdmin } from '../../appels/admin';
 import { marquerRetablisVus, retablisVus } from '../../appels/refusVus';
 import { dateHeureMada } from '../../utils/exports';
-import { retablissementsNouveaux } from '../../utils/masquage';
+import { dateGel, retablissementsNouveaux } from '../../utils/masquage';
+import { usePudi } from '../../PudiContexte';
 import { Aide, Dialogue, Erreur, Titre2, petitBouton, useAppel, type DemandeConfirmation } from './communs';
 
 export default function Masquages() {
+  const { gelListesAt } = usePudi();
   const appel = useAppel(lireMasquages);
   const [demande, setDemande] = useState<DemandeConfirmation | null>(null);
   const [nouveaux, setNouveaux] = useState<Set<string> | null>(null);
@@ -60,7 +62,7 @@ export default function Masquages() {
         </p>
         <p>
           Si les numéros sont ensuite séparés (ligne modifiée ou supprimée), le vote est rétabli tout seul. La personne concernée voit un message
-          dans l'application et peut réclamer jusqu'à la fin de la saisie des listes (mardi 27/10/2026 à 18 h).
+          dans l'application et peut réclamer jusqu'à la fin de la saisie des listes ({dateGel(gelListesAt)}).
         </p>
         <p>
           « Rétablir » remet un vote en place après vérification, avec un motif. Après le gel des listes, seul Joël SOATRA peut le faire. Le

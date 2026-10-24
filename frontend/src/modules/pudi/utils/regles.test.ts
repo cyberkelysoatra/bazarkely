@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   BROUILLON_VIDE,
-  basculerPriorite,
+  VOIX,
+  ajouterVoix,
   basculerUrgent,
   brouillonValide,
   codeCanalValide,
@@ -9,8 +10,13 @@ import {
   limiterManquant,
   normaliserTelephone,
   normaliserTelephoneAffichage,
-  peutAjouterPriorite,
   peutAjouterUrgent,
+  peutAjouterVoix,
+  regrouperVoix,
+  retirerVoix,
+  texteVoix,
+  voixPour,
+  voixUtilisees,
   type Brouillon
 } from './regles';
 import { extraireCode, messageErreur } from './erreurs';
@@ -19,20 +25,48 @@ import { dateClotureLongue, formatAr, tempsRestant } from './format';
 const b = (p: Partial<Brouillon>): Brouillon => ({ ...BROUILLON_VIDE, ...p });
 const DIX = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'T1', 'T2'];
 
-describe('peutAjouterPriorite', () => {
-  it('accepts up to 3 distinct priorities', () => {
-    expect(peutAjouterPriorite(b({ priorites: ['A1', 'A2'] }), 'A3')).toBe(true);
+// PUDI-CC-17: 12 votes, several (up to 12) on the same programme.
+const DOUZE = ['A1', 'A2', 'A3', 'A5', 'A6', 'A7', 'A8', 'T1', 'T2', 'T4', 'T5', 'T6'];
+const repete = (id: string, n: number) => Array.from({ length: n }, () => id);
+
+describe('12 voix', () => {
+  it('VOIX is 12', () => {
+    expect(VOIX).toBe(12);
   });
-  it('refuses a 4th priority', () => {
-    expect(peutAjouterPriorite(b({ priorites: ['A1', 'A2', 'A3'] }), 'T1')).toBe(false);
+  it('places 12 votes on 12 different programmes, refuses the 13th', () => {
+    let x = b({});
+    for (const id of DOUZE) x = ajouterVoix(x, id);
+    expect(voixUtilisees(x)).toBe(12);
+    expect(peutAjouterVoix(x)).toBe(false);
+    expect(ajouterVoix(x, 'T3')).toBe(x);
   });
-  it('refuses a duplicate', () => {
-    expect(peutAjouterPriorite(b({ priorites: ['A1'] }), 'A1')).toBe(false);
+  it('places all 12 votes on one programme', () => {
+    let x = b({});
+    for (let i = 0; i < 12; i++) x = ajouterVoix(x, 'A4');
+    expect(voixPour(x, 'A4')).toBe(12);
+    expect(ajouterVoix(x, 'A4')).toBe(x);
+    expect(brouillonValide(x)).toBe(true);
   });
-  it('basculerPriorite leaves the draft unchanged on a 4th, removes on a second tap', () => {
-    const plein = b({ priorites: ['A1', 'A2', 'A3'] });
-    expect(basculerPriorite(plein, 'T1')).toBe(plein);
-    expect(basculerPriorite(plein, 'A2').priorites).toEqual(['A1', 'A3']);
+  it('5 + 4 + 3, then remove one vote', () => {
+    const x = b({ priorites: [...repete('A4', 5), ...repete('T3', 4), ...repete('P1', 3)] });
+    expect([voixPour(x, 'A4'), voixPour(x, 'T3'), voixPour(x, 'P1'), voixPour(x, 'W1')]).toEqual([5, 4, 3, 0]);
+    expect(voixPour(retirerVoix(x, 'T3'), 'T3')).toBe(3);
+    expect(voixUtilisees(retirerVoix(x, 'T3'))).toBe(11);
+    expect(retirerVoix(x, 'W1')).toBe(x);
+    expect(texteVoix(x.priorites)).toBe('A4 ×5, T3 ×4, P1 ×3');
+  });
+  it('groups the votes, most first then in the order placed', () => {
+    expect(regrouperVoix(['T3', 'A4', 'A4', 'P1', 'T3', 'A4'])).toEqual([
+      { id: 'A4', n: 3 },
+      { id: 'T3', n: 2 },
+      { id: 'P1', n: 1 }
+    ]);
+  });
+  it('an old vote of 3 programmes = 3 votes used of 12', () => {
+    const x = b({ priorites: ['T3', 'A1', 'W3'] });
+    expect(voixUtilisees(x)).toBe(3);
+    expect(peutAjouterVoix(x)).toBe(true);
+    expect(brouillonValide(x)).toBe(true);
   });
 });
 
@@ -48,10 +82,11 @@ describe('peutAjouterUrgent', () => {
 });
 
 describe('brouillonValide', () => {
-  it('needs exactly 3 priorities', () => {
-    expect(brouillonValide(b({ priorites: ['A1', 'A2'] }))).toBe(false);
-    expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'] }))).toBe(true);
-    expect(brouillonValide(b({ priorites: ['A1', 'A1', 'A3'] }))).toBe(false);
+  it('needs 1 to 12 votes, repeats allowed', () => {
+    expect(brouillonValide(b({ priorites: [] }))).toBe(false);
+    expect(brouillonValide(b({ priorites: ['A1'] }))).toBe(true);
+    expect(brouillonValide(b({ priorites: ['A1', 'A1', 'A3'] }))).toBe(true);
+    expect(brouillonValide(b({ priorites: repete('A1', 13) }))).toBe(false);
   });
   it('limits urgents and text, checks known ids', () => {
     expect(brouillonValide(b({ priorites: ['A1', 'A2', 'A3'], urgents: [...DIX, 'T3'] }))).toBe(false);

@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { Icone, type NomIcone } from '../../composants/Icones';
 import { boutonPrincipal, boutonSecondaire } from '../../composants/Mise';
 import { extraireCode } from '../../utils/erreurs';
+import { lireDatesCache } from '../../utils/format';
+import { dateGel } from '../../utils/masquage';
 
 const MESSAGES: Record<string, string> = {
   ADMIN_REQUIS: 'Espace réservé aux organisateurs.',
@@ -24,7 +26,6 @@ const MESSAGES: Record<string, string> = {
   EMAIL_INVALIDE: 'Adresse e-mail non reconnue : écrivez-la comme nom@gmail.com',
   RESPONSABLE_REQUIS: "Vous n'êtes pas responsable de ce groupe.",
   NUMERO_INVALIDE: 'Numéro WhatsApp non reconnu : écrivez-le comme 034 12 345 67 ou +33 6 12 34 56 78',
-  LISTES_FIGEES: 'Les listes sont figées depuis le mardi 27/10/2026 à 18 h.',
   MASQUAGE_INCONNU: "Ce masquage n'existe plus.",
   DEJA_RETABLI: 'Ce vote a déjà été rétabli.',
   MESSAGE_INCONNU: "Ce message n'existe plus.",
@@ -35,6 +36,8 @@ const MESSAGES: Record<string, string> = {
 
 export function messageAdmin(e: unknown): string {
   const code = extraireCode(e);
+  // PUDI-CC-17: the freeze date comes from the server (last value received), never written here.
+  if (code === 'LISTES_FIGEES') return `Les listes sont figées depuis le ${dateGel(lireDatesCache().gel_listes_at)}.`;
   return (code && MESSAGES[code]) || 'Une erreur est survenue. Réessayez.';
 }
 

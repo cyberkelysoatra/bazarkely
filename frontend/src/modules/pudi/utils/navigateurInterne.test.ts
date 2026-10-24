@@ -15,7 +15,9 @@ describe('PUDI-CC-16.2 built-in browsers', () => {
   it('draft in the address: ids only, round trip', () => {
     expect(encoderBrouillon(B)).toBe('T3.A4.P1-N3.W1');
     expect(decoderBrouillon('T3.A4.P1-N3.W1')).toEqual({ priorites: ['T3', 'A4', 'P1'], urgents: ['N3', 'W1'], manquant: '' });
-    expect(decoderBrouillon('T3.T3.A4.P1.T1')).toEqual({ priorites: ['T3', 'A4', 'P1'], urgents: [], manquant: '' });
+    // PUDI-CC-17: stacked votes travel as repeated ids (12 at most), urgents stay distinct.
+    expect(decoderBrouillon('T3.T3.A4.P1.T1')).toEqual({ priorites: ['T3', 'T3', 'A4', 'P1', 'T1'], urgents: [], manquant: '' });
+    expect(decoderBrouillon(`${Array(13).fill('A4').join('.')}-N3.N3`)).toEqual({ priorites: Array(12).fill('A4'), urgents: ['N3'], manquant: '' });
     expect(decoderBrouillon('<script>')).toBeNull();
     expect(decoderBrouillon(null)).toBeNull();
   });

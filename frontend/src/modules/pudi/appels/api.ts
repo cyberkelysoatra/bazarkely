@@ -15,6 +15,9 @@ export interface EtatConsultation {
   /** Time of the FIRST publication (null before). */
   publie_at?: string | null;
   cloture_at: string;
+  /** PUDI-CC-17: freeze of the member lists and time of the 12-vote rule (absent on an older answer). */
+  gel_listes_at?: string | null;
+  regle_voix_at?: string | null;
   maintenant: string;
   clos: boolean;
   connecte: boolean;
@@ -41,8 +44,15 @@ export interface MonVote {
 
 export interface LigneResultat {
   id: string;
+  /** Voters (distinct people); same value as `votants` since PUDI-CC-17. */
   n: number;
   pct: number;
+  /** PUDI-CC-17: votes received (occurrences), voters, shares and votes with 6 or more on it. */
+  voix?: number;
+  votants?: number;
+  pct_voix?: number;
+  pct_votants?: number;
+  concentration?: number;
   tranche_pudi?: number;
   ecart?: boolean;
 }
@@ -56,6 +66,19 @@ export interface LigneProposition {
   pct_priorite: number;
   n_urgent: number;
   pct_urgent: number;
+  voix?: number;
+  votants?: number;
+  pct_voix?: number;
+  pct_votants?: number;
+  concentration?: number;
+}
+
+/** PUDI-CC-17: votes with 6 or more votes on one programme (transparency). */
+export interface Concentration {
+  votes: number;
+  pct_votes: number;
+  voix: number;
+  pct_voix: number;
 }
 
 export interface Resultats {
@@ -71,6 +94,13 @@ export interface Resultats {
   reseaux: { dans_nos_reseaux: number; hors_reseaux: number };
   manquants: string[];
   propositions?: LigneProposition[];
+  voix_placees?: number;
+  /** Voters who used 1, 2… 12 votes (keys "1" to "12"). */
+  repartition?: Record<string, number>;
+  concentration?: Concentration;
+  /** Votes still exactly as sent before the rule changed (3 votes). */
+  nb_votes_3_voix?: number;
+  regle_voix_at?: string | null;
 }
 
 export interface FormulaireVote {

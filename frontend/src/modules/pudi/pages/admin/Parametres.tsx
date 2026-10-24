@@ -8,7 +8,7 @@ import {
   EMAIL_JOEL,
   PURGE_AUTOMATIQUE,
   definirAdmin,
-  definirCloture,
+  definirClotureEtGel,
   definirPublie,
   lireConnexions,
   lireSuivi,
@@ -16,6 +16,7 @@ import {
 } from '../../appels/admin';
 import { dateClotureLongue, tempsRestant } from '../../utils/format';
 import { dateHeureMada } from '../../utils/exports';
+import { dateGel } from '../../utils/masquage';
 import { Aide, Dialogue, Erreur, Titre2, champ, messageAdmin, useAppel, type DemandeConfirmation } from './communs';
 
 /** "2026-10-26T20:00" (Madagascar time) for an <input type="datetime-local">. */
@@ -37,13 +38,15 @@ function Bloc({ titre, icone, children }: { titre: string; icone: NomIcone; chil
 }
 
 export default function Parametres({ email }: { email: string }) {
-  const { etat, rechargerEtat, decalage } = usePudi();
+  const { etat, rechargerEtat, decalage, gelListesAt } = usePudi();
   const joel = email.toLowerCase() === EMAIL_JOEL;
   const suivi = useAppel(lireSuivi);
   const connexions = useAppel(lireConnexions);
   const [demande, setDemande] = useState<DemandeConfirmation | null>(null);
   const [cloture, setCloture] = useState('');
   const [messageCloture, setMessageCloture] = useState<string | null>(null);
+  // PUDI-CC-17: moving the closing proposes to move the freeze of the member lists by the same delta.
+  const [deplacerGel, setDeplacerGel] = useState(true);
   const [erreurAdmin, setErreurAdmin] = useState<string | null>(null);
   const [maintenant, setMaintenant] = useState(() => Date.now());
 
@@ -91,9 +94,11 @@ export default function Parametres({ email }: { email: string }) {
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(cloture)) return setMessageCloture(messageAdmin('PUDI_DATE'));
     setMessageCloture(null);
     try {
-      await definirCloture(`${cloture}:00+03:00`);
+      const r = await definirClotureEtGel(`${cloture}:00+03:00`, deplacerGel);
       await rechargerEtat();
-      setMessageCloture('Date de clôture enregistrée.');
+      setMessageCloture(
+        `Date de clôture enregistrée.${r?.gel_listes_at ? ` Gel des listes : ${dateGel(r.gel_listes_at)}.` : ''}`
+      );
     } catch (e) {
       setMessageCloture(messageAdmin(e));
     }
@@ -168,10 +173,26 @@ export default function Parametres({ email }: { email: string }) {
             {restant.fini ? 'La consultation est close.' : `Temps restant : ${restant.jours} j ${restant.heures} h ${restant.minutes} min`}
           </p>
         )}
+        <p className="text-[0.875rem] text-gris mt-1" data-gel-actuel="">
+          Gel des listes des groupes et fin des réclamations : {dateGel(gelListesAt)}
+        </p>
         <label className="block mt-3">
           <span className="block font-bold text-[0.875rem] mb-1">Nouvelle date et heure (heure de Madagascar)</span>
           <input type="datetime-local" className={champ} value={cloture} onChange={(e) => setCloture(e.target.value)} name="cloture" />
         </label>
+        <label className="mt-2 flex items-start gap-3 min-h-[44px] text-[0.875rem]">
+          <input
+            type="checkbox"
+            className="mt-1 w-5 h-5 shrink-0"
+            checked={deplacerGel}
+            onChange={(e) => setDeplacerGel(e.target.checked)}
+            data-deplacer-gel=""
+          />
+          <span>Décaler aussi le gel des listes du même écart (les réclamations restent ouvertes le même temps après la clôture). Inscrit au journal.</span>
+        </label>
+        <p className="text-[0.8125rem] text-gris mt-1">
+          Aucune mise à jour de l'application n'est nécessaire : l'accueil, le compte à rebours, les messages et le refus des votes après la clôture suivent la nouvelle date.
+        </p>
         <button type="button" className={`${boutonPrincipal} mt-2 w-full sm:w-auto`} onClick={() => void enregistrerCloture()}>
           <Icone nom="coche" />
           Enregistrer la clôture

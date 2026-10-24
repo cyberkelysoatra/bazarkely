@@ -87,15 +87,15 @@ export default function Propositions() {
               desactive={clos}
               className="bg-sable border-2 border-dashed border-marine/60"
               etiquette={<BadgeProposition court />}
+              pied={
+                <p className="text-[0.875rem] text-gris leading-snug">
+                  {p.lieu ? `${p.lieu} · ` : ''}
+                  {frPages.propositions.ajoutee(dateJour(p.ajoute_at))}
+                </p>
+              }
             >
                 <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{p.intitule}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-                  {brouillon.priorites.includes(p.id) && (
-                    <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-marine">
-                      <Icone nom="etoile" className="w-3.5 h-3.5" />
-                      {fr.programme.estPriorite}
-                    </span>
-                  )}
                   {brouillon.urgents.includes(p.id) && (
                     <span className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[#9C3F21]">
                       <Icone nom="horloge" className="w-3.5 h-3.5" />
@@ -103,12 +103,6 @@ export default function Propositions() {
                     </span>
                   )}
                 </div>
-                <p className="mt-2 text-[0.875rem] text-gris flex items-center gap-1">
-                  <span className="min-w-0">
-                    {p.lieu ? `${p.lieu} · ` : ''}
-                    {frPages.propositions.ajoutee(dateJour(p.ajoute_at))}
-                  </span>
-                </p>
             </CarteChoix>
           ))}
         </ul>

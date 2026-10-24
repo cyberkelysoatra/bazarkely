@@ -59,3 +59,8 @@ export function titreCourt(nom: string, max = 28): string {
   const espace = coupe.lastIndexOf(' ');
   return `${(espace > max * 0.6 ? coupe.slice(0, espace) : coupe).replace(/[\s,;:.–-]+$/, '')}…`;
 }
+
+/** PUDI-CC-17: own vote of 3 votes or fewer sent before the 12-vote rule (never modified since). */
+export function voteAvantRegle(v: { priorites: string[]; date: string }, regleAt: string | null | undefined): boolean {
+  return !!regleAt && v.priorites.length <= 3 && Date.parse(v.date) <= Date.parse(regleAt);
+}

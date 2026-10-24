@@ -44,9 +44,10 @@ describe('preview « Voir comme »', () => {
     expect(etatEffectif(null, { role: 'votant', masque: false, voteFictif: false })).toBeNull();
   });
   it('fake masking M-APERCU', () => {
-    const m = masquageApercu();
+    // PUDI-CC-17: the freeze date always comes from the server (passed in).
+    const m = masquageApercu('2026-10-31T15:00:00Z');
     expect(m.id).toBe(REFERENCE_APERCU);
-    expect(m.gel_listes_at).toBe('2026-10-27T18:00:00+03:00');
+    expect(m.gel_listes_at).toBe('2026-10-31T15:00:00Z');
   });
 });
 
@@ -70,8 +71,9 @@ describe('results on return', () => {
 describe('funnel helpers', () => {
   it('steps of the choice and share of visits', () => {
     expect(etapesDuChoix(0)).toEqual([]);
-    expect(etapesDuChoix(1)).toEqual(['choix_commence']);
-    expect(etapesDuChoix(3)).toEqual(['choix_commence', 'choix_complet']);
+    // PUDI-CC-17: a choice can be sent from the first vote.
+    expect(etapesDuChoix(1)).toEqual(['choix_commence', 'choix_complet']);
+    expect(etapesDuChoix(12)).toEqual(['choix_commence', 'choix_complet']);
     expect(pctVisites(25, 100)).toBe(25);
     expect(pctVisites(1, 3)).toBe(33);
     expect(pctVisites(4, 0)).toBe(0);

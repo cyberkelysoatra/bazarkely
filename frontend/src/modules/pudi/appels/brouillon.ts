@@ -1,6 +1,6 @@
 // Draft of the choice, kept on the device (localStorage pudi_brouillon_v1), in memory when
 // storage is unavailable. Every storage access is wrapped in try/catch.
-import { BROUILLON_VIDE, MAX_MANQUANT, type Brouillon } from '../utils/regles';
+import { BROUILLON_VIDE, MAX_MANQUANT, VOIX, type Brouillon } from '../utils/regles';
 
 const CLE = 'pudi_brouillon_v1';
 let memoire: Brouillon = BROUILLON_VIDE;
@@ -9,7 +9,8 @@ function nettoyer(v: unknown): Brouillon {
   const o = (v && typeof v === 'object' ? v : {}) as Partial<Brouillon>;
   const liste = (l: unknown) => (Array.isArray(l) ? l.filter((x): x is string => typeof x === 'string') : []);
   return {
-    priorites: [...new Set(liste(o.priorites))].slice(0, 3),
+    // PUDI-CC-17: one element per vote (repeats = stacked votes); an old draft of 3 reads as is.
+    priorites: liste(o.priorites).slice(0, VOIX),
     urgents: [...new Set(liste(o.urgents))].slice(0, 10),
     manquant: typeof o.manquant === 'string' ? o.manquant.slice(0, MAX_MANQUANT) : ''
   };

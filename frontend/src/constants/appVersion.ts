@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.106.2';
-export const APP_VERSION_NAME = 'PUDi : projet manquant jusqu’à 1 000 caractères, phrase de recherche corrigée.';
+export const APP_VERSION = '3.107.0';
+export const APP_VERSION_NAME = 'PUDi 12 voix à répartir';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.107.0',
+    date: '2026-10-24',
+    description: 'PUDi : 12 voix à répartir sur les programmes, plusieurs possibles sur un même programme (règle du 24/10/2026), parcours en 3 questions, résultats en voix et votants',
+    changes: [
+      'PUDi : 12 voix au lieu de 3 priorités, de 1 à 12 voix, jusqu\'à 12 sur un seul programme ; compteur « − n + » sur chaque carte et chaque fiche',
+      'PUDi : « Mon choix » en 3 questions numérotées, les questions 2 et 3 montrées une fois avant l\'envoi, un seul geste pour les passer',
+      'PUDi : votes déjà envoyés (3 programmes) toujours valables ; bandeau « Vous pouvez maintenant placer jusqu\'à 9 voix de plus »',
+      'PUDi : résultats en voix et votants, votes concentrés (6 voix ou plus sur un programme), voix utilisées par votant ; CSV et synthèse PDF',
+      'PUDi : organisateurs, voix par vote, filtre « votes à 3 voix », numéro connu des listes de groupe',
+      'PUDi : date de clôture et gel des listes lus sur le serveur, report possible depuis Paramètres sans nouvelle version',
+      'PUDi : « Détails » collé sous le badge des cartes, zone tactile de 44 px conservée'
+    ]
+  },
   {
     version: '3.106.2',
     date: '2026-10-24',

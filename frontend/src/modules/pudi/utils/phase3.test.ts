@@ -107,8 +107,8 @@ describe('synthesis with proposals (B10)', () => {
   it('opening from publie_at, proposals with source, counts, date and late note', () => {
     expect(s.ouverture).toBe('jeudi 22 octobre 2026 à 9 h 14');
     expect(s.propositions).toEqual([
-      { rang: 1, id: 'P1', intitule: 'Nouveau CHRD', source: 'Réunion PIC3 du 20/10/2026', ajoutee: '21 octobre 2026', nPriorite: 2, pctPriorite: '100 %', nUrgent: 0, pctUrgent: '0 %', note: undefined },
-      { rang: 2, id: 'P6', intitule: 'Éclairage du port', source: "Ajout de l'administrateur", ajoutee: '24 octobre 2026', nPriorite: 1, pctPriorite: '50 %', nUrgent: 1, pctUrgent: '50 %', note: 'Ajoutée le 24 octobre 2026 : exposée 2 jours sur 4' }
+      { rang: 1, id: 'P1', intitule: 'Nouveau CHRD', source: 'Réunion PIC3 du 20/10/2026', ajoutee: '21 octobre 2026', nPriorite: 2, pctPriorite: '100 %', voix: 2, votants: 2, pctVoix: '100 %', pctVotants: '100 %', concentration: 0, nUrgent: 0, pctUrgent: '0 %', note: undefined },
+      { rang: 2, id: 'P6', intitule: 'Éclairage du port', source: "Ajout de l'administrateur", ajoutee: '24 octobre 2026', nPriorite: 1, pctPriorite: '50 %', voix: 1, votants: 1, pctVoix: '50 %', pctVotants: '50 %', concentration: 0, nUrgent: 1, pctUrgent: '50 %', note: 'Ajoutée le 24 octobre 2026 : exposée 2 jours sur 4' }
     ]);
     expect(s.priorites.some((l) => l.id.startsWith('P'))).toBe(false);
   });

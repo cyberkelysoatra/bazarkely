@@ -72,7 +72,7 @@ export default function FrequentationEnDirect({ nomCanal }: { nomCanal: (code: s
       </p>
       <Aide titre="Appareil ou personne ?">
         <p>Un appareil est un navigateur (un téléphone, un ordinateur), pas une personne : une même personne qui utilise deux téléphones compte deux fois, une famille qui partage un téléphone compte une fois.</p>
-        <p>« En ligne en ce moment » : appareils dont la page est ouverte et visible depuis moins de 2 minutes. « Sans coche » : appareils venus sans cocher aucune priorité. « Commencé » : au moins une priorité cochée ; « Complet » : 3 priorités choisies. « Votes » : votes réels (sans votes masqués ni votes de test).</p>
+        <p>« En ligne en ce moment » : appareils dont la page est ouverte et visible depuis moins de 2 minutes. « Sans coche » : appareils venus sans placer aucune voix. « Commencé » : au moins une voix placée ; « Complet » : prêt à envoyer, au moins 1 voix (avant le 24/10/2026 : 3 priorités choisies). « Votes » : votes réels (sans votes masqués ni votes de test).</p>
       </Aide>
       {f && (
         <div className="bg-white border border-filet rounded-xl p-3 overflow-hidden">

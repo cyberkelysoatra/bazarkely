@@ -11,7 +11,7 @@ export function estNavigateurInterne(ua: string): boolean {
 
 const ID = /^[A-Za-z0-9]{1,8}$/;
 
-/** "T3.A4.P1-N3.W1": priorities, then urgents (ids only, the missing project text never travels). */
+/** "T3.T3.A4.P1-N3.W1": votes (one id per vote), then urgents (ids only, the missing project text never travels). */
 export function encoderBrouillon(b: Brouillon): string {
   const p = b.priorites.filter((x) => ID.test(x)).join('.');
   const u = b.urgents.filter((x) => ID.test(x)).join('.');
@@ -22,9 +22,10 @@ export function encoderBrouillon(b: Brouillon): string {
 export function decoderBrouillon(code: string | null): Brouillon | null {
   if (!code || code.length > 200) return null;
   const [p = '', u = ''] = code.split('-');
-  const liste = (s: string, max: number) => [...new Set(s.split('.').filter((x) => ID.test(x)))].slice(0, max);
-  const priorites = liste(p, 3);
-  const urgents = liste(u, 10);
+  const ids = (s: string) => s.split('.').filter((x) => ID.test(x));
+  // PUDI-CC-17: votes may repeat an id (stacked votes), urgents never do.
+  const priorites = ids(p).slice(0, 12);
+  const urgents = [...new Set(ids(u))].slice(0, 10);
   if (!priorites.length && !urgents.length) return null;
   return { priorites, urgents, manquant: '' };
 }

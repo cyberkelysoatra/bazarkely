@@ -13,7 +13,9 @@ import { definirApercu } from '../appels/apercu';
 import { useDiscussionNonLue } from '../appels/discussionNonLue';
 
 // Loaded on the first tap on the logo only (with the Supabase client it needs).
+import { voteAvantRegle } from '../utils/monVote';
 const Commutateur = lazy(() => import('./Commutateur'));
+const BandeauDouzeVoix = lazy(() => import('./BandeauDouzeVoix'));
 // « Envoyer mon vote » bar (v8, 4.3 bis): own chunk, loaded on the pages of the voting path only.
 const BarreVote = lazy(() => import('./BarreVote'));
 
@@ -128,9 +130,16 @@ function Bandeau({ icone, titre, texte, ton }: { icone: NomIcone; titre?: string
 
 /** Banners from pudi_etat(): masked vote (PUDI-CC-09), preparation (D4 B), admin test mode, closed, offline. */
 export function BandeauxEtat({ masquerPreparation = false }: { masquerPreparation?: boolean }) {
-  const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees, masquages } = usePudi();
+  const { etat, horsLigne, propositionsRetirees, effacerPropositionsRetirees, masquages, monVote } = usePudi();
   const items: ReactNode[] = [];
   if (masquages.length) items.push(<BandeauMasquage key="masquage" />);
+  // PUDI-CC-17: vote of 3 votes sent before the 12-vote rule, until its author sends again.
+  else if (monVote && !etat?.clos && voteAvantRegle(monVote, etat?.regle_voix_at))
+    items.push(
+      <Suspense key="douze" fallback={null}>
+        <BandeauDouzeVoix utilisees={monVote.priorites.length} date={monVote.date} />
+      </Suspense>
+    );
   if (propositionsRetirees.length)
     items.push(
       <div key="retrait" role="alert" className="border-l-4 bg-white border-[#B85317] rounded-r-lg px-3 py-2.5 flex gap-2.5 items-start shadow-sm">

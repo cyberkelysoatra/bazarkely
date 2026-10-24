@@ -12,7 +12,7 @@ const LIBELLES: Record<EtapeParcours, string> = {
   visite: 'Ont ouvert la consultation',
   fiche: 'Ont ouvert une fiche de projet',
   choix_commence: 'Ont commencé leur choix',
-  choix_complet: 'Ont choisi leurs 3 priorités',
+  choix_complet: 'Prêts à envoyer (1 voix ou plus)',
   envoyer: "Ont ouvert l'écran d'envoi",
   connecte: 'Se sont connectés avec Google',
   vote: 'Ont envoyé leur vote'
@@ -41,7 +41,7 @@ export default function ParcoursVisiteurs({ nomCanal, codes }: { nomCanal: (code
       <FrequentationEnDirect nomCanal={nomCanal} />
       <Aide titre="Comment lire ce parcours ?">
         <p>Chaque ligne compte les navigateurs qui ont atteint cette étape au moins une fois, et leur part des visites.</p>
-        <p>« Ont ouvert la consultation » : première page affichée. « Fiche de projet » : un programme ou une proposition ouvert. « Commencé leur choix » : une première priorité cochée. « 3 priorités » : choix complet. « Écran d'envoi » : la page qui demande la connexion Google. « Connectés » : session Google présente sur cette page. « Envoyé leur vote » : envoi réussi.</p>
+        <p>« Ont ouvert la consultation » : première page affichée. « Fiche de projet » : un programme ou une proposition ouvert. « Commencé leur choix » : une première voix placée. « Prêts à envoyer » : au moins 1 voix sur 12 (avant le changement de règle du 24/10/2026 : 3 priorités choisies). « Écran d'envoi » : la page qui demande la connexion Google. « Connectés » : session Google présente sur cette page. « Envoyé leur vote » : envoi réussi.</p>
         <p>Les nombres baissent d'une étape à l'autre : certains visiteurs regardent sans choisir, d'autres s'arrêtent à la connexion Google. Un visiteur qui change de téléphone ou de navigateur compte deux fois.</p>
         <p>« Votes réels comptés » vient de la liste des votes (sans votes masqués ni votes de test) : il peut dépasser « Ont envoyé leur vote » pour les votes arrivés avant le début de la mesure.</p>
       </Aide>

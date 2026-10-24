@@ -1,13 +1,16 @@
 // Vote by vote (administrators only): filters, masking with a reason, CSV export.
-// No e-mail and no phone number ever reach this screen (server contract).
+// No e-mail reaches this screen. PUDI-CC-17: « Numéro connu » shows a number only when it is
+// already in a manager's member list (server function, journaled); never exported.
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '../../composants/Icones';
 import { PROFIL_VALEURS } from '../../data';
 import { fr } from '../../i18n/fr';
 import { frPages } from '../../i18n/frPages';
 import { useDonnees } from '../../PudiContexte';
-import { lireCanaux, lireVotes, masquerVote, type VoteAdmin } from '../../appels/admin';
-import { csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier } from '../../utils/exports';
+import { lireCanaux, lireNumerosConnus, lireVotes, masquerVote, type VoteAdmin } from '../../appels/admin';
+import { csvVotes, dateHeureMada, nomFichierVotes, telechargerFichier, voteA3Voix } from '../../utils/exports';
+import { normaliserTelephoneAffichage, texteVoix } from '../../utils/regles';
+import { dateJour } from '../../utils/format';
 import { Aide, Dialogue, Erreur, champ, petitBouton, useAppel, type DemandeConfirmation } from './communs';
 import { FormulaireProposition, type DemandeProposition } from './FormulaireProposition';
 import { usePudi } from '../../PudiContexte';
@@ -27,8 +30,8 @@ function Badge({ children, ton }: { children: string; ton: 'test' | 'masque' | '
 export default function Votes() {
   const { donnees } = useDonnees();
   const appel = useAppel(async () => {
-    const [votes, canaux] = await Promise.all([lireVotes(), lireCanaux()]);
-    return { votes, canaux };
+    const [votes, canaux, numeros] = await Promise.all([lireVotes(), lireCanaux(), lireNumerosConnus().catch(() => null)]);
+    return { votes, canaux, numeros: new Map((numeros ?? []).map((x) => [x.id_anonyme, x.numero])), numerosLus: !!numeros };
   });
   const [canal, setCanal] = useState('');
   const [profil, setProfil] = useState('');
@@ -36,11 +39,13 @@ export default function Votes() {
   const [masque, setMasque] = useState<Tri>('tous');
   const [reseau, setReseau] = useState<Tri>('tous');
   const [test, setTest] = useState<Tri>('tous');
+  const [trois, setTrois] = useState<Tri>('tous');
   const [recherche, setRecherche] = useState('');
   const [demande, setDemande] = useState<DemandeConfirmation | null>(null);
   const [formulaire, setFormulaire] = useState<DemandeProposition | null>(null);
   const [transforme, setTransforme] = useState<string | null>(null);
   const { etat } = usePudi();
+  const regleAt = etat?.regle_voix_at ?? null;
   useEffect(() => {
     if (!transforme) return;
     const id = window.setTimeout(() => setTransforme(null), 6000);
@@ -59,9 +64,10 @@ export default function Votes() {
         tri(masque, v.masque) &&
         tri(reseau, v.dans_nos_reseaux) &&
         tri(test, v.est_test) &&
+        tri(trois, voteA3Voix(v, regleAt)) &&
         (!q || v.id_anonyme.toUpperCase().includes(q))
     );
-  }, [votes, canal, profil, fkt, masque, reseau, test, recherche]);
+  }, [votes, canal, profil, fkt, masque, reseau, test, trois, regleAt, recherche]);
 
   const nomCanal = (code: string | null) =>
     code ? appel.donnees?.canaux.find((c) => c.code === code)?.nom ?? code : 'Sans lien de canal';
@@ -110,6 +116,8 @@ export default function Votes() {
         <p>« Masquer » retire un vote des résultats sans le supprimer, avec un motif obligatoire inscrit au journal. « Réafficher » le remet.</p>
         <p>« Plusieurs groupes » : le numéro figure dans les listes de plusieurs canaux.</p>
         <p>Le fichier CSV s'ouvre dans Excel (séparateur point-virgule, dates en heure de Madagascar).</p>
+        <p>« Voix » : depuis le changement de règle, chaque votant a 12 voix et peut en mettre plusieurs sur un même programme (A4 ×5 = 5 voix sur A4). Les votes envoyés avant n'ont que 3 voix : le filtre « Votes à 3 voix » les retrouve, pour proposer à leurs auteurs de compléter.</p>
+        <p>« Numéro connu » : le numéro du votant s'affiche seulement s'il figure déjà dans la liste d'un groupe saisie par un responsable (Mon groupe), sinon « inconnu ». Chaque consultation de cet écran est inscrite au journal. Le numéro n'est jamais exporté.</p>
       </Aide>
       {appel.erreur && <Erreur texte={appel.erreur} reessayer={() => void appel.recharger()} />}
 
@@ -130,6 +138,13 @@ export default function Votes() {
         {selection('pudi-v-m', masque, (v) => setMasque(v as Tri), triOptions('Masqués', 'Comptés'), 'Masqués')}
         {selection('pudi-v-r', reseau, (v) => setReseau(v as Tri), triOptions('Dans nos réseaux', 'Hors réseaux'), 'Réseaux')}
         {selection('pudi-v-t', test, (v) => setTest(v as Tri), triOptions('Votes de test', 'Votes réels'), 'Test')}
+        {selection(
+          'pudi-v-3',
+          trois,
+          (v) => setTrois(v as Tri),
+          triOptions(regleAt ? `Votes à 3 voix (avant le ${dateJour(regleAt)})` : 'Votes à 3 voix', 'Votes à la nouvelle règle'),
+          'Voix'
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -191,8 +206,19 @@ export default function Votes() {
                     <dd className="break-words">{v.groupes.join(', ')}</dd>
                   </>
                 )}
-                <dt className="text-gris">Priorités</dt>
-                <dd>{v.priorites.join(', ')}</dd>
+                <dt className="text-gris">Voix</dt>
+                <dd className="break-words" data-voix-admin={v.priorites.length}>
+                  {v.priorites.length}/12 · {texteVoix(v.priorites)}
+                  {voteA3Voix(v, regleAt) && ' (vote à 3 voix)'}
+                </dd>
+                <dt className="text-gris">Numéro connu</dt>
+                <dd data-numero-connu={appel.donnees?.numeros.get(v.id_anonyme) ? 'oui' : 'non'}>
+                  {(() => {
+                    const n = appel.donnees?.numeros.get(v.id_anonyme);
+                    if (!appel.donnees?.numerosLus) return 'non disponible';
+                    return n ? normaliserTelephoneAffichage(n) ?? n : 'inconnu';
+                  })()}
+                </dd>
                 <dt className="text-gris">Urgents</dt>
                 <dd className="break-words">{v.urgents.length ? v.urgents.join(', ') : 'aucun'}</dd>
                 {v.manquant && (

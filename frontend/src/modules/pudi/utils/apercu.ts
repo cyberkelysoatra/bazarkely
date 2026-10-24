@@ -23,9 +23,8 @@ export function etatEffectif(etat: EtatConsultation | null, apercu: Apercu | nul
 
 /** Fake masking shown by « Voir aussi : vote masqué » (links shown but disabled). */
 export const REFERENCE_APERCU = 'M-APERCU';
-/** Freeze of the lists (pudi_settings.gel_listes_at), Tuesday 27/10/2026 18:00 Madagascar. */
-export const GEL_LISTES_APERCU = '2026-10-27T18:00:00+03:00';
-export function masquageApercu(gelListesAt: string = GEL_LISTES_APERCU): MonMasquage {
+/** `gelListesAt`: pudi_settings.gel_listes_at as received (never written in the application). */
+export function masquageApercu(gelListesAt: string): MonMasquage {
   return { id: REFERENCE_APERCU, at: new Date().toISOString(), whatsapp: '261340000000', gel_listes_at: gelListesAt };
 }
 
@@ -51,10 +50,9 @@ export type EtapeParcours = 'visite' | 'fiche' | 'choix_commence' | 'choix_compl
 export const ETAPES_PARCOURS: EtapeParcours[] = ['visite', 'fiche', 'choix_commence', 'choix_complet', 'envoyer', 'connecte', 'vote'];
 
 /** Steps reached by a draft of the choice. */
-export function etapesDuChoix(nbPriorites: number): EtapeParcours[] {
-  if (nbPriorites >= 3) return ['choix_commence', 'choix_complet'];
-  if (nbPriorites >= 1) return ['choix_commence'];
-  return [];
+export function etapesDuChoix(nbVoix: number): EtapeParcours[] {
+  // PUDI-CC-17: a choice can be sent from the first vote (it was 3 priorities before).
+  return nbVoix >= 1 ? ['choix_commence', 'choix_complet'] : [];
 }
 
 /** Funnel line: count and share of the visits (rounded, 0 when there is no visit). */

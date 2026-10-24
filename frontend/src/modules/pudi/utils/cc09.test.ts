@@ -25,7 +25,9 @@ describe('notice texts', () => {
     expect(fr.masquage.texte(dateGel(GEL))).toBe(
       "Votre vote a été remplacé par un vote plus récent attribué à la même personne. Si c'est une erreur, vous pouvez réclamer jusqu'au mardi 27/10/2026 à 18 h."
     );
-    expect(frPages.groupe.erreurs.LISTES_FIGEES).toBe('Les listes sont figées depuis le mardi 27/10/2026 à 18 h.');
+    expect(frPages.groupe.erreurs.LISTES_FIGEES(dateGel(GEL))).toBe('Les listes sont figées depuis le mardi 27/10/2026 à 18 h.');
+    // PUDI-CC-17: moved closing (31/10) moves the texts with it, nothing written in the application.
+    expect(frPages.groupe.erreurs.LISTES_FIGEES(dateGel('2026-10-31T15:00:00Z'))).toBe('Les listes sont figées depuis le samedi 31/10/2026 à 18 h.');
     expect(fr.masquage.courriel).toBe('Écrire au GIHTNB');
     expect(fr.masquage.whatsapp).toBe('Contacter le responsable du groupe sur WhatsApp');
   });

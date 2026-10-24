@@ -4,7 +4,9 @@ import { MessageBlocage } from '../composants/BoutonsChoix';
 import { CarteChoix } from '../composants/CarteChoix';
 import { IndicateurEtapes } from '../composants/Etapes';
 import { RappelVote, useComparaisonVote } from '../composants/RappelVote';
+import { JaugeVoix } from '../composants/Voix';
 import { useSessionLocale } from '../appels/session';
+import { etapeSuivante, noterQuestionVue } from '../appels/questions';
 import { allerAuChamp } from '../utils/champFautif';
 import { Icone } from '../composants/Icones';
 import { BadgeTranche, BandeauxEtat, Chargement, ErreurDonnees, Page, boutonPrincipal, boutonSecondaire } from '../composants/Mise';
@@ -12,9 +14,12 @@ import { programmeParId, secteurParId, type PudiDonnees } from '../data';
 import { fr } from '../i18n/fr';
 import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
-import { MAX_MANQUANT, MAX_PRIORITES, MAX_URGENTS, brouillonValide, ecartPudi, limiterManquant } from '../utils/regles';
+import { MAX_MANQUANT, MAX_URGENTS, VOIX, brouillonValide, ecartPudi, limiterManquant, regrouperVoix } from '../utils/regles';
 import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
 
+// PUDI-CC-17 (specification v9 4.5): three numbered screens, « Question 1 sur 3 : Répartissez vos
+// 12 voix », « Question 2 sur 3 : Lesquels sont urgents (2026-2030) ? » and « Question 3 sur 3 :
+// Un projet manque au PUDi ? » (both optional, one tap to skip), then the summary and the sending.
 type Etape = '1' | '2' | '3' | 'resume';
 
 /** Accent-insensitive search key. */
@@ -145,7 +150,7 @@ function ListeProgrammes({ donnees, mode }: { donnees: PudiDonnees; mode: 'prior
 function Compteur({ n, max }: { n: number; max: number }) {
   return (
     <span
-      className={`font-titre text-[1.375rem] ${n === max ? 'text-marine' : 'text-gris'}`}
+      className={`font-titre text-[1.375rem] shrink-0 ${n === max ? 'text-marine' : 'text-gris'}`}
       aria-live="polite"
       aria-label={`${n} sur ${max}`}
     >
@@ -154,18 +159,64 @@ function Compteur({ n, max }: { n: number; max: number }) {
   );
 }
 
-function NomsProgrammes({ donnees, ids }: { donnees: PudiDonnees; ids: string[] }) {
+function useNom(donnees: PudiDonnees) {
   const { liste: propositions } = usePropositions();
+  return (id: string) => programmeParId(donnees, id)?.nom ?? propositionParId(propositions, id)?.intitule ?? id;
+}
+
+function NomsProgrammes({ donnees, ids }: { donnees: PudiDonnees; ids: string[] }) {
+  const nom = useNom(donnees);
   if (!ids.length) return <p className="text-gris text-[0.9375rem]">{fr.choix.aucun}</p>;
   return (
     <ol className="space-y-1.5">
       {ids.map((id, i) => (
         <li key={id} className="flex gap-2 text-[0.9375rem]">
           <span className="font-titre text-marine">{i + 1}</span>
-          <span>{programmeParId(donnees, id)?.nom ?? propositionParId(propositions, id)?.intitule ?? id}</span>
+          <span>{nom(id)}</span>
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Votes grouped by programme (« ×5 »), most votes first. */
+function NomsVoix({ donnees, priorites }: { donnees: PudiDonnees; priorites: string[] }) {
+  const nom = useNom(donnees);
+  if (!priorites.length) return <p className="text-gris text-[0.9375rem]">{fr.choix.aucun}</p>;
+  return (
+    <ul className="space-y-1.5" data-noms-voix="">
+      {regrouperVoix(priorites).map((l) => (
+        <li key={l.id} className="flex gap-2 text-[0.9375rem]" data-voix-id={l.id} data-voix-n={l.n}>
+          <span className="font-titre text-marine shrink-0 min-w-[2.25rem]">×{l.n}</span>
+          <span>{nom(l.id)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** « Question 2 sur 3 : … » heading (the number is read with the title). */
+function TitreQuestion({ i, titre, facultatif = false }: { i: number; titre: string; facultatif?: boolean }) {
+  return (
+    <h2 className="font-bold text-[1.125rem] text-marine leading-snug min-w-0" data-question={i}>
+      <span className="block text-[0.8125rem] font-bold text-gris">
+        {frPages.voix.question(i)}
+        {facultatif && ` · ${frPages.voix.facultatif}`}
+        <span className="sr-only"> : </span>
+      </span>
+      {titre}
+    </h2>
+  );
+}
+
+/** Unused votes never block: « vous pouvez les placer ou envoyer tel quel ». */
+function Reste({ n }: { n: number }) {
+  if (n < 1) return null;
+  return (
+    <p className="mt-2 text-[0.875rem] text-profond flex gap-2 items-start" data-reste-voix={VOIX - n}>
+      <Icone nom={n === VOIX ? 'coche' : 'info'} className={`w-4 h-4 mt-0.5 shrink-0 ${n === VOIX ? 'text-[#1E7A46]' : 'text-marine'}`} />
+      {n === VOIX ? frPages.voix.toutes : frPages.voix.reste(VOIX - n)}
+    </p>
   );
 }
 
@@ -185,13 +236,18 @@ export default function Choix() {
     setParams(p);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
+  // Questions 2 and 3: each shown once before any sending.
+  useEffect(() => {
+    if (etape === '2') noterQuestionVue(2);
+    if (etape === '3') noterQuestionVue(3);
+  }, [etape]);
+  const suivante = () => aller(etapeSuivante());
   const valide = brouillonValide(brouillon);
   const clos = !!etat?.clos;
   const n = brouillon.priorites.length;
-  const manque = MAX_PRIORITES - n;
   const comparaison = useComparaisonVote();
 
-  // « Envoyer mon vote » pressed with fewer than 3 priorities: scroll to them, highlight, say how many.
+  // « Envoyer mon vote » pressed with no vote: scroll to question 1, highlight it, « Placez au moins 1 voix ».
   const [relance, setRelance] = useState(false);
   const blocPriorites = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -201,22 +257,42 @@ export default function Choix() {
     return () => window.clearTimeout(id);
   }, [state?.relance, donnees]);
   useEffect(() => {
-    if (manque <= 0) setRelance(false);
-  }, [manque]);
+    if (n > 0) setRelance(false);
+  }, [n]);
 
   if (erreur) return <Page titre={fr.choix.titre}><ErreurDonnees reessayer={reessayer} /></Page>;
   if (!donnees) return <Page titre={fr.choix.titre}><Chargement /></Page>;
 
-  const retourPriorites = (
-    <button type="button" className={`${boutonSecondaire} w-full mt-4`} onClick={() => aller('1')}>
-      <Icone nom="gauche" />
-      {fr.vote.retourPriorites}
+  const boutonsQuestion = (passer: string) => (
+    <div className="mt-4 flex flex-col gap-2">
+      <button type="button" className={`${boutonPrincipal} w-full`} onClick={suivante} data-continuer="">
+        {frPages.voix.continuer}
+        <Icone nom="droite" />
+      </button>
+      <button type="button" className={`${boutonSecondaire} w-full`} onClick={suivante} data-passer="">
+        {passer}
+      </button>
+      <button
+        type="button"
+        className="min-h-[44px] inline-flex items-center justify-center gap-1.5 text-marine font-bold text-[0.9375rem]"
+        onClick={() => aller('1')}
+      >
+        <Icone nom="gauche" className="w-4 h-4" />
+        {frPages.voix.retourQ1}
+      </button>
+    </div>
+  );
+  // One tap to skip, also at the top (the list of question 2 is long).
+  const passerHaut = (libelle: string) => (
+    <button type="button" onClick={suivante} className={`${boutonSecondaire} w-full mt-3`} data-passer-haut="">
+      {libelle}
+      <Icone nom="droite" className="w-4 h-4" />
     </button>
   );
 
   return (
     <Page titre={fr.choix.titre}>
-      <IndicateurEtapes courante={1} faites={[...(n === MAX_PRIORITES ? [1] : []), ...(connecte ? [2] : [])]} />
+      <IndicateurEtapes courante={1} faites={[...(n >= 1 ? [1] : []), ...(connecte ? [2] : [])]} />
       <div className="mb-3">
         <BandeauxEtat />
       </div>
@@ -224,38 +300,35 @@ export default function Choix() {
       {(etape === '1' || etape === 'resume') && <RappelVote donnees={donnees} />}
       {etape === '1' && (
         <>
-          <section ref={blocPriorites} tabIndex={-1} id="pudi-priorites" className="bg-white border border-filet rounded-xl p-3 outline-none" data-priorites="">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="font-bold text-[1.125rem] text-marine">{fr.choix.etape1Titre}</h2>
-              <Compteur n={n} max={MAX_PRIORITES} />
+          <section
+            ref={blocPriorites}
+            tabIndex={-1}
+            id="pudi-priorites"
+            className={`bg-white border rounded-xl p-3 outline-none ${relance && n === 0 ? 'border-[#B85317] ring-2 ring-[#B85317]' : 'border-filet'}`}
+            data-priorites=""
+            data-question-ecran="1"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <TitreQuestion i={1} titre={frPages.voix.q1Titre} />
+              <span className="text-right shrink-0">
+                <span className={`block font-titre text-[1.375rem] leading-tight ${n ? 'text-marine' : 'text-gris'}`} aria-live="polite" data-compteur-q1="">
+                  {frPages.voix.compteur(n)}
+                </span>
+                <JaugeVoix n={n} />
+              </span>
             </div>
-            <p className="text-[0.9375rem] mb-2">{fr.choix.etape1Aide}</p>
+            <p className="text-[0.9375rem] mt-1">{frPages.voix.q1Aide}</p>
+            <p className="text-[0.8125rem] text-gris mt-1">{frPages.voix.q1Geste}</p>
             {n > 0 && (
-              <div className="mt-1">
-                <p className="text-[0.8125rem] text-gris mb-1">{fr.vote.mesPriorites}</p>
-                <NomsProgrammes donnees={donnees} ids={brouillon.priorites} />
+              <div className="mt-2">
+                <p className="text-[0.8125rem] text-gris mb-1">{frPages.voix.mesVoix}</p>
+                <NomsVoix donnees={donnees} priorites={brouillon.priorites} />
               </div>
             )}
-            {relance && manque > 0 && <MessageBlocage texte={fr.vote.encore(manque)} />}
+            <Reste n={n} />
+            {relance && n === 0 && <MessageBlocage texte={frPages.voix.auMoinsUne} />}
           </section>
-
-          <section className="mt-3 bg-white border border-dashed border-filet rounded-xl p-3" aria-labelledby="pudi-facultatif" data-facultatif="">
-            <h2 id="pudi-facultatif" className="font-bold text-[0.9375rem] text-profond">{fr.vote.facultatifTitre}</h2>
-            <div className="mt-1 flex flex-col">
-              <button type="button" onClick={() => aller('2')} className="min-h-[44px] flex items-center gap-2 text-left text-marine font-bold text-[0.9375rem]" data-facultatif-urgents="">
-                <Icone nom="horloge" className="w-5 h-5 shrink-0" />
-                <span className="flex-1">{fr.vote.facultatifUrgents}</span>
-                <span className="text-[0.8125rem] text-gris font-normal">{fr.choix.compteur(brouillon.urgents.length, MAX_URGENTS)}</span>
-                <Icone nom="droite" className="w-4 h-4 shrink-0" />
-              </button>
-              <button type="button" onClick={() => aller('3')} className="min-h-[44px] flex items-center gap-2 text-left text-marine font-bold text-[0.9375rem]" data-facultatif-manquant="">
-                <Icone nom="ampoule" className="w-5 h-5 shrink-0" />
-                <span className="flex-1">{fr.vote.facultatifManquant}</span>
-                {brouillon.manquant.trim() && <Icone nom="coche" className="w-4 h-4 text-[#1E7A46] shrink-0" />}
-                <Icone nom="droite" className="w-4 h-4 shrink-0" />
-              </button>
-            </div>
-          </section>
+          <p className="mt-2 text-[0.8125rem] text-gris" data-ensuite="">{frPages.voix.ensuite}</p>
 
           <div className="mt-4">
             <ListeProgrammes donnees={donnees} mode="priorite" />
@@ -264,27 +337,26 @@ export default function Choix() {
       )}
 
       {etape === '2' && (
-        <section>
-          <p className="text-[0.8125rem] text-gris">{fr.vote.facultatifTitre}</p>
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="font-bold text-[1.125rem] text-marine">{fr.choix.etape2Titre}</h2>
+        <section data-question-ecran="2">
+          <div className="flex items-start justify-between gap-2">
+            <TitreQuestion i={2} titre={frPages.voix.q2Titre} facultatif />
             <Compteur n={brouillon.urgents.length} max={MAX_URGENTS} />
           </div>
-          <p className="text-[0.9375rem] mb-3">{fr.choix.etape2Aide}</p>
-          <ListeProgrammes donnees={donnees} mode="urgent" />
-          {retourPriorites}
+          <p className="text-[0.9375rem] mt-1">{frPages.voix.q2Aide}</p>
+          {passerHaut(frPages.voix.passerQuestion)}
+          <div className="mt-3">
+            <ListeProgrammes donnees={donnees} mode="urgent" />
+          </div>
+          {boutonsQuestion(frPages.voix.passerQuestion)}
         </section>
       )}
 
       {etape === '3' && (
-        <section>
-          <p className="text-[0.8125rem] text-gris">{fr.vote.facultatifTitre}</p>
-          <h2 className="font-bold text-[1.125rem] text-marine flex items-center gap-2">
-            <Icone nom="ampoule" />
-            {fr.choix.etape3Titre}
-          </h2>
-          <p className="text-[0.9375rem] mb-2">{fr.choix.etape3Aide}</p>
-          <p className="text-[0.875rem] mb-3 flex gap-2 items-start bg-white border border-filet rounded-xl px-3 py-2">
+        <section data-question-ecran="3">
+          <TitreQuestion i={3} titre={frPages.voix.q3Titre} facultatif />
+          <p className="text-[0.9375rem] mt-1 mb-2">{frPages.voix.q3Aide}</p>
+          {passerHaut(frPages.voix.passer)}
+          <p className="text-[0.875rem] my-3 flex gap-2 items-start bg-white border border-filet rounded-xl px-3 py-2">
             <Icone nom="recherche" className="w-4 h-4 mt-0.5 text-marine shrink-0" />
             <span>
               {fr.choix.etape3Verifier}{' '}
@@ -308,15 +380,24 @@ export default function Choix() {
           <p className="text-right text-[0.8125rem] text-gris" aria-live="polite">
             {fr.choix.caracteres(brouillon.manquant.length)}
           </p>
-          {retourPriorites}
+          {boutonsQuestion(frPages.voix.passer)}
         </section>
       )}
 
       {etape === 'resume' && (
-        <section className="space-y-4">
+        <section className="space-y-4" data-question-ecran="resume">
           <h2 className="font-bold text-[1.125rem] text-marine">{fr.choix.resumeTitre}</h2>
           {[
-            { titre: fr.choix.resumePriorites, e: '1' as Etape, contenu: <NomsProgrammes donnees={donnees} ids={brouillon.priorites} /> },
+            {
+              titre: frPages.voix.resumeVoix(n),
+              e: '1' as Etape,
+              contenu: (
+                <>
+                  <NomsVoix donnees={donnees} priorites={brouillon.priorites} />
+                  <Reste n={n} />
+                </>
+              )
+            },
             { titre: fr.choix.resumeUrgents, e: '2' as Etape, contenu: <NomsProgrammes donnees={donnees} ids={brouillon.urgents} /> },
             {
               titre: fr.choix.resumeManquant,
@@ -324,7 +405,7 @@ export default function Choix() {
               contenu: <p className="text-[0.9375rem] whitespace-pre-wrap break-words">{brouillon.manquant.trim() || fr.choix.aucun}</p>
             }
           ].map((b) => (
-            <div key={b.e} className="bg-white border border-filet rounded-xl p-3">
+            <div key={b.e} className="bg-white border border-filet rounded-xl p-3" data-resume-bloc={b.e}>
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h3 className="font-bold text-[0.9375rem] text-profond">{b.titre}</h3>
                 <button type="button" onClick={() => aller(b.e)} className="inline-flex items-center gap-1 min-h-[44px] px-2 text-marine font-bold text-[0.875rem]">
@@ -342,9 +423,10 @@ export default function Choix() {
             className={`${boutonPrincipal} w-full`}
             disabled={!valide || clos}
             onClick={() => navigate('/envoyer')}
+            data-envoyer-final=""
           >
             <Icone nom="envoyer" />
-            {comparaison === 'identique' ? fr.vote.modifierMonVote : fr.choix.envoyer}
+            {comparaison === 'identique' ? fr.vote.modifierMonVote : fr.vote.envoyer}
           </button>
         </section>
       )}

@@ -1,6 +1,8 @@
 // CSV exports of the administration (pure). Rule of the consultation: an export never contains
-// an e-mail or a phone number. The rows of pudi_admin_votes() carry none, and every free text
-// cell is still cleaned (a voter may type a number in « projet manquant »).
+// an e-mail or a phone number (the « Numéro connu » of the Votes screen is never exported). The
+// rows of pudi_admin_votes() carry none, and every free text cell is still cleaned (a voter may
+// type a number in « projet manquant »).
+import { texteVoix } from './regles';
 
 /** One row of pudi_admin_votes() (server API contract, phase 2). */
 export interface VoteAdmin {
@@ -26,9 +28,15 @@ export interface VoteAdmin {
 
 export const ENTETE_VOTES = [
   'id_anonyme', 'cree_le', 'modifie_le', 'nb_modifications', 'fokontany', 'fokontany_autre', 'profil', 'canal',
-  'dans_nos_reseaux', 'groupes', 'hors_liste_du_canal', 'priorite_1', 'priorite_2', 'priorite_3', 'urgents',
+  'dans_nos_reseaux', 'groupes', 'hors_liste_du_canal', 'nb_voix', 'voix', 'urgents',
   'manquant', 'masque', 'motif', 'test', 'groupe_ip'
 ] as const;
+
+/** PUDI-CC-17: a vote still exactly as sent before the 12-vote rule (3 distinct programmes, not modified since). */
+export function voteA3Voix(v: Pick<VoteAdmin, 'priorites' | 'modifie_le'>, regleAt: string | null | undefined): boolean {
+  const p = v.priorites ?? [];
+  return !!regleAt && p.length === 3 && new Set(p).size === 3 && Date.parse(v.modifie_le) <= Date.parse(regleAt);
+}
 
 const MADA_MS = 3 * 3600 * 1000;
 const deux = (n: number) => String(n).padStart(2, '0');
@@ -84,9 +92,8 @@ export function csvVotes(votes: readonly VoteAdmin[]): string {
       v.dans_nos_reseaux,
       (v.groupes ?? []).join(', '),
       v.hors_liste_du_canal,
-      v.priorites?.[0],
-      v.priorites?.[1],
-      v.priorites?.[2],
+      (v.priorites ?? []).length,
+      texteVoix(v.priorites ?? []),
       (v.urgents ?? []).join(' '),
       nettoyerTexteLibre(v.manquant),
       v.masque,

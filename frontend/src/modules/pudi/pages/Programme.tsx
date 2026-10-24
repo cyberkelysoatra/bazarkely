@@ -136,7 +136,7 @@ export default function Programme() {
       )}
 
       <div className="mt-5">
-        <BoutonsChoix id={p.id} tranche={p.trancheAffichee} desactive={!!etat?.clos} />
+        <BoutonsChoix id={p.id} titre={p.nom} tranche={p.trancheAffichee} desactive={!!etat?.clos} />
       </div>
     </Page>
   );

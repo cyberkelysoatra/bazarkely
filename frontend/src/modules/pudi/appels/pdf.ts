@@ -164,12 +164,23 @@ function classement(m: Mise, lignes: LigneClassement[], urgent: boolean) {
       [
         { titre: 'Rang', l: 11, droite: true },
         { titre: 'Id', l: 10 },
-        { titre: 'Programme', l: 86 },
-        { titre: 'Secteur', l: 43 },
-        { titre: 'Votes', l: 13, droite: true },
-        { titre: 'Part', l: 17, droite: true }
+        { titre: 'Programme', l: 62 },
+        { titre: 'Secteur', l: 31 },
+        { titre: 'Voix', l: 13, droite: true },
+        { titre: '% voix', l: 16, droite: true },
+        { titre: 'Votants', l: 21, droite: true },
+        { titre: '6 voix et +', l: 16, droite: true }
       ],
-      lignes.map((l) => [String(l.rang), l.id, l.nom, l.secteur, String(l.n), l.pct])
+      lignes.map((l) => [
+        String(l.rang),
+        l.id,
+        l.nom,
+        l.secteur,
+        String(l.voix ?? l.n),
+        l.pctVoix ?? l.pct,
+        `${l.votants ?? l.n} (${l.pctVotants ?? l.pct})`,
+        String(l.concentration ?? 0)
+      ])
     );
 }
 
@@ -200,6 +211,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
   // Key figures
   const chiffres: [string, string][] = [
     ['Votants', String(s.nbVotants)],
+    ['Voix placées', String(s.voixPlacees)],
     ['Dans nos réseaux', `${s.reseaux.dans} (${s.reseaux.pctDans})`],
     ['Hors réseaux', `${s.reseaux.hors} (${s.reseaux.pctHors})`]
   ];
@@ -229,10 +241,27 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     GRIS
   );
 
-  m.titre('Classement des priorités absolues');
-  m.paragraphe('Part des votants qui ont placé le programme parmi leurs 3 priorités absolues (52 programmes).', 9, false, GRIS);
+  m.titre('Classement par voix');
+  m.paragraphe(
+    'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme (52 programmes). « Voix » : voix reçues ; « Votants » : personnes différentes qui lui ont donné au moins une voix (part des votants) ; « 6 voix et + » : votes qui ont placé 6 voix ou plus sur ce programme.',
+    9,
+    false,
+    GRIS
+  );
   m.y += 1;
   classement(m, s.priorites, false);
+  m.paragraphe(`Votes concentrés : ${s.concentration}`, 9.5);
+  m.y += 1;
+
+  m.titre('Voix utilisées par votant');
+  m.tableau(
+    [
+      { titre: 'Voix utilisées', l: 120 },
+      { titre: 'Votes', l: 30, droite: true },
+      { titre: 'Part', l: 30, droite: true }
+    ],
+    s.repartition.map((p) => [p.libelle, String(p.n), p.pct])
+  );
 
   m.titre('Classement « Urgent 2026-2030 »');
   m.paragraphe(
@@ -258,10 +287,11 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
       [
         { titre: 'Rang', l: 11, droite: true },
         { titre: 'Id', l: 9 },
-        { titre: 'Proposition', l: 52 },
-        { titre: 'Source', l: 40 },
-        { titre: 'Ajoutée le', l: 22 },
-        { titre: 'Priorité', l: 23, droite: true },
+        { titre: 'Proposition', l: 46 },
+        { titre: 'Source', l: 34 },
+        { titre: 'Ajoutée le', l: 20 },
+        { titre: 'Voix', l: 13, droite: true },
+        { titre: 'Votants', l: 24, droite: true },
         { titre: 'Urgent', l: 23, droite: true }
       ],
       s.propositions.map((l) => [
@@ -270,7 +300,8 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
         l.intitule,
         l.source,
         l.ajoutee,
-        `${l.nPriorite} (${l.pctPriorite})`,
+        String(l.voix),
+        `${l.votants} (${l.pctVotants})`,
         `${l.nUrgent} (${l.pctUrgent})`
       ])
     );

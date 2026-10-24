@@ -1,7 +1,8 @@
 // Pure choice rules of the PUDi consultation (mirrors of the server checks in
-// pudi_soumettre_vote). No side effects, no imports: unit tested in regles.test.ts.
+// pudi_soumettre_vote, PUDI-CC-17: 12 votes). No side effects, no imports: unit tested in regles.test.ts.
 
-export const MAX_PRIORITES = 3;
+/** PUDI-CC-17 (specification v9 4.5): 12 votes to spread, several on one programme allowed. */
+export const VOIX = 12;
 export const MAX_URGENTS = 10;
 export const MAX_MANQUANT = 1000;
 export const TRANCHE_URGENTE = '2026-2030';
@@ -14,9 +15,46 @@ export interface Brouillon {
 
 export const BROUILLON_VIDE: Brouillon = { priorites: [], urgents: [], manquant: '' };
 
-/** A 4th priority (or a duplicate) is refused. */
-export function peutAjouterPriorite(b: Brouillon, id: string): boolean {
-  return !b.priorites.includes(id) && b.priorites.length < MAX_PRIORITES;
+/** Votes placed (one element of `priorites` per vote, the same id repeated for stacked votes). */
+export function voixUtilisees(b: Brouillon): number {
+  return b.priorites.length;
+}
+
+/** Votes placed on one programme or proposal. */
+export function voixPour(b: Brouillon, id: string): number {
+  return b.priorites.reduce((n, x) => (x === id ? n + 1 : n), 0);
+}
+
+/** A 13th vote is refused. */
+export function peutAjouterVoix(b: Brouillon): boolean {
+  return b.priorites.length < VOIX;
+}
+
+/** One more vote on `id` (unchanged when the 12 votes are used). */
+export function ajouterVoix(b: Brouillon, id: string): Brouillon {
+  return peutAjouterVoix(b) ? { ...b, priorites: [...b.priorites, id] } : b;
+}
+
+/** One vote less on `id` (the last one placed; unchanged when it has none). */
+export function retirerVoix(b: Brouillon, id: string): Brouillon {
+  const i = b.priorites.lastIndexOf(id);
+  return i < 0 ? b : { ...b, priorites: [...b.priorites.slice(0, i), ...b.priorites.slice(i + 1)] };
+}
+
+/** Votes grouped by programme, most votes first, then in the order they were first placed. */
+export function regrouperVoix(priorites: readonly string[]): { id: string; n: number }[] {
+  const ordre: string[] = [];
+  const n = new Map<string, number>();
+  for (const id of priorites) {
+    if (!n.has(id)) ordre.push(id);
+    n.set(id, (n.get(id) ?? 0) + 1);
+  }
+  return ordre.map((id, i) => ({ id, n: n.get(id)!, i })).sort((a, b) => b.n - a.n || a.i - b.i).map(({ id, n: k }) => ({ id, n: k }));
+}
+
+/** "A4 ×5, T3 ×4, P1 ×3" (names given by `nom`, ids by default). */
+export function texteVoix(priorites: readonly string[], nom: (id: string) => string = (id) => id): string {
+  return regrouperVoix(priorites).map((l) => `${nom(l.id)} ×${l.n}`).join(', ');
 }
 
 /** An 11th urgent (or a duplicate) is refused. A programme may be both priority and urgent. */
@@ -24,13 +62,13 @@ export function peutAjouterUrgent(b: Brouillon, id: string): boolean {
   return !b.urgents.includes(id) && b.urgents.length < MAX_URGENTS;
 }
 
-/** Ready to send: exactly 3 distinct priorities, at most 10 distinct urgents, text within 1000 characters. */
+/** Ready to send: 1 to 12 votes on known ids (repeats allowed), at most 10 distinct urgents, text within 1000 characters. */
 export function brouillonValide(b: Brouillon, idsConnus?: readonly string[]): boolean {
   const distinct = (l: string[]) => new Set(l).size === l.length;
   const connus = (l: string[]) => !idsConnus || l.every((id) => idsConnus.includes(id));
   return (
-    b.priorites.length === MAX_PRIORITES &&
-    distinct(b.priorites) &&
+    b.priorites.length >= 1 &&
+    b.priorites.length <= VOIX &&
     connus(b.priorites) &&
     b.urgents.length <= MAX_URGENTS &&
     distinct(b.urgents) &&
@@ -39,12 +77,7 @@ export function brouillonValide(b: Brouillon, idsConnus?: readonly string[]): bo
   );
 }
 
-/** Toggle helpers returning a new draft (unchanged when the rule refuses). */
-export function basculerPriorite(b: Brouillon, id: string): Brouillon {
-  if (b.priorites.includes(id)) return { ...b, priorites: b.priorites.filter((x) => x !== id) };
-  return peutAjouterPriorite(b, id) ? { ...b, priorites: [...b.priorites, id] } : b;
-}
-
+/** Toggle helper returning a new draft (unchanged when the rule refuses). */
 export function basculerUrgent(b: Brouillon, id: string): Brouillon {
   if (b.urgents.includes(id)) return { ...b, urgents: b.urgents.filter((x) => x !== id) };
   return peutAjouterUrgent(b, id) ? { ...b, urgents: [...b.urgents, id] } : b;

@@ -7,7 +7,7 @@ export const EMAIL_GIHTNB = 'info.gihtnb@gmail.com';
 
 const MADA_OFFSET_MS = 3 * 3600 * 1000;
 
-/** "mardi 27/10/2026 à 18 h" (Madagascar time). */
+/** "jeudi 29/10/2026 à 18 h" (Madagascar time, example). */
 export function dateGel(iso: string): string {
   const d = new Date(new Date(iso).getTime() + MADA_OFFSET_MS);
   const jj = String(d.getUTCDate()).padStart(2, '0');

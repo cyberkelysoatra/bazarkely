@@ -2,6 +2,8 @@
 // check of the form before sending, French messages of the server errors.
 import { frPages } from '../i18n/frPages';
 import { extraireCode } from './erreurs';
+import { lireDatesCache } from './format';
+import { dateGel } from './masquage';
 import { normaliserTelephone, normaliserTelephoneAffichage } from './regles';
 
 export interface MembreAffichable {
@@ -65,6 +67,7 @@ export function verifierSaisie(numeros: string[], email: string): string | null 
 
 export function messageGroupe(e: unknown): string {
   const code = extraireCode(e);
-  const messages = frPages.groupe.erreurs as Record<string, string>;
+  if (code === 'LISTES_FIGEES') return frPages.groupe.erreurs.LISTES_FIGEES(dateGel(lireDatesCache().gel_listes_at));
+  const messages = frPages.groupe.erreurs as unknown as Record<string, string>;
   return (code && messages[code]) || messages.AUTRE;
 }

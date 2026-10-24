@@ -5,7 +5,7 @@ import { jetonLocal, lireEtat, type EtatConsultation } from './appels/api';
 import { ecrireBrouillon, lireBrouillon } from './appels/brouillon';
 import { retirerPropositionsAbsentes, type Brouillon } from './utils/regles';
 import { estProposition, propositionParId, rafraichirPropositions } from './appels/propositions';
-import { CLOTURE_PAR_DEFAUT } from './utils/format';
+import { ecrireDatesCache, lireDatesCache } from './utils/format';
 import { renouvelerSessionExpiree, useSessionLocale } from './appels/session';
 import { lireMesMasquages, type MonMasquage } from './appels/masquages';
 import { useApercuStocke } from './appels/apercu';
@@ -35,6 +35,8 @@ interface PudiContexteValeur {
   /** Server time minus device time (ms), so the countdown never trusts the phone clock. */
   decalage: number;
   clotureAt: string;
+  /** Freeze of the member lists (server, else the last value received, else the fallback). */
+  gelListesAt: string;
   rechargerEtat: () => Promise<void>;
   /** Replace the state (e.g. with the authenticated read on the sending page). */
   definirEtat: (e: EtatConsultation) => void;
@@ -62,6 +64,7 @@ export function PudiProvider({ children }: { children: ReactNode }) {
 
   const definirEtat = useCallback((e: EtatConsultation) => {
     setEtat(e);
+    ecrireDatesCache(e);
     setHorsLigne(false);
     const serveur = Date.parse(e.maintenant);
     if (Number.isFinite(serveur)) setDecalage(serveur - Date.now());
@@ -158,8 +161,8 @@ export function PudiProvider({ children }: { children: ReactNode }) {
   const etat = useMemo(() => etatEffectif(etatReel, apercu), [etatReel, apercu]);
   const masquagesVus = useMemo(
     () =>
-      apercu ? (apercu.role === 'votant' && apercu.masque ? [masquageApercu()] : []) : masquages,
-    [apercu, masquages]
+      apercu ? (apercu.role === 'votant' && apercu.masque ? [masquageApercu(etatReel?.gel_listes_at ?? lireDatesCache().gel_listes_at)] : []) : masquages,
+    [apercu, masquages, etatReel?.gel_listes_at]
   );
 
   // PUDI-CC-16.1: own vote on every device. Read once per account as soon as the server says
@@ -254,7 +257,8 @@ export function PudiProvider({ children }: { children: ReactNode }) {
       masquagesLus,
       horsLigne,
       decalage,
-      clotureAt: etat?.cloture_at ?? CLOTURE_PAR_DEFAUT,
+      clotureAt: etat?.cloture_at ?? lireDatesCache().cloture_at,
+      gelListesAt: etat?.gel_listes_at ?? lireDatesCache().gel_listes_at,
       rechargerEtat,
       definirEtat,
       envoiOuvert: !!etat && !etat.clos && (etat.publie || etat.est_admin),

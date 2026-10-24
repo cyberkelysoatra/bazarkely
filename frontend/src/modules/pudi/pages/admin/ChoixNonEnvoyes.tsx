@@ -25,15 +25,15 @@ export default function ChoixNonEnvoyes({ donnees }: { donnees: PudiDonnees | nu
       {c && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <Chiffre valeur={c.complets} libelle="Choix complet (3 priorités), non envoyé" icone="alerte" ton="alerte" />
-            <Chiffre valeur={c.partiels} libelle="Choix commencé (1 ou 2 priorités)" icone="horloge" />
+            <Chiffre valeur={c.complets} libelle="Choix prêt (1 voix ou plus), non envoyé" icone="alerte" ton="alerte" />
+            <Chiffre valeur={c.partiels} libelle="Choix commencé (avant le 24/10/2026 : 1 ou 2 priorités)" icone="horloge" />
           </div>
           <p className="text-[0.8125rem] font-bold text-[#9C3F21]" data-non-verifies="">
             Chiffres {NON_VERIFIES}.
           </p>
           {c.classement.length > 0 && (
             <div className="bg-white border border-filet rounded-xl p-3">
-              <p className="text-[0.875rem] font-bold mb-2">Priorités de ces {total} choix complets non envoyés</p>
+              <p className="text-[0.875rem] font-bold mb-2">Voix de ces {total} choix prêts non envoyés</p>
               <ol className="space-y-1.5" data-classement-non-envoyes="">
                 {c.classement.map((l) => (
                   <li key={l.id} className="flex items-baseline justify-between gap-2 text-[0.875rem]">

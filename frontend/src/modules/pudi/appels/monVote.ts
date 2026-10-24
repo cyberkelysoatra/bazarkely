@@ -13,7 +13,7 @@ export function lireVoteCache(): VoteResume | null {
     const o = JSON.parse(raw) as Partial<VoteResume>;
     const liste = (l: unknown) => (Array.isArray(l) ? l.filter((x): x is string => typeof x === 'string') : []);
     if (typeof o.compte !== 'string' || typeof o.date !== 'string') return null;
-    return { compte: o.compte, priorites: liste(o.priorites).slice(0, 3), urgents: liste(o.urgents).slice(0, 10), date: o.date };
+    return { compte: o.compte, priorites: liste(o.priorites).slice(0, 12), urgents: liste(o.urgents).slice(0, 10), date: o.date };
   } catch {
     return null;
   }

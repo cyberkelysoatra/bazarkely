@@ -80,16 +80,18 @@ describe('csvVotes', () => {
     const csv = csvVotes([vote({})]);
     expect(csv.startsWith('\uFEFF')).toBe(true);
     expect(csv.slice(1).split('\r\n')[0]).toBe(
-      'id_anonyme;cree_le;modifie_le;nb_modifications;fokontany;fokontany_autre;profil;canal;dans_nos_reseaux;groupes;hors_liste_du_canal;priorite_1;priorite_2;priorite_3;urgents;manquant;masque;motif;test;groupe_ip'
+      'id_anonyme;cree_le;modifie_le;nb_modifications;fokontany;fokontany_autre;profil;canal;dans_nos_reseaux;groupes;hors_liste_du_canal;nb_voix;voix;urgents;manquant;masque;motif;test;groupe_ip'
     );
-    expect(ENTETE_VOTES).toHaveLength(20);
+    expect(ENTETE_VOTES).toHaveLength(19);
   });
   it('writes Madagascar dates and readable booleans', () => {
     const ligne = csvVotes([vote({})]).split('\r\n')[1].split(';');
     expect(ligne[1]).toBe('2026-10-21 14:05');
     expect(ligne[8]).toBe('oui');
-    expect(ligne[11]).toBe('A1');
-    expect(ligne[18]).toBe('oui');
+    // PUDI-CC-17: number of votes, then the votes grouped by programme.
+    expect(ligne[11]).toBe('3');
+    expect(ligne[12]).toBe('A1 ×1, T1 ×1, Q1 ×1');
+    expect(ligne[17]).toBe('oui');
   });
   it('never contains an e-mail nor a number of 9 digits or more', () => {
     const csv = csvVotes([
@@ -156,8 +158,8 @@ describe('preparerSynthese', () => {
   });
   it('exports the two rankings and the distributions as CSV', () => {
     const lignes = csvSynthese(s).slice(1).trim().split('\r\n');
-    expect(lignes[0]).toBe('section;rang;id;libelle;secteur;n;part;tranche_pudi;ecart_avec_le_pudi');
-    expect(lignes.filter((l) => l.startsWith('priorite_absolue;'))).toHaveLength(52);
+    expect(lignes[0]).toBe('section;rang;id;libelle;secteur;n;part;tranche_pudi;ecart_avec_le_pudi;voix;votants;pct_voix;pct_votants;concentration');
+    expect(lignes.filter((l) => l.startsWith('voix;'))).toHaveLength(52);
     expect(lignes.filter((l) => l.startsWith('urgent_2026_2030;'))).toHaveLength(52);
     expect(lignes.some((l) => l.startsWith('profil;'))).toBe(true);
   });

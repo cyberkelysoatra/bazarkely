@@ -2,10 +2,44 @@
 import { fr } from '../i18n/fr';
 
 /**
- * Offline fallback of the closing time only: online, the server value pudi_settings.cloture_at
- * always wins. Tuesday 27 October 2026 at 8 h (Madagascar time), as set by JOEL on the server.
+ * Offline fallback of the closing time only, used when the server never answered on this device:
+ * otherwise the last pudi_settings.cloture_at received wins (kept in pudi_cloture_cache, PUDI-CC-17),
+ * so the organisers can move the closing from Admin > Paramètres without a new version.
  */
 export const CLOTURE_PAR_DEFAUT = '2026-10-27T08:00:00+03:00';
+/** Fallback freeze of the member lists: 10 h after the fallback closing (same rule). */
+const GEL_APRES_CLOTURE_MS = 10 * 3600 * 1000;
+const CLE_DATES = 'pudi_cloture_cache';
+
+export interface DatesConsultation {
+  cloture_at: string;
+  gel_listes_at: string;
+}
+
+/** Last closing and freeze received from the server on this device, else the fallback. */
+export function lireDatesCache(): DatesConsultation {
+  const defaut = {
+    cloture_at: CLOTURE_PAR_DEFAUT,
+    gel_listes_at: new Date(Date.parse(CLOTURE_PAR_DEFAUT) + GEL_APRES_CLOTURE_MS).toISOString()
+  };
+  try {
+    const o = JSON.parse(localStorage.getItem(CLE_DATES) || 'null') as Partial<DatesConsultation> | null;
+    const ok = (v: unknown): v is string => typeof v === 'string' && Number.isFinite(Date.parse(v));
+    return { cloture_at: ok(o?.cloture_at) ? o.cloture_at : defaut.cloture_at, gel_listes_at: ok(o?.gel_listes_at) ? o.gel_listes_at : defaut.gel_listes_at };
+  } catch {
+    return defaut;
+  }
+}
+
+/** Keeps the server dates (a server answer without the freeze keeps the previous one). */
+export function ecrireDatesCache(d: { cloture_at: string; gel_listes_at?: string | null }): void {
+  try {
+    const avant = lireDatesCache();
+    localStorage.setItem(CLE_DATES, JSON.stringify({ cloture_at: d.cloture_at, gel_listes_at: d.gel_listes_at ?? avant.gel_listes_at }));
+  } catch {
+    /* no storage: the fallback stays */
+  }
+}
 
 const MADA_OFFSET_MS = 3 * 3600 * 1000; // Madagascar = UTC+3, no daylight saving
 

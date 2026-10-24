@@ -89,7 +89,7 @@ export default function Proposition() {
       )}
 
       <div className="mt-5">
-        <BoutonsChoix id={p.id} desactive={!!etat?.clos} />
+        <BoutonsChoix id={p.id} titre={p.intitule} desactive={!!etat?.clos} />
       </div>
     </Page>
   );
