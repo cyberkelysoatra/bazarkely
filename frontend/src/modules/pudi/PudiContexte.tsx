@@ -1,12 +1,12 @@
 // Shared state of the PUDi entry: draft of the choice, state of the consultation, data file.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chargerDonnees, donneesChargees, type PudiDonnees } from './data';
-import { lireEtat, type EtatConsultation } from './appels/api';
+import { jetonLocal, lireEtat, type EtatConsultation } from './appels/api';
 import { ecrireBrouillon, lireBrouillon } from './appels/brouillon';
 import { retirerPropositionsAbsentes, type Brouillon } from './utils/regles';
 import { estProposition, propositionParId, rafraichirPropositions } from './appels/propositions';
 import { CLOTURE_PAR_DEFAUT } from './utils/format';
-import { useSessionLocale } from './appels/session';
+import { renouvelerSessionExpiree, useSessionLocale } from './appels/session';
 import { lireMesMasquages, type MonMasquage } from './appels/masquages';
 import { useApercuStocke } from './appels/apercu';
 import { activerParcours, noterEtape } from './appels/parcours';
@@ -80,6 +80,14 @@ export function PudiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void rechargerEtat();
   }, [email, rechargerEtat]);
+  // PUDI-CC-16.1: signed in on this device but the token expired (pages without supabase-js never
+  // renew it): renew it once, then read the state again as the signed-in account.
+  useEffect(() => {
+    if (!email || horsLigne || jetonLocal()) return;
+    void renouvelerSessionExpiree().then((ok) => {
+      if (ok) void rechargerEtat();
+    });
+  }, [email, horsLigne, rechargerEtat]);
 
   useEffect(() => {
     const enLigne = () => void rechargerEtat();

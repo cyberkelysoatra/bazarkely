@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.104.0';
-export const APP_VERSION_NAME = 'PUDi : le vote déjà envoyé apparaît sur tous les appareils.';
+export const APP_VERSION = '3.104.1';
+export const APP_VERSION_NAME = 'PUDi : la connexion expirée est renouvelée, le vote réapparaît.';
 export const LAST_UPDATED = '2026-10-24';
 export const APP_BUILD_DATE = '2026-10-24';
 export const VERSION_HISTORY = [
+  {
+    version: '3.104.1',
+    date: '2026-10-24',
+    description: 'PUDi : correctif de la v3.104.0. Sur l’accueil et les pages de projets, une connexion de plus d’une heure n’était jamais renouvelée : le serveur ne reconnaissait plus la personne et son vote n’était pas relu.',
+    changes: [
+      'Connexion expirée sur l’appareil : elle est renouvelée une fois en arrière-plan, puis l’état et le vote sont relus.',
+      'Aucun changement pour une personne non connectée (rien de plus n’est chargé).'
+    ]
+  },
   {
     version: '3.104.0',
     date: '2026-10-24',

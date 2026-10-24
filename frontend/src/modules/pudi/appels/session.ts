@@ -5,6 +5,7 @@
 // the Google sign-in is handed to the host (its in-app flow), never done by PUDi.
 import { useSyncExternalStore } from 'react';
 import { SESSION_STORAGE_KEY, getSupabase, withTimeout } from './supabaseClient';
+import { jetonLocal } from './api';
 import { lireCanal } from './provenance';
 import { effacerSessionNative, lireSessionNative, pontNavy } from './pontNavy';
 import { adresseConnexionHote } from '../utils/sessionNavy';
@@ -94,6 +95,29 @@ export async function connexionGoogle(chemin: string = window.location.pathname)
   const redirectTo = `${window.location.origin}${base}${canal ? `?c=${encodeURIComponent(canal)}` : ''}`;
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
   if (error) throw error;
+}
+
+/**
+ * PUDI-CC-16.1: the access token kept on the device expires after one hour and the home and
+ * discovery pages never load supabase-js, so nothing renewed it: the server then saw an anonymous
+ * visitor (no a_vote, own vote never read). With a session hint but an expired token, load the
+ * lazy client once: getSession() renews the token from the refresh token and stores it.
+ * Resolves true when a valid token is stored afterwards.
+ */
+let renouvellement: Promise<boolean> | null = null;
+export function renouvelerSessionExpiree(): Promise<boolean> {
+  if (!renouvellement) {
+    renouvellement = (async () => {
+      const sb = await withTimeout(getSupabase());
+      const { data } = await withTimeout(sb.auth.getSession());
+      return !!data.session && !!jetonLocal();
+    })()
+      .catch(() => false)
+      .finally(() => {
+        renouvellement = null;
+      });
+  }
+  return renouvellement;
 }
 
 /** Signs out of the shared session (also signs out of the other 1sakely.org modules). */
