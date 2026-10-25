@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import { MessageBlocage } from '../composants/BoutonsChoix';
 import { CarteChoix } from '../composants/CarteChoix';
 import { IndicateurEtapes } from '../composants/Etapes';
@@ -18,6 +18,7 @@ import { MAX_MANQUANT, VOIX, brouillonValide, limiterManquant, regrouperVoix } f
 import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
 import { conditionsAuto, signalerGeste } from '../appels/autoEnregistrement';
 import { Renseignements } from '../composants/Renseignements';
+import { abonnerDemande, centrerCarte, demanderCentrage, lireDemande, terminerDemande } from '../utils/defilement';
 
 // PUDI-CC-18: two numbered screens, « Question 1 sur 2 : Répartissez vos 12 voix » and
 // « Question 2 sur 2 : Un projet manque au PUDi ? » (optional, one tap to skip), then the summary
@@ -54,6 +55,21 @@ function ListeProgrammes({ donnees }: { donnees: PudiDonnees }) {
   }, [donnees, propositions, secteur, seulesPropositions, recherche]);
   const choisis = brouillon.priorites;
   const clos = !!etat?.clos;
+  // PUDI-CC-20: « centre this card » (summary line, transfer panel, coming from a sheet). A card
+  // hidden by a filter brings the whole list back first; centred before the paint when instant.
+  const demande = useSyncExternalStore(abonnerDemande, lireDemande, lireDemande);
+  useLayoutEffect(() => {
+    if (!demande) return;
+    if (!liste.some((p) => p.id === demande.id)) {
+      if (secteur || seulesPropositions || recherche) {
+        setSecteur('');
+        setSeulesPropositions(false);
+        setRecherche('');
+      } else if (propositions) terminerDemande(demande.n);
+      return;
+    }
+    if (centrerCarte(demande.id, demande.doux)) terminerDemande(demande.n);
+  }, [demande, liste, secteur, seulesPropositions, recherche, propositions]);
 
   return (
     <div>
@@ -106,7 +122,7 @@ function ListeProgrammes({ donnees }: { donnees: PudiDonnees }) {
         </label>
       </div>
       {liste.length === 0 && <p className="text-gris py-4">{fr.choix.aucunResultat}</p>}
-      <ul className="space-y-2">
+      <ul className="space-y-2" data-liste-choix="">
         {liste.map((p) => {
           const s = p.secteur ? secteurParId(donnees, p.secteur) : undefined;
           const actif = choisis.includes(p.id);
@@ -142,16 +158,32 @@ function useNom(donnees: PudiDonnees) {
   return (id: string) => programmeParId(donnees, id)?.nom ?? propositionParId(propositions, id)?.intitule ?? id;
 }
 
-/** Votes grouped by programme (« ×5 »), most votes first. */
-function NomsVoix({ donnees, priorites }: { donnees: PudiDonnees; priorites: string[] }) {
+/** Votes grouped by programme (« ×5 »), most votes first. `aller`: a tap on a line leads to its card. */
+function NomsVoix({ donnees, priorites, aller }: { donnees: PudiDonnees; priorites: string[]; aller?: (id: string) => void }) {
   const nom = useNom(donnees);
   if (!priorites.length) return <p className="text-gris text-[0.9375rem]">{fr.choix.aucun}</p>;
   return (
-    <ul className="space-y-1.5" data-noms-voix="">
+    <ul className={aller ? '' : 'space-y-1.5'} data-noms-voix="">
       {regrouperVoix(priorites).map((l) => (
         <li key={l.id} className="flex gap-2 text-[0.9375rem]" data-voix-id={l.id} data-voix-n={l.n}>
-          <span className="font-titre text-marine shrink-0 min-w-[2.25rem]">×{l.n}</span>
-          <span>{nom(l.id)}</span>
+          {aller ? (
+            <button
+              type="button"
+              onClick={() => aller(l.id)}
+              aria-label={frPages.transfert.allerAu(nom(l.id))}
+              className="w-full min-h-[44px] flex items-center gap-2 text-left rounded-lg active:bg-vide"
+              data-ligne-voix-aller=""
+            >
+              <span className="font-titre text-marine shrink-0 min-w-[2.25rem]">×{l.n}</span>
+              <span className="flex-1 min-w-0">{nom(l.id)}</span>
+              <Icone nom="droite" className="w-4 h-4 shrink-0 text-marine" />
+            </button>
+          ) : (
+            <>
+              <span className="font-titre text-marine shrink-0 min-w-[2.25rem]">×{l.n}</span>
+              <span>{nom(l.id)}</span>
+            </>
+          )}
         </li>
       ))}
     </ul>
@@ -193,7 +225,8 @@ export default function Choix() {
   const connecte = !!useSessionLocale();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { state } = useLocation() as { state: { relance?: number } | null };
+  const { state } = useLocation() as { state: { relance?: number; centrer?: string } | null };
+  const typeNavigation = useNavigationType();
   const brut = params.get('etape');
   // An old link to « ?etape=3 » (missing project before PUDI-CC-18) opens question 2.
   const etape: Etape = brut === '2' || brut === '3' ? '2' : brut === 'resume' ? 'resume' : '1';
@@ -226,6 +259,13 @@ export default function Choix() {
   useEffect(() => {
     if (n > 0) setRelance(false);
   }, [n]);
+  // PUDI-CC-20: name tapped in a transfer panel of another page: the card shows centred, no jump.
+  const centrage = useRef(false);
+  useLayoutEffect(() => {
+    if (!state?.centrer || centrage.current || typeNavigation === 'POP') return;
+    centrage.current = true;
+    demanderCentrage(state.centrer, false);
+  }, [state?.centrer, typeNavigation]);
 
   if (erreur) return <Page titre={fr.choix.titre}><ErreurDonnees reessayer={reessayer} /></Page>;
   if (!donnees) return <Page titre={fr.choix.titre}><Chargement /></Page>;
@@ -289,7 +329,7 @@ export default function Choix() {
             {n > 0 && (
               <div className="mt-2">
                 <p className="text-[0.8125rem] text-gris mb-1">{frPages.voix.mesVoix}</p>
-                <NomsVoix donnees={donnees} priorites={brouillon.priorites} />
+                <NomsVoix donnees={donnees} priorites={brouillon.priorites} aller={(id) => demanderCentrage(id, true)} />
               </div>
             )}
             <Reste n={n} />

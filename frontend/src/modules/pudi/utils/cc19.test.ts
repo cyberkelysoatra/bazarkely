@@ -275,7 +275,8 @@ describe('synthesis without voter counts (public, switch off)', () => {
   it('votes and shares kept; breakdowns as percentages only', () => {
     expect(s.priorites[0]).toMatchObject({ voix: 30, pctVoix: '9,3 %' });
     expect(s.priorites[1].ecart).toBe('Avancé par les votants (PUDi : 2036-2040)');
-    expect(s.voixPlacees).toBe(323);
+    // PUDI-CC-20: the total of the votes placed is no longer given to the public.
+    expect(s.voixPlacees).toBeNull();
     expect(s.profils.find((p) => p.pct === '51,9 %')?.n).toBeNull();
     expect(s.fokontany[0]).toMatchObject({ n: null, pct: '80 %' });
     expect(s.reseaux.pctDans).toBe('51,9 %');

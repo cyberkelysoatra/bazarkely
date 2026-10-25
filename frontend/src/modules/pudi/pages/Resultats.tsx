@@ -301,8 +301,18 @@ export default function Resultats() {
       <>
         <div className="flex items-end justify-between gap-3 bg-white border border-filet rounded-xl p-3">
           <div>
-            <div className="font-titre text-[2.125rem] leading-none text-marine" data-chiffre-tete="">{complet ? res.nb_votants ?? 0 : res.voix_placees ?? 0}</div>
-            <div className="text-[0.875rem] text-gris">{complet ? frPages.resultats.votants(res.nb_votants ?? 0) : frPages.resultats.voixPlaceesLibelle}</div>
+            {complet ? (
+              <>
+                <div className="font-titre text-[2.125rem] leading-none text-marine" data-chiffre-tete="">{res.nb_votants ?? 0}</div>
+                <div className="text-[0.875rem] text-gris">{frPages.resultats.votants(res.nb_votants ?? 0)}</div>
+              </>
+            ) : (
+              // PUDI-CC-20: no total of the votes placed for the public (it bounds the number of voters).
+              <>
+                <div className="font-bold text-[1.0625rem] leading-tight text-marine" data-tete-reduite="">{frPages.resultats.teteReduite}</div>
+                <div className="text-[0.8125rem] text-gris">{frPages.resultats.teteReduiteAide}</div>
+              </>
+            )}
           </div>
           <div className="text-right">
             <p className="text-[0.8125rem] text-gris">{frPages.resultats.misAJour(heureCourte(res.calcule_at))}</p>
@@ -316,7 +326,7 @@ export default function Resultats() {
           {frPages.resultats.ouverture} : {res.publie_at ? dateLongue(res.publie_at) : frPages.resultats.nonPubliee} · {fr.accueil.cloture} :{' '}
           {dateClotureLongue(res.cloture_at)}
         </p>
-        {(complet ? res.nb_votants === 0 : !res.voix_placees) && <p className="mt-3 text-gris">{frPages.resultats.aucunVote}</p>}
+        {(complet ? res.nb_votants === 0 : !res.priorites.some((l) => (l.voix ?? l.n ?? 0) > 0)) && <p className="mt-3 text-gris">{frPages.resultats.aucunVote}</p>}
 
         <section className="mt-6">
           <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.prioritesTitre}</h2>

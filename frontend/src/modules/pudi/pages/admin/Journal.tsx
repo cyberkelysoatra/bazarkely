@@ -28,6 +28,7 @@ const ACTIONS: Record<string, string> = {
   vote_refuse: 'Vote refusé',
   message_ecrire: 'Message de discussion écrit',
   message_supprimer: 'Message de discussion supprimé',
+  message_reagir: 'Réaction à un message de discussion',
   discussion_suspendre: 'Auteur suspendu de la discussion',
   discussion_retablir: 'Suspension de la discussion levée'
 };

@@ -21,6 +21,30 @@ export interface MessageDiscussion {
   modifie?: boolean;
   /** Author only: end of the 10-minute edit window (null otherwise). */
   modifiable_jusqu_a?: string | null;
+  /** PUDI-CC-20: count per emoji (null on a deleted message, absent on an older server answer). */
+  reactions?: Record<string, number> | null;
+  /** Own emoji (signed in only). */
+  ma_reaction?: string | null;
+}
+
+/** The six reactions, in display order (same list as the server check). */
+export const EMOJIS = ['\u{1F44D}', '❤️', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F64F}'] as const;
+/** PUDI-CC-20: one reaction per person and message; null removes it. Checked on the server. */
+export const reagir = (message: string, emoji: string | null) => rpc<{ message: string; emoji: string | null }>('pudi_reagir', { p_message: message, p_emoji: emoji });
+/** Organisers only: who reacted. */
+export const lireReactions = (message: string) =>
+  rpc<{ emoji: string; auteur_nom: string; at: string }[]>('pudi_admin_discussion_reactions', { p_message: message });
+
+/** Counts after the person's own reaction changes from `avant` to `apres` (optimistic display). */
+export function appliquerReaction(m: MessageDiscussion, apres: string | null): MessageDiscussion {
+  const r: Record<string, number> = { ...(m.reactions ?? {}) };
+  const avant = m.ma_reaction ?? null;
+  if (avant) {
+    r[avant] = (r[avant] ?? 1) - 1;
+    if (r[avant] <= 0) delete r[avant];
+  }
+  if (apres) r[apres] = (r[apres] ?? 0) + 1;
+  return { ...m, reactions: r, ma_reaction: apres };
 }
 
 export const LIMITE_PAGE = 50;
@@ -65,5 +89,7 @@ export interface SuiviDiscussion {
   nb_auteurs: number;
   nb_supprimes: number;
   nb_suspendus: number;
+  /** PUDI-CC-20 (absent on an older server answer). */
+  nb_reactions?: number;
 }
 export const lireSuiviDiscussion = () => rpc<SuiviDiscussion>('pudi_admin_discussion_suivi');

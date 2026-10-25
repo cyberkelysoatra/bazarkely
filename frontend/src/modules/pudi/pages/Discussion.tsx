@@ -2,14 +2,20 @@
 // all (even signed out), written by signed-in accounts. Newest at the bottom, own messages on
 // the right. Polled every 15 s while the page is visible and online. Deleting leaves « Ce message
 // a été supprimé ». Links stay plain text. JOEL's role preview never writes (PUDI-CC-11).
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as EvPointeur } from 'react';
+// PUDI-CC-20: emoji reactions under the messages (one per person and message, WhatsApp style), no
+// empty line under the field, the send button centred on a one-line field.
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as EvPointeur } from 'react';
 import { Icone } from '../composants/Icones';
 import { boutonPrincipal } from '../composants/Mise';
 import { usePudi } from '../PudiContexte';
 import { connexionGoogle, useSessionLocale } from '../appels/session';
 import {
+  EMOJIS,
   LIMITE_PAGE,
+  appliquerReaction,
   ecrireMessage,
+  lireReactions,
+  reagir,
   lireMessages,
   lireVersions,
   modifierMessage,
@@ -41,8 +47,15 @@ const ERREURS: Record<string, string> = {
   AUTRE: 'Le message n’a pas pu être envoyé. Réessayez.',
   DELAI_MODIFICATION: 'Les 10 minutes sont passées : ce message ne peut plus être modifié.',
   MESSAGE_NON_MODIFIABLE: 'Ce message ne peut plus être modifié.',
-  TROP_DE_MODIFICATIONS: 'Un message peut être modifié 5 fois au plus.'
+  TROP_DE_MODIFICATIONS: 'Un message peut être modifié 5 fois au plus.',
+  TROP_DE_REACTIONS: 'Une réaction par seconde au plus : réessayez.',
+  MESSAGE_SUPPRIME: 'Ce message a été supprimé : on ne peut plus y réagir.',
+  MESSAGE_INCONNU: 'Ce message n’existe plus.',
+  REACTION_INVALIDE: 'Cette réaction n’est pas disponible.',
+  REACTION: 'La réaction n’a pas pu être enregistrée. Réessayez.'
 };
+/** Highest height of the field (it grows with the text, then scrolls). */
+const CHAMP_MAX = 128;
 
 /** Day key and labels in Madagascar time. */
 const jourMada = (iso: string) => new Date(Date.parse(iso) + MADA_MS).toISOString().slice(0, 10);
@@ -93,7 +106,12 @@ function Bulle({
   modifier,
   allerCitation,
   voirVersions,
-  surligne
+  surligne,
+  emojisOuverts,
+  ouvrirEmojis,
+  peutReagir,
+  choisirReaction,
+  voirReactions
 }: {
   m: MessageDiscussion;
   ouvert: boolean;
@@ -114,6 +132,15 @@ function Bulle({
   voirVersions: (() => void) | null;
   /** Highlighted for 2 s after a jump. */
   surligne: boolean;
+  /** PUDI-CC-20: row of the 6 emojis alone (« 😊+ »); with the action menu it sits on top of it. */
+  emojisOuverts: boolean;
+  ouvrirEmojis: () => void;
+  /** Signed in, not « Voir comme », online, message not deleted. */
+  peutReagir: boolean;
+  /** Own emoji chosen again = removed (null). */
+  choisirReaction: (emoji: string | null) => void;
+  /** Organisers only: who reacted. */
+  voirReactions: (() => void) | null;
 }) {
   const appui = useRef<number | null>(null);
   const longFait = useRef(false);
@@ -132,7 +159,9 @@ function Bulle({
   const moi = m.est_moi;
   // The menu opens upwards in the lower half of the screen (the composer sits there).
   const li = useRef<HTMLLIElement>(null);
-  const versLeHaut = ouvert && !!li.current && li.current.getBoundingClientRect().top > window.innerHeight / 2;
+  const versLeHaut = (ouvert || emojisOuverts) && !!li.current && li.current.getBoundingClientRect().top > window.innerHeight / 2;
+  const reactions = m.supprime ? [] : EMOJIS.filter((e) => (m.reactions?.[e] ?? 0) > 0);
+  const choisir = (e: string) => choisirReaction(m.ma_reaction === e ? null : e);
   return (
     <li ref={li} className={`flex scroll-mt-24 scroll-mb-[220px] ${moi ? 'justify-end' : 'justify-start'}`} data-message={m.id} data-moi={moi ? '1' : '0'}>
       <div className={`relative max-w-[85%] min-w-[40%] ${moi ? 'items-end' : 'items-start'}`}>
@@ -200,8 +229,91 @@ function Bulle({
             </button>
           )}
         </div>
-        {ouvert && (
-          <div role="menu" className={`absolute z-30 ${versLeHaut ? 'bottom-full mb-1' : 'top-full mt-1'} ${moi ? 'right-0' : 'left-0'} w-56 rounded-xl border border-filet bg-white shadow-xl p-1 text-texte`} data-menu-message="">
+        {/* Beside the bubble (WhatsApp): no extra height under every message. */}
+        {peutReagir && (
+          <button
+            type="button"
+            onClick={ouvrirEmojis}
+            aria-label="Réagir à ce message"
+            aria-expanded={emojisOuverts}
+            className={`absolute bottom-1 ${moi ? 'right-full mr-1.5' : 'left-full ml-1.5'} h-7 px-1.5 rounded-full border border-filet bg-white/90 text-[0.75rem] text-gris opacity-80 inline-flex items-center before:absolute before:content-[''] before:-inset-y-2.5 before:-inset-x-2.5`}
+            data-reagir=""
+          >
+            <span aria-hidden="true">{'\u{1F60A}'}+</span>
+          </button>
+        )}
+        {reactions.length > 0 && (
+          <div className={`relative z-10 -mt-1.5 flex items-center gap-1 ${moi ? 'justify-end pr-2' : 'justify-start pl-2'}`} data-reactions="">
+            {reactions.length > 0 && (
+              <span className="inline-flex items-center rounded-full border border-filet bg-white shadow-sm px-0.5 text-[0.8125rem] text-texte" data-compte-reactions="">
+                {reactions.map((e, i) => {
+                  const n = m.reactions?.[e] ?? 0;
+                  const mienne = m.ma_reaction === e;
+                  return (
+                    <Fragment key={e}>
+                      {i > 0 && (
+                        <span aria-hidden="true" className="text-gris">
+                          ·
+                        </span>
+                      )}
+                      {peutReagir ? (
+                        <button
+                          type="button"
+                          onClick={() => choisir(e)}
+                          aria-pressed={mienne}
+                          aria-label={mienne ? `Retirer votre réaction ${e} (${n})` : `Réagir avec ${e} (${n})`}
+                          className={`relative min-w-[44px] h-7 px-1.5 inline-flex items-center justify-center gap-1 rounded-full before:absolute before:content-[''] before:-inset-y-2 before:inset-x-0 ${
+                            mienne ? 'bg-[#EAF0FF] ring-1 ring-marine font-bold text-marine' : ''
+                          }`}
+                          data-reaction={e}
+                          data-reaction-n={n}
+                          data-mienne={mienne ? '1' : undefined}
+                        >
+                          <span>{e}</span>
+                          <span>{n}</span>
+                        </button>
+                      ) : (
+                        <span className="h-7 px-1.5 inline-flex items-center gap-1" data-reaction={e} data-reaction-n={n}>
+                          <span>{e}</span>
+                          <span>{n}</span>
+                        </span>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </span>
+            )}
+          </div>
+        )}
+        {(ouvert || emojisOuverts) && (
+          <div
+            role={ouvert ? 'menu' : 'group'}
+            aria-label={ouvert ? undefined : 'Choisir une réaction'}
+            className={`absolute z-30 ${versLeHaut ? 'bottom-full mb-1' : 'top-full mt-1'} ${moi ? 'right-0' : 'left-0'} ${peutReagir ? 'w-[17.5rem]' : 'w-56'} rounded-xl border border-filet bg-white shadow-xl p-1 text-texte`}
+            data-menu-message={ouvert ? '' : undefined}
+            data-choix-reaction={emojisOuverts && !ouvert ? '' : undefined}
+          >
+            {peutReagir && (
+              <div className={`flex justify-between ${ouvert ? 'border-b border-filet pb-1 mb-1' : ''}`} data-ligne-emojis="">
+                {EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    role={ouvert ? 'menuitemradio' : undefined}
+                    aria-checked={ouvert ? m.ma_reaction === e : undefined}
+                    aria-pressed={ouvert ? undefined : m.ma_reaction === e}
+                    aria-label={m.ma_reaction === e ? `Retirer votre réaction ${e}` : `Réagir avec ${e}`}
+                    onClick={() => choisir(e)}
+                    className={`w-11 h-11 rounded-full text-[1.375rem] inline-flex items-center justify-center hover:bg-vide ${m.ma_reaction === e ? 'bg-[#EAF0FF] ring-2 ring-marine' : ''}`}
+                    data-emoji={e}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+            {ouvert && (
+            <>
             <button type="button" role="menuitem" onClick={repondre} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold hover:bg-vide">
               <Icone nom="repondre" className="w-4 h-4 text-marine" />
               Répondre
@@ -239,6 +351,14 @@ function Bulle({
                 {m.auteur_suspendu ? 'Lever la suspension' : "Suspendre l'auteur"}
               </button>
             )}
+            {voirReactions && reactions.length > 0 && (
+              <button type="button" role="menuitem" onClick={voirReactions} className="w-full min-h-[44px] px-3 flex items-center gap-2 rounded-lg text-[0.9375rem] font-bold hover:bg-vide" data-voir-reactions="">
+                <Icone nom="personnes" className="w-4 h-4 text-marine" />
+                Qui a réagi
+              </button>
+            )}
+            </>
+            )}
           </div>
         )}
       </div>
@@ -259,6 +379,8 @@ export default function Discussion() {
   const [plusAnciens, setPlusAnciens] = useState(false);
   const [chargeAnciens, setChargeAnciens] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
+  const [emojis, setEmojis] = useState<string | null>(null);
+  const [quiReagit, setQuiReagit] = useState<{ m: MessageDiscussion; l: { emoji: string; auteur_nom: string }[] | null; erreur: boolean } | null>(null);
   const [reponse, setReponse] = useState<MessageDiscussion | null>(null);
   const [texte, setTexte] = useState('');
   const [envoi, setEnvoi] = useState(false);
@@ -363,16 +485,45 @@ export default function Discussion() {
     };
   }, [rafraichir]);
 
-  // Closes the action menu on an outside tap.
+  // Closes the action menu and the emoji row on an outside tap.
+  const ouvertSur = menu ?? emojis;
   useEffect(() => {
-    if (!menu) return;
+    if (!ouvertSur) return;
     const dehors = (e: Event) => {
       const t = e.target as HTMLElement;
-      if (!t.closest(`[data-message="${menu}"]`)) setMenu(null);
+      if (!t.closest(`[data-message="${ouvertSur}"]`)) {
+        setMenu(null);
+        setEmojis(null);
+      }
     };
     document.addEventListener('pointerdown', dehors);
     return () => document.removeEventListener('pointerdown', dehors);
-  }, [menu]);
+  }, [ouvertSur]);
+
+  // PUDI-CC-20: reactions. Shown at once, then sent; refused = the previous counts come back.
+  const peutReagir = (m: MessageDiscussion) => !!session && !apercu && enLigne && !m.supprime && !m.id.startsWith('apercu-');
+  const choisirReaction = async (m: MessageDiscussion, emoji: string | null) => {
+    setMenu(null);
+    setEmojis(null);
+    setMessages((avant) => avant.map((x) => (x.id === m.id ? appliquerReaction(x, emoji) : x)));
+    try {
+      await reagir(m.id, emoji);
+    } catch (er) {
+      const code = extraireCode(er);
+      setErreur((code && ERREURS[code]) || ERREURS.REACTION);
+      setMessages((avant) => avant.map((x) => (x.id === m.id ? { ...x, reactions: m.reactions, ma_reaction: m.ma_reaction } : x)));
+    }
+    void rafraichir();
+  };
+  const ouvrirQuiReagit = async (m: MessageDiscussion) => {
+    setMenu(null);
+    setQuiReagit({ m, l: null, erreur: false });
+    try {
+      setQuiReagit({ m, l: await lireReactions(m.id), erreur: false });
+    } catch {
+      setQuiReagit({ m, l: null, erreur: true });
+    }
+  };
 
   const chargerAnciens = async () => {
     if (!messages.length) return;
@@ -590,6 +741,15 @@ export default function Discussion() {
   }, [messages]);
 
   const n = texte.length;
+  // The field grows with the text (one line at first, up to CHAMP_MAX px, then it scrolls).
+  useLayoutEffect(() => {
+    const el = champ.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const bord = el.offsetHeight - el.clientHeight;
+    el.style.height = `${Math.min(el.scrollHeight + bord, CHAMP_MAX)}px`;
+    el.style.overflowY = el.scrollHeight + bord > CHAMP_MAX ? 'auto' : 'hidden';
+  }, [texte, session]);
   return (
     <main className="pudi-page mx-auto max-w-2xl pl-4 pr-6 pt-4 pb-[190px]">
       <h1 className="font-titre text-[1.5rem] leading-tight text-marine">Discussion</h1>
@@ -646,8 +806,19 @@ export default function Discussion() {
               key={l.m.id}
               m={l.m}
               ouvert={menu === l.m.id}
-              ouvrir={() => setMenu(l.m.id)}
+              ouvrir={() => {
+                setEmojis(null);
+                setMenu(l.m.id);
+              }}
               fermer={() => setMenu(null)}
+              emojisOuverts={emojis === l.m.id && menu !== l.m.id}
+              ouvrirEmojis={() => {
+                setMenu(null);
+                setEmojis((x) => (x === l.m.id ? null : l.m.id));
+              }}
+              peutReagir={peutReagir(l.m)}
+              choisirReaction={(e) => void choisirReaction(l.m, e)}
+              voirReactions={organisateur && !apercu ? () => void ouvrirQuiReagit(l.m) : null}
               repondre={() => {
                 setMenu(null);
                 if (edition) annulerModification();
@@ -718,12 +889,19 @@ export default function Discussion() {
                   </button>
                 </div>
               )}
-              <div className="flex items-end gap-2">
-                <label className="flex-1 min-w-0">
+              {erreur && (
+                <p role="alert" className="text-[0.8125rem] font-bold text-[#9C3F21]" data-erreur-message="">
+                  {erreur}
+                </p>
+              )}
+              {/* PUDI-CC-20: the field is as tall as the button on one line (centres equal), the
+                  button stays at the bottom when it grows (WhatsApp); nothing reserved under it. */}
+              <div className="flex items-end gap-2" data-ligne-champ="">
+                <label className="relative flex-1 min-w-0">
                   <span className="sr-only">Votre message</span>
                   <textarea
                     ref={champ}
-                    rows={2}
+                    rows={1}
                     maxLength={MAX}
                     value={texte}
                     onChange={(e) => {
@@ -735,9 +913,18 @@ export default function Discussion() {
                     }}
                     placeholder={enLigne ? 'Écrire un message…' : 'Hors connexion'}
                     disabled={!enLigne}
-                    className="w-full max-h-32 rounded-xl border border-filet bg-white px-3 py-2 text-[1rem] leading-snug resize-none"
+                    className={`block w-full min-h-[48px] max-h-32 rounded-xl border border-filet bg-white px-3 py-[12px] text-[1rem] leading-snug resize-none ${n >= COMPTEUR_DES ? 'pb-5' : ''}`}
                     data-champ-message=""
                   />
+                  {n >= COMPTEUR_DES && (
+                    <span
+                      className={`absolute right-3 bottom-1 text-[0.75rem] pointer-events-none ${n >= MAX ? 'text-[#9C3F21] font-bold' : 'text-gris'}`}
+                      aria-live="polite"
+                      data-compteur=""
+                    >
+                      {n} / {MAX}
+                    </span>
+                  )}
                 </label>
                 <button
                   type="submit"
@@ -749,25 +936,35 @@ export default function Discussion() {
                   <Icone nom="envoyer" className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex items-start justify-between gap-2 min-h-[16px]">
-                {erreur ? (
-                  <p role="alert" className="text-[0.8125rem] font-bold text-[#9C3F21]" data-erreur-message="">
-                    {erreur}
-                  </p>
-                ) : (
-                  <span />
-                )}
-                {n >= COMPTEUR_DES && (
-                  <span className={`text-[0.75rem] shrink-0 ${n >= MAX ? 'text-[#9C3F21] font-bold' : 'text-gris'}`} data-compteur="">
-                    {n} / {MAX}
-                  </span>
-                )}
-              </div>
             </form>
           )}
         </div>
       </div>
       <Dialogue demande={demande} fermer={() => setDemande(null)} />
+      {quiReagit && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-label="Qui a réagi" data-qui-reagit="">
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white p-4 space-y-3">
+            <h2 className="font-bold text-[1.0625rem] text-marine">Réactions au message de {quiReagit.m.auteur_nom}</h2>
+            <p className="text-[0.8125rem] text-gris">Visible des seuls organisateurs.</p>
+            {quiReagit.erreur && <p className="text-[0.875rem] text-[#9C3F21] font-bold">Les réactions n'ont pas pu être chargées.</p>}
+            {!quiReagit.l && !quiReagit.erreur && <p className="text-gris">Chargement…</p>}
+            {quiReagit.l && (
+              <ul className="divide-y divide-filet">
+                {quiReagit.l.map((x, i) => (
+                  <li key={i} className="py-2 flex items-center gap-3 text-[0.9375rem]">
+                    <span className="text-[1.25rem]">{x.emoji}</span>
+                    <span>{x.auteur_nom}</span>
+                  </li>
+                ))}
+                {!quiReagit.l.length && <li className="py-2 text-gris">Aucune réaction.</li>}
+              </ul>
+            )}
+            <button type="button" onClick={() => setQuiReagit(null)} className="w-full min-h-[44px] rounded-xl border border-filet font-bold text-marine">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
       {versions && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-label="Versions du message" data-versions="">
           <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white p-4 space-y-3">

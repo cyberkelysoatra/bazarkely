@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.109.0';
-export const APP_VERSION_NAME = 'PUDi : vote enregistré tout seul, transfert rapide, nombre de votants réservé';
+export const APP_VERSION = '3.110.0';
+export const APP_VERSION_NAME = 'PUDi : réactions dans la discussion, panneau de transfert animé, derniers chiffres de votants retirés';
 export const LAST_UPDATED = '2026-10-25';
 export const APP_BUILD_DATE = '2026-10-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.110.0',
+    date: '2026-10-25',
+    description: 'PUDi : réactions par émoticône sous les messages de la discussion, champ d’écriture sans espace vide et bouton d’envoi centré ; résultats publics sans total des voix et en pourcentages entiers ; écrans de vote plus fluides (panneau de transfert animé qui reste ouvert, défilement doux vers les cartes)',
+    changes: [
+      'PUDi : discussion, 6 réactions sous chaque message (👍 ❤️ 😂 😮 😢 🙏), une par personne et par message, modifiable ou retirable ; les organisateurs voient qui a réagi',
+      'PUDi : discussion, plus d’espace vide sous le champ ; le bouton d’envoi est centré sur une ligne et reste en bas quand le texte s’allonge',
+      'PUDi : résultats, accueil après clôture et synthèse PDF publique sans total des voix placées, pourcentages arrondis à l’unité ; organisateurs inchangés',
+      'PUDi : panneau « Déplacer 1 voix » qui se déplie en douceur sous la carte, reste ouvert pendant les changements et se ferme par « Fermer » ou un toucher à côté',
+      'PUDi : « Mon choix », toucher une ligne du résumé ou un nom du panneau amène la carte au centre de l’écran et l’éclaire un instant',
+      'PUDi : fiche d’un programme, le bloc des voix et le panneau se placent entièrement sous l’en-tête'
+    ]
+  },
   {
     version: '3.109.0',
     date: '2026-10-25',

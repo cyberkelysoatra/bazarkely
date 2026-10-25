@@ -4,14 +4,14 @@
 // choice; it is never nested in another control.
 // PUDI-CC-19: the badge and « Détails » sit on the line of the stepper, right-aligned, so the title
 // takes the full width of the card; the last line (cost, date) goes under the title. With the 12
-// votes placed, « + » unfolds the quick transfer panel under the card.
+// votes placed, « + » unfolds the quick transfer panel under the card (animated, PUDI-CC-20).
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { fr } from '../i18n/fr';
 import { voixPour } from '../utils/regles';
 import { useBasculeChoix } from './BoutonsChoix';
 import { Icone } from './Icones';
-import { PanneauTransfert } from './Transfert';
+import { TransfertDeroulant } from './Transfert';
 import { CompteurVoix } from './Voix';
 
 /** Coming back from the sheet uses the history (same scroll position, same checks). */
@@ -121,7 +121,7 @@ export function CarteChoix({
           </div>
         </div>
       </div>
-      {plein === id && <PanneauTransfert vers={id} titreVers={titre} fermer={fermerPlein} />}
+      <TransfertDeroulant ouvert={plein === id} vers={id} titreVers={titre} fermer={fermerPlein} />
     </li>
   );
 }

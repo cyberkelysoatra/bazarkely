@@ -119,7 +119,8 @@ export interface Synthese {
   fokontany: LigneRepartition[];
   manquants: string[];
   methode: string[];
-  voixPlacees: number;
+  /** PUDI-CC-20: null in the reduced content (the total bounds the number of voters). */
+  voixPlacees: number | null;
   /** « 2 votes (8,3 %) ont placé 6 voix ou plus sur un seul programme. » */
   concentration: string;
   repartition: LigneRepartition[];
@@ -268,7 +269,7 @@ export function preparerSynthese(
       .map(([libelle, n]) => repartie(libelle, n)),
     manquants: r.manquants.map((m) => nettoyerTexteLibre(m).replace(/\s+/g, ' ').trim()).filter(Boolean),
     methode: complet ? [...METHODE, CHANGEMENT_REGLE, texteVotesConvertis(nbConv)] : [...METHODE, CHANGEMENT_REGLE],
-    voixPlacees: r.voix_placees ?? r.priorites.reduce((a, l) => a + (l.voix ?? l.n ?? 0), 0),
+    voixPlacees: complet ? r.voix_placees ?? r.priorites.reduce((a, l) => a + (l.voix ?? l.n ?? 0), 0) : null,
     concentration: complet ? frPages.resultats.concentration(conc.votes, pourcent(conc.pct_votes)) : '',
     repartition: complet
       ? Array.from({ length: 12 }, (_, i) => repartie(frPages.resultats.repartitionLigne(i + 1), r.repartition?.[String(i + 1)] ?? 0))

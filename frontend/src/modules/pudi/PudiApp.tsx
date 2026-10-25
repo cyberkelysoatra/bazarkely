@@ -37,7 +37,7 @@ const positions = new Map<string, number>();
 const defiler = (top: number) => window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
 
 function SuiviNavigation() {
-  const { pathname, search, key } = useLocation();
+  const { pathname, search, key, state } = useLocation();
   const type = useNavigationType();
   const cheminPrecedent = useRef<string | null>(null);
   useEffect(() => {
@@ -72,7 +72,8 @@ function SuiviNavigation() {
       essayer();
       return () => window.clearTimeout(id);
     }
-    if (change) defiler(0);
+    // PUDI-CC-20: « Mon choix » opened to centre a card positions itself (no jump to the top first).
+    if (change && !(state as { centrer?: string } | null)?.centrer) defiler(0);
     return undefined;
   }, [pathname, key, type]);
   return null;

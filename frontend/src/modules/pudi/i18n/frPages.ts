@@ -49,7 +49,9 @@ export const frPages = {
     deplacerAria: (de: string, vers: string) => `Déplacer 1 voix de ${de} vers ${vers}`,
     placerLibre: 'Placer 1 voix libre ici',
     fermer: 'Fermer',
-    region: (vers: string) => `Déplacer une voix vers ${vers}`
+    region: (vers: string) => `Déplacer une voix vers ${vers}`,
+    // PUDI-CC-20: the name of a line leads to its card in « Mon choix ».
+    allerAu: (nom: string) => `Aller au programme ${nom}`
   },
   // PUDI-CC-19: automatic saving after the first vote (WhatsApp poll style).
   auto: {
@@ -202,6 +204,9 @@ export const frPages = {
       'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme. Le nombre de votants indique combien de personnes différentes l’ont soutenu. Il n’y a pas de question séparée sur l’urgence : l’ordre du classement indique les programmes que les votants veulent voir réalisés en premier.',
     voixPlacees: (n: number) => `${n} voix placées`,
     voixPlaceesLibelle: 'voix placées',
+    // PUDI-CC-20: no total of the votes placed for the public (it gives a minimum number of voters).
+    teteReduite: 'Classement en voix',
+    teteReduiteAide: 'Part de toutes les voix reçue par chaque programme, arrondie au pourcent.',
     concentrationTitre: 'Votes concentrés',
     concentration: (votes: number, pct: string) =>
       `${votes} vote${votes > 1 ? 's' : ''} (${pct} des votes) ${votes > 1 ? 'ont' : 'a'} placé 6 voix ou plus sur un seul programme.`,

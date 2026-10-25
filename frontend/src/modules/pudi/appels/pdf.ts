@@ -222,7 +222,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
         ['Hors réseaux', `${s.reseaux.hors} (${s.reseaux.pctHors})`]
       ]
     : [
-        ['Voix placées', String(s.voixPlacees)],
+        // PUDI-CC-20: no total of the votes placed in the public synthesis.
         ['Dans nos réseaux', s.reseaux.pctDans],
         ['Hors réseaux', s.reseaux.pctHors]
       ];

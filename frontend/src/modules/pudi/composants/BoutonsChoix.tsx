@@ -2,14 +2,18 @@
 // PUDI-CC-18: no more « Marquer urgent » (urgency is read from the votes ranking).
 // PUDI-CC-19: the 13th vote unfolds the quick transfer panel instead of an error line, and every
 // gesture tells the automatic saving (after the first vote) that the draft changed.
-import { useEffect, useSyncExternalStore } from 'react';
+// PUDI-CC-20: a gesture inside the card that holds the panel never closes it (only « Fermer » or a
+// tap outside); on the sheet, each « + » / « − » that opens or changes the panel scrolls smoothly so
+// the votes block sits just under the header with the whole panel visible.
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router-dom';
 import { frPages } from '../i18n/frPages';
 import { usePudi } from '../PudiContexte';
 import { signalerGeste } from '../appels/autoEnregistrement';
 import { ajouterVoix, peutAjouterVoix, retirerVoix, voixPour } from '../utils/regles';
 import { Icone } from './Icones';
-import { PanneauTransfert } from './Transfert';
+import { TransfertDeroulant } from './Transfert';
+import { defilerVers, zoneVisible } from '../utils/defilement';
 import { CompteurVoix } from './Voix';
 
 /** Page and card whose « + » was refused (12 votes placed): one transfer panel open at a time. */
@@ -25,6 +29,7 @@ const abonnerPlein = (f: () => void) => {
   return () => abonnesPlein.delete(f);
 };
 const lirePlein = () => pleinCourant;
+const fermerPlein = () => setPlein(null);
 
 export function useBasculeChoix() {
   const { brouillon, majBrouillon } = usePudi();
@@ -41,16 +46,16 @@ export function useBasculeChoix() {
       setPlein(`${pathname}|${id}`);
       return;
     }
-    setPlein(null);
+    if (pleinCourant !== `${pathname}|${id}`) setPlein(null);
     majBrouillon(ajouterVoix(brouillon, id));
     signalerGeste('voix');
   };
   const retirer = (id: string) => {
-    setPlein(null);
+    if (pleinCourant !== `${pathname}|${id}`) setPlein(null);
     majBrouillon(retirerVoix(brouillon, id));
     signalerGeste('voix');
   };
-  return { brouillon, ajouter, retirer, plein, fermerPlein: () => setPlein(null) };
+  return { brouillon, ajouter, retirer, plein, fermerPlein };
 }
 
 export function MessageBlocage({ texte }: { texte: string }) {
@@ -66,8 +71,25 @@ export function MessageBlocage({ texte }: { texte: string }) {
 export function BoutonsChoix({ id, titre, desactive = false }: { id: string; titre: string; tranche?: string; desactive?: boolean }) {
   const { brouillon, ajouter, retirer, plein, fermerPlein } = useBasculeChoix();
   const n = voixPour(brouillon, id);
+  const bloc = useRef<HTMLDivElement>(null);
+  // After the render (panel mounted or changed): top of the block just under the header.
+  const aligner = () =>
+    requestAnimationFrame(() => {
+      const el = bloc.current;
+      if (el) void defilerVers(window.scrollY + el.getBoundingClientRect().top - zoneVisible().haut);
+    });
+  const plus = () => {
+    const panneau = !peutAjouterVoix(brouillon) || plein === id;
+    ajouter(id);
+    if (panneau) aligner();
+  };
+  const moins = () => {
+    const panneau = plein === id;
+    retirer(id);
+    if (panneau) aligner();
+  };
   return (
-    <div className="space-y-2">
+    <div ref={bloc} data-bloc-voix={id}>
       <div
         className={`flex items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 ${n ? 'border-marine bg-[#EAF0FF]' : 'border-filet bg-white'}`}
         data-voix-fiche={n}
@@ -76,9 +98,9 @@ export function BoutonsChoix({ id, titre, desactive = false }: { id: string; tit
           {frPages.voix.mesVoixFiche}
           <span className="block text-[0.8125rem] font-normal text-gris">{frPages.voix.compteur(brouillon.priorites.length)}</span>
         </span>
-        <CompteurVoix titre={titre} n={n} ajouter={() => ajouter(id)} retirer={() => retirer(id)} desactive={desactive} grand />
+        <CompteurVoix titre={titre} n={n} ajouter={plus} retirer={moins} desactive={desactive} grand />
       </div>
-      {plein === id && <PanneauTransfert vers={id} titreVers={titre} fermer={fermerPlein} />}
+      <TransfertDeroulant ouvert={plein === id} vers={id} titreVers={titre} fermer={fermerPlein} montrer={false} />
     </div>
   );
 }

@@ -120,6 +120,11 @@ export default function Suivi() {
                 <Chiffre valeur={d.discussion.nb_auteurs} libelle="Auteurs" icone="personnes" />
                 <Chiffre valeur={d.discussion.nb_supprimes} libelle="Supprimés" icone="poubelle" />
               </div>
+              {!!d.discussion.nb_reactions && (
+                <p className="mt-1 text-[0.8125rem] text-gris" data-suivi-reactions={d.discussion.nb_reactions}>
+                  {d.discussion.nb_reactions} réaction{d.discussion.nb_reactions > 1 ? 's' : ''} sous les messages (qui a réagi : menu du message dans la discussion).
+                </p>
+              )}
               {d.discussion.nb_suspendus > 0 && (
                 <p className="mt-1 text-[0.8125rem] text-gris">{d.discussion.nb_suspendus} compte{d.discussion.nb_suspendus > 1 ? 's' : ''} suspendu{d.discussion.nb_suspendus > 1 ? 's' : ''} de la discussion.</p>
               )}

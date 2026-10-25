@@ -1362,6 +1362,43 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
   `is_joel()`, refus `PUDI_SUPER_ADMIN_REQUIS` code 42501, journal `changer_chiffres_publics` avant / après) ; lu par
   `pudi_etat.chiffres_publics`. Allumé : tout le monde reçoit le contenu complet.
 
+### PUDi · PUDI-CC-20, v3.110.0 : réactions, champ de la discussion, derniers chiffres de votants, mouvements du vote
+
+- **Réactions** (cahier v11, 4.15) : 6 émoticônes (👍 ❤️ 😂 😮 😢 🙏) sous chaque message, **une par personne et par
+  message** ; en choisir une autre la remplace, toucher la sienne la retire. Ouverture par « 😊+ » (zone de toucher de
+  44 px au moins) ou par l'appui long (la rangée se place au-dessus du menu d'actions). Réservé aux personnes connectées,
+  jamais en « Voir comme », jamais sur un message supprimé (ses réactions sont cachées). Compteurs visibles de tous, la
+  sienne en surbrillance.
+  - Serveur : table `pudi_reactions (message_id → pudi_messages on delete cascade, user_id, emoji, at, clé (message_id,
+    user_id))`, RLS activée et forcée, **aucune** règle, aucun droit client. Seule écriture : `pudi_reagir(p_message,
+    p_emoji)` (null retire), `security definer`, mêmes contrôles que l'écriture (connecté, non suspendu), message existant
+    et non supprimé, **1 réaction par seconde** et par personne (journal `message_reagir`, index partiel), journalisée
+    avant / après. Lecture par `pudi_discussion_lire` (champs `reactions` = compte par émoticône et `ma_reaction`).
+  - **Qui a réagi** : organisateurs seulement, `pudi_admin_discussion_reactions(p_message)`, menu du message « Qui a
+    réagi ». `pudi_admin_discussion_suivi` donne `nb_reactions`. Effacé par `pudi_purger` (28/01/2027).
+- **Champ de la discussion** : plus aucune ligne réservée sous le champ ; l'erreur s'affiche au-dessus, le compteur
+  « n / 500 » dans le coin du champ. Le champ part d'une ligne (48 px, comme le bouton : centres égaux) et grandit avec le
+  texte jusqu'à 128 px ; le bouton d'envoi reste en bas.
+- **Résultats réduits** (non-organisateurs, interrupteur éteint) : `pudi_resultats_reduits` ne renvoie plus
+  `voix_placees` et arrondit **tous** les pourcentages à l'unité ; la liste des projets manquants reste, sans compte.
+  L'écran, l'accueil après clôture et la synthèse PDF publique ne montrent plus de total des voix (même face à l'ancien
+  serveur). Le contenu complet des organisateurs est inchangé. ⚠️ Les nombres de voix par programme restent publics
+  (règle « voix seulement ») : leur somme redonne le total.
+- **Mouvements du vote** (`utils/defilement.ts`, `composants/Transfert.tsx`) :
+  - le panneau « Déplacer 1 voix » se **déplie** sous sa carte (hauteur 0 → naturelle, `cubic-bezier(0.32, 0.72, 0, 1)`,
+    400 ms, léger fondu ; repli inverse), les cartes suivantes bougent avec lui ; à l'ouverture la page défile pour le
+    montrer en entier (son haut d'abord s'il est trop grand) ;
+  - il **reste ouvert** pendant « Déplacer 1 voix ici », « − », « Placer 1 voix libre ici » et tout toucher dans sa carte
+    (ou dans le bloc des voix de la fiche) ; il se ferme **seulement** par « Fermer » ou un toucher hors de cette carte ;
+  - « Mon choix » : toucher une ligne du résumé (`#pudi-priorites`) ou le **nom** d'une ligne d'un panneau amène la carte
+    au **centre** de la zone visible (entre l'en-tête et les barres du bas, mesurées à chaque fois), défilement doux
+    (ease-in-out, 600 ms, `requestAnimationFrame`), puis éclairage doré d'environ 1 s. Depuis une autre page : navigation
+    vers `/choix` avec `state.centrer`, carte placée avant l'affichage (aucun saut ; `SuiviNavigation` ne remonte pas en
+    haut dans ce cas). Une carte cachée par un filtre fait revenir la liste complète ;
+  - fiche d'un programme : chaque « + » / « − » qui ouvre ou change le panneau place le haut du bloc des voix juste sous
+    l'en-tête ;
+  - `prefers-reduced-motion` : aucune animation, mêmes positions finales.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
