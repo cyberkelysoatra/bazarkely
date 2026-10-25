@@ -157,6 +157,8 @@ export const definirCloture = (iso: string) => rpc<null>('pudi_admin_set_cloture
 /** PUDI-CC-17: closing moved, the freeze of the lists optionally by the same delta (journaled). */
 export const definirClotureEtGel = (iso: string, deplacerGel: boolean) =>
   rpc<{ cloture_at: string; gel_listes_at: string | null }>('pudi_admin_set_cloture_gel', { p_at: iso, p_deplacer_gel: deplacerGel });
+/** PUDI-CC-19: « Afficher tous les chiffres au public », super administrator only (journaled). */
+export const definirChiffresPublics = (p: boolean) => rpc<{ chiffres_publics: boolean }>('pudi_admin_set_chiffres_publics', { p });
 export const definirPublie = (publie: boolean) =>
   rpc<{ publie: boolean; votes_test_supprimes: number }>('pudi_admin_set_publie', { p_publie: publie });
 export const lireJournal = () => rpc<EntreeJournal[]>('pudi_admin_journal');

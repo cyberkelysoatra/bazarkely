@@ -1,29 +1,56 @@
 // Votes of the sheet (« − n + », PUDI-CC-17) with the blocking message of the 13th vote.
 // PUDI-CC-18: no more « Marquer urgent » (urgency is read from the votes ranking).
-import { useState } from 'react';
+// PUDI-CC-19: the 13th vote unfolds the quick transfer panel instead of an error line, and every
+// gesture tells the automatic saving (after the first vote) that the draft changed.
+import { useEffect, useSyncExternalStore } from 'react';
+import { useLocation } from 'react-router-dom';
 import { frPages } from '../i18n/frPages';
 import { usePudi } from '../PudiContexte';
+import { signalerGeste } from '../appels/autoEnregistrement';
 import { ajouterVoix, peutAjouterVoix, retirerVoix, voixPour } from '../utils/regles';
 import { Icone } from './Icones';
+import { PanneauTransfert } from './Transfert';
 import { CompteurVoix } from './Voix';
+
+/** Page and card whose « + » was refused (12 votes placed): one transfer panel open at a time. */
+let pleinCourant: string | null = null;
+const abonnesPlein = new Set<() => void>();
+function setPlein(id: string | null): void {
+  if (pleinCourant === id) return;
+  pleinCourant = id;
+  abonnesPlein.forEach((f) => f());
+}
+const abonnerPlein = (f: () => void) => {
+  abonnesPlein.add(f);
+  return () => abonnesPlein.delete(f);
+};
+const lirePlein = () => pleinCourant;
 
 export function useBasculeChoix() {
   const { brouillon, majBrouillon } = usePudi();
-  const [message, setMessage] = useState<{ id: string; texte: string } | null>(null);
-  /** One more vote (the 13th is refused with a message). */
+  const { pathname } = useLocation();
+  const ouvert = useSyncExternalStore(abonnerPlein, lirePlein, lirePlein);
+  // Opened on another page: closed here, and forgotten as soon as a card of this page shows.
+  const plein = ouvert?.startsWith(`${pathname}|`) ? ouvert.slice(pathname.length + 1) : null;
+  useEffect(() => {
+    if (ouvert && !ouvert.startsWith(`${pathname}|`)) setPlein(null);
+  }, [ouvert, pathname]);
+  /** One more vote (with 12 placed: the transfer panel opens under the card). */
   const ajouter = (id: string) => {
     if (!peutAjouterVoix(brouillon)) {
-      setMessage({ id, texte: frPages.voix.plein });
+      setPlein(`${pathname}|${id}`);
       return;
     }
-    setMessage(null);
+    setPlein(null);
     majBrouillon(ajouterVoix(brouillon, id));
+    signalerGeste('voix');
   };
   const retirer = (id: string) => {
-    setMessage(null);
+    setPlein(null);
     majBrouillon(retirerVoix(brouillon, id));
+    signalerGeste('voix');
   };
-  return { brouillon, ajouter, retirer, message };
+  return { brouillon, ajouter, retirer, plein, fermerPlein: () => setPlein(null) };
 }
 
 export function MessageBlocage({ texte }: { texte: string }) {
@@ -37,7 +64,7 @@ export function MessageBlocage({ texte }: { texte: string }) {
 
 /** `tranche` is kept in the props for the callers (sheet of a programme or of a proposal). */
 export function BoutonsChoix({ id, titre, desactive = false }: { id: string; titre: string; tranche?: string; desactive?: boolean }) {
-  const { brouillon, ajouter, retirer, message } = useBasculeChoix();
+  const { brouillon, ajouter, retirer, plein, fermerPlein } = useBasculeChoix();
   const n = voixPour(brouillon, id);
   return (
     <div className="space-y-2">
@@ -51,7 +78,7 @@ export function BoutonsChoix({ id, titre, desactive = false }: { id: string; tit
         </span>
         <CompteurVoix titre={titre} n={n} ajouter={() => ajouter(id)} retirer={() => retirer(id)} desactive={desactive} grand />
       </div>
-      {message?.id === id && <MessageBlocage texte={message.texte} />}
+      {plein === id && <PanneauTransfert vers={id} titreVers={titre} fermer={fermerPlein} />}
     </div>
   );
 }

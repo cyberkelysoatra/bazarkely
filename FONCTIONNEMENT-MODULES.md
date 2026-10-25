@@ -1324,6 +1324,44 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
   (`classementUrgentsArchive`, votes non masqués et non test) ; CSV votes : colonne `urgents_ancienne_question`. Les
   urgents enregistrés ne figurent jamais dans les résultats publics, le CSV de synthèse ni le PDF.
 
+### PUDi · PUDI-CC-19, v3.109.0 : vote enregistré tout seul, cartes, transfert rapide, nombre de votants réservé
+
+- **Enregistrement automatique (règle)** : le premier vote ne change pas (voix, connexion Google, fokontany, profil,
+  téléphone, résidence, « Envoyer mon vote »). Ensuite, pour une personne **connectée dont le vote est sur le serveur**
+  (`a_vote`), vote ouvert, **hors « Voir comme »** (`conditionsAuto` dans `appels/autoEnregistrement.ts`) :
+  - tout geste (+, −, toucher d'une carte, transfert, texte du projet manquant) appelle `signalerGeste` ; l'envoi part
+    après **1,2 s** de calme (**2 s** pour le texte), **une requête à la fois**, le dernier état gagne ;
+  - rien n'est envoyé si le brouillon est égal au vote du serveur (+1 puis −1 = aucune requête), ni à **0 voix**
+    (« Gardez au moins 1 voix pour que votre vote reste enregistré. Votre dernier vote (n voix) est conservé. ») ;
+  - l'envoi reprend fokontany, profil et résidence déjà sur le serveur, **sans téléphone** (`p_telephone` nul : le
+    serveur garde le numéro enregistré) ; même fonction `pudi_soumettre_vote`, aucune modification serveur ;
+  - barre du bas : « Enregistré ✓ n/12 voix » (heure au toucher), « Enregistrement… », « Pas de réseau : enregistré dès
+    le retour de la connexion » (envoi au retour du réseau), messages d'erreur du serveur, « Reconnectez-vous pour
+    enregistrer vos changements » + bouton Google si le jeton ne se renouvelle pas (brouillon gardé) ;
+  - un brouillon **déjà différent** à l'ouverture de la page n'est jamais envoyé tout seul : bouton « Enregistrer mes
+    changements » ;
+  - « Mon choix » : questions 1 et 2 gardées, plus d'étape « Envoyer » ; le résumé dit « Vos changements sont enregistrés
+    automatiquement. » et propose **« Modifier mes renseignements »** (fokontany, profil, téléphone, résidence, un bouton
+    « Enregistrer » explicite : seul endroit où ces champs reviennent). `/envoyer` ouvert directement mène au résumé.
+- **Cartes** (`CarteChoix`) : badge et « Détails » sur la ligne du compteur « − n + », alignés à droite (badge avant
+  « Détails » s'il y a la place, sinon au-dessus, la petite colonne remontant dans l'espace libre sous le titre) ; le titre
+  prend toute la largeur ; la ligne « coût / date / pourquoi » suit le titre dans le même paragraphe. « Détails » garde une
+  zone de toucher d'au moins 44 × 44 px (agrandie surtout vers le bas), jamais sur le badge ni sur le compteur. Aucune
+  carte plus haute qu'avant (162 mesurées en A et A++).
+- **12 voix placées** : « + » ouvre sous la carte le panneau « Vos 12 voix sont placées. Prenez-en une ici : » (programmes et
+  propositions qui ont des voix, triés, « ×n », boutons « − » et « Déplacer 1 voix ici »), un seul panneau ouvert à la
+  fois sur la page, fermé après un transfert ou par « Fermer ». Le transfert s'enregistre comme tout changement.
+- **Nombre de votants réservé aux organisateurs** (avant **et** après la clôture) : `pudi_resultats` renvoie aux
+  non-organisateurs un contenu réduit (`complet: false`, fonction interne `pudi_resultats_reduits`) : voix et part des voix
+  seulement ; aucun `nb_votants`, `votants`, `pct_votants`, `repartition`, `concentration`, `nb_votes_convertis`, `n`,
+  `n_priorite` ; profil, fokontany et réseaux **en pourcentages**. Les organisateurs (`pudi_is_admin()`) reçoivent tout
+  (`complet: true`) ; `pudi_calculer_resultats` et l'aperçu admin sont inchangés. Écran, accueil après clôture et PDF
+  public suivent la même règle ; PDF et CSV des organisateurs restent complets.
+- **Interrupteur « Afficher tous les chiffres au public »** (Paramètres, super administrateur seulement, **éteint** par
+  défaut) : `pudi_settings.chiffres_publics`, modifiable uniquement par `pudi_admin_set_chiffres_publics(p)` (réservée à
+  `is_joel()`, refus `PUDI_SUPER_ADMIN_REQUIS` code 42501, journal `changer_chiffres_publics` avant / après) ; lu par
+  `pudi_etat.chiffres_publics`. Allumé : tout le monde reçoit le contenu complet.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

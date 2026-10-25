@@ -26,6 +26,7 @@ import { BandeauReseau, useEnvoiFiable } from '../composants/Reseau';
 import { IndicateurEtapes } from '../composants/Etapes';
 import { programmeParId } from '../data';
 import { propositionParId, usePropositions } from '../appels/propositions';
+import { conditionsAuto } from '../appels/autoEnregistrement';
 
 /** Rule 11: the field each blocking error points at (first faulty field of the form). */
 const CIBLES: Record<ChampFormulaire, string | null> = {
@@ -55,7 +56,11 @@ function ErreurChamp({ e, champ }: { e: ErreurAffichee | null; champ: ChampFormu
 
 export default function Envoyer() {
   const { donnees, erreur: erreurDonnees, reessayer } = useDonnees();
-  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu, noterMonVote } = usePudi();
+  const pudi = usePudi();
+  const { brouillon, majBrouillon, etat, definirEtat, envoiOuvert, masquages, rechargerMasquages, apercu, noterMonVote } = pudi;
+  // PUDI-CC-19: vote already on the server: no form any more, changes are saved by themselves
+  // (the details are changed from « Modifier mes renseignements » in the summary).
+  const auto = conditionsAuto(pudi);
   const { liste: propositions } = usePropositions();
   // PUDI-CC-11: in JOEL's « Votant » preview every client check runs, but nothing reaches the server.
   const apercuVotant = apercu?.role === 'votant';
@@ -94,6 +99,9 @@ export default function Envoyer() {
   }, []);
 
   // PUDI-CC-17/18: no sending before question 2 (missing project) was shown once (one tap skips it).
+  useEffect(() => {
+    if (auto) navigate('/choix?etape=resume', { replace: true });
+  }, [auto, navigate]);
   const questionsVues = etapeSuivante() === 'resume';
   const choixPret = brouillonValide(brouillon);
   useEffect(() => {

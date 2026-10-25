@@ -25,7 +25,7 @@ export function CompteurVoix({
   const zone = grand ? '' : "before:absolute before:content-[''] before:-inset-[6px]";
   const bouton = `relative ${taille} ${zone} shrink-0 rounded-full border-2 inline-flex items-center justify-center disabled:opacity-40`;
   return (
-    <div role="group" aria-label={titre} className="inline-flex items-center gap-2" data-compteur-voix={n}>
+    <div role="group" aria-label={titre} className={`inline-flex items-center ${grand ? 'gap-2' : 'gap-1.5'}`} data-compteur-voix={n}>
       <button
         type="button"
         onClick={(e) => {
@@ -41,7 +41,7 @@ export function CompteurVoix({
       </button>
       <span
         aria-live="polite"
-        className={`min-w-[2.75rem] text-center font-titre leading-none ${grand ? 'text-[1.5rem]' : 'text-[1.125rem]'} ${n ? 'text-marine' : 'text-gris'}`}
+        className={`${grand ? 'min-w-[2.75rem] text-[1.5rem]' : 'min-w-[2rem] text-[1.125rem]'} text-center font-titre leading-none ${n ? 'text-marine' : 'text-gris'}`}
         data-voix-nombre=""
       >
         {n}

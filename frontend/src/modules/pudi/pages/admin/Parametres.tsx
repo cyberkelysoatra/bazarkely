@@ -8,6 +8,7 @@ import {
   EMAIL_JOEL,
   PURGE_AUTOMATIQUE,
   definirAdmin,
+  definirChiffresPublics,
   definirClotureEtGel,
   definirPublie,
   lireConnexions,
@@ -49,6 +50,21 @@ export default function Parametres({ email }: { email: string }) {
   const [deplacerGel, setDeplacerGel] = useState(true);
   const [erreurAdmin, setErreurAdmin] = useState<string | null>(null);
   const [maintenant, setMaintenant] = useState(() => Date.now());
+  const [chiffres, setChiffres] = useState<{ cours: boolean; message: string | null }>({ cours: false, message: null });
+  const chiffresPublics = !!etat?.chiffres_publics;
+  const basculerChiffres = async () => {
+    setChiffres({ cours: true, message: null });
+    try {
+      const r = await definirChiffresPublics(!chiffresPublics);
+      await rechargerEtat();
+      setChiffres({
+        cours: false,
+        message: r.chiffres_publics ? 'Allumé : le public voit tous les chiffres.' : 'Éteint : le public voit seulement les voix.'
+      });
+    } catch (e) {
+      setChiffres({ cours: false, message: messageAdmin(e) });
+    }
+  };
 
   useEffect(() => {
     if (etat?.cloture_at) setCloture(versChampMada(etat.cloture_at));
@@ -165,6 +181,42 @@ export default function Parametres({ email }: { email: string }) {
           </p>
         )}
       </Bloc>
+
+      {joel && (
+        // PUDI-CC-19 (specification v11, section 5): super administrator only, off by default.
+        <Bloc titre="Chiffres publics" icone="graphique">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={chiffresPublics}
+            aria-describedby="pudi-chiffres-aide"
+            disabled={!etat || chiffres.cours}
+            onClick={() => void basculerChiffres()}
+            className="w-full min-h-[48px] flex items-center justify-between gap-3 rounded-xl border border-filet px-3"
+            data-chiffres-publics={chiffresPublics ? 'oui' : 'non'}
+          >
+            <span className="font-bold text-[0.9375rem] text-marine text-left">Afficher tous les chiffres au public</span>
+            <span className={`relative shrink-0 w-12 h-7 rounded-full transition-colors ${chiffresPublics ? 'bg-marine' : 'bg-filet'}`} aria-hidden="true">
+              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${chiffresPublics ? 'left-6' : 'left-1'}`} />
+            </span>
+          </button>
+          <details className="mt-2 text-[0.875rem]">
+            <summary className="min-h-[44px] inline-flex items-center gap-1.5 cursor-pointer text-marine font-bold">
+              <Icone nom="info" className="w-4 h-4" />
+              Que change cet interrupteur ?
+            </summary>
+            <p id="pudi-chiffres-aide" className="mt-1 text-profond">
+              Éteint : les votants et le public voient seulement les voix. Allumé : ils voient aussi le nombre de votants, les votants par programme, la répartition des voix par votant, les votes concentrés et les effectifs des répartitions, à l'écran et dans la synthèse PDF. Réversible à tout moment.
+            </p>
+          </details>
+          <p className="text-[0.8125rem] text-gris mt-1">Les organisateurs voient toujours tous les chiffres, et leur PDF et leur CSV restent complets. Chaque changement est inscrit au journal.</p>
+          {chiffres.message && (
+            <p role="status" className="mt-2 text-[0.875rem] font-bold">
+              {chiffres.message}
+            </p>
+          )}
+        </Bloc>
+      )}
 
       <Bloc titre="Clôture" icone="calendrier">
         {etat && <p className="text-[0.9375rem]">Clôture actuelle : {dateClotureLongue(etat.cloture_at)}</p>}

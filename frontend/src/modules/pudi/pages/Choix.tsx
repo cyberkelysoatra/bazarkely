@@ -16,6 +16,8 @@ import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { MAX_MANQUANT, VOIX, brouillonValide, limiterManquant, regrouperVoix } from '../utils/regles';
 import { propositionParId, usePropositions, type Proposition } from '../appels/propositions';
+import { conditionsAuto, signalerGeste } from '../appels/autoEnregistrement';
+import { Renseignements } from '../composants/Renseignements';
 
 // PUDI-CC-18: two numbered screens, « Question 1 sur 2 : Répartissez vos 12 voix » and
 // « Question 2 sur 2 : Un projet manque au PUDi ? » (optional, one tap to skip), then the summary
@@ -183,7 +185,11 @@ function Reste({ n }: { n: number }) {
 
 export default function Choix() {
   const { donnees, erreur, reessayer } = useDonnees();
-  const { brouillon, majBrouillon, etat } = usePudi();
+  const pudi = usePudi();
+  const { brouillon, majBrouillon, etat } = pudi;
+  // PUDI-CC-19: vote already on the server: changes are saved by themselves, no final sending.
+  const auto = conditionsAuto(pudi);
+  const [renseignements, setRenseignements] = useState<'ferme' | 'ouvert' | 'enregistre'>('ferme');
   const connecte = !!useSessionLocale();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -258,7 +264,7 @@ export default function Choix() {
         <BandeauxEtat />
       </div>
 
-      {(etape === '1' || etape === 'resume') && <RappelVote donnees={donnees} />}
+      {(etape === '1' || etape === 'resume') && !auto && <RappelVote donnees={donnees} />}
       {etape === '1' && (
         <>
           <section
@@ -318,7 +324,10 @@ export default function Choix() {
               disabled={clos}
               maxLength={MAX_MANQUANT}
               rows={5}
-              onChange={(e) => majBrouillon({ ...brouillon, manquant: limiterManquant(e.target.value) })}
+              onChange={(e) => {
+                majBrouillon({ ...brouillon, manquant: limiterManquant(e.target.value) });
+                signalerGeste('texte');
+              }}
               placeholder={fr.choix.etape3Placeholder}
               className="w-full rounded-xl border border-filet bg-white p-3 text-[1rem] leading-snug"
             />
@@ -361,6 +370,30 @@ export default function Choix() {
               {b.contenu}
             </div>
           ))}
+          {auto ? (
+            <div className="space-y-3" data-resume-auto="">
+              <p className="text-[0.9375rem] flex gap-2 items-start bg-white border-l-4 border-[#1E7A46] rounded-r-lg px-3 py-2.5" data-auto-texte="">
+                <Icone nom="coche" className="w-5 h-5 mt-0.5 shrink-0 text-[#1E7A46]" />
+                {frPages.auto.automatique}
+              </p>
+              {renseignements === 'ouvert' ? (
+                <Renseignements donnees={donnees} fermer={(ok) => setRenseignements(ok ? 'enregistre' : 'ferme')} />
+              ) : (
+                <>
+                  <button type="button" className={`${boutonSecondaire} w-full`} onClick={() => setRenseignements('ouvert')} data-modifier-renseignements="">
+                    <Icone nom="utilisateur" />
+                    {frPages.auto.renseignements}
+                  </button>
+                  {renseignements === 'enregistre' && (
+                    <p role="status" className="text-[0.875rem] font-bold text-[#1E7A46]">
+                      {frPages.auto.renseignementsOk}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+          <>
           <p className="text-[0.875rem] text-gris">{fr.choix.brouillon}</p>
           {!valide && <MessageBlocage texte={fr.choix.incomplet} />}
           <button
@@ -373,6 +406,8 @@ export default function Choix() {
             <Icone nom="envoyer" />
             {comparaison === 'identique' ? fr.vote.modifierMonVote : fr.vote.envoyer}
           </button>
+          </>
+          )}
         </section>
       )}
       {etape !== 'resume' && <p className="mt-4 text-[0.875rem] text-gris">{fr.choix.brouillon}</p>}

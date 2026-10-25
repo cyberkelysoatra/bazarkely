@@ -40,6 +40,37 @@ export const frPages = {
     completer: 'Répartir mes voix',
     fermer: 'Fermer ce message'
   },
+  // PUDI-CC-19: 12 votes placed, quick transfer panel under the tapped card.
+  transfert: {
+    titre: 'Vos 12 voix sont placées. Prenez-en une ici :',
+    titreLibre: (n: number) =>
+      n > 1 ? `Vous avez ${n} voix libres. Placez-en une ici ou prenez-en une autre :` : 'Vous avez 1 voix libre. Placez-la ici ou prenez-en une autre :',
+    deplacer: 'Déplacer 1 voix ici',
+    deplacerAria: (de: string, vers: string) => `Déplacer 1 voix de ${de} vers ${vers}`,
+    placerLibre: 'Placer 1 voix libre ici',
+    fermer: 'Fermer',
+    region: (vers: string) => `Déplacer une voix vers ${vers}`
+  },
+  // PUDI-CC-19: automatic saving after the first vote (WhatsApp poll style).
+  auto: {
+    enregistre: (n: number) => `Enregistré ✓ ${n}/12 voix`,
+    heure: (date: string) => `Dernier enregistrement : ${date}`,
+    envoi: 'Enregistrement…',
+    horsLigne: 'Pas de réseau : enregistré dès le retour de la connexion',
+    zero: (n: number) =>
+      `Gardez au moins 1 voix pour que votre vote reste enregistré. Votre dernier vote (${n} voix) est conservé.`,
+    reconnexion: 'Reconnectez-vous pour enregistrer vos changements',
+    modifie: 'Changements pas encore enregistrés',
+    enregistrerChangements: 'Enregistrer mes changements',
+    automatique: 'Vos changements sont enregistrés automatiquement.',
+    renseignements: 'Modifier mes renseignements',
+    renseignementsTitre: 'Mes renseignements',
+    renseignementsAide: 'Laissez le numéro vide pour garder celui déjà enregistré.',
+    enregistrer: 'Enregistrer',
+    enregistrementEnCours: 'Enregistrement…',
+    renseignementsOk: 'Vos renseignements sont enregistrés.',
+    annuler: 'Annuler'
+  },
   groupe: {
     titre: 'Mon groupe',
     menu: 'Mon groupe',
@@ -160,11 +191,17 @@ export const frPages = {
     urgenceDeduite:
       "L'urgence n'est pas demandée à part : elle se déduit des voix. Plus un programme reçoit de voix, plus les votants le jugent prioritaire.",
     prioritesAide: 'Nombre de voix reçues et nombre de votants différents qui ont donné au moins une voix.',
+    // PUDI-CC-19: without the voter counts (anyone but the organisers, unless the switch is on).
+    prioritesAideReduit: 'Nombre de voix reçues et part de toutes les voix placées.',
+    regleAideReduit: 'Chaque votant avait 12 voix. Le classement compte les voix reçues.',
+    voixSeules: (voix: number) => `${voix} voix`,
+    partsSeules: 'Parts en pourcentage des votes.',
     voixVotants: (voix: number, votants: number) => `${voix} voix · ${votants} votant${votants > 1 ? 's' : ''}`,
     regleAideTitre: 'Comment lire ce classement ?',
     regleAide:
       'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme. Le nombre de votants indique combien de personnes différentes l’ont soutenu. Il n’y a pas de question séparée sur l’urgence : l’ordre du classement indique les programmes que les votants veulent voir réalisés en premier.',
     voixPlacees: (n: number) => `${n} voix placées`,
+    voixPlaceesLibelle: 'voix placées',
     concentrationTitre: 'Votes concentrés',
     concentration: (votes: number, pct: string) =>
       `${votes} vote${votes > 1 ? 's' : ''} (${pct} des votes) ${votes > 1 ? 'ont' : 'a'} placé 6 voix ou plus sur un seul programme.`,
@@ -190,6 +227,7 @@ export const frPages = {
     aucunVote: 'Aucun vote compté pour le moment.',
     propositionsTitre: 'Propositions de nouveaux projets',
     propositionsAide: 'Comptées à part : voix reçues et votants différents.',
+    propositionsAideReduit: 'Comptées à part : voix reçues et part de toutes les voix placées.',
     ouverture: 'Ouverture',
     nonPubliee: 'Consultation non encore publiée'
   },

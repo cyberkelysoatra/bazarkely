@@ -31,6 +31,7 @@ const MESSAGES: Record<string, string> = {
   MESSAGE_INCONNU: "Ce message n'existe plus.",
   SUPPRESSION_INTERDITE: 'Vous ne pouvez pas supprimer ce message.',
   NON_CONNECTE: 'Connectez-vous avec Google.',
+  SUPER_ADMIN_REQUIS: 'Seul Joël SOATRA peut changer ce réglage.',
   RESEAU: 'Le réseau ne répond pas. Réessayez.'
 };
 

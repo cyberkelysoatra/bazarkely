@@ -55,8 +55,17 @@ export default function AccueilClos() {
           <Chargement />
         ) : (
           <>
-            <p className="text-[0.9375rem]">
-              <span className="font-titre text-[1.5rem] text-marine">{synthese.nbVotants}</span> votes comptés
+            {/* PUDI-CC-19: the number of voters only for the organisers (or once the switch is on). */}
+            <p className="text-[0.9375rem]" data-chiffre-clos="">
+              {synthese.complet ? (
+                <>
+                  <span className="font-titre text-[1.5rem] text-marine">{synthese.nbVotants}</span> votes comptés
+                </>
+              ) : (
+                <>
+                  <span className="font-titre text-[1.5rem] text-marine">{synthese.voixPlacees}</span> voix placées
+                </>
+              )}
             </p>
             <h2 className="mt-3 font-bold text-[1.0625rem] text-marine">Les priorités les plus choisies</h2>
             <ol className="mt-2 space-y-1.5">
@@ -64,7 +73,7 @@ export default function AccueilClos() {
                 <li key={l.id} className="flex gap-2 text-[0.9375rem]">
                   <span className="font-titre text-marine w-5 shrink-0">{l.rang}</span>
                   <span className="flex-1 min-w-0">{l.nom}</span>
-                  <span className="font-bold shrink-0">{l.pct}</span>
+                  <span className="font-bold shrink-0">{l.pctVoix ?? l.pct}</span>
                 </li>
               ))}
             </ol>

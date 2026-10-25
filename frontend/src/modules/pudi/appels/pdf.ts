@@ -146,7 +146,23 @@ class Mise {
 }
 
 /** PUDI-CC-18: one ranking, by votes, with the « Écart avec le PUDi » column. */
-function classement(m: Mise, lignes: LigneClassement[]) {
+function classement(m: Mise, lignes: LigneClassement[], complet: boolean) {
+  if (!complet) {
+    // PUDI-CC-19: public synthesis without the switch: votes only.
+    m.tableau(
+      [
+        { titre: 'Rang', l: 10, droite: true },
+        { titre: 'Id', l: 9 },
+        { titre: 'Programme', l: 70 },
+        { titre: 'Secteur', l: 30 },
+        { titre: 'Voix', l: 13, droite: true },
+        { titre: '% voix', l: 16, droite: true },
+        { titre: 'Écart avec le PUDi', l: 32 }
+      ],
+      lignes.map((l) => [String(l.rang), l.id, l.nom, l.secteur, String(l.voix ?? l.n), l.pctVoix ?? l.pct, l.ecart ?? ''])
+    );
+    return;
+  }
   m.tableau(
     [
       { titre: 'Rang', l: 10, droite: true },
@@ -198,12 +214,18 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
   m.y += 3;
 
   // Key figures
-  const chiffres: [string, string][] = [
-    ['Votants', String(s.nbVotants)],
-    ['Voix placées', String(s.voixPlacees)],
-    ['Dans nos réseaux', `${s.reseaux.dans} (${s.reseaux.pctDans})`],
-    ['Hors réseaux', `${s.reseaux.hors} (${s.reseaux.pctHors})`]
-  ];
+  const chiffres: [string, string][] = s.complet
+    ? [
+        ['Votants', String(s.nbVotants)],
+        ['Voix placées', String(s.voixPlacees)],
+        ['Dans nos réseaux', `${s.reseaux.dans} (${s.reseaux.pctDans})`],
+        ['Hors réseaux', `${s.reseaux.hors} (${s.reseaux.pctHors})`]
+      ]
+    : [
+        ['Voix placées', String(s.voixPlacees)],
+        ['Dans nos réseaux', s.reseaux.pctDans],
+        ['Hors réseaux', s.reseaux.pctHors]
+      ];
   const lc = UTILE / chiffres.length;
   m.place(18);
   chiffres.forEach(([lib, val], i) => {
@@ -235,25 +257,29 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
 
   m.titre(TITRE_CLASSEMENT);
   m.paragraphe(
-    'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme (52 programmes). « Voix » : voix reçues ; « Votants » : personnes différentes qui lui ont donné au moins une voix (part des votants) ; « 6 voix et + » : votes qui ont placé 6 voix ou plus sur ce programme.',
+    s.complet
+      ? 'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme (52 programmes). « Voix » : voix reçues ; « Votants » : personnes différentes qui lui ont donné au moins une voix (part des votants) ; « 6 voix et + » : votes qui ont placé 6 voix ou plus sur ce programme.'
+      : 'Chaque votant avait 12 voix et pouvait en mettre plusieurs sur un même programme (52 programmes). Le classement compte les voix reçues ; « % voix » : part de toutes les voix placées.',
     9,
     false,
     GRIS
   );
   m.y += 1;
-  classement(m, s.priorites);
-  m.paragraphe(`Votes concentrés : ${s.concentration}`, 9.5);
-  m.y += 1;
+  classement(m, s.priorites, s.complet);
+  if (s.complet) {
+    m.paragraphe(`Votes concentrés : ${s.concentration}`, 9.5);
+    m.y += 1;
 
-  m.titre('Voix utilisées par votant');
-  m.tableau(
-    [
-      { titre: 'Voix utilisées', l: 120 },
-      { titre: 'Votes', l: 30, droite: true },
-      { titre: 'Part', l: 30, droite: true }
-    ],
-    s.repartition.map((p) => [p.libelle, String(p.n), p.pct])
-  );
+    m.titre('Voix utilisées par votant');
+    m.tableau(
+      [
+        { titre: 'Voix utilisées', l: 120 },
+        { titre: 'Votes', l: 30, droite: true },
+        { titre: 'Part', l: 30, droite: true }
+      ],
+      s.repartition.map((p) => [p.libelle, String(p.n), p.pct])
+    );
+  }
 
   m.titre('Propositions de nouveaux projets');
   m.paragraphe(
@@ -273,7 +299,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
         { titre: 'Source', l: 40 },
         { titre: 'Ajoutée le', l: 20 },
         { titre: 'Voix', l: 15, droite: true },
-        { titre: 'Votants', l: 27, droite: true }
+        s.complet ? { titre: 'Votants', l: 27, droite: true } : { titre: '% voix', l: 27, droite: true }
       ],
       s.propositions.map((l) => [
         String(l.rang),
@@ -282,7 +308,7 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
         l.source,
         l.ajoutee,
         String(l.voix),
-        `${l.votants} (${l.pctVotants})`
+        s.complet ? `${l.votants} (${l.pctVotants})` : l.pctVoix
       ])
     );
     const notes = s.propositions.filter((l) => l.note);
@@ -291,25 +317,29 @@ export async function genererPdf(s: Synthese): Promise<ArrayBuffer> {
     });
   }
 
+  // PUDI-CC-19: public synthesis without the switch: shares only (their counts add up to the voters).
+  const repartition = (titre: string, lignes: { libelle: string; n: number | null; pct: string }[]) =>
+    s.complet
+      ? m.tableau(
+          [
+            { titre, l: 120 },
+            { titre: 'Votes', l: 30, droite: true },
+            { titre: 'Part', l: 30, droite: true }
+          ],
+          lignes.length ? lignes.map((p) => [p.libelle, String(p.n), p.pct]) : [['Aucun vote compté', '0', '0 %']]
+        )
+      : m.tableau(
+          [
+            { titre, l: 150 },
+            { titre: 'Part', l: 30, droite: true }
+          ],
+          lignes.length ? lignes.map((p) => [p.libelle, p.pct]) : [['Aucun vote compté', '0 %']]
+        );
   m.titre('Répartition par profil');
-  m.tableau(
-    [
-      { titre: 'Profil', l: 120 },
-      { titre: 'Votes', l: 30, droite: true },
-      { titre: 'Part', l: 30, droite: true }
-    ],
-    s.profils.map((p) => [p.libelle, String(p.n), p.pct])
-  );
+  repartition('Profil', s.profils);
 
   m.titre('Répartition par fokontany');
-  m.tableau(
-    [
-      { titre: 'Fokontany', l: 120 },
-      { titre: 'Votes', l: 30, droite: true },
-      { titre: 'Part', l: 30, droite: true }
-    ],
-    s.fokontany.length ? s.fokontany.map((p) => [p.libelle, String(p.n), p.pct]) : [['Aucun vote compté', '0', '0 %']]
-  );
+  repartition('Fokontany', s.fokontany);
 
   m.titre('Projets manquants proposés');
   if (!s.manquants.length) m.paragraphe('Aucune proposition.', 10, false, GRIS);

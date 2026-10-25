@@ -134,11 +134,13 @@ function Ligne({ r, donnees, clos }: { r: ResultatRecherche; donnees: PudiDonnee
           <BadgeProposition court />
         )
       }
-    >
-        <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{r.nom}</p>
-        <p className="mt-1 text-[0.875rem] text-gris leading-snug break-words">
+      pied={
+        <p className="text-[0.875rem] text-gris leading-snug break-words">
           <Pourquoi e={r.explication} />
         </p>
+      }
+    >
+        <p className="font-bold text-[1rem] leading-snug" data-titre-carte="">{r.nom}</p>
     </CarteChoix>
   );
 }

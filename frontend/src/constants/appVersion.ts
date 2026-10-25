@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.108.0';
-export const APP_VERSION_NAME = 'PUDi sans question sur l’urgence, votes convertis 4 + 4 + 4';
+export const APP_VERSION = '3.109.0';
+export const APP_VERSION_NAME = 'PUDi : vote enregistré tout seul, transfert rapide, nombre de votants réservé';
 export const LAST_UPDATED = '2026-10-25';
 export const APP_BUILD_DATE = '2026-10-25';
 export const VERSION_HISTORY = [
+  {
+    version: '3.109.0',
+    date: '2026-10-25',
+    description: 'PUDi : après le premier vote, chaque changement est enregistré tout seul (comme un sondage WhatsApp) ; cartes plus courtes ; transfert rapide d’une voix ; nombre de votants réservé aux organisateurs',
+    changes: [
+      'PUDi : après le premier vote, voix et projet manquant enregistrés automatiquement ; barre « Enregistré ✓ n/12 voix », hors réseau envoyé au retour de la connexion, 0 voix jamais envoyé',
+      'PUDi : « Modifier mes renseignements » dans le résumé de « Mon choix » (fokontany, profil, téléphone, résidence)',
+      'PUDi : cartes, badge et « Détails » sur la ligne du compteur, titre sur toute la largeur, aucune carte plus haute',
+      'PUDi : avec 12 voix placées, « + » ouvre un panneau « Déplacer 1 voix ici » au lieu d’un message d’erreur',
+      'PUDi : résultats, accueil après clôture et synthèse PDF publique sans nombre de votants (voix et pourcentages seulement) ; organisateurs inchangés',
+      'PUDi : Paramètres, interrupteur « Afficher tous les chiffres au public » réservé au super administrateur, éteint par défaut'
+    ]
+  },
   {
     version: '3.108.0',
     date: '2026-10-25',

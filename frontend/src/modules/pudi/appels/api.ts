@@ -23,6 +23,8 @@ export interface EtatConsultation {
   connecte: boolean;
   a_vote: boolean;
   est_admin: boolean;
+  /** PUDI-CC-19: « Afficher tous les chiffres au public » (super administrator switch). */
+  chiffres_publics?: boolean;
   /** Manager of at least one channel (PUDI-CC-07); absent on an older server answer. */
   est_responsable?: boolean;
 }
@@ -47,9 +49,9 @@ export interface MonVote {
 
 export interface LigneResultat {
   id: string;
-  /** Voters (distinct people); same value as `votants` since PUDI-CC-17. */
-  n: number;
-  pct: number;
+  /** Voters (distinct people); same value as `votants` since PUDI-CC-17. PUDI-CC-19: organisers only (or switch on). */
+  n?: number;
+  pct?: number;
   /** PUDI-CC-17: votes received (occurrences), voters, shares and votes with 6 or more on it. */
   voix?: number;
   votants?: number;
@@ -66,8 +68,8 @@ export interface LigneProposition {
   id: string;
   intitule: string;
   ajoute_at: string;
-  n_priorite: number;
-  pct_priorite: number;
+  n_priorite?: number;
+  pct_priorite?: number;
   voix?: number;
   votants?: number;
   pct_voix?: number;
@@ -88,7 +90,9 @@ export interface Resultats {
   cloture_at: string;
   publie_at?: string | null;
   calcule_at: string;
-  nb_votants: number;
+  /** PUDI-CC-19: false = reduced content (no voter count, breakdowns in %); absent = complete (older server). */
+  complet?: boolean;
+  nb_votants?: number;
   priorites: LigneResultat[];
   par_profil: Record<string, number>;
   par_fokontany: Record<string, number>;

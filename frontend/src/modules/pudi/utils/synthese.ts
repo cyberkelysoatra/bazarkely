@@ -8,13 +8,15 @@ import { dateClotureLongue, dateCourte, dateJour, dateLongue } from './format';
 
 /** Same shape as pudi_resultats() / pudi_admin_resultats_apercu() (subset used here). */
 export interface ResultatsSynthese {
-  nb_votants: number;
+  /** PUDI-CC-19: false = reduced content (votes only, breakdowns already in %). */
+  complet?: boolean;
+  nb_votants?: number;
   cloture_at: string;
   calcule_at: string;
   priorites: {
     id: string;
-    n: number;
-    pct: number;
+    n?: number;
+    pct?: number;
     voix?: number;
     votants?: number;
     pct_voix?: number;
@@ -35,8 +37,8 @@ export interface ResultatsSynthese {
     id: string;
     intitule: string;
     ajoute_at: string;
-    n_priorite: number;
-    pct_priorite: number;
+    n_priorite?: number;
+    pct_priorite?: number;
     voix?: number;
     votants?: number;
     pct_voix?: number;
@@ -66,10 +68,11 @@ export interface LigneProposition {
   nPriorite: number;
   pctPriorite: string;
   voix: number;
-  votants: number;
+  /** Voters: organisers only (null in the reduced content, PUDI-CC-19). */
+  votants: number | null;
   pctVoix: string;
-  pctVotants: string;
-  concentration: number;
+  pctVotants: string | null;
+  concentration: number | null;
   /** « Ajoutée le 24 octobre 2026 : exposée 2 jours sur 4 » for a late proposal. */
   note?: string;
 }
@@ -94,7 +97,8 @@ export interface LigneClassement {
 
 export interface LigneRepartition {
   libelle: string;
-  n: number;
+  /** Count (null in the reduced content: percentages only). */
+  n: number | null;
   pct: string;
 }
 
@@ -103,10 +107,12 @@ export interface Synthese {
   provisoire: boolean;
   genereLe: string;
   pied: string;
-  nbVotants: number;
+  /** PUDI-CC-19: false = votes only (public without the switch): no voter count anywhere. */
+  complet: boolean;
+  nbVotants: number | null;
   ouverture: string;
   cloture: string;
-  reseaux: { dans: number; hors: number; pctDans: string; pctHors: string };
+  reseaux: { dans: number | null; hors: number | null; pctDans: string; pctHors: string };
   priorites: LigneClassement[];
   propositions: LigneProposition[];
   profils: LigneRepartition[];
@@ -188,13 +194,16 @@ export function preparerSynthese(
 ): Synthese {
   const prog = (id: string) => d.programmes.find((p) => p.id === id);
   const secteur = (id: string) => d.secteurs.find((s) => s.id === prog(id)?.secteur)?.nom ?? '';
-  const ligne = (l: { id: string; n: number; pct: number }, i: number): LigneClassement => ({
+  // PUDI-CC-19: reduced content (anyone but the organisers, unless the switch is on): votes only,
+  // the breakdowns arrive as percentages and every voter count stays out of the synthesis.
+  const complet = r.complet !== false;
+  const ligne = (l: { id: string; n?: number; pct?: number; voix?: number; pct_voix?: number }, i: number): LigneClassement => ({
     rang: i + 1,
     id: l.id,
     nom: prog(l.id)?.nom ?? l.id,
     secteur: secteur(l.id),
-    n: l.n,
-    pct: pourcent(l.pct)
+    n: l.n ?? l.voix ?? 0,
+    pct: pourcent(l.pct ?? l.pct_voix ?? 0)
   });
   const ligneVoix = (l: ResultatsSynthese['priorites'][number], i: number): LigneClassement => {
     const tranche = l.tranche_pudi ? TRANCHES[l.tranche_pudi - 1] : prog(l.id)?.trancheAffichee;
@@ -202,17 +211,20 @@ export function preparerSynthese(
       ...ligne(l, i),
       tranche,
       ecart: l.ecart_pudi && tranche ? texteEcart(tranche) : '',
-      voix: l.voix ?? l.n,
-      votants: l.votants ?? l.n,
-      pctVoix: pourcent(l.pct_voix ?? l.pct),
-      pctVotants: pourcent(l.pct_votants ?? l.pct),
-      concentration: l.concentration ?? 0
+      voix: l.voix ?? l.n ?? 0,
+      pctVoix: pourcent(l.pct_voix ?? l.pct ?? 0),
+      ...(complet
+        ? { votants: l.votants ?? l.n ?? 0, pctVotants: pourcent(l.pct_votants ?? l.pct ?? 0), concentration: l.concentration ?? 0 }
+        : {})
     };
   };
   const conc = r.concentration ?? { votes: 0, pct_votes: 0, voix: 0, pct_voix: 0 };
   const nbConv = r.nb_votes_convertis ?? 0;
-  const total = r.nb_votants;
+  const total = r.nb_votants ?? 0;
   const reseau = r.reseaux.dans_nos_reseaux + r.reseaux.hors_reseaux;
+  /** Complete: count and share of the voters; reduced: the server already sends the share. */
+  const repartie = (libelle: string, v: number): LigneRepartition =>
+    complet ? { libelle, n: v, pct: part(v, total) } : { libelle, n: null, pct: pourcent(v) };
   const profils = Object.keys(fr.envoi.profils) as (keyof typeof fr.envoi.profils)[];
   const libelleFkt = (ceni: string) =>
     ceni === 'AUTRE' ? frPages.resultats.autreFokontany : d.fokontany.find((f) => f.ceni === ceni)?.affichage ?? ceni;
@@ -221,15 +233,18 @@ export function preparerSynthese(
     provisoire: options.provisoire,
     genereLe: dateCourte((options.maintenant ?? new Date()).toISOString()),
     pied: fr.app.pied,
-    nbVotants: total,
+    complet,
+    nbVotants: complet ? total : null,
     ouverture: texteOuverture(r.publie_at),
     cloture: dateClotureLongue(r.cloture_at),
-    reseaux: {
-      dans: r.reseaux.dans_nos_reseaux,
-      hors: r.reseaux.hors_reseaux,
-      pctDans: part(r.reseaux.dans_nos_reseaux, reseau),
-      pctHors: part(r.reseaux.hors_reseaux, reseau)
-    },
+    reseaux: complet
+      ? {
+          dans: r.reseaux.dans_nos_reseaux,
+          hors: r.reseaux.hors_reseaux,
+          pctDans: part(r.reseaux.dans_nos_reseaux, reseau),
+          pctHors: part(r.reseaux.hors_reseaux, reseau)
+        }
+      : { dans: null, hors: null, pctDans: pourcent(r.reseaux.dans_nos_reseaux), pctHors: pourcent(r.reseaux.hors_reseaux) },
     priorites: r.priorites.map(ligneVoix),
     propositions: (r.propositions ?? []).map((q, i) => ({
       rang: i + 1,
@@ -237,28 +252,28 @@ export function preparerSynthese(
       intitule: q.intitule,
       source: options.propositions?.find((x) => x.id === q.id)?.source ?? '',
       ajoutee: dateJour(q.ajoute_at),
-      nPriorite: q.n_priorite,
-      pctPriorite: pourcent(q.pct_priorite),
-      voix: q.voix ?? q.n_priorite,
-      votants: q.votants ?? q.n_priorite,
-      pctVoix: pourcent(q.pct_voix ?? q.pct_priorite),
-      pctVotants: pourcent(q.pct_votants ?? q.pct_priorite),
-      concentration: q.concentration ?? 0,
+      nPriorite: q.n_priorite ?? q.voix ?? 0,
+      pctPriorite: pourcent(q.pct_priorite ?? q.pct_voix ?? 0),
+      voix: q.voix ?? q.n_priorite ?? 0,
+      votants: complet ? q.votants ?? q.n_priorite ?? 0 : null,
+      pctVoix: pourcent(q.pct_voix ?? q.pct_priorite ?? 0),
+      pctVotants: complet ? pourcent(q.pct_votants ?? q.pct_priorite ?? 0) : null,
+      concentration: complet ? q.concentration ?? 0 : null,
       note: noteExposition(q.ajoute_at, r.publie_at, r.cloture_at)
     })),
-    profils: profils.map((p) => ({ libelle: fr.envoi.profils[p], n: r.par_profil[p] ?? 0, pct: part(r.par_profil[p] ?? 0, total) })),
+    profils: profils.map((p) => repartie(fr.envoi.profils[p], r.par_profil[p] ?? 0)),
     fokontany: Object.entries(r.par_fokontany)
-      .map(([k, n]) => ({ libelle: libelleFkt(k), n, pct: part(n, total) }))
-      .sort((a, b) => b.n - a.n || a.libelle.localeCompare(b.libelle, 'fr')),
+      .map(([k, n]) => [libelleFkt(k), n] as const)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'))
+      .map(([libelle, n]) => repartie(libelle, n)),
     manquants: r.manquants.map((m) => nettoyerTexteLibre(m).replace(/\s+/g, ' ').trim()).filter(Boolean),
-    methode: [...METHODE, CHANGEMENT_REGLE, texteVotesConvertis(nbConv)],
-    voixPlacees: r.voix_placees ?? r.priorites.reduce((a, l) => a + (l.voix ?? l.n), 0),
-    concentration: frPages.resultats.concentration(conc.votes, pourcent(conc.pct_votes)),
-    repartition: Array.from({ length: 12 }, (_, i) => {
-      const n = r.repartition?.[String(i + 1)] ?? 0;
-      return { libelle: frPages.resultats.repartitionLigne(i + 1), n, pct: part(n, total) };
-    }),
-    nbVotesConvertis: nbConv
+    methode: complet ? [...METHODE, CHANGEMENT_REGLE, texteVotesConvertis(nbConv)] : [...METHODE, CHANGEMENT_REGLE],
+    voixPlacees: r.voix_placees ?? r.priorites.reduce((a, l) => a + (l.voix ?? l.n ?? 0), 0),
+    concentration: complet ? frPages.resultats.concentration(conc.votes, pourcent(conc.pct_votes)) : '',
+    repartition: complet
+      ? Array.from({ length: 12 }, (_, i) => repartie(frPages.resultats.repartitionLigne(i + 1), r.repartition?.[String(i + 1)] ?? 0))
+      : [],
+    nbVotesConvertis: complet ? nbConv : 0
   };
 }
 

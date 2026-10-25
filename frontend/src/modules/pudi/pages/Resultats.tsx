@@ -23,11 +23,11 @@ const virgule = (v: number) => String(v).replace('.', ',');
  * « 34 voix · 11 votants » under the name, bar proportional to the votes (PUDI-CC-17), and the
  * « Écart avec le PUDi » flag (PUDI-CC-18: top 15 by votes while the PUDi plans it after 2030).
  */
-function Barre({ donnees, l, rang, maxVoix = 0 }: { donnees: PudiDonnees; l: LigneResultat; rang: number; maxVoix?: number }) {
+function Barre({ donnees, l, rang, maxVoix = 0, complet = true }: { donnees: PudiDonnees; l: LigneResultat; rang: number; maxVoix?: number; complet?: boolean }) {
   const p = programmeParId(donnees, l.id);
   const s = p ? secteurParId(donnees, p.secteur) : undefined;
   const tranche = l.tranche_pudi ? TRANCHES[l.tranche_pudi - 1] : p?.trancheAffichee;
-  const voix = l.voix ?? l.n;
+  const voix = l.voix ?? l.n ?? 0;
   const largeur = maxVoix ? (100 * voix) / maxVoix : 0;
   return (
     <li className="py-2" data-ligne-resultat={l.id}>
@@ -36,14 +36,14 @@ function Barre({ donnees, l, rang, maxVoix = 0 }: { donnees: PudiDonnees; l: Lig
         <Link to={`/programme/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
           {p?.nom ?? l.id}
         </Link>
-        <span className="font-titre text-marine shrink-0">{virgule(l.pct_voix ?? l.pct)} %</span>
+        <span className="font-titre text-marine shrink-0">{virgule(l.pct_voix ?? l.pct ?? 0)} %</span>
       </div>
       <div className="ml-8 mt-1 h-3 rounded-full bg-vide overflow-hidden" aria-hidden="true">
         <div className="h-full rounded-full" style={{ width: `${Math.min(100, largeur)}%`, background: s?.couleur ?? '#0B2A8C' }} />
       </div>
       <p className="ml-8 mt-1 text-[0.8125rem] text-gris" data-voix-votants="">
-        {frPages.resultats.voixVotants(voix, l.votants ?? l.n)}
-        {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`}
+        {complet ? frPages.resultats.voixVotants(voix, l.votants ?? l.n ?? 0) : frPages.resultats.voixSeules(voix)}
+        {complet && !!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`}
       </p>
       {l.ecart_pudi && tranche && (
         <p className="ml-8 mt-1 inline-flex items-center gap-1 text-[0.8125rem] font-bold text-[#9C3F21]" data-ecart-pudi={l.id}>
@@ -56,7 +56,7 @@ function Barre({ donnees, l, rang, maxVoix = 0 }: { donnees: PudiDonnees; l: Lig
 }
 
 /** Proposals outside the PUDi list, counted apart: share of the votes with a bar, voters. */
-function LignePropositionResultat({ l, rang, maxVoix = 0 }: { l: LigneProposition; rang: number; maxVoix?: number }) {
+function LignePropositionResultat({ l, rang, maxVoix = 0, complet = true }: { l: LigneProposition; rang: number; maxVoix?: number; complet?: boolean }) {
   const pct = (v: number) => `${String(v).replace('.', ',')} %`;
   return (
     <li className="py-2">
@@ -65,20 +65,20 @@ function LignePropositionResultat({ l, rang, maxVoix = 0 }: { l: LignePropositio
         <Link to={`/proposition/${l.id}`} className="flex-1 min-w-0 font-bold leading-snug">
           {l.intitule}
         </Link>
-        <span className="font-titre text-marine shrink-0">{pct(l.pct_voix ?? l.pct_priorite)}</span>
+        <span className="font-titre text-marine shrink-0">{pct(l.pct_voix ?? l.pct_priorite ?? 0)}</span>
       </div>
       <div className="ml-8 mt-1 h-3 rounded-full bg-vide overflow-hidden" aria-hidden="true">
         <div
           className="h-full rounded-full"
           style={{
-            width: `${Math.min(100, maxVoix ? (100 * (l.voix ?? l.n_priorite)) / maxVoix : l.pct_priorite)}%`,
+            width: `${Math.min(100, maxVoix ? (100 * (l.voix ?? l.n_priorite ?? 0)) / maxVoix : l.pct_priorite ?? 0)}%`,
             background: 'repeating-linear-gradient(135deg, #0B2A8C 0 6px, #3F5FB0 6px 12px)'
           }}
         />
       </div>
       <p className="ml-8 mt-1 text-[0.8125rem] text-gris" data-voix-votants="">
-        {frPages.resultats.voixVotants(l.voix ?? l.n_priorite, l.votants ?? l.n_priorite)}
-        {!!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`} ·{' '}
+        {complet ? frPages.resultats.voixVotants(l.voix ?? l.n_priorite ?? 0, l.votants ?? l.n_priorite ?? 0) : frPages.resultats.voixSeules(l.voix ?? 0)}
+        {complet && !!l.concentration && ` · ${frPages.resultats.concentrationLigne(l.concentration)}`} ·{' '}
         {frPages.propositions.ajoutee(dateJour(l.ajoute_at))}
       </p>
     </li>
@@ -86,14 +86,14 @@ function LignePropositionResultat({ l, rang, maxVoix = 0 }: { l: LignePropositio
 }
 
 /** How to read the ranking by votes (PUDI-CC-17). */
-function AideRegle() {
+function AideRegle({ complet }: { complet: boolean }) {
   return (
     <details className="mt-1 text-[0.8125rem]" data-aide-regle="">
       <summary className="min-h-[44px] inline-flex items-center gap-1.5 cursor-pointer text-marine font-bold">
         <Icone nom="info" className="w-4 h-4" />
         {frPages.resultats.regleAideTitre}
       </summary>
-      <p className="mt-1 text-profond">{frPages.resultats.regleAide}</p>
+      <p className="mt-1 text-profond">{complet ? frPages.resultats.regleAide : frPages.resultats.regleAideReduit}</p>
     </details>
   );
 }
@@ -139,7 +139,7 @@ function Transparence({ res }: { res: Res }) {
   );
 }
 
-function Repartition({ titre, lignes }: { titre: string; lignes: { nom: string; n: number }[] }) {
+function Repartition({ titre, lignes, pourcent = false }: { titre: string; lignes: { nom: string; n: number }[]; pourcent?: boolean }) {
   const total = lignes.reduce((a, b) => a + b.n, 0) || 1;
   return (
     <section className="mt-6">
@@ -149,7 +149,7 @@ function Repartition({ titre, lignes }: { titre: string; lignes: { nom: string; 
           <li key={l.nom} className="text-[0.875rem]">
             <div className="flex justify-between gap-2">
               <span>{l.nom}</span>
-              <span className="font-bold">{l.n}</span>
+              <span className="font-bold">{pourcent ? `${virgule(l.n)} %` : l.n}</span>
             </div>
             <div className="mt-0.5 h-2 rounded-full bg-vide overflow-hidden" aria-hidden="true">
               <div className="h-full bg-marine" style={{ width: `${(100 * l.n) / total}%` }} />
@@ -287,10 +287,13 @@ export default function Resultats() {
       </div>
     );
   else if (res && donnees) {
+    // PUDI-CC-19: reduced content (anyone but the organisers, unless the switch is on): votes only,
+    // breakdowns already in percentages, no voter count anywhere.
+    const complet = res.complet !== false;
     const fkt = Object.entries(res.par_fokontany)
       .map(([k, n]) => ({ nom: libelleFkt(k), n }))
       .sort((a, b) => b.n - a.n);
-    const maxVoix = Math.max(0, ...res.priorites.map((l) => l.voix ?? l.n), ...(res.propositions ?? []).map((l) => l.voix ?? l.n_priorite));
+    const maxVoix = Math.max(0, ...res.priorites.map((l) => l.voix ?? l.n ?? 0), ...(res.propositions ?? []).map((l) => l.voix ?? l.n_priorite ?? 0));
     const top = fkt.slice(0, 10);
     const reste = fkt.slice(10).reduce((a, b) => a + b.n, 0);
     if (reste) top.push({ nom: frPages.resultats.autres, n: reste });
@@ -298,8 +301,8 @@ export default function Resultats() {
       <>
         <div className="flex items-end justify-between gap-3 bg-white border border-filet rounded-xl p-3">
           <div>
-            <div className="font-titre text-[2.125rem] leading-none text-marine">{res.nb_votants}</div>
-            <div className="text-[0.875rem] text-gris">{frPages.resultats.votants(res.nb_votants)}</div>
+            <div className="font-titre text-[2.125rem] leading-none text-marine" data-chiffre-tete="">{complet ? res.nb_votants ?? 0 : res.voix_placees ?? 0}</div>
+            <div className="text-[0.875rem] text-gris">{complet ? frPages.resultats.votants(res.nb_votants ?? 0) : frPages.resultats.voixPlaceesLibelle}</div>
           </div>
           <div className="text-right">
             <p className="text-[0.8125rem] text-gris">{frPages.resultats.misAJour(heureCourte(res.calcule_at))}</p>
@@ -313,29 +316,29 @@ export default function Resultats() {
           {frPages.resultats.ouverture} : {res.publie_at ? dateLongue(res.publie_at) : frPages.resultats.nonPubliee} · {fr.accueil.cloture} :{' '}
           {dateClotureLongue(res.cloture_at)}
         </p>
-        {res.nb_votants === 0 && <p className="mt-3 text-gris">{frPages.resultats.aucunVote}</p>}
+        {(complet ? res.nb_votants === 0 : !res.voix_placees) && <p className="mt-3 text-gris">{frPages.resultats.aucunVote}</p>}
 
         <section className="mt-6">
           <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.prioritesTitre}</h2>
           <p className="text-[0.9375rem] text-profond mt-1" data-urgence-deduite="">{frPages.resultats.urgenceDeduite}</p>
-          <p className="text-[0.8125rem] text-gris mt-1">{frPages.resultats.prioritesAide}</p>
-          <AideRegle />
+          <p className="text-[0.8125rem] text-gris mt-1">{complet ? frPages.resultats.prioritesAide : frPages.resultats.prioritesAideReduit}</p>
+          <AideRegle complet={complet} />
           <AideEcart />
           <ol className="mt-1 divide-y divide-filet">
             {res.priorites.map((l, i) => (
-              <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} maxVoix={maxVoix} />
+              <Barre key={l.id} donnees={donnees} l={l} rang={i + 1} maxVoix={maxVoix} complet={complet} />
             ))}
           </ol>
         </section>
-        <Transparence res={res} />
+        {complet && <Transparence res={res} />}
 
         {res.propositions && res.propositions.length > 0 && (
           <section className="mt-6 bg-sable border-2 border-dashed border-marine/50 rounded-xl p-3">
             <h2 className="font-bold text-[1.0625rem] text-marine">{frPages.resultats.propositionsTitre}</h2>
-            <p className="text-[0.8125rem] text-gris">{frPages.resultats.propositionsAide}</p>
+            <p className="text-[0.8125rem] text-gris">{complet ? frPages.resultats.propositionsAide : frPages.resultats.propositionsAideReduit}</p>
             <ol className="mt-1 divide-y divide-filet">
               {res.propositions.map((l, i) => (
-                <LignePropositionResultat key={l.id} l={l} rang={i + 1} maxVoix={maxVoix} />
+                <LignePropositionResultat key={l.id} l={l} rang={i + 1} maxVoix={maxVoix} complet={complet} />
               ))}
             </ol>
           </section>
@@ -344,8 +347,9 @@ export default function Resultats() {
         <Repartition
           titre={frPages.resultats.profilTitre}
           lignes={PROFIL_VALEURS.map((p) => ({ nom: fr.envoi.profils[p], n: res.par_profil[p] ?? 0 }))}
+          pourcent={!complet}
         />
-        <Repartition titre={frPages.resultats.fokontanyTitre} lignes={top} />
+        <Repartition titre={frPages.resultats.fokontanyTitre} lignes={top} pourcent={!complet} />
 
         <section className="mt-6">
           <h2 className="font-bold text-[1.0625rem] text-marine mb-2">{frPages.resultats.reseauxTitre}</h2>
@@ -355,7 +359,7 @@ export default function Resultats() {
               { n: res.reseaux.hors_reseaux, l: frPages.resultats.horsReseaux }
             ].map((x) => (
               <div key={x.l} className="bg-white border border-filet rounded-xl p-3 text-center">
-                <div className="font-titre text-[1.625rem] text-marine">{x.n}</div>
+                <div className="font-titre text-[1.625rem] text-marine">{complet ? x.n : `${virgule(x.n)} %`}</div>
                 <div className="text-[0.8125rem] text-gris">{x.l}</div>
               </div>
             ))}
