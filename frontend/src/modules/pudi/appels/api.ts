@@ -19,7 +19,12 @@ export interface EtatConsultation {
   gel_listes_at?: string | null;
   regle_voix_at?: string | null;
   maintenant: string;
+  /** Effective closing (server): switch on and date passed. The only source of « closed ». */
   clos: boolean;
+  /** PUDI-CC-21: the closing date is passed (closed only if verrou_cloture is on). Absent on an older answer. */
+  cloture_depassee?: boolean;
+  /** PUDI-CC-21: organiser switch « Verrouillage à la date de clôture ». Absent on an older answer. */
+  verrou_cloture?: boolean;
   connecte: boolean;
   a_vote: boolean;
   est_admin: boolean;
@@ -87,6 +92,9 @@ export interface Concentration {
 
 export interface Resultats {
   clos: boolean;
+  /** PUDI-CC-21: see EtatConsultation. */
+  cloture_depassee?: boolean;
+  verrou_cloture?: boolean;
   cloture_at: string;
   publie_at?: string | null;
   calcule_at: string;

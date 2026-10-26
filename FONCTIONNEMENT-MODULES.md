@@ -1399,6 +1399,24 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
     l'en-tête ;
   - `prefers-reduced-motion` : aucune animation, mêmes positions finales.
 
+### PUDi · PUDI-CC-21, v3.111.0 : verrouillage à la date de clôture
+
+- **Principe** : la date `cloture_at` reste affichée partout, mais elle ne ferme la consultation que si l'interrupteur
+  organisateur `pudi_settings.verrou_cloture` est activé (défaut d'installation : activé ; valeur en production depuis
+  le 26/10/2026 22 h 34 : **désactivé**, demande de Thierry relayée par Joël). Clôture effective =
+  `public.pudi_est_clos(s)` = `verrou_cloture and now() >= cloture_at`, seule règle utilisée par le serveur (vote,
+  propositions, choix des appareils, visibilité des résultats). Le gel des listes (`gel_listes_at`) et la purge ne
+  dépendent **pas** de l'interrupteur. Migration `20261026230000_pudi_verrou_cloture.sql`.
+- `pudi_etat()` et les résultats renvoient `clos` (clôture effective), `cloture_depassee` (`now() >= cloture_at`) et
+  `verrou_cloture`. Le client ne déduit **jamais** la clôture de la date : seul `clos` ferme ; un compte à rebours à zéro
+  ne ferme rien.
+- Date passée et interrupteur désactivé : le compte à rebours (accueil, barre du vote, Paramètres) est remplacé par
+  « Clôture dépassée, votes encore acceptés » ; la ligne « Clôture : mardi 27 octobre 2026 à 8 h » ne change pas.
+- **Paramètres > Clôture** : interrupteur « Verrouillage à la date de clôture » (`pudi_admin_set_verrou`, organisateurs,
+  journal `changer_verrou` avec avant/après), aide repliée, ligne « État : Consultation ouverte / close »,
+  confirmation « La consultation va se fermer immédiatement. » avant d'activer une fois la date passée. Action en ligne
+  seulement : hors connexion l'interrupteur est désactivé, rien n'est mis en file.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

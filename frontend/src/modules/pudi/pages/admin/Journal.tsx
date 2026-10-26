@@ -9,6 +9,7 @@ const ACTIONS: Record<string, string> = {
   masquer_vote: 'Vote masqué',
   reafficher_vote: 'Vote réaffiché',
   changer_cloture: 'Date de clôture changée',
+  changer_verrou: 'Verrouillage de la clôture changé',
   changer_chiffres_publics: 'Chiffres publics changés',
   publier: 'Consultation publiée',
   depublier: 'Consultation dépubliée',

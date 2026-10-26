@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.110.0';
+export const APP_VERSION = '3.111.0';
 export const APP_VERSION_NAME = 'PUDi : réactions dans la discussion, panneau de transfert animé, derniers chiffres de votants retirés';
 export const LAST_UPDATED = '2026-10-25';
-export const APP_BUILD_DATE = '2026-10-25';
+export const APP_BUILD_DATE = '2026-10-26';
 export const VERSION_HISTORY = [
+  {
+    version: '3.111.0',
+    date: '2026-10-26',
+    description: 'PUDi : interrupteur « Verrouillage à la date de clôture » ; la date de clôture reste affichée, mais la consultation ne se ferme que si les organisateurs ont activé le verrouillage',
+    changes: [
+      'PUDi : Paramètres, interrupteur « Verrouillage à la date de clôture » avec aide, état de la consultation et confirmation avant de fermer une consultation dont la date est passée ; inscrit au journal',
+      'PUDi : date passée et verrouillage désactivé, le compte à rebours est remplacé par « Clôture dépassée, votes encore acceptés » ; vote, propositions, discussion et enregistrement automatique restent ouverts',
+      'PUDi : les résultats ne deviennent publics que lorsque la consultation est réellement close'
+    ]
+  },
   {
     version: '3.110.0',
     date: '2026-10-25',

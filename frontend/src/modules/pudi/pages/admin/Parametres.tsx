@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Icone, type NomIcone } from '../../composants/Icones';
 import { boutonPrincipal, boutonSecondaire } from '../../composants/Mise';
 import { usePudi } from '../../PudiContexte';
+import { fr } from '../../i18n/fr';
 import {
   DATE_PURGE,
   EMAIL_JOEL,
@@ -11,11 +12,12 @@ import {
   definirChiffresPublics,
   definirClotureEtGel,
   definirPublie,
+  definirVerrou,
   lireConnexions,
   lireSuivi,
   purger
 } from '../../appels/admin';
-import { dateClotureLongue, tempsRestant } from '../../utils/format';
+import { clotureDepasseeOuverte, dateClotureLongue, tempsRestant } from '../../utils/format';
 import { dateHeureMada } from '../../utils/exports';
 import { dateGel } from '../../utils/masquage';
 import { Aide, Dialogue, Erreur, Titre2, champ, messageAdmin, useAppel, type DemandeConfirmation } from './communs';
@@ -39,7 +41,7 @@ function Bloc({ titre, icone, children }: { titre: string; icone: NomIcone; chil
 }
 
 export default function Parametres({ email }: { email: string }) {
-  const { etat, rechargerEtat, decalage, gelListesAt } = usePudi();
+  const { etat, rechargerEtat, decalage, gelListesAt, horsLigne } = usePudi();
   const joel = email.toLowerCase() === EMAIL_JOEL;
   const suivi = useAppel(lireSuivi);
   const connexions = useAppel(lireConnexions);
@@ -64,6 +66,35 @@ export default function Parametres({ email }: { email: string }) {
     } catch (e) {
       setChiffres({ cours: false, message: messageAdmin(e) });
     }
+  };
+
+  // PUDI-CC-21: closing switch. Online only, never queued; never changes a date.
+  const [verrou, setVerrou] = useState<{ cours: boolean; message: string | null }>({ cours: false, message: null });
+  const verrouActif = etat?.verrou_cloture !== false;
+  const enLigne = !horsLigne && (typeof navigator === 'undefined' || navigator.onLine !== false);
+  const changerVerrou = async (actif: boolean) => {
+    setVerrou({ cours: true, message: null });
+    try {
+      const r = await definirVerrou(actif);
+      await rechargerEtat();
+      setVerrou({ cours: false, message: r.verrou_cloture ? 'Verrouillage activé.' : 'Verrouillage désactivé.' });
+    } catch (e) {
+      setVerrou({ cours: false, message: messageAdmin(e) });
+    }
+  };
+  const basculerVerrou = () => {
+    if (!etat || !enLigne) return;
+    const actif = !verrouActif;
+    const dejaPassee = !!etat.cloture_depassee || Date.now() + decalage >= Date.parse(etat.cloture_at);
+    if (actif && dejaPassee)
+      return setDemande({
+        titre: 'Activer le verrouillage ?',
+        texte: 'La consultation va se fermer immédiatement.',
+        libelleOk: 'Activer et fermer',
+        danger: true,
+        action: () => changerVerrou(true)
+      });
+    void changerVerrou(actif);
   };
 
   useEffect(() => {
@@ -222,7 +253,49 @@ export default function Parametres({ email }: { email: string }) {
         {etat && <p className="text-[0.9375rem]">Clôture actuelle : {dateClotureLongue(etat.cloture_at)}</p>}
         {restant && (
           <p className="text-[0.875rem] text-gris mt-1">
-            {restant.fini ? 'La consultation est close.' : `Temps restant : ${restant.jours} j ${restant.heures} h ${restant.minutes} min`}
+            {etat?.clos
+              ? 'La consultation est close.'
+              : clotureDepasseeOuverte(etat, restant.fini)
+                ? fr.accueil.depasseeOuvert
+                : restant.fini
+                  ? 'Date de clôture atteinte.'
+                  : `Temps restant : ${restant.jours} j ${restant.heures} h ${restant.minutes} min`}
+          </p>
+        )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={verrouActif}
+          aria-describedby="pudi-verrou-etat"
+          disabled={!etat || verrou.cours || !enLigne}
+          onClick={basculerVerrou}
+          className="mt-3 w-full min-h-[48px] flex items-center justify-between gap-3 rounded-xl border border-filet px-3 disabled:opacity-60"
+          data-verrou-cloture={verrouActif ? 'oui' : 'non'}
+        >
+          <span className="font-bold text-[0.9375rem] text-marine text-left">Verrouillage à la date de clôture</span>
+          <span className={`relative shrink-0 w-12 h-7 rounded-full transition-colors ${verrouActif ? 'bg-marine' : 'bg-filet'}`} aria-hidden="true">
+            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${verrouActif ? 'left-6' : 'left-1'}`} />
+          </span>
+        </button>
+        <details className="mt-2 text-[0.875rem]">
+          <summary className="min-h-[44px] inline-flex items-center gap-1.5 cursor-pointer text-marine font-bold">
+            <Icone nom="info" className="w-4 h-4" />
+            Que change cet interrupteur ?
+          </summary>
+          <p className="mt-1 text-profond">
+            Activé : la consultation se ferme à la date affichée. Désactivé : la date reste affichée, mais tout le monde peut continuer à voter. Vous pouvez changer à tout moment, même après la date.
+          </p>
+        </details>
+        <p id="pudi-verrou-etat" className="text-[0.9375rem] mt-1" data-etat-consultation={etat?.clos ? 'close' : 'ouverte'}>
+          État :{' '}
+          <span className={`font-bold ${etat?.clos ? 'text-[#B42318]' : 'text-[#1F7A3E]'}`}>
+            {etat ? (etat.clos ? 'Consultation close' : 'Consultation ouverte') : '…'}
+          </span>
+        </p>
+        {!enLigne && <p className="text-[0.8125rem] text-gris mt-1">Hors connexion : l'interrupteur demande une connexion.</p>}
+        {verrou.message && (
+          <p role="status" className="mt-2 text-[0.875rem] font-bold">
+            {verrou.message}
           </p>
         )}
         <p className="text-[0.875rem] text-gris mt-1" data-gel-actuel="">

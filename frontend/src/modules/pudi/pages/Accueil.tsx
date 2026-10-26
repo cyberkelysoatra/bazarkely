@@ -5,19 +5,27 @@ import { BandeauxEtat, Chargement, Image, Page, RangeeLogos, boutonPrincipal, bo
 import { fr } from '../i18n/fr';
 import { usePudi } from '../PudiContexte';
 import { abonnerInstallation, installationDisponible, lancerInstallation } from '../appels/installation';
-import { dateClotureLongue, tempsRestant, texteRestant } from '../utils/format';
+import { clotureDepasseeOuverte, dateClotureLongue, tempsRestant, texteRestant } from '../utils/format';
 
 // PUDI-CC-14.4: after the closing the home page becomes « Résultats et synthèse » (own chunk).
 const AccueilClos = lazy(() => import('./AccueilClos'));
 
 function CompteARebours() {
-  const { clotureAt, decalage } = usePudi();
+  const { clotureAt, decalage, etat } = usePudi();
   const [maintenant, setMaintenant] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setMaintenant(Date.now()), 15000);
     return () => window.clearInterval(id);
   }, []);
   const r = tempsRestant(Date.parse(clotureAt), maintenant + decalage);
+  // PUDI-CC-21: date passed but the organisers left the vote open: a text replaces the countdown.
+  if (clotureDepasseeOuverte(etat, r.fini))
+    return (
+      <p className="font-bold text-[1rem] text-[#9C3F21] flex items-center gap-1.5" data-depassee-ouvert="">
+        <Icone nom="horloge" className="w-5 h-5" />
+        {fr.accueil.depasseeOuvert}
+      </p>
+    );
   if (r.fini) return null;
   const court = texteRestant(r);
   const bloc = (valeur: number, unite: string) => (

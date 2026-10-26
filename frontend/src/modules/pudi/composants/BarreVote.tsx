@@ -12,7 +12,7 @@ import { fr } from '../i18n/fr';
 import { frPages } from '../i18n/frPages';
 import { usePudi, useDonnees } from '../PudiContexte';
 import { VOIX, voixUtilisees } from '../utils/regles';
-import { dateCourte, tempsRestant, texteRestant } from '../utils/format';
+import { clotureDepasseeOuverte, dateCourte, tempsRestant, texteRestant } from '../utils/format';
 import { etapeSuivante } from '../appels/questions';
 import { abonnerAuto, conditionsAuto, configurerAuto, enregistrerMaintenant, lireEtatAuto } from '../appels/autoEnregistrement';
 import { connexionGoogle } from '../appels/session';
@@ -128,7 +128,7 @@ function EtatAutomatique({ n }: { n: number }) {
 }
 
 export default function BarreVote() {
-  const { brouillon, clotureAt, decalage } = usePudi();
+  const { brouillon, clotureAt, decalage, etat } = usePudi();
   const auto = useAutoEnregistrement();
   const navigate = useNavigate();
   // PUDI-CC-16.1: a signed-in voter who changed nothing sees « Modifier mon vote » and a reminder.
@@ -148,7 +148,10 @@ export default function BarreVote() {
       document.body.classList.remove('pudi-barre-vote');
     };
   }, []);
-  const court = texteRestant(tempsRestant(Date.parse(clotureAt), maintenant + decalage));
+  const restant = tempsRestant(Date.parse(clotureAt), maintenant + decalage);
+  // PUDI-CC-21: date passed, vote left open by the organisers.
+  const depassee = clotureDepasseeOuverte(etat, restant.fini);
+  const court = depassee ? fr.accueil.depasseeOuvert : texteRestant(restant);
   const envoyer = () => {
     if (n < 1) {
       navigate('/choix', { state: { relance: Date.now() } });
@@ -167,7 +170,7 @@ export default function BarreVote() {
       <div className="mx-auto max-w-2xl pr-[6px] pointer-events-auto">
         {!surMonChoix && !auto && <RappelVote donnees={donnees} compact />}
         {court && (
-          <p className="mb-1 mx-auto w-fit rounded-full bg-white/95 border border-filet px-3 py-0.5 text-[13px] font-bold text-[#9C3F21] shadow-sm" data-restant-barre="">
+          <p className="mb-1 mx-auto w-fit rounded-full bg-white/95 border border-filet px-3 py-0.5 text-[13px] font-bold text-[#9C3F21] shadow-sm" data-restant-barre={depassee ? 'depassee' : ''}>
             {court}
           </p>
         )}

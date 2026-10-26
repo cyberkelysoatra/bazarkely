@@ -159,6 +159,9 @@ export const definirClotureEtGel = (iso: string, deplacerGel: boolean) =>
   rpc<{ cloture_at: string; gel_listes_at: string | null }>('pudi_admin_set_cloture_gel', { p_at: iso, p_deplacer_gel: deplacerGel });
 /** PUDI-CC-19: « Afficher tous les chiffres au public », super administrator only (journaled). */
 export const definirChiffresPublics = (p: boolean) => rpc<{ chiffres_publics: boolean }>('pudi_admin_set_chiffres_publics', { p });
+/** PUDI-CC-21: « Verrouillage à la date de clôture » (journaled); never changes a date. Online only. */
+export const definirVerrou = (actif: boolean) =>
+  rpc<{ verrou_cloture: boolean; clos: boolean; cloture_depassee: boolean; cloture_at: string }>('pudi_admin_set_verrou', { p_actif: actif });
 export const definirPublie = (publie: boolean) =>
   rpc<{ publie: boolean; votes_test_supprimes: number }>('pudi_admin_set_publie', { p_publie: publie });
 export const lireJournal = () => rpc<EntreeJournal[]>('pudi_admin_journal');

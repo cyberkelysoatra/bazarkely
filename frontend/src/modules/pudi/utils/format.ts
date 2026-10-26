@@ -103,6 +103,19 @@ export function texteRestant(r: Restant): string | null {
   return `Plus que ${r.jours ? `${r.jours} j ${r.heures} h` : `${r.heures} h`} pour voter`;
 }
 
+/**
+ * PUDI-CC-21: the closing date is passed but the consultation stays open (organiser switch off).
+ * Only the server decides « closed » (etat.clos); a countdown at zero never closes anything.
+ * `fini` (countdown at zero on this device) covers a state read before the date.
+ */
+export function clotureDepasseeOuverte(
+  etat: { clos: boolean; cloture_depassee?: boolean; verrou_cloture?: boolean } | null,
+  fini: boolean
+): boolean {
+  if (!etat || etat.clos) return false;
+  return !!etat.cloture_depassee || (fini && etat.verrou_cloture === false);
+}
+
 /** "jeudi 22 octobre 2026 à 9 h 14" (Madagascar time, no suffix): opening of the consultation. */
 export function dateLongue(iso: string): string {
   const d = enHeureMada(iso);

@@ -29,6 +29,8 @@ export const fr = {
     chiffres: '52 programmes, 11 secteurs',
     cloture: 'Clôture',
     restant: 'Temps restant',
+    /** PUDI-CC-21: closing date passed, the organisers left the vote open. */
+    depasseeOuvert: 'Clôture dépassée, votes encore acceptés',
     jours: 'jours',
     jour: 'jour',
     heures: 'h',
