@@ -9,6 +9,7 @@ import type { Account, TransactionCategory } from '../../../types'
 import type { DicteeItem } from '../types'
 import { CATEGORIES_DICTEE } from '../services/dicteeApi'
 import { ligneEnregistrable } from '../utils/decision'
+import { doutesDe } from '../utils/doutes'
 import { formaterMontant, LIBELLE_CATEGORIE, LIBELLE_TYPE } from '../utils/libelles'
 import { isoDepuisChampDate, valeurChampDate } from '../utils/dates'
 
@@ -149,12 +150,12 @@ export default function RecapDictee({ transcript, lignesInitiales, comptes, fige
                 )}
               </div>
 
-              {item.doubts.length > 0 && (
+              {doutesDe(item).length > 0 && (
                 <ul className="mt-2 space-y-1" aria-label={`Points à vérifier, ligne ${n}`}>
-                  {item.doubts.map((d, k) => (
+                  {doutesDe(item).map((d, k) => (
                     <li key={k} className="flex items-start gap-1.5 text-sm text-amber-800">
                       <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                      <span>{d}</span>
+                      <span>{d.text}</span>
                     </li>
                   ))}
                 </ul>

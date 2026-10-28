@@ -49,6 +49,16 @@ export function ordonnerComptes<T extends { id: string }>(comptes: T[], prefere:
   return premier ? [premier, ...comptes.filter((c) => c.id !== prefere)] : comptes
 }
 
+/**
+ * Sheet order when the AI found several matching accounts (DICTEE-CC-02):
+ * the matching ones first (preferred one at the top), then the others.
+ */
+export function ordonnerAvecCandidats<T extends { id: string }>(comptes: T[], candidats: string[], prefere: string | null): T[] {
+  const enTete = ordonnerComptes(comptes.filter((c) => candidats.includes(c.id)), prefere)
+  const reste = ordonnerComptes(comptes.filter((c) => !candidats.includes(c.id)), prefere)
+  return [...enTete, ...reste]
+}
+
 /** Most frequent category among the lines missing an account (sheet pre-selection). */
 export function categorieDominante(categories: (TransactionCategory | null)[]): TransactionCategory | null {
   const n = new Map<TransactionCategory, number>()

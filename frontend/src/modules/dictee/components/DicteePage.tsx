@@ -18,15 +18,20 @@ import {
   dicteesEnAttente,
   EVENEMENT_DICTEE,
   lireDictee,
+  lireDicteeDe,
   enregistrerSiSure,
   signalerChangement,
   supprimerDictee,
-  traiterFile
+  traiterFile,
+  utilisateurCourant
 } from '../services/dicteeQueueService'
 import { enregistrerDictee } from '../services/dicteeSaveService'
-import { deciderDictee } from '../utils/decision'
-import { categorieDominante, comptePrefere, ordonnerComptes } from '../utils/comptePrefere'
+import { comptesCandidats, deciderDictee } from '../utils/decision'
+import { categorieDominante, comptePrefere, ordonnerAvecCandidats } from '../utils/comptePrefere'
 import { formaterMontant, libelleAttente, LIBELLE_CATEGORIE } from '../utils/libelles'
+import { usePendingDictations } from '../usePendingDictations'
+import BadgeDictees from './BadgeDictees'
+import { dernierUtilisateurConnu } from '../utils/proprietaire'
 import { etatPermissionMicro, useEnregistreur, DUREE_MAX_MS, type Enregistrement } from './useEnregistreur'
 import FeuilleCompte from './FeuilleCompte'
 import RecapDictee, { type LigneRecap } from './RecapDictee'
@@ -52,6 +57,8 @@ export default function DicteePage() {
   const [decision, setDecision] = useState<DicteeDecision | null>(null)
   const [comptes, setComptes] = useState<Account[]>([])
   const [prefere, setPrefere] = useState<string | null>(null)
+  const [candidats, setCandidats] = useState<string[]>([])
+  const comptesBadge = usePendingDictations()
   const [attente, setAttente] = useState<PendingDictation[]>([])
   const [message, setMessage] = useState<{ ton: 'info' | 'erreur'; texte: string } | null>(null)
   const [occupe, setOccupe] = useState(false)
@@ -124,7 +131,12 @@ export default function DicteePage() {
       if (dec.kind === 'account') {
         const locales = userId ? await db.transactions.where('userId').equals(userId).toArray() : []
         const categorie = categorieDominante(dec.lineIndexes.map((i) => d.result!.items[i].category))
-        setPrefere(comptePrefere(liste, locales, categorie))
+        // Ambiguous account (two « espèces »…): the matching accounts first,
+        // the preferred one chosen among them. Never a guess (DICTEE-CC-02).
+        const trouves = comptesCandidats(d.result.items, dec.lineIndexes, liste.map((c) => c.id))
+        setCandidats(trouves)
+        const parmi = trouves.length > 0 ? liste.filter((c) => trouves.includes(c.id)) : liste
+        setPrefere(comptePrefere(parmi, locales, categorie))
         return setPhase('compte')
       }
       setPhase('recap')
@@ -157,18 +169,28 @@ export default function DicteePage() {
   useEffect(() => {
     const id = params.get('id')
     if (!id) return
-    void lireDictee(id).then((d) => d && void ouvrir(d))
-  }, [params, ouvrir])
+    // Owner only: a shared phone never opens someone else's dictation.
+    void lireDicteeDe(id, userId).then((d) => d && void ouvrir(d))
+  }, [params, ouvrir, userId])
 
   const apresEnregistrement = useCallback(
     async (e: Enregistrement) => {
       setMessage(null)
-      if (!userId) {
+      // Never lost: with no known user, kept unowned; only the last user signed
+      // in on this phone may adopt it at the next sign-in.
+      const proprietaire = userId ?? (await utilisateurCourant()) ?? ''
+      const d = await ajouterDictee({
+        userId: proprietaire,
+        audio: e.audio,
+        mime: e.mime,
+        durationMs: e.durationMs,
+        dernierUtilisateur: proprietaire ? null : dernierUtilisateurConnu()
+      })
+      if (!proprietaire) {
         setPhase('pret')
-        setMessage({ ton: 'erreur', texte: 'Session introuvable. Reconnectez-vous puis réessayez.' })
+        setMessage({ ton: 'erreur', texte: 'Session introuvable. La dictée est gardée : reconnectez-vous, elle sera traitée ensuite.' })
         return
       }
-      const d = await ajouterDictee({ userId, audio: e.audio, mime: e.mime, durationMs: e.durationMs })
       courante.current = d.id
       setDictee(d)
       if (!navigator.onLine) {
@@ -263,21 +285,18 @@ export default function DicteePage() {
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
-        <h1 className="text-xl font-bold text-gray-900">Dicter une dépense</h1>
+        <h1 className="flex-1 text-xl font-bold text-gray-900">Dicter une dépense</h1>
+        <BadgeDictees comptes={comptesBadge} />
       </div>
 
       {attente.length > 0 && phase !== 'recap' && (
         <button
           type="button"
-          onClick={() => {
-            if (aRevoir) void ouvrir(aRevoir)
-            else if (navigator.onLine) void traiterFile()
-            else setMessage({ ton: 'info', texte: MESSAGE_HORS_LIGNE })
-          }}
+          onClick={() => navigate('/dicter/attente')}
           className="mb-3 flex w-full items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-left text-sm text-blue-900 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <span className="font-medium" data-testid="dictee-compteur">{libelleAttente(attente.length)}</span>
-          <span className="text-blue-700">{aRevoir ? 'À vérifier' : 'Voir'}</span>
+          <span className="text-blue-700">{aRevoir ? 'À vérifier' : 'Voir la liste'}</span>
         </button>
       )}
 
@@ -428,13 +447,14 @@ export default function DicteePage() {
 
       {phase === 'compte' && dictee?.result && decision?.kind === 'account' && (
         <FeuilleCompte
-          comptes={ordonnerComptes(comptes, prefere)}
+          comptes={ordonnerAvecCandidats(comptes, candidats, prefere)}
           prefere={prefere}
+          candidats={candidats}
           resume={resumeFeuille}
           occupe={occupe}
           onFermer={() => {
             setPhase('pret')
-            setMessage({ ton: 'info', texte: 'Dictée gardée. Vous la retrouverez dans « dictée en attente ».' })
+            setMessage({ ton: 'info', texte: 'Dictée gardée. Vous la retrouverez dans « Dictées en attente ».' })
             void rafraichirAttente()
           }}
           onVerifier={() => setPhase('recap')}

@@ -52,6 +52,32 @@ export function messageEnregistre(
   return `${items.length} transactions enregistrées, ${totalParDevise(items)}`
 }
 
+/**
+ * Why a dictation failed, in plain French (DICTEE-CC-02). `code` is what the
+ * queue stored: `413_audio_too_large`, `503_ai_not_configured`, `reseau`…
+ */
+export function raisonEchec(code: string | undefined): string {
+  const c = code ?? ''
+  if (c === 'session' || c.startsWith('401')) return 'Session expirée, reconnecte-toi'
+  if (c.startsWith('413')) return 'Enregistrement trop long'
+  if (c === 'format_refuse' || c === 'conversion_wav' || c.startsWith('415')) return "Format d'enregistrement non pris en charge"
+  if (c === 'audio_absent') return 'Enregistrement introuvable sur ce téléphone'
+  return 'Service de compréhension indisponible'
+}
+
+/** Short status line of a card in the list. */
+export function libelleStatut(statut: 'waiting' | 'processing' | 'needs_review' | 'failed', error?: string): string {
+  if (statut === 'processing') return 'En cours…'
+  if (statut === 'needs_review') return 'À vérifier'
+  if (statut === 'failed') return raisonEchec(error)
+  return error === 'session' ? 'Session expirée, reconnecte-toi' : 'En attente du réseau'
+}
+
+/** « 1 essai », « 3 essais ». */
+export function libelleEssais(n: number): string {
+  return n <= 1 ? `${n} essai` : `${n} essais`
+}
+
 export function libelleAttente(n: number): string {
   return n <= 1 ? '1 dictée en attente' : `${n} dictées en attente`
 }

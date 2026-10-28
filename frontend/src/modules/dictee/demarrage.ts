@@ -6,6 +6,7 @@
  */
 import { supabase } from '../../lib/supabase'
 import { db } from '../../lib/database'
+import { memoriserUtilisateur } from './utils/proprietaire'
 
 let demarre = false
 
@@ -29,8 +30,17 @@ export function demarrerDictee(): void {
   if (demarre || typeof window === 'undefined') return
   demarre = true
   window.setTimeout(() => void lancerSiFile(), 8000)
-  supabase.auth.onAuthStateChange((evenement) => {
-    if (evenement === 'SIGNED_IN') window.setTimeout(() => void lancerSiFile(), 3000)
+  // The last user signed in on this phone: the only one who may adopt a
+  // dictation recorded with nobody signed in (DICTEE-CC-02).
+  void supabase.auth
+    .getSession()
+    .then(({ data }) => memoriserUtilisateur(data?.session?.user?.id))
+    .catch(() => undefined)
+  supabase.auth.onAuthStateChange((evenement, session) => {
+    if (evenement === 'SIGNED_IN') {
+      memoriserUtilisateur(session?.user?.id)
+      window.setTimeout(() => void lancerSiFile(), 3000)
+    }
   })
   window.addEventListener('online', () => window.setTimeout(() => void lancerSiFile(), 2000))
 }

@@ -15,10 +15,11 @@ import { supabase } from '../../../lib/supabase'
 import { useAppStore } from '../../../stores/appStore'
 import type { PendingDictation } from '../types'
 import { deciderDictee } from '../utils/decision'
-import { estAPurger, estEligible, estEnAttente, prochaineDictee, versAnalysee, versAttenteSession, versEchec, versTraitement } from '../utils/etatFile'
+import { estAPurger, estEligible, estEnAttente, estTraitementAbandonne, prochaineDictee, versAnalysee, versAttenteSession, versEchec, versNouvelEssai, versTraitement } from '../utils/etatFile'
 import { convertirEnWav } from '../utils/wav'
 import { isoAvecDecalage } from '../utils/dates'
 import { sousVerrou } from '../utils/verrouPartage'
+import { estOrphelineEtrangere, peutAdopter } from '../utils/proprietaire'
 import { envoyerDictee } from './dicteeApi'
 import { enregistrerDictee } from './dicteeSaveService'
 import { toastDicteeEnregistree } from '../components/toastDictee'
@@ -51,6 +52,8 @@ export async function ajouterDictee(params: {
   audio: Blob
   mime: string
   durationMs: number
+  /** Only when `userId` is '' (nobody signed in): the only user allowed to adopt it. */
+  dernierUtilisateur?: string | null
 }): Promise<PendingDictation> {
   const maintenant = new Date()
   const dictee: PendingDictation = {
@@ -60,6 +63,7 @@ export async function ajouterDictee(params: {
     audio: params.audio,
     mime: params.mime,
     durationMs: params.durationMs,
+    ...(params.userId === '' && params.dernierUtilisateur ? { dernierUtilisateur: params.dernierUtilisateur } : {}),
     status: 'waiting',
     attempts: 0,
     updatedAt: maintenant.toISOString()
@@ -71,6 +75,73 @@ export async function ajouterDictee(params: {
 
 export async function lireDictee(id: string): Promise<PendingDictation | undefined> {
   return db.pendingDictations.get(id)
+}
+
+/** Only the owner ever sees or opens a dictation (shared phone). */
+export async function lireDicteeDe(id: string, userId: string | null): Promise<PendingDictation | undefined> {
+  const d = await db.pendingDictations.get(id)
+  return d && userId && d.userId === userId ? d : undefined
+}
+
+/** Newest first, for the « Dictées en attente » list (done excluded). */
+export async function dicteesDeLaListe(userId: string): Promise<PendingDictation[]> {
+  const toutes = await db.pendingDictations.where('userId').equals(userId).toArray()
+  return toutes.filter(estEnAttente).sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+}
+
+/**
+ * App killed during `processing`: back to `waiting` after 2 min. Works offline
+ * (the list must not show a spinner forever). Saves are never involved here:
+ * the planned ids live with `needs_review`, never with `processing`.
+ */
+export async function recupererTraitementsAbandonnes(userId: string): Promise<number> {
+  const maintenant = Date.now()
+  return db.transaction('rw', db.pendingDictations, async () => {
+    const bloquees = await db.pendingDictations.where('[userId+status]').equals([userId, 'processing']).toArray()
+    let n = 0
+    for (const d of bloquees) {
+      if (!estTraitementAbandonne(d, maintenant)) continue
+      await db.pendingDictations.put({ ...d, status: 'waiting', updatedAt: new Date(maintenant).toISOString() })
+      n++
+    }
+    return n
+  })
+}
+
+/**
+ * A dictation recorded with nobody signed in is adopted ONLY by the last user
+ * signed in on this phone (kept at each sign-in). Anyone else: it stays
+ * unowned, never sent, shown with « Supprimer » only. Works offline.
+ */
+export async function adopterOrphelines(userId: string): Promise<number> {
+  const orphelines = await db.pendingDictations.where('userId').equals('').toArray()
+  let n = 0
+  for (const d of orphelines) {
+    if (!peutAdopter(d, userId)) continue
+    const { dernierUtilisateur: _dernier, ...reste } = d
+    await db.pendingDictations.put({ ...reste, userId })
+    n++
+  }
+  return n
+}
+
+/** Unowned dictations this user may not adopt: listed with « Supprimer » only. */
+export async function orphelinesEtrangeres(userId: string): Promise<PendingDictation[]> {
+  const orphelines = await db.pendingDictations.where('userId').equals('').toArray()
+  return orphelines.filter((d) => estOrphelineEtrangere(d, userId))
+}
+
+/** « Réessayer » / « Tout réessayer »: eligible at once, then one pass. Owner only. */
+export async function reessayer(ids: string[], userId: string): Promise<void> {
+  await db.transaction('rw', db.pendingDictations, async () => {
+    for (const id of ids) {
+      const d = await db.pendingDictations.get(id)
+      if (!d || d.userId !== userId || (d.status !== 'failed' && d.status !== 'waiting')) continue
+      await db.pendingDictations.put(versNouvelEssai(d))
+    }
+  })
+  signalerChangement()
+  await traiterFile()
 }
 
 export async function dicteesEnAttente(userId: string): Promise<PendingDictation[]> {
@@ -181,8 +252,6 @@ async function traiterUne(dictee: PendingDictation): Promise<'continuer' | 'arre
 }
 
 let verrou = false
-/** A dictation left `processing` longer than this was abandoned (tab closed, crash). */
-const TRAITEMENT_ABANDONNE_MS = 2 * 60 * 1000
 
 /** One pass over the queue. Never two at a time, in any tab. Never throws. */
 export async function traiterFile(): Promise<void> {
@@ -203,14 +272,10 @@ async function passe(): Promise<void> {
     await purger()
     const userId = await utilisateurCourant()
     if (!userId) return
+    await adopterOrphelines(userId)
     // A crash during processing leaves `processing`: back to waiting, but only
     // when clearly abandoned (another tab may be working on it right now).
-    const bloquees = await db.pendingDictations.where('[userId+status]').equals([userId, 'processing']).toArray()
-    for (const d of bloquees) {
-      if (Date.now() - new Date(d.updatedAt).getTime() > TRAITEMENT_ABANDONNE_MS) {
-        await db.pendingDictations.put({ ...d, status: 'waiting' })
-      }
-    }
+    await recupererTraitementsAbandonnes(userId)
 
     for (let tour = 0; tour < 50; tour++) {
       if (!navigator.onLine) break

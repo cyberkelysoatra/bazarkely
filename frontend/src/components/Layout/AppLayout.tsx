@@ -53,6 +53,7 @@ const SmsInboxPage = lazy(() => import('../../modules/sms-inbox/pages/SmsInboxPa
 
 // Dictée vocale (DICTEE-CC-01) : page plein écran chargée à la demande + bouton micro flottant
 const DicteePage = lazy(() => import('../../modules/dictee/components/DicteePage'))
+const ListeDicteesPage = lazy(() => import('../../modules/dictee/components/ListeDicteesPage'))
 import BoutonMicFlottant from '../../modules/dictee/components/BoutonMicFlottant'
 
 // Analytics Pages - Lazy loaded
@@ -229,6 +230,7 @@ const AppLayout = () => {
 
             {/* Dictée vocale : raccourci de l'icône (/dicter?auto=1) et boutons micro */}
             <Route path="/dicter" element={<DicteePage />} />
+            <Route path="/dicter/attente" element={<ListeDicteesPage />} />
 
             {/* Route SMS — non referencee dans la navigation, volontairement */}
             <Route path="/sms-inbox" element={<SmsInboxPage />} />

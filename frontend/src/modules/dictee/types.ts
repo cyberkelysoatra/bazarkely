@@ -11,6 +11,14 @@ export type DicteeStatus = 'waiting' | 'processing' | 'needs_review' | 'done' | 
 
 export type DicteeItemType = 'expense' | 'income' | 'transfer'
 
+/** What a doubt is about (DICTEE-CC-02). A line whose only doubts are `compte` goes to the account sheet. */
+export type DicteeDoubtKind = 'compte' | 'montant' | 'categorie' | 'type' | 'date' | 'autre'
+
+export interface DicteeDoubt {
+  kind: DicteeDoubtKind
+  text: string
+}
+
 /** One line as returned by the AI (validated by the server function). */
 export interface DicteeItem {
   type: DicteeItemType
@@ -23,7 +31,13 @@ export interface DicteeItem {
   /** ISO string with offset. */
   date: string
   confidence: number
-  doubts: string[]
+  /**
+   * Objects since DICTEE-CC-02. Results stored by phase 1 still hold plain
+   * strings: always read through `doutesDe()` (utils/doutes.ts).
+   */
+  doubts: (DicteeDoubt | string)[]
+  /** Ambiguous account (two « espèces »…): the accounts that match what was said. */
+  accountCandidates?: string[]
 }
 
 export interface DicteeResult {
@@ -51,7 +65,10 @@ export interface DicteePlannedLine {
 
 export interface PendingDictation {
   id: string
+  /** '' when recorded with nobody signed in (see utils/proprietaire.ts). */
   userId: string
+  /** Unowned dictation only: the last user signed in on this phone, the only one who may adopt it. */
+  dernierUtilisateur?: string
   /** ISO string with offset, moment of the recording. */
   recordedAt: string
   audio?: Blob

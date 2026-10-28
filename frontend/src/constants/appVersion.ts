@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.112.1';
-export const APP_VERSION_NAME = 'Dictée vocale : une dictée n’est plus jamais traitée deux fois avec plusieurs onglets ouverts';
+export const APP_VERSION = '3.112.2';
+export const APP_VERSION_NAME = 'Dictée vocale : liste « Dictées en attente » et badge sur le micro';
 export const LAST_UPDATED = '2026-10-28';
 export const APP_BUILD_DATE = '2026-10-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.112.2',
+    date: '2026-10-28',
+    description: 'Dictée vocale (phase 2) : les dictées faites sans réseau ont leur liste « Dictées en attente » et un badge sur le micro',
+    changes: [
+      'Dictée : badge sur les boutons micro avec le nombre de dictées pas encore enregistrées, ambre dès qu’une est à vérifier ou en échec',
+      'Dictée : liste « Dictées en attente » (depuis le badge, la page Dicter ou le menu du compte) : écouter, supprimer, vérifier et enregistrer, réessayer',
+      'Dictée : quand seul le compte manque, la feuille « Sur quel compte ? » s’ouvre au lieu de l’écran de vérification ; avec deux comptes espèces, ils sont proposés en premier',
+      'Dictée : « Pain 2 000, recharge 1 000, par Orange Money » met les deux dépenses sur Orange Money',
+      'Dictée : une dictée faite sans personne connectée n’est jamais perdue ; seule la dernière personne connectée sur le téléphone peut la reprendre, les autres ne peuvent que la supprimer'
+    ]
+  },
   {
     version: '3.112.1',
     date: '2026-10-28',

@@ -74,6 +74,26 @@ export function estAPurger(d: PendingDictation, maintenant: number = Date.now())
   return d.status === 'done' && maintenant - new Date(d.updatedAt).getTime() > DUREE_TRACE_MS
 }
 
+/** A dictation left `processing` longer than this was abandoned (tab closed, app killed). */
+export const TRAITEMENT_ABANDONNE_MS = 2 * 60 * 1000
+
+/** `processing` for more than 2 min: abandoned, goes back to waiting. A recent one may be another tab's. */
+export function estTraitementAbandonne(d: PendingDictation, maintenant: number = Date.now()): boolean {
+  return d.status === 'processing' && maintenant - new Date(d.updatedAt).getTime() > TRAITEMENT_ABANDONNE_MS
+}
+
+/** « Réessayer »: eligible at once (no backoff), attempts kept for display. */
+export function versNouvelEssai(d: PendingDictation, maintenant: number = Date.now()): PendingDictation {
+  return { ...d, status: 'waiting', error: undefined, updatedAt: iso(maintenant) }
+}
+
+/** Audio kept more than 30 days without being understood: the card says so (never deleted by itself). */
+export const AUDIO_ANCIEN_MS = 30 * 24 * 60 * 60 * 1000
+
+export function estAudioAncien(d: PendingDictation, maintenant: number = Date.now()): boolean {
+  return Boolean(d.audio) && d.status !== 'done' && maintenant - new Date(d.recordedAt).getTime() > AUDIO_ANCIEN_MS
+}
+
 /** Counted in « N dictées en attente ». */
 export function estEnAttente(d: PendingDictation): boolean {
   return d.status !== 'done'

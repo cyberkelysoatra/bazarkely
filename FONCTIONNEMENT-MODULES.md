@@ -1121,7 +1121,40 @@ une dépense dite à 01 h à Antananarivo reste sur le bon jour (`utils/dates.ts
   forcée, chacun ne voit et n'écrit que ses lignes, `anon` sans aucun droit, `TRUNCATE` retiré.
   Effacée avec sa transaction (cascade). Rejeu hors ligne par `syncQueue` (`transaction_dictations`).
 
+**Doutes typés (v3.112.2, DICTEE-CC-02).** Chaque doute est `{ kind, text }` avec `kind` parmi `compte`,
+`montant`, `categorie`, `type`, `date`, `autre` (schéma de sortie imposé à Gemini). Une ligne dont les
+seuls doutes sont de type `compte` est traitée **comme un compte manquant** : feuille « Sur quel
+compte ? », jamais le récapitulatif. Les résultats déjà gardés au format phase 1 (simples phrases) restent
+lus : une phrase qui ne parle que du compte compte comme `compte` (`utils/doutes.ts`). Compte ambigu (deux
+comptes espèces pour « en espèces ») : aucun compte deviné, l'IA renvoie `accountCandidates` et la feuille
+les met **en tête** (« Correspond à ce que vous avez dit »). Un compte dit une seule fois en début ou en fin
+de liste vaut pour **toutes** les lignes sans compte propre. Un compte proposé qui n'existe plus au moment
+de vérifier est traité comme manquant (feuille).
+
+**Dictées en attente (v3.112.2).** Badge sur le bouton micro flottant, sur le bouton « Dicter »
+d'`AddTransactionPage` et en haut de `/dicter` : nombre de dictées `waiting + processing + needs_review +
+failed` (hook `usePendingDictations`, Dexie `liveQuery`, utilisateur courant seulement). Neutre tant
+qu'elles attendent, **ambre** dès qu'une est « À vérifier » ou en échec, masqué à zéro. Lecteur d'écran :
+« 2 dictées en attente, dont 1 à vérifier ». Le badge ouvre la liste.
+- Liste `/dicter/attente` (dans `BudgetAccessRoute`), atteinte par le badge, par `/dicter` et par le menu
+  utilisateur (« Dictées en attente »), **pas** par la barre du bas. Une carte par dictée, la plus récente
+  en haut : *En attente du réseau* (date, durée, « Écouter », « Supprimer » avec confirmation) ;
+  *En cours…* ; *À vérifier* (texte entendu, lignes proposées, « Vérifier et enregistrer » qui ouvre la
+  feuille ou le récapitulatif) ; *échec* (raison en français simple, nombre d'essais, « Réessayer » qui
+  relance tout de suite sans attendre le délai, « Supprimer »). Les dictées terminées ne sont pas listées.
+  « Tout réessayer » en haut quand le téléphone est en ligne et qu'au moins une attend ou a échoué. Aide ⓘ
+  repliée. Liste vide : « Aucune dictée en attente ».
+- Robustesse : dictée faite sans personne connectée gardée et **adoptée uniquement par la dernière personne
+  connectée sur ce téléphone** (identifiant gardé en local à chaque connexion, clé
+  `bazarkely_dictee_dernier_utilisateur`, `utils/proprietaire.ts`). Si quelqu'un d'autre se connecte, elle
+  reste en attente, n'est **jamais** traitée et apparaît à part (« Dictées d'une autre session ») avec
+  « Supprimer » seulement, sans lecture de l'audio. Dictée d'un autre compte jamais traitée ni montrée ;
+  `processing` depuis plus de 2 min remis en `waiting` (même hors ligne, à l'ouverture de la liste) ; un
+  enregistrement commencé reprend avec ses identifiants figés ; audio de plus de 30 jours signalé, **jamais**
+  supprimé automatiquement.
+
 ### ❌ Ce qui N'est PAS le comportement attendu
+- ❌ Aucune dictée jamais comprise supprimée sans le toucher « Supprimer » confirmé.
 - ❌ Aucune voix gardée après compréhension, ni sur le téléphone ni sur le serveur.
 - ❌ Aucune catégorie inventée hors des 11 ; aucun compte deviné s'il n'a pas été nommé.
 - ❌ Jamais d'enregistrement d'une ligne en doute sans le toucher « Tout enregistrer ».

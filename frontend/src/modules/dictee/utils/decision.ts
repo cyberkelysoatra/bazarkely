@@ -7,14 +7,18 @@
  * sheet. Anything else: the recap screen, nothing saved before the user taps.
  */
 import type { DicteeDecision, DicteeItem } from '../types'
+import { doutesDe, doutesHorsCompte } from './doutes'
 
 export const SEUIL_CONFIANCE = 0.85
 
-/** Everything except the accounts. */
+/**
+ * Everything except the accounts. A doubt about the account only (kind
+ * `compte`, DICTEE-CC-02) does not count here: the account sheet answers it.
+ */
 export function ligneSureHorsCompte(item: DicteeItem): boolean {
   if (!(item.confidence >= SEUIL_CONFIANCE)) return false
   if (!(item.amount > 0) || !Number.isFinite(item.amount)) return false
-  if (item.doubts && item.doubts.length > 0) return false
+  if (doutesHorsCompte(item).length > 0) return false
   if (item.type !== 'transfer' && !item.category) return false
   return true
 }
@@ -42,13 +46,33 @@ export function deciderDictee(items: DicteeItem[], idsComptes: string[]): Dictee
   const sansCompte: number[] = []
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
-    if (comptesResolus(item, comptes)) continue
+    // An account doubt on a line that names a real account: the sheet asks again.
+    const douteCompte = doutesDe(item).some((d) => d.kind === 'compte')
+    if (comptesResolus(item, comptes) && !douteCompte) continue
     if (item.type === 'transfer') return { kind: 'review' }
-    // An account id the AI made up is a doubt, not a missing account.
-    if (item.accountId !== null) return { kind: 'review' }
+    // Unknown id (the server never sends one: the account was deleted since
+    // the dictation was understood) = missing account, the sheet asks.
     sansCompte.push(i)
   }
   return sansCompte.length > 0 ? { kind: 'account', lineIndexes: sansCompte } : { kind: 'sure' }
+}
+
+/**
+ * Accounts listed first in the sheet: the ones the AI found matching (two
+ * « espèces »…), still existing, in the AI's order.
+ */
+export function comptesCandidats(items: DicteeItem[], lineIndexes: number[], idsComptes: string[]): string[] {
+  const connus = new Set(idsComptes)
+  const sortie: string[] = []
+  for (const i of lineIndexes) {
+    const item = items[i]
+    if (!item) continue
+    for (const id of [item.accountId, ...(item.accountCandidates ?? [])]) {
+      if (!id) continue
+      if (connus.has(id) && !sortie.includes(id)) sortie.push(id)
+    }
+  }
+  return sortie
 }
 
 /** Fields the recap needs before « Tout enregistrer » can save a line. */

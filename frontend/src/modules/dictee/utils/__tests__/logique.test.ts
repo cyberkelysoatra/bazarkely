@@ -58,8 +58,9 @@ describe('décision sûr / doute', () => {
     expect(d).toEqual({ kind: 'account', lineIndexes: [0, 2] })
   })
 
-  it('compte inconnu inventé = doute, pas la feuille', () => {
-    expect(deciderDictee([ligne({ accountId: 'inexistant' })], COMPTES).kind).toBe('review')
+  it('compte disparu depuis la compréhension = compte manquant, la feuille (DICTEE-CC-02)', () => {
+    // The server never sends an unknown id: an unknown one is an account deleted since.
+    expect(deciderDictee([ligne({ accountId: 'inexistant' })], COMPTES)).toEqual({ kind: 'account', lineIndexes: [0] })
   })
 
   it('transfert : les deux comptes requis, sinon récapitulatif', () => {

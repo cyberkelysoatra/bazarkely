@@ -32,6 +32,8 @@ import LoanTermsFields from '../components/Loans/LoanTermsFields';
 import { computeDailyRatePct, daysBetweenDates, type InterestMode, type InterestPeriod } from '../services/loanTerms';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { usePendingDictations } from '../modules/dictee/usePendingDictations';
+import BadgeDictees from '../modules/dictee/components/BadgeDictees';
 
 /**
  * Contact Picker API — disponible uniquement sur Chrome/Edge Android (HTTPS requis).
@@ -46,6 +48,7 @@ const supportsContactPicker =
 
 const AddTransactionPage = () => {
   const navigate = useNavigate();
+  const comptesDictees = usePendingDictations();
   const [searchParams] = useSearchParams();
   const transactionType = searchParams.get('type') || 'expense';
   const isRecurringParam = searchParams.get('recurring') === 'true';
@@ -889,6 +892,7 @@ const AddTransactionPage = () => {
               }}
             />
             </div>
+            <div className="relative flex w-16 flex-shrink-0">
             <button
               type="button"
               onClick={() => navigate('/dicter')}
@@ -898,6 +902,8 @@ const AddTransactionPage = () => {
               <Mic className="h-6 w-6" aria-hidden="true" />
               <span className="text-xs font-medium">Dicter</span>
             </button>
+            <BadgeDictees comptes={comptesDictees} className="absolute -right-2 -top-2" />
+            </div>
             </div>
           )}
 

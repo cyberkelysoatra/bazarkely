@@ -15,6 +15,8 @@ export function IconeCompte({ type, className }: { type: Account['type']; classN
 interface Props {
   comptes: Account[]
   prefere: string | null
+  /** Accounts matching what was said (two « espèces »…), listed first. */
+  candidats?: string[]
   resume: string
   occupe: boolean
   onChoisir: (id: string) => void
@@ -22,7 +24,7 @@ interface Props {
   onVerifier: () => void
 }
 
-export default function FeuilleCompte({ comptes, prefere, resume, occupe, onChoisir, onFermer, onVerifier }: Props) {
+export default function FeuilleCompte({ comptes, prefere, candidats = [], resume, occupe, onChoisir, onFermer, onVerifier }: Props) {
   const premier = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
@@ -81,7 +83,11 @@ export default function FeuilleCompte({ comptes, prefere, resume, occupe, onChoi
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-gray-900">{c.name}</span>
-                    {choisi && <span className="block text-xs text-blue-700">Le plus utilisé pour cette dépense</span>}
+                    {choisi ? (
+                      <span className="block text-xs text-blue-700">Le plus utilisé pour cette dépense</span>
+                    ) : candidats.includes(c.id) ? (
+                      <span className="block text-xs text-blue-700">Correspond à ce que vous avez dit</span>
+                    ) : null}
                   </span>
                 </button>
               </li>

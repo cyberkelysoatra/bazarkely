@@ -36,6 +36,8 @@ const CATEGORIES = [
   'alimentation', 'logement', 'transport', 'sante', 'education', 'communication',
   'vetements', 'loisirs', 'famille', 'solidarite', 'autres'
 ]
+/** What a doubt is about (DICTEE-CC-02): a line whose only doubts are `compte` opens the account sheet. */
+const TYPES_DOUTE = ['compte', 'montant', 'categorie', 'type', 'date', 'autre']
 const MIMES_ACCEPTES = /^audio\/(webm|ogg|wav|x-wav|mp3|mpeg|mp4|m4a|aac|flac|opus|aiff)$/
 
 function json(status: number, payload: unknown): Response {
@@ -94,12 +96,13 @@ function consigne(recordedAt: string, comptes: { id: string; name: string; type:
     '- Une ligne par opération : « taxi 5 000, pain 2 000 » donne deux lignes.',
     '- type : expense pour une dépense, income pour de l\'argent reçu (« j\'ai reçu… »), transfer pour de l\'argent déplacé entre deux comptes de l\'utilisateur (« j\'ai mis 20 000 de l\'Orange Money vers les espèces »).',
     `- Catégorie : choisis UNIQUEMENT dans cette liste : ${CATEGORIES.join(', ')}. Si aucune ne convient, category null et un doute. Pour un transfert, category null.`,
-    '- Compte : choisis un compte SEULEMENT si la personne l\'a clairement nommé, en comparant avec les noms et les types (« espèces », « cash », « vola » = espèces ; « Orange Money » ; « Mvola » ; « Airtel » ; noms de banques). Sinon accountId null, sans doute pour ce seul motif. Si plusieurs comptes correspondent à ce qui a été dit (par exemple deux comptes de type espèces pour « en espèces ») et que le nom exact n\'a pas été prononcé, accountId null : ne choisis jamais au hasard.',
+    '- Compte : choisis un compte SEULEMENT si la personne l\'a clairement nommé, en comparant avec les noms et les types (« espèces », « cash », « vola » = espèces ; « Orange Money » ; « Mvola » ; « Airtel » ; noms de banques). Sinon accountId null, sans doute pour ce seul motif. Si plusieurs comptes correspondent à ce qui a été dit (par exemple deux comptes de type espèces pour « en espèces ») et que le nom exact n\'a pas été prononcé, accountId null : ne choisis jamais au hasard ; mets alors dans accountCandidates les id de TOUS les comptes qui correspondent. Dans tous les autres cas, accountCandidates est une liste vide.',
+    '- Un compte dit une seule fois au début ou à la fin d\'une liste vaut pour TOUTES les lignes de la liste qui n\'ont pas leur propre compte. Exemple : « Pain 2 000, recharge 1 000, par Orange Money » donne deux lignes, toutes les deux sur Orange Money. Exemple : « En espèces : taxi 3 000, pain 1 000 » donne deux lignes en espèces.',
     '- Pour un transfert : accountId = compte de départ, targetAccountId = compte d\'arrivée. Pour une dépense ou un revenu, targetAccountId null.',
     `- Date : la dictée a été enregistrée le ${recordedAt}. Résous « hier soir », « ce matin », « avant-hier » dans le fuseau Indian/Antananarivo. Aucune date dite : utilise exactement ${recordedAt}. Format ISO avec décalage, par exemple 2026-10-28T19:30:00+03:00.`,
     '- description : courte, en français, à partir de ce qui a été dit (exemple : « Taxi Hell-Ville → Ambatoloaka »).',
     '- confidence : entre 0 et 1, ta certitude sur la ligne entière.',
-    '- doubts : liste vide si tout est clair ; sinon de courtes phrases en français simple, compréhensibles par tous.',
+    '- doubts : liste vide si tout est clair ; sinon une entrée par doute, avec kind (ce sur quoi porte le doute : compte, montant, categorie, type, date ou autre) et text (une courte phrase en français simple, compréhensible par tous). Un doute qui porte seulement sur le compte (compte non dit, plusieurs comptes possibles) a toujours kind « compte ».',
     '',
     'Comptes de l\'utilisateur :',
     listeComptes,
@@ -126,9 +129,20 @@ const SCHEMA_REPONSE = {
           targetAccountId: { type: 'STRING', nullable: true },
           date: { type: 'STRING' },
           confidence: { type: 'NUMBER' },
-          doubts: { type: 'ARRAY', items: { type: 'STRING' } }
+          doubts: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                kind: { type: 'STRING', enum: TYPES_DOUTE },
+                text: { type: 'STRING' }
+              },
+              required: ['kind', 'text']
+            }
+          },
+          accountCandidates: { type: 'ARRAY', items: { type: 'STRING' } }
         },
-        required: ['type', 'amount', 'currency', 'description', 'category', 'accountId', 'targetAccountId', 'date', 'confidence', 'doubts']
+        required: ['type', 'amount', 'currency', 'description', 'category', 'accountId', 'targetAccountId', 'date', 'confidence', 'doubts', 'accountCandidates']
       }
     }
   },
@@ -146,18 +160,31 @@ function valider(brut: any, idsComptes: Set<string>, recordedAt: string): { tran
     if (!['MGA', 'EUR'].includes(l.currency)) return null
     if (typeof l.description !== 'string') return null
     if (typeof l.confidence !== 'number' || !Number.isFinite(l.confidence)) return null
-    const doutes: string[] = Array.isArray(l.doubts) ? l.doubts.filter((d: unknown) => typeof d === 'string' && d.trim()) : []
+    // { kind, text } ; une simple phrase (ancien format) est gardée en « autre ».
+    const doutes: { kind: string; text: string }[] = []
+    for (const d of Array.isArray(l.doubts) ? l.doubts : []) {
+      const texte = typeof d === 'string' ? d : typeof d?.text === 'string' ? d.text : ''
+      if (!texte.trim()) continue
+      const kind = typeof d === 'object' && TYPES_DOUTE.includes(d?.kind) ? d.kind : 'autre'
+      doutes.push({ kind, text: texte.trim().slice(0, 300) })
+    }
     let categorie = typeof l.category === 'string' && CATEGORIES.includes(l.category) ? l.category : null
     if (l.type === 'transfer') categorie = null
     // Un identifiant de compte inconnu n'est jamais transmis : null + doute.
     const compte = (v: unknown, libelle: string) => {
       if (v === null || v === undefined || v === '') return null
       if (typeof v === 'string' && idsComptes.has(v)) return v
-      doutes.push(`${libelle} non reconnu, à choisir`)
+      doutes.push({ kind: 'compte', text: `${libelle} non reconnu, à choisir` })
       return null
     }
     const accountId = compte(l.accountId, 'Compte')
     const targetAccountId = l.type === 'transfer' ? compte(l.targetAccountId, "Compte d'arrivée") : null
+    const candidats: string[] = []
+    if (accountId === null && Array.isArray(l.accountCandidates)) {
+      for (const id of l.accountCandidates) {
+        if (typeof id === 'string' && idsComptes.has(id) && !candidats.includes(id)) candidats.push(id)
+      }
+    }
     let date = typeof l.date === 'string' && Number.isFinite(new Date(l.date).getTime()) ? l.date : recordedAt
     if (!/[+-]\d{2}:?\d{2}$|Z$/.test(date)) date = recordedAt
     items.push({
@@ -170,7 +197,8 @@ function valider(brut: any, idsComptes: Set<string>, recordedAt: string): { tran
       targetAccountId,
       date,
       confidence: Math.max(0, Math.min(1, l.confidence)),
-      doubts: doutes.slice(0, 10)
+      doubts: doutes.slice(0, 10),
+      accountCandidates: candidats.slice(0, 10)
     })
   }
   return { transcript: brut.transcript.slice(0, 2000), items: items.slice(0, 20) }
