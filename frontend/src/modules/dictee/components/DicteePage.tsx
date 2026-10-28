@@ -178,9 +178,13 @@ export default function DicteePage() {
         return
       }
       setPhase('traitement')
-      void traiterFile()
+      await traiterFile()
+      // The pass may stop before this one (session expired, network trouble):
+      // never leave the spinner on a dictation that is only waiting.
+      const relue = await lireDictee(d.id)
+      if (relue && courante.current === d.id && relue.status !== 'processing') void ouvrir(relue)
     },
-    [userId, rafraichirAttente]
+    [userId, rafraichirAttente, ouvrir]
   )
 
   const micro = useEnregistreur(apresEnregistrement, () => {

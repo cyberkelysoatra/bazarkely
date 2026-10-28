@@ -15,9 +15,10 @@ import { supabase } from '../../../lib/supabase'
 import { useAppStore } from '../../../stores/appStore'
 import type { PendingDictation } from '../types'
 import { deciderDictee } from '../utils/decision'
-import { estAPurger, estEnAttente, prochaineDictee, versAnalysee, versAttenteSession, versEchec, versTraitement } from '../utils/etatFile'
+import { estAPurger, estEligible, estEnAttente, prochaineDictee, versAnalysee, versAttenteSession, versEchec, versTraitement } from '../utils/etatFile'
 import { convertirEnWav } from '../utils/wav'
 import { isoAvecDecalage } from '../utils/dates'
+import { sousVerrou } from '../utils/verrouPartage'
 import { envoyerDictee } from './dicteeApi'
 import { enregistrerDictee } from './dicteeSaveService'
 import { toastDicteeEnregistree } from '../components/toastDictee'
@@ -108,8 +109,17 @@ export async function enregistrerSiSure(copie: PendingDictation): Promise<boolea
 }
 
 async function traiterUne(dictee: PendingDictation): Promise<'continuer' | 'arreter'> {
-  let enCours = versTraitement(dictee)
-  await db.pendingDictations.put(enCours)
+  // Atomic claim: IndexedDB serialises read-write transactions across tabs,
+  // so only one tab can move this dictation from eligible to `processing`.
+  const pris = await db.transaction('rw', db.pendingDictations, async () => {
+    const actuelle = await db.pendingDictations.get(dictee.id)
+    if (!actuelle || !estEligible(actuelle)) return null
+    const p = versTraitement(actuelle)
+    await db.pendingDictations.put(p)
+    return p
+  })
+  if (!pris) return 'continuer'
+  let enCours: PendingDictation = pris
   signalerChangement(enCours.id, enCours.status)
 
   if (!enCours.audio) {
@@ -171,19 +181,36 @@ async function traiterUne(dictee: PendingDictation): Promise<'continuer' | 'arre
 }
 
 let verrou = false
+/** A dictation left `processing` longer than this was abandoned (tab closed, crash). */
+const TRAITEMENT_ABANDONNE_MS = 2 * 60 * 1000
 
-/** One pass over the queue. Never two at a time. Never throws. */
+/** One pass over the queue. Never two at a time, in any tab. Never throws. */
 export async function traiterFile(): Promise<void> {
   if (verrou) return
   if (typeof navigator !== 'undefined' && !navigator.onLine) return
   verrou = true
   try {
+    await sousVerrou('bazarkely-dictee-file', 'essayer', passe)
+  } catch (erreur) {
+    console.error('[Dictée] Passe de la file en échec (non bloquant):', erreur)
+  } finally {
+    verrou = false
+  }
+}
+
+async function passe(): Promise<void> {
+  {
     await purger()
     const userId = await utilisateurCourant()
     if (!userId) return
-    // A crash during processing leaves `processing`: back to waiting.
+    // A crash during processing leaves `processing`: back to waiting, but only
+    // when clearly abandoned (another tab may be working on it right now).
     const bloquees = await db.pendingDictations.where('[userId+status]').equals([userId, 'processing']).toArray()
-    for (const d of bloquees) await db.pendingDictations.put({ ...d, status: 'waiting' })
+    for (const d of bloquees) {
+      if (Date.now() - new Date(d.updatedAt).getTime() > TRAITEMENT_ABANDONNE_MS) {
+        await db.pendingDictations.put({ ...d, status: 'waiting' })
+      }
+    }
 
     for (let tour = 0; tour < 50; tour++) {
       if (!navigator.onLine) break
@@ -192,9 +219,5 @@ export async function traiterFile(): Promise<void> {
       if (!suivante) break
       if ((await traiterUne(suivante)) === 'arreter') break
     }
-  } catch (erreur) {
-    console.error('[Dictée] Passe de la file en échec (non bloquant):', erreur)
-  } finally {
-    verrou = false
   }
 }

@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.112.0';
-export const APP_VERSION_NAME = 'Dictée vocale : dites une dépense, elle est comprise et enregistrée';
+export const APP_VERSION = '3.112.1';
+export const APP_VERSION_NAME = 'Dictée vocale : une dictée n’est plus jamais traitée deux fois avec plusieurs onglets ouverts';
 export const LAST_UPDATED = '2026-10-28';
 export const APP_BUILD_DATE = '2026-10-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.112.1',
+    date: '2026-10-28',
+    description: 'Dictée vocale : correctifs relevés pendant les essais en production',
+    changes: [
+      'Dictée : avec plusieurs onglets ou fenêtres de l’appli ouverts, une dictée en attente n’est plus envoyée deux fois à l’IA ni enregistrée deux fois (verrou partagé entre onglets)',
+      'Dictée : un compte ambigu (par exemple deux comptes en espèces pour « en espèces ») n’est plus choisi au hasard, la feuille « Sur quel compte ? » s’ouvre',
+      'Dictée : l’écran ne reste plus bloqué sur « Je comprends votre dictée… » quand la dictée attend une reconnexion'
+    ]
+  },
   {
     version: '3.112.0',
     date: '2026-10-28',

@@ -19,6 +19,7 @@ import type { DicteeItem, DicteePlannedLine, PendingDictation } from '../types'
 import { dateTransactionDepuisIso } from '../utils/dates'
 import { planifierIdentifiants } from '../utils/plan'
 import { versTerminee } from '../utils/etatFile'
+import { sousVerrou } from '../utils/verrouPartage'
 
 const DELAI_SUPABASE_MS = 5000
 
@@ -31,20 +32,25 @@ async function figerPlan(
   dictee: PendingDictation,
   lignes: { item: DicteeItem; origine: number }[]
 ): Promise<PendingDictation> {
-  const dejaFige = dictee.transactionIds && dictee.lignesFinales
-  const lignesFinales = dejaFige ? dictee.lignesFinales! : lignes
-  const plan = planifierIdentifiants(
-    lignesFinales.map((l) => l.item.type),
-    dictee.transactionIds
-  )
-  const fige: PendingDictation = {
-    ...dictee,
-    lignesFinales,
-    transactionIds: plan,
-    updatedAt: new Date().toISOString()
-  }
-  await db.pendingDictations.put(fige)
-  return fige
+  // Read-check-write in one IndexedDB transaction: the first writer wins and
+  // every later caller (any tab) reuses the ids it froze.
+  return db.transaction('rw', db.pendingDictations, async () => {
+    const stockee = (await db.pendingDictations.get(dictee.id)) ?? dictee
+    const dejaFige = stockee.transactionIds && stockee.lignesFinales
+    const lignesFinales = dejaFige ? stockee.lignesFinales! : lignes
+    const plan = planifierIdentifiants(
+      lignesFinales.map((l) => l.item.type),
+      stockee.transactionIds
+    )
+    const fige: PendingDictation = {
+      ...stockee,
+      lignesFinales,
+      transactionIds: plan,
+      updatedAt: new Date().toISOString()
+    }
+    await db.pendingDictations.put(fige)
+    return fige
+  })
 }
 
 /** Lignes du serveur déjà écrites (rejeu d'un transfert interrompu). */
@@ -222,7 +228,16 @@ export function enregistrerDictee(
   // The queue and the screen may both try: one save per dictation at a time.
   const deja = enCours.get(dictee.id)
   if (deja) return deja
-  const promesse = enregistrerSansVerrou(dictee.id, lignes).finally(() => enCours.delete(dictee.id))
+  // Same tab: shared promise. Other tabs: Web Lock, then the stored state
+  // (already `done`) makes the second run a no-op.
+  const promesse = sousVerrou(`bazarkely-dictee-save-${dictee.id}`, 'attendre', () =>
+    enregistrerSansVerrou(dictee.id, lignes)
+  )
+    .then((d) => {
+      if (!d) throw new Error('verrou_indisponible')
+      return d
+    })
+    .finally(() => enCours.delete(dictee.id))
   enCours.set(dictee.id, promesse)
   return promesse
 }

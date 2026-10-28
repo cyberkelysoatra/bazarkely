@@ -12,6 +12,7 @@ const tables = vi.hoisted(() => ({
 
 vi.mock('../../../../lib/database', () => ({
   db: {
+    transaction: (_m: string, _t: unknown, fn: () => Promise<unknown>) => fn(),
     pendingDictations: {
       get: async (id: string) => structuredClone(tables.pending.get(id)),
       put: async (d: any) => void tables.pending.set(d.id, structuredClone(d))
