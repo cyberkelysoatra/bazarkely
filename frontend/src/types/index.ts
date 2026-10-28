@@ -231,7 +231,9 @@ export interface SyncOperation {
     | 'family_shared_recurring_transactions'
     | 'family_members'
     | 'transaction_receipts'
-    | 'transaction_items';
+    | 'transaction_items'
+    /** Dictée vocale : trace du texte entendu, une ligne par transaction. */
+    | 'transaction_dictations';
   data: any;
   timestamp: Date;
   retryCount: number;

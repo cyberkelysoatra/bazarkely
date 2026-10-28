@@ -823,7 +823,13 @@ class TransactionService {
       date?: Date;
       // Multi-currency fields (from form toggle, not /settings)
       originalCurrency?: 'MGA' | 'EUR'; // Currency selected in form toggle
-    }
+    },
+    /**
+     * @param options.ids  Identifiants client imposés (écriture rejouable, dictée
+     *                     vocale) : upsert côté serveur et notes transmises.
+     *                     Omis partout ailleurs -> comportement inchangé.
+     */
+    options?: { ids?: { fromId: string; toId: string } }
   ): Promise<{ success: boolean; transactions?: Transaction[]; error?: string }> {
     try {
       console.log('💸 TRANSFER START - fromAccountId:', transferData.fromAccountId, 'toAccountId:', transferData.toAccountId, 'amount:', transferData.amount);
@@ -978,7 +984,10 @@ class TransactionService {
           // Multi-currency fields
           originalCurrency: originalCurrency,
           originalAmount: transferData.amount,
-          exchangeRateUsed: exchangeRateUsed || undefined
+          exchangeRateUsed: exchangeRateUsed || undefined,
+          ...(options?.ids
+            ? { fromId: options.ids.fromId, toId: options.ids.toId, notes: transferData.notes }
+            : {})
         }),
         SUPABASE_TIMEOUT_MS,
         'transactionService.createTransfer'

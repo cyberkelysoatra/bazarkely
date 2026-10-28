@@ -118,6 +118,14 @@ export default defineConfig({
         ],
         shortcuts: [
           {
+            // Dictée vocale : appui long sur l'icône de l'appli
+            name: 'Dicter une dépense',
+            short_name: 'Dicter',
+            description: 'Dire une dépense à voix haute',
+            url: '/dicter?auto=1',
+            icons: [{ src: '/icons/dicter-192.png', sizes: '192x192', type: 'image/png' }]
+          },
+          {
             name: 'Nouvelle transaction',
             short_name: 'Transaction',
             description: 'Ajouter une nouvelle transaction',

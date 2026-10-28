@@ -11,6 +11,7 @@ import './services/encryptionInit'
 // Travail de fond, sans aucune interface : le service s'abonne lui-meme a la
 // session et au retour du reseau.
 import { demarrerEcritureAutomatiqueSms } from './modules/sms-inbox/services/ecritureAutomatiqueService'
+import { demarrerDictee } from './modules/dictee/demarrage'
 import { initNativeApp, isNativeApp } from './modules/navy-ay/services/nativeApp'
 
 // TEMPORARY FIX: Comment out problematic imports to prevent blocking errors
@@ -42,6 +43,7 @@ const safariCompatibility = {
 optimizationManager.initialize().catch(console.error)
 safariCompatibility.applyOptimizations()
 demarrerEcritureAutomatiqueSms()
+demarrerDictee()
 
 // CRITICAL: Capture OAuth tokens IMMEDIATELY before React renders
 // This prevents Service Worker or React Router from clearing the hash

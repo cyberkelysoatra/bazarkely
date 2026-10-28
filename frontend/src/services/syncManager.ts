@@ -549,6 +549,9 @@ async function processOperation(operation: SyncOperation): Promise<boolean> {
       case 'transaction_items':
         result = await processTransactionItemOperation(operation);
         break;
+      case 'transaction_dictations':
+        result = await processTransactionDictationOperation(operation);
+        break;
       default:
         console.error(`🔄 [SyncManager] ❌ Table non supportée: ${operation.table_name}`);
         await db.syncQueue.update(operation.id, {
@@ -1329,6 +1332,28 @@ async function processTransactionItemOperation(
       default:
         return { error: new Error(`Opération non supportée: ${opType}`) };
     }
+  } catch (error) {
+    return { error };
+  }
+}
+
+/**
+ * Traite une opération sur transaction_dictations (dictée vocale).
+ * Data déjà en snake_case + id client. CREATE seulement : rejeu idempotent,
+ * jamais d'écrasement d'une ligne déjà montée.
+ */
+async function processTransactionDictationOperation(
+  operation: SyncOperation
+): Promise<{ error: any } | null> {
+  const { operation: opType, data } = operation;
+  try {
+    if (opType !== 'CREATE') {
+      return { error: new Error(`Opération non supportée: ${opType}`) };
+    }
+    const { error } = await (supabase as any)
+      .from('transaction_dictations')
+      .upsert(data, { onConflict: 'id', ignoreDuplicates: true });
+    return error ? { error } : null;
   } catch (error) {
     return { error };
   }

@@ -6,6 +6,16 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.112.0 - 2026-10-28 (DICTEE-CC-01 · Dictée vocale, phase 1 « socle »)
+
+### 🎙️ Dire une dépense, elle est comprise et enregistrée
+
+- Entrées : raccourci « Dicter une dépense » (appui long sur l'icône), bouton micro flottant (accueil, transactions), bouton « Dicter » à côté de « Scanner ».
+- Page `/dicter` : enregistrement avec barre de niveau, arrêt seul après 2 s de silence ou à 60 s ; l'audio part à Google Gemini (`gemini-3.5-flash-lite`) par la fonction `/api/dictee-depense` (connexion obligatoire).
+- Sûr : enregistré directement, « Annuler » 8 s. Compte non dit : feuille « Sur quel compte ? ». Doute : un seul récapitulatif modifiable.
+- Sans réseau : la dictée attend sur le téléphone (Dexie v19 `pendingDictations`) et part au retour du réseau. Enregistrement rejouable sans doublon (identifiants figés avant toute écriture).
+- Serveur : table `transaction_dictations` (texte entendu seulement, RLS forcée). Voir `FONCTIONNEMENT-MODULES.md`, section « Dictée vocale ».
+
 ## Version 3.42.0 - 2026-06-08 (Session S93 — Gestion Eau : invitation par LIEN, ÉVO 2/3 — vitrine « lien déjà utilisé »)
 
 ### 🪧 Page de présentation pour un lien d'invitation déjà utilisé — VALIDÉ EN PROD (visuel)

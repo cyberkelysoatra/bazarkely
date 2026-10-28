@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.111.0';
-export const APP_VERSION_NAME = 'PUDi : réactions dans la discussion, panneau de transfert animé, derniers chiffres de votants retirés';
-export const LAST_UPDATED = '2026-10-25';
-export const APP_BUILD_DATE = '2026-10-26';
+export const APP_VERSION = '3.112.0';
+export const APP_VERSION_NAME = 'Dictée vocale : dites une dépense, elle est comprise et enregistrée';
+export const LAST_UPDATED = '2026-10-28';
+export const APP_BUILD_DATE = '2026-10-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.112.0',
+    date: '2026-10-28',
+    description: 'Dictée vocale (phase 1) : appui long sur l’icône « Dicter une dépense » ou bouton micro, on dit la dépense en français, en malgache ou les deux, l’IA la comprend et la transaction est enregistrée ; en cas de doute, un écran de vérification ; sans réseau, la dictée attend sur le téléphone',
+    changes: [
+      'Budget : nouvelle page /dicter (micro, barre de niveau, arrêt seul après 2 s de silence ou à 60 s, aide « Que puis-je dire ? »)',
+      'Budget : raccourci « Dicter une dépense » sur l’icône de l’appli (appui long), bouton micro flottant sur l’accueil et les transactions, bouton « Dicter » à côté de « Scanner »',
+      'Budget : dépense sûre enregistrée directement avec « Annuler » pendant 8 s (solde rétabli) ; compte non dit : feuille « Sur quel compte ? » avec le compte le plus utilisé pour la catégorie en premier ; doute : un seul écran récapitulatif modifiable',
+      'Budget : plusieurs dépenses dans une même dictée, revenus et transferts entre comptes (frais de transfert comme la page Transfert)',
+      'Budget : sans réseau, la dictée est gardée sur le téléphone et traitée au retour du réseau (« 1 dictée en attente »)',
+      'Serveur : fonction /api/dictee-depense (Google Gemini, connexion obligatoire) et table transaction_dictations (texte entendu gardé, la voix est effacée)'
+    ]
+  },
   {
     version: '3.111.0',
     date: '2026-10-26',

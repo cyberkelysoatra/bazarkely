@@ -360,6 +360,11 @@ class ApiService {
     originalCurrency?: 'MGA' | 'EUR';
     originalAmount?: number;
     exchangeRateUsed?: number;
+    // Rejouable (dictée vocale) : identifiants client imposés + upsert, notes.
+    // Omis partout ailleurs -> insert historique inchangé.
+    fromId?: string;
+    toId?: string;
+    notes?: string;
   }): Promise<ApiResponse<{ fromTransaction: Transaction; toTransaction: Transaction }>> {
     try {
       const userId = await this.getCurrentUserId();
@@ -376,8 +381,16 @@ class ApiService {
         date,
         originalCurrency,
         originalAmount,
-        exchangeRateUsed
+        exchangeRateUsed,
+        fromId,
+        toId,
+        notes
       } = transferData;
+      // Avec identifiants imposés : upsert sur id (un rejeu converge sur les mêmes lignes).
+      const ecrire = (ligne: Record<string, unknown>, id?: string) =>
+        id
+          ? db.transactions().upsert({ ...ligne, id, notes: notes ?? null }, { onConflict: 'id' })
+          : db.transactions().insert(ligne);
       
       // Use provided date or default to current date
       const transferDate = date || new Date();
@@ -389,8 +402,7 @@ class ApiService {
       });
 
       // Créer les deux transactions (débit et crédit)
-      const { data: fromTransaction, error: fromError } = await db.transactions()
-        .insert({
+      const { data: fromTransaction, error: fromError } = await ecrire({
           user_id: userId,
           account_id: fromAccountId,
           amount: -amount, // Débit
@@ -404,14 +416,13 @@ class ApiService {
           original_currency: originalCurrency || null,
           original_amount: originalAmount || amount,
           exchange_rate_used: exchangeRateUsed || null
-        })
+        }, fromId)
         .select()
         .single();
 
       if (fromError) throw fromError;
 
-      const { data: toTransaction, error: toError } = await db.transactions()
-        .insert({
+      const { data: toTransaction, error: toError } = await ecrire({
           user_id: userId,
           account_id: toAccountId,
           amount: amount, // Crédit
@@ -425,7 +436,7 @@ class ApiService {
           original_currency: originalCurrency || null,
           original_amount: originalAmount || amount,
           exchange_rate_used: exchangeRateUsed || null
-        })
+        }, toId)
         .select()
         .single();
 

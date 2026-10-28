@@ -51,6 +51,10 @@ const LoansPage = lazy(() => import('../../pages/LoansPage'))
 // (aucun bouton, aucune entree de menu) — on y accede en tapant l'adresse.
 const SmsInboxPage = lazy(() => import('../../modules/sms-inbox/pages/SmsInboxPage'))
 
+// Dictée vocale (DICTEE-CC-01) : page plein écran chargée à la demande + bouton micro flottant
+const DicteePage = lazy(() => import('../../modules/dictee/components/DicteePage'))
+import BoutonMicFlottant from '../../modules/dictee/components/BoutonMicFlottant'
+
 // Analytics Pages - Lazy loaded
 const AdvancedAnalytics = lazy(() => import('../Analytics/AdvancedAnalytics'))
 const FinancialInsights = lazy(() => import('../Analytics/FinancialInsights'))
@@ -223,6 +227,9 @@ const AppLayout = () => {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
 
+            {/* Dictée vocale : raccourci de l'icône (/dicter?auto=1) et boutons micro */}
+            <Route path="/dicter" element={<DicteePage />} />
+
             {/* Route SMS — non referencee dans la navigation, volontairement */}
             <Route path="/sms-inbox" element={<SmsInboxPage />} />
 
@@ -301,6 +308,8 @@ const AppLayout = () => {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
+        {/* Bouton micro flottant : tableau de bord et transactions du module budget */}
+        {(location.pathname === '/dashboard' || location.pathname === '/transactions') && <BoutonMicFlottant />}
       </main>
       <BottomNav />
     </div>

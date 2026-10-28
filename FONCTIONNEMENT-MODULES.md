@@ -1061,6 +1061,74 @@ ajuste le solde du compte**. « Voir le ticket » affiche le markdown conservé.
 
 ---
 
+## MODULE BUDGET (cœur) · DICTÉE VOCALE · Phase 1, v3.112.0 (DICTEE-CC-01)
+
+**Ce que ça fait.** On appuie, on parle (« Taxi de Hell-Ville à Ambatoloaka, 5 000 ariary »), la
+transaction est enregistrée. C'est une **brique du module budget** (`bazarkely`) : aucune entrée de
+sélecteur, aucun onglet de navigation. Code : `frontend/src/modules/dictee/`.
+
+**Entrées.** Appui long sur l'icône de l'appli, raccourci « Dicter une dépense » (`/dicter?auto=1`,
+premier des `shortcuts` du manifeste : l'enregistrement démarre seul si le micro est déjà autorisé) ;
+bouton micro flottant sur `/dashboard` et `/transactions` ; bouton « Dicter » à côté de « Scanner » dans
+`AddTransactionPage`. La route `/dicter` est dans `BudgetAccessRoute` et chargée à la demande.
+
+**Décisions de Joël (ne pas rouvrir).** Français, malgache ou mélange : **l'audio lui-même part à l'IA**
+(pas de reconnaissance vocale du téléphone). Plusieurs opérations dans une dictée = plusieurs
+transactions. Dépenses, revenus et transferts entre comptes. Catégorie choisie **uniquement** parmi les
+11 `TransactionCategory`, sinon la ligne est « en doute ». Pas de réponse parlée, un message à l'écran.
+
+**Décision sûr / doute** (`utils/decision.ts`). Une ligne est **sûre** si confiance ≥ 0,85, montant > 0,
+aucun doute, catégorie présente (dépense et revenu) et comptes reconnus (transfert : les deux).
+- Tout est sûr : **enregistré directement**, message « Taxi, 5 000 Ar, Espèces : enregistré » (ou « 3
+  transactions enregistrées, 8 000 Ar ») avec **« Annuler » pendant 8 s** (suppression, solde rétabli).
+- Seul le compte manque : **feuille « Sur quel compte ? »**, une seule fois pour toutes les lignes ; le
+  compte le plus utilisé pour la catégorie sur 90 jours de transactions locales est en tête et
+  présélectionné (repli : compte par défaut, puis premier). Un toucher choisit et enregistre.
+- Sinon : **un seul écran récapitulatif** (texte entendu en haut, chaque ligne modifiable, doutes en
+  français simple, « Tout enregistrer », « Supprimer la ligne »). Rien n'est enregistré avant ce toucher ;
+  quitter l'écran garde la dictée.
+
+**File locale** (Dexie `pendingDictations`, base v19, jamais synchronisée, jamais dans `syncQueue`).
+Tout enregistrement y passe d'abord : `waiting → processing → needs_review → done`, ou `failed`
+(tentatives + 1, attente croissante, 5 au plus), ou retour `waiting` sur 401 (reprise au prochain
+`SIGNED_IN`). Une dictée à la fois (verrou). Déclencheurs : juste après l'enregistrement, démarrage
+(+8 s), `SIGNED_IN`, retour du réseau (`modules/dictee/demarrage.ts`, même style que l'écriture
+automatique des SMS). Sans réseau : « Pas de réseau. Dictée gardée, elle sera traitée dès le retour du
+réseau. » et compteur « 1 dictée en attente » (page et bouton flottant) ; une dictée à vérifier s'ouvre
+depuis ce compteur. **La voix est effacée dès qu'elle est comprise** ; une dictée enregistrée ne garde que
+son id, son statut et ses identifiants de transactions pendant 7 jours.
+
+**Enregistrement rejouable.** Les identifiants de toutes les transactions prévues et des lignes
+`transaction_dictations` sont **écrits dans la file avant toute création** : une coupure au milieu rejoue
+les mêmes identifiants, jamais de doublon. Dépense / revenu : `createTransaction(userId, data, { id })`
+(chemin multi-devise d'`AddTransactionPage`, note `Dictée : « … »`). Transfert : `createTransfer` avec
+identifiants imposés (option additive, upsert) puis frais exactement comme `TransferPage`. Dates :
+une dépense dite à 01 h à Antananarivo reste sur le bon jour (`utils/dates.ts`).
+
+**Serveur.**
+- Fonction Cloudflare Pages `frontend/functions/api/dictee-depense.ts` (`POST`, jeton Supabase
+  **obligatoire**, vérifié par `/auth/v1/user`). Erreurs : 401, 413 (> 60 s ou > 4 Mo), 415 (format
+  refusé : le téléphone convertit en WAV 16 kHz mono et réessaie), 503 (`ai_not_configured`), 504
+  (25 s), 502 (erreur, quota ou réponse mal formée). Le téléphone **garde l'enregistrement** dans tous
+  les cas non-200. Consigne en français (ariary, nombres malgaches, francs/fmg = doute, dates relatives
+  dans `Indian/Antananarivo`, compte seulement s'il est nommé). Sortie validée côté serveur. `rules` et
+  `examples` déjà acceptés (vides en phase 1, remplis en phase 3).
+- Variables du projet Cloudflare Pages (noms seulement) : `GEMINI_API_KEY` (secret), `GEMINI_MODEL`
+  (défaut `gemini-3.5-flash-lite`), `SUPABASE_URL`, `SUPABASE_ANON_KEY` (repli sur les valeurs publiques
+  du dépôt).
+- Table `transaction_dictations` (migration `20261028213000_transaction_dictations.sql`) : une ligne par
+  transaction dictée (texte entendu, ligne de l'IA avant modification, modèle, heure). RLS activée et
+  forcée, chacun ne voit et n'écrit que ses lignes, `anon` sans aucun droit, `TRUNCATE` retiré.
+  Effacée avec sa transaction (cascade). Rejeu hors ligne par `syncQueue` (`transaction_dictations`).
+
+### ❌ Ce qui N'est PAS le comportement attendu
+- ❌ Aucune voix gardée après compréhension, ni sur le téléphone ni sur le serveur.
+- ❌ Aucune catégorie inventée hors des 11 ; aucun compte deviné s'il n'a pas été nommé.
+- ❌ Jamais d'enregistrement d'une ligne en doute sans le toucher « Tout enregistrer ».
+- ❌ Pas d'entrée de sélecteur de module ni d'onglet : c'est une **brique du module budget**.
+
+---
+
 ## 🔁 TRANSVERSE — SYNCHRO DESCENDANTE (suppressions serveur) — v3.77.0
 
 **S'applique à tous les modules ci-dessus qui lisent en offline-first.** Le cache local ne se

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat, CheckCircle2, BookUser } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Save, X, HelpCircle, Repeat, CheckCircle2, BookUser, Mic } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import transactionService from '../services/transactionService';
 import recurringTransactionService from '../services/recurringTransactionService';
@@ -872,8 +872,10 @@ const AddTransactionPage = () => {
             </div>
           )}
           
-          {/* Scanner un ticket (dépenses ponctuelles uniquement) */}
+          {/* Scanner un ticket (dépenses ponctuelles uniquement) + Dicter (micro) */}
           {isExpense && !isRecurring && user && (
+            <div className="flex items-stretch gap-2">
+            <div className="min-w-0 flex-1">
             <ReceiptScanButton
               userId={user.id}
               accounts={accounts}
@@ -886,6 +888,17 @@ const AddTransactionPage = () => {
                 navigate(`/transaction/${txId}`);
               }}
             />
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/dicter')}
+              aria-label="Dicter une dépense"
+              className="flex w-16 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <Mic className="h-6 w-6" aria-hidden="true" />
+              <span className="text-xs font-medium">Dicter</span>
+            </button>
+            </div>
           )}
 
           {/* Toggle Transaction récurrente */}

@@ -28,6 +28,7 @@ import type {
   FamilySharedRecurringLocal
 } from '../types/familyLocal';
 import type { ReceiptHeader, ReceiptItem } from '../types/receipt';
+import type { PendingDictation } from '../modules/dictee/types';
 
 /**
  * Une ligne locale retirée de son store parce qu'elle a disparu du serveur.
@@ -196,6 +197,10 @@ export class BazarKELYDB extends Dexie {
   // serveur. Jamais synchronisée vers Supabase, jamais lue par un écran :
   // filet de sécurité pour ne jamais supprimer sèchement une donnée locale.
   syncQuarantine!: Table<SyncQuarantineEntry>;
+
+  // Dictée vocale (v19) : file locale des enregistrements à comprendre.
+  // Jamais synchronisée vers Supabase, jamais dans syncQueue.
+  pendingDictations!: Table<PendingDictation>;
 
   // Gestion des connexions et verrous
   private connectionPool: Map<string, ConnectionPool> = new Map();
@@ -815,6 +820,17 @@ export class BazarKELYDB extends Dexie {
     }).upgrade(async (_trans) => {
       console.log('🔄 [Database] Migrating to v18 - Adding syncQuarantine table (server-side deletion reconciliation)');
       console.log('✅ [Database] Migration to v18 complete - syncQuarantine ready');
+    });
+
+    // Version 19 - Dictée vocale (DICTEE-CC-01)
+    // Une seule table neuve : pendingDictations (enregistrements en attente de
+    // compréhension, l'audio est effacé dès qu'il est compris). Migration additive
+    // minimale (delta Dexie) : tous les stores existants restent intacts.
+    this.version(19).stores({
+      pendingDictations: 'id, userId, status, recordedAt, updatedAt, [userId+status]'
+    }).upgrade(async (_trans) => {
+      console.log('🔄 [Database] Migrating to v19 - Adding pendingDictations table (voice entry)');
+      console.log('✅ [Database] Migration to v19 complete - pendingDictations ready');
     });
 
     // Initialiser le pool de connexions
