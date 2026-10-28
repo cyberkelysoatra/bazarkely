@@ -16,7 +16,7 @@ import { adopterOrphelines, recupererTraitementsAbandonnes, reessayer, supprimer
 import { estOrphelineEtrangere } from '../utils/proprietaire'
 import { estAudioAncien } from '../utils/etatFile'
 import { formaterMontant, libelleEssais, libelleStatut, LIBELLE_TYPE } from '../utils/libelles'
-import { doutesDe } from '../utils/doutes'
+import { doutesHorsCompte } from '../utils/doutes'
 
 type StatutListe = Exclude<PendingDictation['status'], 'done'>
 
@@ -242,7 +242,8 @@ export default function ListeDicteesPage() {
                     <ul className="space-y-1 text-sm">
                       {lignes.map((item, k) => {
                         const compte = nomCompte(item.accountId)
-                        const doutes = doutesDe(item).length
+                        // The account is shown on its own (« Compte à choisir »): only other doubts are counted.
+                        const doutes = doutesHorsCompte(item).length
                         return (
                           <li key={k} className="flex flex-wrap items-baseline justify-between gap-x-2 rounded-lg bg-gray-50 px-3 py-1.5">
                             <span className="min-w-0 text-gray-900">

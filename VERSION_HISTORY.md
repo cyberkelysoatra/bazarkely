@@ -6,13 +6,14 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
-## Version 3.112.2 - 2026-10-28 (DICTEE-CC-02 · Dictée vocale, phase 2 « dictées en attente »)
+## Version 3.112.2 et 3.112.3 - 2026-10-28/29 (DICTEE-CC-02 · Dictée vocale, phase 2 « dictées en attente »)
 
 ### 🎙️ Les dictées faites sans réseau se retrouvent et se reprennent
 
 - Badge sur les boutons micro (bouton flottant, « Dicter » à côté de « Scanner », haut de `/dicter`) : nombre de dictées pas encore enregistrées, ambre dès qu'une est à vérifier ou en échec.
 - Liste `/dicter/attente` (badge, page Dicter, menu utilisateur) : écouter, supprimer avec confirmation, vérifier et enregistrer, réessayer, tout réessayer.
 - Doutes typés `{ kind, text }` : un doute qui ne porte que sur le compte ouvre la feuille « Sur quel compte ? » ; compte ambigu, comptes correspondants en tête ; un compte dit en fin de liste vaut pour toutes les lignes.
+- 3.112.3 (correctif d'essai) : un compte ambigu ne baisse plus la certitude de l'IA (« Taxi trois mille, en espèces » ouvre la feuille), entrée « Dictées en attente » dans le vrai menu du compte (`Header.tsx`).
 - File : dictée faite sans personne connectée reprise seulement par la dernière personne connectée sur le téléphone (les autres ne peuvent que la supprimer), dictée d'un autre compte jamais montrée, traitement abandonné repris après 2 min, audio ancien signalé sans suppression automatique.
 
 ## Version 3.112.0 - 2026-10-28 (DICTEE-CC-01 · Dictée vocale, phase 1 « socle »)

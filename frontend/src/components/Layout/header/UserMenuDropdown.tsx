@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Settings, Shield, LogOut, Download, Trash2, Mic } from 'lucide-react';
+import { User, Settings, Shield, LogOut, Download, Trash2 } from 'lucide-react';
 import { useAppStore } from '../../../stores/appStore';
 import usePWAInstall from '../../../hooks/usePWAInstall';
 import adminService from '../../../services/adminService';
-import { usePendingDictations, libelleBadge } from '../../../modules/dictee/usePendingDictations';
 
 interface UserMenuDropdownProps {
   showUsername: boolean;
@@ -23,7 +22,6 @@ export function UserMenuDropdown({ showUsername, className = '' }: UserMenuDropd
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const dictees = usePendingDictations();
 
   // Check admin status
   useEffect(() => {
@@ -192,25 +190,6 @@ export function UserMenuDropdown({ showUsername, className = '' }: UserMenuDropd
               <span className="text-sm font-medium">Paramètres</span>
             </button>
             
-            {/* Voice entry: dictations waiting (DICTEE-CC-02) */}
-            <button 
-              className="flex items-center space-x-3 p-3 text-purple-100 hover:text-white hover:bg-purple-500/20 rounded-xl transition-all duration-200 backdrop-blur-sm w-full text-left group"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleMenuClose();
-                navigate('/dicter/attente');
-              }}
-              aria-label={dictees.total > 0 ? `Dictées en attente : ${libelleBadge(dictees)}` : 'Dictées en attente'}
-            >
-              <Mic className="w-5 h-5 transition-transform group-hover:scale-110" />
-              <span className="text-sm font-medium flex-1">Dictées en attente</span>
-              {dictees.total > 0 && (
-                <span className={`min-w-6 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${dictees.aVerifier > 0 ? 'bg-amber-400 text-amber-950' : 'bg-white text-purple-700'}`} aria-hidden="true">
-                  {dictees.total}
-                </span>
-              )}
-            </button>
-
             {/* Admin button (only if admin) */}
             {isAdmin && (
               <button 

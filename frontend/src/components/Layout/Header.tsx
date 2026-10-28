@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store } from 'lucide-react';
+import { User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store, Mic } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
@@ -18,6 +18,7 @@ import usePWAInstall from '../../hooks/usePWAInstall';
 import { useServiceWorkerUpdate } from '../../hooks/useServiceWorkerUpdate';
 import useOnlineStatus from '../../hooks/useOnlineStatus';
 import { APP_VERSION } from '../../constants/appVersion';
+import { usePendingDictations, libelleBadge } from '../../modules/dictee/usePendingDictations';
 import QuizQuestionPopup, { questions } from '../Quiz/QuizQuestionPopup';
 import { useCertificationStore } from '../../store/certificationStore';
 import LevelBadge from '../Certification/LevelBadge';
@@ -127,6 +128,8 @@ const Header = () => {
   const practiceScore = practiceTracking.practiceScore;
   const profileScore = detailedProfile.firstName ? 15 : 0; // Simplified profile completion score
   const navigate = useNavigate();
+  // Voice entry (DICTEE-CC-02): waiting dictations, menu entry of the budget module
+  const dictees = usePendingDictations();
   const isOnline = useOnlineStatus();
   const [currentMessage, setCurrentMessage] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
@@ -1055,6 +1058,31 @@ const Header = () => {
                       >
                         <Store className="w-4 h-4" />
                         <span>Mon épicerie de retrait</span>
+                      </button>
+                    )}
+
+                    {/* Dictée vocale (DICTEE-CC-02) : dictées en attente, module budget seulement */}
+                    {!isNavyModule && !isEauModule && !isConstructionModule && (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          navigate('/dicter/attente');
+                        }}
+                        aria-label={dictees.total > 0 ? `Dictées en attente : ${libelleBadge(dictees)}` : 'Dictées en attente'}
+                        className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] text-sm text-white/90 hover:bg-white/20 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Mic className="w-4 h-4" />
+                          <span>Dictées en attente</span>
+                        </div>
+                        {dictees.total > 0 && (
+                          <span
+                            className={`min-w-6 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${dictees.aVerifier > 0 ? 'bg-amber-400 text-amber-950' : 'bg-white text-purple-700'}`}
+                            aria-hidden="true"
+                          >
+                            {dictees.total}
+                          </span>
+                        )}
                       </button>
                     )}
 

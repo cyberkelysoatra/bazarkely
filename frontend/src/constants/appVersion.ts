@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.112.2';
-export const APP_VERSION_NAME = 'Dictée vocale : liste « Dictées en attente » et badge sur le micro';
+export const APP_VERSION = '3.112.3';
+export const APP_VERSION_NAME = 'Dictée vocale : la feuille des comptes s’ouvre aussi pour « en espèces », menu « Dictées en attente »';
 export const LAST_UPDATED = '2026-10-28';
 export const APP_BUILD_DATE = '2026-10-28';
 export const VERSION_HISTORY = [
+  {
+    version: '3.112.3',
+    date: '2026-10-29',
+    description: 'Dictée vocale : correctifs relevés pendant les essais en production de la phase 2',
+    changes: [
+      'Dictée : « Taxi trois mille, en espèces » ouvre la feuille « Sur quel compte ? » avec les deux comptes espèces en premier, au lieu de l’écran de vérification (un compte ambigu ne baisse plus la certitude de l’IA)',
+      'Dictée : l’entrée « Dictées en attente » apparaît dans le menu du compte (en haut à droite)'
+    ]
+  },
   {
     version: '3.112.2',
     date: '2026-10-28',
