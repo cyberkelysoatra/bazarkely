@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.113.0';
-export const APP_VERSION_NAME = 'Le micro « Dicter » prend place dans la barre de navigation, « Objectifs » passe dans les pages';
+export const APP_VERSION = '3.113.1';
+export const APP_VERSION_NAME = 'Le micro « Dicter » de la barre du bas prend la taille des autres pictogrammes';
 export const LAST_UPDATED = '2026-10-29';
 export const APP_BUILD_DATE = '2026-10-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.113.1',
+    date: '2026-10-29',
+    description: 'Le micro « Dicter » de la barre du bas prend la taille des autres pictogrammes',
+    changes: [
+      'Barre du bas (budget) : le rond bleu « Dicter » passe à la même taille que les autres pictogrammes, sans surélévation, badge conservé'
+    ]
+  },
   {
     version: '3.113.0',
     date: '2026-10-29',

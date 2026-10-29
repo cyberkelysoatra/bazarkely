@@ -367,7 +367,7 @@ const BottomNav = () => {
               ? navyRoles.badges[item.path]
               : 0;
 
-            // Dictée (BARRE-CC-01) : rond bleu légèrement surélevé, même largeur de case.
+            // Dictée (BARRE-CC-01) : rond bleu à la taille des autres pictogrammes (42 px).
             // Le badge est un lien frère (jamais un lien dans un lien).
             if (micRoute && item.path === micRoute) {
               return (
@@ -379,14 +379,12 @@ const BottomNav = () => {
                   >
                     {({ isActive }) => (
                       <>
-                        <span className="flex h-[42px] items-end justify-center">
-                          <span
-                            className={`flex h-12 w-12 -translate-y-1 items-center justify-center rounded-full text-white shadow-lg ring-4 ring-white transition-colors duration-200 group-focus-visible:ring-blue-300 ${
-                              isActive ? 'bg-blue-700' : 'bg-blue-600 group-hover:bg-blue-700'
-                            }`}
-                          >
-                            <IconComponent className="h-[22px] w-[22px]" aria-hidden="true" />
-                          </span>
+                        <span
+                          className={`flex h-[42px] w-[42px] items-center justify-center rounded-full text-white shadow-md transition-colors duration-200 group-focus-visible:ring-4 group-focus-visible:ring-blue-300 ${
+                            isActive ? 'bg-blue-700' : 'bg-blue-600 group-hover:bg-blue-700'
+                          }`}
+                        >
+                          <IconComponent className="w-[18px] h-[18px]" aria-hidden="true" />
                         </span>
                         <span className={`text-xs font-semibold mt-1 transition-colors duration-200 ${isActive ? 'text-blue-600' : 'text-slate-600'}`}>
                           {item.label}
@@ -394,7 +392,7 @@ const BottomNav = () => {
                       </>
                     )}
                   </NavLink>
-                  <BadgeDictees comptes={dictees} className="absolute top-[-0.625rem] right-0" />
+                  <BadgeDictees comptes={dictees} className="absolute -top-1 right-0" />
                 </div>
               );
             }
