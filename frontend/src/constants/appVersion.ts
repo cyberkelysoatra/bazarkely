@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.113.2';
-export const APP_VERSION_NAME = 'Indicateur « En ligne » / « Hors ligne » : plus de faux « Hors ligne », retour rapide';
+export const APP_VERSION = '3.113.3';
+export const APP_VERSION_NAME = 'Indicateur de connexion : l’outil de test réservé au développement n’est plus livré en production';
 export const LAST_UPDATED = '2026-10-29';
 export const APP_BUILD_DATE = '2026-10-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.113.3',
+    date: '2026-10-29',
+    description: 'Indicateur de connexion : l’outil de test réservé au développement n’est plus livré en production',
+    changes: [
+      'L’outil de simulation de pannes de l’indicateur « En ligne » n’existe plus que sur l’ordinateur de développement (la construction en ligne le gardait par erreur)'
+    ]
+  },
   {
     version: '3.113.2',
     date: '2026-10-29',

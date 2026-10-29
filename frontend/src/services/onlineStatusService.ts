@@ -150,7 +150,9 @@ function handleVisibilityChange() {
 }
 
 function installDevDebug() {
-  if (!import.meta.env.DEV) return;
+  // MODE, not DEV: the Cloudflare build runs with NODE_ENV=development, which turns DEV on in
+  // the production bundle. MODE stays 'production' for every `vite build`.
+  if (import.meta.env.MODE !== 'development') return;
   (window as unknown as Record<string, unknown>).__bazarkelyOnlineDebug = {
     failNextPings(n: number) {
       simulatedFailures = Math.max(0, Math.floor(n));
