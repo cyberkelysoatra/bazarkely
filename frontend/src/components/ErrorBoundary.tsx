@@ -22,6 +22,9 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Details are only shown on screen in development: keep the full stacks in the console
+    // so a production error can still be diagnosed with F12.
+    console.error(`ErrorBoundary stack:\n${error?.stack ?? String(error)}\n\nComponent stack:${errorInfo?.componentStack ?? ' (none)'}`);
     this.setState({ error, errorInfo });
   }
 

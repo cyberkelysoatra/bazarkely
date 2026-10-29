@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.113.3';
-export const APP_VERSION_NAME = 'Indicateur de connexion : l’outil de test réservé au développement n’est plus livré en production';
+export const APP_VERSION = '3.113.4';
+export const APP_VERSION_NAME = 'Application plus légère et plus rapide : la version en ligne est enfin construite en mode production';
 export const LAST_UPDATED = '2026-10-29';
 export const APP_BUILD_DATE = '2026-10-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.113.4',
+    date: '2026-10-29',
+    description: 'Application plus légère et plus rapide : la version en ligne est enfin construite en mode production (BUILD-CC-01)',
+    changes: [
+      'Le fichier principal téléchargé passe de 1,64 Mo à 1,31 Mo : ouverture plus rapide sur téléphone',
+      'Les messages et contrôles réservés au développement ne sont plus livrés aux utilisateurs',
+      'Écran « Oups ! Une erreur s’est produite » : le détail complet de l’erreur reste écrit dans la console (F12) pour le diagnostic'
+    ]
+  },
   {
     version: '3.113.3',
     date: '2026-10-29',

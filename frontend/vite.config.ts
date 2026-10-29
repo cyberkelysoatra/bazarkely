@@ -42,7 +42,17 @@ function pudiEntry(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => {
+  // `vite build` always ships the production React, whatever NODE_ENV says. The Cloudflare
+  // build runs with NODE_ENV=development (kept there so npm installs the devDependencies),
+  // which made the host bundle the development React (jsxDEV, DEV branches on). Same idea as
+  // vite.pudi.config.ts. Vite reads NODE_ENV after loading this file, so setting it here is in
+  // time for isProduction, the define of process.env.NODE_ENV and @vitejs/plugin-react.
+  // Dev server, preview and vitest (own config file) are not affected.
+  if (command === 'build') process.env.NODE_ENV = 'production'
+
+  return {
+  mode: command === 'build' ? 'production' : undefined,
   plugins: [
     react(),
     VitePWA({
@@ -191,5 +201,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'lucide-react', 'zustand', 'dexie']
+  }
   }
 })
