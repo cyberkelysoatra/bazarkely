@@ -8,7 +8,6 @@ export const useSync = () => {
     lastSync,
     pendingOperations,
     isSyncing,
-    setOnline,
     setLastSync,
     setPendingOperations,
     setIsSyncing
@@ -78,26 +77,20 @@ export const useSync = () => {
     }
   }, [setLastSync, setPendingOperations]);
 
-  // Gestion des événements en ligne/hors ligne
+  // Retour en ligne : synchronisation automatique.
+  // Le drapeau en ligne / hors ligne est écrit uniquement par onlineStatusService.
   useEffect(() => {
     const handleOnline = () => {
-      setOnline(true);
-      // Synchroniser automatiquement quand on revient en ligne
+      console.log('🔄 [useSync] Retour en ligne → synchronisation');
       manualSync();
     };
 
-    const handleOffline = () => {
-      setOnline(false);
-    };
-
     window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
 
     return () => {
       window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
-  }, [setOnline, manualSync]);
+  }, [manualSync]);
 
   // Mise à jour périodique du statut
   useEffect(() => {

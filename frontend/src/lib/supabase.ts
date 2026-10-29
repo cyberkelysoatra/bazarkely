@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/supabase'
 import { isAuthSessionKey, pickNewerSession } from '../modules/navy-ay/utils/backgroundRules'
+import { trackedFetch } from './serverReachability'
 
 // Supabase configuration
 export const supabaseUrl = 'https://ofzmwrzatcztoekrpvkj.supabase.co'
@@ -77,6 +78,10 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,  // captureOAuthTokens() in main.tsx handles URL tokens manually
     storage: navyAppSessionStorage()
+  },
+  // Every response proves the server is reachable (online indicator, STATUT-CC-01)
+  global: {
+    fetch: trackedFetch
   },
   realtime: {
     params: {

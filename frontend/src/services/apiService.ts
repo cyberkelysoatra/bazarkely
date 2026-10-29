@@ -6,6 +6,7 @@
 
 import { supabase, db, handleSupabaseError, withTimeout } from '../lib/supabase';
 import { fetchAllPages } from '../lib/syncReconcile';
+import { PING_TIMEOUT_MS } from '../utils/onlineStatusLogic';
 import type { 
   User, Account, SupabaseTransaction, Budget, Goal, 
   UserInsert, AccountInsert, SupabaseTransactionInsert, BudgetInsert, GoalInsert,
@@ -549,15 +550,18 @@ class ApiService {
 
   async getServerStatus() {
     try {
-      const { data, error } = await withTimeout(
+      const { error, status } = await withTimeout(
         supabase.from('users').select('count').limit(1),
-        5000,
+        PING_TIMEOUT_MS,
         'apiService.getServerStatus'
       ) as any;
 
+      // The server answered (even with a PostgREST error such as an expired JWT): it is
+      // reachable. Status 0 = no HTTP response (network failure).
+      const answered = typeof status === 'number' && status > 0;
       return {
-        online: !error,
-        status: error ? 500 : 200,
+        online: answered,
+        status: answered ? status : 0,
         supabase: 'connected',
         error: error?.message || null
       };

@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.113.1';
-export const APP_VERSION_NAME = 'Le micro « Dicter » de la barre du bas prend la taille des autres pictogrammes';
+export const APP_VERSION = '3.113.2';
+export const APP_VERSION_NAME = 'Indicateur « En ligne » / « Hors ligne » : plus de faux « Hors ligne », retour rapide';
 export const LAST_UPDATED = '2026-10-29';
 export const APP_BUILD_DATE = '2026-10-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.113.2',
+    date: '2026-10-29',
+    description: 'Indicateur « En ligne » / « Hors ligne » : plus de faux « Hors ligne », retour rapide (STATUT-CC-01)',
+    changes: [
+      'Un seul essai raté ne suffit plus : « Hors ligne » seulement après deux essais ratés de suite, le second 15 s après le premier',
+      'Toute réponse du serveur reçue par l’application remet « En ligne » tout de suite, même une réponse d’erreur (session expirée, droits)',
+      'Au retour sur l’application, le premier contrôle attend 2 s que le réseau du téléphone se réveille',
+      'Hors ligne, un nouvel essai toutes les 15 s puis 30 s au lieu de 2 minutes ; délai d’attente du contrôle porté de 5 à 8 s',
+      'La perte et le retour du réseau signalés par le navigateur restent pris en compte immédiatement ; un seul service écrit l’état affiché'
+    ]
+  },
   {
     version: '3.113.1',
     date: '2026-10-29',
