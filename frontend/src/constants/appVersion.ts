@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.112.3';
-export const APP_VERSION_NAME = 'Dictée vocale : la feuille des comptes s’ouvre aussi pour « en espèces », menu « Dictées en attente »';
-export const LAST_UPDATED = '2026-10-28';
-export const APP_BUILD_DATE = '2026-10-28';
+export const APP_VERSION = '3.113.0';
+export const APP_VERSION_NAME = 'Le micro « Dicter » prend place dans la barre de navigation, « Objectifs » passe dans les pages';
+export const LAST_UPDATED = '2026-10-29';
+export const APP_BUILD_DATE = '2026-10-29';
 export const VERSION_HISTORY = [
+  {
+    version: '3.113.0',
+    date: '2026-10-29',
+    description: 'Le micro « Dicter » prend la 6e place de la barre de navigation du budget, « Objectifs » s’ouvre depuis les pages',
+    changes: [
+      'Barre du bas (budget) : « Dicter » remplace « Objectifs », en rond bleu légèrement surélevé, avec le badge des dictées en attente',
+      'Barre du haut sur ordinateur (budget) : « Dicter » remplace « Objectifs », badge compris',
+      'Le bouton micro flottant de l’accueil et des transactions disparaît',
+      'Objectifs : lien « Voir mes objectifs » sur la carte de l’accueil, bouton « Objectifs » sur la page Comptes, carte « Objectif lié » sur la fiche d’un compte, entrée « Objectifs » dans le menu du compte',
+      'Les modules Eau, Construction et NAVY ay ne changent pas'
+    ]
+  },
   {
     version: '3.112.3',
     date: '2026-10-29',

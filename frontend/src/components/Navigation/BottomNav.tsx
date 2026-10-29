@@ -4,7 +4,7 @@ import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from 
 import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
 import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
 import { useNavyRoles } from '../../modules/navy-ay/context/useNavyRoles';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation, Send, PackageOpen, BellRing, Route, Banknote } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation, Send, PackageOpen, BellRing, Route, Banknote, Mic } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
@@ -12,6 +12,9 @@ import { GestionEauContext } from '../../modules/gestion-eau/context';
 import { useAppStore } from '../../stores/appStore';
 import apiService from '../../services/apiService';
 import { orderModules } from '../../utils/moduleOrder';
+import { routeDictee } from '../../modules/dictee/dicteeParModule';
+import { usePendingDictations } from '../../modules/dictee/usePendingDictations';
+import BadgeDictees from '../../modules/dictee/components/BadgeDictees';
 import {
   DndContext,
   closestCenter,
@@ -135,7 +138,9 @@ const iconMap = {
   PackageOpen,
   BellRing,
   Route,
-  Banknote
+  Banknote,
+  // Dictée (BARRE-CC-01)
+  Mic
 };
 
 const BottomNav = () => {
@@ -257,6 +262,8 @@ const BottomNav = () => {
   const isNavyModule = activeModule?.id === 'navy-ay';
   // NAVY ay (v3.81.0) : barre selon le rôle « Je suis » + pastille des demandes en attente.
   const navyRoles = useNavyRoles();
+  // Dictée (BARRE-CC-01) : compteurs du badge posé sur le micro de la barre.
+  const dictees = usePendingDictations();
 
   // Click-outside detection to exit switcher mode
   useEffect(() => {
@@ -326,6 +333,12 @@ const BottomNav = () => {
       });
     }
 
+    // Dictée (BARRE-CC-01) : micro de la barre budget, seulement si le module actif
+    // figure dans la table des dictées (sinon aucun micro, rien de trompeur).
+    const isBudgetBar = navItems === BOTTOM_NAV_ITEMS;
+    const micRoute = isBudgetBar ? routeDictee(activeModule?.id ?? 'bazarkely') : null;
+    if (isBudgetBar && !micRoute) navItems = navItems.filter((it) => it.path !== '/dicter');
+
     // Garde-fou : jamais plus de 6 boutons dans la barre (cumul de rôles rare).
     if (navItems.length > 6) navItems = navItems.slice(0, 6);
     // NAVY ay (3B) : barre de 6 boutons (opératrice) = libellés en 10,5 px et marges
@@ -354,6 +367,38 @@ const BottomNav = () => {
               ? navyRoles.badges[item.path]
               : 0;
 
+            // Dictée (BARRE-CC-01) : rond bleu légèrement surélevé, même largeur de case.
+            // Le badge est un lien frère (jamais un lien dans un lien).
+            if (micRoute && item.path === micRoute) {
+              return (
+                <div key={item.path} className="relative" data-testid="nav-mic">
+                  <NavLink
+                    to={micRoute}
+                    aria-label="Dicter une dépense"
+                    className="group flex flex-col items-center justify-center p-1.5 max-[380px]:px-0.5 rounded-lg focus:outline-none"
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span className="flex h-[42px] items-end justify-center">
+                          <span
+                            className={`flex h-12 w-12 -translate-y-1 items-center justify-center rounded-full text-white shadow-lg ring-4 ring-white transition-colors duration-200 group-focus-visible:ring-blue-300 ${
+                              isActive ? 'bg-blue-700' : 'bg-blue-600 group-hover:bg-blue-700'
+                            }`}
+                          >
+                            <IconComponent className="h-[22px] w-[22px]" aria-hidden="true" />
+                          </span>
+                        </span>
+                        <span className={`text-xs font-semibold mt-1 transition-colors duration-200 ${isActive ? 'text-blue-600' : 'text-slate-600'}`}>
+                          {item.label}
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                  <BadgeDictees comptes={dictees} className="absolute top-[-0.625rem] right-0" />
+                </div>
+              );
+            }
+
             return (
               <NavLink
                 key={item.path}
@@ -363,7 +408,7 @@ const BottomNav = () => {
                   isNavyModule
                     ? // NAVY ay (3B) : boutons de largeur égale, libellé sur UNE ligne de 360 à 430 px
                       `flex flex-1 min-w-0 justify-center ${navyDense ? 'px-0' : 'px-0.5'} focus:outline-none focus-visible:ring-2 focus-visible:ring-navyay-charcoal rounded-2xl`
-                    : `mobile-nav-item ${isActive ? 'active' : ''}`
+                    : `mobile-nav-item ${isActive ? 'active' : ''}${isBudgetBar ? ' max-[380px]:px-0.5' : ''}`
                 }
               >
                 {({ isActive }) => isNavyModule ? (

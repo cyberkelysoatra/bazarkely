@@ -54,7 +54,6 @@ const SmsInboxPage = lazy(() => import('../../modules/sms-inbox/pages/SmsInboxPa
 // Dictée vocale (DICTEE-CC-01) : page plein écran chargée à la demande + bouton micro flottant
 const DicteePage = lazy(() => import('../../modules/dictee/components/DicteePage'))
 const ListeDicteesPage = lazy(() => import('../../modules/dictee/components/ListeDicteesPage'))
-import BoutonMicFlottant from '../../modules/dictee/components/BoutonMicFlottant'
 
 // Analytics Pages - Lazy loaded
 const AdvancedAnalytics = lazy(() => import('../Analytics/AdvancedAnalytics'))
@@ -62,7 +61,7 @@ const FinancialInsights = lazy(() => import('../Analytics/FinancialInsights'))
 const ReportGenerator = lazy(() => import('../Analytics/ReportGenerator'))
 
 // Construction POC Context
-import { ConstructionProvider, useConstruction } from '../../modules/construction-poc/context/ConstructionContext'
+import { useConstruction } from '../../modules/construction-poc/context/ConstructionContext'
 import ConstructionRoute from '../../modules/construction-poc/components/ConstructionRoute'
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions'
 
@@ -310,8 +309,6 @@ const AppLayout = () => {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
-        {/* Bouton micro flottant : tableau de bord et transactions du module budget */}
-        {(location.pathname === '/dashboard' || location.pathname === '/transactions') && <BoutonMicFlottant />}
       </main>
       <BottomNav />
     </div>

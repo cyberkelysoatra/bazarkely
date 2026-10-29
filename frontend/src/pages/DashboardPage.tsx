@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Target, PieChart, HandCoins, AlertTriangle } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, PieChart, HandCoins, AlertTriangle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyLoans } from '../services/loanService';
-import type { Loan } from '../services/loanService';
+import type { LoanWithDetails as Loan } from '../services/loanService';
 import { sumLoanLiveStates } from '../services/loanInterest';
 import type { LoanLiveAggregate } from '../services/loanInterest';
 import { useAppStore } from '../stores/appStore';
@@ -22,7 +22,6 @@ import { useFormatBalance } from '../hooks/useFormatBalance';
 import MonthlySummaryCard from '../components/Dashboard/MonthlySummaryCard';
 import DashboardContainer from '../components/Layout/DashboardContainer';
 import ResponsiveGrid from '../components/Layout/ResponsiveGrid';
-import ResponsiveStatCard from '../components/Layout/ResponsiveStatCard';
 
 const CURRENCY_STORAGE_KEY = 'bazarkely_display_currency';
 
@@ -691,7 +690,11 @@ const DashboardPage = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate('/goals')}
+                  onClick={(e) => {
+                    // La carte navigue déjà vers /goals : une seule navigation.
+                    e.stopPropagation();
+                    navigate('/goals');
+                  }}
                   className="w-full mt-3 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                 >
                   Créer un objectif
@@ -700,6 +703,22 @@ const DashboardPage = () => {
             );
           }
         })()}
+        {/* Objectifs (BARRE-CC-01) : entrée principale depuis que la barre porte le micro */}
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/goals');
+            }}
+            aria-label="Voir mes objectifs"
+            data-testid="voir-mes-objectifs"
+            className="inline-flex items-center gap-0.5 min-h-[44px] px-2 -mr-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+          >
+            Voir mes objectifs
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
           </div>
 
           {/* Transactions récentes */}

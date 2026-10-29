@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Trash2, Star, StarOff, Wallet, CreditCard, PiggyBank, Smartphone } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Star, StarOff, Wallet, CreditCard, PiggyBank, Smartphone, Target, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
+import { goalService } from '../services/goalService';
 import { getExchangeRate } from '../services/exchangeRateService';
 import { withTimeout } from '../lib/supabase';
 import { ACCOUNT_TYPES } from '../constants';
 import { useFormatBalance } from '../hooks/useFormatBalance';
 import { useCurrency } from '../hooks/useCurrency';
-import type { Account } from '../types';
+import type { Account, Goal } from '../types';
 
 const FALLBACK_EUR_TO_MGA_RATE = 4950;
 
@@ -20,6 +21,8 @@ const AccountDetailPage = () => {
   const { displayCurrency } = useCurrency();
 
   const [account, setAccount] = useState<Account | null>(null);
+  /** Objectifs liés à ce compte (BARRE-CC-01), lus hors ligne d'abord. */
+  const [linkedGoals, setLinkedGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -90,6 +93,22 @@ const AccountDetailPage = () => {
     };
     loadAccount();
   }, [user, accountId, navigate]);
+
+  // Objectif(s) lié(s) au compte (BARRE-CC-01) : id utilisateur du store (jamais getUser).
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || !accountId) return;
+    let cancelled = false;
+    goalService
+      .getGoals(userId)
+      .then((goals) => {
+        if (!cancelled) setLinkedGoals(goals.filter((g) => g.linkedAccountId === accountId));
+      })
+      .catch(() => {
+        if (!cancelled) setLinkedGoals([]);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, accountId]);
 
   const getAccountIcon = (type: string) => {
     switch (type) {
@@ -403,6 +422,39 @@ const AccountDetailPage = () => {
             </button>
           </div>
         )}
+
+        {/* Objectif lié (BARRE-CC-01) : rien si aucun objectif ne vise ce compte */}
+        {linkedGoals.map((goal) => {
+          const pct = goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0;
+          return (
+            <button
+              key={goal.id}
+              type="button"
+              onClick={() => navigate('/goals')}
+              aria-label={`Objectif lié : ${goal.name}, ${pct} %. Voir mes objectifs`}
+              data-testid="objectif-lie"
+              className="card w-full text-left hover:shadow-lg transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-2 text-sm font-semibold text-blue-600">
+                  <Target className="w-4 h-4" aria-hidden="true" />
+                  Objectif lié
+                </span>
+                <ChevronRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
+              </div>
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <span className="font-medium text-gray-900 truncate mr-2">{goal.name}</span>
+                <span className="text-gray-600 flex-shrink-0 tabular-nums">{pct} %</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2" aria-hidden="true">
+                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min(Math.max(pct, 0), 100)}%` }} />
+              </div>
+              <p className="mt-1.5 text-xs text-gray-600 tabular-nums">
+                {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+              </p>
+            </button>
+          );
+        })}
 
         {/* Statistiques */}
         <div className="card">

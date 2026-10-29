@@ -19,6 +19,8 @@ import { useServiceWorkerUpdate } from '../../hooks/useServiceWorkerUpdate';
 import useOnlineStatus from '../../hooks/useOnlineStatus';
 import { APP_VERSION } from '../../constants/appVersion';
 import { usePendingDictations, libelleBadge } from '../../modules/dictee/usePendingDictations';
+import { routeDictee } from '../../modules/dictee/dicteeParModule';
+import BadgeDictees from '../../modules/dictee/components/BadgeDictees';
 import QuizQuestionPopup, { questions } from '../Quiz/QuizQuestionPopup';
 import { useCertificationStore } from '../../store/certificationStore';
 import LevelBadge from '../Certification/LevelBadge';
@@ -1061,6 +1063,20 @@ const Header = () => {
                       </button>
                     )}
 
+                    {/* Objectifs (BARRE-CC-01) : l'entrée a quitté la barre, module budget seulement */}
+                    {!isNavyModule && !isEauModule && !isConstructionModule && (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          navigate('/goals');
+                        }}
+                        className="w-full flex items-center space-x-2 px-3 py-2 min-h-[44px] text-sm text-white/90 hover:bg-white/20 rounded-lg transition-colors"
+                      >
+                        <Target className="w-4 h-4" aria-hidden="true" />
+                        <span>Objectifs</span>
+                      </button>
+                    )}
+
                     {/* Dictée vocale (DICTEE-CC-02) : dictées en attente, module budget seulement */}
                     {!isNavyModule && !isEauModule && !isConstructionModule && (
                       <button
@@ -1289,17 +1305,25 @@ const Header = () => {
               <span className="text-xs">Famille</span>
             </NavLink>
             
-            <NavLink 
-              to="/goals" 
-              className={({ isActive }) => 
-                `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
-                  isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
-                }`
-              }
-            >
-              <Target className="w-5 h-5 mb-1" />
-              <span className="text-xs">Objectifs</span>
-            </NavLink>
+            {/* Dictée (BARRE-CC-01) : « Dicter » remplace « Objectifs », badge sur l'icône
+                (lien frère, jamais un lien dans un lien). Seulement si le module a une dictée. */}
+            {routeDictee(activeModule?.id ?? 'bazarkely') && (
+              <div className="relative" data-testid="desktop-nav-dicter">
+                <NavLink
+                  to={routeDictee(activeModule?.id ?? 'bazarkely')!}
+                  aria-label="Dicter une dépense"
+                  className={({ isActive }) =>
+                    `flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-white/90 hover:text-white ${
+                      isActive ? 'bg-white/20 text-white' : 'hover:bg-white/10'
+                    }`
+                  }
+                >
+                  <Mic className="w-5 h-5 mb-1" aria-hidden="true" />
+                  <span className="text-xs">Dicter</span>
+                </NavLink>
+                <BadgeDictees comptes={dictees} className="absolute top-0 left-[calc(50%+0.25rem)]" />
+              </div>
+            )}
           </nav>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff, ArrowRightLeft } from 'lucide-react';
+import { Plus, Wallet, CreditCard, PiggyBank, Smartphone, Eye, EyeOff, ArrowRightLeft, Target } from 'lucide-react';
 import { useAppStore } from '../stores/appStore';
 import accountService from '../services/accountService';
 import { ACCOUNT_TYPES } from '../constants';
@@ -71,25 +71,37 @@ const AccountsPage = () => {
   return (
     <div className="p-4 pb-20 space-y-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* BARRE-CC-01 : trois boutons toujours sur une ligne ; sous 400 px, icônes seules.
+          Si la place manque à côté du titre, le groupe passe sous le titre (aligné à droite). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-40">
           <h1 className="text-2xl font-bold text-gray-900">Mes comptes</h1>
           <p className="text-gray-600">Gérez vos comptes et portefeuilles</p>
         </div>
-        <div className="flex space-x-2"> {/* ADDED TRANSFERT BUTTON GROUP */}
+        <div className="ml-auto flex flex-nowrap gap-2" data-testid="accounts-header-actions">
           <button 
             onClick={() => navigate('/transfer')}
-            className="btn-secondary flex items-center space-x-2 sm:px-3 sm:py-1.5 sm:text-sm"
+            aria-label="Transfert"
+            className="btn-secondary flex items-center gap-2 sm:px-3 sm:py-1.5 sm:text-sm max-[399px]:min-h-[44px] max-[399px]:min-w-[44px] max-[399px]:justify-center max-[399px]:px-0"
           > {/* RESPONSIVE MOBILE SIZING */}
-            <ArrowRightLeft className="w-4 h-4" />
-            <span>Transfert</span>
+            <ArrowRightLeft className="w-4 h-4" aria-hidden="true" />
+            <span className="max-[399px]:sr-only">Transfert</span>
+          </button>
+          <button
+            onClick={() => navigate('/goals')}
+            aria-label="Objectifs"
+            className="btn-secondary flex items-center gap-2 sm:px-3 sm:py-1.5 sm:text-sm max-[399px]:min-h-[44px] max-[399px]:min-w-[44px] max-[399px]:justify-center max-[399px]:px-0"
+          >
+            <Target className="w-4 h-4" aria-hidden="true" />
+            <span className="max-[399px]:sr-only">Objectifs</span>
           </button>
           <button 
             onClick={() => navigate('/add-account')}
-            className="btn-primary flex items-center space-x-2 sm:px-3 sm:py-1.5 sm:text-sm"
+            aria-label="Ajouter"
+            className="btn-primary flex items-center gap-2 sm:px-3 sm:py-1.5 sm:text-sm max-[399px]:min-h-[44px] max-[399px]:min-w-[44px] max-[399px]:justify-center max-[399px]:px-0"
           > {/* RESPONSIVE MOBILE SIZING */}
-            <Plus className="w-4 h-4" />
-            <span>Ajouter</span>
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span className="max-[399px]:sr-only">Ajouter</span>
           </button>
         </div>
       </div>

@@ -135,7 +135,8 @@ export const BOTTOM_NAV_ITEMS = [
   { path: '/transactions', icon: 'ArrowUpDown', label: 'Transactions' },
   { path: '/budgets', icon: 'PieChart', label: 'Budgets' },
   { path: '/family', icon: 'Users', label: 'Famille' },
-  { path: '/goals', icon: 'Target', label: 'Objectifs' }
+  // BARRE-CC-01 : the mic takes the 6th slot (rendered as a raised round button)
+  { path: '/dicter', icon: 'Mic', label: 'Dicter' }
 ] as const;
 
 // Navigation Construction POC
