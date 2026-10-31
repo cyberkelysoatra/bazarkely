@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Inbox, UserPlus, Shield, Gauge, Eye, Check, X } from 'lucide-react';
+import { Inbox, UserPlus, Shield, Gauge, Eye, Check, X, Zap, Receipt, BarChart3 } from 'lucide-react';
 import { EauEmptyState, EauIconButton, EauListIcon } from '../EauUi';
 import { validerDemande, refuserDemande } from '../../services/eauDemandeService';
 import { showConfirm } from '../../../../utils/dialogUtils';
@@ -16,6 +16,9 @@ interface DraftState {
   admin: boolean;
   releveur: boolean;
   promoteur: boolean;
+  releveurElec: boolean;
+  gestionElec: boolean;
+  lectureElec: boolean;
   compteurs: Set<string>;
 }
 
@@ -36,7 +39,11 @@ export default function DemandesList({
   const [openId, setOpenId] = useState<string | null>(null);
 
   const draftFor = (id: string): DraftState =>
-    drafts[id] ?? { admin: false, releveur: false, promoteur: false, compteurs: new Set() };
+    drafts[id] ?? {
+      admin: false, releveur: false, promoteur: false,
+      releveurElec: false, gestionElec: false, lectureElec: false,
+      compteurs: new Set(),
+    };
 
   const updateDraft = (id: string, patch: Partial<DraftState>) =>
     setDrafts((p) => ({ ...p, [id]: { ...draftFor(id), ...patch } }));
@@ -52,7 +59,8 @@ export default function DemandesList({
   const valider = async (d: DemandeAccesLocal) => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     const draft = draftFor(d.id);
-    if (!draft.admin && !draft.releveur && !draft.promoteur && draft.compteurs.size === 0) {
+    const elec = draft.releveurElec || draft.gestionElec || draft.lectureElec;
+    if (!draft.admin && !draft.releveur && !draft.promoteur && !elec && draft.compteurs.size === 0) {
       toast.error('Attribuez au moins un rôle ou un compteur visible');
       return;
     }
@@ -60,6 +68,9 @@ export default function DemandesList({
       admin: draft.admin,
       releveur: draft.releveur,
       promoteur: draft.promoteur,
+      releveurElec: draft.releveurElec,
+      gestionElec: draft.gestionElec,
+      lectureElec: draft.lectureElec,
       compteur_ids: Array.from(draft.compteurs),
       traitee_par: me,
     });
@@ -108,7 +119,7 @@ export default function DemandesList({
 
                 {open ? (
                   <div className="mt-3 border-t border-gray-100 pt-3 space-y-3">
-                    <div className="flex gap-4 text-sm">
+                    <div className="flex flex-wrap gap-4 text-sm">
                       <label className="flex items-center gap-1.5">
                         <input type="checkbox" checked={draft.admin}
                           onChange={(e) => updateDraft(d.id, { admin: e.target.checked })}
@@ -129,6 +140,29 @@ export default function DemandesList({
                           className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500" />
                         <Eye className="w-4 h-4 text-ahuvi-teal" aria-hidden="true" />
                         <span className="text-gray-700">Promoteur</span>
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm" data-demande-elec>
+                      <label className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={draft.releveurElec}
+                          onChange={(e) => updateDraft(d.id, { releveurElec: e.target.checked })}
+                          className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+                        <Zap className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+                        <span className="text-gray-700">Releveur électricité</span>
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={draft.gestionElec}
+                          onChange={(e) => updateDraft(d.id, { gestionElec: e.target.checked })}
+                          className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+                        <Receipt className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+                        <span className="text-gray-700">Gestion électricité</span>
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={draft.lectureElec}
+                          onChange={(e) => updateDraft(d.id, { lectureElec: e.target.checked })}
+                          className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+                        <BarChart3 className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+                        <span className="text-gray-700">Lecture électricité</span>
                       </label>
                     </div>
                     <div className="text-sm">

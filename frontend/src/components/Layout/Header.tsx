@@ -97,7 +97,7 @@ const Header = () => {
 
   // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
   const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, Zap,
+    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, Zap, Users,
   };
   const eauNavItems = eauRoles
     ? filterEauNavByRoles(eauRoles, GESTION_EAU_NAV_ITEMS, eauContextValue?.domaineActif ?? 'eau')

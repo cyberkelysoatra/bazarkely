@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  UserPlus, Mail, MessageCircle, CalendarClock, ShieldCheck, ClipboardList, Users, Eye, Send,
+  UserPlus, Mail, MessageCircle, CalendarClock, ShieldCheck, ClipboardList, Users, Eye, Send, Zap, Receipt, BarChart3,
 } from 'lucide-react';
 import { EauIconButton, eauSegmentTabClass } from '../EauUi';
 import {
@@ -38,6 +38,10 @@ export default function InvitationForm({
   const [rReleveur, setRReleveur] = useState(true);
   const [rClient, setRClient] = useState(false);
   const [rPromoteur, setRPromoteur] = useState(false);
+  // Famille Électricité (ELEC-CC-02) : une invitation peut ne porter que ces rôles.
+  const [rReleveurElec, setRReleveurElec] = useState(false);
+  const [rGestionElec, setRGestionElec] = useState(false);
+  const [rLectureElec, setRLectureElec] = useState(false);
   const [iCompteurs, setICompteurs] = useState<Set<string>>(new Set());
   const [iExpiresDays, setIExpiresDays] = useState<number | null>(30);
   const [busy, setBusy] = useState(false);
@@ -45,6 +49,7 @@ export default function InvitationForm({
   const resetForm = () => {
     setINom(''); setIEmail(''); setIPhone('');
     setRAdmin(false); setRReleveur(true); setRClient(false); setRPromoteur(false);
+    setRReleveurElec(false); setRGestionElec(false); setRLectureElec(false);
     setICompteurs(new Set()); setIExpiresDays(30);
   };
 
@@ -62,11 +67,16 @@ export default function InvitationForm({
       toast.error('Email Google invalide'); return;
     }
     if (!iPhone.replace(/\D/g, '')) { toast.error('Numéro WhatsApp requis'); return; }
-    if (!rAdmin && !rReleveur && !rClient && !rPromoteur) { toast.error('Choisissez au moins un rôle'); return; }
+    if (!rAdmin && !rReleveur && !rClient && !rPromoteur && !rReleveurElec && !rGestionElec && !rLectureElec) {
+      toast.error('Choisissez au moins un rôle'); return;
+    }
     if (rClient && iCompteurs.size === 0) { toast.error('Choisissez au moins un compteur pour un propriétaire'); return; }
     setBusy(true);
     try {
-      const flags = { role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient, role_promoteur: rPromoteur };
+      const flags = {
+        role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient, role_promoteur: rPromoteur,
+        role_releveur_elec: rReleveurElec, role_gestion_elec: rGestionElec, role_lecture_elec: rLectureElec,
+      };
       const compteur_ids = rClient ? Array.from(iCompteurs) : [];
       const inv =
         channel === 'email'
@@ -183,6 +193,27 @@ export default function InvitationForm({
               className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500" />
             <Eye className="w-4 h-4 text-ahuvi-teal" aria-hidden="true" />
             <span className="text-gray-700">Promoteur</span>
+          </label>
+        </div>
+        <span className="block text-gray-600 mt-3 mb-1">Électricité (RTB Énergie)</span>
+        <div className="flex flex-wrap gap-4" data-invitation-elec>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={rReleveurElec} onChange={(e) => setRReleveurElec(e.target.checked)}
+              className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+            <Zap className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+            <span className="text-gray-700">Releveur électricité</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={rGestionElec} onChange={(e) => setRGestionElec(e.target.checked)}
+              className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+            <Receipt className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+            <span className="text-gray-700">Gestion électricité</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={rLectureElec} onChange={(e) => setRLectureElec(e.target.checked)}
+              className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+            <BarChart3 className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+            <span className="text-gray-700">Lecture électricité</span>
           </label>
         </div>
       </div>

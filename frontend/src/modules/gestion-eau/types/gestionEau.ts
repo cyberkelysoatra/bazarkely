@@ -143,11 +143,13 @@ export interface ArretPompeRow {
 }
 export type ArretPompeLocal = ArretPompeRow & LocalMeta;
 
-// ──────────────────── eau_elec_releves_compteur (Phase 1 élec) ────────────────────
+// ──────────────────── eau_elec_releves_compteur (ELEC-CC-02) ────────────────────
+/** Origine d'un relevé d'électricité : tournée, carnet papier saisi après coup, photo envoyée par le client. */
+export type ElecReleveOrigine = 'terrain' | 'carnet' | 'photo_client';
+
 /**
- * Relevé d'index d'un compteur ÉLECTRIQUE (kWh). Miroir de `ReleveCompteurRow`
- * (même logique rupture/aberrant), table dédiée pour ne pas mélanger eau et élec.
- * La saisie complète arrive en Phase 2 ; la table est posée dès la Phase 1.
+ * Relevé d'index d'un compteur RTB Énergie (kWh). `compteur_id` pointe vers
+ * `eau_elec_compteurs` (ELEC-CC-02, plus vers les compteurs d'eau).
  */
 export interface ElecReleveRow {
   id: string;
@@ -159,9 +161,98 @@ export interface ElecReleveRow {
   agent_id: string | null;
   note: string | null;
   photo_url: string | null;
+  /** Absent sur un vieux cache local = 'terrain'. */
+  origine?: ElecReleveOrigine;
   created_at: string | null;
+  updated_at?: string | null;
 }
 export type ElecReleveLocal = ElecReleveRow & LocalMeta;
+
+/** Statut d'un client ou d'un compteur RTB : actif, en pause (pas de facture), arrêté. */
+export type ElecStatut = 'actif' | 'pause' | 'arrete';
+
+// ───────────────────────────── eau_elec_reglages ─────────────────────────────
+export const ELEC_REGLAGES_ID = 'rtb';
+
+/** Réglages de RTB Énergie (une seule ligne `id = 'rtb'`) : émetteur, règlement, calcul, numérotation. */
+export interface ElecReglagesRow {
+  id: string;
+  raison_sociale: string | null;
+  forme_juridique: string | null;
+  siege: string | null;
+  nif: string | null;
+  stat: string | null;
+  rcs: string | null;
+  telephone: string | null;
+  email: string | null;
+  banque: string | null;
+  titulaire_compte: string | null;
+  iban: string | null;
+  bic: string | null;
+  site: string | null;
+  puissance_kwc: number | null;
+  contrat_ref: string | null;
+  tarif_kwh: number;
+  forfait_ht: number;
+  tva_pct: number;
+  echeance_jours: number;
+  devise: string;
+  numero_annee: number;
+  numero_prochain: number;
+  mode_essai: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecReglagesLocal = ElecReglagesRow & LocalMeta;
+
+// ───────────────────────────── eau_elec_clients ─────────────────────────────
+export interface ElecClientRow {
+  id: string;
+  /** Repère court (ex. « A »), unique, comparé tel quel. */
+  code: string;
+  nom: string;
+  raison_sociale: string | null;
+  adresse: string | null;
+  nif: string | null;
+  stat: string | null;
+  email: string | null;
+  telephone: string | null;
+  /** Plusieurs compteurs sur une seule facture. */
+  facture_groupee: boolean;
+  hors_domaine: boolean;
+  statut: ElecStatut;
+  /** Compte 1sakely.org du client (espace client, plus tard). */
+  user_id: string | null;
+  notes_internes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecClientLocal = ElecClientRow & LocalMeta;
+
+// ───────────────────────────── eau_elec_compteurs ─────────────────────────────
+export interface ElecCompteurRow {
+  id: string;
+  /** Libellé du carnet du releveur (`L1`, `V8S`, `L2V10`, `H1`...), unique, comparé tel quel. */
+  code: string;
+  /** Code du lot (`L1`, `V4`, `V8B`, `Hôtel`...). */
+  bien: string;
+  client_id: string;
+  /** Échelle : nombre de décimales de l'index (0 à 3). */
+  decimales: number;
+  statut: ElecStatut;
+  remplace_compteur_id: string | null;
+  date_mise_en_service: string | null;
+  date_arret: string | null;
+  /** Index de clôture de la dernière facture du tableur : départ du premier cycle tenu dans l'app. */
+  index_reprise: number | null;
+  date_index_reprise: string | null;
+  /** Ordre de tournée. */
+  ordre: number | null;
+  note: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecCompteurLocal = ElecCompteurRow & LocalMeta;
 
 // ───────────────────────── eau_elec_couts (Phase 1 élec) ─────────────────────────
 /**
@@ -336,6 +427,10 @@ export interface InvitationRow {
   role_client: boolean;
   /** Promoteur (Phase 3) : invite un promoteur (lecture totale + seuils). Octroyé au login par les RPC de claim. */
   role_promoteur: boolean;
+  /** Rôles électricité (ELEC-CC-02), posés au login par les RPC de claim. Absents sur un vieux cache = false. */
+  role_releveur_elec?: boolean;
+  role_gestion_elec?: boolean;
+  role_lecture_elec?: boolean;
   compteur_ids: string[]; // jsonb
   cible: string | null;
   statut: InvitationStatut;

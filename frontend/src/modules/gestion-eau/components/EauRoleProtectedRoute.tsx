@@ -7,7 +7,7 @@ import { Navigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useGestionEau } from '../context/GestionEauContext';
 import type { EauRole } from '../types/gestionEau';
-import { ELEC_HOME } from '../utils/domaines';
+import { accueilElec } from '../utils/domaines';
 
 interface Props {
   children: ReactNode;
@@ -25,14 +25,15 @@ export default function EauRoleProtectedRoute({
   // Accueil par défaut selon le rôle : admin/releveur → tableau de bord ;
   // client (sans rôle interne) → son espace. Évite toute boucle de redirection
   // (un client refusé sur le dashboard atterrit sur /gestion-eau/client, pas sur /gestion-eau).
-  // Domaine Électricité seul (ELEC-CC-01) → tableau de bord électricité.
+  // Domaine Électricité seul (ELEC-CC-01) → tableau de bord électricité ; releveur électricité
+  // seul → ses relevés (ELEC-CC-02).
   const home =
     roles.admin || roles.releveur || roles.promoteur
       ? '/gestion-eau'
       : roles.client && domaines.eau
       ? '/gestion-eau/client'
       : domaines.elec
-      ? ELEC_HOME
+      ? accueilElec(roles)
       : '/dashboard';
   const target = redirectTo ?? home;
   const hasRequiredRole = allowedRoles.some((r) => roles[r]);

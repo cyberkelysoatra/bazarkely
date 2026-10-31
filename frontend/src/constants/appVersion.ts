@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.114.0';
-export const APP_VERSION_NAME = 'AHUVI : l’eau et l’électricité deviennent deux domaines séparés';
+export const APP_VERSION = '3.115.0';
+export const APP_VERSION_NAME = 'RTB Énergie : clients, compteurs, réglages et relevés d’électricité';
 export const LAST_UPDATED = '2026-11-01';
 export const APP_BUILD_DATE = '2026-11-01';
 export const VERSION_HISTORY = [
+  {
+    version: '3.115.0',
+    date: '2026-11-01',
+    description: 'RTB Énergie : clients, compteurs, réglages et relevés d’électricité (ELEC-CC-02, phase 1)',
+    changes: [
+      'Réglages RTB (menu en haut à droite) : identité, règlement, tarif, forfait, TVA, numérotation et mode essai',
+      'Clients et compteurs d’électricité : facture groupée, client hors du domaine, statuts, index de reprise, remplacement d’un compteur',
+      'Relevés : tournée par compteur, saisie selon l’échelle du compteur, consommation par jour, alerte en cas d’écart, photo facultative, hors ligne',
+      'Vue du cycle du mois : index de début et de fin, consommation, compteurs encore à relever, total',
+      'Tableau de bord Électricité : avancement de la tournée, dernier cycle complet, clients et compteurs',
+      'Invitations et demandes d’accès : les trois rôles électricité peuvent être donnés directement'
+    ]
+  },
   {
     version: '3.114.0',
     date: '2026-11-01',

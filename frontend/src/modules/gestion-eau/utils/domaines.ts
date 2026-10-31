@@ -13,11 +13,22 @@ export interface EauDomaines {
 /** Route d'accueil de chaque domaine. */
 export const ELEC_HOME = '/gestion-eau/elec';
 export const EAU_HOME = '/gestion-eau';
+/** Relevés d'électricité : seul écran d'un releveur électricité (ELEC-CC-02). */
+export const ELEC_RELEVES = '/gestion-eau/elec/releves';
+
+/**
+ * Accueil du domaine Électricité selon les rôles : un releveur électricité sans autre
+ * rôle du domaine arrive directement sur ses relevés.
+ */
+export function accueilElec(roles: EauRoles): string {
+  const autre = roles.admin || roles.promoteur || roles.gestionElec || roles.lectureElec || roles.client;
+  return roles.releveurElec && !autre ? ELEC_RELEVES : ELEC_HOME;
+}
 
 /**
  * Domaines accessibles pour un jeu de roles (effectifs, simulation comprise).
- * `clientDomaines` = domaines des compteurs du client (phase 0 : aucun compteur
- * electricite de client n'existe ; par defaut un client = un client d'eau).
+ * `clientDomaines` = domaines du client : eau = compte client d'eau, elec = fiche
+ * client electricite active portant son compte (ELEC-CC-02). Par defaut un client = eau.
  */
 export function domainesPourRoles(
   roles: EauRoles,
@@ -61,6 +72,7 @@ export function domaineDeRoute(pathname: string): EauDomaine | null {
     rest === '/elec-couts' ||
     rest === '/annonces' ||
     rest === '/utilisateurs' ||
+    rest === '/demandes' ||
     rest === '/accueil' ||
     rest.startsWith('/accueil/')
   ) {

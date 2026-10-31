@@ -9,7 +9,8 @@ import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../../stores/appStore';
 import authService from '../../../services/authService';
 import { waitForEauSession } from '../services/eauAuth';
-import { ensureRolesBootstrap, getRolesForUser } from '../services/eauRoleService';
+import { ensureRolesBootstrap, getClientDomaines, getRolesForUser } from '../services/eauRoleService';
+import { forceResyncElecUneFois } from '../services/eauElecService';
 import { refreshConfig } from '../services/eauConfigService';
 import { pullAll, syncAll } from '../services/eauSync';
 import { getPendingEnrollment, processPendingEnrollment } from '../services/eauEnrollmentService';
@@ -209,6 +210,8 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const [simulatedClient, setSimulatedClient] = useState<EauSimulatedClient | null>(null);
   // Domaine choisi (ELEC-CC-01), mémorisé par utilisateur : `eau_domaine_<userId>`.
   const [storedDomaine, setStoredDomaine] = useState<string | null>(null);
+  // Domaines du compte en tant que client (eau / électricité RTB), lus localement (ELEC-CC-02).
+  const [clientDomaines, setClientDomaines] = useState<EauDomaines>({ eau: false, elec: false });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<EauSessionStatus>('checking');
@@ -295,9 +298,15 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
       void refreshConfig(online).catch(() => {});
       void pullAll(['eau_roles', 'eau_comptes_client']).catch(() => {});
 
+      // Mémento §17 (ELEC-CC-02) : au premier lancement en ligne de la 3.115.0, l'état
+      // électricité local est vidé puis retiré du serveur (avant la lecture des rôles, qui
+      // lit la fiche client électricité). Best-effort.
+      await forceResyncElecUneFois(online).catch(() => false);
+
       // Bootstrap propriétaire + lecture des rôles effectifs (avec retry du pull à froid).
       const { roles: effective, confirmed } = await ensureRolesBootstrap(id, online);
       setRealRoles(effective);
+      setClientDomaines(await getClientDomaines(id));
       setRolesConfirmed(confirmed);
 
       // Redirection post-claim (invitation vitrine WhatsApp) : un jeton vient d'être
@@ -310,6 +319,10 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
           role_admin: effective.admin,
           role_releveur: effective.releveur,
           role_client: effective.client,
+          role_promoteur: effective.promoteur,
+          role_releveur_elec: effective.releveurElec,
+          role_gestion_elec: effective.gestionElec,
+          role_lecture_elec: effective.lectureElec,
         });
         navigate(target);
       }
@@ -348,6 +361,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     if (!userId) return;
     const effective = await getRolesForUser(userId);
     setRealRoles(effective);
+    setClientDomaines(await getClientDomaines(userId));
   }, [userId]);
 
   // Relance complète (session + bootstrap + pull rôles) avec spinner. Utilisé par
@@ -515,8 +529,9 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
 
   // Domaines (ELEC-CC-01) sur les rôles EFFECTIFS : la simulation applique les domaines
-  // comme pour un vrai compte. Phase 0 : un client n'a que des compteurs d'eau.
-  const domaines = domainesPourRoles(roles);
+  // comme pour un vrai compte. En simulation « Propriétaire », la villa simulée est un
+  // client d'eau ; sinon les domaines client réels (eau, électricité RTB : ELEC-CC-02).
+  const domaines = domainesPourRoles(roles, isSimulating ? undefined : clientDomaines);
   const domaineActif = resolveDomaineActif(domaines, storedDomaine);
 
   // Périmètre de données de la simulation « Propriétaire » : compteurs de la villa simulée.

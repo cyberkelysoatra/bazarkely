@@ -95,6 +95,10 @@ export interface ValidationInput {
   releveur: boolean;
   /** Promoteur (Phase 3) : lecture totale + seuils, aucune autre écriture. */
   promoteur?: boolean;
+  /** Rôles électricité (ELEC-CC-02). */
+  releveurElec?: boolean;
+  gestionElec?: boolean;
+  lectureElec?: boolean;
   /** Compteurs visibles → si non vide, l'utilisateur devient client. */
   compteur_ids: string[];
   traitee_par: string | null;
@@ -108,8 +112,17 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   const demande = await getDemande(id);
   if (!demande || !demande.user_id) return null;
 
-  if (v.admin || v.releveur || v.promoteur) {
-    await setRoles(demande.user_id, { admin: v.admin, releveur: v.releveur, promoteur: v.promoteur ?? false });
+  const elec = !!(v.releveurElec || v.gestionElec || v.lectureElec);
+  if (v.admin || v.releveur || v.promoteur || elec) {
+    await setRoles(demande.user_id, {
+      admin: v.admin,
+      releveur: v.releveur,
+      promoteur: v.promoteur ?? false,
+      // Non cochés = repris de la ligne existante (setRoles) : on ne retire rien ici.
+      releveurElec: v.releveurElec || undefined,
+      gestionElec: v.gestionElec || undefined,
+      lectureElec: v.lectureElec || undefined,
+    });
   }
   if (v.compteur_ids.length > 0) {
     await ensureActivatedClientForUser(
@@ -123,7 +136,14 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   const merged: DemandeAccesLocal = {
     ...demande,
     statut: 'validee',
-    roles_attribues: { admin: v.admin, releveur: v.releveur, promoteur: v.promoteur ?? false } as unknown,
+    roles_attribues: {
+      admin: v.admin,
+      releveur: v.releveur,
+      promoteur: v.promoteur ?? false,
+      releveur_elec: !!v.releveurElec,
+      gestion_elec: !!v.gestionElec,
+      lecture_elec: !!v.lectureElec,
+    } as unknown,
     compteurs_visibles: v.compteur_ids as unknown,
     traitee_par: v.traitee_par,
     traitee_at: nowIso(),

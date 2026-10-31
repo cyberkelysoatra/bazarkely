@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import toast from 'react-hot-toast';
 import {
   UserPlus, Copy, Trash2, RefreshCw, ShieldCheck, ClipboardList, Users, Mail,
-  BadgeCheck, Clock, MailPlus, MessageCircle, Link as LinkIcon, CalendarClock, Eye, Send,
+  BadgeCheck, Clock, MailPlus, MessageCircle, Link as LinkIcon, CalendarClock, Eye, Send, Zap,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauEmptyState, EauIconButton, EauListIcon } from './EauUi';
@@ -137,6 +137,9 @@ export default function EauDemandesPage() {
       {inv.role_releveur && <Badge icon={ClipboardList} tone="olive">Releveur</Badge>}
       {inv.role_promoteur && <Badge icon={Eye} tone="teal">Promoteur</Badge>}
       {inv.role_client && <Badge icon={Users} tone="teal">Propriétaire{inv.compteur_ids?.length ? ` · ${inv.compteur_ids.length} compteur(s)` : ''}</Badge>}
+      {inv.role_releveur_elec && <Badge icon={Zap} tone="elec">Releveur électricité</Badge>}
+      {inv.role_gestion_elec && <Badge icon={Zap} tone="elec">Gestion électricité</Badge>}
+      {inv.role_lecture_elec && <Badge icon={Zap} tone="elec">Lecture électricité</Badge>}
     </div>
   );
 
@@ -378,10 +381,12 @@ export default function EauDemandesPage() {
 /** Petit badge de rôle (icône + libellé) en charte AHUVI. */
 function Badge({ icon: Icon, tone, children }: {
   icon: typeof ShieldCheck;
-  tone: 'gold' | 'olive' | 'teal';
+  tone: 'gold' | 'olive' | 'teal' | 'elec';
   children: ReactNode;
 }) {
-  const cls = tone === 'gold'
+  const cls = tone === 'elec'
+    ? 'bg-rtb-gold/15 text-rtb-green'
+    : tone === 'gold'
     ? 'bg-ahuvi-gold/15 text-ahuvi-gold-700'
     : tone === 'teal'
       ? 'bg-cyan-50 text-ahuvi-teal'

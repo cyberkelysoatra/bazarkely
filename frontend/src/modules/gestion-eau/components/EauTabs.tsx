@@ -39,7 +39,10 @@ export default function EauTabs({
   active,
   onChange,
   rightSlot,
+  tone = 'eau',
 }: {
+  /** Charte des pilules : AHUVI (défaut) ou RTB Énergie (domaine Électricité, ELEC-CC-02). */
+  tone?: 'eau' | 'elec';
   tabs: EauTabDef[];
   active: string;
   onChange: (key: string) => void;
@@ -79,9 +82,13 @@ export default function EauTabs({
               onClick={() => !t.disabled && onChange(t.key)}
               className={`flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium font-ahuvi-body transition-colors ${
                 isActive
-                  ? 'bg-ahuvi-forest text-white shadow-soft'
+                  ? tone === 'elec'
+                    ? 'bg-rtb-green text-white shadow-soft min-h-[44px]'
+                    : 'bg-ahuvi-forest text-white shadow-soft'
                   : t.disabled
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : tone === 'elec'
+                  ? 'bg-white text-rtb-green border border-rtb-gold/50 hover:bg-rtb-gold/10 min-h-[44px]'
                   : 'bg-white text-ahuvi-forest border border-ahuvi-200 hover:bg-ahuvi-50'
               }`}
             >

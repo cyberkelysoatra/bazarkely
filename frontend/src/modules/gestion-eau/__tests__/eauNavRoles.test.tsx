@@ -60,22 +60,35 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
   });
 });
 
-describe('Navigation filtrée par domaine (ELEC-CC-01)', () => {
-  it('domaine Électricité : admin et promoteur voient le seul bouton Électricité', () => {
-    expect(labelsElec(r({ admin: true }))).toEqual(['Électricité']);
-    expect(labelsElec(r({ promoteur: true }))).toEqual(['Électricité']);
+describe('Navigation filtrée par domaine (ELEC-CC-01, ELEC-CC-02)', () => {
+  const TROIS = ['Tableau de bord', 'Relevés', 'Clients'];
+
+  it('domaine Électricité : admin et promoteur voient Tableau de bord, Relevés, Clients', () => {
+    expect(labelsElec(r({ admin: true }))).toEqual(TROIS);
+    expect(labelsElec(r({ promoteur: true }))).toEqual(TROIS);
   });
 
-  it('les trois rôles électricité voient Électricité et aucun bouton eau', () => {
-    for (const k of ['releveurElec', 'gestionElec', 'lectureElec'] as const) {
-      expect(labelsElec(r({ [k]: true }))).toEqual(['Électricité']);
+  it('gestion et lecture électricité voient les trois boutons, aucun bouton eau', () => {
+    for (const k of ['gestionElec', 'lectureElec'] as const) {
+      expect(labelsElec(r({ [k]: true }))).toEqual(TROIS);
       expect(labels(r({ [k]: true }))).toEqual([]);
     }
   });
 
-  it('un releveur eau ne voit jamais le bouton Électricité', () => {
+  it('releveur électricité seul : le seul bouton Relevés, vers /gestion-eau/elec/releves', () => {
+    const items = filterEauNavByRoles(r({ releveurElec: true }), undefined, 'elec');
+    expect(items.map((i) => i.label)).toEqual(['Relevés']);
+    expect(items[0].path).toBe('/gestion-eau/elec/releves');
+    expect(labels(r({ releveurElec: true }))).toEqual([]);
+  });
+
+  it('client RTB seul : le seul tableau de bord (écran d’attente), jamais les clients', () => {
+    expect(labelsElec(r({ client: true }))).toEqual(['Tableau de bord']);
+  });
+
+  it('un releveur eau ne voit aucun bouton du domaine Électricité', () => {
     expect(labelsElec(r({ releveur: true }))).toEqual([]);
-    expect(labels(r({ releveur: true }))).not.toContain('Électricité');
+    expect(filterEauNavByRoles(r({ releveur: true }), undefined, 'eau').some((i) => i.path.startsWith('/gestion-eau/elec'))).toBe(false);
   });
 
   it('au plus 6 boutons par domaine, même en cumul de tous les rôles', () => {

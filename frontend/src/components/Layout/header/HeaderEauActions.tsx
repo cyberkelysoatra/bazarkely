@@ -33,7 +33,7 @@ import { countUnread } from '../../../modules/gestion-eau/services/eauAlerteServ
 import { countDirty } from '../../../modules/gestion-eau/services/eauSync';
 import { APP_VERSION } from '../../../constants/appVersion';
 
-type MenuRole = 'admin' | 'releveur' | 'client' | 'promoteur';
+type MenuRole = 'admin' | 'releveur' | 'client' | 'promoteur' | 'gestionElec' | 'lectureElec';
 
 interface MenuLink {
   label: string;
@@ -61,7 +61,10 @@ const SECONDARY_LINKS: MenuLink[] = [
   // (ELEC-CC-01) : la route reste, réservée à l'admin, pour l'historique.
   { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin', 'promoteur'], domaines: ['eau'] },
   { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin', 'promoteur'], domaines: ['eau', 'elec'] },
-  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'], domaines: ['eau'] },
+  // Invitations et demandes : communes aux deux domaines (rôles électricité attribuables, ELEC-CC-02).
+  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'], domaines: ['eau', 'elec'] },
+  // Domaine Électricité : réglages de RTB Énergie (lecture seule sauf gestion).
+  { label: 'Réglages RTB', path: '/gestion-eau/elec/reglages', icon: Settings, roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec'], domaines: ['elec'] },
   // Client : sa fiche / son QR (rattaché à l'espace client).
   { label: 'Ma fiche / Mon QR', path: '/gestion-eau/client', icon: IdCard, roles: ['client'], domaines: ['eau'] },
 ];

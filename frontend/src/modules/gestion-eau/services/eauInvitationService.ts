@@ -125,6 +125,9 @@ export interface InvitationInput {
   role_releveur?: boolean;
   role_client?: boolean;
   role_promoteur?: boolean;
+  role_releveur_elec?: boolean;
+  role_gestion_elec?: boolean;
+  role_lecture_elec?: boolean;
   compteur_ids?: string[];
   cible?: string | null;
   invited_by?: string | null;
@@ -153,6 +156,9 @@ export async function createInvitation(input: InvitationInput): Promise<Invitati
     role_releveur: input.role_releveur ?? false,
     role_client: input.role_client ?? false,
     role_promoteur: input.role_promoteur ?? false,
+    role_releveur_elec: input.role_releveur_elec ?? false,
+    role_gestion_elec: input.role_gestion_elec ?? false,
+    role_lecture_elec: input.role_lecture_elec ?? false,
     compteur_ids: input.compteur_ids ?? [],
     cible: input.cible ?? null,
     statut: 'en_attente',
@@ -205,6 +211,9 @@ export interface WhatsappInvitationInput {
   role_releveur?: boolean;
   role_client?: boolean;
   role_promoteur?: boolean;
+  role_releveur_elec?: boolean;
+  role_gestion_elec?: boolean;
+  role_lecture_elec?: boolean;
   compteur_ids?: string[];
   /** Délai d'expiration en jours (ex. 7 / 30 / 90) ; null/0 = pas d'expiration. */
   expiresInDays?: number | null;
@@ -223,6 +232,9 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_releveur: input.role_releveur ?? false,
     role_client: input.role_client ?? false,
     role_promoteur: input.role_promoteur ?? false,
+    role_releveur_elec: input.role_releveur_elec ?? false,
+    role_gestion_elec: input.role_gestion_elec ?? false,
+    role_lecture_elec: input.role_lecture_elec ?? false,
   };
   const days = input.expiresInDays ?? null;
   const expires_at =
@@ -236,6 +248,9 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_releveur: roles.role_releveur,
     role_client: roles.role_client,
     role_promoteur: roles.role_promoteur,
+    role_releveur_elec: roles.role_releveur_elec,
+    role_gestion_elec: roles.role_gestion_elec,
+    role_lecture_elec: roles.role_lecture_elec,
     compteur_ids: input.compteur_ids ?? [],
     cible: invitationTargetPath(roles),
     statut: 'en_attente',
@@ -280,7 +295,22 @@ export async function refreshInvitations(online: boolean): Promise<InvitationLoc
 /** Base de production pour les liens profonds envoyés aux invités. */
 export const INVITATION_BASE_URL = 'https://1sakely.org';
 
-type RoleFlags = { role_admin?: boolean; role_releveur?: boolean; role_client?: boolean; role_promoteur?: boolean };
+type RoleFlags = {
+  role_admin?: boolean;
+  role_releveur?: boolean;
+  role_client?: boolean;
+  role_promoteur?: boolean;
+  role_releveur_elec?: boolean;
+  role_gestion_elec?: boolean;
+  role_lecture_elec?: boolean;
+};
+
+/** Invitation qui ne porte QUE des rôles électricité (message neutre, sans l'eau). */
+export function invitationElecSeule(flags: RoleFlags): boolean {
+  const elec = !!(flags.role_releveur_elec || flags.role_gestion_elec || flags.role_lecture_elec);
+  const eau = !!(flags.role_admin || flags.role_releveur || flags.role_client || flags.role_promoteur);
+  return elec && !eau;
+}
 
 /**
  * Normalise un numéro de téléphone au format international malgache (digits only, sans `+`),
@@ -306,6 +336,9 @@ export function invitationRoleLabel(flags: RoleFlags): string {
   if (flags.role_releveur) parts.push('Releveur');
   if (flags.role_promoteur) parts.push('Promoteur');
   if (flags.role_client) parts.push('Propriétaire');
+  if (flags.role_releveur_elec) parts.push('Releveur électricité');
+  if (flags.role_gestion_elec) parts.push('Gestion électricité');
+  if (flags.role_lecture_elec) parts.push('Lecture électricité');
   return parts.join(' / ') || 'utilisateur';
 }
 
@@ -318,6 +351,10 @@ export function invitationRoleLabel(flags: RoleFlags): string {
 export function invitationTargetPath(flags: RoleFlags): string {
   if (flags.role_admin || flags.role_releveur) return '/gestion-eau/releves?tab=bassin&bt=niveau';
   if (flags.role_promoteur) return '/gestion-eau';
+  if (flags.role_client) return '/gestion-eau/client';
+  // Domaine Électricité seul (ELEC-CC-02) : le releveur arrive sur ses relevés.
+  if (flags.role_gestion_elec || flags.role_lecture_elec) return '/gestion-eau/elec';
+  if (flags.role_releveur_elec) return '/gestion-eau/elec/releves';
   return '/gestion-eau/client';
 }
 
@@ -336,8 +373,9 @@ export function buildInvitationMessage(
 ): string {
   const link = invitationDeepLink(inv);
   const greeting = inv.nom && inv.nom.trim() ? `Bonjour ${inv.nom.trim()},` : 'Bonjour,';
+  const appli = invitationElecSeule(inv) ? 'l’espace RTB Énergie de l’application 1sakely.org' : "l'application Gestion Eau AHUVI (BazarKELY)";
   return [
-    `${greeting} vous êtes invité(e) comme ${invitationRoleLabel(inv)} sur l'application Gestion Eau AHUVI (BazarKELY).`,
+    `${greeting} vous êtes invité(e) comme ${invitationRoleLabel(inv)} sur ${appli}.`,
     `1) Ouvrez ce lien : ${link}`,
     `2) Connectez-vous avec CE compte Google : ${inv.email ?? ''}`,
     `⚠️ Important : connectez-vous bien avec CETTE adresse Google, sinon votre accès ne pourra pas s'activer.`,
@@ -364,12 +402,14 @@ export function buildWhatsappUrl(
  * lien (à toucher) et on précise que n'importe quel compte Google convient — surtout
  * pas d'adresse imposée (l'octroi se fait par correspondance du jeton, pas de l'email).
  */
-export function buildWhatsappInviteMessage(inv: { nom?: string | null; token: string | null }): string {
+export function buildWhatsappInviteMessage(inv: { nom?: string | null; token: string | null } & RoleFlags): string {
   const link = inv.token ? buildInviteUrl(inv.token) : INVITATION_BASE_URL;
   const greeting = inv.nom && inv.nom.trim() ? `Bonjour ${inv.nom.trim()} 👋` : 'Bonjour 👋';
   return [
     greeting,
-    `Vous êtes invité(e) à rejoindre *Gestion Eau AHUVI*.`,
+    invitationElecSeule(inv)
+      ? `Vous êtes invité(e) à rejoindre l’espace *RTB Énergie* sur 1sakely.org.`
+      : `Vous êtes invité(e) à rejoindre *Gestion Eau AHUVI*.`,
     `👉 Touchez ce lien pour voir et confirmer : ${link}`,
     `Connectez-vous avec le compte Google de votre choix. C'est gratuit et l'app marche même hors connexion.`,
   ].join('\n');
@@ -380,7 +420,7 @@ export function buildWhatsappInviteMessage(inv: { nom?: string | null; token: st
  * Le message contient le lien `/i/<token>` ; « Renvoyer » réutilise le MÊME jeton.
  */
 export function buildWhatsappInviteUrl(
-  inv: { nom?: string | null; phone?: string | null; token: string | null }
+  inv: { nom?: string | null; phone?: string | null; token: string | null } & RoleFlags
 ): string {
   const digits = normalizeWhatsappNumber(inv.phone);
   const message = buildWhatsappInviteMessage(inv);

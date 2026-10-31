@@ -30,6 +30,9 @@ import type {
   AlerteLocal,
   AuditLocal,
   AnnonceLocal,
+  ElecReglagesLocal,
+  ElecClientLocal,
+  ElecCompteurLocal,
 } from '../types/gestionEau';
 
 /**
@@ -66,6 +69,9 @@ export class GestionEauDB extends Dexie {
   eau_alertes!: Table<AlerteLocal, string>;
   eau_audit!: Table<AuditLocal, string>;
   eau_annonces!: Table<AnnonceLocal, string>;
+  eau_elec_reglages!: Table<ElecReglagesLocal, string>;
+  eau_elec_clients!: Table<ElecClientLocal, string>;
+  eau_elec_compteurs!: Table<ElecCompteurLocal, string>;
   /** Tombstones de suppression (local-only, hors EAU_TABLES). */
   eau_deletions!: Table<EauDeletion, string>;
 
@@ -138,6 +144,14 @@ export class GestionEauDB extends Dexie {
     this.version(8).stores({
       eau_deletions: 'id, table',
     });
+
+    // v9 — Socle RTB Énergie (ELEC-CC-02) : réglages, clients et compteurs d'électricité.
+    // `eau_elec_releves_compteur` garde son schéma d'index. Additif : aucune perte.
+    this.version(9).stores({
+      eau_elec_reglages: 'id',
+      eau_elec_clients: 'id, code, statut',
+      eau_elec_compteurs: 'id, code, client_id, statut',
+    });
   }
 }
 
@@ -153,7 +167,6 @@ export const EAU_TABLES = [
   'eau_bilans',
   'eau_debit_tests',
   'eau_arrets_pompe',
-  'eau_elec_releves_compteur',
   'eau_elec_couts',
   'eau_factures',
   'eau_config',
@@ -165,6 +178,12 @@ export const EAU_TABLES = [
   'eau_alertes',
   'eau_audit',
   'eau_annonces',
+  // Socle RTB Énergie (ELEC-CC-02). Les clients avant les compteurs, les compteurs avant
+  // les relevés : l'ordre de push respecte les clés étrangères.
+  'eau_elec_reglages',
+  'eau_elec_clients',
+  'eau_elec_compteurs',
+  'eau_elec_releves_compteur',
 ] as const;
 
 export type EauTableName = (typeof EAU_TABLES)[number];

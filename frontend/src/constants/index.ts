@@ -163,7 +163,10 @@ export const GESTION_EAU_NAV_ITEMS = [
   { path: '/gestion-eau/client/bassin', icon: 'Waves', label: 'Le bassin', roles: ['client'] as const, domain: 'eau' as const },
   { path: '/gestion-eau/client/factures', icon: 'Receipt', label: 'Mes factures', roles: ['client'] as const, domain: 'eau' as const },
   // Domaine Électricité (ELEC-CC-01) : jamais visible d'un rôle eau seul.
-  { path: '/gestion-eau/elec', icon: 'Zap', label: 'Électricité', roles: ['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const }
+  // ELEC-CC-02 : un releveur électricité seul n'a que « Relevés » ; un client RTB seul, le tableau de bord d'attente.
+  { path: '/gestion-eau/elec', icon: 'LayoutDashboard', label: 'Tableau de bord', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec', 'client'] as const, domain: 'elec' as const },
+  { path: '/gestion-eau/elec/releves', icon: 'Gauge', label: 'Relevés', roles: ['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const },
+  { path: '/gestion-eau/elec/clients', icon: 'Users', label: 'Clients', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const }
 ] as const;
 
 // Navigation NAVY ay (livraison de petits colis à Nosy Be) — phase 0 : accueil seul.

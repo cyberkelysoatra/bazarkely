@@ -13,7 +13,7 @@ import React, { Suspense, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import EauRoleProtectedRoute from './EauRoleProtectedRoute';
 import { useGestionEau } from '../context/GestionEauContext';
-import { domaineDeRoute, EAU_HOME, ELEC_HOME } from '../utils/domaines';
+import { accueilElec, domaineDeRoute, EAU_HOME, ELEC_HOME } from '../utils/domaines';
 import AppVersionPage from '../../../pages/AppVersionPage';
 
 const EauDashboard = React.lazy(() => import('./EauDashboard'));
@@ -39,6 +39,10 @@ const EauAuditPage = React.lazy(() => import('./EauAuditPage'));
 const EauElecCoutsPage = React.lazy(() => import('./EauElecCoutsPage'));
 // ELEC-CC-01 : tableau de bord (d'attente) du domaine Électricité.
 const EauElecHomePage = React.lazy(() => import('./EauElecHomePage'));
+// ELEC-CC-02 : relevés, clients et compteurs, réglages de RTB Énergie.
+const EauElecRelevesPage = React.lazy(() => import('./elec/EauElecRelevesPage'));
+const EauElecClientsPage = React.lazy(() => import('./elec/EauElecClientsPage'));
+const EauElecReglagesPage = React.lazy(() => import('./elec/EauElecReglagesPage'));
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -59,15 +63,15 @@ const Loader = () => (
  */
 function EauDomaineGate({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { domaines, domaineActif, setDomaineActif, isLoading, rolesConfirmed, sessionStatus } = useGestionEau();
+  const { roles, domaines, domaineActif, setDomaineActif, isLoading, rolesConfirmed, sessionStatus } = useGestionEau();
   const ready = !isLoading && rolesConfirmed && sessionStatus === 'valid';
   const routeDom = domaineDeRoute(pathname);
   const isEntree = pathname.replace(/\/+$/, '') === EAU_HOME;
 
   let redirect: string | null = null;
-  if (ready && routeDom === 'eau' && !domaines.eau && domaines.elec) redirect = ELEC_HOME;
+  if (ready && routeDom === 'eau' && !domaines.eau && domaines.elec) redirect = accueilElec(roles);
   else if (ready && routeDom === 'elec' && !domaines.elec && domaines.eau) redirect = EAU_HOME;
-  else if (ready && isEntree && domaines.elec && domaineActif === 'elec') redirect = ELEC_HOME;
+  else if (ready && isEntree && domaines.elec && domaineActif === 'elec') redirect = accueilElec(roles);
 
   const domaineActifRef = useRef(domaineActif);
   domaineActifRef.current = domaineActif;
@@ -211,11 +215,37 @@ export default function GestionEauRoutes() {
         <Route
           path="elec"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec']}>
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'gestionElec', 'lectureElec', 'client']}>
               <EauElecHomePage />
             </EauRoleProtectedRoute>
           }
         />
+        {/* ELEC-CC-02 : relevés (seul écran du releveur électricité), clients et compteurs, réglages. */}
+        <Route
+          path="elec/releves"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec']}>
+              <EauElecRelevesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route
+          path="elec/clients"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'gestionElec', 'lectureElec']}>
+              <EauElecClientsPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route
+          path="elec/reglages"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'gestionElec', 'lectureElec']}>
+              <EauElecReglagesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        <Route path="elec/*" element={<Navigate to={ELEC_HOME} replace />} />
         <Route
           path="utilisateurs"
           element={

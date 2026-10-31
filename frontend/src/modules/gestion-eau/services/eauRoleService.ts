@@ -40,18 +40,30 @@ export interface RolesResolution {
 /** Rôles d'un utilisateur (admin/releveur depuis Dexie, client dérivé des comptes client). */
 export async function getRolesForUser(userId: string): Promise<EauRoles> {
   const row = (await eauDb.eau_roles.get(userId)) as RoleLocal | undefined;
-  // client : dérivé d'un compte client lié à ce user (inexploité en phase 1)
-  const clientCompte = await eauDb.eau_comptes_client.where('user_id').equals(userId).first();
+  // client : dérivé d'un compte client d'eau OU d'une fiche client électricité active (ELEC-CC-02).
+  const dom = await getClientDomaines(userId);
   return {
     admin: row?.admin ?? false,
     releveur: row?.releveur ?? false,
-    client: !!clientCompte,
+    client: dom.eau || dom.elec,
     promoteur: row?.promoteur ?? false,
     // Domaine Electricite (ELEC-CC-01). Vieux cache local sans ces colonnes = false.
     releveurElec: row?.releveur_elec ?? false,
     gestionElec: row?.gestion_elec ?? false,
     lectureElec: row?.lecture_elec ?? false,
   };
+}
+
+/**
+ * Domaines du compte en tant que CLIENT (lecture locale) : eau = compte client d'eau lié,
+ * elec = fiche client RTB Énergie active portant ce compte (ELEC-CC-02).
+ */
+export async function getClientDomaines(userId: string): Promise<{ eau: boolean; elec: boolean }> {
+  const clientCompte = await eauDb.eau_comptes_client.where('user_id').equals(userId).first();
+  const elec = (await eauDb.eau_elec_clients.toArray()).some(
+    (c) => c.user_id === userId && c.statut === 'actif'
+  );
+  return { eau: !!clientCompte, elec };
 }
 
 /** Y a-t-il au moins un admin connu localement ? */
@@ -133,6 +145,8 @@ export async function ensureRolesBootstrap(userId: string, online: boolean): Pro
     }
     // Comptes client : best-effort (n'affecte pas la confirmation de l'accès admin/releveur).
     await pullTable('eau_comptes_client');
+    // Fiches clients électricité (ELEC-CC-02) : un client RTB lit sa seule fiche (RLS).
+    await pullTable('eau_elec_clients');
 
     // 3. Dériver les rôles effectifs depuis Dexie (à jour si le pull a réussi).
     const roles = await getRolesForUser(userId);
@@ -145,8 +159,7 @@ export async function ensureRolesBootstrap(userId: string, online: boolean): Pro
   // d'attente plutôt qu'un rebond silencieux vers /dashboard.
   const roles = await getRolesForUser(userId);
   const roleRow = await eauDb.eau_roles.get(userId);
-  const clientCompte = await eauDb.eau_comptes_client.where('user_id').equals(userId).first();
-  return { roles, confirmed: !!roleRow || !!clientCompte };
+  return { roles, confirmed: !!roleRow || roles.client };
 }
 
 /** Liste tous les utilisateurs ayant un rôle (pour l'écran d'administration). */
