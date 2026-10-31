@@ -19,7 +19,7 @@ const A_VENIR = [
 ];
 
 export default function EauElecHomePage() {
-  const { roles, realRoles, isSimulating } = useGestionEau();
+  const { roles, realRoles, isSimulating, domaines } = useGestionEau();
   const isAdmin = roles.admin;
   const [nbElec, setNbElec] = useState<number | null>(null);
 
@@ -50,8 +50,11 @@ export default function EauElecHomePage() {
         quoi: (
           <>
             C’est l’espace de l’électricité fournie par RTB Énergie (centrale solaire du
-            domaine). Il est séparé de l’eau : on n’y voit jamais les compteurs ni les
-            factures d’eau.
+            domaine).
+            {/* Rappel de la séparation seulement pour qui a aussi l'eau (ELEC-CC-01). */}
+            {domaines.eau && (
+              <> Il est séparé de l’eau : on n’y voit jamais les compteurs ni les factures d’eau.</>
+            )}
           </>
         ),
         comment: (

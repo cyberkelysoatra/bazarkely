@@ -41,8 +41,8 @@ export const SIMULATABLE_ROLES: EauRole[] = [
 
 /** Options présentées dans le sélecteur (l'ordre = ordre d'affichage). */
 export const SIMULATION_ROLE_OPTIONS: SimulationRoleOption[] = [
-  { role: 'releveur', famille: 'eau', label: 'Releveur eau', icon: ClipboardList, available: true },
   { role: 'promoteur', famille: 'tous', label: 'Promoteur', icon: Eye, available: true },
+  { role: 'releveur', famille: 'eau', label: 'Releveur eau', icon: ClipboardList, available: true },
   // Phase 2 — vue « propriétaire » : choix d'une villa + re-filtrage des données à ses compteurs.
   { role: 'client', famille: 'eau', label: 'Propriétaire', icon: Home, available: true },
   // ELEC-CC-01 : rôles du domaine Électricité (RTB Énergie).
