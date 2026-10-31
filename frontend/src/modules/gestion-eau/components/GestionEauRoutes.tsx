@@ -9,7 +9,7 @@
  *  - Suivi (/suivi) regroupe Anomalies/Bilans (EauSuiviPage).
  * Les anciennes routes (saisie-bassin, saisie-compteur, anomalies) redirigent vers ces thèmes.
  */
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import EauRoleProtectedRoute from './EauRoleProtectedRoute';
 import { useGestionEau } from '../context/GestionEauContext';
@@ -52,7 +52,10 @@ const Loader = () => (
  *  - route eau, personne sans eau mais avec l'électricité → tableau de bord électricité ;
  *  - route électricité, personne sans électricité mais avec l'eau → tableau de bord eau ;
  *  - entrée du module (/gestion-eau) avec l'électricité mémorisée → électricité ;
- *  - toute autre route d'un domaine de la personne devient le domaine actif.
+ *  - toute autre route d'un domaine de la personne devient le domaine actif, mais
+ *    SEULEMENT quand l'adresse change : le sélecteur change d'abord le domaine puis
+ *    l'adresse (rendu intermédiaire « ancienne adresse + nouveau domaine »), qu'il ne
+ *    faut pas annuler.
  */
 function EauDomaineGate({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -66,11 +69,15 @@ function EauDomaineGate({ children }: { children: React.ReactNode }) {
   else if (ready && routeDom === 'elec' && !domaines.elec && domaines.eau) redirect = EAU_HOME;
   else if (ready && isEntree && domaines.elec && domaineActif === 'elec') redirect = ELEC_HOME;
 
-  const syncTo =
-    ready && !redirect && routeDom && domaines[routeDom] && routeDom !== domaineActif ? routeDom : null;
+  const domaineActifRef = useRef(domaineActif);
+  domaineActifRef.current = domaineActif;
+  const canSync = ready && !redirect && !!routeDom && domaines[routeDom];
   useEffect(() => {
-    if (syncTo) setDomaineActif(syncTo);
-  }, [syncTo, setDomaineActif]);
+    if (canSync && routeDom && routeDom !== domaineActifRef.current) setDomaineActif(routeDom);
+    // Déclenché par un changement d'adresse (ou la confirmation des rôles), jamais par
+    // un changement de domaine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, canSync]);
 
   if (redirect) return <Navigate to={redirect} replace />;
   return <>{children}</>;
