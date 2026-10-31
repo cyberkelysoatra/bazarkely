@@ -82,6 +82,12 @@ export default {
           800: '#2a3c26',
           900: '#22301f'
         },
+        // RTB Énergie : domaine Électricité du module gestion-eau UNIQUEMENT (ELEC-CC-01).
+        // Accent = `gold`, titres = `green`. L'eau garde la charte AHUVI.
+        rtb: {
+          green: '#3F5838',
+          gold: '#D3A246'
+        },
         // NAVY ay — charte du module navy-ay UNIQUEMENT : jaune ylang-ylang + anthracite.
         // Texte sur jaune = anthracite (jamais blanc). Interdit : bleu marine / nautique.
         navyay: {

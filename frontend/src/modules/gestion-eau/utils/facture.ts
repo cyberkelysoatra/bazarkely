@@ -78,6 +78,8 @@ export interface LigneElec {
 /**
  * Calcule la ligne ÉLECTRIQUE (kWh) d'un compteur sur la période [startMs, endMs].
  * Même logique exacte que `computeLigneFacture` (eau) mais en kWh × `prixKwh`.
+ * ELEC-CC-01 : n'est plus utilisée par la facture d'eau (désormais eau seule) ; gardée
+ * (pure, testée) pour la future facture RTB Énergie.
  * Retourne `null` (→ pas de ligne élec) si aucun relevé ≤ fin, ou si une rupture
  * d'index existe dans la période (conso non fiable). `indexDebut` vaut 0 si aucun
  * relevé n'existe avant le début (premier cycle).

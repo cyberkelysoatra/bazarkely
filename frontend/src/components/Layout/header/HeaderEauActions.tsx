@@ -21,7 +21,6 @@ import {
   ClipboardList,
   TrendingUp,
   FileText,
-  Zap,
   IdCard,
   LogOut,
   RefreshCw,
@@ -34,11 +33,15 @@ import { countUnread } from '../../../modules/gestion-eau/services/eauAlerteServ
 import { countDirty } from '../../../modules/gestion-eau/services/eauSync';
 import { APP_VERSION } from '../../../constants/appVersion';
 
+type MenuRole = 'admin' | 'releveur' | 'client' | 'promoteur';
+
 interface MenuLink {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles: Array<'admin' | 'releveur' | 'client' | 'promoteur'>;
+  roles: MenuRole[];
+  /** Domaine(s) où l'entrée apparaît (ELEC-CC-01) : seul le domaine actif est montré. */
+  domaines: Array<'eau' | 'elec'>;
   /** Clé de badge dynamique (ex. alertes non lues). */
   badge?: 'alertes';
 }
@@ -48,24 +51,27 @@ interface MenuLink {
 // d'écran masque ensuite les contrôles d'écriture) → on l'ajoute aux mêmes entrées.
 const SECONDARY_LINKS: MenuLink[] = [
   // Pilotage (Phase 4)
-  { label: 'Tendances', path: '/gestion-eau/tendances', icon: TrendingUp, roles: ['admin', 'releveur', 'promoteur'] },
-  { label: 'Alertes', path: '/gestion-eau/alertes', icon: Bell, roles: ['admin', 'promoteur'], badge: 'alertes' },
-  { label: 'Rapports', path: '/gestion-eau/rapports', icon: FileText, roles: ['admin', 'promoteur'] },
-  { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin', 'promoteur'] },
-  { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin', 'promoteur'] },
-  // Paramétrage
-  { label: 'Coûts électricité', path: '/gestion-eau/elec-couts', icon: Zap, roles: ['admin', 'releveur', 'promoteur'] },
-  { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin', 'promoteur'] },
-  { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin', 'promoteur'] },
-  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'] },
+  { label: 'Tendances', path: '/gestion-eau/tendances', icon: TrendingUp, roles: ['admin', 'releveur', 'promoteur'], domaines: ['eau'] },
+  { label: 'Alertes', path: '/gestion-eau/alertes', icon: Bell, roles: ['admin', 'promoteur'], badge: 'alertes', domaines: ['eau'] },
+  { label: 'Rapports', path: '/gestion-eau/rapports', icon: FileText, roles: ['admin', 'promoteur'], domaines: ['eau'] },
+  // Annonces : l'admin rédige pour l'un ou l'autre domaine (champ « domaine »).
+  { label: 'Annonces', path: '/gestion-eau/annonces', icon: Megaphone, roles: ['admin', 'promoteur'], domaines: ['eau', 'elec'] },
+  { label: 'Audit / Journaux', path: '/gestion-eau/audit', icon: ClipboardList, roles: ['admin', 'promoteur'], domaines: ['eau'] },
+  // Paramétrage. « Coûts électricité » (prix variable, abandonné) n'est plus au menu
+  // (ELEC-CC-01) : la route reste, réservée à l'admin, pour l'historique.
+  { label: 'Configuration', path: '/gestion-eau/config', icon: Settings, roles: ['admin', 'promoteur'], domaines: ['eau'] },
+  { label: 'Utilisateurs & rôles', path: '/gestion-eau/utilisateurs', icon: Users, roles: ['admin', 'promoteur'], domaines: ['eau', 'elec'] },
+  { label: "Demandes d'accès", path: '/gestion-eau/demandes', icon: Inbox, roles: ['admin', 'promoteur'], domaines: ['eau'] },
   // Client : sa fiche / son QR (rattaché à l'espace client).
-  { label: 'Ma fiche / Mon QR', path: '/gestion-eau/client', icon: IdCard, roles: ['client'] },
+  { label: 'Ma fiche / Mon QR', path: '/gestion-eau/client', icon: IdCard, roles: ['client'], domaines: ['eau'] },
 ];
 
 export default function HeaderEauActions() {
   const navigate = useNavigate();
   const { logout, user } = useAppStore();
-  const { roles, realRoles } = useGestionEau();
+  const { roles, realRoles, domaines, domaineActif } = useGestionEau();
+  // Alertes eau (badge, compteur) : jamais montrées hors du domaine eau actif.
+  const alertesEauVisibles = domaines.eau && domaineActif === 'eau' && (roles?.admin || roles?.promoteur);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [dirty, setDirty] = useState(0);
@@ -86,7 +92,7 @@ export default function HeaderEauActions() {
     (async () => {
       try {
         const [u, d] = await Promise.all([
-          roles?.admin || roles?.promoteur ? countUnread() : Promise.resolve(0),
+          alertesEauVisibles ? countUnread() : Promise.resolve(0),
           countDirty(),
         ]);
         if (alive) {
@@ -100,24 +106,24 @@ export default function HeaderEauActions() {
     return () => {
       alive = false;
     };
-  }, [open, roles?.admin, roles?.promoteur]);
+  }, [open, alertesEauVisibles]);
 
-  const has = (r: Array<'admin' | 'releveur' | 'client' | 'promoteur'>) => r.some((x) => roles?.[x]);
-  const links = SECONDARY_LINKS.filter((l) => has(l.roles));
+  const has = (r: MenuRole[]) => r.some((x) => roles?.[x]);
+  const links = SECONDARY_LINKS.filter((l) => has(l.roles) && l.domaines.includes(domaineActif));
 
   const go = (path: string) => {
     setOpen(false);
     navigate(path);
   };
 
-  const badgeCount = unread + dirty;
+  const badgeCount = (alertesEauVisibles ? unread : 0) + dirty;
 
   return (
     <div className="relative ml-auto" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/25 shadow-lg hover:bg-white/25 transition-all duration-200"
-        aria-label="Menu Gestion Eau"
+        aria-label={domaineActif === 'elec' ? 'Menu Électricité' : 'Menu Gestion Eau'}
       >
         <span className="relative w-9 h-9 bg-white/30 rounded-full flex items-center justify-center border border-white/40">
           <User className="w-5 h-5 text-white" />
@@ -164,7 +170,7 @@ export default function HeaderEauActions() {
             <div className="py-1">
               {links.map((l) => {
                 const Icon = l.icon;
-                const showBadge = l.badge === 'alertes' && unread > 0;
+                const showBadge = l.badge === 'alertes' && alertesEauVisibles && unread > 0;
                 return (
                   <button
                     key={l.path}

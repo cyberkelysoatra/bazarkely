@@ -150,17 +150,20 @@ export const CONSTRUCTION_NAV_ITEMS = [
 
 // Navigation Gestion Eau (AHUVI) — boutons THÉMATIQUES (≤ 6), filtrés par rôle.
 // Chaque thème regroupe ses sous-écrans via des onglets internes (Relevés = Bassin/Compteur…).
-// `roles` = rôles eau (cumulables) qui voient l'entrée. Le reste (Config, Utilisateurs,
+// `roles` = rôles eau (cumulables) qui voient l'entrée ; `domain` = domaine (Eau / Électricité)
+// où l'entrée apparaît (ELEC-CC-01, filtrage par domaine actif). Le reste (Config, Utilisateurs,
 // Demandes, Alertes, Annonces, Audit) vit dans le menu en haut à droite (HeaderEauActions).
 export const GESTION_EAU_NAV_ITEMS = [
-  { path: '/gestion-eau', icon: 'LayoutDashboard', label: 'Tableau de bord', roles: ['admin', 'releveur', 'promoteur'] as const },
-  { path: '/gestion-eau/releves', icon: 'Gauge', label: 'Relevés', roles: ['admin', 'releveur', 'promoteur'] as const },
-  { path: '/gestion-eau/compteurs', icon: 'Network', label: 'Compteurs', roles: ['admin', 'promoteur'] as const },
-  { path: '/gestion-eau/suivi', icon: 'TrendingUp', label: 'Suivi', roles: ['admin', 'releveur', 'promoteur'] as const },
-  { path: '/gestion-eau/facturation', icon: 'FileText', label: 'Facturation', roles: ['admin', 'promoteur'] as const },
-  { path: '/gestion-eau/client', icon: 'Droplet', label: 'Ma conso', roles: ['client'] as const },
-  { path: '/gestion-eau/client/bassin', icon: 'Waves', label: 'Le bassin', roles: ['client'] as const },
-  { path: '/gestion-eau/client/factures', icon: 'Receipt', label: 'Mes factures', roles: ['client'] as const }
+  { path: '/gestion-eau', icon: 'LayoutDashboard', label: 'Tableau de bord', roles: ['admin', 'releveur', 'promoteur'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/releves', icon: 'Gauge', label: 'Relevés', roles: ['admin', 'releveur', 'promoteur'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/compteurs', icon: 'Network', label: 'Compteurs', roles: ['admin', 'promoteur'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/suivi', icon: 'TrendingUp', label: 'Suivi', roles: ['admin', 'releveur', 'promoteur'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/facturation', icon: 'FileText', label: 'Facturation', roles: ['admin', 'promoteur'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/client', icon: 'Droplet', label: 'Ma conso', roles: ['client'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/client/bassin', icon: 'Waves', label: 'Le bassin', roles: ['client'] as const, domain: 'eau' as const },
+  { path: '/gestion-eau/client/factures', icon: 'Receipt', label: 'Mes factures', roles: ['client'] as const, domain: 'eau' as const },
+  // Domaine Électricité (ELEC-CC-01) : jamais visible d'un rôle eau seul.
+  { path: '/gestion-eau/elec', icon: 'Zap', label: 'Électricité', roles: ['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const }
 ] as const;
 
 // Navigation NAVY ay (livraison de petits colis à Nosy Be) — phase 0 : accueil seul.

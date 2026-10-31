@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { Megaphone, X, ChevronRight } from 'lucide-react';
 import { listActiveAnnonces } from '../../../modules/gestion-eau/services/eauAnnonceService';
 import type { AnnonceLocal } from '../../../modules/gestion-eau/types/gestionEau';
+import { useGestionEau } from '../../../modules/gestion-eau/context';
 
 const TYPE_EMOJI: Record<string, string> = {
   promo: '🏷️',
@@ -19,6 +20,9 @@ const TYPE_EMOJI: Record<string, string> = {
 const DISMISS_KEY = 'eau_annonces_banner_dismissed';
 
 export default function HeaderEauAnnonces() {
+  // Seules les annonces du domaine actif (ELEC-CC-01) : le domaine actif est toujours
+  // un domaine de la personne, donc jamais d'annonce d'un domaine qu'elle n'a pas.
+  const { domaineActif, rolesConfirmed } = useGestionEau();
   const [annonces, setAnnonces] = useState<AnnonceLocal[]>([]);
   const [idx, setIdx] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -30,14 +34,23 @@ export default function HeaderEauAnnonces() {
       /* ignore */
     }
     let alive = true;
+    // Rôles non confirmés (démarrage à froid) : rien d'affiché tant que le domaine
+    // de la personne n'est pas sûr.
+    if (!rolesConfirmed) {
+      setAnnonces([]);
+      return;
+    }
     (async () => {
-      const list = await listActiveAnnonces();
-      if (alive) setAnnonces(list);
+      const list = await listActiveAnnonces(new Date(), domaineActif);
+      if (alive) {
+        setAnnonces(list);
+        setIdx(0);
+      }
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [domaineActif, rolesConfirmed]);
 
   // Rotation douce entre les annonces actives.
   useEffect(() => {

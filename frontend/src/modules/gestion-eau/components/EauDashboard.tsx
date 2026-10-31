@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, Droplet, GlassWater, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, Zap, CalendarRange, Check,
+  TrendingUp, Droplet, GlassWater, ArrowDownToLine, Gauge, SearchX, Waves, Hourglass, ScrollText, CalendarRange, Check,
 } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauStatCard, EauCard, EauChartCard, EAU_CHART } from './EauUi';
@@ -11,8 +11,7 @@ import EauConsoFlipCard, { type ConsoFace } from './EauConsoFlipCard';
 import { AIDE } from './eauAideTextes';
 import { getDashboardData, type DashboardData, type BaseHoraire } from '../services/eauBilanService';
 import { getTendances, type SeriePoint } from '../services/eauTendanceService';
-import { getElecKpiData, type ElecKpiData } from '../services/eauElecReleveService';
-import { fmtM3, fmtPct, fmtKwh, fmtM3h, fmtKw, fmtAutonomie } from '../utils/format';
+import { fmtM3, fmtPct, fmtM3h, fmtAutonomie } from '../utils/format';
 import { fmtDate } from '../utils/format';
 
 /**
@@ -84,13 +83,10 @@ export default function EauDashboard() {
   // Onglet « Source » des Relevés en simple consultation (sans ouvrir de tiroir de saisie).
   const goSource = () => navigate('/gestion-eau/releves?tab=source');
   const goSaisieCompteur = () => navigate('/gestion-eau/releves?tab=compteur');
-  // Sous-onglet « Électricité » des Relevés (saisie d'index kWh).
-  const goSaisieElec = () => navigate('/gestion-eau/releves?tab=elec');
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [conso, setConso] = useState<SeriePoint[]>([]);
   const [niveau, setNiveau] = useState<SeriePoint[]>([]);
-  const [elecKpi, setElecKpi] = useState<ElecKpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Base horaire des débits (m³/h) — choix mémorisé, défaut « depuis minuit ».
@@ -135,16 +131,12 @@ export default function EauDashboard() {
     let alive = true;
     (async () => {
       try {
-        const [d, t, e] = await Promise.all([
-          getDashboardData(),
-          getTendances({ fenetreJours: 30 }),
-          getElecKpiData(),
-        ]);
+        // ELEC-CC-01 : plus d'indicateur électricité sur le tableau de bord eau.
+        const [d, t] = await Promise.all([getDashboardData(), getTendances({ fenetreJours: 30 })]);
         if (alive) {
           setData(d);
           setConso(t.consoParJour);
           setNiveau(t.niveauBassin);
-          setElecKpi(e);
           // Bascule auto vers « Sur la période » si la fenêtre « Depuis minuit » est vide
           // (≥1 carte fenêtre nulle/0), sauf si l'utilisateur a déjà choisi une base à la main
           // pendant cette visite. Évaluée une seule fois ici (chargement des données), aucune
@@ -169,23 +161,6 @@ export default function EauDashboard() {
       alive = false;
     };
   }, []);
-
-  /** Texte d'aide sous la valeur de la carte KPI électricité selon l'état des relevés. */
-  const elecHint = (): React.ReactNode => {
-    if (!elecKpi || elecKpi.totalReleves === 0)
-      return 'Aucun relevé électrique — appuyez pour saisir un index';
-    if (elecKpi.consoRecenteKwh == null)
-      return "En attente d'un 2ᵉ relevé pour calculer la consommation";
-    return (
-      <>
-        Dernière conso · {fmtKwh(elecKpi.consoRecenteKwh)} · {elecKpi.nbCompteursReleves} compteur
-        {elecKpi.nbCompteursReleves > 1 ? 's' : ''}
-        {elecKpi.dernierReleveDate && (
-          <span className="text-gray-400"> · relevé du {fmtDate(elecKpi.dernierReleveDate)}</span>
-        )}
-      </>
-    );
-  };
 
   // ── Dérivés « base horaire » : fenêtre sélectionnée, débit moyen m³/h et libellés ──
   const flux = data?.flux[base];
@@ -423,17 +398,6 @@ export default function EauDashboard() {
               />
             </div>
           </div>
-
-          {/* KPI électricité : conso kWh récente (somme des dernières consos par compteur).
-              Carte cliquable → sous-onglet « Électricité » des Relevés (navigation interne). */}
-          <EauStatCard
-            icon={Zap}
-            tone="gold"
-            label="Conso électrique"
-            value={elecKpi?.consoRecenteKw != null ? fmtKw(elecKpi.consoRecenteKw) : '—'}
-            hint={elecHint()}
-            onClick={goSaisieElec}
-          />
 
           <div>
             <EauCard

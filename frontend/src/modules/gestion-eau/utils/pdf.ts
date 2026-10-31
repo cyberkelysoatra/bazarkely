@@ -278,6 +278,9 @@ function drawTable(
  * du modèle SCI RÊVE D'OR / AHUVI, modernisée : logo, 2 tableaux (élec + eau),
  * encadré de transparence A/B/C/D du coût élec, grand total + montant en toutes lettres.
  * Dégradation propre : facture eau-seule ou élec-seule → un seul tableau.
+ * ELEC-CC-01 : toute facture émise depuis est une facture d'EAU seule (colonnes élec
+ * nulles) → aucun tableau, encadré ni mention d'électricité. Le volet électrique ne
+ * s'affiche plus que pour une facture combinée archivée (rétrocompatibilité).
  */
 export async function buildFactureCombineePdf(ctx: FacturePdfContext): Promise<jsPDF> {
   const { facture, config, compteur } = ctx;

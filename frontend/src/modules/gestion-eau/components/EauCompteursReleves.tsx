@@ -9,7 +9,7 @@
  * Source du tri/progression : getTourneeData() (zone/ordre/nom + relevé du jour). Les
  * relevés (eau & élec) sont chargés en 2 lectures Dexie groupées (offline-first).
  */
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import {
@@ -20,7 +20,7 @@ import EauTiroirSaisie, { type ReleveFacet } from './EauTiroirSaisie';
 import { getTourneeData, type TourneeItem } from '../services/eauTourneeService';
 import { eauIsOnline } from '../utils/online';
 import { relevesByCompteur, refreshReleves, updateReleveCompteur } from '../services/eauReleveService';
-import { relevesElecByCompteur, refreshElecReleves, updateReleveElec } from '../services/eauElecReleveService';
+import { updateReleveElec } from '../services/eauElecReleveService';
 import { refreshCompteurs } from '../services/eauCompteurService';
 import { useGestionEau } from '../context';
 import { fmtM3, fmtKwh, fmtDate } from '../utils/format';
@@ -37,6 +37,9 @@ type PeriodeKey = (typeof PERIODES)[number]['key'];
 
 /** Index relevé (eau ou élec) générique — assez pour les calculs de conso/date. */
 type AnyReleve = Pick<ReleveCompteurLocal | ElecReleveLocal, 'index' | 'timestamp' | 'rupture_index'>;
+
+/** ELEC-CC-01 : aucun relevé électrique dans les relevés eau (carte toujours « eau »). */
+const NO_ELEC: ReadonlyMap<string, ElecReleveLocal[]> = new Map();
 
 interface ReleveCard {
   item: TourneeItem;
@@ -98,7 +101,9 @@ export default function EauCompteursReleves({
   const { isReadOnly, roles } = useGestionEau();
   const [items, setItems] = useState<TourneeItem[]>([]);
   const [eauMap, setEauMap] = useState<Map<string, ReleveCompteurLocal[]>>(new Map());
-  const [elecMap, setElecMap] = useState<Map<string, ElecReleveLocal[]>>(new Map());
+  // ELEC-CC-01 : l'électricité a quitté les relevés eau (domaine séparé). Aucun relevé
+  // électrique n'est plus chargé ici : toutes les cartes sont de nature « eau ».
+  const elecMap = NO_ELEC;
   const [faits, setFaits] = useState(0);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
@@ -119,16 +124,11 @@ export default function EauCompteursReleves({
   const cardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const load = async () => {
-    const [tournee, eMap, lMap] = await Promise.all([
-      getTourneeData(),
-      relevesByCompteur(),
-      relevesElecByCompteur(),
-    ]);
+    const [tournee, eMap] = await Promise.all([getTourneeData(), relevesByCompteur()]);
     setItems(tournee.items);
     setFaits(tournee.faits);
     setTotal(tournee.total);
     setEauMap(eMap);
-    setElecMap(lMap);
   };
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export default function EauCompteursReleves({
       if (alive) setLoading(false);
       // Rafraîchit en arrière-plan si en ligne (non bloquant), puis recharge.
       if (eauIsOnline()) {
-        await Promise.allSettled([refreshCompteurs(true), refreshReleves(true), refreshElecReleves(true)]);
+        await Promise.allSettled([refreshCompteurs(true), refreshReleves(true)]);
         if (alive) await load();
       }
     })();
@@ -201,25 +201,12 @@ export default function EauCompteursReleves({
 
   // Préselection : dès que les cartes sont chargées, ouvre la saisie du compteur ciblé.
   //  - `?c=<id>` (scan)   → ce compteur, nature « de tête ».
-  //  - `?tab=elec`        → compteur au relevé élec le plus récent (sinon 1ʳᵉ carte), nature « Élec ».
+  //  (`?tab=elec` ne cible plus ces relevés : ELEC-CC-01, domaine Électricité séparé.)
   useEffect(() => {
     if (loading || (!preselect && !preselectFacet)) return;
 
-    let targetId: string | null =
+    const targetId: string | null =
       preselect && cards.some((c) => c.item.compteur.id === preselect) ? preselect : null;
-
-    if (!targetId && preselectFacet === 'elec') {
-      let bestMs = -Infinity;
-      for (const [id, list] of elecMap) {
-        if (list.length === 0 || !cards.some((c) => c.item.compteur.id === id)) continue;
-        const ms = new Date(list[list.length - 1].timestamp).getTime();
-        if (ms > bestMs) {
-          bestMs = ms;
-          targetId = id;
-        }
-      }
-      if (!targetId) targetId = visibleCards[0]?.item.compteur.id ?? null;
-    }
 
     if (targetId) {
       // L'effet de scroll sur [openKey] alignera la carte sous le Header (cohérent

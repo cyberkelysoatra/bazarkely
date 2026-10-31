@@ -10,7 +10,7 @@
  * titre et le sous-titre devient cliquable ; tous deux déplient/replient le panneau d'aide
  * (« À quoi ça sert » / « Comment s'en servir »), mémorisé par écran.
  */
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { AideToggleButton, AidePanel, useAideState, type AideContenu } from './EauAide';
 
 export default function EauPageShell({
@@ -18,9 +18,12 @@ export default function EauPageShell({
   subtitle,
   actions,
   aide,
+  tone = 'eau',
   children,
 }: {
   title: string;
+  /** Charte du titre : AHUVI (eau, défaut) ou RTB Énergie (domaine Électricité, ELEC-CC-01). */
+  tone?: 'eau' | 'elec';
   subtitle?: string;
   actions?: ReactNode;
   aide?: AideContenu;
@@ -35,7 +38,11 @@ export default function EauPageShell({
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg font-semibold text-ahuvi-forest font-ahuvi-body">{title}</h2>
+            <h2
+              className={`text-lg font-semibold font-ahuvi-body ${tone === 'elec' ? 'text-rtb-green' : 'text-ahuvi-forest'}`}
+            >
+              {title}
+            </h2>
             {aide && (
               <AideToggleButton open={aideState.open} onClick={aideState.toggle} controls={panelId!} />
             )}

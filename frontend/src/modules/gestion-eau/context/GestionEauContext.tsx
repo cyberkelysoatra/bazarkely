@@ -3,7 +3,7 @@
  * Modèle calqué sur ConstructionContext, mais offline-first (Dexie + getSession,
  * jamais getUser()). Applique le bootstrap « premier admin = propriétaire ».
  */
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../../../stores/appStore';
@@ -18,7 +18,13 @@ import {
   claimPendingTokenInvitation,
   invitationTargetPath,
 } from '../services/eauInvitationService';
-import type { EauRole, EauRoles, EauSimulatedClient } from '../types/gestionEau';
+import type { EauDomaine, EauRole, EauRoles, EauSimulatedClient } from '../types/gestionEau';
+import {
+  domainesPourRoles,
+  domaineStorageKey,
+  resolveDomaineActif,
+  type EauDomaines,
+} from '../utils/domaines';
 import { SIMULATABLE_ROLES } from '../constants/simulationRoles';
 
 /**
@@ -63,8 +69,14 @@ interface GestionEauContextType {
   setSimulation: (role: EauRole, client?: EauSimulatedClient | null) => void;
   /** Sortir de la simulation et revenir à l'app admin réelle. */
   clearSimulation: () => void;
-  /** Accès au module = au moins un rôle (admin OU releveur OU client OU promoteur). */
+  /** Accès au module = au moins un rôle (eau OU électricité OU client). */
   hasEauAccess: boolean;
+  /** Domaines accessibles (ELEC-CC-01), calculés sur les rôles EFFECTIFS. */
+  domaines: EauDomaines;
+  /** Domaine actif (mémorisé par utilisateur ; forcé si un seul domaine). */
+  domaineActif: EauDomaine;
+  /** Change de domaine (sans effet si la personne n'a pas ce domaine). */
+  setDomaineActif: (d: EauDomaine) => void;
   /**
    * Lecture seule (Phase 2 — Promoteur) : un promoteur « pur » (sans admin ni releveur)
    * voit tous les écrans mais ne peut RIEN écrire, sauf les seuils d'alerte (via RPC).
@@ -90,7 +102,15 @@ interface GestionEauContextType {
   reauth: () => Promise<void>;
 }
 
-const EMPTY_ROLES: EauRoles = { admin: false, releveur: false, client: false, promoteur: false };
+const EMPTY_ROLES: EauRoles = {
+  admin: false,
+  releveur: false,
+  client: false,
+  promoteur: false,
+  releveurElec: false,
+  gestionElec: false,
+  lectureElec: false,
+};
 
 // Persistance de la simulation de rôle (100 % frontend). Réservée à l'admin :
 // restaurée seulement après confirmation des rôles ET si l'utilisateur est admin,
@@ -139,6 +159,9 @@ function computeEffectiveRoles(real: EauRoles, sim: EauRole | null): EauRoles {
       releveur: sim === 'releveur',
       client: sim === 'client',
       promoteur: sim === 'promoteur',
+      releveurElec: sim === 'releveurElec',
+      gestionElec: sim === 'gestionElec',
+      lectureElec: sim === 'lectureElec',
     };
   }
   return real;
@@ -184,6 +207,8 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   // Simulation de rôle (admin uniquement, 100 % frontend). null = pas de simulation.
   const [simulatedRole, setSimulatedRoleState] = useState<EauRole | null>(null);
   const [simulatedClient, setSimulatedClient] = useState<EauSimulatedClient | null>(null);
+  // Domaine choisi (ELEC-CC-01), mémorisé par utilisateur : `eau_domaine_<userId>`.
+  const [storedDomaine, setStoredDomaine] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<EauSessionStatus>('checking');
@@ -439,6 +464,29 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     [realRoles.admin]
   );
 
+  // Relecture du domaine mémorisé dès que l'utilisateur est connu.
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      setStoredDomaine(localStorage.getItem(domaineStorageKey(userId)));
+    } catch {
+      /* localStorage indisponible */
+    }
+  }, [userId]);
+
+  const setDomaineActif = useCallback(
+    (d: EauDomaine) => {
+      setStoredDomaine(d);
+      if (!userId) return;
+      try {
+        localStorage.setItem(domaineStorageKey(userId), d);
+      } catch {
+        /* localStorage indisponible : le choix reste en mémoire */
+      }
+    },
+    [userId]
+  );
+
   const clearSimulation = useCallback(() => {
     setSimulatedRoleState(null);
     setSimulatedClient(null);
@@ -454,10 +502,22 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   const roles = computeEffectiveRoles(realRoles, simulatedRole);
   const isSimulating = !!simulatedRole && realRoles.admin;
 
-  const hasEauAccess = roles.admin || roles.releveur || roles.client || roles.promoteur;
+  const hasEauAccess =
+    roles.admin ||
+    roles.releveur ||
+    roles.client ||
+    roles.promoteur ||
+    roles.releveurElec ||
+    roles.gestionElec ||
+    roles.lectureElec;
   // Promoteur « pur » = lecture seule. Un admin/releveur (même cumulé promoteur) écrit.
   // Calculé sur les rôles EFFECTIFS → en simulation promoteur, l'admin passe en lecture seule.
   const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
+
+  // Domaines (ELEC-CC-01) sur les rôles EFFECTIFS : la simulation applique les domaines
+  // comme pour un vrai compte. Phase 0 : un client n'a que des compteurs d'eau.
+  const domaines = domainesPourRoles(roles);
+  const domaineActif = resolveDomaineActif(domaines, storedDomaine);
 
   // Périmètre de données de la simulation « Propriétaire » : compteurs de la villa simulée.
   // Non-null uniquement quand un admin incarne le rôle `client` avec une villa choisie.
@@ -479,6 +539,9 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         setSimulation,
         clearSimulation,
         hasEauAccess,
+        domaines,
+        domaineActif,
+        setDomaineActif,
         isReadOnly,
         isLoading,
         error,

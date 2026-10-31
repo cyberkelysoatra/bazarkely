@@ -30,6 +30,7 @@ import { useGestionEau } from '../context/GestionEauContext';
 import { listComptesClient } from '../services/eauCompteClientService';
 import { listCompteurs } from '../services/eauCompteurService';
 import { SIMULATION_ROLE_OPTIONS } from '../constants/simulationRoles';
+import { ELEC_HOME } from '../utils/domaines';
 import {
   useAideState,
   AideToggleButton,
@@ -58,10 +59,16 @@ interface RoleChoice {
 // rôles simulables restent la SOURCE UNIQUE (`SIMULATION_ROLE_OPTIONS`).
 const ROLE_HINTS: Record<DraftKey, string> = {
   admin: 'Ta vue normale, avec tous tes droits.',
-  releveur: 'Comme la personne qui relève les compteurs.',
+  releveur: 'Comme la personne qui relève les compteurs d’eau.',
   promoteur: 'Vue de suivi : lecture seule (seuls les seuils sont modifiables).',
   client: 'Vue d’un propriétaire : uniquement les compteurs de sa villa.',
+  releveurElec: 'Comme la personne qui relève les compteurs d’électricité.',
+  gestionElec: 'Comme la gérance de RTB Énergie : factures d’électricité.',
+  lectureElec: 'Consultation du tableau de bord électricité, sans rien modifier.',
 };
+
+/** Famille d'un choix (titres « Eau » / « Électricité » dans la liste). */
+const FAMILLE_TITRE: Record<string, string> = { eau: 'Eau', elec: 'Électricité' };
 
 export default function EauSimulationPage() {
   const navigate = useNavigate();
@@ -158,8 +165,10 @@ export default function EauSimulationPage() {
     } else {
       setSimulation(draft);
     }
-    // Le dashboard : les gardes/rôles effectifs font le reste (ex. Propriétaire → /client).
-    navigate('/gestion-eau');
+    // Le dashboard du domaine : les gardes/rôles effectifs font le reste (ex. Propriétaire
+    // → /client ; un rôle électricité → tableau de bord électricité).
+    const famille = SIMULATION_ROLE_OPTIONS.find((o) => o.role === draft)?.famille;
+    navigate(famille === 'elec' ? ELEC_HOME : '/gestion-eau');
   };
 
   // ── Garde : ADMIN RÉEL uniquement (pas les rôles effectifs) ──
@@ -199,7 +208,7 @@ export default function EauSimulationPage() {
           <>
             Tu regardes l’application comme si tu étais ce rôle : mêmes écrans, même menu,
             mêmes permissions que lui. Pratique pour vérifier ce que voit un releveur, un
-            promoteur ou un propriétaire.
+            promoteur, un propriétaire ou un rôle de l’électricité.
           </>
         }
         comment={
@@ -215,12 +224,22 @@ export default function EauSimulationPage() {
 
       {/* Choix du rôle — cartes cliquables aérées. */}
       <div className="space-y-2">
-        {roleChoices.map((choice) => {
+        {roleChoices.map((choice, i) => {
           const Icon = choice.icon;
           const selected = draft === choice.key;
+          // Titre de famille avant le premier rôle de chaque domaine (Eau / Électricité).
+          const famille = SIMULATION_ROLE_OPTIONS.find((o) => o.role === choice.key)?.famille;
+          const prevFamille =
+            i > 0 ? SIMULATION_ROLE_OPTIONS.find((o) => o.role === roleChoices[i - 1].key)?.famille : undefined;
+          const titre = famille && famille !== 'tous' && famille !== prevFamille ? FAMILLE_TITRE[famille] : null;
           return (
+            <div key={choice.key}>
+            {titre && (
+              <h3 className="mt-4 mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-ahuvi-olive font-ahuvi-body">
+                {titre}
+              </h3>
+            )}
             <EauCard
-              key={choice.key}
               onClick={() => {
                 setDraft(choice.key);
                 // Quitter Propriétaire réinitialise la recherche (la villa reste mémorisée).
@@ -259,6 +278,7 @@ export default function EauSimulationPage() {
                 {selected && <Check className="w-5 h-5 text-ahuvi-gold-700 flex-shrink-0" aria-hidden="true" />}
               </div>
             </EauCard>
+            </div>
           );
         })}
       </div>

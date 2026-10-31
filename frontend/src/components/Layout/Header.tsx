@@ -1,5 +1,5 @@
 import { useAppStore } from '../../stores/appStore';
-import { User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store, Mic } from 'lucide-react';
+import { User, Settings, LogOut, Wifi, WifiOff, Shield, Download, Trash2, ChevronRight, Target, Brain, Lightbulb, BookOpen, Sparkles, Building2, RefreshCw, Home, Wallet, ArrowUpDown, PieChart, Users, LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, VenetianMask, Store, Mic, Zap } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
@@ -12,6 +12,8 @@ import NavyUserMenu from '../../modules/navy-ay/components/NavyUserMenu';
 import { NavyAppUpdateDot } from '../../modules/navy-ay/components/app/NavyAppUpdateUi';
 import HeaderEauActions from './header/HeaderEauActions';
 import HeaderEauAnnonces from './header/HeaderEauAnnonces';
+import HeaderEauDomaineSwitch from './header/HeaderEauDomaineSwitch';
+import { filterEauNavByRoles } from '../../modules/gestion-eau/components/eauNav';
 import budgetService from '../../services/budgetService';
 import adminService from '../../services/adminService';
 import usePWAInstall from '../../hooks/usePWAInstall';
@@ -76,6 +78,8 @@ const Header = () => {
   // Rôles eau (cumulables) pour filtrer la nav desktop du module. useContext direct = sûr.
   const eauContextValue = useContext(GestionEauContext);
   const eauRoles = eauContextValue?.roles ?? null;
+  // Domaine actif (ELEC-CC-01) : en Électricité, l'en-tête passe aux couleurs RTB Énergie.
+  const isElecDomain = isEauModule && eauContextValue?.domaineActif === 'elec';
   // Simulation de rôle (admin) : marque INTÉGRÉE au header (dans la barre de titre,
   // jamais dans le corps de page). Cliquable → sortie immédiate de la simulation.
   const eauIsSimulating = eauContextValue?.isSimulating ?? false;
@@ -93,11 +97,11 @@ const Header = () => {
 
   // Icônes de la nav desktop eau (mêmes clés que GESTION_EAU_NAV_ITEMS).
   const eauIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves,
+    LayoutDashboard, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, Zap,
   };
-  const eauNavItems = GESTION_EAU_NAV_ITEMS.filter(
-    (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
-  ).slice(0, 6);
+  const eauNavItems = eauRoles
+    ? filterEauNavByRoles(eauRoles, GESTION_EAU_NAV_ITEMS, eauContextValue?.domaineActif ?? 'eau')
+    : [];
 
   
   // Get Construction context - use useConstruction() hook (same pattern as PurchaseOrderForm.tsx)
@@ -648,7 +652,9 @@ const Header = () => {
   return (
     <header
       className={
-        isEauModule
+        isElecDomain
+          ? 'backdrop-blur-md bg-gradient-to-r from-rtb-green/95 to-rtb-green/85 border-b border-rtb-gold/50 shadow-lg shadow-rtb-green/20 sticky top-0 z-50 overscroll-none'
+          : isEauModule
           ? 'backdrop-blur-md bg-gradient-to-r from-ahuvi-forest/95 to-ahuvi-olive/90 border-b border-ahuvi-gold/40 shadow-lg shadow-ahuvi-forest/20 sticky top-0 z-50 overscroll-none'
           : isNavyModule
           ? 'backdrop-blur-md bg-white/95 border-b border-navyay-yellow shadow-sm shadow-navyay-charcoal/10 sticky top-0 z-50 overscroll-none'
@@ -691,7 +697,14 @@ const Header = () => {
               aria-label="Basculer entre les modules"
               title="Cliquez pour changer de module"
             >
-              {isEauModule ? (
+              {isElecDomain ? (
+                <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg relative z-10 bg-white/15 border border-rtb-gold/60 flex items-center justify-center">
+                  {logoRipple && (
+                    <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping z-10" />
+                  )}
+                  <Zap className="w-7 h-7 text-rtb-gold" aria-hidden="true" />
+                </div>
+              ) : isEauModule ? (
                 <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg relative z-10">
                   {logoRipple && (
                     <span className="absolute inset-0 bg-white/40 rounded-xl animate-ping z-10" />
@@ -731,7 +744,7 @@ const Header = () => {
                     : 'text-3xl font-bold text-white drop-shadow-lg truncate'
                 }
               >
-                {isEauModule ? 'AHUVI Eau' : isNavyModule ? <NavyTitle /> : isConstructionModule ? '1saKELY' : 'BazarKELY'}
+                {isElecDomain ? 'RTB Énergie' : isEauModule ? 'AHUVI Eau' : isNavyModule ? <NavyTitle /> : isConstructionModule ? '1saKELY' : 'BazarKELY'}
               </h1>
               <p
                 className={
@@ -742,7 +755,9 @@ const Header = () => {
                     : 'text-sm text-purple-100 font-medium drop-shadow-sm truncate'
                 }
               >
-                {isEauModule
+                {isElecDomain
+                  ? 'Électricité du domaine, Nosy Be'
+                  : isEauModule
                   ? "Distribution & suivi d'eau — Nosy Be"
                   : isNavyModule
                   ? <NavyHeaderSubtitle />
@@ -1211,6 +1226,9 @@ const Header = () => {
           </div>
         )}
 
+        {/* Sélecteur Eau / Électricité (ELEC-CC-01) : seulement pour qui a les deux domaines. */}
+        {isEauModule && user && <HeaderEauDomaineSwitch />}
+
         {/* Bandeau d'annonces du domaine (mode eau) — annonces actives défilantes, fermables. */}
         {isEauModule && user && <HeaderEauAnnonces />}
 
@@ -1219,7 +1237,7 @@ const Header = () => {
           <nav className="hidden lg:flex items-center justify-around mt-4">
             {eauNavItems.map((item) => {
               const Icon = eauIconMap[item.icon] ?? Droplet;
-              const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client';
+              const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client' || item.path === '/gestion-eau/elec';
               return (
                 <NavLink
                   key={item.path}

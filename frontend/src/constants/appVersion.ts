@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.113.4';
-export const APP_VERSION_NAME = 'Application plus légère et plus rapide : la version en ligne est enfin construite en mode production';
-export const LAST_UPDATED = '2026-10-29';
-export const APP_BUILD_DATE = '2026-10-29';
+export const APP_VERSION = '3.114.0';
+export const APP_VERSION_NAME = 'AHUVI : l’eau et l’électricité deviennent deux domaines séparés';
+export const LAST_UPDATED = '2026-11-01';
+export const APP_BUILD_DATE = '2026-11-01';
 export const VERSION_HISTORY = [
+  {
+    version: '3.114.0',
+    date: '2026-11-01',
+    description: 'AHUVI : l’eau et l’électricité deviennent deux domaines séparés (ELEC-CC-01, phase 0)',
+    changes: [
+      'Nouveaux rôles Électricité : releveur, gestion et lecture, donnés par l’administrateur dans « Utilisateurs & rôles »',
+      'Sélecteur Eau / Électricité en haut de l’écran pour l’administrateur et le promoteur, choix retenu après rechargement',
+      'Un releveur d’eau ne voit jamais l’électricité ; un rôle électricité ne voit jamais l’eau',
+      'Tableau de bord Électricité (RTB Énergie) en attente des prochains écrans',
+      'La facture d’eau ne contient plus que l’eau ; les relevés eau, le tableau de bord eau et l’espace propriétaire n’affichent plus l’électricité',
+      'Annonces : chaque annonce appartient au domaine Eau ou Électricité'
+    ]
+  },
   {
     version: '3.113.4',
     date: '2026-10-29',

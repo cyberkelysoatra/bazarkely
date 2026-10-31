@@ -4,11 +4,12 @@ import { BOTTOM_NAV_ITEMS, CONSTRUCTION_NAV_ITEMS, GESTION_EAU_NAV_ITEMS } from 
 import { useModuleAccess } from '../../modules/navy-ay/context/useModuleAccess';
 import { NavySymbol } from '../../modules/navy-ay/components/NavyLogo';
 import { useNavyRoles } from '../../modules/navy-ay/context/useNavyRoles';
-import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation, Send, PackageOpen, BellRing, Route, Banknote, Mic } from 'lucide-react';
+import { Home, Wallet, ArrowUpDown, PieChart, Target, Users, LayoutDashboard, ShoppingCart, Package, Warehouse, PlusCircle, Gauge, TrendingUp, Network, FileText, Droplet, Receipt, Waves, GripVertical, Check, Store, QrCode, Truck, Inbox, Settings, UserPlus, Map as MapIcon, Navigation, Send, PackageOpen, BellRing, Route, Banknote, Mic, Zap } from 'lucide-react';
 import { useModuleSwitcher, type Module } from '../../contexts/ModuleSwitcherContext';
 import { ConstructionContext } from '../../modules/construction-poc/context';
 import { canAccessBCI } from '../../modules/construction-poc/utils/rolePermissions';
 import { GestionEauContext } from '../../modules/gestion-eau/context';
+import { filterEauNavByRoles } from '../../modules/gestion-eau/components/eauNav';
 import { useAppStore } from '../../stores/appStore';
 import apiService from '../../services/apiService';
 import { orderModules } from '../../utils/moduleOrder';
@@ -123,6 +124,8 @@ const iconMap = {
   Droplet,
   Receipt,
   Waves,
+  // Gestion Eau, domaine Électricité (ELEC-CC-01)
+  Zap,
   // NAVY ay icons (phase 1A)
   Store,
   QrCode,
@@ -258,6 +261,9 @@ const BottomNav = () => {
   const eauContext = useContext(GestionEauContext);
   const eauRoles = eauContext?.roles ?? null;
   const isEauModule = activeModule?.id === 'gestion-eau';
+  // Domaine actif du module eau (ELEC-CC-01) : la barre ne montre que ses boutons.
+  const eauDomaine = eauContext?.domaineActif ?? 'eau';
+  const isElecDomain = isEauModule && eauDomaine === 'elec';
   // NAVY ay : barre anthracite / jaune (charte NAVY, jamais de bleu marine).
   const isNavyModule = activeModule?.id === 'navy-ay';
   // NAVY ay (v3.81.0) : barre selon le rôle « Je suis » + pastille des demandes en attente.
@@ -319,9 +325,9 @@ const BottomNav = () => {
         : isNavyModule
         ? navyRoles.navItems
         : isEauModule
-        ? GESTION_EAU_NAV_ITEMS.filter(
-            (it) => !it.roles || it.roles.some((r) => eauRoles?.[r])
-          )
+        ? eauRoles
+          ? filterEauNavByRoles(eauRoles, GESTION_EAU_NAV_ITEMS, eauDomaine)
+          : []
         : BOTTOM_NAV_ITEMS;
 
     // Filtre BCI (Construction)
@@ -346,9 +352,10 @@ const BottomNav = () => {
     const navyDense = isNavyModule && navItems.length >= 6;
 
     // Thème actif : vert AHUVI en mode eau, bleu sinon.
-    const activeBg = isEauModule ? 'bg-ahuvi-forest' : 'bg-blue-600';
-    const hoverBg = isEauModule ? 'hover:bg-ahuvi-50' : 'hover:bg-blue-50';
-    const activeText = isEauModule ? 'text-ahuvi-forest' : 'text-blue-600';
+    // Domaine Électricité (ELEC-CC-01) : vert RTB.
+    const activeBg = isElecDomain ? 'bg-rtb-green' : isEauModule ? 'bg-ahuvi-forest' : 'bg-blue-600';
+    const hoverBg = isElecDomain ? 'hover:bg-rtb-gold/15' : isEauModule ? 'hover:bg-ahuvi-50' : 'hover:bg-blue-50';
+    const activeText = isElecDomain ? 'text-rtb-green' : isEauModule ? 'text-ahuvi-forest' : 'text-blue-600';
 
     return (
       <nav 
@@ -360,7 +367,7 @@ const BottomNav = () => {
             const IconComponent = iconMap[item.icon as keyof typeof iconMap];
             // Routes "racine" (dashboard eau, espace client) → match exact pour ne pas
             // rester actives sur leurs sous-routes (ex. /gestion-eau/client/factures).
-            const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client'
+            const exact = item.path === '/gestion-eau' || item.path === '/gestion-eau/client' || item.path === '/gestion-eau/elec'
               || (isNavyModule && 'end' in item && !!item.end);
             // NAVY ay : pastille du nombre de demandes en attente (opératrice).
             const navyBadge = isNavyModule && navyRoles.badges[item.path]

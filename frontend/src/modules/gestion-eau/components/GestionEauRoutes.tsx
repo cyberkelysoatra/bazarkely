@@ -9,9 +9,11 @@
  *  - Suivi (/suivi) regroupe Anomalies/Bilans (EauSuiviPage).
  * Les anciennes routes (saisie-bassin, saisie-compteur, anomalies) redirigent vers ces thèmes.
  */
-import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import EauRoleProtectedRoute from './EauRoleProtectedRoute';
+import { useGestionEau } from '../context/GestionEauContext';
+import { domaineDeRoute, EAU_HOME, ELEC_HOME } from '../utils/domaines';
 import AppVersionPage from '../../../pages/AppVersionPage';
 
 const EauDashboard = React.lazy(() => import('./EauDashboard'));
@@ -35,12 +37,44 @@ const EauAnnoncesPage = React.lazy(() => import('./EauAnnoncesPage'));
 const EauAuditPage = React.lazy(() => import('./EauAuditPage'));
 // Phase 1 élec — coûts électricité du mois (secondaire, menu HeaderEauActions).
 const EauElecCoutsPage = React.lazy(() => import('./EauElecCoutsPage'));
+// ELEC-CC-01 : tableau de bord (d'attente) du domaine Électricité.
+const EauElecHomePage = React.lazy(() => import('./EauElecHomePage'));
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ahuvi-forest"></div>
   </div>
 );
+
+/**
+ * Garde de DOMAINE (ELEC-CC-01). Démarrage à froid : aucune redirection tant que la
+ * session et les rôles ne sont pas confirmés (§2). Ensuite :
+ *  - route eau, personne sans eau mais avec l'électricité → tableau de bord électricité ;
+ *  - route électricité, personne sans électricité mais avec l'eau → tableau de bord eau ;
+ *  - entrée du module (/gestion-eau) avec l'électricité mémorisée → électricité ;
+ *  - toute autre route d'un domaine de la personne devient le domaine actif.
+ */
+function EauDomaineGate({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const { domaines, domaineActif, setDomaineActif, isLoading, rolesConfirmed, sessionStatus } = useGestionEau();
+  const ready = !isLoading && rolesConfirmed && sessionStatus === 'valid';
+  const routeDom = domaineDeRoute(pathname);
+  const isEntree = pathname.replace(/\/+$/, '') === EAU_HOME;
+
+  let redirect: string | null = null;
+  if (ready && routeDom === 'eau' && !domaines.eau && domaines.elec) redirect = ELEC_HOME;
+  else if (ready && routeDom === 'elec' && !domaines.elec && domaines.eau) redirect = EAU_HOME;
+  else if (ready && isEntree && domaines.elec && domaineActif === 'elec') redirect = ELEC_HOME;
+
+  const syncTo =
+    ready && !redirect && routeDom && domaines[routeDom] && routeDom !== domaineActif ? routeDom : null;
+  useEffect(() => {
+    if (syncTo) setDomaineActif(syncTo);
+  }, [syncTo, setDomaineActif]);
+
+  if (redirect) return <Navigate to={redirect} replace />;
+  return <>{children}</>;
+}
 
 export default function GestionEauRoutes() {
   return (
@@ -50,6 +84,7 @@ export default function GestionEauRoutes() {
           du <main>, recouvrant la dernière carte. Ce padding additif laisse un espace
           net au-dessus de la barre, sans impacter les autres modules. */}
       <div className="pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <EauDomaineGate>
       <Routes>
         {/* Tableau de bord opérationnel — admin/releveur (le client est redirigé vers son espace). */}
         <Route
@@ -154,12 +189,23 @@ export default function GestionEauRoutes() {
             </EauRoleProtectedRoute>
           }
         />
-        {/* Phase 1 élec — Coûts électricité du mois : admin (écriture), promoteur/releveur (lecture). */}
+        {/* Phase 1 élec : coûts électricité du mois (prix variable, abandonné par ELEC-CC-01) :
+            hors des menus, gardé pour l'historique, réservé à l'admin. */}
         <Route
           path="elec-couts"
           element={
-            <EauRoleProtectedRoute allowedRoles={['admin', 'releveur', 'promoteur']}>
+            <EauRoleProtectedRoute allowedRoles={['admin']}>
               <EauElecCoutsPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+
+        {/* ELEC-CC-01 : domaine Électricité, tableau de bord d'attente. */}
+        <Route
+          path="elec"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec']}>
+              <EauElecHomePage />
             </EauRoleProtectedRoute>
           }
         />
@@ -215,6 +261,7 @@ export default function GestionEauRoutes() {
 
         <Route path="*" element={<Navigate to="/gestion-eau" replace />} />
       </Routes>
+      </EauDomaineGate>
       </div>
     </Suspense>
   );

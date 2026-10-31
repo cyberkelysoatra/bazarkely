@@ -270,6 +270,12 @@ export interface RoleRow {
    * (la RLS Phase 1 est le filet serveur). Cumulable, colonne `eau_roles.promoteur`.
    */
   promoteur: boolean;
+  /** Domaine Electricite (ELEC-CC-01) : saisit les releves d'electricite. `releveur` = releveur d'eau. */
+  releveur_elec?: boolean;
+  /** Emet, valide, encaisse, relance les factures d'electricite. */
+  gestion_elec?: boolean;
+  /** Consulte le tableau de bord electricite. */
+  lecture_elec?: boolean;
   updated_at: string | null;
 }
 export type RoleLocal = RoleRow & LocalMeta;
@@ -401,6 +407,8 @@ export interface AnnonceRow {
   titre: string | null;
   texte: string | null;
   type: 'promo' | 'evenement' | 'communaute' | null;
+  /** Domaine de l'annonce (ELEC-CC-01). Absent sur un vieux cache local = 'eau'. */
+  domaine?: EauDomaine;
   actif: boolean;
   date_debut: string | null;
   date_fin: string | null;
@@ -414,7 +422,17 @@ export type AnnonceLocal = AnnonceRow & LocalMeta;
  * Rôles cumulables du module. `client` est dérivé (un compte client lié au user)
  * et reste inexploité en phase 1. `admin`/`releveur` proviennent de eau_roles.
  */
-export type EauRole = 'admin' | 'releveur' | 'client' | 'promoteur';
+export type EauRole =
+  | 'admin'
+  | 'releveur'
+  | 'client'
+  | 'promoteur'
+  | 'releveurElec'
+  | 'gestionElec'
+  | 'lectureElec';
+
+/** Domaine du module (ELEC-CC-01) : l'eau et l'electricite ne se melangent jamais. */
+export type EauDomaine = 'eau' | 'elec';
 
 export interface EauRoles {
   admin: boolean;
@@ -422,6 +440,10 @@ export interface EauRoles {
   client: boolean;
   /** Promoteur (Phase 2) : lecture totale + seuils d'alerte ; aucune autre écriture. */
   promoteur: boolean;
+  /** Domaine Electricite (ELEC-CC-01). */
+  releveurElec: boolean;
+  gestionElec: boolean;
+  lectureElec: boolean;
 }
 
 /**

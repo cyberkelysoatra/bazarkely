@@ -10,25 +10,45 @@ import { saveLocal, deleteLocal, pullTable } from './eauSync';
 import { newId, nowIso } from '../utils/id';
 import { getCurrentUserIdSync } from './eauAuth';
 import { logAudit } from './eauAuditService';
-import type { AnnonceLocal } from '../types/gestionEau';
+import type { AnnonceLocal, EauDomaine } from '../types/gestionEau';
+import type { EauDomaines } from '../utils/domaines';
 
 export type AnnonceType = 'promo' | 'evenement' | 'communaute';
 
-/** Toutes les annonces, plus récentes d'abord. */
-export async function listAnnonces(): Promise<AnnonceLocal[]> {
+/** Domaine d'une annonce (vieux cache local sans la colonne = eau). */
+export function domaineAnnonce(a: Pick<AnnonceLocal, 'domaine'>): EauDomaine {
+  return a.domaine === 'elec' ? 'elec' : 'eau';
+}
+
+/** Prédicat PUR (ELEC-CC-01) : l'annonce relève-t-elle d'un domaine de la personne ? */
+export function annonceVisiblePour(a: Pick<AnnonceLocal, 'domaine'>, domaines: EauDomaines): boolean {
+  return domaines[domaineAnnonce(a)];
+}
+
+/**
+ * Toutes les annonces, plus récentes d'abord. `domaines` fourni = seulement celles des
+ * domaines de la personne (un compte du seul domaine eau ne voit jamais l'électricité).
+ */
+export async function listAnnonces(domaines?: EauDomaines): Promise<AnnonceLocal[]> {
   const all = (await eauDb.eau_annonces.toArray()) as AnnonceLocal[];
-  return all.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+  return all
+    .filter((a) => !domaines || annonceVisiblePour(a, domaines))
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
 }
 
 /**
  * Annonces ACTIVES à l'instant `at` (défaut : maintenant) : `actif` = true ET
  * (date_debut nulle OU ≤ at) ET (date_fin nulle OU ≥ at). Triées récentes d'abord.
  */
-export async function listActiveAnnonces(at: Date = new Date()): Promise<AnnonceLocal[]> {
+export async function listActiveAnnonces(
+  at: Date = new Date(),
+  domaine?: EauDomaine
+): Promise<AnnonceLocal[]> {
   const atMs = at.getTime();
   const all = (await eauDb.eau_annonces.toArray()) as AnnonceLocal[];
   return all
     .filter((a) => isAnnonceActive(a, atMs))
+    .filter((a) => !domaine || domaineAnnonce(a) === domaine)
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
 }
 
@@ -51,6 +71,8 @@ export interface AnnonceInput {
   titre: string;
   texte: string;
   type: AnnonceType;
+  /** Domaine (ELEC-CC-01). Absent = celui de l'annonce existante, sinon eau. */
+  domaine?: EauDomaine;
   actif: boolean;
   date_debut?: string | null;
   date_fin?: string | null;
@@ -67,6 +89,7 @@ export async function saveAnnonce(input: AnnonceInput): Promise<AnnonceLocal> {
     titre: input.titre,
     texte: input.texte,
     type: input.type,
+    domaine: input.domaine ?? (existing ? domaineAnnonce(existing) : 'eau'),
     actif: input.actif,
     date_debut: input.date_debut ?? null,
     date_fin: input.date_fin ?? null,
@@ -78,7 +101,7 @@ export async function saveAnnonce(input: AnnonceInput): Promise<AnnonceLocal> {
     action: existing ? 'annonce_modifiee' : 'annonce_creee',
     entite: 'eau_annonces',
     entiteId: saved.id,
-    details: { titre: saved.titre, type: saved.type, actif: saved.actif },
+    details: { titre: saved.titre, type: saved.type, domaine: saved.domaine, actif: saved.actif },
   });
   return saved;
 }
@@ -104,7 +127,7 @@ export async function toggleAnnonceActif(id: string): Promise<AnnonceLocal | nul
   });
 }
 
-export async function refreshAnnonces(online: boolean): Promise<AnnonceLocal[]> {
+export async function refreshAnnonces(online: boolean, domaines?: EauDomaines): Promise<AnnonceLocal[]> {
   if (online) await pullTable('eau_annonces');
-  return listAnnonces();
+  return listAnnonces(domaines);
 }

@@ -47,6 +47,10 @@ export async function getRolesForUser(userId: string): Promise<EauRoles> {
     releveur: row?.releveur ?? false,
     client: !!clientCompte,
     promoteur: row?.promoteur ?? false,
+    // Domaine Electricite (ELEC-CC-01). Vieux cache local sans ces colonnes = false.
+    releveurElec: row?.releveur_elec ?? false,
+    gestionElec: row?.gestion_elec ?? false,
+    lectureElec: row?.lecture_elec ?? false,
   };
 }
 
@@ -59,16 +63,31 @@ export async function hasAnyAdminLocal(): Promise<boolean> {
   return all.some((r) => r.admin === true);
 }
 
-/** Définit/écrase les rôles admin+releveur+promoteur d'un utilisateur (upsert idempotent). */
+/**
+ * Définit/écrase les rôles d'un utilisateur (upsert idempotent). Les rôles électricité
+ * non fournis sont REPRIS de la ligne existante (un appelant « eau » comme la validation
+ * d'une demande d'accès ne doit jamais effacer un rôle électricité).
+ */
 export async function setRoles(
   userId: string,
-  roles: { admin: boolean; releveur: boolean; promoteur?: boolean }
+  roles: {
+    admin: boolean;
+    releveur: boolean;
+    promoteur?: boolean;
+    releveurElec?: boolean;
+    gestionElec?: boolean;
+    lectureElec?: boolean;
+  }
 ): Promise<RoleLocal> {
+  const existing = (await eauDb.eau_roles.get(userId)) as RoleLocal | undefined;
   const record: RoleLocal = {
     user_id: userId,
     admin: roles.admin,
     releveur: roles.releveur,
     promoteur: roles.promoteur ?? false,
+    releveur_elec: roles.releveurElec ?? existing?.releveur_elec ?? false,
+    gestion_elec: roles.gestionElec ?? existing?.gestion_elec ?? false,
+    lecture_elec: roles.lectureElec ?? existing?.lecture_elec ?? false,
     updated_at: nowIso(),
   };
   return saveLocal('eau_roles', record);

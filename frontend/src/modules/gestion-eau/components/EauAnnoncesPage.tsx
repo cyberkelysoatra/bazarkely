@@ -17,11 +17,12 @@ import {
   deleteAnnonce,
   toggleAnnonceActif,
   isAnnonceActive,
+  domaineAnnonce,
   type AnnonceType,
 } from '../services/eauAnnonceService';
 import { showConfirm } from '../../../utils/dialogUtils';
 import { fmtDate } from '../utils/format';
-import type { AnnonceLocal } from '../types/gestionEau';
+import type { AnnonceLocal, EauDomaine } from '../types/gestionEau';
 
 const TYPE_OPTIONS: { value: AnnonceType; label: string; emoji: string }[] = [
   { value: 'promo', label: 'Promo', emoji: '🏷️' },
@@ -34,12 +35,16 @@ interface Draft {
   titre: string;
   texte: string;
   type: AnnonceType;
+  /** Domaine de l'annonce (ELEC-CC-01). */
+  domaine: EauDomaine;
   actif: boolean;
   date_debut: string; // yyyy-mm-dd ou ''
   date_fin: string;
 }
 
-const EMPTY_DRAFT: Draft = { titre: '', texte: '', type: 'promo', actif: true, date_debut: '', date_fin: '' };
+const EMPTY_DRAFT: Draft = { titre: '', texte: '', type: 'promo', domaine: 'eau', actif: true, date_debut: '', date_fin: '' };
+
+const DOMAINE_LABEL: Record<EauDomaine, string> = { eau: 'Eau', elec: 'Électricité' };
 
 function toDateInput(iso: string | null): string {
   return iso ? new Date(iso).toISOString().slice(0, 10) : '';
@@ -50,15 +55,17 @@ function toIso(dateStr: string, endOfDay = false): string | null {
 }
 
 export default function EauAnnoncesPage() {
-  const { isReadOnly } = useGestionEau();
+  const { isReadOnly, domaines, domaineActif } = useGestionEau();
   const [annonces, setAnnonces] = useState<AnnonceLocal[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Lecture filtrée sur les domaines de la personne (ELEC-CC-01).
   const reload = useCallback(async () => {
-    setAnnonces(await listAnnonces());
-  }, []);
+    setAnnonces(await listAnnonces(domaines));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domaines.eau, domaines.elec]);
 
   useEffect(() => {
     (async () => {
@@ -69,7 +76,7 @@ export default function EauAnnoncesPage() {
 
   const openNew = () => {
     if (isReadOnly) return;
-    setDraft({ ...EMPTY_DRAFT });
+    setDraft({ ...EMPTY_DRAFT, domaine: domaineActif });
   };
   const openEdit = (a: AnnonceLocal) => {
     if (isReadOnly) return;
@@ -78,6 +85,7 @@ export default function EauAnnoncesPage() {
       titre: a.titre ?? '',
       texte: a.texte ?? '',
       type: (a.type ?? 'promo') as AnnonceType,
+      domaine: domaineAnnonce(a),
       actif: a.actif,
       date_debut: toDateInput(a.date_debut),
       date_fin: toDateInput(a.date_fin),
@@ -98,6 +106,7 @@ export default function EauAnnoncesPage() {
         titre: draft.titre.trim(),
         texte: draft.texte.trim(),
         type: draft.type,
+        domaine: draft.domaine,
         actif: draft.actif,
         date_debut: toIso(draft.date_debut),
         date_fin: toIso(draft.date_fin, true),
@@ -177,6 +186,31 @@ export default function EauAnnoncesPage() {
               className="w-full rounded-lg border-gray-300 focus:border-ahuvi-olive focus:ring-ahuvi-olive"
             />
           </label>
+          {/* Domaine (ELEC-CC-01) : l'annonce n'apparaît qu'aux personnes de ce domaine. */}
+          {domaines.eau && domaines.elec && (
+            <fieldset className="text-sm">
+              <legend className="block text-gray-600 mb-1">Domaine</legend>
+              <div className="grid grid-cols-2 gap-2" role="group">
+                {(['eau', 'elec'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={draft.domaine === d}
+                    onClick={() => setDraft({ ...draft, domaine: d })}
+                    className={`min-h-[44px] rounded-lg border text-sm font-semibold transition-colors ${
+                      draft.domaine === d
+                        ? d === 'elec'
+                          ? 'border-rtb-gold bg-rtb-gold/15 text-rtb-green'
+                          : 'border-ahuvi-olive bg-ahuvi-50 text-ahuvi-forest'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {DOMAINE_LABEL[d]}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               <span className="block text-gray-600 mb-1">Type</span>
@@ -256,6 +290,13 @@ export default function EauAnnoncesPage() {
                       <span className="font-medium text-gray-900 truncate">{a.titre}</span>
                       <span className="text-[10px] uppercase tracking-wide bg-ahuvi-50 text-ahuvi-700 rounded px-1.5 py-0.5">
                         {opt?.label ?? a.type}
+                      </span>
+                      <span
+                        className={`text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 ${
+                          domaineAnnonce(a) === 'elec' ? 'bg-rtb-gold/15 text-rtb-green' : 'bg-ahuvi-50 text-ahuvi-700'
+                        }`}
+                      >
+                        {DOMAINE_LABEL[domaineAnnonce(a)]}
                       </span>
                     </div>
                     {a.texte && <p className="text-sm text-gray-600 mt-1">{a.texte}</p>}

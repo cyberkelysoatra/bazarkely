@@ -2,11 +2,12 @@
  * Garde de route basée sur les rôles eau (cumulables). Autorise si l'utilisateur
  * possède AU MOINS UN des rôles requis. Équivalent RoleProtectedRoute construction.
  */
-import { ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useGestionEau } from '../context/GestionEauContext';
 import type { EauRole } from '../types/gestionEau';
+import { ELEC_HOME } from '../utils/domaines';
 
 interface Props {
   children: ReactNode;
@@ -19,16 +20,19 @@ export default function EauRoleProtectedRoute({
   allowedRoles,
   redirectTo,
 }: Props) {
-  const { roles, isLoading, hasEauAccess } = useGestionEau();
+  const { roles, isLoading, hasEauAccess, domaines } = useGestionEau();
 
   // Accueil par défaut selon le rôle : admin/releveur → tableau de bord ;
   // client (sans rôle interne) → son espace. Évite toute boucle de redirection
   // (un client refusé sur le dashboard atterrit sur /gestion-eau/client, pas sur /gestion-eau).
+  // Domaine Électricité seul (ELEC-CC-01) → tableau de bord électricité.
   const home =
     roles.admin || roles.releveur || roles.promoteur
       ? '/gestion-eau'
-      : roles.client
+      : roles.client && domaines.eau
       ? '/gestion-eau/client'
+      : domaines.elec
+      ? ELEC_HOME
       : '/dashboard';
   const target = redirectTo ?? home;
   const hasRequiredRole = allowedRoles.some((r) => roles[r]);

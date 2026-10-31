@@ -1,9 +1,10 @@
 /** Comptes & rôles /gestion-eau/utilisateurs (admin) :
- *  - cocher Administrateur / Releveur (effet immédiat, eau_roles)
+ *  - cocher Administrateur / Promoteur, puis par famille « Eau » (Releveur eau) et
+ *    « Électricité » (Releveur, Gestion, Lecture : ELEC-CC-01), effet immédiat, eau_roles
  *  - créer un compte client (nom, contact, compteurs visibles) → code d'enrôlement */
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { UserPlus, Users, Shield, ClipboardList, Save, Copy, BadgeCheck, Clock, KeyRound, Gauge, Eye } from 'lucide-react';
+import { UserPlus, Users, Shield, ClipboardList, Save, Copy, BadgeCheck, Clock, KeyRound, Gauge, Eye, Zap } from 'lucide-react';
 import EauPageShell from './EauPageShell';
 import { EauIconButton, EauEmptyState, EauListIcon } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
@@ -57,7 +58,8 @@ export default function EauUtilisateursPage() {
     return `${userId.slice(0, 8)}…`;
   };
 
-  const toggleRole = async (r: RoleLocal, key: 'admin' | 'releveur' | 'promoteur', value: boolean) => {
+  type RoleKey = 'admin' | 'releveur' | 'promoteur' | 'releveurElec' | 'gestionElec' | 'lectureElec';
+  const toggleRole = async (r: RoleLocal, key: RoleKey, value: boolean) => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     if (key === 'admin' && !value && r.user_id === me) {
       if (!(await showConfirm('Retirer VOTRE propre rôle administrateur ? Vous perdrez l’accès admin.', 'Rôles', { variant: 'danger', confirmText: 'Retirer' }))) return;
@@ -66,10 +68,29 @@ export default function EauUtilisateursPage() {
       admin: key === 'admin' ? value : r.admin,
       releveur: key === 'releveur' ? value : r.releveur,
       promoteur: key === 'promoteur' ? value : (r.promoteur ?? false),
+      releveurElec: key === 'releveurElec' ? value : (r.releveur_elec ?? false),
+      gestionElec: key === 'gestionElec' ? value : (r.gestion_elec ?? false),
+      lectureElec: key === 'lectureElec' ? value : (r.lecture_elec ?? false),
     });
     await reload();
     toast.success('Rôles mis à jour');
   };
+
+  // Case à cocher d'un rôle (lecture seule pour le promoteur).
+  const roleBox = (r: RoleLocal, key: RoleKey, label: string, checked: boolean) => (
+    <label className="flex items-center gap-1.5 min-h-[32px]">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={isReadOnly}
+        onChange={(e) => toggleRole(r, key, e.target.checked)}
+        className={`rounded border-gray-300 focus:ring-ahuvi-500 disabled:opacity-50 ${
+          key.endsWith('Elec') ? 'text-rtb-green' : key === 'promoteur' ? 'text-ahuvi-teal' : 'text-ahuvi-forest'
+        }`}
+      />
+      <span className="text-gray-700">{label}</span>
+    </label>
+  );
 
   const toggleCompteur = (id: string) => {
     setSelected((prev) => {
@@ -204,7 +225,7 @@ export default function EauUtilisateursPage() {
                 {roles.map((r) => (
                   <div key={r.user_id} className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-start gap-2.5">
                     <EauListIcon
-                      icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : Users}
+                      icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : r.releveur_elec || r.gestion_elec || r.lecture_elec ? Zap : Users}
                       tone={r.admin ? 'gold' : r.releveur ? 'olive' : r.promoteur ? 'teal' : 'neutral'}
                     />
                     <div className="min-w-0 flex-1">
@@ -212,25 +233,20 @@ export default function EauUtilisateursPage() {
                         {labelFor(r.user_id)}
                         {r.user_id === me && <span className="ml-2 text-xs text-ahuvi-olive">(vous)</span>}
                       </div>
+                      {/* Rôles transverses (les deux domaines), puis familles Eau / Électricité. */}
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm">
-                        <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={r.admin} disabled={isReadOnly}
-                            onChange={(e) => toggleRole(r, 'admin', e.target.checked)}
-                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500 disabled:opacity-50" />
-                          <span className="text-gray-700">Administrateur</span>
-                        </label>
-                        <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={r.releveur} disabled={isReadOnly}
-                            onChange={(e) => toggleRole(r, 'releveur', e.target.checked)}
-                            className="rounded border-gray-300 text-ahuvi-forest focus:ring-ahuvi-500 disabled:opacity-50" />
-                          <span className="text-gray-700">Releveur</span>
-                        </label>
-                        <label className="flex items-center gap-1.5">
-                          <input type="checkbox" checked={r.promoteur ?? false} disabled={isReadOnly}
-                            onChange={(e) => toggleRole(r, 'promoteur', e.target.checked)}
-                            className="rounded border-gray-300 text-ahuvi-teal focus:ring-ahuvi-500 disabled:opacity-50" />
-                          <span className="text-gray-700">Promoteur</span>
-                        </label>
+                        {roleBox(r, 'admin', 'Administrateur', r.admin)}
+                        {roleBox(r, 'promoteur', 'Promoteur', r.promoteur ?? false)}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                        <span className="w-full sm:w-auto text-[11px] font-semibold uppercase tracking-wide text-ahuvi-olive">Eau</span>
+                        {roleBox(r, 'releveur', 'Releveur eau', r.releveur)}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                        <span className="w-full sm:w-auto text-[11px] font-semibold uppercase tracking-wide text-rtb-green">Électricité</span>
+                        {roleBox(r, 'releveurElec', 'Releveur électricité', r.releveur_elec ?? false)}
+                        {roleBox(r, 'gestionElec', 'Gestion électricité', r.gestion_elec ?? false)}
+                        {roleBox(r, 'lectureElec', 'Lecture électricité', r.lecture_elec ?? false)}
                       </div>
                     </div>
                   </div>

@@ -12,7 +12,7 @@
  * Deep-links préservés (NE PAS migrer le schéma — `EauDashboard`/`eauInvitationService`
  * émettent toujours `?tab=…&bt=…` ; la page re-route vers les 2 onglets) :
  *   - `?tab=compteur&c=<id>` (scan)     → Compteurs, saisie du compteur ouverte.
- *   - `?tab=elec`                       → Compteurs, saisie ouverte sur la nature « Élec ».
+ *   - `?tab=elec`                       → ELEC-CC-01 : domaine Électricité pour qui l'a, sinon ignoré.
  *   - `?tab=source`                     → Source, simple consultation (aucun tiroir ouvert).
  *   - `?tab=bassin&bt=niveau`           → Source, tiroir « Saisir hauteur » ouvert.
  *   - `?tab=bassin&bt=debit`            → Source, section « Tests de débit » ouverte.
@@ -33,7 +33,7 @@ import { EauShortcut } from './EauUi';
 import { EauReadOnlyBadge } from './EauReadOnly';
 import { useGestionEau } from '../context';
 import { parseScanText, buildInternalScanPath } from '../utils/scanUrl';
-import type { ReleveFacet } from './EauTiroirSaisie';
+import { ELEC_HOME } from '../utils/domaines';
 import toast from 'react-hot-toast';
 
 type TabKey = 'compteurs' | 'source';
@@ -53,12 +53,11 @@ const WRAP = 'max-w-3xl mx-auto px-3';
 export default function EauRelevesPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isReadOnly } = useGestionEau();
+  const { isReadOnly, domaines, setDomaineActif } = useGestionEau();
   const aide = useAideState(AIDE.releves.id);
   const aideSource = useAideState(AIDE.bassinNiveau.id);
   const [tab, setTab] = useState<TabKey>(() => initialTab(params));
   const [preselect, setPreselect] = useState<string | null>(params.get('c'));
-  const [preselectFacet, setPreselectFacet] = useState<ReleveFacet | null>(null);
   const [bassinIntent, setBassinIntent] = useState<'niveau' | 'debit' | null>(null);
   const [apportsAutoOpen, setApportsAutoOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -72,11 +71,16 @@ export default function EauRelevesPage() {
     if (c) {
       setTab('compteurs');
       setPreselect(c);
-      setPreselectFacet(null);
     } else if (t === 'elec') {
+      // ELEC-CC-01 : l'électricité a son propre domaine. Lien historique → tableau de
+      // bord électricité pour qui a ce domaine ; sinon ignoré (onglet Compteurs eau).
+      if (domaines.elec) {
+        setDomaineActif('elec');
+        navigate(ELEC_HOME, { replace: true });
+        return;
+      }
       setTab('compteurs');
       setPreselect(null);
-      setPreselectFacet('elec');
     } else if (t === 'bassin') {
       setTab('source');
       if (bt === 'entree') {
@@ -97,12 +101,12 @@ export default function EauRelevesPage() {
     } else if (t) {
       setTab('compteurs');
     }
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, domaines.elec]);
 
   const changeTab = (k: TabKey) => {
     setTab(k);
     setPreselect(null);
-    setPreselectFacet(null);
     setBassinIntent(null);
     setApportsAutoOpen(false);
     // Nettoie la query pour éviter de re-cibler au prochain rendu.
@@ -174,12 +178,10 @@ export default function EauRelevesPage() {
         <div className={WRAP}>
           <EauCompteursReleves
             preselect={preselect}
-            preselectFacet={preselectFacet}
             onScan={() => setScannerOpen(true)}
             onNewCompteur={() => navigate('/gestion-eau/compteurs?new=1')}
             onConsumePreselect={() => {
               setPreselect(null);
-              setPreselectFacet(null);
             }}
           />
         </div>

@@ -7,9 +7,14 @@ const r = (over: Partial<EauRoles>): EauRoles => ({
   releveur: false,
   client: false,
   promoteur: false,
+  releveurElec: false,
+  gestionElec: false,
+  lectureElec: false,
   ...over,
 });
-const labels = (roles: EauRoles) => filterEauNavByRoles(roles).map((i) => i.label);
+// Barre du domaine Eau (domaine actif par défaut).
+const labels = (roles: EauRoles) => filterEauNavByRoles(roles, undefined, 'eau').map((i) => i.label);
+const labelsElec = (roles: EauRoles) => filterEauNavByRoles(roles, undefined, 'elec').map((i) => i.label);
 
 describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes, cumulable)', () => {
   it('admin voit les 5 thèmes d’administration', () => {
@@ -52,5 +57,30 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
     expect(labels(r({ releveur: true })).length).toBeLessThanOrEqual(6);
     expect(labels(r({ client: true })).length).toBeLessThanOrEqual(6);
     expect(labels(r({ promoteur: true })).length).toBeLessThanOrEqual(6);
+  });
+});
+
+describe('Navigation filtrée par domaine (ELEC-CC-01)', () => {
+  it('domaine Électricité : admin et promoteur voient le seul bouton Électricité', () => {
+    expect(labelsElec(r({ admin: true }))).toEqual(['Électricité']);
+    expect(labelsElec(r({ promoteur: true }))).toEqual(['Électricité']);
+  });
+
+  it('les trois rôles électricité voient Électricité et aucun bouton eau', () => {
+    for (const k of ['releveurElec', 'gestionElec', 'lectureElec'] as const) {
+      expect(labelsElec(r({ [k]: true }))).toEqual(['Électricité']);
+      expect(labels(r({ [k]: true }))).toEqual([]);
+    }
+  });
+
+  it('un releveur eau ne voit jamais le bouton Électricité', () => {
+    expect(labelsElec(r({ releveur: true }))).toEqual([]);
+    expect(labels(r({ releveur: true }))).not.toContain('Électricité');
+  });
+
+  it('au plus 6 boutons par domaine, même en cumul de tous les rôles', () => {
+    const all = r({ admin: true, releveur: true, client: true, promoteur: true, releveurElec: true, gestionElec: true, lectureElec: true });
+    expect(labels(all).length).toBeLessThanOrEqual(6);
+    expect(labelsElec(all).length).toBeLessThanOrEqual(6);
   });
 });

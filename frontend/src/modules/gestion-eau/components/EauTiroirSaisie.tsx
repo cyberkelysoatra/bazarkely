@@ -4,15 +4,15 @@
  * Condense la logique de saisie de EauSaisieCompteurPage (eau, m³) et EauSaisieElecPage
  * (élec, kWh) dans un tiroir accordéon, SANS dupliquer la logique métier : réutilise
  * `evaluerReleveCompteur`/`addReleveCompteur` (eau) et `evaluerReleveElec`/`addReleveElec`
- * (élec). Un même compteur physique (eau_compteurs.id) porte les deux index ; un petit
- * sélecteur Eau/Élec choisit la nature du relevé à enregistrer.
+ * (élec). ELEC-CC-01 : le sélecteur Eau/Élec a disparu (l'électricité vit dans son propre
+ * domaine) ; les relevés eau ne passent plus que `defaultFacet = 'eau'`.
  *
  * Offline-first : l'écriture passe par les services (Dexie d'abord, upsert idempotent par
  * id client) — un envoi expiré n'est pas un échec. Désactivé en lecture seule.
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Camera, Save, AlertTriangle, Flag, Trash2, Droplet, Zap, CalendarClock } from 'lucide-react';
+import { Camera, Save, AlertTriangle, Flag, Trash2, CalendarClock } from 'lucide-react';
 import { useGestionEau } from '../context';
 import {
   evaluerReleveCompteur,
@@ -53,7 +53,8 @@ export default function EauTiroirSaisie({
   onSaved: () => void;
 }) {
   const { isReadOnly } = useGestionEau();
-  const [facet, setFacet] = useState<ReleveFacet>(defaultFacet);
+  // Nature fixée par le parent (ELEC-CC-01 : toujours « eau » dans les relevés eau).
+  const facet: ReleveFacet = defaultFacet;
   const [indexStr, setIndexStr] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [note, setNote] = useState('');
@@ -196,30 +197,8 @@ export default function EauTiroirSaisie({
 
   return (
     <div className="space-y-3 pt-1">
-      {/* Ligne du haut : sélecteur de nature (eau / élec) à gauche, déclencheur photo serré à droite. */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Sélecteur de nature du relevé (eau / élec) — même compteur physique. */}
-        <div className="inline-flex rounded-lg border border-ahuvi-200 bg-white p-0.5 text-sm">
-          <button
-            type="button"
-            onClick={() => setFacet('eau')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
-              facet === 'eau' ? 'bg-ahuvi-teal text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
-            }`}
-          >
-            <Droplet className="w-4 h-4" aria-hidden="true" /> Eau (m³)
-          </button>
-          <button
-            type="button"
-            onClick={() => setFacet('elec')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors ${
-              facet === 'elec' ? 'bg-ahuvi-gold text-white' : 'text-ahuvi-forest hover:bg-ahuvi-50'
-            }`}
-          >
-            <Zap className="w-4 h-4" aria-hidden="true" /> Élec (kWh)
-          </button>
-        </div>
-
+      {/* Ligne du haut : déclencheur photo serré à droite (plus de sélecteur de nature, ELEC-CC-01). */}
+      <div className="flex items-center justify-end gap-2">
         {/* Déclencheur photo compact (icône seule) — remplace l'ancien bouton en pointillés ; ouvre l'appareil/galerie. */}
         <label
           className={`inline-flex flex-shrink-0 items-center justify-center w-10 h-10 rounded-lg border border-ahuvi-200 bg-white transition-colors ${
