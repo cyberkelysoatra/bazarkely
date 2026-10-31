@@ -5,6 +5,7 @@
  */
 import { eauDb, type EauTableName } from '../db/gestionEauDb';
 import { pullTable, pushTable, pushOne, saveLocal, deleteLocal } from './eauSync';
+import { supabase, withTimeout } from '../../../lib/supabase';
 import { newId, nowIso } from '../utils/id';
 import {
   ELEC_REGLAGES_ID,
@@ -66,7 +67,37 @@ export async function forceResyncElecUneFois(online: boolean): Promise<boolean> 
 export async function refreshElec(online: boolean): Promise<void> {
   if (!online) return;
   for (const t of ELEC_TABLES) await pushTable(t);
-  for (const t of ELEC_TABLES) await pullTable(t);
+  for (const t of ELEC_TABLES) {
+    const res = await pullTable(t);
+    if (res.ok) await reconcilierElec(t);
+  }
+}
+
+/**
+ * Retire de Dexie les lignes électricité supprimées sur le serveur (autre appareil, gestion).
+ * Prudence : seulement sur une réponse serveur réussie et COMPLÈTE (moins de 1000 lignes),
+ * jamais une ligne en attente d'envoi ni une ligne créée il y a moins de 2 minutes.
+ */
+async function reconcilierElec(table: (typeof ELEC_TABLES)[number]): Promise<void> {
+  try {
+    const { data, error } = (await withTimeout(
+      supabase.from(table).select('id').range(0, 999) as any,
+      8000,
+      `eau:reconcile:${table}`
+    )) as any;
+    if (error || !Array.isArray(data) || data.length >= 1000) return;
+    const serveur = new Set(data.map((r: { id: string }) => r.id));
+    const dexie = eauDb.table(table);
+    const locales = (await dexie.toArray()) as Array<LocalMeta & { id: string; created_at?: string | null }>;
+    const recent = Date.now() - 2 * 60 * 1000;
+    const absentes = locales
+      .filter((r) => r._dirty !== true && !serveur.has(r.id))
+      .filter((r) => !r.created_at || new Date(r.created_at).getTime() < recent)
+      .map((r) => r.id);
+    if (absentes.length > 0) await dexie.bulkDelete(absentes);
+  } catch {
+    /* best-effort : l'état local reste affiché */
+  }
 }
 
 /**

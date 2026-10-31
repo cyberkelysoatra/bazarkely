@@ -4,7 +4,7 @@
  * admin et gestion électricité ; lecture seule réelle pour promoteur et lecture.
  * Aucune valeur d'identité ni bancaire n'est connue du code (saisie par RTB).
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
 import { Building2, Landmark, FileText, Calculator, Hash, Save, ChevronDown } from 'lucide-react';
 import EauPageShell from '../EauPageShell';
@@ -68,13 +68,18 @@ export default function EauElecReglagesPage() {
   const [erreurs, setErreurs] = useState<ErreursReglages>({});
   const [busy, setBusy] = useState(false);
 
+  // Le formulaire suit la base (lecture locale puis réponse du serveur) tant que la
+  // personne n'a rien touché : une réponse tardive n'efface jamais une saisie en cours.
+  const touche = useRef(false);
   useEffect(() => {
+    if (touche.current) return;
     const r = reglages ?? REGLAGES_DEFAUT;
     setForm(versFormulaire(r));
     setEssai(r.mode_essai);
   }, [reglages]);
 
   const set = (k: string, v: string) => {
+    touche.current = true;
     setForm((p) => ({ ...p, [k]: v }));
     if (erreurs[k]) setErreurs((e) => ({ ...e, [k]: '' }));
   };
@@ -110,6 +115,7 @@ export default function EauElecReglagesPage() {
     setBusy(true);
     try {
       await saveReglages(patch);
+      touche.current = false;
       await relire();
       toast.success('Réglages enregistrés');
     } finally {
@@ -193,7 +199,10 @@ export default function EauElecReglagesPage() {
                 role="switch"
                 aria-checked={essai}
                 checked={essai}
-                onChange={(e) => setEssai(e.target.checked)}
+                onChange={(e) => {
+                  touche.current = true;
+                  setEssai(e.target.checked);
+                }}
                 disabled={!ecriture}
                 data-elec-mode-essai
                 className="mt-1 w-5 h-5 rounded border-gray-300 text-rtb-green focus:ring-rtb-gold"
