@@ -348,3 +348,12 @@ en-têtes : `apikey: <ANON_KEY>` + `Authorization: Bearer <ANON_KEY>`
 - **Symptôme :** le sélecteur Eau / Électricité revenait aussitôt sur « Électricité » après un clic sur « Eau ».
 - **Cause :** la navigation de React Router est rendue après la mise à jour d'état ; une garde qui « recale » l'état sur l'adresse voit « ancienne adresse + nouvel état » et annule le choix.
 - **Résolution :** ne recaler que sur un CHANGEMENT d'adresse (`useEffect` dépendant de `pathname`, valeur courante lue par `useRef`), jamais à chaque rendu.
+
+### P55 · Appli figée sur le chargement : verrou d'authentification Supabase tenu ailleurs (2026-11-01, ELEC-CC-02)
+- **Symptôme :** toutes les requêtes du client Supabase de l'appli expirent (rôle admin, ping, SMS : « timeout after 5000ms ») et le module reste sur l'indicateur de chargement, alors qu'un `fetch` direct vers `https://<REF>.supabase.co/rest/v1/` répond en moins d'une seconde.
+- **Cause :** `navigator.locks.query()` montre des demandes en attente sur `lock:sb-<REF>-auth-token` : le verrou de session est tenu par un autre contexte de la même origine (onglet figé, cas voisin de P50/P51), et chaque appel Supabase l'attend.
+- **Résolution (test) :** `await navigator.locks.request('lock:sb-<REF>-auth-token', { steal: true }, async () => {})` puis attendre quelques secondes : `held` et `pending` reviennent à 0, l'appli se charge. Ne jamais lire le jeton lui-même (P4). Sur un vrai téléphone : fermer les autres onglets de 1sakely.org.
+
+### P56 · Une ligne supprimée sur le serveur reste affichée sur les appareils (2026-11-01, ELEC-CC-02)
+- **Constat :** `pullTable` (gestion-eau) ajoute et met à jour, mais ne retire jamais une ligne absente du serveur. Une suppression faite en SQL ou sur un autre appareil reste visible localement (cas vécu : annonce de test de la phase 0 encore au bandeau de JOEL).
+- **Résolution (domaine électricité) :** `refreshElec` réconcilie après un tirage réussi et complet (moins de 1000 lignes) : retire les lignes locales absentes du serveur, jamais une ligne en attente d'envoi ni une ligne créée depuis moins de 2 minutes. Les tables eau ne le font pas encore : après un nettoyage SQL de données de test eau, vider aussi la ligne dans l'IndexedDB `GestionEauDB` du navigateur de test.
