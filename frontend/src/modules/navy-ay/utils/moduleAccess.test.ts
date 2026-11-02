@@ -27,12 +27,13 @@ describe('resolveAccessibleModules (A1)', () => {
     expect(res).not.toContain('construction');
   });
 
-  it('admin → all 4 modules', () => {
+  it('admin → all 4 modules (+ validation, VALIDCLIENT-CC-02)', () => {
     expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false, AFTER_PUDI)).toEqual([
       'bazarkely',
       'construction',
       'gestion-eau',
       'navy-ay',
+      'validation',
     ]);
   });
 
@@ -66,6 +67,7 @@ describe('PUDi (v3.93.0)', () => {
       'gestion-eau',
       'navy-ay',
       'pudi',
+      'validation',
     ]);
   });
   it('nobody sees pudi from the purge date, and never without an account', () => {
@@ -79,6 +81,43 @@ describe('PUDi (v3.93.0)', () => {
     const pudi = { id: 'pudi', at: '2026-10-22T10:00:00Z' };
     expect(pickStartModule(pudi, null, accessible)).toBe('bazarkely');
     expect(pickStartModule(pudi, { id: 'navy-ay', at: '2026-10-01T00:00:00Z' }, accessible)).toBe('navy-ay');
+  });
+});
+
+describe('Validation client (VALIDCLIENT-CC-02)', () => {
+  const BEFORE = new Date('2026-11-02T08:00:00+03:00');
+  it('an account with only validation sees neither NAVY ay nor PUDi', () => {
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['validation'] } }, null, null, BEFORE)).toEqual(['validation']);
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['validation'] } }, null, null, AFTER_PUDI)).toEqual(['validation']);
+  });
+  it('validation is shown when present in preferences.modules, never otherwise', () => {
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['bazarkely', 'validation'] } }, null, null, BEFORE)).toEqual([
+      'bazarkely',
+      'navy-ay',
+      'pudi',
+      'validation',
+    ]);
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['bazarkely'] } }, null, null, BEFORE)).not.toContain('validation');
+    expect(resolveAccessibleModules({ role: 'user', preferences: {} }, null, null, BEFORE)).not.toContain('validation');
+  });
+  it('a confirmed Eau or Construction access still adds its module next to validation', () => {
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['validation', 'gestion-eau'] } }, null, null, AFTER_PUDI)).toEqual([
+      'gestion-eau',
+      'navy-ay',
+      'validation',
+    ]);
+  });
+  it('validation is never a start module (external page)', () => {
+    const v = { id: 'validation', at: '2026-11-02T10:00:00Z' };
+    expect(pickStartModule(v, null, ['bazarkely', 'navy-ay', 'validation'])).toBe('bazarkely');
+    expect(pickStartModule(v, { id: 'navy-ay', at: '2026-10-01T00:00:00Z' }, ['bazarkely', 'navy-ay', 'validation'])).toBe('navy-ay');
+    expect(pickStartModule(v, null, ['validation'])).not.toBe('validation');
+  });
+  it('merging a patch keeps the validation id written by the server', () => {
+    const server = { modules: ['bazarkely', 'validation'], moduleOrder: ['navy-ay'] };
+    const merged = mergePreferences(server, { addModules: ['gestion-eau'], lastModule: { id: 'bazarkely', at: '2026-11-02T00:00:00Z' } }, true);
+    expect(merged.modules).toEqual(['bazarkely', 'validation', 'gestion-eau']);
+    expect(merged.moduleOrder).toEqual(['navy-ay']);
   });
 });
 

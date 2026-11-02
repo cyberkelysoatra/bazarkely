@@ -1,11 +1,11 @@
 {
     "name": "frontend",
     "private": true,
-    "version": "3.115.0",
+    "version": "3.117.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build --outDir dist && vite build -c vite.pudi.config.ts && npm run postbuild:spa",
+        "build": "vite build --outDir dist && vite build -c vite.pudi.config.ts && vite build -c vite.validation.config.ts && npm run postbuild:spa",
         "typecheck": "tsc -b",
         "postbuild:spa": "copyfiles -u 3 ../deploy/ovh/.htaccess dist/",
         "lint": "eslint .",

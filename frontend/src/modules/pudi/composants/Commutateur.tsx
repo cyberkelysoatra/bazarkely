@@ -27,6 +27,16 @@ function Tuile({ id }: { id: IdModule }) {
         <Icone nom="goutte" className="w-6 h-6" />
       </span>
     );
+  // Validation client (VALIDCLIENT-CC-02): check mark in a square, blue of the module charter.
+  if (id === 'validation')
+    return (
+      <span className={`${base} bg-[#0369a1] text-white`}>
+        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="4" y="4" width="16" height="16" rx="3" />
+          <path d="M8.5 12.5l2.5 2.5 4.5-5.5" />
+        </svg>
+      </span>
+    );
   return <span className={`${base} bg-[#FACC15] text-[#1F2937] font-titre text-[1.25rem]`}>N</span>;
 }
 

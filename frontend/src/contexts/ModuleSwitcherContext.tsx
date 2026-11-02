@@ -87,11 +87,22 @@ const DEFAULT_MODULES: Module[] = [
     name: 'PUDi',
     icon: 'P',
     path: '/pudi'
+  },
+  {
+    // Validation client (VALIDCLIENT-CC-02) : entrée légère séparée (/validation/, build dédié),
+    // traitée comme PUDi : navigation pleine page, jamais module actif ni mémorisé.
+    id: 'validation',
+    name: 'Validation',
+    icon: 'V',
+    path: '/validation/'
   }
 ];
 
-/** PUDi est une page séparée : jamais module actif ni dernier module (local ou compte). */
-const EXTERNAL_MODULE_IDS = ['pudi'];
+/** Pages séparées (PUDi, Validation) : jamais module actif ni dernier module (local ou compte). */
+const EXTERNAL_MODULE_IDS = ['pudi', 'validation'];
+
+/** Adresse pleine page de chaque page séparée. */
+const EXTERNAL_MODULE_URLS: Record<string, string> = { pudi: '/pudi/', validation: '/validation/' };
 
 /**
  * Préfixes de route propres à chaque module (hors bazarkely qui est le défaut).
@@ -212,6 +223,21 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
    * signet, une notification ou un F5 maintiennent l'utilisateur exactement là
    * où il est (invariant du verrou de navigation).
    */
+  // Validation client (VALIDCLIENT-CC-02, D10) : un compte confirmé dont la liste accessible est
+  // exactement ['validation'] qui ouvre l'hôte sur '/' ou '/dashboard' part vers /validation/
+  // (pleine page). Liste non résolue : aucune décision (règle du démarrage à froid).
+  const validationOnlyRedirectRef = useRef(false);
+  useEffect(() => {
+    if (validationOnlyRedirectRef.current || !user || !modulesResolved) return;
+    const path = location.pathname;
+    if (path !== '/' && path !== '/dashboard') return;
+    const accessible = resolveAccessibleModules({ role: userRole, preferences: userPrefs }, null, null);
+    if (accessible.length === 1 && accessible[0] === 'validation') {
+      validationOnlyRedirectRef.current = true;
+      window.location.assign('/validation/');
+    }
+  }, [location.pathname, user, modulesResolved, userRole, userPrefs]);
+
   useEffect(() => {
     // Une seule décision de reprise par session.
     if (hasCheckedStorage.current) return;
@@ -365,10 +391,10 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
   const setActiveModule = useCallback((moduleId: string) => {
     const module = availableModules.find(m => m.id === moduleId);
 
-    // PUDi : navigation pleine page vers l'entrée légère, rien n'est mémorisé.
+    // PUDi, Validation : navigation pleine page vers l'entrée légère, rien n'est mémorisé.
     if (module && EXTERNAL_MODULE_IDS.includes(module.id)) {
       setIsSwitcherMode(false);
-      window.location.assign('/pudi/');
+      window.location.assign(EXTERNAL_MODULE_URLS[module.id] ?? '/');
       return;
     }
 

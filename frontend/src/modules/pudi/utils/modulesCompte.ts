@@ -2,7 +2,7 @@
 // bottom bar). Rewrite of the host rules (resolveAccessibleModules, orderModules), never
 // imported: PUDi loads nothing from the host. Display only, never a security boundary.
 
-export type IdModule = 'bazarkely' | 'construction' | 'gestion-eau' | 'navy-ay';
+export type IdModule = 'bazarkely' | 'construction' | 'gestion-eau' | 'navy-ay' | 'validation';
 
 export interface ModuleHote {
   id: IdModule;
@@ -16,7 +16,9 @@ export const MODULES_HOTE: readonly ModuleHote[] = [
   { id: 'bazarkely', nom: 'BazarKELY', adresse: '/dashboard' },
   { id: 'construction', nom: 'Construction POC', adresse: '/construction/dashboard' },
   { id: 'gestion-eau', nom: 'Gestion Eau', adresse: '/gestion-eau' },
-  { id: 'navy-ay', nom: 'NAVY ay', adresse: '/navy' }
+  { id: 'navy-ay', nom: 'NAVY ay', adresse: '/navy' },
+  // Validation client (VALIDCLIENT-CC-02): external light page, full-page navigation like PUDi.
+  { id: 'validation', nom: 'Validation', adresse: '/validation/' }
 ];
 
 /** Columns of the account's own `users` row needed by the rules. */
@@ -34,9 +36,11 @@ export interface CompteModules {
 export function modulesDuCompte(compte: CompteModules | null | undefined): ModuleHote[] | null {
   if (!compte) return null;
   const liste = Array.isArray(compte.preferences?.modules) ? (compte.preferences!.modules as unknown[]) : [];
-  const ouverts = new Set<IdModule>(['navy-ay']);
+  // VALIDCLIENT-CC-02 (VC-02): an account with only « validation » sees no NAVY ay (nor PUDi).
+  const validationSeule = compte.role !== 'admin' && liste.length === 1 && liste[0] === 'validation';
+  const ouverts = new Set<IdModule>(validationSeule ? [] : ['navy-ay']);
   if (compte.role === 'admin') MODULES_HOTE.forEach((m) => ouverts.add(m.id));
-  else for (const id of ['bazarkely', 'gestion-eau', 'construction'] as const) if (liste.includes(id)) ouverts.add(id);
+  else for (const id of ['bazarkely', 'gestion-eau', 'construction', 'validation'] as const) if (liste.includes(id)) ouverts.add(id);
   const accessibles = MODULES_HOTE.filter((m) => ouverts.has(m.id));
   const ordre = Array.isArray(compte.preferences?.moduleOrder) ? (compte.preferences!.moduleOrder as unknown[]) : [];
   if (!ordre.length) return accessibles;

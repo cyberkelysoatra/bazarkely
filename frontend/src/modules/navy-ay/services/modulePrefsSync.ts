@@ -122,7 +122,8 @@ function scheduleRetry() {
  */
 export function queuePreferencesPatch(userId: string, patch: PreferencesPatch, localAuthoritative = false) {
   // PUDi (separate /pudi page) is never stored as last module on the account.
-  if (patch.lastModule?.id === 'pudi') {
+  // Validation client (separate /validation page, VALIDCLIENT-CC-02): same.
+  if (patch.lastModule?.id === 'pudi' || patch.lastModule?.id === MODULE_IDS.VALIDATION) {
     patch = { ...patch };
     delete patch.lastModule;
   }
@@ -225,7 +226,7 @@ export function readLocalLastModule(): LastModule | null {
 
 export function writeLocalLastModule(last: LastModule) {
   // PUDi (separate /pudi page) is never stored as last module.
-  if (last.id === 'pudi') return;
+  if (last.id === 'pudi' || last.id === MODULE_IDS.VALIDATION) return;
   try {
     localStorage.setItem(LEGACY_ACTIVE_MODULE_KEY, last.id);
     localStorage.setItem(LOCAL_LAST_MODULE_KEY, JSON.stringify(last));

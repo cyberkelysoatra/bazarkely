@@ -167,8 +167,12 @@ describe('preparerSynthese', () => {
 
 describe('modulesDuCompte', () => {
   const ids = (c: Parameters<typeof modulesDuCompte>[0]) => modulesDuCompte(c)?.map((m) => m.id) ?? null;
-  it('admin: the four host modules', () => {
-    expect(ids({ role: 'admin', preferences: {} })).toEqual(['bazarkely', 'construction', 'gestion-eau', 'navy-ay']);
+  it('admin: the four host modules (+ validation, VALIDCLIENT-CC-02)', () => {
+    expect(ids({ role: 'admin', preferences: {} })).toEqual(['bazarkely', 'construction', 'gestion-eau', 'navy-ay', 'validation']);
+  });
+  it('validation only: no NAVY ay (VC-02); validation listed when present', () => {
+    expect(ids({ role: 'user', preferences: { modules: ['validation'] } })).toEqual(['validation']);
+    expect(ids({ role: 'user', preferences: { modules: ['bazarkely', 'validation'] } })).toEqual(['bazarkely', 'navy-ay', 'validation']);
   });
   it('NAVY ay only for a new account', () => {
     expect(ids({ role: 'user', preferences: { modules: [] } })).toEqual(['navy-ay']);
@@ -181,7 +185,8 @@ describe('modulesDuCompte', () => {
       'navy-ay',
       'gestion-eau',
       'bazarkely',
-      'construction'
+      'construction',
+      'validation'
     ]);
   });
   it('unknown list: a missing modules key counts as empty (host rule), an unknown row is not a refusal', () => {

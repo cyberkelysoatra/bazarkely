@@ -1,0 +1,67 @@
+@config "../../../tailwind.validation.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+/* Never `overflow: hidden` on an ancestor of a sticky element (sticky trap): `clip` only. */
+html,
+body {
+  overflow-x: clip;
+}
+body {
+  @apply bg-fond text-encre font-sys;
+  margin: 0;
+}
+.vc-ecran {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+  background: #f0f9ff;
+}
+/* Header: its blue extends under the status bar of the installed app. */
+.vc-entete {
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+}
+.vc-deux-lignes {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* « Retour » line (mockup .backbar / .backbar.stuck): invisible at rest, frosted glass once stuck. */
+.vc-retour {
+  position: sticky;
+  top: calc(var(--vc-hdr, 0px) + 6px);
+  z-index: 5;
+  align-self: stretch;
+  margin: -6px 0 -2px;
+  background: rgba(255, 255, 255, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  border: 1px solid rgba(255, 255, 255, 0);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(3, 105, 161, 0);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, backdrop-filter 0.25s ease, -webkit-backdrop-filter 0.25s ease;
+}
+.vc-retour.vc-colle {
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 16px rgba(3, 105, 161, 0.12);
+}
+.vc-ecran a:focus-visible,
+.vc-ecran button:focus-visible,
+.vc-ecran input:focus-visible,
+.vc-ecran label:focus-within {
+  outline: 3px solid #0369a1;
+  outline-offset: 2px;
+}

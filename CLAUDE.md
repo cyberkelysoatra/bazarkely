@@ -24,7 +24,8 @@ Budget familial, Madagascar. React 19, TypeScript, Supabase, Vite, Tailwind, PWA
 | `gestion-eau` | Accès Eau existant (inchangé) |
 | `construction` | `hasConstructionAccess` (inchangé) |
 | `pudi` | Tout compte connecté jusqu'au 28/01/2027 · entrée légère `/pudi` (pleine page, jamais `lastModule`) |
-| admin (`role = 'admin'`) | Les quatre (+ `pudi` jusqu'au 28/01/2027) |
+| `validation` (v3.117.0) | Si `preferences.modules` contient `validation` (posé par le SERVEUR, `vc_invitation_utiliser` → `vc_ouvrir_module`, second écrivain de `modules`) · entrée légère `/validation/` (pleine page, jamais `lastModule`) · liste = exactement `['validation']` → ni NAVY ay ni PUDi, ouverture de l'hôte sur `/` ou `/dashboard` → `/validation/` |
+| admin (`role = 'admin'`) | Les quatre (+ `pudi` jusqu'au 28/01/2027, + `validation`) |
 
 - Dans `modules/navy-ay/` : `utils/moduleAccess.ts` (`resolveAccessibleModules`, `pickStartModule`, `mergePreferences`, testées). `services/modulePrefsSync.ts` = **seul** écrivain de `modules`/`lastModule` (patch idempotent, file `bazarkely_prefs_pending`, relecture serveur puis **fusion**, jamais écraser `moduleOrder`).
 - `preferences.modules` = affichage + gardes d'interface, jamais une sécurité.

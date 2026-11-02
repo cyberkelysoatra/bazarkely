@@ -15,7 +15,12 @@ export const MODULE_IDS = {
   GESTION_EAU: 'gestion-eau',
   NAVY_AY: 'navy-ay',
   PUDI: 'pudi',
+  /** Validation client (VALIDCLIENT-CC-02): separate light page /validation, like PUDi. */
+  VALIDATION: 'validation',
 } as const;
+
+/** Separate light pages (full-page navigation): never an active module, never `lastModule`. */
+export const EXTERNAL_MODULE_IDS: string[] = [MODULE_IDS.PUDI, MODULE_IDS.VALIDATION];
 
 /**
  * PUDi (v3.93.0): shown to every connected account (and admin) until the data purge date.
@@ -34,6 +39,7 @@ export const ALL_MODULE_IDS: string[] = [
   MODULE_IDS.GESTION_EAU,
   MODULE_IDS.NAVY_AY,
   MODULE_IDS.PUDI,
+  MODULE_IDS.VALIDATION,
 ];
 
 /** Last used module, stored locally and on the account (`preferences.lastModule`). */
@@ -72,7 +78,11 @@ export function resolveAccessibleModules(
   if (user.role === 'admin') return ALL_MODULE_IDS.filter((id) => id !== MODULE_IDS.PUDI || pudi);
 
   const stored: string[] = Array.isArray(user.preferences?.modules) ? user.preferences!.modules : [];
+  // VALIDCLIENT-CC-02 (VC-02, D10): an account whose list is exactly ['validation'] sees no other
+  // module (neither NAVY ay nor PUDi, otherwise open to every connected account).
+  if (stored.length === 1 && stored[0] === MODULE_IDS.VALIDATION) return [MODULE_IDS.VALIDATION];
   const out = new Set<string>([MODULE_IDS.NAVY_AY]);
+  if (stored.includes(MODULE_IDS.VALIDATION)) out.add(MODULE_IDS.VALIDATION);
 
   if (stored.includes(MODULE_IDS.BAZARKELY)) out.add(MODULE_IDS.BAZARKELY);
 
@@ -115,7 +125,7 @@ export function pickStartModule(
   accessible: string[]
 ): string {
   const candidates = [local, account].filter(
-    (m): m is LastModule => !!m?.id && m.id !== MODULE_IDS.PUDI && accessible.includes(m.id)
+    (m): m is LastModule => !!m?.id && !EXTERNAL_MODULE_IDS.includes(m.id) && accessible.includes(m.id)
   );
   const best = candidates.reduce<LastModule | null>((acc, m) => mostRecent(acc, m), null);
   if (best) return best.id;

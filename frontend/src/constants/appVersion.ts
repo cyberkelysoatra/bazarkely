@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.115.0';
-export const APP_VERSION_NAME = 'RTB Énergie : clients, compteurs, réglages et relevés d’électricité';
-export const LAST_UPDATED = '2026-11-01';
-export const APP_BUILD_DATE = '2026-11-01';
+export const APP_VERSION = '3.117.0';
+export const APP_VERSION_NAME = 'Validation client : entrée, connexion, invitation et accueil';
+export const LAST_UPDATED = '2026-11-02';
+export const APP_BUILD_DATE = '2026-11-02';
 export const VERSION_HISTORY = [
+  {
+    version: '3.117.0',
+    date: '2026-11-02',
+    description: 'Validation client, phase 2 : entrée légère /validation, connexion, invitation, inscription et accueil (VALIDCLIENT-CC-02)',
+    changes: [
+      'Nouvelle entrée légère /validation/ (build à part, service hors ligne propre, environ 125 ko compressés)',
+      'Lien d’invitation /validation/i/<jeton> : page d’invitation, invitation plus valable, invitation déjà servie',
+      'Connexion Google qui revient sur /validation, secours par e-mail avec création de compte et mot de passe oublié',
+      'Inscription et Mes infos : numéro WhatsApp et e-mail contrôlés, message sous le champ',
+      'Accueil : un document par carte, progression, états (chargement, aucun document, accès retiré, projet en pause)',
+      'En-tête au nom court du projet sur une ligne, menu du compte, barre du téléphone bleue',
+      'Sélecteur de 1saKELY : entrée Validation ; un compte qui n’a que Validation ne voit ni NAVY ay ni le PUDi'
+    ]
+  },
   {
     version: '3.115.0',
     date: '2026-11-01',
