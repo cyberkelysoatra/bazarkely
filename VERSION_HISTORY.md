@@ -6,6 +6,17 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.121.0 - 2026-11-03 (ELEC-CC-03 · RTB Énergie, facture d'électricité phase 2a : calcul, numérotation, validation)
+
+### 🧾 Factures RTB sans leur document (PDF : phase 2b)
+
+- Nouvel écran **Factures** du domaine Électricité (`/gestion-eau/elec/factures`) : préparer le cycle (même sans réseau), une facture par client groupé ou par bien, compteurs remplacés sur la même facture, pauses exclues, relevés manquants signalés.
+- Calcul identique en base (déclencheurs) et dans l'app : kWh × tarif, forfait une seule fois par facture, TVA, TTC arrondi à l'Ariary (demi vers le haut).
+- Numéros `FAC-AAAA-MM-NNN` attribués à l'émission seulement, sans trou ni doublon ; **mode essai** avec son propre compteur (l'officiel n'avance pas), factures d'essai effaçables.
+- Validation par les gérants (nouveau rôle **Validation électricité**) : avis Bon ou Remarque avant une date limite, clôture, ré-datation, « marquer envoyée » ; une facture envoyée ne change plus (refus par la base).
+- Export CSV du cycle pour comparer avec le tableur ; carte « Factures du cycle » au tableau de bord ; compteur d'essai réglable.
+- Migration `supabase/migrations/20261102000100_elec_factures.sql` ; rapport `RAPPORTS-CREATEUR-APPS/rtb-facturation/RAPPORT-PHASE-2A.md`.
+
 ## Version 3.112.2 et 3.112.3 - 2026-10-28/29 (DICTEE-CC-02 · Dictée vocale, phase 2 « dictées en attente »)
 
 ### 🎙️ Les dictées faites sans réseau se retrouvent et se reprennent

@@ -27,6 +27,10 @@ import {
   type EauDomaines,
 } from '../utils/domaines';
 import { SIMULATABLE_ROLES } from '../constants/simulationRoles';
+import { eauDb } from '../db/gestionEauDb';
+import { nbAValiderSansAvis } from '../utils/elecFacture';
+import { ELEC_FACTURES } from '../utils/domaines';
+import type { ElecFactureLocal, ElecValidationLocal } from '../types/gestionEau';
 
 /**
  * État de la session Supabase vis-à-vis du module eau (Phase 1 — fondation identité) :
@@ -101,7 +105,15 @@ interface GestionEauContextType {
   retryAccess: () => Promise<void>;
   /** Déclenche une reconnexion Google (même identité que le shell). */
   reauth: () => Promise<void>;
+  /**
+   * Pastilles des boutons de navigation du module, par chemin (ELEC-CC-03) : factures à
+   * valider sans avis de la personne, pour un valideur. Vide sinon.
+   */
+  navBadges: Record<string, number>;
 }
+
+/** Événement émis après une écriture sur les factures (relecture immédiate des pastilles). */
+export const EAU_FACTURES_EVENT = 'eau-elec-factures';
 
 const EMPTY_ROLES: EauRoles = {
   admin: false,
@@ -111,6 +123,7 @@ const EMPTY_ROLES: EauRoles = {
   releveurElec: false,
   gestionElec: false,
   lectureElec: false,
+  validationElec: false,
 };
 
 // Persistance de la simulation de rôle (100 % frontend). Réservée à l'admin :
@@ -163,6 +176,7 @@ function computeEffectiveRoles(real: EauRoles, sim: EauRole | null): EauRoles {
       releveurElec: sim === 'releveurElec',
       gestionElec: sim === 'gestionElec',
       lectureElec: sim === 'lectureElec',
+      validationElec: sim === 'validationElec',
     };
   }
   return real;
@@ -323,6 +337,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
           role_releveur_elec: effective.releveurElec,
           role_gestion_elec: effective.gestionElec,
           role_lecture_elec: effective.lectureElec,
+          role_validation_elec: effective.validationElec,
         });
         navigate(target);
       }
@@ -523,7 +538,8 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
     roles.promoteur ||
     roles.releveurElec ||
     roles.gestionElec ||
-    roles.lectureElec;
+    roles.lectureElec ||
+    roles.validationElec;
   // Promoteur « pur » = lecture seule. Un admin/releveur (même cumulé promoteur) écrit.
   // Calculé sur les rôles EFFECTIFS → en simulation promoteur, l'admin passe en lecture seule.
   const isReadOnly = roles.promoteur && !roles.admin && !roles.releveur;
@@ -533,6 +549,37 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
   // client d'eau ; sinon les domaines client réels (eau, électricité RTB : ELEC-CC-02).
   const domaines = domainesPourRoles(roles, isSimulating ? undefined : clientDomaines);
   const domaineActif = resolveDomaineActif(domaines, storedDomaine);
+
+  // Pastille du valideur (ELEC-CC-03) : lecture locale, relue toutes les 10 s et après
+  // chaque action sur les factures.
+  const [navBadges, setNavBadges] = useState<Record<string, number>>({});
+  const estValideur = roles.validationElec;
+  useEffect(() => {
+    if (!estValideur || !userId) {
+      setNavBadges({});
+      return;
+    }
+    let vivant = true;
+    const relire = async () => {
+      try {
+        const [f, a] = await Promise.all([
+          eauDb.eau_elec_factures.toArray() as Promise<ElecFactureLocal[]>,
+          eauDb.eau_elec_validations.toArray() as Promise<ElecValidationLocal[]>,
+        ]);
+        if (vivant) setNavBadges({ [ELEC_FACTURES]: nbAValiderSansAvis(f, a, userId) });
+      } catch {
+        /* lecture locale impossible : pas de pastille */
+      }
+    };
+    void relire();
+    const id = window.setInterval(() => void relire(), 10000);
+    window.addEventListener(EAU_FACTURES_EVENT, relire);
+    return () => {
+      vivant = false;
+      window.clearInterval(id);
+      window.removeEventListener(EAU_FACTURES_EVENT, relire);
+    };
+  }, [estValideur, userId]);
 
   // Périmètre de données de la simulation « Propriétaire » : compteurs de la villa simulée.
   // Non-null uniquement quand un admin incarne le rôle `client` avec une villa choisie.
@@ -565,6 +612,7 @@ export const GestionEauProvider: React.FC<ProviderProps> = ({ children }) => {
         refreshRoles,
         retryAccess,
         reauth,
+        navBadges,
       }}
     >
       {children}

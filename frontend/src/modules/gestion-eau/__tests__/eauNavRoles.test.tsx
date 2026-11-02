@@ -10,6 +10,7 @@ const r = (over: Partial<EauRoles>): EauRoles => ({
   releveurElec: false,
   gestionElec: false,
   lectureElec: false,
+  validationElec: false,
   ...over,
 });
 // Barre du domaine Eau (domaine actif par défaut).
@@ -60,15 +61,16 @@ describe('Navigation principale gestion-eau filtrée par rôle (boutons-thèmes,
   });
 });
 
-describe('Navigation filtrée par domaine (ELEC-CC-01, ELEC-CC-02)', () => {
-  const TROIS = ['Tableau de bord', 'Relevés', 'Clients'];
+describe('Navigation filtrée par domaine (ELEC-CC-01, ELEC-CC-02, ELEC-CC-03)', () => {
+  // ELEC-CC-03 : bouton Factures ajouté au domaine Électricité.
+  const TROIS = ['Tableau de bord', 'Relevés', 'Clients', 'Factures'];
 
-  it('domaine Électricité : admin et promoteur voient Tableau de bord, Relevés, Clients', () => {
+  it('domaine Électricité : admin et promoteur voient Tableau de bord, Relevés, Clients, Factures', () => {
     expect(labelsElec(r({ admin: true }))).toEqual(TROIS);
     expect(labelsElec(r({ promoteur: true }))).toEqual(TROIS);
   });
 
-  it('gestion et lecture électricité voient les trois boutons, aucun bouton eau', () => {
+  it('gestion et lecture électricité voient les quatre boutons, aucun bouton eau', () => {
     for (const k of ['gestionElec', 'lectureElec'] as const) {
       expect(labelsElec(r({ [k]: true }))).toEqual(TROIS);
       expect(labels(r({ [k]: true }))).toEqual([]);

@@ -99,6 +99,7 @@ export interface ValidationInput {
   releveurElec?: boolean;
   gestionElec?: boolean;
   lectureElec?: boolean;
+  validationElec?: boolean;
   /** Compteurs visibles → si non vide, l'utilisateur devient client. */
   compteur_ids: string[];
   traitee_par: string | null;
@@ -112,7 +113,7 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
   const demande = await getDemande(id);
   if (!demande || !demande.user_id) return null;
 
-  const elec = !!(v.releveurElec || v.gestionElec || v.lectureElec);
+  const elec = !!(v.releveurElec || v.gestionElec || v.lectureElec || v.validationElec);
   if (v.admin || v.releveur || v.promoteur || elec) {
     await setRoles(demande.user_id, {
       admin: v.admin,
@@ -122,6 +123,7 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
       releveurElec: v.releveurElec || undefined,
       gestionElec: v.gestionElec || undefined,
       lectureElec: v.lectureElec || undefined,
+      validationElec: v.validationElec || undefined,
     });
   }
   if (v.compteur_ids.length > 0) {
@@ -143,6 +145,7 @@ export async function validerDemande(id: string, v: ValidationInput): Promise<De
       releveur_elec: !!v.releveurElec,
       gestion_elec: !!v.gestionElec,
       lecture_elec: !!v.lectureElec,
+      validation_elec: !!v.validationElec,
     } as unknown,
     compteurs_visibles: v.compteur_ids as unknown,
     traitee_par: v.traitee_par,

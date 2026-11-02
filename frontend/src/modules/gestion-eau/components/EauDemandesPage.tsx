@@ -140,6 +140,7 @@ export default function EauDemandesPage() {
       {inv.role_releveur_elec && <Badge icon={Zap} tone="elec">Releveur électricité</Badge>}
       {inv.role_gestion_elec && <Badge icon={Zap} tone="elec">Gestion électricité</Badge>}
       {inv.role_lecture_elec && <Badge icon={Zap} tone="elec">Lecture électricité</Badge>}
+      {inv.role_validation_elec && <Badge icon={Zap} tone="elec">Validation électricité</Badge>}
     </div>
   );
 

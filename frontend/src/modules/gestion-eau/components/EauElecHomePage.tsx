@@ -1,6 +1,6 @@
 /**
  * Tableau de bord du domaine Électricité (ELEC-CC-02). Charte RTB Énergie, aucune donnée
- * d'eau, aucun montant. Pour la gestion et la lecture : avancement des relevés du cycle,
+ * d'eau ; seul montant : le TTC des factures du cycle (ELEC-CC-03). Pour la gestion et la lecture : avancement des relevés du cycle,
  * total du dernier cycle complet et écart, clients et compteurs par statut, raccourcis.
  * Un client RTB seul garde l'écran d'attente (il ne voit aucune donnée d'un autre client).
  */
@@ -12,6 +12,9 @@ import { useGestionEau } from '../context/GestionEauContext';
 import { listRoles } from '../services/eauRoleService';
 import { useDonneesElec, LectureSeule } from './elec/ElecUi';
 import { calculerCycle, cycleParDefaut, deMois, libelleMois, moisPrecedent } from '../utils/elecReleves';
+import { lireFactures } from '../services/eauElecFactureService';
+import { STATUT_FACTURE_LIBELLE } from '../utils/elecFacture';
+import type { ElecFactureLocal, ElecFactureStatut } from '../types/gestionEau';
 
 const A_VENIR = [
   { icon: Gauge, titre: 'Relevés', texte: 'Saisir les index des compteurs d’électricité, tournée par tournée.' },
@@ -23,7 +26,16 @@ const fmtKwh = (v: number) => `${v.toLocaleString('fr-FR', { maximumFractionDigi
 
 export default function EauElecHomePage() {
   const { roles, realRoles, isSimulating, domaines } = useGestionEau();
-  const { chargement, clients, compteurs, releves, droits } = useDonneesElec();
+  const { chargement, clients, compteurs, releves, reglages, droits } = useDonneesElec();
+  const [factures, setFactures] = useState<ElecFactureLocal[]>([]);
+  // Relue après le tirage du domaine (les factures en font partie).
+  useEffect(() => {
+    let vivant = true;
+    void lireFactures().then((d) => vivant && setFactures(d.factures));
+    return () => {
+      vivant = false;
+    };
+  }, [reglages, compteurs, releves]);
   const isAdmin = roles.admin;
   const [nbElec, setNbElec] = useState<number | null>(null);
 
@@ -33,7 +45,7 @@ export default function EauElecHomePage() {
     (async () => {
       try {
         const rows = await listRoles();
-        const n = rows.filter((r) => r.releveur_elec || r.gestion_elec || r.lecture_elec).length;
+        const n = rows.filter((r) => r.releveur_elec || r.gestion_elec || r.lecture_elec || r.validation_elec).length;
         if (alive) setNbElec(n);
       } catch {
         /* lecture locale best-effort */
@@ -184,15 +196,7 @@ export default function EauElecHomePage() {
             <Raccourci to="/gestion-eau/elec/reglages" icon={Settings} titre="Réglages RTB" texte="Identité, règlement, tarif" />
           </nav>
 
-          <section className="rounded-2xl border border-dashed border-rtb-gold/60 bg-rtb-gold/5 p-4 flex items-start gap-3" data-elec-factures-bientot>
-            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-rtb-gold/20 text-rtb-green">
-              <Receipt className="w-5 h-5" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="font-semibold text-rtb-green">Factures : bientôt</p>
-              <p className="text-sm text-gray-600">Les factures RTB Énergie se prépareront à partir de ces relevés.</p>
-            </div>
-          </section>
+          <CarteFactures mois={mois} factures={factures.filter((f) => f.cycle === mois)} />
         </div>
       )}
 
@@ -218,6 +222,48 @@ export default function EauElecHomePage() {
         </Link>
       )}
     </EauPageShell>
+  );
+}
+
+const ORDRE_STATUTS: ElecFactureStatut[] = ['brouillon', 'emise', 'a_valider', 'validee', 'envoyee', 'payee', 'abandonnee'];
+
+/** Factures du cycle : nombre par statut et TTC (ELEC-CC-03). */
+function CarteFactures({ mois, factures }: { mois: string; factures: ElecFactureLocal[] }) {
+  const ttc = factures.reduce((s, f) => s + (f.montant_ttc ?? 0), 0);
+  const parStatut = ORDRE_STATUTS.map((st) => ({ st, n: factures.filter((f) => f.statut === st).length })).filter((x) => x.n > 0);
+  const essai = factures.some((f) => f.essai);
+  return (
+    <Link
+      to="/gestion-eau/elec/factures"
+      className="block rounded-2xl border border-rtb-gold/40 bg-white p-4 shadow-soft hover:border-rtb-gold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rtb-gold"
+      data-elec-carte-factures
+    >
+      <div className="flex items-start gap-3">
+        <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-rtb-green text-rtb-gold">
+          <Receipt className="w-5 h-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-rtb-green">Factures {deMois(mois)}</p>
+          {factures.length === 0 ? (
+            <p className="text-sm text-gray-600">Aucune facture préparée pour ce mois.</p>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-rtb-green" data-elec-carte-factures-ttc>
+                {ttc.toLocaleString('fr-FR')} Ar <span className="text-sm font-medium text-gray-500">TTC</span>
+              </p>
+              <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-700" data-elec-carte-factures-statuts>
+                <li><strong>{factures.length}</strong> facture{factures.length > 1 ? 's' : ''}</li>
+                {parStatut.map(({ st, n }) => (
+                  <li key={st} data-elec-carte-statut={st}><strong>{n}</strong> {STATUT_FACTURE_LIBELLE[st].toLowerCase()}</li>
+                ))}
+              </ul>
+              {essai && <p className="text-xs text-rtb-green mt-1">Dont des factures d’essai (mode essai).</p>}
+            </>
+          )}
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" aria-hidden="true" />
+      </div>
+    </Link>
   );
 }
 

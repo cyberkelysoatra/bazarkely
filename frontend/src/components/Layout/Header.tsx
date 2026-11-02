@@ -1249,7 +1249,17 @@ const Header = () => {
                     }`
                   }
                 >
-                  <Icon className="w-5 h-5 mb-1" />
+                  <span className="relative">
+                    <Icon className="w-5 h-5 mb-1" />
+                    {(eauContextValue?.navBadges?.[item.path] ?? 0) > 0 && (
+                      <span
+                        className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full bg-rtb-gold text-rtb-green text-[11px] font-bold leading-[18px] text-center tabular-nums"
+                        data-eau-nav-badge={item.path}
+                      >
+                        {eauContextValue?.navBadges?.[item.path]}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs">{item.label}</span>
                 </NavLink>
               );

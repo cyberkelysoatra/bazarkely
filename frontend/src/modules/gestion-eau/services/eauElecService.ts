@@ -4,7 +4,7 @@
  * suppression par tombstone. Une table refusée par la RLS (0 ligne) n'est pas une erreur.
  */
 import { eauDb, type EauTableName } from '../db/gestionEauDb';
-import { pullTable, pushTable, pushOne, saveLocal, deleteLocal } from './eauSync';
+import { pullTable, pushTable, pushOne, saveLocal, deleteLocal, flushTombstones } from './eauSync';
 import { supabase, withTimeout } from '../../../lib/supabase';
 import { newId, nowIso } from '../utils/id';
 import {
@@ -22,13 +22,16 @@ export const ELEC_TABLES = [
   'eau_elec_clients',
   'eau_elec_compteurs',
   'eau_elec_releves_compteur',
+  'eau_elec_factures',
+  'eau_elec_facture_lignes',
+  'eau_elec_validations',
 ] as const;
 
-/** Repère du tirage forcé de la 3.115.0 (mémento §17). */
-export const ELEC_RESYNC_KEY = 'eau_elec_resync_3_115_0';
+/** Repère du tirage forcé (mémento §17) : 3.115.0 (socle), puis 3.121.0 (factures). */
+export const ELEC_RESYNC_KEY = 'eau_elec_resync_3_121_0';
 
 /**
- * Premier lancement en ligne de la 3.115.0 : vide les lignes électricité locales déjà
+ * Premier lancement en ligne de la 3.121.0 (comme de la 3.115.0) : vide les lignes électricité locales déjà
  * synchronisées (jamais celles en attente d'envoi) puis tire tout du serveur, pour
  * qu'aucun appareil ne garde un état d'avant la migration. Ne se refait qu'en cas d'échec.
  */
@@ -66,6 +69,9 @@ export async function forceResyncElecUneFois(online: boolean): Promise<boolean> 
  */
 export async function refreshElec(online: boolean): Promise<void> {
   if (!online) return;
+  // Suppressions en attente d'abord (brouillon de facture supprimé hors ligne) : sinon le
+  // tirage ferait revenir ses lignes.
+  await flushTombstones();
   for (const t of ELEC_TABLES) await pushTable(t);
   for (const t of ELEC_TABLES) {
     const res = await pullTable(t);
@@ -160,6 +166,8 @@ export const REGLAGES_DEFAUT: ElecReglagesLocal = {
   numero_annee: 2026,
   numero_prochain: 50,
   mode_essai: true,
+  numero_essai_prochain: 50,
+  numero_essai_annee: 2026,
   created_at: null,
   updated_at: null,
 };

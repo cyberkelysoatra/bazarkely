@@ -128,6 +128,7 @@ export interface InvitationInput {
   role_releveur_elec?: boolean;
   role_gestion_elec?: boolean;
   role_lecture_elec?: boolean;
+  role_validation_elec?: boolean;
   compteur_ids?: string[];
   cible?: string | null;
   invited_by?: string | null;
@@ -159,6 +160,7 @@ export async function createInvitation(input: InvitationInput): Promise<Invitati
     role_releveur_elec: input.role_releveur_elec ?? false,
     role_gestion_elec: input.role_gestion_elec ?? false,
     role_lecture_elec: input.role_lecture_elec ?? false,
+    role_validation_elec: input.role_validation_elec ?? false,
     compteur_ids: input.compteur_ids ?? [],
     cible: input.cible ?? null,
     statut: 'en_attente',
@@ -214,6 +216,7 @@ export interface WhatsappInvitationInput {
   role_releveur_elec?: boolean;
   role_gestion_elec?: boolean;
   role_lecture_elec?: boolean;
+  role_validation_elec?: boolean;
   compteur_ids?: string[];
   /** Délai d'expiration en jours (ex. 7 / 30 / 90) ; null/0 = pas d'expiration. */
   expiresInDays?: number | null;
@@ -235,6 +238,7 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_releveur_elec: input.role_releveur_elec ?? false,
     role_gestion_elec: input.role_gestion_elec ?? false,
     role_lecture_elec: input.role_lecture_elec ?? false,
+    role_validation_elec: input.role_validation_elec ?? false,
   };
   const days = input.expiresInDays ?? null;
   const expires_at =
@@ -251,6 +255,7 @@ export async function createWhatsappInvitation(input: WhatsappInvitationInput): 
     role_releveur_elec: roles.role_releveur_elec,
     role_gestion_elec: roles.role_gestion_elec,
     role_lecture_elec: roles.role_lecture_elec,
+    role_validation_elec: roles.role_validation_elec,
     compteur_ids: input.compteur_ids ?? [],
     cible: invitationTargetPath(roles),
     statut: 'en_attente',
@@ -303,11 +308,12 @@ type RoleFlags = {
   role_releveur_elec?: boolean;
   role_gestion_elec?: boolean;
   role_lecture_elec?: boolean;
+  role_validation_elec?: boolean;
 };
 
 /** Invitation qui ne porte QUE des rôles électricité (message neutre, sans l'eau). */
 export function invitationElecSeule(flags: RoleFlags): boolean {
-  const elec = !!(flags.role_releveur_elec || flags.role_gestion_elec || flags.role_lecture_elec);
+  const elec = !!(flags.role_releveur_elec || flags.role_gestion_elec || flags.role_lecture_elec || flags.role_validation_elec);
   const eau = !!(flags.role_admin || flags.role_releveur || flags.role_client || flags.role_promoteur);
   return elec && !eau;
 }
@@ -339,6 +345,7 @@ export function invitationRoleLabel(flags: RoleFlags): string {
   if (flags.role_releveur_elec) parts.push('Releveur électricité');
   if (flags.role_gestion_elec) parts.push('Gestion électricité');
   if (flags.role_lecture_elec) parts.push('Lecture électricité');
+  if (flags.role_validation_elec) parts.push('Validation électricité');
   return parts.join(' / ') || 'utilisateur';
 }
 
@@ -354,6 +361,8 @@ export function invitationTargetPath(flags: RoleFlags): string {
   if (flags.role_client) return '/gestion-eau/client';
   // Domaine Électricité seul (ELEC-CC-02) : le releveur arrive sur ses relevés.
   if (flags.role_gestion_elec || flags.role_lecture_elec) return '/gestion-eau/elec';
+  // Valideur (ELEC-CC-03) : directement sur les factures à valider.
+  if (flags.role_validation_elec) return '/gestion-eau/elec/factures';
   if (flags.role_releveur_elec) return '/gestion-eau/elec/releves';
   return '/gestion-eau/client';
 }

@@ -12,6 +12,7 @@ import { ElecBouton, LectureSeule, champCls, useDonneesElec } from './ElecUi';
 import { saveReglages, REGLAGES_DEFAUT } from '../../services/eauElecService';
 import { controlerReglages, formaterIban, numeroFacture, type ErreursReglages } from '../../utils/elecReglages';
 import { cycleParDefaut } from '../../utils/elecReleves';
+import { showConfirm } from '../../../../utils/dialogUtils';
 import type { ElecReglagesLocal } from '../../types/gestionEau';
 
 type Champ = { cle: keyof ElecReglagesLocal; libelle: string; aide?: string; mode?: 'text' | 'decimal' | 'numeric' | 'email' | 'tel' };
@@ -46,10 +47,11 @@ const CALCUL: Champ[] = [
 ];
 const NUMEROTATION: Champ[] = [
   { cle: 'numero_annee', libelle: 'Année de numérotation', mode: 'numeric' },
-  { cle: 'numero_prochain', libelle: 'Prochain numéro', mode: 'numeric' },
+  { cle: 'numero_prochain', libelle: 'Prochain numéro officiel', mode: 'numeric' },
+  { cle: 'numero_essai_prochain', libelle: 'Prochain numéro d’essai', aide: 'Compteur à part : jamais mélangé avec l’officiel', mode: 'numeric' },
 ];
 const TOUS = [...IDENTITE, ...REGLEMENT, ...DESIGNATION, ...CALCUL, ...NUMEROTATION];
-const NUMERIQUES = new Set<string>(['puissance_kwc', 'tarif_kwh', 'forfait_ht', 'tva_pct', 'echeance_jours', 'numero_annee', 'numero_prochain']);
+const NUMERIQUES = new Set<string>(['puissance_kwc', 'tarif_kwh', 'forfait_ht', 'tva_pct', 'echeance_jours', 'numero_annee', 'numero_prochain', 'numero_essai_prochain']);
 
 function versFormulaire(r: ElecReglagesLocal): Record<string, string> {
   const f: Record<string, string> = {};
@@ -88,6 +90,8 @@ export default function EauElecReglagesPage() {
   const annee = Number(form.numero_annee) || REGLAGES_DEFAUT.numero_annee;
   const prochain = Number(form.numero_prochain) || REGLAGES_DEFAUT.numero_prochain;
   const apercuNumero = numeroFacture(annee, mois, prochain);
+  const prochainEssai = Number(form.numero_essai_prochain) || REGLAGES_DEFAUT.numero_essai_prochain || 50;
+  const apercuEssai = numeroFacture(reglages?.numero_essai_annee ?? annee, mois, prochainEssai);
 
   const enregistrer = async () => {
     if (!ecriture || busy) return;
@@ -112,6 +116,15 @@ export default function EauElecReglagesPage() {
       }
     }
     if (!patch.devise) patch.devise = 'MGA';
+    // Passage du mode essai au mode officiel : confirmation qui dit le prochain numéro officiel.
+    if ((reglages?.mode_essai ?? true) && !essai) {
+      const ok = await showConfirm(
+        `Les prochaines factures émises seront OFFICIELLES. Prochain numéro officiel : ${apercuNumero}. Les numéros d’essai et officiels ne se mélangent jamais.`,
+        'Passer en mode officiel',
+        { confirmText: 'Passer en officiel', variant: 'warning' }
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     try {
       await saveReglages(patch);
@@ -192,6 +205,12 @@ export default function EauElecReglagesPage() {
                 {apercuNumero}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">Le mois est celui de la consommation facturée.</p>
+              <p className="text-xs text-gray-600 mt-2">Prochain numéro d’essai</p>
+              <p className="text-base font-semibold tracking-wide text-rtb-green" data-elec-prochain-essai>{apercuEssai}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Deux compteurs séparés : les factures d’essai prennent leurs numéros dans le compteur d’essai et ne font
+                jamais avancer le compteur officiel.
+              </p>
             </div>
             <label className="mt-3 flex items-start gap-3 min-h-[44px] cursor-pointer">
               <input

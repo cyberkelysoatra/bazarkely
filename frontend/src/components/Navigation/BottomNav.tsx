@@ -271,6 +271,8 @@ const BottomNav = () => {
   const isEauModule = activeModule?.id === 'gestion-eau';
   // Domaine actif du module eau (ELEC-CC-01) : la barre ne montre que ses boutons.
   const eauDomaine = eauContext?.domaineActif ?? 'eau';
+  // Pastilles des boutons du module eau (ELEC-CC-03 : factures à valider pour un valideur).
+  const eauNavBadges: Record<string, number> = eauContext?.navBadges ?? {};
   const isElecDomain = isEauModule && eauDomaine === 'elec';
   // NAVY ay : barre anthracite / jaune (charte NAVY, jamais de bleu marine).
   const isNavyModule = activeModule?.id === 'navy-ay';
@@ -447,8 +449,18 @@ const BottomNav = () => {
                   </span>
                 ) : (
                   <>
-                    <div className={`p-3 rounded-xl transition-all duration-300 ${isActive ? `${activeBg} shadow-lg scale-110` : `${hoverBg} hover:scale-105`}`}>
+                    <div className={`relative p-3 rounded-xl transition-all duration-300 ${isActive ? `${activeBg} shadow-lg scale-110` : `${hoverBg} hover:scale-105`}`}>
                       <IconComponent className={`w-[18px] h-[18px] transition-colors duration-200 ${isActive ? 'text-white' : 'text-slate-600'}`} />
+                      {/* Gestion Eau (ELEC-CC-03) : factures à valider sans avis, pour un valideur. */}
+                      {isEauModule && (eauNavBadges[item.path] ?? 0) > 0 && (
+                        <span
+                          className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rtb-gold text-rtb-green text-[11px] font-bold leading-[18px] text-center ring-2 ring-white tabular-nums"
+                          aria-label={`${eauNavBadges[item.path]} à valider`}
+                          data-eau-nav-badge={item.path}
+                        >
+                          {eauNavBadges[item.path]}
+                        </span>
+                      )}
                     </div>
                     <span className={`text-xs font-semibold mt-1 transition-colors duration-200 ${isActive ? activeText : 'text-slate-600'}`}>
                       {item.label}

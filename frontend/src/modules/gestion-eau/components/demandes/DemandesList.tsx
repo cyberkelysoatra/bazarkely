@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Inbox, UserPlus, Shield, Gauge, Eye, Check, X, Zap, Receipt, BarChart3 } from 'lucide-react';
+import { Inbox, UserPlus, Shield, Gauge, Eye, Check, X, Zap, Receipt, BarChart3, Stamp } from 'lucide-react';
 import { EauEmptyState, EauIconButton, EauListIcon } from '../EauUi';
 import { validerDemande, refuserDemande } from '../../services/eauDemandeService';
 import { showConfirm } from '../../../../utils/dialogUtils';
@@ -19,6 +19,7 @@ interface DraftState {
   releveurElec: boolean;
   gestionElec: boolean;
   lectureElec: boolean;
+  validationElec: boolean;
   compteurs: Set<string>;
 }
 
@@ -41,7 +42,7 @@ export default function DemandesList({
   const draftFor = (id: string): DraftState =>
     drafts[id] ?? {
       admin: false, releveur: false, promoteur: false,
-      releveurElec: false, gestionElec: false, lectureElec: false,
+      releveurElec: false, gestionElec: false, lectureElec: false, validationElec: false,
       compteurs: new Set(),
     };
 
@@ -59,7 +60,7 @@ export default function DemandesList({
   const valider = async (d: DemandeAccesLocal) => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     const draft = draftFor(d.id);
-    const elec = draft.releveurElec || draft.gestionElec || draft.lectureElec;
+    const elec = draft.releveurElec || draft.gestionElec || draft.lectureElec || draft.validationElec;
     if (!draft.admin && !draft.releveur && !draft.promoteur && !elec && draft.compteurs.size === 0) {
       toast.error('Attribuez au moins un rôle ou un compteur visible');
       return;
@@ -71,6 +72,7 @@ export default function DemandesList({
       releveurElec: draft.releveurElec,
       gestionElec: draft.gestionElec,
       lectureElec: draft.lectureElec,
+      validationElec: draft.validationElec,
       compteur_ids: Array.from(draft.compteurs),
       traitee_par: me,
     });
@@ -163,6 +165,13 @@ export default function DemandesList({
                           className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
                         <BarChart3 className="w-4 h-4 text-rtb-green" aria-hidden="true" />
                         <span className="text-gray-700">Lecture électricité</span>
+                      </label>
+                      <label className="flex items-center gap-1.5">
+                        <input type="checkbox" checked={draft.validationElec}
+                          onChange={(e) => updateDraft(d.id, { validationElec: e.target.checked })}
+                          className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
+                        <Stamp className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+                        <span className="text-gray-700">Validation électricité</span>
                       </label>
                     </div>
                     <div className="text-sm">

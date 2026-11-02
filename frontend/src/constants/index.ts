@@ -166,7 +166,9 @@ export const GESTION_EAU_NAV_ITEMS = [
   // ELEC-CC-02 : un releveur électricité seul n'a que « Relevés » ; un client RTB seul, le tableau de bord d'attente.
   { path: '/gestion-eau/elec', icon: 'LayoutDashboard', label: 'Tableau de bord', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec', 'client'] as const, domain: 'elec' as const },
   { path: '/gestion-eau/elec/releves', icon: 'Gauge', label: 'Relevés', roles: ['admin', 'promoteur', 'releveurElec', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const },
-  { path: '/gestion-eau/elec/clients', icon: 'Users', label: 'Clients', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const }
+  { path: '/gestion-eau/elec/clients', icon: 'Users', label: 'Clients', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec'] as const, domain: 'elec' as const },
+  // ELEC-CC-03 : factures RTB (préparer, émettre, valider, envoyer). Pastille pour le valideur.
+  { path: '/gestion-eau/elec/factures', icon: 'Receipt', label: 'Factures', roles: ['admin', 'promoteur', 'gestionElec', 'lectureElec', 'validationElec'] as const, domain: 'elec' as const }
 ] as const;
 
 // Navigation NAVY ay (livraison de petits colis à Nosy Be) — phase 0 : accueil seul.

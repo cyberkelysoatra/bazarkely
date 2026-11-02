@@ -42,6 +42,9 @@ const PK_BY_TABLE: Record<EauTableName, string> = {
   eau_elec_reglages: 'id',
   eau_elec_clients: 'id',
   eau_elec_compteurs: 'id',
+  eau_elec_factures: 'id',
+  eau_elec_facture_lignes: 'id',
+  eau_elec_validations: 'id',
 };
 
 const SYNC_TIMEOUT_MS = 8000;

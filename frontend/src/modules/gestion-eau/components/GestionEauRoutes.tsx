@@ -43,6 +43,7 @@ const EauElecHomePage = React.lazy(() => import('./EauElecHomePage'));
 const EauElecRelevesPage = React.lazy(() => import('./elec/EauElecRelevesPage'));
 const EauElecClientsPage = React.lazy(() => import('./elec/EauElecClientsPage'));
 const EauElecReglagesPage = React.lazy(() => import('./elec/EauElecReglagesPage'));
+const EauElecFacturesPage = React.lazy(() => import('./elec/EauElecFacturesPage'));
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -242,6 +243,15 @@ export default function GestionEauRoutes() {
           element={
             <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'gestionElec', 'lectureElec']}>
               <EauElecReglagesPage />
+            </EauRoleProtectedRoute>
+          }
+        />
+        {/* ELEC-CC-03 : factures RTB (gestion : émission ; valideurs : avis ; lecture et promoteur : consultation). */}
+        <Route
+          path="elec/factures"
+          element={
+            <EauRoleProtectedRoute allowedRoles={['admin', 'promoteur', 'gestionElec', 'lectureElec', 'validationElec']}>
+              <EauElecFacturesPage />
             </EauRoleProtectedRoute>
           }
         />

@@ -27,16 +27,19 @@ export interface ElecDroits {
   lecture: boolean;
   /** Releveur électricité sans autre rôle du domaine. */
   releveurSeul: boolean;
+  /** Valideur des factures (ELEC-CC-03) : donne ses avis, lit le domaine, n'émet rien. */
+  validation: boolean;
 }
 
 export function droitsElec(roles: EauRoles): ElecDroits {
   const gestion = roles.admin || roles.gestionElec;
-  const lecture = gestion || roles.promoteur || roles.lectureElec;
+  const lecture = gestion || roles.promoteur || roles.lectureElec || roles.validationElec;
   return {
     gestion,
     saisie: gestion || roles.releveurElec,
     lecture,
     releveurSeul: roles.releveurElec && !lecture,
+    validation: roles.validationElec,
   };
 }
 

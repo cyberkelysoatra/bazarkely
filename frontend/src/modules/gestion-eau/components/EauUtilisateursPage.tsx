@@ -58,7 +58,7 @@ export default function EauUtilisateursPage() {
     return `${userId.slice(0, 8)}…`;
   };
 
-  type RoleKey = 'admin' | 'releveur' | 'promoteur' | 'releveurElec' | 'gestionElec' | 'lectureElec';
+  type RoleKey = 'admin' | 'releveur' | 'promoteur' | 'releveurElec' | 'gestionElec' | 'lectureElec' | 'validationElec';
   const toggleRole = async (r: RoleLocal, key: RoleKey, value: boolean) => {
     if (isReadOnly) return; // garde lecture seule (promoteur)
     if (key === 'admin' && !value && r.user_id === me) {
@@ -71,6 +71,7 @@ export default function EauUtilisateursPage() {
       releveurElec: key === 'releveurElec' ? value : (r.releveur_elec ?? false),
       gestionElec: key === 'gestionElec' ? value : (r.gestion_elec ?? false),
       lectureElec: key === 'lectureElec' ? value : (r.lecture_elec ?? false),
+      validationElec: key === 'validationElec' ? value : (r.validation_elec ?? false),
     });
     await reload();
     toast.success('Rôles mis à jour');
@@ -225,7 +226,7 @@ export default function EauUtilisateursPage() {
                 {roles.map((r) => (
                   <div key={r.user_id} className="bg-white border border-ahuvi-100 rounded-lg px-3 py-2 flex items-start gap-2.5">
                     <EauListIcon
-                      icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : r.releveur_elec || r.gestion_elec || r.lecture_elec ? Zap : Users}
+                      icon={r.admin ? Shield : r.releveur ? ClipboardList : r.promoteur ? Eye : r.releveur_elec || r.gestion_elec || r.lecture_elec || r.validation_elec ? Zap : Users}
                       tone={r.admin ? 'gold' : r.releveur ? 'olive' : r.promoteur ? 'teal' : 'neutral'}
                     />
                     <div className="min-w-0 flex-1">
@@ -247,6 +248,7 @@ export default function EauUtilisateursPage() {
                         {roleBox(r, 'releveurElec', 'Releveur électricité', r.releveur_elec ?? false)}
                         {roleBox(r, 'gestionElec', 'Gestion électricité', r.gestion_elec ?? false)}
                         {roleBox(r, 'lectureElec', 'Lecture électricité', r.lecture_elec ?? false)}
+                        {roleBox(r, 'validationElec', 'Validation électricité', r.validation_elec ?? false)}
                       </div>
                     </div>
                   </div>

@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  UserPlus, Mail, MessageCircle, CalendarClock, ShieldCheck, ClipboardList, Users, Eye, Send, Zap, Receipt, BarChart3,
+  UserPlus, Mail, MessageCircle, CalendarClock, ShieldCheck, ClipboardList, Users, Eye, Send, Zap, Receipt, BarChart3, Stamp,
 } from 'lucide-react';
 import { EauIconButton, eauSegmentTabClass } from '../EauUi';
 import {
@@ -42,6 +42,7 @@ export default function InvitationForm({
   const [rReleveurElec, setRReleveurElec] = useState(false);
   const [rGestionElec, setRGestionElec] = useState(false);
   const [rLectureElec, setRLectureElec] = useState(false);
+  const [rValidationElec, setRValidationElec] = useState(false);
   const [iCompteurs, setICompteurs] = useState<Set<string>>(new Set());
   const [iExpiresDays, setIExpiresDays] = useState<number | null>(30);
   const [busy, setBusy] = useState(false);
@@ -49,7 +50,7 @@ export default function InvitationForm({
   const resetForm = () => {
     setINom(''); setIEmail(''); setIPhone('');
     setRAdmin(false); setRReleveur(true); setRClient(false); setRPromoteur(false);
-    setRReleveurElec(false); setRGestionElec(false); setRLectureElec(false);
+    setRReleveurElec(false); setRGestionElec(false); setRLectureElec(false); setRValidationElec(false);
     setICompteurs(new Set()); setIExpiresDays(30);
   };
 
@@ -67,7 +68,7 @@ export default function InvitationForm({
       toast.error('Email Google invalide'); return;
     }
     if (!iPhone.replace(/\D/g, '')) { toast.error('Numéro WhatsApp requis'); return; }
-    if (!rAdmin && !rReleveur && !rClient && !rPromoteur && !rReleveurElec && !rGestionElec && !rLectureElec) {
+    if (!rAdmin && !rReleveur && !rClient && !rPromoteur && !rReleveurElec && !rGestionElec && !rLectureElec && !rValidationElec) {
       toast.error('Choisissez au moins un rôle'); return;
     }
     if (rClient && iCompteurs.size === 0) { toast.error('Choisissez au moins un compteur pour un propriétaire'); return; }
@@ -76,6 +77,7 @@ export default function InvitationForm({
       const flags = {
         role_admin: rAdmin, role_releveur: rReleveur, role_client: rClient, role_promoteur: rPromoteur,
         role_releveur_elec: rReleveurElec, role_gestion_elec: rGestionElec, role_lecture_elec: rLectureElec,
+        role_validation_elec: rValidationElec,
       };
       const compteur_ids = rClient ? Array.from(iCompteurs) : [];
       const inv =
@@ -214,6 +216,12 @@ export default function InvitationForm({
               className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" />
             <BarChart3 className="w-4 h-4 text-rtb-green" aria-hidden="true" />
             <span className="text-gray-700">Lecture électricité</span>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={rValidationElec} onChange={(e) => setRValidationElec(e.target.checked)}
+              className="rounded border-gray-300 text-rtb-green focus:ring-rtb-gold" data-invite-validation-elec />
+            <Stamp className="w-4 h-4 text-rtb-green" aria-hidden="true" />
+            <span className="text-gray-700">Validation électricité</span>
           </label>
         </div>
       </div>

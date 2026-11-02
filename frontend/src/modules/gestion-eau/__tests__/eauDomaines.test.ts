@@ -40,6 +40,7 @@ const r = (over: Partial<EauRoles>): EauRoles => ({
   releveurElec: false,
   gestionElec: false,
   lectureElec: false,
+  validationElec: false,
   ...over,
 });
 

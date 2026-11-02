@@ -27,7 +27,7 @@ import type { EauRoles, ElecCompteurLocal, ElecReleveLocal } from '../types/gest
 
 const r = (over: Partial<EauRoles>): EauRoles => ({
   admin: false, releveur: false, client: false, promoteur: false,
-  releveurElec: false, gestionElec: false, lectureElec: false, ...over,
+  releveurElec: false, gestionElec: false, lectureElec: false, validationElec: false, ...over,
 });
 
 const cpt = (over: Partial<ElecCompteurLocal> = {}): ElecCompteurLocal => ({
@@ -141,8 +141,8 @@ describe('Règle des 48 heures et propriété', () => {
     expect(peutModifierReleve({ agent_id: 'u1', timestamp: '2026-10-31T10:00:00.000Z' }, 'u1', lecture, maintenant)).toBe(false);
   });
   it('droits : releveur seul ne lit ni clients ni cycle ; promoteur lit sans écrire', () => {
-    expect(releveur).toEqual({ gestion: false, saisie: true, lecture: false, releveurSeul: true });
-    expect(droitsElec(r({ promoteur: true }))).toEqual({ gestion: false, saisie: false, lecture: true, releveurSeul: false });
+    expect(releveur).toEqual({ gestion: false, saisie: true, lecture: false, releveurSeul: true, validation: false });
+    expect(droitsElec(r({ promoteur: true }))).toEqual({ gestion: false, saisie: false, lecture: true, releveurSeul: false, validation: false });
     expect(droitsElec(r({ admin: true })).gestion).toBe(true);
   });
 });

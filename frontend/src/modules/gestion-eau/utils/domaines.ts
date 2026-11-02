@@ -15,6 +15,8 @@ export const ELEC_HOME = '/gestion-eau/elec';
 export const EAU_HOME = '/gestion-eau';
 /** Relevés d'électricité : seul écran d'un releveur électricité (ELEC-CC-02). */
 export const ELEC_RELEVES = '/gestion-eau/elec/releves';
+/** Factures RTB (ELEC-CC-03) : écran d'arrivée d'un valideur sans autre rôle du domaine. */
+export const ELEC_FACTURES = '/gestion-eau/elec/factures';
 
 /**
  * Accueil du domaine Électricité selon les rôles : un releveur électricité sans autre
@@ -22,7 +24,9 @@ export const ELEC_RELEVES = '/gestion-eau/elec/releves';
  */
 export function accueilElec(roles: EauRoles): string {
   const autre = roles.admin || roles.promoteur || roles.gestionElec || roles.lectureElec || roles.client;
-  return roles.releveurElec && !autre ? ELEC_RELEVES : ELEC_HOME;
+  if (autre) return ELEC_HOME;
+  if (roles.validationElec) return ELEC_FACTURES;
+  return roles.releveurElec ? ELEC_RELEVES : ELEC_HOME;
 }
 
 /**
@@ -43,6 +47,7 @@ export function domainesPourRoles(
       roles.releveurElec ||
       roles.gestionElec ||
       roles.lectureElec ||
+      roles.validationElec ||
       (isClient && clientDomaines.elec),
   };
 }

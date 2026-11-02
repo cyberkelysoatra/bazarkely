@@ -65,6 +65,7 @@ const ROLE_HINTS: Record<DraftKey, string> = {
   releveurElec: 'Comme la personne qui relève les compteurs d’électricité.',
   gestionElec: 'Comme la gérance de RTB Énergie : factures d’électricité.',
   lectureElec: 'Consultation du tableau de bord électricité, sans rien modifier.',
+  validationElec: 'Comme un gérant qui valide les factures du cycle : avis Bon ou Remarque.',
 };
 
 /** Famille d'un choix (titres « Eau » / « Électricité » dans la liste). */

@@ -200,10 +200,87 @@ export interface ElecReglagesRow {
   numero_annee: number;
   numero_prochain: number;
   mode_essai: boolean;
+  /** Compteur d'essai (ELEC-CC-03) : distinct de l'officiel, jamais mélangé. Absent d'un vieux cache = 50 / 2026. */
+  numero_essai_prochain?: number;
+  numero_essai_annee?: number;
   created_at: string | null;
   updated_at: string | null;
 }
 export type ElecReglagesLocal = ElecReglagesRow & LocalMeta;
+
+// ───────────────────────── eau_elec_factures (ELEC-CC-03) ─────────────────────────
+/** Statuts d'une facture RTB. `payee` et `abandonnee` : phases suivantes. */
+export type ElecFactureStatut = 'brouillon' | 'emise' | 'a_valider' | 'validee' | 'envoyee' | 'payee' | 'abandonnee';
+
+export interface ElecFactureRow {
+  id: string;
+  client_id: string;
+  /** null pour une facture groupée (tous les compteurs du client). */
+  bien: string | null;
+  /** Mois de consommation `AAAA-MM`. */
+  cycle: string;
+  statut: ElecFactureStatut;
+  essai: boolean;
+  numero: string | null;
+  numero_seq: number | null;
+  periode_debut: string | null;
+  periode_fin: string | null;
+  date_emission: string | null;
+  date_echeance: string | null;
+  tarif_kwh: number | null;
+  forfait_ht: number | null;
+  tva_pct: number | null;
+  total_kwh: number | null;
+  montant_energie: number | null;
+  montant_ht: number | null;
+  montant_tva: number | null;
+  montant_ttc: number | null;
+  client_snapshot: Record<string, unknown> | null;
+  emetteur_snapshot: Record<string, unknown> | null;
+  validation_date_limite: string | null;
+  date_envoi: string | null;
+  en_attente_releve: boolean;
+  /** Ce qui manque pour une facture en attente (« relevé de clôture manquant pour L7 »). */
+  motif_attente: string | null;
+  note_interne: string | null;
+  /** Client, ou client et bien : une seule facture par clé et par cycle. */
+  cle_regroupement: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecFactureLocal = ElecFactureRow & LocalMeta;
+
+export interface ElecFactureLigneRow {
+  id: string;
+  facture_id: string;
+  compteur_id: string;
+  code_compteur: string | null;
+  index_debut: number | null;
+  date_index_debut: string | null;
+  index_fin: number | null;
+  date_index_fin: string | null;
+  releve_fin_id: string | null;
+  kwh: number | null;
+  montant: number | null;
+  ordre: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecFactureLigneLocal = ElecFactureLigneRow & LocalMeta;
+
+export interface ElecValidationRow {
+  id: string;
+  facture_id: string;
+  user_id: string;
+  avis: 'bon' | 'remarque';
+  texte: string | null;
+  /** Réponse de la gestion à une remarque. */
+  reponse: string | null;
+  levee: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+export type ElecValidationLocal = ElecValidationRow & LocalMeta;
 
 // ───────────────────────────── eau_elec_clients ─────────────────────────────
 export interface ElecClientRow {
@@ -367,6 +444,8 @@ export interface RoleRow {
   gestion_elec?: boolean;
   /** Consulte le tableau de bord electricite. */
   lecture_elec?: boolean;
+  /** Valide les factures d'electricite du cycle (ELEC-CC-03). */
+  validation_elec?: boolean;
   updated_at: string | null;
 }
 export type RoleLocal = RoleRow & LocalMeta;
@@ -431,6 +510,7 @@ export interface InvitationRow {
   role_releveur_elec?: boolean;
   role_gestion_elec?: boolean;
   role_lecture_elec?: boolean;
+  role_validation_elec?: boolean;
   compteur_ids: string[]; // jsonb
   cible: string | null;
   statut: InvitationStatut;
@@ -524,7 +604,8 @@ export type EauRole =
   | 'promoteur'
   | 'releveurElec'
   | 'gestionElec'
-  | 'lectureElec';
+  | 'lectureElec'
+  | 'validationElec';
 
 /** Domaine du module (ELEC-CC-01) : l'eau et l'electricite ne se melangent jamais. */
 export type EauDomaine = 'eau' | 'elec';
@@ -539,6 +620,8 @@ export interface EauRoles {
   releveurElec: boolean;
   gestionElec: boolean;
   lectureElec: boolean;
+  /** Validation des factures d'électricité (ELEC-CC-03), cumulable. */
+  validationElec: boolean;
 }
 
 /**

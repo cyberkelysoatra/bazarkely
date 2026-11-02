@@ -65,6 +65,7 @@ export function controlerReglages(f: Record<string, string>): ErreursReglages {
   positif('echeance_jours', 'Échéance', true);
   positif('numero_annee', 'Année', true);
   positif('numero_prochain', 'Prochain numéro', true);
+  if ((f.numero_essai_prochain ?? '').trim() !== '') positif('numero_essai_prochain', 'Prochain numéro d’essai', true);
   const tva = Number((f.tva_pct ?? '').trim().replace(',', '.'));
   if ((f.tva_pct ?? '').trim() === '' || !Number.isFinite(tva) || tva < 0 || tva > 100) {
     e.tva_pct = 'TVA entre 0 et 100 %';

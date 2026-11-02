@@ -51,6 +51,7 @@ export async function getRolesForUser(userId: string): Promise<EauRoles> {
     releveurElec: row?.releveur_elec ?? false,
     gestionElec: row?.gestion_elec ?? false,
     lectureElec: row?.lecture_elec ?? false,
+    validationElec: row?.validation_elec ?? false,
   };
 }
 
@@ -89,6 +90,7 @@ export async function setRoles(
     releveurElec?: boolean;
     gestionElec?: boolean;
     lectureElec?: boolean;
+    validationElec?: boolean;
   }
 ): Promise<RoleLocal> {
   const existing = (await eauDb.eau_roles.get(userId)) as RoleLocal | undefined;
@@ -100,6 +102,7 @@ export async function setRoles(
     releveur_elec: roles.releveurElec ?? existing?.releveur_elec ?? false,
     gestion_elec: roles.gestionElec ?? existing?.gestion_elec ?? false,
     lecture_elec: roles.lectureElec ?? existing?.lecture_elec ?? false,
+    validation_elec: roles.validationElec ?? existing?.validation_elec ?? false,
     updated_at: nowIso(),
   };
   return saveLocal('eau_roles', record);

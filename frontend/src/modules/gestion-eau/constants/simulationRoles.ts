@@ -9,7 +9,7 @@
  * Phase 1. Le rôle « propriétaire » (client, avec choix d'une villa et re-filtrage
  * des données) est posé ici mais DÉSACTIVÉ jusqu'à la Phase 2.
  */
-import { BarChart3, ClipboardList, Eye, Home, Receipt, Zap, type LucideIcon } from 'lucide-react';
+import { BarChart3, ClipboardList, Eye, Home, Receipt, Stamp, Zap, type LucideIcon } from 'lucide-react';
 import type { EauRole } from '../types/gestionEau';
 
 export interface SimulationRoleOption {
@@ -37,6 +37,7 @@ export const SIMULATABLE_ROLES: EauRole[] = [
   'releveurElec',
   'gestionElec',
   'lectureElec',
+  'validationElec',
 ];
 
 /** Options présentées dans le sélecteur (l'ordre = ordre d'affichage). */
@@ -49,6 +50,8 @@ export const SIMULATION_ROLE_OPTIONS: SimulationRoleOption[] = [
   { role: 'releveurElec', famille: 'elec', label: 'Releveur électricité', icon: Zap, available: true },
   { role: 'gestionElec', famille: 'elec', label: 'Gestion électricité', icon: Receipt, available: true },
   { role: 'lectureElec', famille: 'elec', label: 'Lecture électricité', icon: BarChart3, available: true },
+  // ELEC-CC-03 : les gérants qui valident le cycle de factures.
+  { role: 'validationElec', famille: 'elec', label: 'Validation électricité', icon: Stamp, available: true },
 ];
 
 /** Libellé court d'un rôle simulé (utilisé par la marque du header). */

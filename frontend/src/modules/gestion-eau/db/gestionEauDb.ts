@@ -33,6 +33,9 @@ import type {
   ElecReglagesLocal,
   ElecClientLocal,
   ElecCompteurLocal,
+  ElecFactureLocal,
+  ElecFactureLigneLocal,
+  ElecValidationLocal,
 } from '../types/gestionEau';
 
 /**
@@ -72,6 +75,9 @@ export class GestionEauDB extends Dexie {
   eau_elec_reglages!: Table<ElecReglagesLocal, string>;
   eau_elec_clients!: Table<ElecClientLocal, string>;
   eau_elec_compteurs!: Table<ElecCompteurLocal, string>;
+  eau_elec_factures!: Table<ElecFactureLocal, string>;
+  eau_elec_facture_lignes!: Table<ElecFactureLigneLocal, string>;
+  eau_elec_validations!: Table<ElecValidationLocal, string>;
   /** Tombstones de suppression (local-only, hors EAU_TABLES). */
   eau_deletions!: Table<EauDeletion, string>;
 
@@ -152,6 +158,14 @@ export class GestionEauDB extends Dexie {
       eau_elec_clients: 'id, code, statut',
       eau_elec_compteurs: 'id, code, client_id, statut',
     });
+
+    // v10 : Factures RTB Énergie (ELEC-CC-03) : factures, lignes, avis des valideurs.
+    // Additif : Dexie reporte automatiquement les stores inchangés (aucune perte).
+    this.version(10).stores({
+      eau_elec_factures: 'id, cycle, client_id, statut, numero',
+      eau_elec_facture_lignes: 'id, facture_id, compteur_id',
+      eau_elec_validations: 'id, facture_id, user_id',
+    });
   }
 }
 
@@ -184,6 +198,10 @@ export const EAU_TABLES = [
   'eau_elec_clients',
   'eau_elec_compteurs',
   'eau_elec_releves_compteur',
+  // Factures RTB (ELEC-CC-03) : la facture avant ses lignes ; les avis sont tirés seulement.
+  'eau_elec_factures',
+  'eau_elec_facture_lignes',
+  'eau_elec_validations',
 ] as const;
 
 export type EauTableName = (typeof EAU_TABLES)[number];

@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.120.0';
-export const APP_VERSION_NAME = 'Validation client : détail d’un client, suivi et résultats pour l’assistant';
+export const APP_VERSION = '3.121.0';
+export const APP_VERSION_NAME = 'RTB Énergie : factures d’électricité, calcul, numérotation et validation des gérants';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.121.0',
+    date: '2026-11-03',
+    description: 'RTB Énergie : factures d’électricité, calcul, numérotation et validation des gérants (ELEC-CC-03, phase 2a)',
+    changes: [
+      'Nouvel écran Factures : préparer le cycle (même sans réseau), une facture par client groupé ou par bien',
+      'Calcul au centime : kWh × tarif, forfait une seule fois par facture, TVA, TTC arrondi à l’Ariary',
+      'Numéros FAC-AAAA-MM-NNN donnés à l’émission seulement, sans trou ni doublon ; mode essai avec son propre compteur',
+      'Validation par les gérants : avis Bon ou Remarque avant une date limite, clôture, puis « marquer envoyée »',
+      'Re-datation après correction d’un relevé (même numéro, date du jour) ; une facture envoyée ne change plus',
+      'Nouveau rôle Validation électricité ; export CSV du cycle pour comparer avec le tableur'
+    ]
+  },
   {
     version: '3.120.0',
     date: '2026-11-03',
