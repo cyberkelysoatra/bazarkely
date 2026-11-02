@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.117.0';
-export const APP_VERSION_NAME = 'Validation client : entrée, connexion, invitation et accueil';
-export const LAST_UPDATED = '2026-11-02';
-export const APP_BUILD_DATE = '2026-11-02';
+export const APP_VERSION = '3.118.0';
+export const APP_VERSION_NAME = 'Validation client : pilotage, fiche client, import et questionnaire';
+export const LAST_UPDATED = '2026-11-03';
+export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.118.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 3 : pilotage de Joël, fiche client, import et questionnaire (VALIDCLIENT-CC-03)',
+    changes: [
+      'Tableau de bord des consultations : un client par carte, jauges, échéances, personnes en ligne, relu toutes les 10 secondes',
+      'Nouveau client et invitation : fiche, personnes, un seul validant, aperçu du message WhatsApp, Inviter sur WhatsApp et Copier le lien',
+      'Aperçu de la page d’invitation du client depuis le pilotage, boutons inactifs',
+      'Import d’une consultation écrite par l’assistant (page pour ordinateur) : lecture ligne par ligne, format attendu, modèles',
+      'Questionnaire : arbre vérifié, chemins, aperçu client branche par branche, publication et suppression du brouillon',
+      'Le code du pilotage reste à part : jamais téléchargé par un client'
+    ]
+  },
   {
     version: '3.117.0',
     date: '2026-11-02',

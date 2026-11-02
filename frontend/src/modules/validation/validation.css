@@ -65,3 +65,7 @@ body {
   outline: 3px solid #0369a1;
   outline-offset: 2px;
 }
+/* Computer pages of the pilotage (screen 13): fluid, wider than the phone column. */
+html.vc-large .vc-ecran {
+  max-width: none;
+}

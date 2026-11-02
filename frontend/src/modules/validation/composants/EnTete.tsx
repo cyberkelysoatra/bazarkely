@@ -8,10 +8,10 @@ import { initiales } from '../utils/regles';
 import { ouvrirMenu, useMenuOuvert, fermerMenu } from '../appels/menu';
 import MenuCompte from './MenuCompte';
 
-export function Carre() {
+export function Carre({ nuit = false }: { nuit?: boolean }) {
   return (
     <div className="w-16 h-16 flex-none bg-white rounded-xl flex items-center justify-center" aria-label="1saKELY" role="img">
-      <span className="text-[13px] font-extrabold text-ciel tracking-[-0.01em] leading-none" aria-hidden="true">
+      <span className={`text-[13px] font-extrabold ${nuit ? 'text-nuit' : 'text-ciel'} tracking-[-0.01em] leading-none`} aria-hidden="true">
         <span className="relative inline-block">
           1<span className="absolute -top-1 left-1/2 -ml-px w-[3px] h-[3px] rounded-full bg-current" />
         </span>
@@ -44,9 +44,11 @@ interface Props {
   /** Name shown on the circle and in the menu. */
   nom?: string;
   email?: string;
+  /** Pilotage screens: dark header #0c4a6e (charter). */
+  pilotage?: boolean;
 }
 
-export default function EnTete({ variante, titre = '', sousTitre = '', nom = '', email = '' }: Props) {
+export default function EnTete({ variante, titre = '', sousTitre = '', nom = '', email = '', pilotage = false }: Props) {
   const titreRef = useRef<HTMLParagraphElement>(null);
   const enteteRef = useRef<HTMLElement>(null);
   const menuOuvert = useMenuOuvert();
@@ -64,9 +66,9 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
   }, [titre, sousTitre, variante]);
 
   return (
-    <header ref={enteteRef} className="vc-entete sticky top-0 z-30 bg-ciel text-white px-4 pb-3.5" data-entete={variante}>
+    <header ref={enteteRef} className={`vc-entete sticky top-0 z-30 ${pilotage ? 'bg-nuit' : 'bg-ciel'} text-white px-4 pb-3.5`} data-entete={pilotage ? 'pilotage' : variante}>
       <div className="flex items-stretch gap-3">
-        <Carre />
+        <Carre nuit={pilotage} />
         {variante === 'neutre' ? (
           <div className="flex-1 min-w-0 min-h-16 flex flex-col justify-start">
             <p className="text-[22px] font-bold leading-[1.2] m-0" data-titre="">
@@ -91,7 +93,7 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
             onClick={() => (menuOuvert ? fermerMenu() : ouvrirMenu())}
             aria-label="Menu du compte"
             aria-expanded={menuOuvert}
-            className="w-11 h-11 flex-none self-start rounded-full bg-white text-ciel border-2 border-[#bae6fd] flex items-center justify-center text-[15px] font-bold"
+            className={`w-11 h-11 flex-none self-start rounded-full bg-white ${pilotage ? 'text-nuit' : 'text-ciel'} border-2 border-[#bae6fd] flex items-center justify-center text-[15px] font-bold`}
             data-rond-compte=""
           >
             {initiales(nom)}

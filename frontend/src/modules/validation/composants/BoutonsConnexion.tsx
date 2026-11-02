@@ -45,7 +45,16 @@ export function OuvrirDansChrome() {
   );
 }
 
-export default function BoutonsConnexion({ libelleGoogle = 'Continuer avec Google', mention = true }: { libelleGoogle?: string; mention?: boolean }) {
+export default function BoutonsConnexion({
+  libelleGoogle = 'Continuer avec Google',
+  mention = true,
+  inactif = false
+}: {
+  libelleGoogle?: string;
+  mention?: boolean;
+  /** Preview inside the pilotage: nothing can be started. */
+  inactif?: boolean;
+}) {
   const { pathname } = useLocation();
   const [erreur, setErreur] = useState(false);
   const [envoi, setEnvoi] = useState(false);
@@ -55,7 +64,7 @@ export default function BoutonsConnexion({ libelleGoogle = 'Continuer avec Googl
       <OuvrirDansChrome />
       <button
         type="button"
-        disabled={envoi}
+        disabled={envoi || inactif}
         className={`${BOUTON} bg-white text-encre border border-[#94a3b8] mt-1`}
         onClick={async () => {
           setErreur(false);
@@ -78,9 +87,15 @@ export default function BoutonsConnexion({ libelleGoogle = 'Continuer avec Googl
         </p>
       )}
       {mention && <p className="text-[13px] text-doux text-center m-0">Rien à installer. Nous ne voyons ni vos e-mails ni vos contacts.</p>}
-      <Link to={`/connexion?retour=${retour}`} className="text-[14px] text-ciel self-center min-h-11 flex items-center" data-lien-email="">
-        Utiliser mon e-mail
-      </Link>
+      {inactif ? (
+        <span className="text-[14px] text-ciel self-center min-h-11 flex items-center opacity-60" aria-disabled="true" data-lien-email="">
+          Utiliser mon e-mail
+        </span>
+      ) : (
+        <Link to={`/connexion?retour=${retour}`} className="text-[14px] text-ciel self-center min-h-11 flex items-center" data-lien-email="">
+          Utiliser mon e-mail
+        </Link>
+      )}
     </>
   );
 }

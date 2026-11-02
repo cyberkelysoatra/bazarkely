@@ -3,7 +3,7 @@
 import { getSupabase, withTimeout } from './supabaseClient';
 import type { Apercu, Espace, ResultatInvitation, ResultatInfos } from '../utils/types';
 
-async function rpc<T>(nom: string, args?: Record<string, unknown>): Promise<T> {
+export async function rpc<T>(nom: string, args?: Record<string, unknown>): Promise<T> {
   const sb = await withTimeout(getSupabase());
   // getSession() renews an expired access token before the call (one refresh at most).
   await withTimeout(sb.auth.getSession());
@@ -35,12 +35,16 @@ export const enregistrerMesInfos = (p: {
     p_email_pro: p.emailPro
   });
 
-/** True for Joël (the vc_admin_* functions raise VC_JOEL_REQUIS for anybody else). */
-export async function estPilote(): Promise<boolean> {
+/**
+ * 'oui' for Joël; 'non' when the server refused (the vc_admin_* functions raise VC_JOEL_REQUIS
+ * for anybody else); 'erreur' when it did not answer (network, timeout): never a bounce then.
+ */
+export async function estPilote(): Promise<'oui' | 'non' | 'erreur'> {
   try {
     await rpc<unknown>('vc_admin_modeles');
-    return true;
-  } catch {
-    return false;
+    return 'oui';
+  } catch (e) {
+    const m = e instanceof Error ? e.message : '';
+    return /VC_JOEL_REQUIS|VC_CONNEXION_REQUISE|permission denied|JWT/i.test(m) ? 'non' : 'erreur';
   }
 }

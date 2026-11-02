@@ -9,32 +9,45 @@ import Invitation from './pages/Invitation';
 import Connexion from './pages/Connexion';
 import Formulaire from './pages/Formulaire';
 import Bientot from './pages/Bientot';
-import { Corps, Squelette } from './composants/Mise';
+import { CarteMessage, Corps, PRIMAIRE, Squelette } from './composants/Mise';
 
 // Pilotage: own chunk, loaded only once the server said the account is Joël's.
-const Pilotage = lazy(() => import('./pages/pilotage/Pilotage'));
+const Pilotage = lazy(() => import('./pilotage/Pilotage'));
 
 function GardePilotage() {
   const { session } = useEspace();
-  const [pilote, setPilote] = useState<boolean | null>(null);
+  const [pilote, setPilote] = useState<'oui' | 'non' | 'erreur' | null>(null);
+  const [essai, setEssai] = useState(0);
   useEffect(() => {
     let vivant = true;
     if (!session) {
-      setPilote(false);
+      setPilote('non');
       return;
     }
-    void estPilote().then((ok) => vivant && setPilote(ok));
+    setPilote(null);
+    void estPilote().then((r) => vivant && setPilote(r));
     return () => {
       vivant = false;
     };
-  }, [session]);
+  }, [session, essai]);
+  // Server still silent: loader, never a bounce (cold start rule).
   if (pilote === null)
     return (
       <Corps>
         <Squelette lent={false} />
       </Corps>
     );
-  if (!pilote) return <Navigate to="/" replace />;
+  if (pilote === 'non') return <Navigate to="/" replace />;
+  if (pilote === 'erreur')
+    return (
+      <Corps centre>
+        <CarteMessage texte="Le réseau ne répond pas. Vérifiez votre connexion, puis réessayez.">
+          <button type="button" className={`${PRIMAIRE} self-stretch`} onClick={() => setEssai((n) => n + 1)}>
+            Réessayer
+          </button>
+        </CarteMessage>
+      </Corps>
+    );
   return (
     <Suspense
       fallback={

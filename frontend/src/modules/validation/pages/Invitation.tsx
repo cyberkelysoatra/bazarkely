@@ -124,8 +124,8 @@ export default function Invitation() {
   );
 }
 
-/** Screen 1, exactly as in the mockup (Main.dc.html). */
-function PageInvitation({ a }: { a: Apercu }) {
+/** Screen 1, exactly as in the mockup (Main.dc.html); `inactif` = preview in the pilotage. */
+export function PageInvitation({ a, inactif = false }: { a: Apercu; inactif?: boolean }) {
   const contributeur = a.role === 'contributeur';
   const n = a.nb_questions_max ?? 0;
   const d = a.duree_minutes ?? Math.max(n, 1);
@@ -153,7 +153,7 @@ function PageInvitation({ a }: { a: Apercu }) {
             <Icone nom="horloge" className="w-[22px] h-[22px]" />
             {n} questions simples au plus, environ {d} minutes, depuis votre téléphone.
           </div>
-          <BoutonsConnexion />
+          <BoutonsConnexion inactif={inactif} />
           <div className="flex items-center gap-3 border-t border-[#e2e8f0] pt-3.5">
             <span aria-hidden="true" className="w-11 h-11 rounded-full bg-ciel text-white font-bold text-[16px] flex items-center justify-center flex-none">
               JS
