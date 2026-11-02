@@ -1,7 +1,16 @@
 // Server calls of the Validation client module: only the vc_* SQL functions, by RPC, each under
 // an 8 s timeout (the vc_* tables are closed, phase 1).
 import { getSupabase, withTimeout } from './supabaseClient';
-import type { Apercu, Espace, ResultatInvitation, ResultatInfos } from '../utils/types';
+import type {
+  Apercu,
+  DocumentTexte,
+  Espace,
+  QuestionnaireComplet,
+  ResultatConfirmation,
+  ResultatInvitation,
+  ResultatInfos,
+  ResultatReponse
+} from '../utils/types';
 
 export async function rpc<T>(nom: string, args?: Record<string, unknown>): Promise<T> {
   const sb = await withTimeout(getSupabase());
@@ -17,6 +26,22 @@ export const apercuInvitation = (jeton: string) => rpc<Apercu>('vc_invitation_ap
 export const utiliserInvitation = (jeton: string) => rpc<ResultatInvitation>('vc_invitation_utiliser', { p_jeton: jeton });
 
 export const monEspace = () => rpc<Espace[]>('vc_mon_espace');
+
+export const lireQuestionnaire = (id: string) => rpc<QuestionnaireComplet>('vc_questionnaire', { p_questionnaire: id });
+
+export const lireDocument = (id: string) => rpc<DocumentTexte>('vc_document', { p_document: id });
+
+export const repondre = (r: { id: string; question: string; choix: string; commentaire: string | null; repondu_at: string; appareil: string }) =>
+  rpc<ResultatReponse>('vc_repondre', {
+    p_id: r.id,
+    p_question: r.question,
+    p_choix: r.choix,
+    p_commentaire: r.commentaire,
+    p_repondu_at: r.repondu_at,
+    p_appareil: r.appareil
+  });
+
+export const confirmer = (questionnaire: string) => rpc<ResultatConfirmation>('vc_confirmer', { p_questionnaire: questionnaire });
 
 export const enregistrerMesInfos = (p: {
   personne: string;

@@ -1,5 +1,6 @@
 // Home (screen 3, VC-03, VC-08 home part, RM17) and its states (planche 15): loading, signed out,
 // no document, revoked access, archived client. Confirmed card as in screen 8 bis.
+import { useEffect, useRef } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEspace } from '../EspaceContexte';
 import EnTete from '../composants/EnTete';
@@ -26,6 +27,13 @@ export default function Accueil() {
   const { session, etat, liste, lent, recharger } = useEspace();
   const { state } = useLocation();
   const navigate = useNavigate();
+  // Back from the questions: re-read the cards once (gauge, ready, confirmed).
+  const relu = useRef(false);
+  useEffect(() => {
+    if (etat !== 'pret' || relu.current) return;
+    relu.current = true;
+    void recharger();
+  }, [etat, recharger]);
 
   if (etat === 'deconnecte') {
     return (
@@ -134,7 +142,8 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
   const etat = etatCarte(d);
   const e = d.etat_personne;
   const nouvelle = estNouvelleVersion(d, tous);
-  const lien = `/q/${d.questionnaire_id}/${questionAOuvrir(d)}`;
+  // Ready: straight to « Avant de confirmer » for the person who decides (VC-41).
+  const lien = etat === 'pret' && p.role === 'validant' ? `/confirmer/${d.questionnaire_id}` : `/q/${d.questionnaire_id}/${questionAOuvrir(d)}`;
   const ancien = etat === 'remplace';
 
   let pastille: { texte: string; classe: string };
@@ -157,10 +166,23 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
       {etat === 'confirme' ? (
         <>
           <p className="text-[13px] text-doux m-0" data-cycle="">
-            {nomCycle(d.type, d.version)} : {comptes(d)}.
+            {nomCycle(d.type, d.version)} : {comptes(d)}.{' '}
+            <Link to={`/document/${d.document_id}`} className="text-ciel underline" data-lire-document="">
+              Lire le document
+            </Link>
           </p>
           {d.confirme_at && <p className="text-[13px] text-doux m-0">Vos réponses sont figées depuis le {dateHeure(d.confirme_at)} : elles ne se modifient plus.</p>}
           {!ancien && d.echeance_at && <Engagement echeance={d.echeance_at} />}
+          {d.confirme_at && (
+            <>
+              <Link to={`/recu/${d.questionnaire_id}`} className={`${SECONDAIRE} !text-[15px]`} data-voir-recu="">
+                Voir le reçu et le suivi
+              </Link>
+              <Link to={`/confirmer/${d.questionnaire_id}`} className="text-[14px] font-semibold text-ciel underline self-center min-h-11 flex items-center" data-voir-reponses="">
+                Voir mes réponses (lecture seule)
+              </Link>
+            </>
+          )}
         </>
       ) : (
         <>

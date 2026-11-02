@@ -1,8 +1,22 @@
-export const APP_VERSION = '3.118.0';
-export const APP_VERSION_NAME = 'Validation client : pilotage, fiche client, import et questionnaire';
+export const APP_VERSION = '3.119.0';
+export const APP_VERSION_NAME = 'Validation client : répondre, lire le document, confirmer et reçu';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.119.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 4 : répondre, lire le document, confirmer et reçu (VALIDCLIENT-CC-04)',
+    changes: [
+      'Questions une par une : trois choix argumentés, conseillé en premier, volet « Pourquoi ? » animé, jauge et « Question n sur t » dans l’en-tête',
+      'Chemin recalculé sur le téléphone à chaque réponse (même règle que le serveur), réserve et refus avec motif obligatoire',
+      'Réponses gardées sur le téléphone et envoyées dès le retour du réseau, sans doublon ; « Réessayer » si l’envoi échoue',
+      'Lire le document : texte du document mis en page pour téléphone, lisible sans réseau après une première ouverture',
+      'Avant de confirmer : liste des réponses, case « J’ai relu mes réponses », confirmation datée',
+      'Reçu avec numéro, suivi par étapes et engagement de 72 h ; partage du reçu en texte ; accueil « Confirmé »',
+      'Boutons « Écrire à Joël » : numéro WhatsApp de Joël'
+    ]
+  },
   {
     version: '3.118.0',
     date: '2026-11-03',

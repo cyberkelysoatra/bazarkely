@@ -23,8 +23,22 @@ export function useCouleurTheme(couleur: string): void {
 }
 
 /** Page body under the header (max 480 px wide, centred). */
-export function Corps({ children, centre = false, className = '' }: { children: ReactNode; centre?: boolean; className?: string }) {
-  return <main className={`vc-corps flex-1 p-4 flex flex-col gap-3 min-w-0 ${centre ? 'justify-center' : ''} ${className}`}>{children}</main>;
+export function Corps({
+  children,
+  centre = false,
+  className = '',
+  ...reste
+}: {
+  children: ReactNode;
+  centre?: boolean;
+  className?: string;
+  [k: `data-${string}`]: string | number;
+}) {
+  return (
+    <main className={`vc-corps flex-1 p-4 flex flex-col gap-3 min-w-0 ${centre ? 'justify-center' : ''} ${className}`} {...reste}>
+      {children}
+    </main>
+  );
 }
 
 /**

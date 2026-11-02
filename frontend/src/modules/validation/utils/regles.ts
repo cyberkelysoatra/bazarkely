@@ -1,8 +1,9 @@
 // Pure rules of the Validation client screens (unit tested in regles.test.ts).
 import type { DocumentEspace, Espace } from './types';
 
-/** Joël's WhatsApp: no number exists in the repository yet (phase 2 report), plain wa.me link. */
-export const LIEN_WHATSAPP_JOEL = 'https://wa.me/';
+/** Joël's WhatsApp number (given by Joël on 03/11/2026), digits only for wa.me. */
+export const JOEL_WHATSAPP = '261321106618';
+export const LIEN_WHATSAPP_JOEL = `https://wa.me/${JOEL_WHATSAPP}`;
 
 /** Cycle name shown in small under the client title (RM17). */
 export const NOM_CYCLE: Record<string, string> = {
@@ -28,7 +29,7 @@ export function initiales(nom: string | null | undefined): string {
 }
 
 /** « Directrice » → « directrice » in the header line; acronyms (« PDG ») stay as typed. */
-function fonctionEnLigne(f: string): string {
+export function fonctionEnLigne(f: string): string {
   return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(f) ? f.charAt(0).toLocaleLowerCase('fr') + f.slice(1) : f;
 }
 
@@ -110,16 +111,46 @@ export function dateHeure(iso: string): string {
   return `${v('day')}/${v('month')}/${v('year')} à ${v('hour')} h ${v('minute')}`;
 }
 
-/** « dans 2 j 23 h » until the deadline; null once it is passed. */
+/**
+ * « dans 2 j 23 h » until the deadline; null once it is passed. Rounded up to the minute, so the
+ * instant of the confirmation reads « dans 3 j 0 h » (VC-37).
+ */
 export function delaiRestant(echeance: string, maintenant: number = Date.now()): string | null {
   const ms = Date.parse(echeance) - maintenant;
   if (!Number.isFinite(ms) || ms <= 0) return null;
-  const heures = Math.floor(ms / 3600000);
+  const minutes = Math.ceil(ms / 60000);
+  const heures = Math.floor(minutes / 60);
   const j = Math.floor(heures / 24);
   const h = heures % 24;
   if (j > 0) return `dans ${j} j ${h} h`;
   if (h > 0) return `dans ${h} h`;
-  return `dans ${Math.max(1, Math.floor(ms / 60000))} min`;
+  return `dans ${Math.max(1, minutes)} min`;
+}
+
+/** « 05/11/2026 », Madagascar time. */
+export function dateSeule(iso: string): string {
+  return dateHeure(iso).split(' à ')[0];
+}
+
+/** Cycle name in running text: « note de cadrage » (« PRD » stays). */
+export function cycleEnLigne(type: string): string {
+  const n = NOM_CYCLE[type] ?? 'document';
+  return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(n) ? n.charAt(0).toLocaleLowerCase('fr') + n.slice(1) : n;
+}
+
+/** « Le résumé de votre projet » → « du résumé de votre projet » (warning of screen 7). */
+export function duTitre(titre: string): string {
+  const t = titre.trim();
+  const m = /^(?:(les|le|la)\s+|(l['\u2019]))(.*)$/i.exec(t);
+  if (!m) return `de ${t}`;
+  if (m[2]) return `de l${m[2].slice(1)}${m[3]}`;
+  const art = m[1].toLowerCase();
+  return `${art === 'le' ? 'du' : art === 'la' ? 'de la' : 'des'} ${m[3]}`;
+}
+
+/** « Monsieur Joël SOATRA » → « Joël SOATRA » (receipt line « Confirmé par »). */
+export function sansCivilite(nom: string | null | undefined): string {
+  return (nom ?? '').replace(/^(Madame|Monsieur)\s+/, '').trim();
 }
 
 /** Counts of a confirmed card: « 6 validées, 1 réserve, 1 refus ». */

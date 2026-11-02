@@ -3,7 +3,7 @@
 // « pour ... » bottom-aligned (2 lines max), account circle (44 px) on the right.
 // Variants: 'client' (signed in), 'invitation' (screen 1, no circle), 'neutre' (screen 9 and
 // signed-out screens: « Espace de validation CyberKELY » only, bold 22 px, may wrap).
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { initiales } from '../utils/regles';
 import { ouvrirMenu, useMenuOuvert, fermerMenu } from '../appels/menu';
 import MenuCompte from './MenuCompte';
@@ -46,9 +46,27 @@ interface Props {
   email?: string;
   /** Pilotage screens: dark header #0c4a6e (charter). */
   pilotage?: boolean;
+  /** Line across the full width under the square: gauge and « Question n sur t », « Avant de confirmer ». */
+  bas?: ReactNode;
 }
 
-export default function EnTete({ variante, titre = '', sousTitre = '', nom = '', email = '', pilotage = false }: Props) {
+/** Gauge of a questionnaire in the header (VC-17, RM1): full width, « Question n sur t » centred under it. */
+export function JaugeEnTete({ pourcent, texte, sansJauge = false }: { pourcent: number; texte: string; sansJauge?: boolean }) {
+  return (
+    <div className="flex flex-col gap-1.5" data-jauge-entete={pourcent}>
+      {!sansJauge && (
+        <div className="h-2 bg-[#075985] rounded-full overflow-hidden" role="progressbar" aria-label="Progression" aria-valuenow={pourcent} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-2 bg-[#7dd3fc] rounded-full transition-[width] duration-300" style={{ width: `${pourcent}%` }} />
+        </div>
+      )}
+      <p className="text-[13px] leading-[1.3] font-semibold text-white text-center m-0" data-question-rang="">
+        {texte}
+      </p>
+    </div>
+  );
+}
+
+export default function EnTete({ variante, titre = '', sousTitre = '', nom = '', email = '', pilotage = false, bas }: Props) {
   const titreRef = useRef<HTMLParagraphElement>(null);
   const enteteRef = useRef<HTMLElement>(null);
   const menuOuvert = useMenuOuvert();
@@ -63,7 +81,7 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
     window.addEventListener('resize', ajuster);
     document.fonts?.ready.then(ajuster).catch(() => undefined);
     return () => window.removeEventListener('resize', ajuster);
-  }, [titre, sousTitre, variante]);
+  }, [titre, sousTitre, variante, bas === undefined]);
 
   return (
     <header ref={enteteRef} className={`vc-entete sticky top-0 z-30 ${pilotage ? 'bg-nuit' : 'bg-ciel'} text-white px-4 pb-3.5`} data-entete={pilotage ? 'pilotage' : variante}>
@@ -100,6 +118,7 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
           </button>
         )}
       </div>
+      {bas !== undefined && <div className="mt-3">{bas}</div>}
       {variante === 'client' && menuOuvert && <MenuCompte nom={nom} email={email} />}
     </header>
   );

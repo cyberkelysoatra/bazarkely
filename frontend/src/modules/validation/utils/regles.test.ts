@@ -6,6 +6,10 @@ import {
   comptes,
   dateHeure,
   delaiRestant,
+  duTitre,
+  cycleEnLigne,
+  sansCivilite,
+  LIEN_WHATSAPP_JOEL,
   erreursFormulaire,
   estNavigateurInterne,
   estNouvelleVersion,
@@ -135,5 +139,26 @@ describe('sign-in helpers', () => {
     expect(retourSur('//evil.example')).toBe('/');
     expect(retourSur('https://evil.example')).toBe('/');
     expect(retourSur(null)).toBe('/');
+  });
+});
+
+describe('phase 4 helpers', () => {
+  it('WhatsApp link of Joël carries his number', () => {
+    expect(LIEN_WHATSAPP_JOEL).toBe('https://wa.me/261321106618');
+  });
+  it('reads « dans 3 j 0 h » at the instant of the confirmation (72 h, VC-37)', () => {
+    const t = Date.parse('2026-11-03T00:00:00Z');
+    expect(delaiRestant(new Date(t + 72 * 3600000).toISOString(), t + 2000)).toBe('dans 3 j 0 h');
+    expect(delaiRestant(new Date(t + 72 * 3600000).toISOString(), t + 3600000)).toBe('dans 2 j 23 h');
+  });
+  it('builds the warning words of screen 7', () => {
+    expect(duTitre('Le résumé de votre projet')).toBe('du résumé de votre projet');
+    expect(duTitre('La maquette')).toBe('de la maquette');
+    expect(duTitre('Les écrans')).toBe('des écrans');
+    expect(duTitre("L'application")).toBe("de l'application");
+    expect(duTitre('Lecture du projet')).toBe('de Lecture du projet');
+    expect(cycleEnLigne('note_cadrage')).toBe('note de cadrage');
+    expect(cycleEnLigne('prd')).toBe('PRD');
+    expect(sansCivilite('Monsieur Joël SOATRA')).toBe('Joël SOATRA');
   });
 });

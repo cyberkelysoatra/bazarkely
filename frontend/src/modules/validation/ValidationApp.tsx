@@ -8,11 +8,15 @@ import Accueil from './pages/Accueil';
 import Invitation from './pages/Invitation';
 import Connexion from './pages/Connexion';
 import Formulaire from './pages/Formulaire';
-import Bientot from './pages/Bientot';
+import Question from './pages/Question';
+import Confirmer from './pages/Confirmer';
+import Recu from './pages/Recu';
 import { CarteMessage, Corps, PRIMAIRE, Squelette } from './composants/Mise';
 
 // Pilotage: own chunk, loaded only once the server said the account is Joël's.
 const Pilotage = lazy(() => import('./pilotage/Pilotage'));
+// Document page: own chunk (Markdown renderer and sanitizer), never loaded by a question page.
+const Document = lazy(() => import('./pages/Document'));
 
 function GardePilotage() {
   const { session } = useEspace();
@@ -83,7 +87,23 @@ export default function ValidationApp() {
             <Route path="/connexion" element={<Connexion />} />
             <Route path="/inscription" element={<Formulaire mode="inscription" />} />
             <Route path="/infos" element={<Formulaire mode="infos" />} />
-            <Route path="/q/:questionnaire/:numero" element={<Bientot />} />
+            <Route path="/q/:questionnaire/:numero" element={<Question />} />
+            <Route path="/confirmer/:questionnaire" element={<Confirmer />} />
+            <Route path="/recu/:questionnaire" element={<Recu />} />
+            <Route
+              path="/document/:id"
+              element={
+                <Suspense
+                  fallback={
+                    <Corps>
+                      <Squelette lent={false} />
+                    </Corps>
+                  }
+                >
+                  <Document />
+                </Suspense>
+              }
+            />
             <Route path="/pilotage/*" element={<GardePilotage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

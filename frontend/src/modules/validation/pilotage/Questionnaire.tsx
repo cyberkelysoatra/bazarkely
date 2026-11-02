@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { BarreRetour, CARTE, Corps, PRIMAIRE, SECONDAIRE, Squelette } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
+import ChoixQuestion from '../composants/ChoixQuestion';
 import { NOM_CYCLE } from '../utils/regles';
 import { questionSuivante, verifierArbre } from '../utils/arbre';
 import { ficheClient, publier, questionnaire, supprimerBrouillon, type FicheClient, type QuestionComplete, type QuestionnaireComplet } from './api';
@@ -235,13 +236,11 @@ function LigneQuestion({ x, toutes, derniere }: { x: QuestionComplete; toutes: Q
 /** « Aperçu client »: any branch, one question at a time, as the client will see it; nothing is recorded. */
 function Apercu({ q, sousTitre, fermer }: { q: QuestionnaireComplet; sousTitre: string; fermer: () => void }) {
   const [chemin, setChemin] = useState<string[]>([q.questions[0]?.numero ?? '']);
-  const [ouvert, setOuvert] = useState<string | null>(null);
   const courant = chemin[chemin.length - 1];
   const x = q.questions.find((y) => y.numero === courant) ?? null;
   const cycle = `${NOM_CYCLE[q.document.type] ?? 'Document'}, v${q.document.version}`;
 
   useEffect(() => {
-    setOuvert(null);
     window.scrollTo(0, 0);
   }, [courant]);
 
@@ -267,56 +266,16 @@ function Apercu({ q, sousTitre, fermer }: { q: QuestionnaireComplet; sousTitre: 
               <h1 className="text-[19px] leading-tight font-bold m-0">{x.texte}</h1>
               {x.extrait && <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-[10px] p-3 text-[14px] text-[#334155] leading-[1.45]">« {x.extrait} »</div>}
             </div>
-            <div role="radiogroup" aria-label="Votre réponse" className="flex flex-col gap-2.5">
-              {[...x.choix]
-                .sort((a, b) => Number(b.conseille) - Number(a.conseille) || a.lettre.localeCompare(b.lettre))
-                .map((c) => (
-                  <div key={c.id} className="flex flex-col">
-                    <div className="relative z-[1] flex gap-3 items-start rounded-xl px-3.5 py-3 bg-white border border-[#cbd5e1] min-h-[52px]">
-                      <button
-                        type="button"
-                        className="absolute inset-0 rounded-xl"
-                        aria-label={`${c.libelle} : passer à la suite`}
-                        onClick={() => setChemin((l) => [...l, questionSuivante(q.questions, x.numero, c.suivante) ?? ''])}
-                        data-choisir={c.lettre}
-                      />
-                      <span className="w-5 h-5 rounded-full border-2 border-[#64748b] flex-none mt-0.5" />
-                      <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <div className="flex gap-2 items-center flex-wrap">
-                          <strong className="text-[15px]">{c.libelle}</strong>
-                          {c.conseille && <Pilule classe={`${P_OK} !text-[11px] !px-2 !py-0.5`}>Conseillé</Pilule>}
-                        </div>
-                        <p className="text-[13px] m-0 text-doux">{c.ligne}</p>
-                        {(c.avantages || c.faiblesses) && (
-                          <button
-                            type="button"
-                            className="relative self-start py-1.5 min-h-8 text-[13px] font-semibold text-ciel underline"
-                            aria-expanded={ouvert === c.id}
-                            onClick={() => setOuvert(ouvert === c.id ? null : c.id)}
-                            data-pourquoi={c.lettre}
-                          >
-                            {ouvert === c.id ? 'Masquer' : 'Pourquoi ?'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {ouvert === c.id && (
-                      <div className="-mt-3 mx-2.5 pt-[22px] px-3.5 pb-3.5 bg-clair border border-[#bae6fd] border-t-0 rounded-b-xl text-[13px] text-nuit leading-normal flex flex-col gap-1.5" data-volet={c.lettre}>
-                        {c.avantages && (
-                          <p className="m-0">
-                            <strong>Avantages</strong> : {c.avantages}
-                          </p>
-                        )}
-                        {c.faiblesses && (
-                          <p className="m-0">
-                            <strong>Faiblesses</strong> : {c.faiblesses}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
+            <ChoixQuestion
+              key={x.id}
+              choix={x.choix}
+              selection={null}
+              libelleAction={(c) => `${c.libelle} : passer à la suite`}
+              onChoisir={(c) => {
+                const suite = x.choix.find((y) => y.id === c.id)?.suivante ?? null;
+                setChemin((l) => [...l, questionSuivante(q.questions, x.numero, suite) ?? '']);
+              }}
+            />
             {(x.choix.some((c) => c.nature === 'reserve') || x.choix.some((c) => c.nature === 'refus')) && (
               <p className="text-[13px] text-doux m-0">Chez le client, une réserve ou un refus demande un commentaire avant de continuer.</p>
             )}

@@ -56,6 +56,7 @@ export interface DocumentEspace {
   etat_validant?: EtatPersonne | null;
   confirme_at: string | null;
   confirme_par?: string | null;
+  confirme_par_fonction?: string | null;
   etape_suivi?: string | null;
   etape_at?: string | null;
   echeance_at: string | null;
@@ -81,4 +82,77 @@ export interface Espace {
   equipe?: number | null;
   documents?: DocumentEspace[];
   messages_non_lus?: number;
+}
+
+/** One choice of a question, as vc_questionnaire returns it (never the internal criterion). */
+export interface ChoixClient {
+  id: string;
+  lettre: string;
+  nature: 'validation' | 'reserve' | 'refus' | 'choix' | string;
+  libelle: string;
+  ligne: string | null;
+  avantages: string | null;
+  faiblesses: string | null;
+  conseille: boolean;
+  suivante: string | null;
+}
+
+export interface QuestionClient {
+  id: string;
+  numero: string;
+  ordre: number;
+  type: 'validation' | 'choix' | string;
+  sujet_client: string;
+  texte: string;
+  extrait: string | null;
+  obligatoire?: boolean;
+  choix: ChoixClient[];
+}
+
+export interface MaReponse {
+  question_id: string;
+  choix_id: string;
+  commentaire: string | null;
+  repondu_at: string;
+}
+
+/** vc_questionnaire(id): the whole tree, kept on the device (D6). */
+export interface QuestionnaireComplet {
+  id: string;
+  etat: EtatQuestionnaire | 'brouillon';
+  type: string;
+  version: string;
+  titre_client: string;
+  document_id: string;
+  role: Role;
+  personne_id: string;
+  questions: QuestionClient[];
+  mes_reponses: MaReponse[];
+}
+
+/** vc_document(id). */
+export interface DocumentTexte {
+  id: string;
+  type: string;
+  version: string;
+  titre_client: string;
+  contenu_md: string;
+}
+
+/** vc_repondre(...). */
+export interface ResultatReponse {
+  ok: boolean;
+  deja?: boolean;
+  code?: string;
+  etat?: EtatPersonne;
+}
+
+/** vc_confirmer(questionnaire). */
+export interface ResultatConfirmation {
+  ok: boolean;
+  deja?: boolean;
+  code?: string;
+  numero_recu?: string;
+  etat?: EtatPersonne;
+  confirme_at?: string;
 }
