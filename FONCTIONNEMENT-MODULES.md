@@ -1554,6 +1554,37 @@ heure de la **première** publication (gardée). `pudi_propositions_publiques()`
 
 ---
 
+## MODULE VALIDATION CLIENT (consultations de validation des documents de projet) · lot 1a, v3.117.0 à v3.120.0 (VALIDCLIENT-CC-01 à 05)
+
+### 🎯 Objectif
+Faire valider par un client de CyberKELY, depuis son téléphone, chaque document de son projet (note de cadrage, cahier des charges, PRD, maquette, recette, avenant) : une consultation = un arbre de questions courtes (valider, valider avec réserve, refuser avec motif, ou choisir entre 3 options), puis une confirmation datée et un reçu. Joël suit tout depuis son pilotage ; l'assistant du projet lit les résultats pour préparer la version suivante.
+
+### 📍 Adresse et construction
+- Entrée légère `https://1sakely.org/validation/` (pleine page, jamais `lastModule`), même motif que PUDi : `frontend/validation/index.html`, build séparé `frontend/vite.validation.config.ts` chaîné après le build PUDi dans `npm run build`, sortie `dist/validation/index.html` et `dist/assets/validation/c/*`, Tailwind propre `tailwind.validation.config.js`, service worker `public/validation/sw.js`, middleware Cloudflare `functions/validation/_middleware.ts`.
+- Code : `frontend/src/modules/validation/` ; rien n'est importé de l'hôte (client Supabase paresseux, même clé de session que 1sakely.org).
+- Serveur : uniquement les fonctions SQL `vc_*` (tables fermées), appelées par `rpc` sous délai de 8 s. Heures de Madagascar partout.
+- Le pilotage de Joël est un morceau de code séparé (`pilotage/`), jamais téléchargé par un client.
+
+### 👤 Qui voit quoi
+| Qui | Accès |
+|---|---|
+| Client invité (validant) | Son accueil, ses questions, le document, la confirmation, le reçu, le suivi promis (72 h). Accès ouvert par le lien d'invitation à usage unique (`/validation/i/<jeton>`) puis connexion Google ou e-mail ; `preferences.modules` reçoit `validation` (posé par le serveur). |
+| Contributeur | Donne son avis sur les questions, sans jauge ni confirmation (détail au lot 1b). |
+| Joël (`is_joel`) | Le pilotage `/validation/pilotage` : tableau de bord, fiche, détail, questionnaire, import, résultats. |
+| Personne révoquée | « Votre accès à ce projet a été retiré », aucune donnée du projet ; ses réponses restent. |
+
+### 🖥️ Écrans du lot 1a
+- **Client :** 1 invitation et connexion, 2 inscription, 3 accueil (et 3 ter Mes infos, 3 quater menu du compte), 4 question de validation, 5 question à 3 choix (sans réseau), 6 refus avec motif, 7 avant de confirmer (case « J'ai relu mes réponses »), 8 reçu, 8 bis accueil après confirmation, 9 invitation plus valable, page Document.
+- **Joël :** 10 tableau de bord (relu toutes les 10 s), 10 bis fiche et invitation WhatsApp, **11 détail d'un client** (`/pilotage/client/<id>` : personnes et leurs actions, suivi promis, historique daté de chaque réponse, relance, clôture, archivage ; `?question=<id>` défile jusqu'à la question), 12 questionnaire (arbre, aperçu, publication), 13 import par l'assistant (ordinateur), **14 résultats pour l'assistant** (`/pilotage/resultats/<questionnaire>`, ordinateur : chiffres, tableau, points à reprendre, « Texte pour l'assistant » au format de l'import, Copier tout, Télécharger .md).
+
+### ⚠️ Règles
+- Aucune réponse ne se modifie ni ne s'efface : chaque changement ajoute une ligne datée, l'ancienne reste « remplacée, conservée ».
+- Hors ligne : les réponses attendent dans une file du téléphone et partent au retour du réseau (même identifiant, pas de doublon).
+- Rien n'est envoyé automatiquement sur WhatsApp : l'appli ouvre WhatsApp avec le message prérempli, Joël l'envoie.
+- Restes pour le lot 1b : discussion du projet (écrans 8 ter, 11 bis), équipe du client (3 bis, invitations par le validant), parcours complet du contributeur (9 bis, 9 ter), alertes de délai à 48 h et 66 h.
+
+---
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

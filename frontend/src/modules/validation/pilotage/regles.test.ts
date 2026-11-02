@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aRendre, adresseWhatsApp, dateCourte, ilYa, lienInvitation, messageInvitation, numeroWhatsApp } from './regles';
+import { aRendre, adresseWhatsApp, dateCourte, ilYa, lienInvitation, messageInvitation, messageRelance, messageSuite, numeroWhatsApp } from './regles';
 
 describe('pilotage rules', () => {
   const base = { civilite: 'Madame', nom: 'Fara Rakoto', questions: 4, minutes: 4, lien: lienInvitation('abc') };
@@ -39,5 +39,21 @@ describe('pilotage rules', () => {
   it('checks WhatsApp numbers', () => {
     expect(numeroWhatsApp('+261 32 00 000 00')).toBe('+261320000000');
     expect(numeroWhatsApp('0320000000')).toBeNull();
+  });
+
+  it('builds the reminder (VC-28) and the follow-up message (VC-38)', () => {
+    expect(messageRelance({ nomCourt: 'Essai Validation', civilite: 'Monsieur', nom: 'Joël SOATRA', titreClient: 'Le résumé de votre projet', restantes: 3 })).toBe(
+      [
+        '*VOTRE PROJET : ESSAI VALIDATION*',
+        '',
+        'Bonjour Monsieur Joël SOATRA, votre avis sur le résumé de votre projet nous attend : il reste 3 questions.',
+        'https://1sakely.org/validation/',
+        'Joël SOATRA, CyberKELY'
+      ].join('\n')
+    );
+    expect(messageRelance({ nomCourt: 'x', civilite: 'Madame', nom: 'Fara', titreClient: 'PRD', restantes: 1 })).toContain('votre avis sur PRD nous attend : il reste 1 question.');
+    expect(messageSuite({ nomCourt: 'Essai Validation', civilite: 'Monsieur', nom: 'Joël SOATRA' })).toBe(
+      '*VOTRE PROJET : ESSAI VALIDATION*\n\nBonjour Monsieur Joël SOATRA, la suite de votre projet est prête : https://1sakely.org/validation/\nJoël SOATRA, CyberKELY'
+    );
   });
 });

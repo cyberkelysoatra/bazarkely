@@ -133,8 +133,8 @@ export default function Confirmer() {
                 Lire le document
               </Link>
             </div>
-            <label className="flex gap-2.5 items-center min-h-11 text-[15px] font-medium text-encre cursor-pointer" data-case-relu="">
-              <input type="checkbox" className="sr-only peer" checked={relu} onChange={(ev) => setRelu(ev.target.checked)} data-relu="" />
+            <label htmlFor="case-relu" className="flex gap-2.5 items-center min-h-11 text-[15px] font-medium text-encre cursor-pointer" data-case-relu="">
+              <input id="case-relu" type="checkbox" className="sr-only peer" checked={relu} onChange={(ev) => setRelu(ev.target.checked)} data-relu="" />
               <span
                 className={`w-[22px] h-[22px] rounded-[5px] box-border flex-none flex items-center justify-center peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-ciel ${relu ? 'bg-ciel border-2 border-ciel text-white' : 'bg-white border-2 border-[#64748b] text-transparent'}`}
                 aria-hidden="true"

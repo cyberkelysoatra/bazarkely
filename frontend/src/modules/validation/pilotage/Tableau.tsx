@@ -110,7 +110,7 @@ function CarteClient({ l }: { l: LigneTableau }) {
   const reserves = l.questionnaires.reduce((t, q) => t + (q.etat_validant?.reserves ?? 0), 0);
   const attente = !proche && l.derniere_activite ? Math.floor((Date.now() - Date.parse(l.derniere_activite)) / 86400000) : 0;
   return (
-    <Link to={`/pilotage/client/${l.client_id}/fiche`} className={`${CARTE} no-underline text-encre`} data-client={l.client_id}>
+    <Link to={`/pilotage/client/${l.client_id}`} className={`${CARTE} no-underline text-encre`} data-client={l.client_id}>
       <div className="flex items-start justify-between gap-2.5">
         <h2 className="text-[17px] leading-[1.3] font-bold m-0 min-w-0 break-words">{l.entreprise}</h2>
         {proche && (

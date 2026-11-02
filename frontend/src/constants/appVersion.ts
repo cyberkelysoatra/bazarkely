@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.119.0';
-export const APP_VERSION_NAME = 'Validation client : répondre, lire le document, confirmer et reçu';
+export const APP_VERSION = '3.120.0';
+export const APP_VERSION_NAME = 'Validation client : détail d’un client, suivi et résultats pour l’assistant';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.120.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 5 : détail d’un client, suivi promis et résultats pour l’assistant (VALIDCLIENT-CC-05)',
+    changes: [
+      'Détail d’un client : personnes (compte Google, numéro, appareil, présence, invitation), renvoyer l’invitation, révoquer un accès, nommer un autre validant',
+      'Historique daté à la seconde de chaque réponse, avis de l’équipe à part, questions hors chemin ; rien ne se modifie ni ne s’efface',
+      'Suivi promis au client : En préparation, Publier la suite avec message WhatsApp ; relance WhatsApp, clôture de la consultation, archivage réversible',
+      'Résultats pour l’assistant (ordinateur) : chiffres, tableau des réponses, points à reprendre, texte complet au format de l’import, Copier tout et Télécharger',
+      'Case « J’ai relu mes réponses » nommée pour les lecteurs d’écran ; aucune requête au serveur pour un visiteur non connecté'
+    ]
+  },
   {
     version: '3.119.0',
     date: '2026-11-03',

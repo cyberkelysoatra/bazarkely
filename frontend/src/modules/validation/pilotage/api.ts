@@ -44,6 +44,25 @@ export interface PersonneClient {
   inscrit_at: string | null;
   revoque_at: string | null;
   invitation: 'envoyee' | 'utilisee' | 'annulee' | null;
+  ecart_numero?: boolean;
+  invite_par?: string | null;
+  cree_at?: string;
+  appareil?: string | null;
+  en_ligne?: boolean;
+  page?: string | null;
+  derniere_visite?: string | null;
+  tentatives_autre_compte?: number;
+}
+
+export interface ReponseClient {
+  personne: string;
+  role: 'validant' | 'contributeur';
+  choix_id: string;
+  commentaire: string | null;
+  version: string;
+  repondu_at: string;
+  enregistre_at: string;
+  appareil: string | null;
 }
 
 export interface ChoixClient {
@@ -65,13 +84,41 @@ export interface QuestionnaireClient {
   cree_at: string;
   publie_at: string | null;
   confirme_at: string | null;
-  questions: { id: string; numero: string; choix: ChoixClient[] }[] | null;
+  etape_suivi?: 'analyse' | 'preparation' | 'disponible' | null;
+  echeance_at?: string | null;
+  numero_recu?: string | null;
+  etat_validant?: EtatPersonne | null;
+  chemin_validant?: string[] | null;
+  questions:
+    | {
+        id: string;
+        numero: string;
+        choix: ChoixClient[];
+        sujet_client?: string;
+        critere?: string | null;
+        texte?: string;
+        essentielle?: boolean;
+        reponses?: ReponseClient[];
+      }[]
+    | null;
+}
+
+export interface MessageClient {
+  id: string;
+  auteur: string;
+  fonction: string | null;
+  texte: string | null;
+  retire: boolean;
+  cree_at: string;
+  question_id: string | null;
+  question: string | null;
 }
 
 export interface FicheClient {
   client: { id: string; entreprise: string; nom_court: string; phrase_reve: string | null; statut: string };
   personnes: PersonneClient[];
   questionnaires: QuestionnaireClient[];
+  messages?: MessageClient[];
 }
 
 export interface ChoixComplet {
@@ -97,6 +144,7 @@ export interface QuestionComplete {
   extrait: string | null;
   essentielle: boolean;
   choix: ChoixComplet[];
+  reponses?: ReponseQuestionnaire[];
 }
 
 export interface QuestionnaireComplet {
@@ -107,10 +155,26 @@ export interface QuestionnaireComplet {
     saisi_par: 'joel' | 'assistant';
     cree_at: string;
     publie_at: string | null;
+    confirme_at?: string | null;
   };
   document: { id: string; type: string; version: string; titre_client: string };
   arbre: { atteintes: number; boucle: boolean; chemin_max: number };
   questions: QuestionComplete[];
+  etat_validant?: EtatPersonne | null;
+  chemin_validant?: string[] | null;
+  messages?: MessageClient[];
+}
+
+/** Answers as vc_admin_questionnaire gives them (screen 14). */
+export interface ReponseQuestionnaire {
+  personne: string;
+  fonction: string | null;
+  role: 'validant' | 'contributeur';
+  choix_id: string;
+  commentaire: string | null;
+  version: string;
+  repondu_at: string;
+  enregistre_at: string;
 }
 
 export interface Modele {
@@ -155,3 +219,15 @@ export const modeles = () => rpc<Modele[]>('vc_admin_modeles');
 
 export const enregistrerModele = (id: string | null, type: string, nom: string, texte: string) =>
   rpc<Resultat & { id?: string }>('vc_admin_modele_enregistrer', { p_id: id, p_type: type, p_nom: nom, p_contenu: { texte } });
+
+// Screen 11 (VC-27 to VC-30, VC-38): follow-up, closing, archiving, person actions.
+export const suivi = (questionnaire: string, etape: 'preparation' | 'disponible') =>
+  rpc<Resultat>('vc_admin_suivi', { p_questionnaire: questionnaire, p_etape: etape });
+
+export const clore = (questionnaire: string) => rpc<Resultat>('vc_admin_clore', { p_questionnaire: questionnaire });
+
+export const archiverClient = (client: string, archiver: boolean) => rpc<Resultat>('vc_admin_client_archiver', { p_client: client, p_archiver: archiver });
+
+export const revoquerAcces = (personne: string) => rpc<Resultat>('vc_admin_acces_revoquer', { p_personne: personne });
+
+export const nommerValidant = (personne: string) => rpc<Resultat>('vc_admin_validant_nommer', { p_personne: personne });

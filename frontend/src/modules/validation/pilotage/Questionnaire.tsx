@@ -85,14 +85,14 @@ export default function Questionnaire() {
   }
 
   const sousTitre = fiche ? `pour ${fiche.client.entreprise}` : '';
-  const retourFiche = clientId ? `/pilotage/client/${clientId}/fiche` : '/pilotage';
+  const retourFiche = clientId ? `/pilotage/client/${clientId}` : '/pilotage';
 
   if (supprime) {
     return (
       <>
         <EnTetePilotage titre="Pilotage : consultation" sousTitre={sousTitre} />
         <Corps>
-          <BarreRetour vers={retourFiche} libelle="Fiche du client" />
+          <BarreRetour vers={retourFiche} libelle="Détail du client" />
           <div className={CARTE} data-brouillon-supprime="">
             <p className="text-[15px] m-0">Brouillon supprimé.</p>
           </div>
@@ -111,7 +111,7 @@ export default function Questionnaire() {
     <>
       <EnTetePilotage titre="Pilotage : consultation" sousTitre={sousTitre} />
       <Corps className="!gap-2.5">
-        <BarreRetour vers={retourFiche} libelle="Fiche du client" />
+        <BarreRetour vers={retourFiche} libelle="Détail du client" />
         {!q && !erreur && <Squelette lent={false} />}
         {!q && erreur && <ErreurReseau reessayer={() => void charger()} />}
         {q && etat && (

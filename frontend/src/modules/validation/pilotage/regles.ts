@@ -67,3 +67,31 @@ export function numeroWhatsApp(v: string): string | null {
   const n = v.trim().replace(/[\s.\-()]/g, '');
   return /^\+[0-9]{8,15}$/.test(n) ? n : null;
 }
+
+export const LIEN_ESPACE = 'https://1sakely.org/validation/';
+const SIGNATURE = 'Joël SOATRA, CyberKELY';
+
+const titreProjet = (nomCourt: string) => `*VOTRE PROJET : ${nomCourt.trim().toLocaleUpperCase('fr')}*`;
+
+/** « Le résumé de votre projet » → « le résumé de votre projet » (acronyms stay). */
+function enLigne(t: string): string {
+  const s = t.trim();
+  return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(s) ? s.charAt(0).toLocaleLowerCase('fr') + s.slice(1) : s;
+}
+
+/** Reminder of VC-28 for an open, unconfirmed questionnaire. */
+export function messageRelance(p: { nomCourt: string; civilite: string; nom: string; titreClient: string; restantes: number }): string {
+  const n = Math.max(0, p.restantes);
+  return [
+    titreProjet(p.nomCourt),
+    '',
+    `Bonjour ${p.civilite} ${p.nom.trim()}, votre avis sur ${enLigne(p.titreClient)} nous attend : il reste ${n} question${n > 1 ? 's' : ''}.`,
+    LIEN_ESPACE,
+    SIGNATURE
+  ].join('\n');
+}
+
+/** « Publier la suite » of VC-38. */
+export function messageSuite(p: { nomCourt: string; civilite: string; nom: string }): string {
+  return [titreProjet(p.nomCourt), '', `Bonjour ${p.civilite} ${p.nom.trim()}, la suite de votre projet est prête : ${LIEN_ESPACE}`, SIGNATURE].join('\n');
+}

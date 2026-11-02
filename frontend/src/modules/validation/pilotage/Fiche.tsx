@@ -331,7 +331,7 @@ export default function Fiche() {
     <>
       <EnTetePilotage titre={titre} sousTitre={sousTitre} />
       <Corps>
-        <BarreRetour vers="/pilotage" libelle="Tableau de bord" />
+        <BarreRetour vers={nouveau ? '/pilotage' : `/pilotage/client/${id}`} libelle={nouveau ? 'Tableau de bord' : 'Détail du client'} />
         {chargement && <Squelette lent={false} />}
         {!chargement && erreurLecture && <ErreurReseau reessayer={() => void charger()} />}
         {!chargement && !erreurLecture && (

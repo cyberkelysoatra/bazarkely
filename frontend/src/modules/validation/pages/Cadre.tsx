@@ -28,9 +28,11 @@ export function useProjet(): Projet {
 /** Questionnaire kept on the device, refreshed from the server when online. */
 export function useQuestionnaire(id: string): { q: QuestionnaireComplet | undefined; chargement: Chargement | undefined } {
   const f = useFile();
+  // Signed-out visitor: no server call at all (the page goes back home).
+  const connecte = !!useEspace().session;
   useEffect(() => {
-    if (id) void chargerQuestionnaire(id);
-  }, [id]);
+    if (id && connecte) void chargerQuestionnaire(id);
+  }, [id, connecte]);
   return { q: f.questionnaires[id], chargement: f.chargements[id] };
 }
 

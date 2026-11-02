@@ -86,7 +86,7 @@ export default function Import() {
       <EnTetePilotage titre="Pilotage : importer une consultation" sousTitre={sousTitre} />
       <Corps className="lg:px-8">
         <div className="w-full max-w-[1200px] mx-auto flex flex-col gap-3">
-          <BarreRetour vers={`/pilotage/client/${client}/fiche`} libelle="Fiche du client" />
+          <BarreRetour vers={`/pilotage/client/${client}`} libelle="Détail du client" />
           <form
             id="import-consultation"
             name="import-consultation"
