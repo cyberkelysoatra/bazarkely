@@ -10,6 +10,7 @@ import { Icone } from '../composants/Icones';
 import { deconnexion } from '../appels/session';
 import { usePresence } from '../appels/presence';
 import { SuiviDossier } from './Recu';
+import { TEXTE_DISPONIBLE, etapeSuivi } from '../utils/suivi';
 import { ReponsesRefusees } from './Cadre';
 import { BoutonDiscussion, DISCUSSION } from '../composants/VersDiscussion';
 import {
@@ -195,7 +196,7 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
             </Link>
           </p>
           {d.confirme_at && <p className="text-[13px] text-doux m-0">Vos réponses sont figées depuis le {dateHeure(d.confirme_at)} : elles ne se modifient plus.</p>}
-          {!ancien && d.echeance_at && <Engagement echeance={d.echeance_at} />}
+          {!ancien && (d.echeance_at || etapeSuivi(d.etape_suivi).cle === 'disponible') && <Engagement d={d} />}
           {d.confirme_at && (
             <>
               <Link to={`/recu/${d.questionnaire_id}`} className={`${SECONDAIRE} !text-[15px]`} data-voir-recu="">
@@ -296,17 +297,25 @@ function CarteContributeur({ d, p }: { d: DocumentEspace; p: Espace }) {
   );
 }
 
-function Engagement({ echeance }: { echeance: string }) {
-  const reste = delaiRestant(echeance);
+/** Follow-up block of the confirmed card: the same stage as the receipt (`etape_suivi`, item E). */
+function Engagement({ d }: { d: DocumentEspace }) {
+  const e = etapeSuivi(d.etape_suivi);
+  const reste = e.compteARebours && d.echeance_at ? delaiRestant(d.echeance_at) : null;
   return (
-    <div className="flex flex-col gap-1 bg-fond border border-[#bae6fd] rounded-[10px] px-3 py-2.5" data-engagement="">
-      <span className="text-[14px] font-bold text-ciel">En analyse chez CyberKELY</span>
-      {reste ? (
+    <div className="flex flex-col gap-1 bg-fond border border-[#bae6fd] rounded-[10px] px-3 py-2.5" data-engagement="" data-etape-accueil={e.cle}>
+      <span className="text-[14px] font-bold text-ciel">{e.titreAccueil}</span>
+      {!e.compteARebours ? (
+        <span className="text-[13px] text-doux" data-disponible="">
+          {TEXTE_DISPONIBLE}
+        </span>
+      ) : !d.echeance_at ? null : reste ? (
         <>
           <span className="text-[13px] text-doux">
-            Engagement CyberKELY : au plus tard le <span className="whitespace-nowrap">{dateHeure(echeance)}</span>
+            Engagement CyberKELY : au plus tard le <span className="whitespace-nowrap">{dateHeure(d.echeance_at)}</span>
           </span>
-          <strong className="text-[18px] text-nuit">{reste}</strong>
+          <strong className="text-[18px] text-nuit" data-compte-a-rebours="">
+            {reste}
+          </strong>
         </>
       ) : (
         <span className="text-[13px] text-doux">Votre dossier demande un peu plus de temps, Joël vous écrit aujourd'hui.</span>
@@ -314,7 +323,6 @@ function Engagement({ echeance }: { echeance: string }) {
     </div>
   );
 }
-
 /** Closed card (RM4): the message, the answers in read only, the refused ones, the way to the thread. */
 function Close({ qid, contributeur = false }: { qid: string; contributeur?: boolean }) {
   return (

@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.123.0';
-export const APP_VERSION_NAME = 'Validation client, phase 7 : discussion du projet et consultation close';
+export const APP_VERSION = '3.124.0';
+export const APP_VERSION_NAME = 'Validation client, phase 8 : dictée, reçu en PDF, installation, notifications du client';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.124.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 8 : dictée, reçu en PDF, installation, notifications du client (VALIDCLIENT-CC-08)',
+    changes: [
+      'Dictée dans chaque champ de texte (commentaire, réserve, motif de refus, discussion) : maintenir le micro pour parler, glisser vers le haut pour les mains libres',
+      'Reçu en PDF : « Partager le reçu » ouvre le menu de partage du téléphone avec le PDF (chaque refus et chaque réserve avec son motif), sinon le PDF se télécharge',
+      'Carte « Gardez 1saKELY sur votre téléphone » sous le suivi du reçu ; dans WhatsApp, « Ouvrir dans Chrome »',
+      'Le client peut être prévenu quand la suite de son projet est prête ou quand CyberKELY lui répond (question posée une fois par téléphone)',
+      'Accueil : la carte d’un document confirmé suit l’étape réelle (« En analyse », « En préparation » ou « Disponible »)'
+    ]
+  },
   {
     version: '3.123.0',
     date: '2026-11-03',

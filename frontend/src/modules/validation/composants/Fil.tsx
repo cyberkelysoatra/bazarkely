@@ -1,6 +1,6 @@
 // Thread of a project (screens 8 ter and 11 bis, VC-39, VC-40), shared by the client and Joël:
 // bubbles (own ones on the right), question labels, withdraw within 5 minutes, input bar fixed at the
-// bottom with an empty slot for the phase 8 microphone, offline queue (appels/messages.ts).
+// bottom with the dictation microphone left of the field, offline queue (appels/messages.ts).
 // Re-read every 15 s while visible and online; vc_marquer_lu on opening and when new messages come.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as EvPointeur } from 'react';
 import { listerMessages, marquerLu, retirerMessage } from '../appels/api';
@@ -8,6 +8,7 @@ import { ecrireLocal, lireLocal } from '../appels/local';
 import { ajouterMessage, chargerMessages, oublierMessage, surEnvoi, useFileMessages, viderMessages } from '../appels/messages';
 import { useFile } from '../appels/file';
 import { Icone } from './Icones';
+import { useMicro } from './Micro';
 import { PRIMAIRE, SECONDAIRE } from './Mise';
 import {
   FIL_VIDE,
@@ -193,6 +194,7 @@ export default function Fil({ client, auteur, client_ecran, placeholder, questio
   }
 
   const compteur = compteurMessage(texte.length);
+  const micro = useMicro({ valeur: texte, changer: (v) => setTexte(couperMessage(v)), max: MAX_MESSAGE });
   return (
     <>
       {client_ecran && (
@@ -255,8 +257,10 @@ export default function Fil({ client, auteur, client_ecran, placeholder, questio
             void envoyer();
           }}
         >
-          {/* Phase 8: the dictation microphone takes this place. */}
-          <div className="w-11 h-11 flex-none" aria-hidden="true" data-emplacement-micro="" />
+          {/* Dictation microphone (phase 8), left of the field. */}
+          <div className="w-11 h-11 flex-none" data-emplacement-micro="">
+            {micro.bouton}
+          </div>
           <label className="relative flex-1 min-w-0">
             <span className="sr-only">Votre message</span>
             <textarea
@@ -280,6 +284,7 @@ export default function Fil({ client, auteur, client_ecran, placeholder, questio
             <Icone nom="envoyer" epaisseur={2.2} />
           </button>
         </form>
+        {micro.message}
         {compteur && (
           <p className={`text-[12px] m-0 text-right ${texte.length >= MAX_MESSAGE ? 'text-danger font-semibold' : 'text-doux'}`} aria-live="polite" data-compteur="">
             {compteur}

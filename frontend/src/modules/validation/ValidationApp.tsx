@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { EspaceProvider, useEspace } from './EspaceContexte';
 import { estPilote } from './appels/api';
 import { quitterMenu } from './appels/menu';
+import { renouvelerAbonnement } from './appels/notifications';
 import Accueil from './pages/Accueil';
 import Invitation from './pages/Invitation';
 import Connexion from './pages/Connexion';
@@ -78,11 +79,22 @@ function SuiviNavigation() {
   return null;
 }
 
+/** Signed in on a device that accepted the notifications: the subscription is renewed silently. */
+function RenouvellementNotifications() {
+  const { session } = useEspace();
+  const uid = session?.id ?? '';
+  useEffect(() => {
+    if (uid) renouvelerAbonnement();
+  }, [uid]);
+  return null;
+}
+
 export default function ValidationApp() {
   return (
     <BrowserRouter basename="/validation">
       <EspaceProvider>
         <SuiviNavigation />
+        <RenouvellementNotifications />
         <div className="vc-ecran">
           <Routes>
             <Route path="/" element={<Accueil />} />

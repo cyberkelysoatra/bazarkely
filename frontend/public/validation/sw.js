@@ -4,9 +4,10 @@
  * - navigations under /validation: network first (3 s), fallback to the cached shell
  * - same-origin GET of /assets/validation/* and /validation/*: stale-while-revalidate
  * - Supabase (other origin) is never cached; never touches the other scopes
- * - push and notificationclick: copied from src/sw-custom.ts (used from lot 1b)
+ * - push and notificationclick: copied from src/sw-custom.ts; the click opens the address given by the
+ *   server (/validation/discussion, /validation/, /validation/pilotage/...) in a window of the module
  * Bump VERSION to drop old caches. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = 'validation-shell-' + VERSION;
 const RUNTIME = 'validation-runtime-' + VERSION;
 const SHELL_URLS = ['/validation/', '/validation/manifest.webmanifest', '/icon-192x192.png'];
@@ -86,9 +87,13 @@ self.addEventListener('fetch', (event) => {
 // Notifications: copied from src/sw-custom.ts (default address: the module home).
 // ---------------------------------------------------------------------------------
 
-/** Relative link inside the module only; anything else falls back to the given default. */
+/** Relative link of this site only (never another site); anything else falls back to the given default. */
 function safeInAppUrl(value, fallback) {
-  return typeof value === 'string' && /^\/validation(\/|$|\?)/.test(value) ? value : fallback;
+  return typeof value === 'string' && /^\/(?!\/)/.test(value) && !/^\/[^?#]*:/.test(value) ? value : fallback;
+}
+
+function inModule(url) {
+  return /^\/validation(\/|$|\?|#)/.test(url);
 }
 
 self.addEventListener('push', (event) => {
@@ -125,6 +130,11 @@ self.addEventListener('notificationclick', (event) => {
   const clickAction = safeInAppUrl(data.clickAction, '/validation/');
   event.waitUntil(
     (async () => {
+      // An address of another module (same account subscribed here too): a new window on it.
+      if (!inModule(clickAction)) {
+        await self.clients.openWindow(clickAction);
+        return;
+      }
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const existing = windows.find((c) => c.url.startsWith(self.location.origin + '/validation'));
       if (existing) {

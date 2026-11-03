@@ -17,6 +17,7 @@ import type { Espace, QuestionClient, QuestionnaireComplet } from '../utils/type
 import { Attente, BandeauReseau, CarteClose, CarteInfo, EnTeteClient, documentDe, useProjet, useQuestionnaire } from './Cadre';
 import { PastilleQuestion } from '../composants/VersDiscussion';
 import { libelleQuestion } from '../utils/discussion';
+import { useMicro } from '../composants/Micro';
 
 export const MAX_COMMENTAIRE = 2000;
 const COMPTEUR_DES = 1800;
@@ -391,21 +392,26 @@ function Commentaire({
   champ: RefObject<HTMLTextAreaElement | null>;
 }) {
   const fid = `commentaire-${id}`;
+  const micro = useMicro({ valeur, changer, max: MAX_COMMENTAIRE });
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={fid} className="text-[14px] font-semibold text-encre">
         {libelle}
       </label>
-      <textarea
-        id={fid}
-        ref={champ}
-        value={valeur}
-        maxLength={MAX_COMMENTAIRE}
-        onChange={(ev) => changer(ev.target.value.slice(0, MAX_COMMENTAIRE))}
-        className={`w-full box-border min-h-[96px] rounded-[10px] p-2.5 text-[15px] font-[inherit] resize-none bg-white ${rouge ? 'border-2 border-danger' : 'border border-[#94a3b8]'}`}
-        aria-invalid={rouge}
-        data-commentaire=""
-      />
+      <div className="relative">
+        <textarea
+          id={fid}
+          ref={champ}
+          value={valeur}
+          maxLength={MAX_COMMENTAIRE}
+          onChange={(ev) => changer(ev.target.value.slice(0, MAX_COMMENTAIRE))}
+          className={`block w-full box-border min-h-[96px] rounded-[10px] p-2.5 pr-[60px] text-[15px] font-[inherit] resize-none bg-white ${rouge ? 'border-2 border-danger' : 'border border-[#94a3b8]'}`}
+          aria-invalid={rouge}
+          data-commentaire=""
+        />
+        <div className="absolute right-2 bottom-2.5">{micro.bouton}</div>
+      </div>
+      {micro.message}
       {valeur.length >= COMPTEUR_DES && (
         <p className="text-[12px] text-doux m-0 text-right" data-compteur="">
           {valeur.length} / {MAX_COMMENTAIRE}
@@ -431,6 +437,11 @@ function BlocRefus({
   id: string;
 }) {
   const fid = `motif-${id}`;
+  const changer = (v: string) => {
+    setCommentaire(v);
+    if (v.trim()) setManque(false);
+  };
+  const micro = useMicro({ valeur: commentaire, changer, max: MAX_COMMENTAIRE });
   return (
     <>
       <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-2.5 py-1 rounded-full self-start bg-[#fee2e2] text-[#991b1b]" data-pastille-refus="">
@@ -440,20 +451,21 @@ function BlocRefus({
       <label htmlFor={fid} className="text-[14px] font-semibold text-encre">
         Pourquoi ? (obligatoire)
       </label>
-      <textarea
-        id={fid}
-        ref={champ}
-        value={commentaire}
-        maxLength={MAX_COMMENTAIRE}
-        onChange={(ev) => {
-          setCommentaire(ev.target.value.slice(0, MAX_COMMENTAIRE));
-          if (ev.target.value.trim()) setManque(false);
-        }}
-        className="w-full box-border min-h-[96px] rounded-[10px] p-2.5 text-[15px] font-[inherit] resize-none bg-white border-2 border-danger"
-        aria-invalid={manque}
-        aria-required="true"
-        data-motif=""
-      />
+      <div className="relative">
+        <textarea
+          id={fid}
+          ref={champ}
+          value={commentaire}
+          maxLength={MAX_COMMENTAIRE}
+          onChange={(ev) => changer(ev.target.value.slice(0, MAX_COMMENTAIRE))}
+          className="block w-full box-border min-h-[96px] rounded-[10px] p-2.5 pr-[60px] text-[15px] font-[inherit] resize-none bg-white border-2 border-danger"
+          aria-invalid={manque}
+          aria-required="true"
+          data-motif=""
+        />
+        <div className="absolute right-2 bottom-2.5">{micro.bouton}</div>
+      </div>
+      {micro.message}
       {commentaire.length >= COMPTEUR_DES && (
         <p className="text-[12px] text-doux m-0 text-right" data-compteur="">
           {commentaire.length} / {MAX_COMMENTAIRE}
