@@ -474,16 +474,18 @@ export function lignesCsvCycle(
   return factures.map((f) => {
     const cl = clients.get(f.client_id);
     const ls = (lignesParFacture.get(f.id) ?? []).slice().sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+    // En attente de relevé : pas de montant (le forfait seul n'est pas une facture).
+    const att = f.en_attente_releve;
     return {
       'Numéro': f.numero ?? 'brouillon',
       'Client': cl ? `${cl.code} ${cl.nom}` : '',
       'Bien': f.bien ?? 'tous',
       'Période': `${dateFr(f.periode_debut)} au ${dateFr(f.periode_fin)}`,
       'kWh par compteur': ls.map((l) => `${l.code_compteur ?? ''} ${nombreFr(l.kwh, 3)}`).join(' / '),
-      'kWh total': nombreFr(f.total_kwh, 3),
-      'HT': nombreFr(f.montant_ht),
-      'TVA': nombreFr(f.montant_tva),
-      'TTC': nombreFr(f.montant_ttc, 0),
+      'kWh total': att ? '' : nombreFr(f.total_kwh, 3),
+      'HT': att ? '' : nombreFr(f.montant_ht),
+      'TVA': att ? '' : nombreFr(f.montant_tva),
+      'TTC': att ? '' : nombreFr(f.montant_ttc, 0),
       'Échéance': dateFr(f.date_echeance),
       'Statut': STATUT_FACTURE_LIBELLE[f.statut],
       'Essai': f.essai ? 'oui' : 'non',

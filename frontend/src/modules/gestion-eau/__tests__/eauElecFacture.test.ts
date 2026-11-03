@@ -294,6 +294,15 @@ describe('numérotation et validation', () => {
     });
     expect(nombreFr(1314000, 0)).toBe('1314000');
   });
+
+  it('export CSV : facture en attente de relevé sans montant (pas de forfait seul)', () => {
+    const f = facture({
+      id: 'g', client_id: 'h', bien: 'Villa', numero: null, statut: 'brouillon', essai: false, en_attente_releve: true,
+      total_kwh: 0, montant_ht: 200000, montant_tva: 40000, montant_ttc: 240000,
+    });
+    const [row] = lignesCsvCycle([f], new Map(), new Map([['h', { code: 'H', nom: 'Hôtel' }]]));
+    expect(row).toMatchObject({ 'Numéro': 'brouillon', 'kWh total': '', 'HT': '', 'TVA': '', 'TTC': '', 'Statut': 'Brouillon' });
+  });
 });
 
 // ───────────────────────────── Rôle validation_elec ─────────────────────────────

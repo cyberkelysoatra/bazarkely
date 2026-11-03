@@ -229,7 +229,8 @@ const ORDRE_STATUTS: ElecFactureStatut[] = ['brouillon', 'emise', 'a_valider', '
 
 /** Factures du cycle : nombre par statut et TTC (ELEC-CC-03). */
 function CarteFactures({ mois, factures }: { mois: string; factures: ElecFactureLocal[] }) {
-  const ttc = factures.reduce((s, f) => s + (f.montant_ttc ?? 0), 0);
+  // Une facture en attente de relevé n'a pas de montant (forfait seul) : hors TTC.
+  const ttc = factures.filter((f) => !f.en_attente_releve).reduce((s, f) => s + (f.montant_ttc ?? 0), 0);
   const parStatut = ORDRE_STATUTS.map((st) => ({ st, n: factures.filter((f) => f.statut === st).length })).filter((x) => x.n > 0);
   const essai = factures.some((f) => f.essai);
   return (

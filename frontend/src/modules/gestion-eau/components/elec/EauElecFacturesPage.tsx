@@ -144,7 +144,8 @@ export default function EauElecFacturesPage() {
   const compteur = reglages ? compteurActif(reglages) : null;
   const prochain = reglages ? prochainsNumeros(reglages, cycle, 1)[0] : '-';
 
-  const totaux = facturesCycle.reduce(
+  // Une facture en attente de relevé n'a pas de montant : elle ne compte pas dans les totaux.
+  const totaux = facturesCycle.filter((f) => !f.en_attente_releve).reduce(
     (t, f) => ({
       kwh: t.kwh + (f.total_kwh ?? 0),
       ht: t.ht + (f.montant_ht ?? 0),

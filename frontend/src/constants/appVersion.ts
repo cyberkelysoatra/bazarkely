@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.121.1';
+export const APP_VERSION = '3.121.2';
 export const APP_VERSION_NAME = 'RTB Énergie : factures d’électricité, calcul, numérotation et validation des gérants';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.121.2',
+    date: '2026-11-03',
+    description: 'Factures RTB : une facture en attente de relevé ne compte plus dans les totaux',
+    changes: [
+      'Totaux du cycle, carte « Factures du cycle » et export CSV : une facture en attente de relevé n’a pas de montant (son forfait seul n’est plus additionné)'
+    ]
+  },
   {
     version: '3.121.1',
     date: '2026-11-03',
