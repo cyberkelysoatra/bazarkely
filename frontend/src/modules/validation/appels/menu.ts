@@ -15,11 +15,15 @@ function surRetour() {
   notifier();
 }
 
-export function ouvrirMenu(): void {
+/** Opens the menu; `reprendre` reuses the history entry of the module bar that just closed. */
+export function ouvrirMenu(reprendre = false): void {
   if (ouvert) return;
   ouvert = true;
   try {
-    history.pushState({ ...(history.state ?? {}), vcMenu: true }, '');
+    const etat = { ...(history.state ?? {}), vcMenu: true };
+    delete (etat as { vcCommutateur?: boolean }).vcCommutateur;
+    if (reprendre) history.replaceState(etat, '');
+    else history.pushState(etat, '');
     entreeHistorique = true;
     window.addEventListener('popstate', surRetour);
   } catch {
@@ -42,14 +46,17 @@ export function fermerMenu(): void {
 
 /**
  * Closes the menu before going to another page: the pushed entry is replaced by the navigation,
- * so a later Back leaves the new page instead of reopening nothing.
+ * so a later Back leaves the new page instead of reopening nothing. Also used to hand the entry
+ * over to the module bar: returns true when an entry is left for the caller to reuse.
  */
-export function quitterMenu(): void {
-  if (!ouvert) return;
+export function quitterMenu(): boolean {
+  if (!ouvert) return false;
+  const entree = entreeHistorique;
   ouvert = false;
   window.removeEventListener('popstate', surRetour);
   entreeHistorique = false;
   notifier();
+  return entree;
 }
 
 export function useMenuOuvert(): boolean {

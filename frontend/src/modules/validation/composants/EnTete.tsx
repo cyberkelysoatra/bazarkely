@@ -3,21 +3,63 @@
 // « pour ... » bottom-aligned (2 lines max), account circle (44 px) on the right.
 // Variants: 'client' (signed in), 'invitation' (screen 1, no circle), 'neutre' (screen 9 and
 // signed-out screens: « Espace de validation CyberKELY » only, bold 22 px, may wrap).
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+// VC-45 (VALIDCLIENT-CC-11): in the 'client' variant, when the account has other modules, the square
+// is a button that opens the module bar at the bottom (same gesture as the host and PUDi logos).
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { initiales } from '../utils/regles';
-import { ouvrirMenu, useMenuOuvert, fermerMenu } from '../appels/menu';
+import { ouvrirMenu, useMenuOuvert, fermerMenu, quitterMenu } from '../appels/menu';
+import { basculerCommutateur, quitterCommutateur, useCommutateurOuvert } from '../appels/commutateur';
+import { useModulesCompte } from '../appels/modules';
+import { useSessionLocale } from '../appels/session';
+import type { ModuleHote } from '../utils/modulesCompte';
 import MenuCompte from './MenuCompte';
+import { BarreModules } from './BarreCommutateur';
+
+function Marque({ nuit }: { nuit: boolean }) {
+  return (
+    <span className={`text-[13px] font-extrabold ${nuit ? 'text-nuit' : 'text-ciel'} tracking-[-0.01em] leading-none`} aria-hidden="true">
+      <span className="relative inline-block">
+        1<span className="absolute -top-1 left-1/2 -ml-px w-[3px] h-[3px] rounded-full bg-current" />
+      </span>
+      saKELY
+    </span>
+  );
+}
 
 export function Carre({ nuit = false }: { nuit?: boolean }) {
   return (
     <div className="w-16 h-16 flex-none bg-white rounded-xl flex items-center justify-center" aria-label="1saKELY" role="img">
-      <span className={`text-[13px] font-extrabold ${nuit ? 'text-nuit' : 'text-ciel'} tracking-[-0.01em] leading-none`} aria-hidden="true">
-        <span className="relative inline-block">
-          1<span className="absolute -top-1 left-1/2 -ml-px w-[3px] h-[3px] rounded-full bg-current" />
-        </span>
-        saKELY
-      </span>
+      <Marque nuit={nuit} />
     </div>
+  );
+}
+
+/** The square as the module switcher (list known and not empty), with the PUDi ripple on tap. */
+function Logo({ nuit, modules }: { nuit: boolean; modules: ModuleHote[] }) {
+  const ouvert = useCommutateurOuvert();
+  const [onde, setOnde] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        data-vc-logo=""
+        onClick={(e) => {
+          e.stopPropagation();
+          // The account menu hands its history entry over: never both open.
+          basculerCommutateur(quitterMenu());
+          setOnde(true);
+          window.setTimeout(() => setOnde(false), 600);
+        }}
+        aria-label="Changer de module"
+        aria-pressed={ouvert}
+        title="Touchez pour changer de module"
+        className="relative w-16 h-16 flex-none bg-white rounded-xl flex items-center justify-center overflow-hidden"
+      >
+        {onde && <span className="absolute inset-0 bg-[#bae6fd]/60 rounded-xl motion-safe:animate-ping" aria-hidden="true" />}
+        <Marque nuit={nuit} />
+      </button>
+      {ouvert && <BarreModules modules={modules} />}
+    </>
   );
 }
 
@@ -70,6 +112,10 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
   const titreRef = useRef<HTMLParagraphElement>(null);
   const enteteRef = useRef<HTMLElement>(null);
   const menuOuvert = useMenuOuvert();
+  const session = useSessionLocale();
+  const modules = useModulesCompte(session?.id ?? '');
+  // Signed-out screens and an account with Validation only (almost every client): inert logo.
+  const logoActif = variante === 'client' && !!modules?.length;
 
   useLayoutEffect(() => {
     const ajuster = () => {
@@ -86,7 +132,7 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
   return (
     <header ref={enteteRef} className={`vc-entete sticky top-0 z-30 ${pilotage ? 'bg-nuit' : 'bg-ciel'} text-white px-4 pb-3.5`} data-entete={pilotage ? 'pilotage' : variante}>
       <div className="flex items-stretch gap-3">
-        <Carre nuit={pilotage} />
+        {logoActif ? <Logo nuit={pilotage} modules={modules!} /> : <Carre nuit={pilotage} />}
         {variante === 'neutre' ? (
           <div className="flex-1 min-w-0 min-h-16 flex flex-col justify-start">
             <p className="text-[22px] font-bold leading-[1.2] m-0" data-titre="">
@@ -108,7 +154,7 @@ export default function EnTete({ variante, titre = '', sousTitre = '', nom = '',
         {variante === 'client' && (
           <button
             type="button"
-            onClick={() => (menuOuvert ? fermerMenu() : ouvrirMenu())}
+            onClick={() => (menuOuvert ? fermerMenu() : ouvrirMenu(quitterCommutateur()))}
             aria-label="Menu du compte"
             aria-expanded={menuOuvert}
             className={`w-11 h-11 flex-none self-start rounded-full bg-white ${pilotage ? 'text-nuit' : 'text-ciel'} border-2 border-[#bae6fd] flex items-center justify-center text-[15px] font-bold`}

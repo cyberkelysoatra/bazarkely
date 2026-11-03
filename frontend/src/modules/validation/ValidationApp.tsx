@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { EspaceProvider, useEspace } from './EspaceContexte';
 import { estPilote } from './appels/api';
 import { quitterMenu } from './appels/menu';
+import { quitterCommutateur } from './appels/commutateur';
+import { demarrerModules } from './appels/modules';
 import { renouvelerAbonnement } from './appels/notifications';
 import Accueil from './pages/Accueil';
 import Invitation from './pages/Invitation';
@@ -69,11 +71,12 @@ function GardePilotage() {
   );
 }
 
-/** New page: top of the page, menu closed. */
+/** New page: top of the page, menu and module bar closed. */
 function SuiviNavigation() {
   const { pathname } = useLocation();
   useEffect(() => {
     quitterMenu();
+    quitterCommutateur();
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
@@ -89,12 +92,23 @@ function RenouvellementNotifications() {
   return null;
 }
 
+/** Other modules of the account (header logo, VC-45): the copy kept on the phone, then the server. */
+function SuiviModules() {
+  const { session } = useEspace();
+  const uid = session?.id ?? '';
+  useEffect(() => {
+    void demarrerModules(uid);
+  }, [uid]);
+  return null;
+}
+
 export default function ValidationApp() {
   return (
     <BrowserRouter basename="/validation">
       <EspaceProvider>
         <SuiviNavigation />
         <RenouvellementNotifications />
+        <SuiviModules />
         <div className="vc-ecran">
           <Routes>
             <Route path="/" element={<Accueil />} />

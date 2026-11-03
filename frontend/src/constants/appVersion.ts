@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.125.0';
-export const APP_VERSION_NAME = 'Validation client, correctif 10 : corriger une personne, « Publier la suite » qui publie vraiment';
+export const APP_VERSION = '3.126.0';
+export const APP_VERSION_NAME = 'Validation client, correctif 11 : le logo de l’en-tête ouvre la barre des autres modules';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.126.0',
+    date: '2026-11-03',
+    description: 'Validation client, correctif 11 : le logo de l’en-tête ouvre la barre des autres modules (VALIDCLIENT-CC-11)',
+    changes: [
+      'Validation client : un toucher sur le carré « 1saKELY » de l’en-tête ouvre en bas la barre des autres modules du compte, comme partout ailleurs dans 1sakely.org',
+      'Un compte qui n’a que Validation garde un logo inerte ; la liste est gardée sur le téléphone pour un démarrage sans réseau'
+    ]
+  },
   {
     version: '3.125.0',
     date: '2026-11-03',

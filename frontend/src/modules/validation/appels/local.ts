@@ -2,7 +2,7 @@
 // Keys: `q:<questionnaire>` (vc_questionnaire), `d:<document>` (vc_document), `file` (answers not
 // sent yet), `refusees` (answers refused by a closed questionnaire), `espace:<user>` (vc_mon_espace,
 // to open the pages without network), `messages` (thread messages not sent yet), `fil:<client>`
-// (last thread read).
+// (last thread read), `modules` (other modules of the account for the header logo, VC-45).
 // A storage failure (private mode, quota) never breaks the page: reads give undefined.
 import { createStore, get, set } from 'idb-keyval';
 
