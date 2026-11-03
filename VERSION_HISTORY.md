@@ -6,6 +6,15 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.121.2 - 2026-11-03 (ELEC-CC-03 · Factures en attente hors des totaux)
+
+- Totaux du cycle, carte « Factures du cycle » et export CSV : une facture en attente de relevé n'a plus de montant (son forfait seul n'était plus à additionner).
+
+## Version 3.121.1 - 2026-11-03 (ELEC-CC-03 · Prochain numéro à jour ; fichiers de l'appli protégés au déploiement)
+
+- Écran Factures : le prochain numéro affiché suit le compteur juste après une émission (réglages relus après chaque action serveur).
+- `frontend/functions/assets/_middleware.ts` : un fichier `/assets/*` absent pendant un déploiement donne un 404 non mis en cache au lieu de la page d'accueil gardée un an par Cloudflare (11 fichiers touchés à Antananarivo après la 3.121.0 ; voir P57 de `PROCEDURES-OUTILS.md`).
+
 ## Version 3.121.0 - 2026-11-03 (ELEC-CC-03 · RTB Énergie, facture d'électricité phase 2a : calcul, numérotation, validation)
 
 ### 🧾 Factures RTB sans leur document (PDF : phase 2b)
