@@ -13,6 +13,7 @@ import { cycleEnLigne, duTitre } from '../utils/regles';
 import type { QuestionClient } from '../utils/types';
 import { Attente, BandeauReseau, CarteInfo, EnTeteClient, useProjet, useQuestionnaire } from './Cadre';
 import { TEXTES_CODE, reponsesDe } from './Question';
+import { usePresence } from '../appels/presence';
 
 const PASTILLE = 'inline-flex items-center text-[13px] font-semibold px-2.5 py-1 rounded-full flex-none max-w-[55%] text-right';
 
@@ -43,6 +44,8 @@ export default function Confirmer() {
   const [relu, setRelu] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [echec, setEchec] = useState<string | null>(null);
+  const relecture = !!q && q.etat === 'ouvert' && q.role === 'validant' && f.codes[qid] !== 'QUESTIONNAIRE_CONFIRME';
+  usePresence(p?.client_id, p && q ? { type: relecture ? 'relecture' : 'mes_reponses' } : null);
 
   if (statut === 'sortie' || chargement === 'refuse') return <Navigate to="/" replace />;
   if (statut === 'attente' || !q) {
@@ -96,7 +99,7 @@ export default function Confirmer() {
       />
       {!f.enLigne && !lectureSeule && <BandeauReseau texte="Pas de réseau : vos réponses sont gardées sur ce téléphone." />}
       <Corps data-confirmer={lectureSeule ? 'lecture' : 'ouvert'} data-t-local={e.total} data-jauge-local={e.jauge}>
-        <BarreRetour vers={lectureSeule ? (q.etat === 'confirme' ? `/recu/${qid}` : '/') : `/q/${qid}/${Math.max(1, chemin.length)}`} libelle={lectureSeule ? 'Retour' : 'Revenir à mes réponses'} />
+        <BarreRetour vers={lectureSeule ? (q.etat === 'confirme' && q.role === 'validant' ? `/recu/${qid}` : '/') : `/q/${qid}/${Math.max(1, chemin.length)}`} libelle={lectureSeule ? 'Retour' : 'Revenir à mes réponses'} />
         <p className="text-[13px] text-doux m-0">Touchez une ligne pour revoir la question.</p>
         <div className={`${CARTE} !gap-0 !py-1`} data-liste-chemin="">
           {chemin.map((x) => {

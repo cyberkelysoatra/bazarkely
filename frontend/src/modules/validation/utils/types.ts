@@ -128,6 +128,35 @@ export interface QuestionnaireComplet {
   personne_id: string;
   questions: QuestionClient[];
   mes_reponses: MaReponse[];
+  /** Validant only: last opinion of each contributor (empty for a contributor). */
+  equipe?: AvisEquipe[];
+}
+
+/** One opinion of a colleague, as vc_questionnaire returns it to the validant. */
+export interface AvisEquipe {
+  question_id: string;
+  choix_id: string;
+  /** First name only. */
+  nom: string;
+  commentaire: string | null;
+  repondu_at: string;
+}
+
+/** vc_equipe(client): people of the project (revoked ones left out). */
+export interface MembreEquipe {
+  nom: string;
+  civilite: string | null;
+  fonction: string | null;
+  role: Role;
+  invitation: 'acceptee' | 'en_attente';
+}
+
+/** vc_equipe_inviter(...). */
+export interface ResultatEquipe {
+  ok: boolean;
+  code?: 'NUMERO_INVALIDE' | 'CHAMP_OBLIGATOIRE' | 'EQUIPE_COMPLETE' | string;
+  personne_id?: string;
+  jeton?: string;
 }
 
 /** vc_document(id). */

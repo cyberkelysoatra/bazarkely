@@ -6,6 +6,8 @@
 // screens and the pilotage preview (outside the pilotage chunk).
 import { useState } from 'react';
 import type { ChoixClient } from '../utils/types';
+import { Icone } from './Icones';
+import { aChoisi } from '../utils/regles';
 
 type Choix = Pick<ChoixClient, 'id' | 'lettre' | 'nature' | 'libelle' | 'ligne' | 'avantages' | 'faiblesses' | 'conseille'>;
 
@@ -43,9 +45,11 @@ interface Props {
   /** Accessible label of each card (preview: « passer à la suite »). */
   libelleAction?: (c: Choix) => string;
   desactive?: boolean;
+  /** Validant only: choice id → first names of the colleagues who chose it (VC-14). */
+  votants?: Record<string, string[]>;
 }
 
-export default function ChoixQuestion({ choix, selection, onChoisir, libelleAction, desactive = false }: Props) {
+export default function ChoixQuestion({ choix, selection, onChoisir, libelleAction, desactive = false, votants }: Props) {
   const [ouvert, setOuvert] = useState<string | null>(null);
   return (
     <div role="radiogroup" aria-label="Votre réponse" className="flex flex-col gap-2.5" data-choix-question="">
@@ -81,6 +85,12 @@ export default function ChoixQuestion({ choix, selection, onChoisir, libelleActi
                   )}
                 </div>
                 {c.ligne && <p className={`text-[13px] m-0 ${c.nature === 'refus' ? 'text-[#991b1b]' : 'text-doux'}`}>{c.ligne}</p>}
+                {!!votants?.[c.id]?.length && (
+                  <span className="self-start inline-flex items-center gap-1 text-[12px] font-semibold text-[#5b21b6] bg-[#ede9fe] rounded-full px-[9px] py-[3px] mt-0.5" data-votants={c.lettre}>
+                    <Icone nom="equipe" epaisseur={2.2} className="w-3.5 h-3.5" />
+                    {aChoisi(votants[c.id])}
+                  </span>
+                )}
                 {detail && (
                   <button
                     type="button"

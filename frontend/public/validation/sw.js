@@ -72,7 +72,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // Supabase and other hosts: never cached
   if (request.mode === 'navigate') {
-    if (url.pathname === '/validation' || url.pathname.startsWith('/validation/')) event.respondWith(navigation(request));
+    // Module routes only: a file opened directly (/validation/og-validation-v1.png) is never kept as the page.
+    if ((url.pathname === '/validation' || url.pathname.startsWith('/validation/')) && !/\.[a-z0-9]+$/i.test(url.pathname)) event.respondWith(navigation(request));
     return;
   }
   if (url.pathname === '/validation/sw.js') return;

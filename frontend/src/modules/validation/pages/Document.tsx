@@ -11,6 +11,7 @@ import { ecrireLocal, lireLocal } from '../appels/local';
 import { nomCycle } from '../utils/regles';
 import type { DocumentTexte } from '../utils/types';
 import { Attente, BandeauReseau, CarteInfo, EnTeteClient, useProjet } from './Cadre';
+import { usePresence } from '../appels/presence';
 
 /** Markdown → safe HTML; every table wrapped in a box that scrolls on its own. */
 export function rendreMarkdown(md: string): string {
@@ -27,6 +28,7 @@ export default function Document() {
   const { statut, p, email, lent } = useProjet();
   const [doc, setDoc] = useState<DocumentTexte | null>(null);
   const [etat, setEtat] = useState<'chargement' | 'pret' | 'erreur' | 'refuse'>('chargement');
+  usePresence(p?.client_id, p && doc ? { type: 'document', titre: doc.titre_client } : null);
 
   useEffect(() => {
     let vivant = true;

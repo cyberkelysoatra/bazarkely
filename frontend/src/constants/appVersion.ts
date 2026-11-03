@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.121.2';
-export const APP_VERSION_NAME = 'RTB Énergie : factures d’électricité, calcul, numérotation et validation des gérants';
+export const APP_VERSION = '3.122.0';
+export const APP_VERSION_NAME = 'Validation client, phase 6 : équipe du client, avis des contributeurs, présence en ligne';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.122.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 6 : équipe du client, avis des contributeurs, présence en ligne (VALIDCLIENT-CC-06 et CC-09)',
+    changes: [
+      'Écran « Mon équipe » : la personne qui décide invite un collègue par WhatsApp depuis son téléphone (message prérempli, « Copier le lien »)',
+      'Parcours complet du contributeur : accueil « Votre avis : n sur t », questions marquées « (votre avis) », écran de remerciement, suivi après la confirmation',
+      'La personne qui décide voit sur chaque question qui a choisi quoi dans son équipe, avec les commentaires et les dates',
+      'Présence en ligne réelle : chaque écran client signale sa page à Joël (toutes les 60 s quand l’écran est visible)',
+      'Lien d’invitation partagé dans WhatsApp : nouvelle image d’aperçu au logo 1saKELY (1200 × 630)'
+    ]
+  },
   {
     version: '3.121.2',
     date: '2026-11-03',

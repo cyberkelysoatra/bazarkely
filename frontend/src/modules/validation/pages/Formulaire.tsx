@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { enregistrerMesInfos } from '../appels/api';
 import { useEspace } from '../EspaceContexte';
+import { usePresence } from '../appels/presence';
 import EnTete from '../composants/EnTete';
 import { BarreRetour, CARTE, Corps, PRIMAIRE, Squelette, useCouleurTheme } from '../composants/Mise';
 import {
@@ -62,6 +63,7 @@ function Champs({ mode, p, email, nomGoogle, google }: { mode: 'inscription' | '
   const refs = useRef<Partial<Record<Champ, HTMLInputElement | null>>>({});
   const nom = nomGoogle || p.nom || '';
   const madame = v.civilite === 'Madame';
+  usePresence(p.client_id, { type: mode === 'infos' ? 'infos' : 'inscription' });
 
   const montrer = (e: Partial<Record<Champ, string>>) => {
     setErreurs(e);

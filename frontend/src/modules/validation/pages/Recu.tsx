@@ -7,6 +7,7 @@ import { Icone } from '../composants/Icones';
 import { comptes, dateHeure, delaiRestant, fonctionEnLigne, nomCycle, sansCivilite } from '../utils/regles';
 import type { DocumentEspace, Espace } from '../utils/types';
 import { Attente, EnTeteClient, documentDe, useProjet } from './Cadre';
+import { usePresence } from '../appels/presence';
 
 /** Text summary shared by « Partager le reçu » (the PDF comes in lot 1b). */
 export function texteRecu(d: DocumentEspace, p: Espace): string {
@@ -34,6 +35,7 @@ export default function Recu() {
   const { statut, p, email, lent } = useProjet();
   const { recharger } = useEspace();
   const d = documentDe(p, qid);
+  usePresence(p?.client_id, p ? { type: 'recu' } : null);
   const [, setTic] = useState(0);
   const [partage, setPartage] = useState<string | null>(null);
 
@@ -61,9 +63,6 @@ export default function Recu() {
   if (!d.confirme_at) return <Navigate to={`/confirmer/${qid}`} replace />;
 
   const par = [sansCivilite(d.confirme_par), d.confirme_par_fonction ? fonctionEnLigne(d.confirme_par_fonction) : ''].filter(Boolean).join(', ');
-  const courante = Math.max(1, ETAPES.indexOf((d.etape_suivi ?? 'analyse') as (typeof ETAPES)[number]));
-  const reste = d.echeance_at ? delaiRestant(d.echeance_at) : null;
-
   async function partager() {
     if (!d || !p) return;
     const texte = texteRecu(d, p);
@@ -121,25 +120,7 @@ export default function Recu() {
         <Link to={`/confirmer/${qid}`} className="text-[14px] font-semibold text-ciel underline self-center min-h-11 flex items-center" data-voir-reponses="">
           Voir mes réponses (lecture seule)
         </Link>
-        <div className={`${CARTE} !gap-3.5`} data-suivi="">
-          <h2 className="text-[17px] leading-[1.3] font-bold m-0">La suite de votre dossier</h2>
-          <Etape fait titre="Réponses reçues" detail={dateHeure(d.confirme_at)} cle="recues" />
-          <Etape
-            fait={courante > 1}
-            courante={courante === 1}
-            titre="En analyse"
-            cle="analyse"
-            engagement={courante === 1 ? { echeance: d.echeance_at, reste } : undefined}
-          />
-          <Etape
-            fait={courante > 2}
-            courante={courante === 2}
-            titre="Version suivante en préparation"
-            cle="preparation"
-            engagement={courante === 2 ? { echeance: d.echeance_at, reste } : undefined}
-          />
-          <Etape courante={courante === 3} titre="Disponible" detail="Vous recevrez une notification" cle="disponible" />
-        </div>
+        <SuiviDossier d={d} />
         <button type="button" className={PRIMAIRE} onClick={() => void partager()} data-partager="">
           Partager le reçu
         </button>
@@ -153,6 +134,34 @@ export default function Recu() {
         </button>
       </Corps>
     </>
+  );
+}
+
+/** « La suite de votre dossier »: steps of the follow-up (receipt, contributor's confirmed card). */
+export function SuiviDossier({ d }: { d: DocumentEspace }) {
+  const courante = Math.max(1, ETAPES.indexOf((d.etape_suivi ?? 'analyse') as (typeof ETAPES)[number]));
+  const reste = d.echeance_at ? delaiRestant(d.echeance_at) : null;
+  if (!d.confirme_at) return null;
+  return (
+    <div className={`${CARTE} !gap-3.5`} data-suivi="">
+      <h2 className="text-[17px] leading-[1.3] font-bold m-0">La suite de votre dossier</h2>
+      <Etape fait titre="Réponses reçues" detail={dateHeure(d.confirme_at)} cle="recues" />
+      <Etape
+        fait={courante > 1}
+        courante={courante === 1}
+        titre="En analyse"
+        cle="analyse"
+        engagement={courante === 1 ? { echeance: d.echeance_at, reste } : undefined}
+      />
+      <Etape
+        fait={courante > 2}
+        courante={courante === 2}
+        titre="Version suivante en préparation"
+        cle="preparation"
+        engagement={courante === 2 ? { echeance: d.echeance_at, reste } : undefined}
+      />
+      <Etape courante={courante === 3} titre="Disponible" detail="Vous recevrez une notification" cle="disponible" />
+    </div>
   );
 }
 

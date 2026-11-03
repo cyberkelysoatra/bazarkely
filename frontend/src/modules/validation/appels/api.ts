@@ -5,6 +5,8 @@ import type {
   Apercu,
   DocumentTexte,
   Espace,
+  MembreEquipe,
+  ResultatEquipe,
   QuestionnaireComplet,
   ResultatConfirmation,
   ResultatInvitation,
@@ -28,6 +30,19 @@ export const utiliserInvitation = (jeton: string) => rpc<ResultatInvitation>('vc
 export const monEspace = () => rpc<Espace[]>('vc_mon_espace');
 
 export const lireQuestionnaire = (id: string) => rpc<QuestionnaireComplet>('vc_questionnaire', { p_questionnaire: id });
+
+export const lireEquipe = (client: string) => rpc<MembreEquipe[]>('vc_equipe', { p_client: client });
+
+export const inviterEquipe = (p: { client: string; civilite: string | null; nom: string; fonction: string; whatsapp: string }) =>
+  rpc<ResultatEquipe>('vc_equipe_inviter', {
+    p_client: p.client,
+    p_civilite: p.civilite,
+    p_nom: p.nom,
+    p_fonction: p.fonction,
+    p_whatsapp: p.whatsapp
+  });
+
+export const noterPresence = (client: string, page: string) => rpc<null>('vc_noter_presence', { p_client: client, p_page: page });
 
 export const lireDocument = (id: string) => rpc<DocumentTexte>('vc_document', { p_document: id });
 

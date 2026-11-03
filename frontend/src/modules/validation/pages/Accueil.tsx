@@ -8,6 +8,8 @@ import BoutonsConnexion from '../composants/BoutonsConnexion';
 import { BoutonWhatsApp, CARTE, CarteMessage, Corps, PRIMAIRE, SECONDAIRE, Squelette, useCouleurTheme } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { deconnexion } from '../appels/session';
+import { usePresence } from '../appels/presence';
+import { SuiviDossier } from './Recu';
 import {
   choisirProjet,
   comptes,
@@ -15,8 +17,10 @@ import {
   delaiRestant,
   estNouvelleVersion,
   etatCarte,
+  dateSeule,
   lignePour,
   nomCycle,
+  personneValidant,
   ordonnerDocuments,
   questionAOuvrir
 } from '../utils/regles';
@@ -27,6 +31,8 @@ export default function Accueil() {
   const { session, etat, liste, lent, recharger } = useEspace();
   const { state } = useLocation();
   const navigate = useNavigate();
+  const actif = etat === 'pret' ? choisirProjet(liste) : null;
+  usePresence(actif?.type === 'projet' && actif.espace.inscrit ? actif.espace.client_id : null, { type: 'accueil' });
   // Back from the questions: re-read the cards once (gauge, ready, confirmed).
   const relu = useRef(false);
   useEffect(() => {
@@ -126,11 +132,24 @@ export default function Accueil() {
           docs.map((d) => <CarteDocument key={d.questionnaire_id} d={d} tous={docs} p={p} />)
         )}
         <p className="text-[14px] text-doux m-0 leading-[1.45]">
-          Prenez votre temps : vos réponses sont gardées, datées et conservées. Vous pouvez vous arrêter et reprendre plus tard.
+          {p.role === 'contributeur'
+            ? 'Prenez votre temps : vos réponses sont gardées. Vous pouvez vous arrêter et reprendre plus tard.'
+            : 'Prenez votre temps : vos réponses sont gardées, datées et conservées. Vous pouvez vous arrêter et reprendre plus tard.'}
         </p>
-        <Link to="/infos" className={`${SECONDAIRE} !text-[15px]`} data-mes-infos="">
-          Mes infos
-        </Link>
+        {p.role === 'validant' ? (
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link to="/equipe" className={`${SECONDAIRE} !text-[15px] !px-2`} data-mon-equipe={p.equipe ?? 0}>
+              Mon équipe ({p.equipe ?? 1})
+            </Link>
+            <Link to="/infos" className={`${SECONDAIRE} !text-[15px] !px-2`} data-mes-infos="">
+              Mes infos
+            </Link>
+          </div>
+        ) : (
+          <Link to="/infos" className={`${SECONDAIRE} !text-[15px]`} data-mes-infos="">
+            Mes infos
+          </Link>
+        )}
       </Corps>
     </>
   );
@@ -139,6 +158,7 @@ export default function Accueil() {
 const PASTILLE = 'inline-flex items-center gap-1.5 text-[13px] font-semibold px-2.5 py-1 rounded-full self-start flex-none';
 
 function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace[]; p: Espace }) {
+  if (p.role === 'contributeur') return <CarteContributeur d={d} p={p} />;
   const etat = etatCarte(d);
   const e = d.etat_personne;
   const nouvelle = estNouvelleVersion(d, tous);
@@ -200,6 +220,62 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
               {etat === 'pret' ? (p.role === 'validant' ? 'Relire et confirmer' : 'Relire mes réponses') : etat === 'en_cours' ? 'Reprendre' : 'Commencer'}
             </Link>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Card of a contributor (screen 9 bis, VC-14): no gauge, « Votre avis : n sur t ». */
+function CarteContributeur({ d, p }: { d: DocumentEspace; p: Espace }) {
+  const etat = etatCarte(d);
+  const e = d.etat_personne;
+  const ancien = etat === 'remplace';
+  const v = personneValidant(p.validant);
+  const lire = (
+    <Link to={`/document/${d.document_id}`} className="text-ciel underline" data-lire-document="">
+      Lire le document
+    </Link>
+  );
+  let pastille: { texte: string; classe: string };
+  if (etat === 'confirme') pastille = { texte: 'Confirmé', classe: 'bg-[#dcfce7] text-[#166534]' };
+  else if (ancien) pastille = { texte: 'Version précédente', classe: 'bg-[#e2e8f0] text-[#334155]' };
+  else if (etat === 'clos') pastille = { texte: 'Close', classe: 'bg-[#e2e8f0] text-[#334155]' };
+  else pastille = { texte: `Votre avis : ${e?.repondues ?? 0} sur ${e?.total ?? 0}`, classe: 'bg-clair text-[#075985]' };
+  return (
+    <div className={`${CARTE} ${ancien ? '!bg-[#f8fafc]' : ''}`} data-carte={etat} data-carte-contributeur="" data-questionnaire={d.questionnaire_id}>
+      <div className="flex items-start justify-between gap-2.5">
+        <h2 className={`text-[17px] leading-[1.3] font-bold m-0 min-w-0 ${ancien ? 'text-doux' : ''}`}>{d.titre_client}</h2>
+        <span className={`${PASTILLE} ${pastille.classe}`} data-pastille="">
+          {etat === 'confirme' && <Icone nom="coche" epaisseur={2.4} />}
+          {pastille.texte}
+        </span>
+      </div>
+      <p className="text-[13px] text-doux m-0" data-cycle="">
+        {nomCycle(d.type, d.version)}. {lire}
+      </p>
+      {etat === 'confirme' ? (
+        <>
+          <p className="text-[15px] font-semibold text-[#166534] m-0" data-confirme-par="">
+            Confirmé par {d.confirme_par ? personneValidant(d.confirme_par).nom : v.nom}
+            {d.confirme_at ? ` le ${dateSeule(d.confirme_at)}` : ''}
+          </p>
+          <p className="text-[13px] text-doux m-0">Vos avis sont conservés ; ils ne se modifient plus.</p>
+          {!ancien && d.confirme_at && <SuiviDossier d={d} />}
+          <Link to={`/confirmer/${d.questionnaire_id}`} className="text-[14px] font-semibold text-ciel underline self-center min-h-11 flex items-center" data-voir-reponses="">
+            Voir mon avis (lecture seule)
+          </Link>
+        </>
+      ) : ancien || etat === 'clos' ? (
+        <p className="text-[13px] text-doux m-0">{etat === 'clos' ? 'Cette consultation est close. Vos réponses sont conservées.' : 'Vos avis sur cette version sont conservés.'}</p>
+      ) : (
+        <>
+          <p className="text-[14px] text-doux m-0 leading-[1.45]" data-explication-avis="">
+            {v.nom}, qui décide pour votre équipe, voit votre avis sur chaque question avant de trancher. Votre avis aide {v.prenom} à décider ; il ne valide rien à sa place.
+          </p>
+          <Link to={`/q/${d.questionnaire_id}/${questionAOuvrir(d)}`} className={PRIMAIRE} data-action="">
+            {etat === 'a_commencer' ? 'Donner mon avis' : etat === 'pret' ? 'Revoir mon avis' : 'Reprendre'}
+          </Link>
         </>
       )}
     </div>

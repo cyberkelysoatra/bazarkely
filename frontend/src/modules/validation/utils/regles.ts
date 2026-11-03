@@ -1,5 +1,5 @@
 // Pure rules of the Validation client screens (unit tested in regles.test.ts).
-import type { DocumentEspace, Espace } from './types';
+import type { AvisEquipe, DocumentEspace, Espace } from './types';
 
 /** Joël's WhatsApp number (given by Joël on 03/11/2026), digits only for wa.me. */
 export const JOEL_WHATSAPP = '261321106618';
@@ -233,4 +233,132 @@ export function adresseChrome(href: string, android: boolean): string {
 /** Return address after an e-mail sign-in: a module path only (never an outside address). */
 export function retourSur(param: string | null): string {
   return param && /^\/(?!\/)[A-Za-z0-9/_\-]*$/.test(param) ? param : '/';
+}
+
+// ---------------------------------------------------------------- team (VC-14, VC-18, RM12)
+
+/** Link of an invitation (same address as the pilotage invitations). */
+export function lienEquipe(jeton: string): string {
+  return `https://1sakely.org/validation/i/${jeton}`;
+}
+
+/** WhatsApp message sent by the validant from his own phone to invite a colleague (VC-18). */
+export function messageEquipe(p: {
+  nomCourt: string;
+  entreprise: string;
+  civilite: string | null;
+  nom: string;
+  civiliteValidant: string | null;
+  nomValidant: string;
+  lien: string;
+}): string {
+  const qui = (civ: string | null, nom: string) => [civ, nom.trim()].filter(Boolean).join(' ');
+  return [
+    `*VOTRE PROJET : ${p.nomCourt.trim().toLocaleUpperCase('fr')}*`,
+    '',
+    `Bonjour ${qui(p.civilite, p.nom)},`,
+    `${qui(p.civiliteValidant, p.nomValidant)} vous invite à donner votre avis sur le projet ${p.nomCourt.trim()} de ${p.entreprise.trim()}.`,
+    p.lien,
+    p.nomValidant.trim()
+  ].join('\n');
+}
+
+/** Server code of vc_equipe_inviter (or its refusal) → client text. */
+export const TEXTES_EQUIPE: Record<string, string> = {
+  NUMERO_INVALIDE: MESSAGES_CHAMP.numero,
+  CHAMP_OBLIGATOIRE: 'Écrivez le nom de la personne.',
+  EQUIPE_COMPLETE: 'Votre équipe compte déjà 20 personnes : pour en ajouter une, écrivez à Joël.',
+  VC_ACCES_REFUSE: 'Seule la personne qui décide pour l’équipe peut inviter. Pour toute question, écrivez à Joël.'
+};
+
+/** « Hery a choisi », « Hery et Lova ont choisi », « Hery, Lova et Fara ont choisi ». */
+export function aChoisi(noms: string[]): string {
+  const n = noms.filter(Boolean);
+  if (!n.length) return '';
+  if (n.length === 1) return `${n[0]} a choisi`;
+  return `${n.slice(0, -1).join(', ')} et ${n[n.length - 1]} ont choisi`;
+}
+
+/** « 02/11 à 21 h 15 », Madagascar time. */
+export function jourHeure(iso: string): string {
+  const [jour, heure] = dateHeure(iso).split(' à ');
+  return `${jour.slice(0, 5)} à ${heure}`;
+}
+
+/** « Monsieur Joël SOATRA » → civility, full name without it, first name, pronoun. */
+export function personneValidant(v: string | null | undefined): { civilite: string | null; nom: string; prenom: string; pronom: string } {
+  const brut = (v ?? '').trim();
+  const m = /^(Madame|Monsieur)\s+(.*)$/.exec(brut);
+  const civilite = m ? m[1] : null;
+  const nom = (m ? m[2] : brut).trim();
+  return { civilite, nom, prenom: nom.split(/\s+/)[0] ?? '', pronom: civilite === 'Madame' ? 'elle' : civilite === 'Monsieur' ? 'il' : 'elle ou il' };
+}
+
+/** First word of a name (« Hery Rakoto » → « Hery »). */
+export function prenomDe(nom: string | null | undefined): string {
+  return (nom ?? '').trim().split(/\s+/)[0] ?? '';
+}
+
+/** « Votre équipe » sentence of a question (null when nobody gave an opinion on it). */
+export function phraseEquipe(avis: AvisEquipe[], libelles: Record<string, string>, trancher = true): string | null {
+  const l = [...avis].sort((a, b) => Date.parse(a.repondu_at) - Date.parse(b.repondu_at));
+  if (!l.length) return null;
+  const morceaux = l.map((a) => {
+    // Non-breaking spaces inside the date: « 01 h 16 » never splits across two lines.
+    const base = `${a.nom} a choisi « ${libelles[a.choix_id] ?? '?'} » (${jourHeure(a.repondu_at).replace(/ /g, '\u00a0')})`;
+    const c = (a.commentaire ?? '').trim();
+    return c ? `${base} et commente : « ${c} »` : base;
+  });
+  const fin = morceaux.join(' ; ');
+  return `${fin}${/[.!?»]$/.test(fin) ? '' : '.'}${trancher ? ' C’est à vous de trancher.' : ''}`;
+}
+
+/** Choice id → first names of the colleagues who chose it, in the order they answered. */
+export function votantsParChoix(avis: AvisEquipe[]): Record<string, string[]> {
+  const r: Record<string, string[]> = {};
+  for (const a of [...avis].sort((x, y) => Date.parse(x.repondu_at) - Date.parse(y.repondu_at))) (r[a.choix_id] ??= []).push(a.nom);
+  return r;
+}
+
+// ---------------------------------------------------------------- presence (VC-32, RM11)
+
+export type PagePresence =
+  | { type: 'accueil' }
+  | { type: 'question'; titre: string; n: number; total: number }
+  | { type: 'relecture' }
+  | { type: 'mes_reponses' }
+  | { type: 'fin_avis'; titre: string }
+  | { type: 'recu' }
+  | { type: 'document'; titre: string }
+  | { type: 'equipe' }
+  | { type: 'infos' }
+  | { type: 'inscription' };
+
+/** Label of the page shown to Joël (« en ligne : <page> »), in client words, 80 characters at most. */
+export function libellePresence(p: PagePresence): string {
+  const t = (() => {
+    switch (p.type) {
+      case 'accueil':
+        return 'Accueil';
+      case 'question':
+        return `${p.titre.trim()}, question ${p.n} sur ${p.total}`;
+      case 'relecture':
+        return 'Relecture avant confirmation';
+      case 'mes_reponses':
+        return 'Mes réponses (lecture seule)';
+      case 'fin_avis':
+        return `${p.titre.trim()}, avis terminé`;
+      case 'recu':
+        return 'Reçu';
+      case 'document':
+        return `Document : ${p.titre.trim()}`;
+      case 'equipe':
+        return 'Mon équipe';
+      case 'infos':
+        return 'Mes informations';
+      case 'inscription':
+        return 'Inscription';
+    }
+  })();
+  return t.length > 80 ? `${t.slice(0, 79)}\u2026` : t;
 }

@@ -11,8 +11,9 @@ import { Icone } from '../composants/Icones';
 import { ajouterReponse, etatFile, reessayer, useFile } from '../appels/file';
 import { appareil } from '../appels/local';
 import { calculerChemin, etatChemin, type EtapeChemin } from '../utils/chemin';
-import { NOM_CYCLE, dateSeule } from '../utils/regles';
-import type { QuestionClient, QuestionnaireComplet } from '../utils/types';
+import { NOM_CYCLE, dateSeule, personneValidant, phraseEquipe, votantsParChoix } from '../utils/regles';
+import { usePresence } from '../appels/presence';
+import type { Espace, QuestionClient, QuestionnaireComplet } from '../utils/types';
 import { Attente, BandeauReseau, CarteInfo, EnTeteClient, documentDe, useProjet, useQuestionnaire } from './Cadre';
 
 export const MAX_COMMENTAIRE = 2000;
@@ -39,6 +40,12 @@ export default function Question() {
   const f = useFile();
 
   const code = f.codes[qid];
+  const cheminPresence = q ? calculerChemin(q.questions, reponsesDe(q)) : null;
+  const rangPresence = cheminPresence ? Math.min(Math.max(1, parseInt(numero, 10) || 1), Math.max(1, cheminPresence.length)) : 0;
+  usePresence(
+    p?.client_id,
+    p && q && cheminPresence ? { type: 'question', titre: q.titre_client, n: rangPresence, total: etatChemin(cheminPresence).total } : null
+  );
   useEffect(() => {
     // A newer version or a closing seen by the server: re-read the home data (new card).
     if (code) void recharger();
@@ -97,6 +104,7 @@ export default function Question() {
             lectureSeule={lectureSeule}
             confirmeAt={doc?.confirme_at ?? null}
             code={code}
+            p={p}
             nouvelle={doc ? (p?.documents ?? []).find((d) => d.type === doc.type && d.etat !== 'remplace' && d.questionnaire_id !== qid) ?? null : null}
           />
         ) : (
@@ -118,10 +126,11 @@ interface PropsFormulaire {
   lectureSeule: boolean;
   confirmeAt: string | null;
   code: string | undefined;
+  p: Espace | null;
   nouvelle: { questionnaire_id: string } | null;
 }
 
-function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code, nouvelle }: PropsFormulaire) {
+function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code, p, nouvelle }: PropsFormulaire) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const f = useFile();
@@ -140,6 +149,12 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
   // Any answer of this questionnaire still waiting after a failed send: never a silent loss.
   const erreurEnvoi = echec ?? (f.erreurs[x.id] || Object.entries(f.erreurs).some(([k, v]) => v === 'reseau' && q.questions.some((y) => y.id === k)) ? 'reseau' : null);
   const enCours = envoi || f.envoi === x.id;
+  const contributeur = q.role === 'contributeur';
+  const validant = personneValidant(p?.validant);
+  // Validant: opinions of the team on this question (VC-14); never shown to a contributor.
+  const avisEquipe = q.role === 'validant' ? (q.equipe ?? []).filter((a) => a.question_id === x.id) : [];
+  const phrase = phraseEquipe(avisEquipe, Object.fromEntries(x.choix.map((c) => [c.id, c.libelle])), !lectureSeule);
+  const votants = avisEquipe.length ? votantsParChoix(avisEquipe) : undefined;
 
   const lien = (
     <Link to={`/document/${q.document_id}`} state={{ retour: pathname }} className="text-ciel underline" data-lire-document="">
@@ -178,7 +193,7 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
     // The answer may change the path (VC-19): next rank on the recomputed path.
     const chemin = calculerChemin(q.questions, { ...reponsesDe(q), [x.id]: c.id });
     if (n < chemin.length) navigate(`/q/${q.id}/${n + 1}`);
-    else navigate(q.role === 'validant' ? `/confirmer/${q.id}` : '/');
+    else navigate(q.role === 'validant' ? `/confirmer/${q.id}` : `/merci/${q.id}`);
   }
 
   async function relancer() {
@@ -199,6 +214,16 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
       <h1 className="text-[19px] leading-tight font-bold m-0" data-texte-question="">
         {x.texte}
       </h1>
+      {phrase && (
+        <div className="bg-fond border border-[#bae6fd] rounded-[10px] p-3 text-[14px] text-nuit leading-[1.45]" data-votre-equipe="">
+          <strong>Votre équipe</strong> : {phrase}
+        </div>
+      )}
+      {contributeur && !lectureSeule && (
+        <p className="text-[13px] text-doux m-0 leading-[1.45]" data-ligne-avis="">
+          Votre choix est un avis : {validant.prenom || 'la personne qui décide'} tranche. Vous ne voyez pas les avis des autres membres de l'équipe.
+        </p>
+      )}
       {x.extrait && (
         <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-[10px] p-3 text-[14px] text-[#334155] leading-[1.45]" data-extrait="">
           « {x.extrait} »
@@ -220,7 +245,7 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
         <div className={`${CARTE} !gap-2`} data-lecture-seule="">
           {c ? (
             <>
-              <p className="text-[13px] text-doux m-0">Votre réponse</p>
+              <p className="text-[13px] text-doux m-0">{contributeur ? 'Votre avis' : 'Votre réponse'}</p>
               <p className="text-[16px] font-bold m-0" data-reponse-figee={c.lettre}>
                 {c.libelle}
               </p>
@@ -232,7 +257,11 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
           {q.etat === 'confirme' && (
             <p className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#166534] m-0" data-confirmee="">
               <Icone nom="coche" epaisseur={2.4} className="w-4 h-4" />
-              {confirmeAt ? `Réponse confirmée le ${dateSeule(confirmeAt)}` : 'Réponse confirmée'}
+              {contributeur
+                ? `Confirmé par ${validant.nom}${confirmeAt ? ` le ${dateSeule(confirmeAt)}` : ''}`
+                : confirmeAt
+                  ? `Réponse confirmée le ${dateSeule(confirmeAt)}`
+                  : 'Réponse confirmée'}
             </p>
           )}
         </div>
@@ -303,6 +332,7 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
       <ChoixQuestion
         choix={x.choix}
         selection={selection}
+        votants={votants}
         desactive={enCours}
         onChoisir={(c) => {
           setSelection(c.id);
@@ -330,7 +360,7 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
       <div className="vc-action" data-pied="">
         {piedErreur}
         <button type="button" className={PRIMAIRE} onClick={() => void continuer()} disabled={!choisi || enCours || !!code} data-continuer={n < total ? 'suivante' : 'fin'}>
-          Continuer
+          {contributeur ? 'Enregistrer mon avis' : 'Continuer'}
         </button>
       </div>
     </>
