@@ -10,6 +10,8 @@ import { Icone } from '../composants/Icones';
 import { deconnexion } from '../appels/session';
 import { usePresence } from '../appels/presence';
 import { SuiviDossier } from './Recu';
+import { ReponsesRefusees } from './Cadre';
+import { BoutonDiscussion, DISCUSSION } from '../composants/VersDiscussion';
 import {
   choisirProjet,
   comptes,
@@ -136,6 +138,7 @@ export default function Accueil() {
             ? 'Prenez votre temps : vos réponses sont gardées. Vous pouvez vous arrêter et reprendre plus tard.'
             : 'Prenez votre temps : vos réponses sont gardées, datées et conservées. Vous pouvez vous arrêter et reprendre plus tard.'}
         </p>
+        <BoutonDiscussion nonLus={p.messages_non_lus ?? 0} />
         {p.role === 'validant' ? (
           <div className="grid grid-cols-2 gap-2.5">
             <Link to="/equipe" className={`${SECONDAIRE} !text-[15px] !px-2`} data-mon-equipe={p.equipe ?? 0}>
@@ -203,6 +206,15 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
               </Link>
             </>
           )}
+          {!ancien && (
+            <p className="text-[13px] text-doux m-0 leading-[1.45]" data-changement-avis="">
+              Un changement d'avis ?{' '}
+              <Link to="/discussion" state={{ retour: '/' }} className="text-discussion font-semibold underline">
+                Écrivez-le dans la discussion du projet
+              </Link>{' '}
+              : Joël pourra le prendre en compte dans la version suivante.
+            </p>
+          )}
         </>
       ) : (
         <>
@@ -214,7 +226,7 @@ function CarteDocument({ d, tous, p }: { d: DocumentEspace; tous: DocumentEspace
               <div className="h-2 bg-[#0284c7] rounded-full" style={{ width: `${e?.jauge ?? 0}%` }} />
             </div>
           )}
-          {etat === 'clos' && <p className="text-[13px] text-doux m-0">Cette consultation est close. Vos réponses sont conservées.</p>}
+          {etat === 'clos' && <Close qid={d.questionnaire_id} />}
           {(etat === 'a_commencer' || etat === 'en_cours' || etat === 'pret') && (
             <Link to={lien} className={PRIMAIRE} data-action="">
               {etat === 'pret' ? (p.role === 'validant' ? 'Relire et confirmer' : 'Relire mes réponses') : etat === 'en_cours' ? 'Reprendre' : 'Commencer'}
@@ -266,8 +278,10 @@ function CarteContributeur({ d, p }: { d: DocumentEspace; p: Espace }) {
             Voir mon avis (lecture seule)
           </Link>
         </>
-      ) : ancien || etat === 'clos' ? (
-        <p className="text-[13px] text-doux m-0">{etat === 'clos' ? 'Cette consultation est close. Vos réponses sont conservées.' : 'Vos avis sur cette version sont conservés.'}</p>
+      ) : etat === 'clos' ? (
+        <Close qid={d.questionnaire_id} contributeur />
+      ) : ancien ? (
+        <p className="text-[13px] text-doux m-0">Vos avis sur cette version sont conservés.</p>
       ) : (
         <>
           <p className="text-[14px] text-doux m-0 leading-[1.45]" data-explication-avis="">
@@ -298,5 +312,24 @@ function Engagement({ echeance }: { echeance: string }) {
         <span className="text-[13px] text-doux">Votre dossier demande un peu plus de temps, Joël vous écrit aujourd'hui.</span>
       )}
     </div>
+  );
+}
+
+/** Closed card (RM4): the message, the answers in read only, the refused ones, the way to the thread. */
+function Close({ qid, contributeur = false }: { qid: string; contributeur?: boolean }) {
+  return (
+    <>
+      <p className="text-[14px] text-doux m-0 leading-[1.45]" data-close="">
+        Cette consultation est close. Vos réponses sont conservées.
+      </p>
+      <ReponsesRefusees qid={qid} />
+      <Link to={`/confirmer/${qid}`} className="text-[14px] font-semibold text-ciel underline self-center min-h-11 flex items-center" data-voir-reponses="">
+        {contributeur ? 'Voir mon avis (lecture seule)' : 'Voir mes réponses (lecture seule)'}
+      </Link>
+      <Link to="/discussion" state={{ retour: '/' }} className={DISCUSSION} data-close-discussion="">
+        <Icone nom="bulle" />
+        Écrire à Joël
+      </Link>
+    </>
   );
 }

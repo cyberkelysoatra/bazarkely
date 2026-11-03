@@ -275,7 +275,7 @@ export function texteAssistant(d: DonneesResultats): string {
   if (!messages.length) out.push('DISCUSSION : aucun message');
   for (const m of messages) {
     const n = numeroDe(m.question_id);
-    const texte = m.retire || m.texte === null ? 'message retiré' : `« ${uneLigne(m.texte)} »`;
+    const texte = m.retire || m.texte === null ? 'Message retiré' : `« ${uneLigne(m.texte)} »`;
     out.push(`DISCUSSION : ${dateHeureMinute(m.cree_at)} | ${nomSeul(m.auteur)}${n ? ` | question ${n}` : ''} | ${texte}`);
   }
   return out.join('\n') + '\n';

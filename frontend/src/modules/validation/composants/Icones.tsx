@@ -1,7 +1,7 @@
 // Inline SVG icons of the module (no icon library: nothing is imported from the host).
 import type { ReactNode } from 'react';
 
-type Nom = 'horloge' | 'whatsapp' | 'alerte' | 'retour' | 'personne' | 'installer' | 'sortir' | 'coche' | 'chrome' | 'cloche' | 'copier' | 'oeil' | 'croix' | 'equipe';
+type Nom = 'horloge' | 'whatsapp' | 'alerte' | 'retour' | 'personne' | 'installer' | 'sortir' | 'coche' | 'chrome' | 'cloche' | 'copier' | 'oeil' | 'croix' | 'equipe' | 'bulle' | 'envoyer';
 
 const TRACES: Record<Nom, ReactNode> = {
   horloge: (
@@ -38,6 +38,8 @@ const TRACES: Record<Nom, ReactNode> = {
     </>
   ),
   coche: <path d="M5 12l4 4 10-10" />,
+  bulle: <path d="M4 5h16v11H9l-5 4z" />,
+  envoyer: <path d="M4 12l16-8-6 16-2-7z" />,
   equipe: (
     <>
       <circle cx="9" cy="8" r="3.5" />

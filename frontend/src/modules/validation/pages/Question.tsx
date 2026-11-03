@@ -14,7 +14,9 @@ import { calculerChemin, etatChemin, type EtapeChemin } from '../utils/chemin';
 import { NOM_CYCLE, dateSeule, personneValidant, phraseEquipe, votantsParChoix } from '../utils/regles';
 import { usePresence } from '../appels/presence';
 import type { Espace, QuestionClient, QuestionnaireComplet } from '../utils/types';
-import { Attente, BandeauReseau, CarteInfo, EnTeteClient, documentDe, useProjet, useQuestionnaire } from './Cadre';
+import { Attente, BandeauReseau, CarteClose, CarteInfo, EnTeteClient, documentDe, useProjet, useQuestionnaire } from './Cadre';
+import { PastilleQuestion } from '../composants/VersDiscussion';
+import { libelleQuestion } from '../utils/discussion';
 
 export const MAX_COMMENTAIRE = 2000;
 const COMPTEUR_DES = 1800;
@@ -80,7 +82,8 @@ export default function Question() {
   const serveur = f.etatServeur[qid];
   const bas = <JaugeEnTete pourcent={e.jauge} texte={`Question ${n} sur ${e.total}${contributeur ? ' (votre avis)' : ''}`} sansJauge={contributeur} />;
   const doc = documentDe(p, qid);
-  const lectureSeule = q.etat !== 'ouvert' || code === 'QUESTIONNAIRE_CONFIRME';
+  // Closed while answering (RM4): read-only too, with the message and the discussion button.
+  const lectureSeule = q.etat !== 'ouvert' || code === 'QUESTIONNAIRE_CONFIRME' || code === 'QUESTIONNAIRE_CLOS';
 
   return (
     <>
@@ -219,6 +222,7 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
           <strong>Votre équipe</strong> : {phrase}
         </div>
       )}
+      <PastilleQuestion question={{ id: x.id, libelle: libelleQuestion(x.numero, x.sujet_client) }} />
       {contributeur && !lectureSeule && (
         <p className="text-[13px] text-doux m-0 leading-[1.45]" data-ligne-avis="">
           Votre choix est un avis : {validant.prenom || 'la personne qui décide'} tranche. Vous ne voyez pas les avis des autres membres de l'équipe.
@@ -239,8 +243,11 @@ function FormulaireQuestion({ q, etape, n, total, lectureSeule, confirmeAt, code
     return (
       <>
         <BarreRetour vers={`/confirmer/${q.id}`} />
-        {code && TEXTES_CODE[code] && <CarteInfo texte={TEXTES_CODE[code]} data-code={code} />}
-        {q.etat === 'clos' && !code && <CarteInfo texte={TEXTES_CODE.QUESTIONNAIRE_CLOS} data-code="QUESTIONNAIRE_CLOS" />}
+        {code === 'QUESTIONNAIRE_CLOS' || (q.etat === 'clos' && !code) ? (
+          <CarteClose qid={q.id} texte={TEXTES_CODE.QUESTIONNAIRE_CLOS} nonLus={p?.messages_non_lus ?? 0} />
+        ) : (
+          code && TEXTES_CODE[code] && <CarteInfo texte={TEXTES_CODE[code]} data-code={code} />
+        )}
         {carteQuestion}
         <div className={`${CARTE} !gap-2`} data-lecture-seule="">
           {c ? (

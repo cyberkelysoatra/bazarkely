@@ -177,6 +177,23 @@ describe('texteAssistant', () => {
     expect(t).toContain('DISCUSSION : 02/11/2026 22:00 | Fara Rakoto | « Merci. »\nDISCUSSION : 02/11/2026 22:05 | Joël SOATRA | question 3 | « Je reprends le budget. »');
   });
 
+  it('real thread: two messages and a withdrawn one, dated, with question references (phase 7)', () => {
+    const t = texteAssistant({
+      ...DONNEES,
+      messages: [
+        { auteur: 'Monsieur Hery Rabe', texte: 'Le budget comprend les photos ?', retire: false, cree_at: '2026-11-02T18:17:00Z', question_id: 'q3' },
+        { auteur: 'Joël SOATRA', texte: 'Oui, photos comprises.', retire: false, cree_at: '2026-11-02T18:25:00Z', question_id: null },
+        { auteur: V, texte: null, retire: true, cree_at: '2026-11-02T18:40:00Z', question_id: 'q1' }
+      ]
+    });
+    const lignes = t.split('\n').filter((l) => l.startsWith('DISCUSSION'));
+    expect(lignes).toEqual([
+      'DISCUSSION : 02/11/2026 21:17 | Hery Rabe | question 3 | « Le budget comprend les photos ? »',
+      'DISCUSSION : 02/11/2026 21:25 | Joël SOATRA | « Oui, photos comprises. »',
+      'DISCUSSION : 02/11/2026 21:40 | Fara Rakoto | question 1 | Message retiré'
+    ]);
+  });
+
   it('marks an unconfirmed questionnaire as provisional and an unanswered question', () => {
     const t = texteAssistant({ ...DONNEES, confirme_at: null, questions: DONNEES.questions.map((q) => (q.id === 'q3' ? { ...q, reponses: [] } : q)) });
     expect(t).toContain('ÉTAT : Pas encore confirmée : résultats provisoires ; 3 questions sur le chemin');

@@ -3,7 +3,8 @@ import { useEffect, type ReactNode } from 'react';
 import { useEspace } from '../EspaceContexte';
 import EnTete from '../composants/EnTete';
 import { CARTE, Corps, Squelette } from '../composants/Mise';
-import { chargerQuestionnaire, useFile } from '../appels/file';
+import { chargerQuestionnaire, etatFile, lireFileLocale, useFile } from '../appels/file';
+import { BoutonDiscussion } from '../composants/VersDiscussion';
 import { choisirProjet, lignePour } from '../utils/regles';
 import type { DocumentEspace, Espace, QuestionnaireComplet } from '../utils/types';
 import type { Chargement } from '../appels/file';
@@ -70,6 +71,57 @@ export function CarteInfo({ texte, action, children, ...reste }: { texte: string
       <p className="text-[14px] text-[#78350f] leading-[1.45] m-0">{texte}</p>
       {children}
       {action}
+    </div>
+  );
+}
+
+/**
+ * Closed (or replaced) questionnaire: its message, the answers the server refused, kept with their
+ * text so they can be copied into the discussion (never a silent loss), and the discussion button.
+ */
+export function CarteClose({ qid, texte, nonLus = 0 }: { qid: string; texte: string; nonLus?: number }) {
+  return (
+    <CarteInfo texte={texte} data-carte-close={qid}>
+      <ReponsesRefusees qid={qid} />
+      <BoutonDiscussion texte="Écrire à Joël" nonLus={nonLus} />
+    </CarteInfo>
+  );
+}
+
+/** Answers of `qid` refused by the server (closed questionnaire), with their text; nothing if none. */
+export function ReponsesRefusees({ qid }: { qid: string }) {
+  const f = useFile();
+  // Home opened first: read the refused answers (and the questions, for their labels) from the device.
+  useEffect(() => {
+    void lireFileLocale().then(() => {
+      if (etatFile().refusees[qid]?.length && !etatFile().questionnaires[qid]) void chargerQuestionnaire(qid);
+    });
+  }, [qid]);
+  const q = f.questionnaires[qid];
+  const refusees = f.refusees[qid] ?? [];
+  if (!refusees.length) return null;
+  return (
+    <div className="flex flex-col gap-2" data-reponses-refusees={refusees.length}>
+      <p className="text-[14px] font-semibold text-[#78350f] m-0">
+        {refusees.length > 1
+          ? 'Ces réponses n’ont pas été enregistrées : recopiez-les dans la discussion si vous le souhaitez.'
+          : 'Cette réponse n’a pas été enregistrée : recopiez-la dans la discussion si vous le souhaitez.'}
+      </p>
+      {refusees.map((r) => {
+        const x = q?.questions.find((y) => y.id === r.question);
+        const c = x?.choix.find((y) => y.id === r.choix);
+        return (
+          <div key={r.id} className="bg-white border border-[#fcd34d] rounded-[10px] p-3 text-[14px] leading-[1.45] select-text" data-reponse-refusee={r.question}>
+            {x && (
+              <p className="text-[13px] text-doux m-0">
+                Question {x.numero} : {x.sujet_client}
+              </p>
+            )}
+            <p className="font-semibold m-0">{c ? c.libelle : 'Votre réponse'}</p>
+            {r.commentaire && <p className="m-0 whitespace-pre-wrap break-words">« {r.commentaire} »</p>}
+          </div>
+        );
+      })}
     </div>
   );
 }

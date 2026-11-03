@@ -6,7 +6,9 @@ import type {
   DocumentTexte,
   Espace,
   MembreEquipe,
+  MessageFil,
   ResultatEquipe,
+  ResultatMessage,
   QuestionnaireComplet,
   ResultatConfirmation,
   ResultatInvitation,
@@ -44,7 +46,18 @@ export const inviterEquipe = (p: { client: string; civilite: string | null; nom:
 
 export const noterPresence = (client: string, page: string) => rpc<null>('vc_noter_presence', { p_client: client, p_page: page });
 
-export const lireDocument = (id: string) => rpc<DocumentTexte>('vc_document', { p_document: id });
+// Project thread (VC-39, VC-40): the same four functions for the client and for Joël.
+export const listerMessages = (client: string) => rpc<MessageFil[]>('vc_messages_lister', { p_client: client });
+
+/** `id` is generated on the phone: a resend with the same id never adds a second row. */
+export const envoyerMessage = (m: { id: string; client: string; texte: string; question: string | null }) =>
+  rpc<ResultatMessage>('vc_message_envoyer', { p_id: m.id, p_client: m.client, p_texte: m.texte, p_question: m.question });
+
+export const retirerMessage = (id: string) => rpc<ResultatMessage>('vc_message_retirer', { p_id: id });
+
+export const marquerLu = (client: string) => rpc<null>('vc_marquer_lu', { p_client: client });
+
+export const lireDocument =(id: string) => rpc<DocumentTexte>('vc_document', { p_document: id });
 
 export const repondre = (r: { id: string; question: string; choix: string; commentaire: string | null; repondu_at: string; appareil: string }) =>
   rpc<ResultatReponse>('vc_repondre', {

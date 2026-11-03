@@ -1,6 +1,8 @@
 // Device storage of the module (D6): one IndexedDB store « vc-validation / kv » through idb-keyval.
 // Keys: `q:<questionnaire>` (vc_questionnaire), `d:<document>` (vc_document), `file` (answers not
-// sent yet), `espace:<user>` (vc_mon_espace, to open the pages without network).
+// sent yet), `refusees` (answers refused by a closed questionnaire), `espace:<user>` (vc_mon_espace,
+// to open the pages without network), `messages` (thread messages not sent yet), `fil:<client>`
+// (last thread read).
 // A storage failure (private mode, quota) never breaks the page: reads give undefined.
 import { createStore, get, set } from 'idb-keyval';
 

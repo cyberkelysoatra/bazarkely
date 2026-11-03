@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.122.0';
-export const APP_VERSION_NAME = 'Validation client, phase 6 : équipe du client, avis des contributeurs, présence en ligne';
+export const APP_VERSION = '3.123.0';
+export const APP_VERSION_NAME = 'Validation client, phase 7 : discussion du projet et consultation close';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.123.0',
+    date: '2026-11-03',
+    description: 'Validation client, phase 7 : discussion du projet et consultation close (VALIDCLIENT-CC-07)',
+    changes: [
+      'Discussion du projet : un fil par projet entre le client, son équipe et Joël, ouvert depuis l’accueil, le reçu, chaque question et l’état « close »',
+      'Pastille « Une question sur ce point ? » sur chaque question : le message porte la référence de la question',
+      'Sans réseau, le message attend sur le téléphone avec une petite horloge et part au retour du réseau ; un message se retire pendant 5 minutes',
+      'Joël répond depuis son pilotage (bouton « Discussion du projet (n non lus) ») ; le client est prévenu de chaque réponse',
+      'Consultation close : message clair, réponses en lecture seule, bouton vers la discussion ; une réponse refusée reste affichée avec son texte'
+    ]
+  },
   {
     version: '3.122.0',
     date: '2026-11-03',

@@ -1,12 +1,12 @@
 // Screen 10: dashboard (VC-26, VC-32, VC-38). One card per client in the server order (nearest
 // deadline first, then longest wait); re-read every 10 s while the screen is visible.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CARTE, Corps, PRIMAIRE, Squelette } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { NOM_CYCLE, dateHeure } from '../utils/regles';
 import { tableau, type LigneTableau, type QuestionnaireTableau } from './api';
-import { EnTetePilotage, ErreurReseau, P_ATTENTE, P_MESSAGE, P_NON, P_OK, Pilule } from './Commun';
+import { EnTetePilotage, ErreurReseau, P_ATTENTE, P_MESSAGE, P_NON, P_OK, PILULE, Pilule } from './Commun';
 import { aRendre, ilYa } from './regles';
 
 export const RELECTURE_MS = 10000;
@@ -103,6 +103,7 @@ function echeanceOuverte(q: QuestionnaireTableau): boolean {
 }
 
 function CarteClient({ l }: { l: LigneTableau }) {
+  const navigate = useNavigate();
   const echeances = l.questionnaires.filter(echeanceOuverte).map((q) => q.echeance_at!);
   const proche = echeances.sort()[0];
   const rendre = proche ? aRendre(proche) : null;
@@ -110,7 +111,7 @@ function CarteClient({ l }: { l: LigneTableau }) {
   const reserves = l.questionnaires.reduce((t, q) => t + (q.etat_validant?.reserves ?? 0), 0);
   const attente = !proche && l.derniere_activite ? Math.floor((Date.now() - Date.parse(l.derniere_activite)) / 86400000) : 0;
   return (
-    <Link to={`/pilotage/client/${l.client_id}`} className={`${CARTE} no-underline text-encre`} data-client={l.client_id}>
+    <Link to={`/pilotage/client/${l.client_id}`} state={{ nonLus: l.messages_non_lus }} className={`${CARTE} no-underline text-encre`} data-client={l.client_id}>
       <div className="flex items-start justify-between gap-2.5">
         <h2 className="text-[17px] leading-[1.3] font-bold m-0 min-w-0 break-words">{l.entreprise}</h2>
         {proche && (
@@ -124,7 +125,22 @@ function CarteClient({ l }: { l: LigneTableau }) {
         <div className="flex gap-1.5 flex-wrap" data-pastilles="">
           {refus > 0 && <Pilule classe={P_NON}>{pluriel(refus, 'refus', 'refus')}</Pilule>}
           {reserves > 0 && <Pilule classe={P_ATTENTE}>{pluriel(reserves, 'réserve', 'réserves')}</Pilule>}
-          {l.messages_non_lus > 0 && <Pilule classe={P_MESSAGE}>{pluriel(l.messages_non_lus, 'message non lu', 'messages non lus')}</Pilule>}
+          {l.messages_non_lus > 0 && (
+            // Inside the card link: a button that opens the thread instead of the detail.
+            <button
+              type="button"
+              className={`${PILULE} ${P_MESSAGE} cursor-pointer border-0`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/pilotage/discussion/${l.client_id}`);
+              }}
+              data-vers-discussion={l.client_id}
+            >
+              <Icone nom="bulle" className="w-3.5 h-3.5" />
+              {pluriel(l.messages_non_lus, 'message non lu', 'messages non lus')}
+            </button>
+          )}
         </div>
       )}
       {l.personnes.map((p, i) =>

@@ -28,6 +28,11 @@ export interface EtatFile {
   erreurs: Record<string, string>;
   /** questionnaire id → QUESTIONNAIRE_REMPLACE / QUESTIONNAIRE_CLOS / QUESTIONNAIRE_CONFIRME. */
   codes: Record<string, string>;
+  /**
+   * questionnaire id → answers the server refused because the questionnaire no longer takes any
+   * (closed, replaced): kept with their text so the client can copy them into the discussion.
+   */
+  refusees: Record<string, EnvoiReponse[]>;
   /** questionnaire id → last state returned by vc_repondre (C1: same t and gauge as the device). */
   etatServeur: Record<string, EtatPersonne>;
   questionnaires: Record<string, QuestionnaireComplet>;
@@ -40,6 +45,7 @@ let etat: EtatFile = {
   envoi: null,
   erreurs: {},
   codes: {},
+  refusees: {},
   etatServeur: {},
   questionnaires: {},
   chargements: {},
@@ -72,11 +78,17 @@ let fileLue: Promise<void> | null = null;
 
 function lireFile(): Promise<void> {
   if (!fileLue) {
-    fileLue = lireLocal<EnvoiReponse[]>('file').then((f) => {
+    fileLue = Promise.all([lireLocal<EnvoiReponse[]>('file'), lireLocal<Record<string, EnvoiReponse[]>>('refusees')]).then(([f, r]) => {
       if (Array.isArray(f) && f.length) changer({ file: [...f, ...etat.file.filter((x) => !f.some((y) => y.id === x.id))] });
+      if (r && typeof r === 'object') changer({ refusees: { ...r, ...etat.refusees } });
     });
   }
   return fileLue;
+}
+
+/** Queue and refused answers read from the device (once). */
+export function lireFileLocale(): Promise<void> {
+  return lireFile();
 }
 
 async function poserFile(file: EnvoiReponse[]): Promise<void> {
@@ -108,6 +120,16 @@ function definitif(message: string): boolean {
   return /^VC_|permission denied|JWT|violates/i.test(message);
 }
 
+/** Never a silent loss: the refused answer stays on the phone, shown with its text (RM4, section 7). */
+async function garderRefusee(r: EnvoiReponse): Promise<void> {
+  const l = (etat.refusees[r.questionnaire] ?? []).filter((x) => x.question !== r.question);
+  const refusees = { ...etat.refusees, [r.questionnaire]: [...l, r] };
+  changer({ refusees });
+  await ecrireLocal('refusees', refusees);
+  // The copy on the device showed the refused answer as given: read the server's again.
+  window.setTimeout(() => void chargerQuestionnaire(r.questionnaire, true), 0);
+}
+
 let vidage: Promise<void> | null = null;
 
 /** Sends the queue in order, one answer at a time; stops at the first network failure. */
@@ -126,6 +148,7 @@ export function viderFile(): Promise<void> {
           if (res.etat) changer({ etatServeur: { ...etat.etatServeur, [r.questionnaire]: res.etat } });
         } else if (res?.code && /^QUESTIONNAIRE_/.test(res.code)) {
           changer({ codes: { ...etat.codes, [r.questionnaire]: res.code } });
+          if (res.code !== 'QUESTIONNAIRE_CONFIRME') await garderRefusee(r);
         } else {
           erreurs[r.question] = res?.code ?? 'REFUSE';
         }

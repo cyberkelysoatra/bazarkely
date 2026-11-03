@@ -332,7 +332,8 @@ export type PagePresence =
   | { type: 'document'; titre: string }
   | { type: 'equipe' }
   | { type: 'infos' }
-  | { type: 'inscription' };
+  | { type: 'inscription' }
+  | { type: 'discussion' };
 
 /** Label of the page shown to Joël (« en ligne : <page> »), in client words, 80 characters at most. */
 export function libellePresence(p: PagePresence): string {
@@ -358,6 +359,8 @@ export function libellePresence(p: PagePresence): string {
         return 'Mes informations';
       case 'inscription':
         return 'Inscription';
+      case 'discussion':
+        return 'Discussion du projet';
     }
   })();
   return t.length > 80 ? `${t.slice(0, 79)}\u2026` : t;

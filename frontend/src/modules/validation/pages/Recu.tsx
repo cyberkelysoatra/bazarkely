@@ -8,6 +8,7 @@ import { comptes, dateHeure, delaiRestant, fonctionEnLigne, nomCycle, sansCivili
 import type { DocumentEspace, Espace } from '../utils/types';
 import { Attente, EnTeteClient, documentDe, useProjet } from './Cadre';
 import { usePresence } from '../appels/presence';
+import { BoutonDiscussion } from '../composants/VersDiscussion';
 
 /** Text summary shared by « Partager le reçu » (the PDF comes in lot 1b). */
 export function texteRecu(d: DocumentEspace, p: Espace): string {
@@ -129,6 +130,7 @@ export default function Recu() {
             {partage}
           </p>
         )}
+        <BoutonDiscussion nonLus={p.messages_non_lus ?? 0} />
         <button type="button" className={SECONDAIRE} onClick={() => navigate('/')} data-retour-accueil="">
           Retour à l'accueil
         </button>

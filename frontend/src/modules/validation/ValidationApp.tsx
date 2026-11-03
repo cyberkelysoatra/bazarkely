@@ -13,6 +13,7 @@ import Confirmer from './pages/Confirmer';
 import Recu from './pages/Recu';
 import Equipe from './pages/Equipe';
 import FinAvis from './pages/FinAvis';
+import Discussion from './pages/Discussion';
 import { CarteMessage, Corps, PRIMAIRE, Squelette } from './composants/Mise';
 
 // Pilotage: own chunk, loaded only once the server said the account is Joël's.
@@ -94,6 +95,7 @@ export default function ValidationApp() {
             <Route path="/recu/:questionnaire" element={<Recu />} />
             <Route path="/equipe" element={<Equipe />} />
             <Route path="/merci/:questionnaire" element={<FinAvis />} />
+            <Route path="/discussion" element={<Discussion />} />
             <Route
               path="/document/:id"
               element={

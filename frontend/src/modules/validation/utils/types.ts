@@ -176,6 +176,31 @@ export interface ResultatReponse {
   etat?: EtatPersonne;
 }
 
+/** One message of the project thread, as vc_messages_lister returns it (VC-39, VC-40). */
+export interface MessageFil {
+  id: string;
+  /** Written by the signed-in account. */
+  moi: boolean;
+  /** « Monsieur Hery Rakoto », or « Joël SOATRA » for Joël's messages. */
+  auteur: string;
+  /** Function of the author, « CyberKELY » for Joël. */
+  fonction: string | null;
+  /** Null once withdrawn. */
+  texte: string | null;
+  retire: boolean;
+  cree_at: string;
+  question_id: string | null;
+  /** « À propos de la question 3 : le budget » (given by the server). */
+  question: string | null;
+}
+
+/** vc_message_envoyer / vc_message_retirer. */
+export interface ResultatMessage {
+  ok: boolean;
+  deja?: boolean;
+  code?: 'MESSAGE_VIDE' | 'TROP_LONG' | 'DELAI_DEPASSE' | string;
+}
+
 /** vc_confirmer(questionnaire). */
 export interface ResultatConfirmation {
   ok: boolean;

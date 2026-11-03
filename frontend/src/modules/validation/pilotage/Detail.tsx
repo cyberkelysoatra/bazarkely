@@ -2,7 +2,7 @@
 // with their actions, the follow-up promised to the client, and per questionnaire the dated history
 // of every answer (never an edit or delete action). « ?question=<id> » scrolls to that question.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { BarreRetour, CARTE, Corps, PRIMAIRE, SECONDAIRE, Squelette } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { NOM_CYCLE, dateHeure, delaiRestant, nomCycle } from '../utils/regles';
@@ -16,6 +16,7 @@ import {
   nommerValidant,
   revoquerAcces,
   suivi,
+  tableau,
   type ChoixClient,
   type FicheClient,
   type PersonneClient,
@@ -25,6 +26,7 @@ import {
 import { DANGER, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
 import { adresseWhatsApp, lienInvitation, messageInvitation, messageRelance, messageSuite } from './regles';
 import { RELECTURE_MS, useRelecture } from './Tableau';
+import { DISCUSSION } from '../composants/VersDiscussion';
 
 const LIEN = 'text-[13px] font-semibold text-ciel underline underline-offset-2 min-h-11 inline-flex items-center cursor-pointer bg-transparent border-0 p-0';
 const LIEN_DANGER = `${LIEN} !text-danger`;
@@ -87,6 +89,23 @@ export default function Detail() {
   const [action, setAction] = useState<Action | null>(null);
   const [retour, setRetour] = useState<{ ok: boolean; texte: string; lien?: string } | null>(null);
   const defile = useRef<string | null>(null);
+  // Unread messages: vc_admin_client gives none; the dashboard line already has it (state), else one call.
+  const { state } = useLocation();
+  const nonLusTableau = (state as { nonLus?: number } | null)?.nonLus;
+  const [nonLus, setNonLus] = useState<number | null>(typeof nonLusTableau === 'number' ? nonLusTableau : null);
+  useEffect(() => {
+    if (typeof nonLusTableau === 'number') {
+      setNonLus(nonLusTableau);
+      return;
+    }
+    let vivant = true;
+    tableau()
+      .then((l) => vivant && setNonLus((Array.isArray(l) ? l : []).find((x) => x.client_id === id)?.messages_non_lus ?? 0))
+      .catch(() => undefined);
+    return () => {
+      vivant = false;
+    };
+  }, [id, nonLusTableau]);
 
   const lire = useCallback(() => {
     ficheClient(id)
@@ -285,6 +304,10 @@ export default function Detail() {
                 Modifier la fiche
               </Link>
             </div>
+            <Link to={`/pilotage/discussion/${fiche.client.id}`} className={DISCUSSION} data-discussion-projet={nonLus ?? ''}>
+              <Icone nom="bulle" />
+              Discussion du projet{nonLus ? ` (${nonLus} non lu${nonLus > 1 ? 's' : ''})` : ''}
+            </Link>
             <button
               type="button"
               className={`${DANGER} !min-h-11 !text-[15px]`}
