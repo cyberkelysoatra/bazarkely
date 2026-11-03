@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.121.0';
+export const APP_VERSION = '3.121.1';
 export const APP_VERSION_NAME = 'RTB Énergie : factures d’électricité, calcul, numérotation et validation des gérants';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.121.1',
+    date: '2026-11-03',
+    description: 'Factures RTB : prochain numéro à jour après une émission ; fichiers de l’appli jamais remplacés par la page d’accueil au déploiement',
+    changes: [
+      'Écran Factures : le prochain numéro affiché suit le compteur juste après une émission',
+      'Un fichier de l’appli pas encore arrivé au moment d’un déploiement donne une vraie erreur passagère au lieu d’être remplacé pour un an par la page d’accueil (11 fichiers touchés à Antananarivo après la 3.121.0)'
+    ]
+  },
   {
     version: '3.121.0',
     date: '2026-11-03',

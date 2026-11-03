@@ -162,6 +162,8 @@ export default function EauElecFacturesPage() {
     } catch (e: any) {
       toast.error(e?.message ?? 'Opération impossible');
     } finally {
+      // Réglages compris : le prochain numéro affiché suit le compteur avancé par l'émission.
+      await donnees.relire();
       await relire();
       notifierFactures();
       setBusy(null);
