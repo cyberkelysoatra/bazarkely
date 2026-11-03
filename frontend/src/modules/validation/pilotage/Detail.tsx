@@ -14,17 +14,19 @@ import {
   creerInvitation,
   ficheClient,
   nommerValidant,
+  publier,
   revoquerAcces,
   suivi,
   tableau,
   type ChoixClient,
+  type EntreeJournal,
   type FicheClient,
   type PersonneClient,
   type QuestionnaireClient,
   type ReponseClient
 } from './api';
 import { DANGER, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
-import { adresseWhatsApp, lienInvitation, messageInvitation, messageRelance, messageSuite } from './regles';
+import { adresseWhatsApp, brouillonSuivant, lienInvitation, lignesCorrections, messageInvitation, messageRelance, messageSuite } from './regles';
 import { RELECTURE_MS, useRelecture } from './Tableau';
 import { DISCUSSION } from '../composants/VersDiscussion';
 
@@ -51,11 +53,15 @@ const ERREURS: Record<string, string> = {
   SANS_QUESTIONNAIRE_PUBLIE: 'Aucune consultation ouverte : publiez-en une avant de renvoyer une invitation.',
   SANS_VALIDANT: 'Désignez d’abord un validant.',
   DEJA_INSCRITE: 'Cette personne a déjà rejoint le projet : plus besoin d’invitation.',
-  ACCES_REVOQUE: 'L’accès de cette personne a été retiré.'
+  ACCES_REVOQUE: 'L’accès de cette personne a été retiré.',
+  // Same messages as the publication of Questionnaire.tsx (« Publier la version <v> », VC-38).
+  VERSION_DEJA_PUBLIEE: 'Cette version est déjà publiée : une correction demande une nouvelle version (RM5).',
+  PAS_UN_BROUILLON: 'Ce questionnaire n’est plus un brouillon : il ne se publie pas une seconde fois.'
 };
 
 type Action =
   | { type: 'revoquer'; p: PersonneClient }
+  | { type: 'publier'; q: QuestionnaireClient; brouillon: QuestionnaireClient }
   | { type: 'nommer'; p: PersonneClient; ancien: PersonneClient | undefined }
   | { type: 'clore'; q: QuestionnaireClient }
   | { type: 'archiver'; archiver: boolean };
@@ -155,7 +161,8 @@ export default function Detail() {
 
   async function confirmerAction() {
     if (!action || !fiche) return;
-    if (action.type === 'revoquer') await faire(() => revoquerAcces(action.p.id), `Accès de ${action.p.civilite} ${action.p.nom} retiré. Ses réponses restent.`);
+    if (action.type === 'publier') await publierSuite(action.brouillon);
+    else if (action.type === 'revoquer') await faire(() => revoquerAcces(action.p.id), `Accès de ${action.p.civilite} ${action.p.nom} retiré. Ses réponses restent.`);
     else if (action.type === 'nommer')
       await faire(() => nommerValidant(action.p.id), `${action.p.civilite} ${action.p.nom} est maintenant ${feminin(action.p) ? 'validante' : 'validant'}.`);
     else if (action.type === 'clore') await faire(() => clore(action.q.id), 'Consultation close. Les réponses sont conservées.');
@@ -204,15 +211,18 @@ export default function Detail() {
     }
   }
 
-  /** « Publier la suite »: follow-up « Disponible », then WhatsApp to the validant. */
-  async function publierSuite(q: QuestionnaireClient) {
+  /**
+   * « Publier la version <v> » (VC-38 amended): publishes the next draft with vc_admin_publier, which
+   * sets the confirmed version to « Disponible » and notifies the people, then WhatsApp to the validant.
+   */
+  async function publierSuite(brouillon: QuestionnaireClient) {
     if (!fiche) return;
     const numero = (validant?.whatsapp ?? validant?.whatsapp_fiche ?? '').replace(/\D/g, '');
     const fenetre = numero ? window.open('', '_blank') : null;
     setEnvoi(true);
     setRetour(null);
     try {
-      const r = await suivi(q.id, 'disponible');
+      const r = await publier(brouillon.id);
       if (!r.ok) {
         fenetre?.close();
         setRetour({ ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé cette action.' });
@@ -225,7 +235,9 @@ export default function Detail() {
       }
       setRetour({
         ok: true,
-        texte: numero ? 'Suivi « Disponible » : le client est prévenu. WhatsApp s’ouvre avec le message pour le validant : envoyez-le vous-même.' : 'Suivi « Disponible » : le client est prévenu.'
+        texte: numero
+          ? `Version ${brouillon.version} publiée : le client est prévenu que la suite est prête. WhatsApp s’ouvre avec le message pour le validant : envoyez-le vous-même.`
+          : `Version ${brouillon.version} publiée : le client est prévenu que la suite est prête.`
       });
       lire();
     } catch {
@@ -233,6 +245,7 @@ export default function Detail() {
       setRetour({ ok: false, texte: 'Le réseau ne répond pas. Réessayez.' });
     } finally {
       setEnvoi(false);
+      setAction(null);
     }
   }
 
@@ -276,6 +289,7 @@ export default function Detail() {
                   p={p}
                   validant={validant}
                   tous={fiche.personnes}
+                  journal={fiche.journal}
                   envoi={envoi}
                   renvoyer={() => void renvoyer(p)}
                   demander={setAction}
@@ -290,8 +304,8 @@ export default function Detail() {
                 fiche={fiche}
                 validant={validant}
                 envoi={envoi}
+                suivant={q.etat === 'confirme' ? brouillonSuivant(questionnaires, q) : null}
                 preparer={() => void faire(() => suivi(q.id, 'preparation'), 'Suivi « Version suivante en préparation » : le client le voit sur son accueil.')}
-                publierSuite={() => void publierSuite(q)}
                 demander={setAction}
               />
             ))}
@@ -330,7 +344,10 @@ export default function Detail() {
 function Confirmation({ action, envoi, annuler, confirmer }: { action: Action; envoi: boolean; annuler: () => void; confirmer: () => void }) {
   let texte = '';
   let bouton = '';
-  if (action.type === 'revoquer') {
+  if (action.type === 'publier') {
+    texte = `Publier la version ${action.brouillon.version} ? Elle ne se modifie plus, et le client est prévenu que la suite est prête.`;
+    bouton = 'Publier';
+  } else if (action.type === 'revoquer') {
     texte = `Retirer l’accès de ${action.p.civilite} ${action.p.nom} ? Ses réponses restent ; son invitation non utilisée est annulée.`;
     bouton = 'Révoquer';
   } else if (action.type === 'nommer') {
@@ -348,7 +365,7 @@ function Confirmation({ action, envoi, annuler, confirmer }: { action: Action; e
       : 'Désarchiver ce client ? Il revient au tableau de bord.';
     bouton = action.archiver ? 'Archiver' : 'Désarchiver';
   }
-  const danger = action.type !== 'nommer' && !(action.type === 'archiver' && !action.archiver);
+  const danger = action.type !== 'nommer' && action.type !== 'publier' && !(action.type === 'archiver' && !action.archiver);
   return (
     <div className={`${CARTE} !border-2 ${danger ? '!border-danger' : '!border-ciel'}`} role="alertdialog" aria-label="Confirmation" data-confirmation={action.type}>
       <p className="text-[15px] font-semibold m-0">{texte}</p>
@@ -368,6 +385,7 @@ function Personne({
   p,
   validant,
   tous,
+  journal,
   envoi,
   renvoyer,
   demander
@@ -375,6 +393,7 @@ function Personne({
   p: PersonneClient;
   validant: PersonneClient | undefined;
   tous: PersonneClient[];
+  journal: EntreeJournal[] | undefined;
   envoi: boolean;
   renvoyer: () => void;
   demander: (a: Action) => void;
@@ -449,6 +468,11 @@ function Personne({
           Numéro différent de celui saisi par {invitant?.nom ?? p.invite_par ?? 'Joël'}
         </p>
       )}
+      {lignesCorrections(journal, p.id).map((l, i) => (
+        <p key={`c${i}`} className="text-[13px] text-doux m-0 break-words" data-correction="">
+          {l}
+        </p>
+      ))}
       {(p.tentatives_autre_compte ?? 0) > 0 && (
         <p className="text-[13px] text-[#92400e] m-0" data-tentatives="">
           {p.tentatives_autre_compte} tentative{p.tentatives_autre_compte! > 1 ? 's' : ''} avec un autre compte
@@ -464,16 +488,16 @@ function Consultation({
   fiche,
   validant,
   envoi,
+  suivant,
   preparer,
-  publierSuite,
   demander
 }: {
   q: QuestionnaireClient;
   fiche: FicheClient;
   validant: PersonneClient | undefined;
   envoi: boolean;
+  suivant: QuestionnaireClient | null;
   preparer: () => void;
-  publierSuite: () => void;
   demander: (a: Action) => void;
 }) {
   const etat = ETATS[q.etat];
@@ -536,7 +560,9 @@ function Consultation({
         {relancer && !numero && <p className="text-[13px] text-doux m-0">Numéro WhatsApp du validant manquant : la relance est impossible.</p>}
       </div>
 
-      {(q.etat === 'ouvert' || q.confirme_at) && <Suivi q={q} envoi={envoi} preparer={preparer} publierSuite={publierSuite} />}
+      {(q.etat === 'ouvert' || q.confirme_at) && (
+        <Suivi q={q} client={fiche.client.id} suivant={suivant} envoi={envoi} preparer={preparer} publierSuite={() => suivant && demander({ type: 'publier', q, brouillon: suivant })} />
+      )}
 
       {!brouillon &&
         (q.questions ?? []).map((x) => (
@@ -546,7 +572,21 @@ function Consultation({
   );
 }
 
-function Suivi({ q, envoi, preparer, publierSuite }: { q: QuestionnaireClient; envoi: boolean; preparer: () => void; publierSuite: () => void }) {
+function Suivi({
+  q,
+  client,
+  suivant,
+  envoi,
+  preparer,
+  publierSuite
+}: {
+  q: QuestionnaireClient;
+  client: string;
+  suivant: QuestionnaireClient | null;
+  envoi: boolean;
+  preparer: () => void;
+  publierSuite: () => void;
+}) {
   const etape = q.etape_suivi ?? (q.confirme_at ? 'analyse' : null);
   const disponible = etape === 'disponible';
   const reste = q.echeance_at ? delaiRestant(q.echeance_at) : null;
@@ -574,14 +614,25 @@ function Suivi({ q, envoi, preparer, publierSuite }: { q: QuestionnaireClient; e
           Pas encore confirmée par le client : le suivi promis et le délai de 72 h commencent à sa confirmation.
         </p>
       )}
+      {!disponible && !suivant && q.confirme_at && (
+        <p className="text-[13px] text-doux m-0 leading-[1.45]" data-sans-suite="">
+          Préparez d'abord la version suivante : importez-la, puis publiez-la ici.
+        </p>
+      )}
       {!disponible && (
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className={`${SECONDAIRE} !text-[14px] !px-2`} disabled={envoi || etape === 'preparation'} onClick={preparer} data-preparation="">
             En préparation
           </button>
-          <button type="button" className={`${PRIMAIRE} !text-[14px] !px-2`} disabled={envoi} onClick={publierSuite} data-publier-suite="">
-            Publier la suite
-          </button>
+          {suivant ? (
+            <button type="button" className={`${PRIMAIRE} !text-[14px] !px-2`} disabled={envoi} onClick={publierSuite} data-publier-suite={suivant.id}>
+              Publier la version {suivant.version}
+            </button>
+          ) : (
+            q.confirme_at && <Link to={`/pilotage/import/${client}`} className={`${SECONDAIRE} !text-[14px] !px-2 text-center`} data-importer-suite="">
+              Importer la version suivante
+            </Link>
+          )}
         </div>
       )}
     </div>

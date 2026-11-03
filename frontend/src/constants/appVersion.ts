@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.124.0';
-export const APP_VERSION_NAME = 'Validation client, phase 8 : dictée, reçu en PDF, installation, notifications du client';
+export const APP_VERSION = '3.125.0';
+export const APP_VERSION_NAME = 'Validation client, correctif 10 : corriger une personne, « Publier la suite » qui publie vraiment';
 export const LAST_UPDATED = '2026-11-03';
 export const APP_BUILD_DATE = '2026-11-03';
 export const VERSION_HISTORY = [
+  {
+    version: '3.125.0',
+    date: '2026-11-03',
+    description: 'Validation client, correctif 10 : corriger une personne, « Publier la suite » qui publie vraiment (VALIDCLIENT-CC-10)',
+    changes: [
+      'Fiche du client : « Modifier » sous chaque personne pour corriger sa civilité, son nom, sa fonction (et son numéro tant qu’elle n’a pas rejoint)',
+      'Chaque correction est gardée et datée : une ligne grise sous la personne, reprise dans le texte pour l’assistant',
+      'Suivi : « Publier la version <v> » publie vraiment la version suivante avant de prévenir le client ; sans version prête, « Importer la version suivante »'
+    ]
+  },
   {
     version: '3.124.0',
     date: '2026-11-03',

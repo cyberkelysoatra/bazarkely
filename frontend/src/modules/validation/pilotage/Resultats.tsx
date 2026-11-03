@@ -30,7 +30,13 @@ function donnees(q: QuestionnaireComplet, f: FicheClient | null): DonneesResulta
     confirme_at: q.questionnaire.confirme_at ?? null,
     chemin: q.chemin_validant ?? [],
     questions: q.questions.map((x) => ({ ...x, reponses: x.reponses ?? [] })),
-    messages: (q.messages ?? []).map((m) => ({ auteur: m.auteur, texte: m.texte, retire: m.retire, cree_at: m.cree_at, question_id: m.question_id }))
+    messages: (q.messages ?? []).map((m) => ({ auteur: m.auteur, texte: m.texte, retire: m.retire, cree_at: m.cree_at, question_id: m.question_id })),
+    corrections: (f?.journal ?? [])
+      .filter((j) => j.action === 'personne_corrigee')
+      .flatMap((j) => {
+        const p = f?.personnes.find((x) => x.id === j.personne_id);
+        return p ? (j.details?.changements ?? []).map((c) => ({ ...c, personne: `${p.civilite} ${p.nom}`, at: j.at })) : [];
+      })
   };
 }
 

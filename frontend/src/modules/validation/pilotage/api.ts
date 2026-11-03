@@ -114,11 +114,26 @@ export interface MessageClient {
   question: string | null;
 }
 
+/** One corrected field of a person (journal action « personne_corrigee », VC-44). */
+export interface Changement {
+  champ: 'civilite' | 'nom' | 'fonction' | 'whatsapp';
+  avant: string | null;
+  apres: string | null;
+}
+
+export interface EntreeJournal {
+  action: string;
+  details: { changements?: Changement[]; [cle: string]: unknown } | null;
+  at: string;
+  personne_id: string | null;
+}
+
 export interface FicheClient {
   client: { id: string; entreprise: string; nom_court: string; phrase_reve: string | null; statut: string };
   personnes: PersonneClient[];
   questionnaires: QuestionnaireClient[];
   messages?: MessageClient[];
+  journal?: EntreeJournal[];
 }
 
 export interface ChoixComplet {

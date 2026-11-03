@@ -166,6 +166,24 @@ describe('texteAssistant', () => {
     expect(relu.brouillon.questions.map(({ obligatoire: _o, ...q }) => q)).toEqual(attendu);
   });
 
+  it('writes one CORRECTION line per corrected field, with the team, ignored by the import (VC-44)', () => {
+    const t = texteAssistant({
+      ...DONNEES,
+      corrections: [
+        { personne: 'Madame Fara Rakoto', champ: 'fonction', avant: null, apres: 'Gérante', at: '2026-11-03T17:46:00Z' },
+        { personne: 'Madame Fara Rakoto', champ: 'nom', avant: 'Fara Rakotto', apres: 'Fara Rakoto', at: '2026-11-03T17:45:10Z' }
+      ]
+    });
+    const lignes = t.split('\n');
+    const client = lignes.findIndex((l) => l.startsWith('CLIENT : '));
+    expect(lignes[client + 1]).toBe('CORRECTION : nom de Madame Fara Rakoto le 03/11/2026 20:45:10, avant « Fara Rakotto », après « Fara Rakoto »');
+    expect(lignes[client + 2]).toBe('CORRECTION : fonction de Madame Fara Rakoto le 03/11/2026 20:46:00, avant « (vide) », après « Gérante »');
+    expect(partieQuestions(t)).not.toMatch(/CORRECTION/);
+    const relu = lireImport(`CONSULTATION : note_cadrage | 1.2 | Le résumé de votre projet\nDOCUMENT\n# Note\nFIN DOCUMENT\n${partieQuestions(t)}`);
+    expect(relu.problemes).toEqual([]);
+    expect(texteAssistant(DONNEES)).not.toMatch(/CORRECTION/);
+  });
+
   it('lists the discussion with dates and question references', () => {
     const t = texteAssistant({
       ...DONNEES,

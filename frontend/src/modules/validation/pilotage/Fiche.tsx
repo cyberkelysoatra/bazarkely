@@ -20,7 +20,7 @@ import {
   type QuestionnaireClient
 } from './api';
 import { CHAMP, ETIQUETTE, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
-import { adresseWhatsApp, dateCourte, lienInvitation, messageInvitation, numeroWhatsApp } from './regles';
+import { adresseWhatsApp, dateCourte, lienInvitation, lignesCorrections, messageInvitation, numeroWhatsApp } from './regles';
 
 interface PersonneForm {
   id?: string;
@@ -44,6 +44,9 @@ const RAISONS: Record<string, string> = {
 };
 
 const VIDE: Omit<PersonneForm, 'cle'> = { civilite: 'Madame', nom: '', fonction: '', whatsapp: '', role: 'contributeur' };
+
+/** Person form: a new person, or (with « cle ») the correction of a saved one (VC-44). */
+type FormPersonne = typeof VIDE & { cle?: string; legende?: string };
 
 function versForm(p: PersonneClient): PersonneForm {
   return {
@@ -94,8 +97,8 @@ export default function Fiche() {
   const [reve, setReve] = useState('');
   const [personnes, setPersonnes] = useState<PersonneForm[]>([]);
   const [modifie, setModifie] = useState(false);
-  const [ajout, setAjout] = useState<typeof VIDE | null>(null);
-  const [erreurAjout, setErreurAjout] = useState<Partial<Record<'nom' | 'whatsapp' | 'role', string>>>({});
+  const [ajout, setAjout] = useState<FormPersonne | null>(null);
+  const [erreurAjout, setErreurAjout] = useState<Partial<Record<'nom' | 'fonction' | 'whatsapp' | 'role', string>>>({});
   const [erreursFiche, setErreursFiche] = useState<Partial<Record<'entreprise' | 'nomCourt' | 'reve' | 'personnes', string>>>({});
   const [envoiFiche, setEnvoiFiche] = useState(false);
   const [messageFiche, setMessageFiche] = useState<{ ok: boolean; texte: string } | null>(null);
@@ -143,6 +146,8 @@ export default function Fiche() {
   const dernier = fiche?.questionnaires[0] ?? null;
   const validant = personnes.find((p) => p.role === 'validant' && !p.revoque);
   const choisie = personnes.find((p) => p.id && p.id === cible) ?? null;
+  // The number of a person who has joined is hers: read only in the correction form (VC-44).
+  const numeroFige = !!ajout?.cle && !!personnes.find((p) => p.cle === ajout.cle)?.rejoint;
   const n = pub?.n ?? 0;
   const minutes = Math.max(n, 1);
   const jeton = choisie?.id ? jetons[choisie.id] : undefined;
@@ -174,11 +179,14 @@ export default function Fiche() {
     setMessageFiche(null);
   };
 
-  function validerAjout(a: typeof VIDE): boolean {
+  function validerAjout(a: FormPersonne): boolean {
     const e: typeof erreurAjout = {};
+    const corrigee = a.cle ? personnes.find((p) => p.cle === a.cle) : undefined;
     if (!a.nom.trim()) e.nom = 'Le nom est obligatoire.';
-    if (a.whatsapp.trim() && !numeroWhatsApp(a.whatsapp)) e.whatsapp = 'Écrivez le numéro au format international, par exemple +261 34 00 000 00.';
-    if (a.role === 'validant' && personnes.some((p) => p.role === 'validant' && !p.revoque))
+    else if (a.nom.trim().length > 80) e.nom = '80 caractères au plus.';
+    if (a.fonction.trim().length > 60) e.fonction = '60 caractères au plus.';
+    if (!corrigee?.rejoint && a.whatsapp.trim() && !numeroWhatsApp(a.whatsapp)) e.whatsapp = 'Écrivez le numéro au format international, par exemple +261 34 00 000 00.';
+    if (!corrigee && a.role === 'validant' && personnes.some((p) => p.role === 'validant' && !p.revoque))
       e.role = `Un seul validant par projet : ${personnes.find((p) => p.role === 'validant')?.nom} l’est déjà. Choisissez « Contributeur ».`;
     setErreurAjout(e);
     return Object.keys(e).length === 0;
@@ -442,6 +450,25 @@ export default function Fiche() {
                         Retirer
                       </button>
                     )}
+                    {p.id &&
+                      lignesCorrections(fiche?.journal, p.id).map((l, i) => (
+                        <span key={i} className="text-[13px] text-doux break-words" data-correction="">
+                          {l}
+                        </span>
+                      ))}
+                    {p.id && !p.revoque && !ajout && (
+                      <button
+                        type="button"
+                        className="text-[13px] text-[#0369a1] self-start min-h-11 -my-1.5 flex items-center"
+                        onClick={() => {
+                          setErreurAjout({});
+                          setAjout({ civilite: p.civilite, nom: p.nom, fonction: p.fonction, whatsapp: p.whatsapp, role: p.role, cle: p.cle, legende: `Modifier ${p.civilite} ${p.nom}` });
+                        }}
+                        data-modifier={p.id}
+                      >
+                        Modifier
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <Pilule classe={p.role === 'validant' ? P_OK : P_INFO}>{libelleRole(p)}</Pilule>
@@ -460,7 +487,7 @@ export default function Fiche() {
               {erreursFiche.personnes && <ErreurChamp texte={erreursFiche.personnes} />}
               {ajout && (
                 <fieldset className="flex flex-col gap-2.5 border border-filet rounded-xl p-3 m-0" data-formulaire-personne="">
-                  <legend className="text-[15px] font-bold px-1">Nouvelle personne</legend>
+                  <legend className="text-[15px] font-bold px-1 break-words">{ajout.legende ?? 'Nouvelle personne'}</legend>
                   <div className="flex flex-col gap-1">
                     <span className={ETIQUETTE} id="civilite-titre">
                       Civilité
@@ -486,6 +513,7 @@ export default function Fiche() {
                       Fonction
                     </label>
                     <input id="personne-fonction" name="personne_fonction" className={CHAMP} value={ajout.fonction} maxLength={60} onChange={(e) => setAjout({ ...ajout, fonction: e.target.value })} />
+                    {erreurAjout.fonction && <ErreurChamp texte={erreurAjout.fonction} />}
                   </div>
                   <div className="flex flex-col gap-1">
                     <label htmlFor="personne-whatsapp" className={ETIQUETTE}>
@@ -494,16 +522,23 @@ export default function Fiche() {
                     <input
                       id="personne-whatsapp"
                       name="personne_whatsapp"
-                      className={CHAMP}
+                      className={numeroFige ? `${CHAMP} !bg-[#f1f5f9] text-doux` : CHAMP}
                       type="tel"
                       inputMode="tel"
                       placeholder="+261 34 00 000 00"
                       value={ajout.whatsapp}
+                      readOnly={numeroFige}
+                      aria-describedby={numeroFige ? 'personne-whatsapp-fige' : undefined}
                       onChange={(e) => setAjout({ ...ajout, whatsapp: e.target.value })}
                     />
+                    {numeroFige && (
+                      <p id="personne-whatsapp-fige" className="text-[13px] text-doux m-0" data-numero-fige="">
+                        Numéro donné par la personne elle-même : il ne se modifie pas ici.
+                      </p>
+                    )}
                     {erreurAjout.whatsapp && <ErreurChamp texte={erreurAjout.whatsapp} />}
                   </div>
-                  <div className="flex flex-col gap-1">
+                  {!ajout.cle && <div className="flex flex-col gap-1">
                     <span className={ETIQUETTE} id="role-titre">
                       Rôle
                     </span>
@@ -517,9 +552,9 @@ export default function Fiche() {
                     </div>
                     <p className="text-[13px] text-doux m-0">Un seul validant par projet : c'est lui qui confirme.</p>
                     {erreurAjout.role && <ErreurChamp texte={erreurAjout.role} />}
-                  </div>
+                  </div>}
                   <div className="grid grid-cols-2 gap-2">
-                    <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setAjout(null)}>
+                    <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setAjout(null)} data-annuler-personne="">
                       Annuler
                     </button>
                     <button
@@ -528,12 +563,21 @@ export default function Fiche() {
                       data-ajouter-liste=""
                       onClick={() => {
                         if (!validerAjout(ajout)) return;
-                        const p = ajout;
-                        changer(() => setPersonnes((l) => [...l, { ...p, nom: p.nom.trim(), fonction: p.fonction.trim(), cle: `n${Date.now()}` }]));
+                        const cle = ajout.cle;
+                        const p = { civilite: ajout.civilite, nom: ajout.nom, fonction: ajout.fonction, whatsapp: ajout.whatsapp, role: ajout.role };
+                        if (cle)
+                          changer(() =>
+                            setPersonnes((l) =>
+                              l.map((x) =>
+                                x.cle === cle ? { ...x, civilite: p.civilite, nom: p.nom.trim(), fonction: p.fonction.trim(), whatsapp: x.rejoint ? x.whatsapp : p.whatsapp.trim() } : x
+                              )
+                            )
+                          );
+                        else changer(() => setPersonnes((l) => [...l, { ...p, nom: p.nom.trim(), fonction: p.fonction.trim(), cle: `n${Date.now()}` }]));
                         setAjout(null);
                       }}
                     >
-                      Ajouter à la liste
+                      {ajout.cle ? 'Valider' : 'Ajouter à la liste'}
                     </button>
                   </div>
                 </fieldset>
@@ -543,7 +587,7 @@ export default function Fiche() {
             <button type="submit" className={PRIMAIRE} disabled={envoiFiche || !!ajout} data-enregistrer-fiche="">
               {envoiFiche ? 'Enregistrement…' : 'Enregistrer la fiche'}
             </button>
-            {ajout && <p className="text-[13px] text-doux m-0 -mt-1">Terminez d'abord l'ajout de la personne.</p>}
+            {ajout && <p className="text-[13px] text-doux m-0 -mt-1">{ajout.cle ? "Terminez d'abord la modification de la personne." : "Terminez d'abord l'ajout de la personne."}</p>}
             {messageFiche && (
               <p className={`text-[14px] font-semibold m-0 ${messageFiche.ok ? 'text-[#166534]' : 'text-danger'}`} role={messageFiche.ok ? 'status' : 'alert'} data-message-fiche="">
                 {messageFiche.texte}

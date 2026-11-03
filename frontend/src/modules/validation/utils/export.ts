@@ -61,6 +61,24 @@ export interface DonneesResultats {
   chemin: string[];
   questions: QuestionResultat[];
   messages: MessageResultat[];
+  /** Corrections of the people (VC-44): current « Madame Fara Rakoto », field, before, after. */
+  corrections?: CorrectionResultat[];
+}
+
+export interface CorrectionResultat {
+  personne: string;
+  champ: 'civilite' | 'nom' | 'fonction' | 'whatsapp';
+  avant: string | null;
+  apres: string | null;
+  at: string;
+}
+
+const CHAMPS: Record<CorrectionResultat['champ'], string> = { civilite: 'civilité', nom: 'nom', fonction: 'fonction', whatsapp: 'numéro WhatsApp' };
+
+/** « CORRECTION : nom de Madame Fara Rakoto le 03/11/2026 20:45:10, avant « Rakotto », après « Rakoto » ». */
+export function ligneCorrectionAssistant(c: CorrectionResultat): string {
+  const v = (x: string | null) => uneLigne(x) || '(vide)';
+  return `CORRECTION : ${CHAMPS[c.champ] ?? c.champ} de ${uneLigne(c.personne)} le ${dateHeureSeconde(c.at)}, avant « ${v(c.avant)} », après « ${v(c.apres)} »`;
 }
 
 export interface ReponseLue {
@@ -246,6 +264,7 @@ export function texteAssistant(d: DonneesResultats): string {
   out.push(`RÉSULTATS : ${d.type} v${d.version}`);
   out.push(`DOCUMENT POUR LE CLIENT : ${uneLigne(d.titre_client)} (${NOM_CYCLE[d.type] ?? 'Document'})`);
   out.push(`CLIENT : ${uneLigne(d.entreprise)} ; validant : ${v ? [nomSeul(v.personne), v.fonction].filter(Boolean).join(', ') : 'aucun'}`);
+  for (const c of [...(d.corrections ?? [])].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) out.push(ligneCorrectionAssistant(c));
   const etat = d.confirme_at ? `${texteEtat(d.confirme_at)} (heure de Madagascar)` : texteEtat(null);
   out.push(
     `ÉTAT : ${etat} ; ${pl(s.chiffres.total, 'question', 'questions')} sur le chemin, ${s.horsChemin} hors chemin ; jauge ${s.chiffres.jauge} % ; ${texteChiffres(s.chiffres)}`
@@ -288,7 +307,7 @@ export function partieQuestions(texte: string): string {
   if (debut < 0) return '';
   return lignes
     .slice(debut)
-    .filter((l) => !/^(RÉPONSE|HISTORIQUE|ÉQUIPE|DISCUSSION) :/.test(l))
+    .filter((l) => !/^(RÉPONSE|HISTORIQUE|ÉQUIPE|DISCUSSION|CORRECTION) :/.test(l))
     .join('\n')
     .trim();
 }

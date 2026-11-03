@@ -1,4 +1,6 @@
 // Pure rules of the pilotage screens (unit tested in regles.test.ts). Madagascar time.
+import { dateHeure } from '../utils/regles';
+import type { Changement, EntreeJournal, QuestionnaireClient } from './api';
 
 export const PHRASE_GENERALE = "Et si votre idée devenait l'application dont vous rêvez ?";
 
@@ -89,6 +91,46 @@ export function messageRelance(p: { nomCourt: string; civilite: string; nom: str
     LIEN_ESPACE,
     SIGNATURE
   ].join('\n');
+}
+
+const CORRIGE: Record<Changement['champ'], string> = {
+  civilite: 'Civilité corrigée',
+  nom: 'Nom corrigé',
+  fonction: 'Fonction corrigée',
+  whatsapp: 'Numéro corrigé'
+};
+
+const valeur = (v: string | null | undefined) => (v ?? '').trim() || '(vide)';
+
+/** « Nom corrigé le 03/11/2026 à 20 h 45 par Joël SOATRA, avant : « Rakoto ». » (VC-44). */
+export function ligneCorrection(c: Changement, at: string): string {
+  return `${CORRIGE[c.champ] ?? 'Corrigé'} le ${dateHeure(at)} par Joël SOATRA, avant : « ${valeur(c.avant)} ».`;
+}
+
+/** Corrections of one person, newest first, as dated changes. */
+export function corrections(journal: EntreeJournal[] | undefined, personne: string): { c: Changement; at: string }[] {
+  return (journal ?? [])
+    .filter((j) => j.action === 'personne_corrigee' && j.personne_id === personne)
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .flatMap((j) => (j.details?.changements ?? []).map((c) => ({ c, at: j.at })));
+}
+
+/** Grey lines under a person: at most 3, then « et <n> autres corrections ». */
+export function lignesCorrections(journal: EntreeJournal[] | undefined, personne: string): string[] {
+  const l = corrections(journal, personne).map((x) => ligneCorrection(x.c, x.at));
+  if (l.length <= 3) return l;
+  const n = l.length - 3;
+  return [...l.slice(0, 3), `et ${n} autre${n > 1 ? 's' : ''} correction${n > 1 ? 's' : ''}`];
+}
+
+/** Next version to publish after a confirmed one: newest draft of the same type, created later (VC-38). */
+export function brouillonSuivant(qs: QuestionnaireClient[], confirme: QuestionnaireClient): QuestionnaireClient | null {
+  const t = Date.parse(confirme.cree_at);
+  return (
+    qs
+      .filter((x) => x.etat === 'brouillon' && x.type === confirme.type && x.id !== confirme.id && Date.parse(x.cree_at) > t)
+      .sort((a, b) => Date.parse(b.cree_at) - Date.parse(a.cree_at))[0] ?? null
+  );
 }
 
 /** « Publier la suite » of VC-38. */
