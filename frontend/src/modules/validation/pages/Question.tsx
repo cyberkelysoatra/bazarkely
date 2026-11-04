@@ -18,6 +18,7 @@ import { Attente, BandeauReseau, CarteClose, CarteInfo, EnTeteClient, documentDe
 import { PastilleQuestion } from '../composants/VersDiscussion';
 import { libelleQuestion } from '../utils/discussion';
 import { useMicro } from '../composants/Micro';
+import { LigneEtapes } from '../composants/FilEtapes';
 
 export const MAX_COMMENTAIRE = 2000;
 const COMPTEUR_DES = 1800;
@@ -98,6 +99,7 @@ export default function Question() {
         data-jauge-serveur={serveur?.jauge ?? ''}
         data-pret-local={e.pret ? 'oui' : 'non'}
       >
+        <LigneEtapes type={q.type} docs={p?.documents} />
         {etape ? (
           <FormulaireQuestion
             key={etape.question.id}

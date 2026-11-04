@@ -61,6 +61,10 @@ export interface DocumentEspace {
   etape_at?: string | null;
   echeance_at: string | null;
   numero_recu?: string | null;
+  /** Date of the publication (step « en cours », VC-46). */
+  publie_at?: string | null;
+  /** Set when Joël marked the step of this questionnaire passed (RM2, VC-46). */
+  porte_franchie_at?: string | null;
 }
 
 /** One entry of vc_mon_espace(): a project the account belongs to. */

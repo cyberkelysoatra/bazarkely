@@ -1,5 +1,6 @@
 // Pure rules of the pilotage screens (unit tested in regles.test.ts). Madagascar time.
 import { dateHeure } from '../utils/regles';
+import { etapeDuType, phraseEtape } from '../utils/etapes';
 import type { Changement, EntreeJournal, QuestionnaireClient } from './api';
 
 export const PHRASE_GENERALE = "Et si votre idée devenait l'application dont vous rêvez ?";
@@ -8,7 +9,10 @@ export function lienInvitation(jeton: string): string {
   return `https://1sakely.org/validation/i/${jeton}`;
 }
 
-/** WhatsApp message of VC-24 (bold title, dream in italics, link, signature). */
+/**
+ * WhatsApp message of VC-24 (bold title, dream in italics, link, signature). `type`: document type
+ * of the questionnaire whose questions are counted; a step type names the step (VC-46).
+ */
 export function messageInvitation(p: {
   nomCourt: string;
   phraseReve: string | null | undefined;
@@ -17,15 +21,18 @@ export function messageInvitation(p: {
   questions: number;
   minutes: number;
   lien: string;
+  type?: string | null;
 }): string {
   const reve = (p.phraseReve ?? '').trim() || PHRASE_GENERALE;
+  const etape = etapeDuType(p.type);
+  const avis = `nous avons besoin de votre avis : ${p.questions} questions au plus, environ ${p.minutes} minutes, depuis votre téléphone.`;
   return [
     `*VOTRE PROJET : ${p.nomCourt.trim().toLocaleUpperCase('fr')}*`,
     '',
     `_${reve}_`,
     '',
     `Bonjour ${p.civilite} ${p.nom.trim()},`,
-    `Votre projet prend forme. Avant de le construire, nous avons besoin de votre avis : ${p.questions} questions au plus, environ ${p.minutes} minutes, depuis votre téléphone.`,
+    etape ? `Votre projet prend forme, étape par étape. Pour valider ${phraseEtape(etape)}, ${avis}` : `Votre projet prend forme. Avant de le construire, ${avis}`,
     p.lien,
     'Joël SOATRA, CyberKELY'
   ].join('\n');
@@ -81,13 +88,17 @@ function enLigne(t: string): string {
   return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(s) ? s.charAt(0).toLocaleLowerCase('fr') + s.slice(1) : s;
 }
 
-/** Reminder of VC-28 for an open, unconfirmed questionnaire. */
-export function messageRelance(p: { nomCourt: string; civilite: string; nom: string; titreClient: string; restantes: number }): string {
+/** Reminder of VC-28 for an open, unconfirmed questionnaire (`type` names its step, VC-46). */
+export function messageRelance(p: { nomCourt: string; civilite: string; nom: string; titreClient: string; restantes: number; type?: string | null }): string {
   const n = Math.max(0, p.restantes);
+  const etape = etapeDuType(p.type);
+  const reste = `il reste ${n} question${n > 1 ? 's' : ''}.`;
   return [
     titreProjet(p.nomCourt),
     '',
-    `Bonjour ${p.civilite} ${p.nom.trim()}, votre avis sur ${enLigne(p.titreClient)} nous attend : il reste ${n} question${n > 1 ? 's' : ''}.`,
+    etape
+      ? `Bonjour ${p.civilite} ${p.nom.trim()}, votre avis nous attend pour valider ${phraseEtape(etape)} : ${reste}`
+      : `Bonjour ${p.civilite} ${p.nom.trim()}, votre avis sur ${enLigne(p.titreClient)} nous attend : ${reste}`,
     LIEN_ESPACE,
     SIGNATURE
   ].join('\n');
@@ -123,6 +134,14 @@ export function lignesCorrections(journal: EntreeJournal[] | undefined, personne
   return [...l.slice(0, 3), `et ${n} autre${n > 1 ? 's' : ''} correction${n > 1 ? 's' : ''}`];
 }
 
+/** Grey lines of the step gate of one questionnaire (journal « porte_franchie » / « porte_annulee »), newest first. */
+export function lignesPorte(journal: EntreeJournal[] | undefined, questionnaire: string): string[] {
+  return (journal ?? [])
+    .filter((j) => (j.action === 'porte_franchie' || j.action === 'porte_annulee') && j.details?.questionnaire === questionnaire)
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .map((j) => `${j.action === 'porte_franchie' ? 'Étape marquée franchie' : 'Étape franchie annulée'} le ${dateHeure(j.at)} par Joël SOATRA.`);
+}
+
 /** Next version to publish after a confirmed one: newest draft of the same type, created later (VC-38). */
 export function brouillonSuivant(qs: QuestionnaireClient[], confirme: QuestionnaireClient): QuestionnaireClient | null {
   const t = Date.parse(confirme.cree_at);
@@ -133,7 +152,9 @@ export function brouillonSuivant(qs: QuestionnaireClient[], confirme: Questionna
   );
 }
 
-/** « Publier la suite » of VC-38. */
-export function messageSuite(p: { nomCourt: string; civilite: string; nom: string }): string {
-  return [titreProjet(p.nomCourt), '', `Bonjour ${p.civilite} ${p.nom.trim()}, la suite de votre projet est prête : ${LIEN_ESPACE}`, SIGNATURE].join('\n');
+/** « Publier la suite » of VC-38 (`type`: the newly published version, its step named, VC-46). */
+export function messageSuite(p: { nomCourt: string; civilite: string; nom: string; type?: string | null }): string {
+  const etape = etapeDuType(p.type);
+  const bonjour = `Bonjour ${p.civilite} ${p.nom.trim()}, la suite de votre projet est prête : `;
+  return [titreProjet(p.nomCourt), '', etape ? `${bonjour}${phraseEtape(etape)}, vous attend : ${LIEN_ESPACE}` : `${bonjour}${LIEN_ESPACE}`, SIGNATURE].join('\n');
 }

@@ -8,6 +8,7 @@ import {
   lienInvitation,
   ligneCorrection,
   lignesCorrections,
+  lignesPorte,
   messageInvitation,
   messageRelance,
   messageSuite,
@@ -143,5 +144,51 @@ describe('pilotage rules', () => {
     expect(messageSuite({ nomCourt: 'Essai Validation', civilite: 'Monsieur', nom: 'Joël SOATRA' })).toBe(
       '*VOTRE PROJET : ESSAI VALIDATION*\n\nBonjour Monsieur Joël SOATRA, la suite de votre projet est prête : https://1sakely.org/validation/\nJoël SOATRA, CyberKELY'
     );
+  });
+});
+
+describe('messages naming the step (VC-46)', () => {
+  const base = { civilite: 'Madame', nom: 'Fara Rakoto', questions: 5, minutes: 5, lien: lienInvitation('abc'), nomCourt: 'x', phraseReve: '' };
+
+  it('invitation: « étape par étape » with the step of the counted questionnaire', () => {
+    expect(messageInvitation({ ...base, type: 'note_cadrage' }).split('\n')[5]).toBe(
+      'Votre projet prend forme, étape par étape. Pour valider la 1re étape, le résumé de votre projet (note de cadrage), nous avons besoin de votre avis : 5 questions au plus, environ 5 minutes, depuis votre téléphone.'
+    );
+    expect(messageInvitation({ ...base, type: 'prd' })).toContain('Pour valider la 3e étape, le fonctionnement écran par écran (spécifications fonctionnelles), nous avons besoin');
+  });
+
+  it('reminder and follow-up name the step', () => {
+    expect(messageRelance({ nomCourt: 'x', civilite: 'Monsieur', nom: 'Joël SOATRA', titreClient: 'Le résumé de votre projet', restantes: 3, type: 'cahier_charges' }).split('\n')[2]).toBe(
+      'Bonjour Monsieur Joël SOATRA, votre avis nous attend pour valider la 2e étape, le détail de votre application (cahier des charges) : il reste 3 questions.'
+    );
+    expect(messageRelance({ nomCourt: 'x', civilite: 'Madame', nom: 'Fara', titreClient: 'T', restantes: 1, type: 'recette' })).toContain(
+      'valider la 5e étape, le contrôle avant la mise en ligne (recette) : il reste 1 question.'
+    );
+    expect(messageSuite({ nomCourt: 'Essai Validation', civilite: 'Monsieur', nom: 'Joël SOATRA', type: 'maquette' })).toBe(
+      '*VOTRE PROJET : ESSAI VALIDATION*\n\nBonjour Monsieur Joël SOATRA, la suite de votre projet est prête : la 4e étape, l’aperçu à essayer sur votre téléphone (maquette), vous attend : https://1sakely.org/validation/\nJoël SOATRA, CyberKELY'
+    );
+  });
+
+  it('without a step type (avenant, découverte, unknown): the texts stay as they were', () => {
+    for (const type of ['avenant', 'decouverte', 'autre', null, undefined]) {
+      expect(messageInvitation({ ...base, type })).toBe(messageInvitation(base));
+      expect(messageInvitation({ ...base, type })).toContain('Votre projet prend forme. Avant de le construire, nous avons besoin de votre avis');
+      expect(messageRelance({ nomCourt: 'x', civilite: 'Madame', nom: 'Fara', titreClient: 'PRD', restantes: 2, type })).toContain('votre avis sur PRD nous attend : il reste 2 questions.');
+      expect(messageSuite({ nomCourt: 'x', civilite: 'Madame', nom: 'Fara', type })).toContain('la suite de votre projet est prête : https://1sakely.org/validation/');
+    }
+  });
+
+  it('history lines of the step gate, newest first, this questionnaire only', () => {
+    const journal: EntreeJournal[] = [
+      { action: 'porte_franchie', personne_id: null, at: '2026-11-04T06:00:00Z', details: { questionnaire: 'q1', type: 'note_cadrage' } },
+      { action: 'porte_annulee', personne_id: null, at: '2026-11-04T07:30:00Z', details: { questionnaire: 'q1', type: 'note_cadrage' } },
+      { action: 'porte_franchie', personne_id: null, at: '2026-11-04T08:00:00Z', details: { questionnaire: 'q2', type: 'prd' } },
+      { action: 'questionnaire_clos', personne_id: null, at: '2026-11-04T09:00:00Z', details: { questionnaire: 'q1' } }
+    ];
+    expect(lignesPorte(journal, 'q1')).toEqual([
+      'Étape franchie annulée le 04/11/2026 à 10 h 30 par Joël SOATRA.',
+      'Étape marquée franchie le 04/11/2026 à 09 h 00 par Joël SOATRA.'
+    ]);
+    expect(lignesPorte(undefined, 'q1')).toEqual([]);
   });
 });

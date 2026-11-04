@@ -13,6 +13,7 @@ import { SuiviDossier } from './Recu';
 import { TEXTE_DISPONIBLE, etapeSuivi } from '../utils/suivi';
 import { ReponsesRefusees } from './Cadre';
 import { BoutonDiscussion, DISCUSSION } from '../composants/VersDiscussion';
+import { FilEtapes } from '../composants/FilEtapes';
 import {
   choisirProjet,
   comptes,
@@ -126,6 +127,7 @@ export default function Accueil() {
             Ce projet s'ajoute à votre compte 1saKELY.
           </p>
         )}
+        <FilEtapes docs={p.documents} />
         <h2 className="text-[17px] font-bold m-0">Vos documents</h2>
         {docs.length === 0 ? (
           <div className={CARTE} data-etat-accueil="vide">

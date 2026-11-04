@@ -14,6 +14,7 @@ import { chargerQuestionnaire, etatFile } from '../appels/file';
 import CartesTelephone from '../composants/CartesTelephone';
 import { usePresence } from '../appels/presence';
 import { BoutonDiscussion } from '../composants/VersDiscussion';
+import { LigneEtapes } from '../composants/FilEtapes';
 
 export default function Recu() {
   useCouleurTheme('#0369a1');
@@ -88,6 +89,7 @@ export default function Recu() {
     <>
       <EnTeteClient p={p} email={email} />
       <Corps data-recu={d.numero_recu ?? ''}>
+        <LigneEtapes type={d.type} docs={p.documents} />
         <div className={`${CARTE} items-center text-center`}>
           <div className="w-[60px] h-[60px] rounded-full bg-[#dcfce7] text-[#166534] flex items-center justify-center">
             <Icone nom="coche" epaisseur={2.4} className="w-8 h-8" />

@@ -84,6 +84,8 @@ export interface QuestionnaireClient {
   cree_at: string;
   publie_at: string | null;
   confirme_at: string | null;
+  /** Step marked passed by Joël (vc_admin_porte, RM2). */
+  porte_franchie_at?: string | null;
   etape_suivi?: 'analyse' | 'preparation' | 'disponible' | null;
   echeance_at?: string | null;
   numero_recu?: string | null;
@@ -244,5 +246,8 @@ export const clore = (questionnaire: string) => rpc<Resultat>('vc_admin_clore', 
 export const archiverClient = (client: string, archiver: boolean) => rpc<Resultat>('vc_admin_client_archiver', { p_client: client, p_archiver: archiver });
 
 export const revoquerAcces = (personne: string) => rpc<Resultat>('vc_admin_acces_revoquer', { p_personne: personne });
+
+/** Marks (or unmarks) the step of a confirmed questionnaire as passed (RM2, VC-46). */
+export const marquerPorte = (questionnaire: string, franchie: boolean) => rpc<Resultat>('vc_admin_porte', { p_questionnaire: questionnaire, p_franchie: franchie });
 
 export const nommerValidant = (personne: string) => rpc<Resultat>('vc_admin_validant_nommer', { p_personne: personne });

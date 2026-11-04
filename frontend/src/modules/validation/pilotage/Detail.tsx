@@ -13,6 +13,7 @@ import {
   clore,
   creerInvitation,
   ficheClient,
+  marquerPorte,
   nommerValidant,
   publier,
   revoquerAcces,
@@ -26,7 +27,8 @@ import {
   type ReponseClient
 } from './api';
 import { DANGER, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
-import { adresseWhatsApp, brouillonSuivant, lienInvitation, lignesCorrections, messageInvitation, messageRelance, messageSuite } from './regles';
+import { adresseWhatsApp, brouillonSuivant, lienInvitation, lignesCorrections, lignesPorte, messageInvitation, messageRelance, messageSuite } from './regles';
+import { etapeDuType, ligneEtape, type Etape } from '../utils/etapes';
 import { RELECTURE_MS, useRelecture } from './Tableau';
 import { DISCUSSION } from '../composants/VersDiscussion';
 
@@ -56,7 +58,8 @@ const ERREURS: Record<string, string> = {
   ACCES_REVOQUE: 'L’accès de cette personne a été retiré.',
   // Same messages as the publication of Questionnaire.tsx (« Publier la version <v> », VC-38).
   VERSION_DEJA_PUBLIEE: 'Cette version est déjà publiée : une correction demande une nouvelle version (RM5).',
-  PAS_UN_BROUILLON: 'Ce questionnaire n’est plus un brouillon : il ne se publie pas une seconde fois.'
+  PAS_UN_BROUILLON: 'Ce questionnaire n’est plus un brouillon : il ne se publie pas une seconde fois.',
+  PAS_UNE_ETAPE: 'Un avenant ou une découverte n’est pas une étape du projet.'
 };
 
 type Action =
@@ -64,7 +67,11 @@ type Action =
   | { type: 'publier'; q: QuestionnaireClient; brouillon: QuestionnaireClient }
   | { type: 'nommer'; p: PersonneClient; ancien: PersonneClient | undefined }
   | { type: 'clore'; q: QuestionnaireClient }
-  | { type: 'archiver'; archiver: boolean };
+  | { type: 'archiver'; archiver: boolean }
+  | { type: 'porte'; q: QuestionnaireClient; etape: Etape; franchie: boolean };
+
+/** « le résumé de votre projet (note de cadrage) », inside a sentence. */
+const nomEtape = (e: Etape) => `${e.nom} (${e.terme})`;
 
 const feminin = (p: Pick<PersonneClient, 'civilite'>) => p.civilite === 'Madame';
 
@@ -166,6 +173,11 @@ export default function Detail() {
     else if (action.type === 'nommer')
       await faire(() => nommerValidant(action.p.id), `${action.p.civilite} ${action.p.nom} est maintenant ${feminin(action.p) ? 'validante' : 'validant'}.`);
     else if (action.type === 'clore') await faire(() => clore(action.q.id), 'Consultation close. Les réponses sont conservées.');
+    else if (action.type === 'porte')
+      await faire(
+        () => marquerPorte(action.q.id, action.franchie),
+        action.franchie ? `Étape « ${nomEtape(action.etape)} » marquée franchie : le client la voit cochée.` : 'Étape franchie annulée : le client ne la voit plus cochée.'
+      );
     else
       await faire(
         () => archiverClient(fiche.client.id, action.archiver),
@@ -190,7 +202,7 @@ export default function Detail() {
       const lien = lienInvitation(r.jeton);
       if (numero && ouvert) {
         const n = verifierArbre((ouvert.questions ?? []).map((x) => ({ numero: x.numero, choix: x.choix ?? [] }))).cheminMax;
-        const texte = messageInvitation({ nomCourt: fiche.client.nom_court, phraseReve: fiche.client.phrase_reve, civilite: p.civilite, nom: p.nom, questions: n, minutes: Math.max(n, 1), lien });
+        const texte = messageInvitation({ nomCourt: fiche.client.nom_court, phraseReve: fiche.client.phrase_reve, civilite: p.civilite, nom: p.nom, questions: n, minutes: Math.max(n, 1), lien, type: ouvert.type });
         const adresse = adresseWhatsApp(numero, texte);
         if (fenetre) fenetre.location.href = adresse;
         else window.location.href = adresse;
@@ -229,7 +241,7 @@ export default function Detail() {
         return;
       }
       if (numero && validant) {
-        const adresse = adresseWhatsApp(numero, messageSuite({ nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom }));
+        const adresse = adresseWhatsApp(numero, messageSuite({ nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, type: brouillon.type }));
         if (fenetre) fenetre.location.href = adresse;
         else window.location.href = adresse;
       }
@@ -359,13 +371,18 @@ function Confirmation({ action, envoi, annuler, confirmer }: { action: Action; e
   } else if (action.type === 'clore') {
     texte = `Clore la consultation ${NOM_CYCLE[action.q.type] ?? 'Document'} v${action.q.version} ? Le client ne pourra plus répondre ; ses réponses sont conservées.`;
     bouton = 'Clore';
+  } else if (action.type === 'porte') {
+    texte = action.franchie
+      ? `Marquer « ${nomEtape(action.etape)} » comme franchie ? Le client la verra cochée.`
+      : 'Annuler l’étape franchie ? Le client ne la verra plus cochée.';
+    bouton = action.franchie ? 'Marquer' : 'Oui, annuler';
   } else {
     texte = action.archiver
       ? 'Archiver ce client ? Il disparaît du tableau de bord ; rien n’est effacé et vous pouvez le désarchiver.'
       : 'Désarchiver ce client ? Il revient au tableau de bord.';
     bouton = action.archiver ? 'Archiver' : 'Désarchiver';
   }
-  const danger = action.type !== 'nommer' && action.type !== 'publier' && !(action.type === 'archiver' && !action.archiver);
+  const danger = action.type !== 'nommer' && action.type !== 'publier' && !(action.type === 'archiver' && !action.archiver) && !(action.type === 'porte' && action.franchie);
   return (
     <div className={`${CARTE} !border-2 ${danger ? '!border-danger' : '!border-ciel'}`} role="alertdialog" aria-label="Confirmation" data-confirmation={action.type}>
       <p className="text-[15px] font-semibold m-0">{texte}</p>
@@ -508,9 +525,10 @@ function Consultation({
   const restantes = e ? e.total - e.repondues : 0;
   const adresseRelance =
     relancer && numero && validant
-      ? adresseWhatsApp(numero, messageRelance({ nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, titreClient: q.titre_client, restantes }))
+      ? adresseWhatsApp(numero, messageRelance({ nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, titreClient: q.titre_client, restantes, type: q.type }))
       : null;
   const brouillon = q.etat === 'brouillon';
+  const etapeQ = etapeDuType(q.type);
   return (
     <section className="flex flex-col gap-3" aria-label={`${NOM_CYCLE[q.type] ?? 'Document'} v${q.version}`} data-consultation={q.id}>
       <div className={CARTE}>
@@ -558,6 +576,30 @@ function Consultation({
           </div>
         )}
         {relancer && !numero && <p className="text-[13px] text-doux m-0">Numéro WhatsApp du validant manquant : la relance est impossible.</p>}
+        {q.confirme_at && etapeQ && (
+          <div className="flex flex-col gap-1.5 pt-2.5 border-t border-[#e2e8f0]" data-porte={q.porte_franchie_at ? 'franchie' : 'non'}>
+            <p className="text-[13px] text-doux m-0">{ligneEtape(etapeQ)}</p>
+            {q.porte_franchie_at ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Pilule classe={P_OK} data-porte-franchie="">
+                  {`Étape franchie le ${dateHeure(q.porte_franchie_at)}`}
+                </Pilule>
+                <button type="button" className={LIEN} disabled={envoi} onClick={() => demander({ type: 'porte', q, etape: etapeQ, franchie: false })} data-annuler-porte="">
+                  Annuler
+                </button>
+              </div>
+            ) : (
+              <button type="button" className={`${SECONDAIRE} !text-[15px]`} disabled={envoi} onClick={() => demander({ type: 'porte', q, etape: etapeQ, franchie: true })} data-marquer-porte="">
+                Marquer l'étape franchie
+              </button>
+            )}
+            {lignesPorte(fiche.journal, q.id).map((l, i) => (
+              <p key={i} className="text-[13px] text-doux m-0 break-words" data-historique-porte="">
+                {l}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
 
       {(q.etat === 'ouvert' || q.confirme_at) && (

@@ -45,7 +45,16 @@ export function Corps({
  * « Retour » line, sticky 6 px under the header; the frosted glass appears only once it is stuck
  * (mockup .backbar / .backbar.stuck).
  */
-export function BarreRetour({ vers = '/', libelle = 'Retour' }: { vers?: string; libelle?: string }) {
+export function BarreRetour({
+  vers = '/',
+  libelle = 'Retour',
+  surRetour
+}: {
+  vers?: string;
+  libelle?: string;
+  /** Called instead of leaving (unsaved changes): `aller` leaves. */
+  surRetour?: (aller: () => void) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [colle, setColle] = useState(false);
   const navigate = useNavigate();
@@ -62,7 +71,7 @@ export function BarreRetour({ vers = '/', libelle = 'Retour' }: { vers?: string;
   }, []);
   return (
     <div ref={ref} className={`vc-retour ${colle ? 'vc-colle' : ''}`} data-barre-retour={colle ? 'collee' : 'repos'}>
-      <button type="button" onClick={() => navigate(vers)} className="flex items-center gap-1.5 min-h-11 px-3 text-ciel text-[15px] font-semibold">
+      <button type="button" onClick={() => (surRetour ? surRetour(() => navigate(vers)) : navigate(vers))} className="flex items-center gap-1.5 min-h-11 px-3 text-ciel text-[15px] font-semibold">
         <Icone nom="retour" epaisseur={2.4} />
         {libelle}
       </button>

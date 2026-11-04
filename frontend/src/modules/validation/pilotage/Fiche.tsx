@@ -19,7 +19,7 @@ import {
   type PersonneClient,
   type QuestionnaireClient
 } from './api';
-import { CHAMP, ETIQUETTE, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
+import { CHAMP, DANGER, ETIQUETTE, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
 import { adresseWhatsApp, dateCourte, lienInvitation, lignesCorrections, messageInvitation, numeroWhatsApp } from './regles';
 
 interface PersonneForm {
@@ -107,6 +107,20 @@ export default function Fiche() {
   const [envoi, setEnvoi] = useState(false);
   const [retourInvitation, setRetourInvitation] = useState<{ ok: boolean; texte: string } | null>(null);
   const [apercu, setApercu] = useState<Apercu | null>(null);
+  // Saved people corrected since the last save (pill « À enregistrer »), and the leave dialog.
+  const [corrigees, setCorrigees] = useState<string[]>([]);
+  const [quitter, setQuitter] = useState<(() => void) | null>(null);
+
+  // Unsaved changes: the browser warns before a reload or a closed tab as well.
+  useEffect(() => {
+    if (!modifie) return;
+    const avertir = (ev: BeforeUnloadEvent) => {
+      ev.preventDefault();
+      ev.returnValue = '';
+    };
+    window.addEventListener('beforeunload', avertir);
+    return () => window.removeEventListener('beforeunload', avertir);
+  }, [modifie]);
 
   const charger = useCallback(async () => {
     if (nouveau) return;
@@ -121,6 +135,7 @@ export default function Fiche() {
       const ps = f.personnes.map(versForm);
       setPersonnes(ps);
       setModifie(false);
+      setCorrigees([]);
       setCible((c) => (ps.some((p) => p.id === c) ? c : (ps.find((p) => p.role === 'validant' && !p.revoque)?.id ?? ps.find((p) => !p.revoque)?.id ?? '')));
     } catch {
       setErreurLecture(true);
@@ -158,7 +173,8 @@ export default function Fiche() {
     nom: choisie?.nom ?? validant?.nom ?? '…',
     questions: n,
     minutes,
-    lien: jeton ? lienInvitation(jeton) : 'https://1sakely.org/validation/i/…'
+    lien: jeton ? lienInvitation(jeton) : 'https://1sakely.org/validation/i/…',
+    type: pub?.q.type
   });
 
   // Reason why « Inviter » and « Copier le lien » are greyed (null = allowed).
@@ -264,7 +280,7 @@ export default function Fiche() {
         fenetre?.close();
         return;
       }
-      const texte = messageInvitation({ nomCourt, phraseReve: reve, civilite: choisie.civilite, nom: choisie.nom, questions: n, minutes, lien: lienInvitation(j) });
+      const texte = messageInvitation({ nomCourt, phraseReve: reve, civilite: choisie.civilite, nom: choisie.nom, questions: n, minutes, lien: lienInvitation(j), type: pub?.q.type });
       const adresse = adresseWhatsApp(numero, texte);
       if (fenetre) fenetre.location.href = adresse;
       else window.location.href = adresse;
@@ -339,7 +355,38 @@ export default function Fiche() {
     <>
       <EnTetePilotage titre={titre} sousTitre={sousTitre} />
       <Corps>
-        <BarreRetour vers={nouveau ? '/pilotage' : `/pilotage/client/${id}`} libelle={nouveau ? 'Tableau de bord' : 'Détail du client'} />
+        <BarreRetour
+          vers={nouveau ? '/pilotage' : `/pilotage/client/${id}`}
+          libelle={nouveau ? 'Tableau de bord' : 'Détail du client'}
+          surRetour={(aller) => (modifie ? setQuitter(() => aller) : aller())}
+        />
+        {quitter && (
+          <div className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.45)] flex items-center justify-center px-4" data-quitter="">
+            <div className={`${CARTE} !border-2 !border-danger w-full max-w-[420px]`} role="alertdialog" aria-modal="true" aria-labelledby="quitter-texte">
+              <p id="quitter-texte" className="text-[15px] font-semibold m-0">
+                Quitter sans enregistrer ? Vos modifications seront perdues.
+              </p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setQuitter(null)} autoFocus data-rester="">
+                  Rester
+                </button>
+                <button
+                  type="button"
+                  className={`${DANGER} !text-[15px]`}
+                  onClick={() => {
+                    const aller = quitter;
+                    setQuitter(null);
+                    setModifie(false);
+                    aller();
+                  }}
+                  data-quitter-confirmer=""
+                >
+                  Quitter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {chargement && <Squelette lent={false} />}
         {!chargement && erreurLecture && <ErreurReseau reessayer={() => void charger()} />}
         {!chargement && !erreurLecture && (
@@ -472,6 +519,11 @@ export default function Fiche() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <Pilule classe={p.role === 'validant' ? P_OK : P_INFO}>{libelleRole(p)}</Pilule>
+                    {p.id && corrigees.includes(p.cle) && (
+                      <Pilule classe={P_ATTENTE} data-a-enregistrer="">
+                        À enregistrer
+                      </Pilule>
+                    )}
                     {p.revoque ? (
                       <Pilule classe={P_NON}>Accès retiré</Pilule>
                     ) : p.rejoint ? (
@@ -565,6 +617,7 @@ export default function Fiche() {
                         if (!validerAjout(ajout)) return;
                         const cle = ajout.cle;
                         const p = { civilite: ajout.civilite, nom: ajout.nom, fonction: ajout.fonction, whatsapp: ajout.whatsapp, role: ajout.role };
+                        if (cle) setCorrigees((c) => (c.includes(cle) ? c : [...c, cle]));
                         if (cle)
                           changer(() =>
                             setPersonnes((l) =>
@@ -584,6 +637,11 @@ export default function Fiche() {
               )}
             </div>
 
+            {modifie && (
+              <p className="text-[14px] font-semibold text-[#b45309] bg-[#fffbeb] border border-[#fcd34d] rounded-[10px] px-3 py-2.5 m-0 leading-[1.45]" role="status" data-non-enregistre="">
+                {'Modifications non enregistrées : touchez «\u00a0Enregistrer la fiche\u00a0» pour les garder.'}
+              </p>
+            )}
             <button type="submit" className={PRIMAIRE} disabled={envoiFiche || !!ajout} data-enregistrer-fiche="">
               {envoiFiche ? 'Enregistrement…' : 'Enregistrer la fiche'}
             </button>

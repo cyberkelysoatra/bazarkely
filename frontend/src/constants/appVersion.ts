@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.126.0';
-export const APP_VERSION_NAME = 'Validation client, correctif 11 : le logo de l’en-tête ouvre la barre des autres modules';
-export const LAST_UPDATED = '2026-11-03';
-export const APP_BUILD_DATE = '2026-11-03';
+export const APP_VERSION = '3.127.0';
+export const APP_VERSION_NAME = 'Validation client, correctif 12 : les étapes du projet';
+export const LAST_UPDATED = '2026-11-04';
+export const APP_BUILD_DATE = '2026-11-04';
 export const VERSION_HISTORY = [
+  {
+    version: '3.127.0',
+    date: '2026-11-04',
+    description: 'Validation client, correctif 12 : les étapes du projet, l’étape franchie marquée par Joël, le rappel d’enregistrement de la fiche (VALIDCLIENT-CC-12)',
+    changes: [
+      'Validation client : « Les étapes de votre projet » en tête de l’accueil (cinq étapes, celle en cours, celles validées par CyberKELY) et une ligne « Étape <n> sur 5 » sur les pages de questions, de relecture et du reçu',
+      'Pilotage : « Marquer l’étape franchie » sur une version confirmée, annulable, datée dans l’historique ; les messages WhatsApp nomment l’étape',
+      'Fiche du client : « Modifications non enregistrées » tant que la fiche n’est pas enregistrée, et une confirmation avant de quitter'
+    ]
+  },
   {
     version: '3.126.0',
     date: '2026-11-03',
