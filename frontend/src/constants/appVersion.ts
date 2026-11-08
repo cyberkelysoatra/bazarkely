@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.127.0';
-export const APP_VERSION_NAME = 'Validation client, correctif 12 : les étapes du projet';
-export const LAST_UPDATED = '2026-11-04';
-export const APP_BUILD_DATE = '2026-11-04';
+export const APP_VERSION = '3.128.0';
+export const APP_VERSION_NAME = 'Scan de ticket lu par IA';
+export const LAST_UPDATED = '2026-11-08';
+export const APP_BUILD_DATE = '2026-11-08';
 export const VERSION_HISTORY = [
+  {
+    version: '3.128.0',
+    date: '2026-11-08',
+    description: 'Scan de ticket lu par IA : Gemini lit la photo en ligne, le repli hors ligne ne confond plus téléphones et articles, un ticket sans total lu passe toujours par la vérification (SCAN-CC-01)',
+    changes: [
+      'Scan de ticket : en ligne, Gemini lit le commerce, la date, les articles et le total ; hors ligne ou en cas d’échec, la lecture sur le téléphone prend le relais',
+      'Lecture sur le téléphone : les lignes de contact (PORT, MOB, numéros malgaches, sites) sont ignorées et un article écrit sur deux lignes devient un seul article',
+      'Garde-fou : un ticket dont le total n’a pas été lu ouvre toujours l’écran de vérification, plus d’enregistrement direct'
+    ]
+  },
   {
     version: '3.127.0',
     date: '2026-11-04',

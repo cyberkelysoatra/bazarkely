@@ -1,9 +1,9 @@
 /**
  * ocrService — DEUX moteurs OCR avec bascule automatique online/offline.
  *
- *  • EN LIGNE → Google Cloud Vision (haute précision), via la Cloudflare Pages Function
+ *  • EN LIGNE → lecture cloud (Gemini, sinon Google Vision), via la Cloudflare Pages Function
  *    `/api/ocr-receipt` (la clé reste serveur, jamais côté client).
- *  • HORS-LIGNE (ou échec/timeout Vision) → repli Tesseract.js (Phase 1), 100 % local,
+ *  • HORS-LIGNE (ou échec/timeout de la lecture cloud) → repli Tesseract.js (Phase 1), 100 % local,
  *    gratuit, sans réseau ni clé.
  *
  * Point d'entrée unique : `recognize(blob)` choisit le moteur et renvoie le moteur réellement
@@ -17,7 +17,8 @@
  */
 
 import { createWorker } from 'tesseract.js';
-import { withTimeout } from '../lib/supabase';
+import { supabase, withTimeout } from '../lib/supabase';
+import type { StructuredReceipt } from '../types/receipt';
 
 const WORKER_PATH = '/tesseract/worker.min.js';
 const CORE_PATH = '/tesseract/core/tesseract-core-simd-lstm.wasm.js';
@@ -45,7 +46,7 @@ async function getWorker(): Promise<OcrWorker> {
 }
 
 /** Moteur OCR ayant produit le résultat (tracé dans `transaction_receipts.ocr_engine`). */
-export type OcrEngine = 'google_vision' | 'tesseract';
+export type OcrEngine = 'gemini' | 'google_vision' | 'tesseract';
 
 export interface OcrResult {
   text: string;
@@ -53,12 +54,15 @@ export interface OcrResult {
   confidence: number;
   /** Moteur réellement utilisé. */
   engine: OcrEngine;
+  /** Ticket déjà structuré (lecture Gemini). */
+  structured?: StructuredReceipt;
 }
 
-/** Endpoint serveur (clé Google Vision cachée côté Cloudflare Pages Function). */
+/** Endpoint serveur (clés cachées côté Cloudflare Pages Function). */
 const OCR_FUNCTION_URL = '/api/ocr-receipt';
 /** Délai max de l'appel en ligne avant repli Tesseract. */
-const ONLINE_TIMEOUT_MS = 12_000;
+const ONLINE_TIMEOUT_MS = 18_000;
+const SESSION_TIMEOUT_MS = 5_000;
 
 /** Encode un Blob en base64 (sans préfixe data:), par tranches pour éviter les gros call-stacks. */
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -72,27 +76,37 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Reconnaît le texte d'une image EN LIGNE via Google Cloud Vision (Netlify Function).
- * Lève une erreur en cas d'échec/timeout/texte vide → l'appelant bascule sur Tesseract.
+ * Reconnaît une image EN LIGNE via la Pages Function (Gemini, sinon Google Vision).
+ * Lève une erreur en cas d'échec/timeout/résultat vide → l'appelant bascule sur Tesseract.
  */
 export async function recognizeOnline(imageBlob: Blob): Promise<OcrResult> {
+  const { data: sessionData } = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_TIMEOUT_MS,
+    'ocr-session'
+  );
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error('OCR en ligne: session absente');
+
   const base64 = await blobToBase64(imageBlob);
   const resp = await withTimeout(
     fetch(OCR_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ image: base64 }),
     }),
     ONLINE_TIMEOUT_MS,
-    'ocr-vision'
+    'ocr-online'
   );
   if (!resp.ok) throw new Error(`OCR en ligne: HTTP ${resp.status}`);
   const data = await resp.json();
   const text = typeof data?.text === 'string' ? data.text : '';
-  if (!text.trim()) throw new Error('OCR en ligne: texte vide');
+  const structured: StructuredReceipt | undefined =
+    data?.structured && typeof data.structured === 'object' ? data.structured : undefined;
+  if (!text.trim() && !structured) throw new Error('OCR en ligne: résultat vide');
   const confidence =
     typeof data?.confidence === 'number' ? Math.max(0, Math.min(1, data.confidence)) : 0.9;
-  return { text, confidence, engine: 'google_vision' };
+  return { text, confidence, engine: data?.engine === 'gemini' ? 'gemini' : 'google_vision', structured };
 }
 
 /**
@@ -112,7 +126,7 @@ export async function recognizeOffline(imageBlob: Blob): Promise<OcrResult> {
 
 /**
  * Point d'entrée unique : choisit le moteur selon la connectivité.
- * En ligne → Google Vision ; hors-ligne ou échec/timeout Vision → repli Tesseract.
+ * En ligne → lecture cloud ; hors-ligne ou échec/timeout → repli Tesseract.
  * Ne lève JAMAIS pour cause réseau : la dégradation est silencieuse (un log).
  */
 export async function recognize(imageBlob: Blob): Promise<OcrResult> {
@@ -121,7 +135,7 @@ export async function recognize(imageBlob: Blob): Promise<OcrResult> {
       return await recognizeOnline(imageBlob);
     } catch (err) {
       console.warn(
-        '🧾 [ocrService] OCR en ligne (Google Vision) indisponible → repli Tesseract:',
+        '🧾 [ocrService] OCR en ligne indisponible → repli Tesseract:',
         err
       );
     }

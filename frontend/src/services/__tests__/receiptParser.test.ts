@@ -5,6 +5,7 @@ import {
   computeReceiptTotal,
   signedReceiptAmount,
   buildReceiptMarkdown,
+  fromStructured,
 } from '../receiptParser';
 
 describe('parseAmount — normalisation des montants OCRisés', () => {
@@ -100,6 +101,170 @@ describe('parseReceipt — extraction fournisseur / lignes / total', () => {
     const coherent = parseReceipt(['Magasin', 'Pomme  1 000', 'Poire  1 000', 'TOTAL  2 000'].join('\n'), 0.9);
     expect(incoherent.items.length).toBe(2);
     expect(incoherent.confidence).toBeLessThan(coherent.confidence);
+  });
+});
+
+const LEADER_PRICE_TICKET = [
+  'LEADER PRICE',
+  'PATISSERIE',
+  'NOSY BE',
+  'PORT : 034 47 015 78',
+  'PORT : 034 47 015 73',
+  'PORT : 038 73 141 50',
+  '08/11/2026 09:27:41',
+  'Ticket en : Ariary',
+  '--------------------',
+  '2  FLAN NATURE',
+  'Prix: 7300 => 14600',
+  '--------------------',
+  'TOTAL : 14600',
+  '--------------------',
+  'ESPECES : 15600 RENDU : 1000',
+  'Table:TABLE3 - Serveur:MURIELLA',
+  '08/11/2026',
+  "TPV '1'  Tick. 80  LAURENCE",
+  'Le guide de Madagascar sur',
+  'http://www.ebookfute.com',
+  'Code partage:leaderprice',
+  'Page FB: leaderpricemadagascar',
+  'Web : http://www.leaderprice.mg',
+  'Merci de votre visite',
+  'A TRES BIENTOT',
+].join('\n');
+
+describe('parseReceipt — ticket réel Leader Price (téléphones + article sur deux lignes)', () => {
+  it('C1 : 1 article FLAN NATURE ×2, total 14600, aucune ligne PORT', () => {
+    const r = parseReceipt(LEADER_PRICE_TICKET, 0.8);
+    expect(r.items).toEqual([{ label: 'FLAN NATURE', quantity: 2, unitPrice: 7300, lineTotal: 14600 }]);
+    expect(r.total).toBe(14600);
+    expect(r.totalRead).toBe(true);
+    expect(r.supplier).toBe('LEADER PRICE');
+    expect(r.items.find((i) => /port/i.test(i.label))).toBeUndefined();
+  });
+
+  it('C2 : sans TOTAL et total de ligne abîmé → quantité × prix unitaire, total non lu', () => {
+    const damaged = LEADER_PRICE_TICKET.replace('TOTAL : 14600\n', '').replace('=> 14600', '=> 2');
+    const r = parseReceipt(damaged, 0.95);
+    expect(r.items).toEqual([{ label: 'FLAN NATURE', quantity: 2, unitPrice: 7300, lineTotal: 14600 }]);
+    expect(r.totalRead).toBe(false);
+    expect(r.total).toBe(14600);
+  });
+
+  it('total non lu → cohérence 0,5', () => {
+    const r = parseReceipt('Boutique\nStylo   500', 1);
+    expect(r.confidence).toBeCloseTo(0.75);
+    expect(r.totalRead).toBe(false);
+  });
+
+  it.each([
+    'MOB 032 12 345 67',
+    'Cel: 033.12.345.67',
+    '034 12 345 67',
+    'Contact +261 34 12 345 67',
+    'WhatsApp 0341234567',
+    'Fax 020 22 123 45',
+  ])('ligne de contact jamais prise pour un article : %s', (line) => {
+    const r = parseReceipt(['Magasin', line, 'Riz   1 000', 'TOTAL   1 000'].join('\n'), 0.9);
+    expect(r.items.map((i) => i.label)).toEqual(['Riz']);
+  });
+
+  it('une ligne « Prix » seule n’est jamais un article', () => {
+    const r = parseReceipt(['Magasin', 'Riz   1 000', 'Prix unitaire 500', 'TOTAL   1 000'].join('\n'), 0.9);
+    expect(r.items.map((i) => i.label)).toEqual(['Riz']);
+  });
+
+  it.each([
+    ['PU 7 300  14 600', 7300, 14600],
+    ['2 x 7300', 7300, 14600],
+    ['x 7300 => 14600', 7300, 14600],
+    ['2 x 7300 = 14600', 7300, 14600],
+  ])('fusion des deux lignes : %s', (priceLine, unitPrice, lineTotal) => {
+    const r = parseReceipt(['Magasin', '2  FLAN NATURE', priceLine, 'TOTAL 14600'].join('\n'), 0.9);
+    expect(r.items).toEqual([{ label: 'FLAN NATURE', quantity: 2, unitPrice, lineTotal }]);
+  });
+});
+
+describe('fromStructured — lecture Gemini', () => {
+  const NOW = new Date(2026, 10, 8, 12, 0, 0);
+  const GEMINI_TICKET = {
+    supplier: 'LEADER PRICE',
+    date: '2026-11-08',
+    currency: 'MGA',
+    items: [{ label: 'FLAN NATURE', quantity: 2, unitPrice: 7300, lineTotal: 14600 }],
+    total: 14600,
+  };
+
+  it('C4 : ticket Gemini → 1 article, total 14600, confiance maximale', () => {
+    const r = fromStructured(GEMINI_TICKET, NOW);
+    expect(r).not.toBeNull();
+    expect(r!.items).toEqual([{ label: 'FLAN NATURE', quantity: 2, unitPrice: 7300, lineTotal: 14600 }]);
+    expect(r!.total).toBe(14600);
+    expect(r!.totalRead).toBe(true);
+    expect(r!.confidence).toBe(1);
+    expect(r!.date).toBe('2026-11-08');
+  });
+
+  it('C4 : lignes à 0 et libellés vides écartés', () => {
+    const r = fromStructured(
+      {
+        ...GEMINI_TICKET,
+        items: [
+          ...GEMINI_TICKET.items,
+          { label: 'OFFERT', quantity: 1, unitPrice: 0, lineTotal: 0 },
+          { label: '   ', quantity: 1, unitPrice: 500, lineTotal: 500 },
+        ],
+      },
+      NOW
+    );
+    expect(r!.items).toHaveLength(1);
+    expect(r!.items[0].label).toBe('FLAN NATURE');
+  });
+
+  it.each([
+    ['null', null],
+    ['texte', 'pas un ticket'],
+    ['items absent', { total: 100 }],
+    ['items non tableau', { items: 'x', total: 100 }],
+    ['total en texte', { items: [], total: '100' }],
+    ['total négatif', { items: [], total: -1 }],
+    ['ligne non objet', { items: ['x'], total: 100 }],
+    ['montant en texte', { items: [{ label: 'A', quantity: 1, unitPrice: null, lineTotal: '5' }], total: 5 }],
+    ['montant infini', { items: [{ label: 'A', quantity: 1, unitPrice: null, lineTotal: Infinity }], total: 5 }],
+  ])('C4 : JSON invalide rejeté (%s)', (_name, input) => {
+    expect(fromStructured(input, NOW)).toBeNull();
+  });
+
+  it('total absent → confiance 0,5, total déduit mais non lu', () => {
+    const r = fromStructured({ ...GEMINI_TICKET, total: null }, NOW);
+    expect(r!.confidence).toBe(0.5);
+    expect(r!.totalRead).toBe(false);
+    expect(r!.total).toBe(14600);
+  });
+
+  it('écart Σ lignes / total → mêmes paliers que parseReceipt', () => {
+    expect(fromStructured({ ...GEMINI_TICKET, total: 14800 }, NOW)!.confidence).toBe(0.9);
+    expect(fromStructured({ ...GEMINI_TICKET, total: 16000 }, NOW)!.confidence).toBe(0.5);
+    expect(fromStructured({ ...GEMINI_TICKET, total: 30000 }, NOW)!.confidence).toBe(0.3);
+  });
+
+  it('prix unitaire absent → déduit de la quantité', () => {
+    const r = fromStructured(
+      { ...GEMINI_TICKET, items: [{ label: 'FLAN', quantity: 2, unitPrice: null, lineTotal: 14600 }] },
+      NOW
+    );
+    expect(r!.items[0].unitPrice).toBe(7300);
+  });
+
+  it.each([
+    ['du jour', '2026-11-08', '2026-11-08'],
+    ['il y a 60 jours', '2026-09-09', '2026-09-09'],
+    ['il y a 61 jours', '2026-09-08', undefined],
+    ['future', '2026-11-09', undefined],
+    ['impossible', '2026-02-31', undefined],
+    ['mal formée', '08/11/2026', undefined],
+    ['absente', null, undefined],
+  ])('date %s', (_name, date, expected) => {
+    expect(fromStructured({ ...GEMINI_TICKET, date }, NOW)!.date).toBe(expected);
   });
 });
 

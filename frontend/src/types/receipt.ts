@@ -49,6 +49,27 @@ export interface ParsedReceipt {
   supplier?: string;
   items: ParsedReceiptItem[];
   total?: number;
+  /** Vrai seulement si un total a été LU sur le ticket (faux : `total` = Σ des lignes). */
+  totalRead: boolean;
+  /** Date du ticket AAAA-MM-JJ, seulement si elle est valide et récente (lecture Gemini). */
+  date?: string;
   /** Confiance globale [0..1] : combinaison confiance OCR + cohérence Σ lignes vs total lu. */
   confidence: number;
+}
+
+/** Ligne d'article telle que renvoyée par la lecture structurée (Gemini). */
+export interface StructuredReceiptItem {
+  label: string;
+  quantity: number;
+  unitPrice: number | null;
+  lineTotal: number;
+}
+
+/** Ticket tel que renvoyé par la lecture structurée (Gemini). */
+export interface StructuredReceipt {
+  supplier: string | null;
+  date: string | null;
+  currency: string | null;
+  items: StructuredReceiptItem[];
+  total: number | null;
 }

@@ -20,7 +20,7 @@ import type { Account, TransactionCategory } from '../../types';
 import transactionService from '../../services/transactionService';
 import receiptService from '../../services/receiptService';
 import { recognize, type OcrEngine } from '../../services/ocrService';
-import { parseReceipt, buildReceiptMarkdown } from '../../services/receiptParser';
+import { parseReceipt, fromStructured, buildReceiptMarkdown } from '../../services/receiptParser';
 import { preprocessReceiptImage } from '../../utils/receiptImage';
 import { confidenceThresholdFor, RECEIPT_COHERENCE_TOLERANCE } from '../../constants/receipt';
 import type { ParsedReceiptItem } from '../../types/receipt';
@@ -40,6 +40,7 @@ interface ReviewState {
   supplier?: string;
   items: ParsedReceiptItem[];
   total?: number;
+  date?: string;
   suggestedCategory?: string;
   ocrConfidence: number;
   ocrEngine: OcrEngine;
@@ -88,6 +89,7 @@ const ReceiptScanButton = ({
       notes: undefined,
       originalCurrency: currency,
       originalAmount: Math.abs(total),
+      currentOwnerId: userId,
     });
 
     if (!transaction?.id) {
@@ -130,16 +132,17 @@ const ReceiptScanButton = ({
       // 1) Pré-traitement léger (downscale + gris) — en mémoire, jamais stocké
       const processed = await preprocessReceiptImage(file);
 
-      // 2) OCR : Google Vision en ligne, repli Tesseract hors-ligne / en cas d'échec
-      const { text, confidence, engine } = await recognize(processed);
+      // 2) OCR : Gemini ou Google Vision en ligne, repli Tesseract hors-ligne / en cas d'échec
+      const { text, confidence, engine, structured } = await recognize(processed);
 
-      // 3) Parsing (commun aux deux moteurs ; le texte Vision étant plus propre → meilleurs résultats)
-      const parsed = parseReceipt(text, confidence);
+      // 3) Ticket déjà structuré (Gemini), sinon parsing du texte brut
+      const parsed = (structured && fromStructured(structured)) || parseReceipt(text, confidence);
+      const ocrConfidence = structured ? parsed.confidence : confidence;
 
       if (parsed.items.length === 0) {
         toast.error("Aucun article détecté. Réessayez avec une photo plus nette ou saisissez à la main.");
         // Ouvrir tout de même la revue (vide) pour saisie manuelle
-        setReview({ supplier: parsed.supplier, items: [], total: parsed.total, ocrConfidence: confidence, ocrEngine: engine });
+        setReview({ supplier: parsed.supplier, items: [], total: parsed.total, date: parsed.date, ocrConfidence, ocrEngine: engine });
         return;
       }
 
@@ -149,11 +152,13 @@ const ReceiptScanButton = ({
         categories.map((c) => c.name)
       );
 
-      // 5) Décision : insertion directe vs revue
+      // 5) Décision : insertion directe vs revue (total non lu = revue, toujours)
       const sumLines = parsed.items.reduce((s, it) => s + it.lineTotal, 0);
       const coherent =
-        parsed.total === undefined ||
-        (parsed.total > 0 && Math.abs(sumLines - parsed.total) / parsed.total <= RECEIPT_COHERENCE_TOLERANCE);
+        parsed.totalRead &&
+        parsed.total !== undefined &&
+        parsed.total > 0 &&
+        Math.abs(sumLines - parsed.total) / parsed.total <= RECEIPT_COHERENCE_TOLERANCE;
       const directAccountId = defaultAccountId || accounts[0]?.id;
 
       if (
@@ -169,8 +174,8 @@ const ReceiptScanButton = ({
           total,
           accountId: directAccountId,
           category: suggestedCategory,
-          date: todayISO(),
-          ocrConfidence: confidence,
+          date: parsed.date ?? todayISO(),
+          ocrConfidence,
           ocrEngine: engine,
         });
         if (ok) toast.success('Ticket enregistré');
@@ -182,8 +187,9 @@ const ReceiptScanButton = ({
         supplier: parsed.supplier,
         items: parsed.items,
         total: parsed.total,
+        date: parsed.date,
         suggestedCategory,
-        ocrConfidence: confidence,
+        ocrConfidence,
         ocrEngine: engine,
       });
     } catch (error) {
@@ -326,7 +332,7 @@ const ReceiptScanButton = ({
           defaultAccountId={defaultAccountId}
           categories={categories}
           suggestedCategory={review.suggestedCategory}
-          defaultDate={todayISO()}
+          defaultDate={review.date ?? todayISO()}
           formatCurrency={formatCurrency}
           onCancel={() => setReview(null)}
           onConfirm={handleReviewConfirm}
