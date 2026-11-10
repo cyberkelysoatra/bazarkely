@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.131.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : modules 1 à 4, synthèse, relecture et export (NEC-CC-05)';
+export const APP_VERSION = '3.132.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : en-tête compact et logo B-lossom qui ouvre les autres modules (NEC-CC-06)';
 export const LAST_UPDATED = '2026-11-10';
 export const APP_BUILD_DATE = '2026-11-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.132.0',
+    date: '2026-11-10',
+    description: 'Mon Business Plan : en-tête compact et logo B-lossom qui ouvre les autres modules (NEC-CC-06)',
+    changes: [
+      'En-tête MODÈLE B : une seule rangée, logo NEC à gauche, titre au milieu (coupé sur une ligne), logo B-lossom Center à droite ; hauteur revenue à celle de la phase 1',
+      'Compte connecté sur 1sakely.org : le logo B-lossom ouvre la feuille des autres modules (liste gardée sur le téléphone, marche hors ligne) ; participant sans compte : simple image, aucune requête'
+    ]
+  },
   {
     version: '3.131.0',
     date: '2026-11-10',
