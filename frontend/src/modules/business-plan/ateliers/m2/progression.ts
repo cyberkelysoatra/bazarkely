@@ -1,6 +1,7 @@
-// Progress of section m2 (0 to 100). Placeholder: 0 until its phase builds the section.
+// Progress of module 2: share of the 9 blocks of the canvas filled.
 import type { Plan } from '../../types';
+import { BLOCS } from './blocs';
 
-export function progression(_plan: Plan): number {
-  return 0;
+export function progression(plan: Plan): number {
+  return Math.round((BLOCS.filter((b) => plan.m2[b.cle].trim()).length / BLOCS.length) * 100);
 }
