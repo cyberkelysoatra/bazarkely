@@ -1,6 +1,7 @@
-// Progress of section relecture (0 to 100). Placeholder: 0 until its phase builds the section.
+// Progress of the peer review: points answered (Oui or À revoir) out of 10.
 import type { Plan } from '../../types';
+import { POINTS, pointsRepondus } from './points';
 
-export function progression(_plan: Plan): number {
-  return 0;
+export function progression(plan: Plan): number {
+  return Math.round((pointsRepondus(plan) / POINTS.length) * 100);
 }

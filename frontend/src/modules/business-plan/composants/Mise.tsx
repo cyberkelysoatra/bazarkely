@@ -1,12 +1,10 @@
-// Page shell: header, back bar, example banner, content, bottom nav (Projets, Sommaire, Chiffres, Partager).
+// Page shell: header, back bar, example banner, content, bottom nav (Projets, Sommaire, Chiffres, Exporter).
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Plan } from '../types';
 import { EnTete } from './EnTete';
 import { Icone, type NomIcone } from './Icones';
 import { dupliquerPlan } from '../db/plans';
-import { texteChiffres } from '../utils/chiffres';
-import { partagerTexte } from '../utils/partage';
 
 export function BandeauExemple({ plan }: { plan: Plan }) {
   const naviguer = useNavigate();
@@ -59,31 +57,13 @@ function ElementNav({ vers, icone, texte, fin = false }: { vers: string; icone: 
 }
 
 export function NavBas({ plan }: { plan: Plan }) {
-  const [message, setMessage] = useState('');
-  const partager = async () => {
-    const r = await partagerTexte(texteChiffres(plan));
-    setMessage(r === 'copie' ? 'Chiffres copiés : collez-les dans WhatsApp.' : r === 'echec' ? 'Partage impossible sur ce téléphone.' : '');
-    if (r === 'copie' || r === 'echec') window.setTimeout(() => setMessage(''), 4000);
-  };
   return (
-    <>
-      {message ? (
-        <p role="status" className="fixed left-1/2 -translate-x-1/2 bottom-[76px] z-30 w-[calc(100%-32px)] max-w-[448px] rounded-xl bg-encre text-white px-4 py-3 text-[15px]">
-          {message}
-        </p>
-      ) : null}
-      <nav className="bp-nav fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-[480px] bg-white border-t border-filet flex" aria-label="Navigation du projet">
-        <ElementNav vers="/" icone="projets" texte="Projets" fin />
-        <ElementNav vers={`/p/${plan.id}`} icone="sommaire" texte="Sommaire" fin />
-        <ElementNav vers={`/p/${plan.id}/m5`} icone="chiffres" texte="Chiffres" />
-        <button type="button" onClick={partager} className="flex-1 min-h-[56px] flex flex-col items-center justify-center gap-0.5 text-[12px] font-bold text-doux">
-          <span className="w-12 h-7 rounded-full flex items-center justify-center">
-            <Icone nom="partager" />
-          </span>
-          Partager
-        </button>
-      </nav>
-    </>
+    <nav className="bp-nav fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-[480px] bg-white border-t border-filet flex" aria-label="Navigation du projet">
+      <ElementNav vers="/" icone="projets" texte="Projets" fin />
+      <ElementNav vers={`/p/${plan.id}`} icone="sommaire" texte="Sommaire" fin />
+      <ElementNav vers={`/p/${plan.id}/m5`} icone="chiffres" texte="Chiffres" />
+      <ElementNav vers={`/p/${plan.id}/exporter`} icone="partager" texte="Exporter" />
+    </nav>
   );
 }
 

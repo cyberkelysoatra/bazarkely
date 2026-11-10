@@ -3,12 +3,11 @@
 import type { Plan } from '../../types';
 
 export const m4: Partial<Plan['m4']> = {
-  produit:
-    "Jus de mangue, d'ananas et de citron pressés le jour même, sans conservateur, en bouteille en verre consignée de 50 cl, avec l'étiquette « Fruits de Nosy Be ». Le fruit change avec la saison.",
-  prix: "3 000 Ar la bouteille livrée. Moins cher qu'un jus importé (5 000 à 6 000 Ar le litre), un peu plus cher qu'un soda, mais frais et local. Paiement à la livraison, 15 jours de crédit pour les clients réguliers.",
-  place: "Livraison directe chaque matin avant 10 h aux hôtels et restaurants de Hell-Ville et d'Ambatoloaka, en glacières. Commande par WhatsApp la veille. Les bouteilles vides sont reprises à la livraison suivante.",
-  promotion:
-    'Dégustation gratuite dans chaque hôtel visé, page Facebook et WhatsApp, bouteille visible sur les tables des clients. Budget : environ 100 000 Ar de bouteilles offertes au lancement, pris sur le stock de départ.',
+  // The 4 P: exact examples of the workbook page 10 table.
+  produit: '3 parfums, bouteille en verre de 50 cl consignée, étiquette locale',
+  prix: '3 000 Ar la bouteille ; 2 800 Ar à partir de 50 bouteilles par semaine',
+  place: 'Livraison directe aux hôtels deux fois par semaine',
+  promotion: 'Dégustations gratuites, page Facebook, bouche-à-oreille des hôteliers',
   etapes:
     "1. Achat des fruits chez 3 producteurs et au marché de Hell-Ville, chaque matin à 6 h.\n2. Lavage, épluchage, pressage et filtrage.\n3. Mise en bouteille, bouchon, étiquette, passage au froid.\n4. Livraison avant 10 h.\n5. Reprise des bouteilles vides, lavage et stérilisation.",
   equipe: [

@@ -1,6 +1,8 @@
-// Progress of section apres (0 to 100). Placeholder: 0 until its phase builds the section.
+// Progress of "Et après ?": my three next actions written (an action counts when its text is filled).
 import type { Plan } from '../../types';
+import { NB_ACTIONS } from './calendrier';
 
-export function progression(_plan: Plan): number {
-  return 0;
+export function progression(plan: Plan): number {
+  const faites = plan.actions.slice(0, NB_ACTIONS).filter((a) => a.action.trim()).length;
+  return Math.round((faites / NB_ACTIONS) * 100);
 }

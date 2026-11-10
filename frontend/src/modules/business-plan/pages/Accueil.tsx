@@ -5,6 +5,7 @@ import type { Plan } from '../types';
 import { creerPlan, listerPlans, supprimerPlan } from '../db/plans';
 import { progressionGlobale } from '../rubriques/registre';
 import { ID_EXEMPLE } from '../data/exemple';
+import { SauvegardeInvalide, lireSauvegarde } from '../export/sauvegarde';
 import { dateFr } from '../utils/format';
 import { Mise } from '../composants/Mise';
 import { Carte } from '../composants/Carte';
@@ -16,6 +17,7 @@ import { EMAIL_FORMATEUR, emailSession } from '../sync/supabase';
 export default function Accueil() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [aSupprimer, setASupprimer] = useState<string | null>(null);
+  const [restauration, setRestauration] = useState<{ ok: boolean; texte: string } | null>(null);
   const naviguer = useNavigate();
   const pret = usePretModeAvion();
   const installable = useInstallationDisponible();
@@ -33,6 +35,19 @@ export default function Accueil() {
     const plan = await creerPlan();
     // Offered right away: join the training (trainer tracking) or work alone.
     naviguer(`/p/${plan.id}/formation`);
+  };
+
+  // Backup file chosen by the person: always restored as a NEW plan (new id), never over an existing one.
+  const restaurer = async (fichier: File | undefined) => {
+    if (!fichier) return;
+    setRestauration(null);
+    try {
+      const plan = await creerPlan(lireSauvegarde(await fichier.text()));
+      setRestauration({ ok: true, texte: `Projet restauré : ${plan.identite.nomProjet.trim() || 'Projet sans nom'}` });
+      charger();
+    } catch (e) {
+      setRestauration({ ok: false, texte: e instanceof SauvegardeInvalide ? e.message : "Ce fichier n'a pas pu être lu. Réessayez." });
+    }
   };
 
   const supprimer = async (id: string) => {
@@ -97,6 +112,25 @@ export default function Accueil() {
       <button type="button" onClick={nouveau} className="w-full min-h-[52px] rounded-xl bg-violet text-white text-[17px] font-bold flex items-center justify-center gap-2 active:opacity-90">
         <Icone nom="plus" /> Nouveau projet
       </button>
+
+      <label className="bp-restaurer mt-2.5 min-h-[48px] rounded-xl border-2 border-violet text-violet font-bold flex items-center justify-center gap-2 cursor-pointer active:bg-violetClair focus-within:outline focus-within:outline-[3px] focus-within:outline-turquoise">
+        <Icone nom="copier" /> Restaurer une sauvegarde
+        <input
+          type="file"
+          accept=".json,application/json"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            void restaurer(f);
+          }}
+        />
+      </label>
+      {restauration ? (
+        <p role="status" className={`bp-restauration mt-2 text-[15px] font-bold leading-snug break-words ${restauration.ok ? 'text-turquoiseTexte' : 'text-alerte'}`}>
+          {restauration.texte}
+        </p>
+      ) : null}
 
       <Carte ton="violet" className="mt-4">
         <p className="text-[16px] font-bold text-violet">Voir l'exemple JUS'NOSY</p>

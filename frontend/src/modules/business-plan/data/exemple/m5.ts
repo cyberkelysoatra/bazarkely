@@ -1,4 +1,4 @@
-// JUS'NOSY example, module 5 (workbook pages 13 to 14). Exact figures: see utils/chiffres.test.ts.
+// JUS'NOSY example, module 5 (workbook pages 13 to 15). Exact figures: see utils/chiffres.test.ts.
 import type { Plan } from '../../types';
 
 const l = (id: string, libelle: string, montant: number) => ({ id, libelle, montant });

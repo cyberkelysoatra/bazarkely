@@ -123,6 +123,21 @@ export default function Sommaire() {
           </li>
         ))}
       </ol>
+      <Link
+        to={`/p/${plan.id}/exporter`}
+        className="bp-exporter mt-4 flex items-center gap-3 rounded-2xl bg-violet p-3.5 text-white active:opacity-90"
+      >
+        <span className="shrink-0 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
+          <Icone nom="partager" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-bold leading-snug">Exporter</span>
+          <span className="block text-[14px] opacity-90 leading-snug">PDF, texte WhatsApp, sauvegarde</span>
+        </span>
+        <span className="shrink-0">
+          <Icone nom="chevron" />
+        </span>
+      </Link>
     </Mise>
   );
 }

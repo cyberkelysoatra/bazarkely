@@ -20,7 +20,8 @@ function precacheList(): Plugin {
         .filter((name) => name.startsWith('assets/plan/') && !name.endsWith('.map'))
         .map((name) => '/' + name)
         .sort()
-      const list = ['/plan/', '/plan/manifest.webmanifest', '/icon-192x192.png', '/icon-512x512.png', ...files]
+      const logos = ['nec-logo-v1.png', 'blossom-blanc-v1.png', 'blossom-couleur-v1.png'].map((f) => '/plan/logos/' + f)
+      const list = ['/plan/', '/plan/manifest.webmanifest', '/icon-192x192.png', '/icon-512x512.png', ...logos, ...files]
       this.emitFile({ type: 'asset', fileName: 'plan/precache.json', source: JSON.stringify({ version, files: list }, null, 1) })
     }
   }
@@ -32,6 +33,10 @@ export default defineConfig({
   base: '/',
   // public/ is already copied by the host build.
   publicDir: false,
+  resolve: {
+    // Optional modules of jsPDF, never used by the PDF of the plan (export/pdf.ts): kept out of the precache.
+    alias: Object.fromEntries(['html2canvas', 'canvg', 'dompurify'].map((m) => [m, resolve(__dirname, 'src/modules/business-plan/export/sansModule.ts')]))
+  },
   define: {
     __PLAN_VERSION__: JSON.stringify(version)
   },

@@ -15,10 +15,10 @@ type IdDemarche = Plan['m4']['demarches'][number]['id'];
 type Periode = Plan['m4']['calendrier'][number]['periode'];
 
 const QUATRE_P: { cle: CleP; titre: string; question: string }[] = [
-  { cle: 'produit', titre: 'Produit', question: 'Que vendez-vous exactement ? Qualité, présentation, gamme : ce qui le rend différent.' },
-  { cle: 'prix', titre: 'Prix', question: "À quel prix, et comment l'avez-vous fixé (vos coûts, les concurrents, ce que le client accepte) ? Comment le client paie-t-il ?" },
-  { cle: 'place', titre: 'Place', question: 'Où et comment le client achète-t-il ? Point de vente, livraison, intermédiaires.' },
-  { cle: 'promotion', titre: 'Promotion et budget', question: 'Comment les clients vont-ils vous connaître ? Quels moyens, et combien cela coûte ?' }
+  { cle: 'produit', titre: 'Produit', question: 'Que vendez-vous exactement ? Quelle gamme, quelle qualité, quel emballage ?' },
+  { cle: 'prix', titre: 'Prix', question: 'À quel prix ? Comparé aux concurrents ? Couvre-t-il vos coûts ?' },
+  { cle: 'place', titre: 'Place (distribution)', question: 'Où et comment le client achète-t-il et reçoit-il le produit ?' },
+  { cle: 'promotion', titre: 'Promotion (et budget)', question: 'Comment le client vous connaît-il ? Avec quel budget ?' }
 ];
 
 const TEMPS = [
@@ -36,11 +36,11 @@ const PERIODES: { periode: Periode; titre: string }[] = [
 
 const FORMES = ['Entreprise individuelle', 'SARL unipersonnelle (SARLU)', 'SARL', 'Coopérative ou association'].map((t) => ({ v: t, t }));
 
-const TABLEAU_FORMES: { forme: string; pourQui: string; risque: string }[] = [
-  { forme: 'Entreprise individuelle', pourQui: 'Une personne seule, pour démarrer simplement.', risque: 'Vos biens personnels répondent des dettes.' },
-  { forme: 'SARL unipersonnelle (SARLU)', pourQui: 'Une personne seule qui crée une société.', risque: 'Vous ne risquez que votre apport.' },
-  { forme: 'SARL', pourQui: 'Deux associés ou plus.', risque: 'Chacun ne risque que son apport.' },
-  { forme: 'Coopérative ou association', pourQui: 'Un groupe (producteurs, habitants) qui met ses moyens en commun.', risque: 'Règles fixées par les statuts du groupe.' }
+const TABLEAU_FORMES: { forme: string; pourQui: string; aRetenir: string }[] = [
+  { forme: 'Entreprise individuelle', pourQui: 'Une personne seule qui démarre', aRetenir: "Simple ; vos biens personnels et ceux de l'entreprise ne sont pas séparés" },
+  { forme: 'SARL unipersonnelle (SARLU)', pourQui: 'Une personne seule qui veut protéger ses biens', aRetenir: 'Société à un seul associé ; responsabilité limitée aux apports' },
+  { forme: 'SARL', pourQui: 'De 2 associés ou plus', aRetenir: 'Forme la plus courante pour les petites sociétés' },
+  { forme: 'Coopérative ou association', pourQui: 'Projet collectif (producteurs, pêcheurs) ou à but non lucratif', aRetenir: 'Gouvernance collective ; règles propres' }
 ];
 
 const DEMARCHES: { id: IdDemarche; titre: string }[] = [
@@ -125,9 +125,9 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         ))}
       </Carte>
 
-      <Carte id="s4b" titre="4b. Mon organisation" sousTitre="Comment vous produisez, avec qui, et grâce à qui.">
+      <Carte id="s4b" titre="4b. Mes moyens et mon équipe" sousTitre="Comment vous produisez, avec qui, et grâce à qui.">
         <ChampTexte
-          label="Étapes de production ou de service"
+          label="Étapes de ma production ou de mon service, de l'achat à la livraison"
           aide={<p className="text-[14px] text-doux mt-1 leading-snug">De l'achat des matières jusqu'au client, dans l'ordre.</p>}
           valeur={m4.etapes}
           onChange={(v) => set((m) => void (m.etapes = v))}
@@ -173,7 +173,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         )}
 
         <ChampTexte
-          label="Fournisseurs et partenaires"
+          label="Mes fournisseurs et partenaires principaux"
           aide={<p className="text-[14px] text-doux mt-1 leading-snug">Qui vous vend vos matières, qui peut vous aider à vendre ou à produire.</p>}
           valeur={m4.fournisseurs}
           onChange={(v) => set((m) => void (m.fournisseurs = v))}
@@ -181,13 +181,13 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         />
       </Carte>
 
-      <Carte id="s4c" titre="4c. Mon calendrier de la première année" sousTitre="Une étape ou un objectif par trimestre, et qui s'en occupe.">
+      <Carte id="s4c" titre="4c. Mon calendrier des 12 premiers mois" sousTitre="Une étape ou un objectif par trimestre, et qui s'en occupe.">
         <Aide titre="Un objectif SMART">
           <p>
-            Un objectif SMART est <span className="font-bold">S</span>pécifique, <span className="font-bold">M</span>esurable, <span className="font-bold">A</span>tteignable,{' '}
-            <span className="font-bold">R</span>éaliste et <span className="font-bold">T</span>emporel (avec une date).
+            Décrivez les étapes de production ou de service, les moyens nécessaires, qui fait quoi, et les grandes étapes des 12 premiers mois. Un objectif doit être SMART :
+            spécifique, mesurable, atteignable, réaliste et daté.
           </p>
-          <p className="mt-2">« Livrer 10 hôtels chaque semaine d'ici juin 2027 » est SMART. « Devenir le leader du jus » ne l'est pas.</p>
+          <p className="mt-2">Exemple fil rouge, JUS'NOSY (projet fictif) : « Livrer 10 hôtels chaque semaine d'ici juin 2027 » est SMART. « Devenir le leader du jus » ne l'est pas.</p>
         </Aide>
         {PERIODES.map((pr) => {
           const c = m4.calendrier.find((x) => x.periode === pr.periode) ?? { objectif: '', responsable: '' };
@@ -201,21 +201,31 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         })}
       </Carte>
 
-      <Carte id="s4d" titre="4d. Ma forme juridique et mes démarches">
+      <Carte id="s4d" titre="4d. Ma formalisation">
         <Aide titre="Choisir sa forme juridique">
+          <p className="mb-3">
+            L'objectif de la promotion NEC 2026 est que chaque projet soit créé ou formalisé en 2027. Exister légalement permet de facturer les hôtels et les entreprises, d'ouvrir un
+            compte bancaire, de recevoir une subvention et d'embaucher.
+          </p>
           <ul className="space-y-2.5">
             {TABLEAU_FORMES.map((f) => (
               <li key={f.forme} className="rounded-lg bg-white px-3 py-2">
                 <p className="font-bold text-violet">{f.forme}</p>
-                <p>{f.pourQui}</p>
-                <p className="text-doux">{f.risque}</p>
+                <p>
+                  <span className="font-bold">Pour qui ? </span>
+                  {f.pourQui}
+                </p>
+                <p>
+                  <span className="font-bold">À retenir : </span>
+                  {f.aRetenir}
+                </p>
               </li>
             ))}
           </ul>
           <p className="mt-3">
-            Les démarches suivent un ordre : les statuts d'abord, puis le NIF (numéro d'identification fiscale), la carte STAT, le registre du commerce et la carte fiscale. Sous
-            400 millions d'ariary de chiffre d'affaires par an, une petite entreprise paie en général l'impôt synthétique, un impôt simple calculé sur le chiffre d'affaires. Faites
-            confirmer votre situation par le centre fiscal.
+            Démarches principales : statuts (pour une société), NIF (numéro d'identification fiscale), carte statistique (STAT), inscription au registre du commerce, carte fiscale,
+            et affiliation à la CNaPS dès le premier salarié. Les petites entreprises dont le chiffre d'affaires annuel est inférieur à 400 millions d'ariary relèvent en général de
+            l'impôt synthétique : faites confirmer votre situation par le centre fiscal.
           </p>
         </Aide>
         <Choix label="Forme juridique choisie" options={FORMES} valeur={m4.forme} onChange={(v) => set((m) => void (m.forme = v))} lectureSeule={ls} />

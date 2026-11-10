@@ -5,6 +5,7 @@ import type { AtelierProps, Plan } from '../../types';
 import { ChampTexte } from '../../composants/Champs';
 import { Carte } from '../../composants/Carte';
 import { Icone } from '../../composants/Icones';
+import { Aide } from '../../composants/Aide';
 import { BLOCS, aujourdhuiMadagascar, jourFr, type Bloc } from './blocs';
 import { Canvas } from './Canvas';
 
@@ -72,6 +73,14 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
           client et la valeur, ensuite l'organisation, enfin l'argent.
         </p>
       </Carte>
+
+      <Aide titre="À retenir">
+        <ul className="list-disc pl-5 space-y-1.5">
+          <li>Une idée par post-it ou par ligne, en quelques mots.</li>
+          <li>Chaque segment de clients doit avoir sa proposition de valeur et sa source de revenus.</li>
+          <li>Si un bloc reste vide, c'est une question à travailler, pas un détail.</li>
+        </ul>
+      </Aide>
 
       <div className="mb-4">
         <label htmlFor={idDate} className="block text-[15px] font-bold text-encre leading-snug">

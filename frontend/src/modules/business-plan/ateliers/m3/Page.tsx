@@ -14,10 +14,10 @@ type Concurrent = Plan['m3']['concurrents'][number];
 type CleSwot = keyof Plan['m3']['swot'];
 
 const SWOT: { cle: CleSwot; titre: string; sens: string; fond: string; texte: string; consigne: string }[] = [
-  { cle: 'forces', titre: 'FORCES', sens: 'internes, positives', fond: 'bg-turquoiseClair border-turquoiseClair', texte: 'text-turquoiseTexte', consigne: 'Ce que vous faites bien, ce que vous avez de plus que les autres.' },
-  { cle: 'faiblesses', titre: 'FAIBLESSES', sens: 'internes, négatives', fond: 'bg-violetClair border-violetClair', texte: 'text-violet', consigne: 'Ce qui vous manque, et ce que vous ferez pour le réduire.' },
-  { cle: 'opportunites', titre: 'OPPORTUNITÉS', sens: 'externes, positives', fond: 'bg-white border-turquoise', texte: 'text-turquoiseTexte', consigne: 'Ce qui, autour de vous, peut vous aider.' },
-  { cle: 'menaces', titre: 'MENACES', sens: 'externes, négatives', fond: 'bg-white border-violet', texte: 'text-violet', consigne: 'Ce qui, autour de vous, peut vous gêner, et votre réponse.' }
+  { cle: 'forces', titre: 'FORCES', sens: 'Internes, positives', fond: 'bg-turquoiseClair border-turquoiseClair', texte: 'text-turquoiseTexte', consigne: 'Mes atouts' },
+  { cle: 'faiblesses', titre: 'FAIBLESSES', sens: 'Internes, négatives', fond: 'bg-violetClair border-violetClair', texte: 'text-violet', consigne: 'Ce qui me manque' },
+  { cle: 'opportunites', titre: 'OPPORTUNITÉS', sens: 'Externes, positives', fond: 'bg-white border-turquoise', texte: 'text-turquoiseTexte', consigne: "Ce qui peut m'aider" },
+  { cle: 'menaces', titre: 'MENACES', sens: 'Externes, négatives', fond: 'bg-white border-violet', texte: 'text-violet', consigne: 'Ce qui peut me nuire' }
 ];
 
 const TYPES = [
@@ -60,18 +60,21 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
+      <Carte ton="violet" titre="Marché et concurrence">
+        <p className="text-[16px] leading-relaxed text-encre">
+          Un jury ne vous demande pas un chiffre exact, il veut voir que vous savez raisonner. Marché potentiel par mois = nombre de clients possibles x quantité achetée par achat x
+          nombre d'achats par mois. Puis on fixe la part réaliste que l'on peut prendre la première année (souvent de 5 à 20 %), en fonction de sa capacité de production et de vente.
+        </p>
+      </Carte>
+
       <Aide titre="À retenir">
         <ul className="list-disc pl-5 space-y-1.5">
-          <li>Un jury ne vous demande pas un chiffre exact, il veut voir que vous savez raisonner.</li>
-          <li>
-            Dire « je n'ai pas de concurrent » est l'erreur la plus fréquente devant un jury : il y a toujours une autre solution, au moins « ne rien acheter ».
-          </li>
+          <li>Allez relever les prix des concurrents vous-même, au marché ou en magasin.</li>
+          <li>Pour chaque faiblesse et chaque menace, notez ce que vous ferez pour la réduire.</li>
         </ul>
-        <p className="mt-3 font-bold">À RETENIR</p>
-        <p>Allez relever les prix des concurrents vous-même, au marché ou en magasin. Pour chaque faiblesse et chaque menace, notez ce que vous ferez pour la réduire.</p>
       </Aide>
 
-      <Carte id="s3a" titre="3a. La taille de mon marché" sousTitre="Combien de clients possibles, combien ils achètent, combien vous visez.">
+      <Carte id="s3a" titre="3a. Taille de mon marché" sousTitre="Combien de clients possibles, combien ils achètent, combien vous visez.">
         <ChampTexte
           label="Mon unité de vente"
           mention="La même qu'au module 5"
@@ -169,6 +172,15 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       </Carte>
 
       <Carte id="s3b" titre="3b. Mes concurrents" sousTitre="Tous ceux à qui votre client peut acheter à la place, même une autre solution.">
+        <Aide titre="Direct ou indirect ?">
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>Concurrent direct : vend le même produit au même client (un autre producteur de jus local).</li>
+            <li>Concurrent indirect : répond au même besoin autrement (sodas, jus importés, jus faits maison par l'hôtel).</li>
+          </ul>
+          <p className="mt-2">
+            Dire « je n'ai pas de concurrent » est l'erreur la plus fréquente devant un jury : il y a toujours une autre solution, au moins « ne rien acheter ».
+          </p>
+        </Aide>
         {!m3.concurrents.some((c) => c.nom.trim()) ? (
           <Rappel texte="Citez au moins un concurrent, même indirect : un jury repère tout de suite « je n'ai pas de concurrent »." />
         ) : null}
@@ -210,7 +222,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         ) : null}
       </Carte>
 
-      <Carte id="s3c" titre="3c. Ma SWOT" sousTitre="Dedans : vous et votre projet. Dehors : le marché, la saison, les règles.">
+      <Carte id="s3c" titre="3c. Ma SWOT" sousTitre="Interne : dépend de moi. Externe : ne dépend pas de moi.">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SWOT.map((s) => (
             <div key={s.cle} className={`bp-swot rounded-xl border-2 ${s.fond} p-3 min-w-0`}>
@@ -223,12 +235,13 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       </Carte>
 
       <Carte ton="violet" titre="À FAIRE CE SOIR">
-        <ul className="list-disc pl-5 space-y-1.5 text-[15px] leading-relaxed text-encre">
-          <li>Relevez les prix d'au moins 3 concurrents, au marché ou en magasin.</li>
-          <li>Relevez aussi le prix de ce que vous achèterez : matières, emballages, transport.</li>
-          <li>Demandez à 3 clients possibles combien ils achètent, et à quelle fréquence.</li>
-          <li>Notez chaque prix avec le lieu et la personne qui vous l'a donné.</li>
-        </ul>
+        <ol className="list-decimal pl-5 space-y-1.5 text-[15px] leading-relaxed text-encre">
+          <li>Listez tout ce qu'il faut pour produire UNE unité de vente (matières, emballage, carburant, temps...) et relevez le prix de chaque élément.</li>
+          <li>Relevez vos charges du mois : loyer, salaires, électricité, transport, téléphone.</li>
+        </ol>
+        <p className="mt-2 text-[15px] leading-relaxed text-encre">
+          Notez tout à la dernière page de ce cahier. Un appel ou un passage chez le fournisseur suffit. Vous en aurez besoin demain pour le module 5.
+        </p>
         <Link
           to={`/p/${plan.id}/prix`}
           className="mt-3 min-h-[48px] rounded-xl bg-violet text-white font-bold flex items-center justify-center gap-2 active:opacity-90"

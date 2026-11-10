@@ -1,4 +1,4 @@
-// Module 5 "Les chiffres clés" (workbook pages 13 to 14): 5a to 5f, live results and alerts.
+// Module 5 "Les chiffres clés" (workbook pages 13 to 15): 5a to 5f, live results and alerts.
 import { useMemo, useState } from 'react';
 import type { AtelierProps, Plan } from '../../types';
 import { ChampMontant, ChampNombre, ChampTexte } from '../../composants/Champs';
@@ -73,14 +73,33 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
+      <Carte ton="violet" titre="Les chiffres clés">
+        <p className="text-[16px] leading-relaxed text-encre">
+          Les chiffres répondent à trois questions : combien faut-il pour démarrer ? combien je gagne sur chaque vente ? à partir de combien de ventes je ne perds plus d'argent ?
+          Tous les montants sont en ariary (Ar). Utilisez les prix réels relevés hier soir.
+        </p>
+      </Carte>
+
+      <Aide titre="Les mots à connaître">
+        <ul className="space-y-1.5">
+          <li>
+            <span className="font-bold">Investissements :</span> ce que l'on achète une fois et qui dure (matériel, travaux, véhicule).
+          </li>
+          <li>
+            <span className="font-bold">Fonds de roulement :</span> l'argent pour payer les dépenses courantes avant que les ventes ne rentrent. Règle simple : 3 mois de charges
+            fixes plus le stock de départ.
+          </li>
+          <li>
+            <span className="font-bold">Coût variable unitaire :</span> ce que coûte une unité vendue (matières, emballage, énergie liée à la production).
+          </li>
+        </ul>
+      </Aide>
+
       <Aide titre="À retenir">
         <ul className="list-disc pl-5 space-y-1.5">
-          <li>Tout part de l'unité de vente : une bouteille, une nuitée, un repas.</li>
-          <li>La marge d'une unité doit être positive : sinon, plus vous vendez, plus vous perdez.</li>
-          <li>Le seuil de rentabilité dit combien vendre chaque mois pour payer les charges fixes.</li>
-          <li>Le fonds de roulement couvre au moins 3 mois de charges fixes plus le stock de départ.</li>
-          <li>Les besoins de démarrage et les ressources doivent être égaux.</li>
-          <li>Chaque chiffre vient d'une hypothèse que vous savez expliquer.</li>
+          <li>Le total des ressources doit être égal au total des besoins.</li>
+          <li>Un apport personnel, même modeste, rassure le bailleur : il montre que vous prenez une part du risque.</li>
+          <li>Soyez prudent sur les ventes de l'année 1 et réaliste sur les charges : un jury repère tout de suite un chiffre trop beau.</li>
         </ul>
         <p className="mt-3 font-bold">Exemple JUS'NOSY</p>
         <p>

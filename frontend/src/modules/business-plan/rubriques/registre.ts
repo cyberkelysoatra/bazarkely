@@ -1,5 +1,4 @@
-// Every section of the workbook, in order. A later phase replaces ateliers/<id>/Page.tsx and
-// ateliers/<id>/progression.ts of ITS sections only: nothing to change here.
+// Every section of the workbook, in order, with the module titles of the workbook (NEC-CC-05).
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { AtelierProps, Plan } from '../types';
 import { progression as pIdentite } from '../ateliers/identite/progression';
@@ -28,14 +27,14 @@ export interface Rubrique {
 
 export const RUBRIQUES: Rubrique[] = [
   { id: 'identite', titre: "Fiche d'identité", sousTitre: 'Vous et votre projet', chemin: 'identite', page: lazy(() => import('../ateliers/identite/Page')), progression: pIdentite },
-  { id: 'm1', titre: 'Module 1 : Le problème et le client', sousTitre: 'Problème, client, proposition de valeur', chemin: 'm1', page: lazy(() => import('../ateliers/m1/Page')), progression: pM1 },
-  { id: 'm2', titre: 'Module 2 : Mon modèle économique', sousTitre: 'Les 9 cases du modèle', chemin: 'm2', page: lazy(() => import('../ateliers/m2/Page')), progression: pM2 },
-  { id: 'm3', titre: 'Module 3 : Mon marché', sousTitre: 'Clients, concurrents, forces et faiblesses', chemin: 'm3', page: lazy(() => import('../ateliers/m3/Page')), progression: pM3 },
-  { id: 'm4', titre: 'Module 4 : Mon organisation', sousTitre: 'Marketing, équipe, calendrier, démarches', chemin: 'm4', page: lazy(() => import('../ateliers/m4/Page')), progression: pM4 },
-  { id: 'm5', titre: 'Module 5 : Les chiffres clés', sousTitre: 'Coûts, prix, seuil, financement, résultats', chemin: 'm5', page: lazy(() => import('../ateliers/m5/Page')), progression: pM5 },
-  { id: 'synthese', titre: 'Ma synthèse', sousTitre: 'Le projet en une page', chemin: 'synthese', page: lazy(() => import('../ateliers/synthese/Page')), progression: pSynthese },
-  { id: 'relecture', titre: 'Relecture en binôme', sousTitre: 'Les points à vérifier avec un autre participant', chemin: 'relecture', page: lazy(() => import('../ateliers/relecture/Page')), progression: pRelecture },
-  { id: 'apres', titre: 'Après le camp', sousTitre: 'Mes prochaines actions', chemin: 'apres', page: lazy(() => import('../ateliers/apres/Page')), progression: pApres },
+  { id: 'm1', titre: 'Module 1. Structurer le projet', sousTitre: 'Problème, client, proposition de valeur', chemin: 'm1', page: lazy(() => import('../ateliers/m1/Page')), progression: pM1 },
+  { id: 'm2', titre: 'Module 2. Le Business Model Canvas', sousTitre: 'Les 9 blocs du canvas', chemin: 'm2', page: lazy(() => import('../ateliers/m2/Page')), progression: pM2 },
+  { id: 'm3', titre: 'Module 3. Marché et concurrence', sousTitre: 'Taille du marché, concurrents, SWOT', chemin: 'm3', page: lazy(() => import('../ateliers/m3/Page')), progression: pM3 },
+  { id: 'm4', titre: 'Module 4. Stratégie commerciale, organisation et formalisation', sousTitre: '4 P, équipe, calendrier, démarches', chemin: 'm4', page: lazy(() => import('../ateliers/m4/Page')), progression: pM4 },
+  { id: 'm5', titre: 'Module 5. Les chiffres clés', sousTitre: 'Coûts, prix, seuil, financement, résultats', chemin: 'm5', page: lazy(() => import('../ateliers/m5/Page')), progression: pM5 },
+  { id: 'synthese', titre: 'Synthèse', sousTitre: 'Le résumé de mon business plan', chemin: 'synthese', page: lazy(() => import('../ateliers/synthese/Page')), progression: pSynthese },
+  { id: 'relecture', titre: 'Relecture en binôme', sousTitre: 'Les 10 points vérifiés par un autre participant', chemin: 'relecture', page: lazy(() => import('../ateliers/relecture/Page')), progression: pRelecture },
+  { id: 'apres', titre: 'Et après ?', sousTitre: 'Le calendrier NEC et mes trois prochaines actions', chemin: 'apres', page: lazy(() => import('../ateliers/apres/Page')), progression: pApres },
   { id: 'prix', titre: 'Mes prix relevés', sousTitre: 'Les prix vus sur le terrain', chemin: 'prix', page: lazy(() => import('../ateliers/prix/Page')), progression: pPrix },
   { id: 'notes', titre: 'Mes notes', sousTitre: 'Tout ce que vous voulez garder', chemin: 'notes', page: lazy(() => import('../ateliers/notes/Page')), progression: pNotes }
 ];

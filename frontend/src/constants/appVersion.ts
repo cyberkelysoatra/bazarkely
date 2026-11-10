@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.130.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : suivi du formateur en direct';
+export const APP_VERSION = '3.131.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : modules 1 à 4, synthèse, relecture et export (NEC-CC-05)';
 export const LAST_UPDATED = '2026-11-10';
 export const APP_BUILD_DATE = '2026-11-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.131.0',
+    date: '2026-11-10',
+    description: 'Mon Business Plan : modules 1 à 4, synthèse, relecture et export (NEC-CC-05)',
+    changes: [
+      'Modules 1 à 4 (fusion des branches nec-m12 et nec-m34) avec les textes exacts du cahier ; titres des modules alignés sur le cahier',
+      'Synthèse en 6 cartes avec « Reprendre mes réponses » (brouillon tiré des modules, modifiable) et chiffres clés calculés ; relecture en binôme (10 points, suggestions) ; « Et après ? » (calendrier NEC et 3 actions)',
+      'Exporter : PDF du business plan (hors ligne, sans téléphone ni e-mail sauf demande), partage du PDF, texte WhatsApp, sauvegarde et restauration en nouveau projet',
+      'Logos NEC et B-lossom Center dans l’en-tête de chaque page et sur la page de garde du PDF'
+    ]
+  },
   {
     version: '3.130.0',
     date: '2026-11-10',
