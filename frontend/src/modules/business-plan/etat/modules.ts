@@ -7,6 +7,7 @@
 //   shared session), kept again under `nec.modules`.
 import { useEffect, useSyncExternalStore } from 'react';
 import { SESSION_STORAGE_KEY, clientFormateur, withTimeout } from '../sync/supabase';
+import { surRetourPage } from './session';
 import { modulesDesIds, modulesDuCompte, type CompteModules, type ModuleHote } from '../utils/modulesCompte';
 
 const CLE = 'nec.modules';
@@ -87,11 +88,8 @@ function demarrer(): void {
 export function useModulesCompte(): ModuleHote[] | null {
   useEffect(() => {
     demarrer();
-    const surStockage = (e: StorageEvent) => {
-      if (e.key === null || e.key === SESSION_STORAGE_KEY) demarrer();
-    };
-    window.addEventListener('storage', surStockage);
-    return () => window.removeEventListener('storage', surStockage);
+    // Coming back from 1sakely.org after signing in: the switcher appears without a reload.
+    return surRetourPage(demarrer);
   }, []);
   const etat = useSyncExternalStore(
     (f) => {

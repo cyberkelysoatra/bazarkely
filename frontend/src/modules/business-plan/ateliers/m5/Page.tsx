@@ -117,7 +117,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         </Carte>
       ) : null}
 
-      <nav className="bp-onglets sticky top-0 z-10 -mx-4 px-2 py-1.5 bg-white/95 border-b border-filet flex" aria-label="Parties du module 5">
+      <nav className="bp-onglets sticky top-[var(--bp-haut,106px)] z-10 -mx-4 px-2 py-1.5 bg-white border-b border-filet flex" aria-label="Parties du module 5">
         {SECTIONS.map((s) => (
           <button key={s.id} type="button" onClick={() => aller(s.id)} className="flex-1 min-w-0 min-h-[48px] rounded-lg flex flex-col items-center justify-center active:bg-violetClair">
             <span className="text-[15px] font-bold text-violet leading-none">{s.id}</span>

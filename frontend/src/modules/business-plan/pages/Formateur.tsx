@@ -2,6 +2,7 @@
 // participant navigation. Refreshed every 15 s while the page is visible, and by pulling down.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Patience, RenvoiAccueil } from '../composants/GardeFormateur';
 import { Mise } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { RUBRIQUES } from '../rubriques/registre';
@@ -167,15 +168,9 @@ export default function Formateur() {
     void charger();
   };
 
-  if (etat.statut === 'chargement') return <Mise titre="Suivi formateur">{<p className="text-doux">Chargement...</p>}</Mise>;
-  if (etat.statut === 'refuse') {
-    return (
-      <Mise titre="Suivi formateur" retour={{ vers: '/', texte: 'Mes projets' }}>
-        <p className="bp-reserve text-[17px] font-bold text-encre">Réservé au formateur</p>
-        <p className="text-[15px] text-doux mt-2">Connectez-vous sur 1sakely.org avec le compte du formateur, puis revenez ici.</p>
-      </Mise>
-    );
-  }
+  if (etat.statut === 'chargement') return <Patience />;
+  // NON_AUTORISE or permission denied from the server: back to the home, no history entry.
+  if (etat.statut === 'refuse') return <RenvoiAccueil />;
   if (etat.statut === 'erreur') {
     return (
       <Mise titre="Suivi formateur" retour={{ vers: '/', texte: 'Mes projets' }}>

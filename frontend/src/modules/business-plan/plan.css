@@ -78,9 +78,23 @@ textarea.bp-champ:focus {
   outline-offset: 1px;
   border-color: #0f98a3;
 }
-/* Sections of module 5 under the sticky tab bar. */
+/* Sticky header (height published by EnTete as --bp-haut) and, on module 5, its sticky tab bar
+   (--bp-sous): a section or a focused input is never left under them (keyboard open included). */
+:root {
+  --bp-haut: 106px;
+  --bp-sous: 0px;
+}
+:root:has(.bp-onglets) {
+  --bp-sous: 61px;
+}
 .bp-section {
-  scroll-margin-top: 68px;
+  scroll-margin-top: calc(var(--bp-haut) + var(--bp-sous) + 8px);
+}
+.bp-ecran input,
+.bp-ecran textarea,
+.bp-ecran select {
+  scroll-margin-top: calc(var(--bp-haut) + var(--bp-sous) + 12px);
+  scroll-margin-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 }
 .bp-ecran a:focus-visible,
 .bp-ecran button:focus-visible {

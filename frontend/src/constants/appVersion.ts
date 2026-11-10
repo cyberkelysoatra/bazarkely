@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.132.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : en-tête compact et logo B-lossom qui ouvre les autres modules (NEC-CC-06)';
+export const APP_VERSION = '3.133.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : en-tête toujours visible, écran formateur verrouillé, logos plus nets, lien de connexion formateur (NEC-CC-07)';
 export const LAST_UPDATED = '2026-11-10';
 export const APP_BUILD_DATE = '2026-11-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.133.0',
+    date: '2026-11-10',
+    description: 'Mon Business Plan : en-tête toujours visible, écran formateur verrouillé, logos plus nets, lien de connexion formateur (NEC-CC-07)',
+    changes: [
+      "En-tête violet collé en haut de chaque écran du plan pendant le défilement ; barre d'onglets du module 5 juste dessous ; un champ touché n'est jamais caché sous l'en-tête quand le clavier s'ouvre",
+      "Écran formateur : sans la session de joelsoatra@gmail.com, renvoi immédiat sur l'accueil, rien n'est affiché ni demandé au serveur ; refus du serveur : même renvoi",
+      "Logos de l'en-tête en 160 px (plus nets) ; lien discret « Connexion formateur » en bas de À propos ; la session est relue au retour sur la page, sans recharger"
+    ]
+  },
   {
     version: '3.132.0',
     date: '2026-11-10',

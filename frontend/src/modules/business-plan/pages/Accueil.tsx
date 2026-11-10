@@ -12,7 +12,7 @@ import { Carte } from '../composants/Carte';
 import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
 import { lancerInstallation, useInstallationDisponible, usePretModeAvion } from '../etat/pwa';
-import { EMAIL_FORMATEUR, emailSession } from '../sync/supabase';
+import { estFormateur, useEmailSession } from '../etat/session';
 
 export default function Accueil() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
@@ -21,8 +21,9 @@ export default function Accueil() {
   const naviguer = useNavigate();
   const pret = usePretModeAvion();
   const installable = useInstallationDisponible();
-  // Discreet trainer link: shared host session read from localStorage only (no request).
-  const [formateur] = useState(() => emailSession() === EMAIL_FORMATEUR);
+  // Discreet trainer link: shared host session read from localStorage only (no request), read again
+  // when the page comes back from 1sakely.org.
+  const formateur = estFormateur(useEmailSession());
 
   const charger = () => {
     listerPlans()

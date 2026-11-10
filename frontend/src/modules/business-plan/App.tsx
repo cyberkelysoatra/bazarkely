@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Accueil from './pages/Accueil';
 import { appliquerMiseAJour, useMiseAJourDisponible } from './etat/pwa';
 import { Icone } from './composants/Icones';
+import { GardeFormateur } from './composants/GardeFormateur';
 
 const Sommaire = lazy(() => import('./pages/Sommaire'));
 const PageRubrique = lazy(() => import('./pages/PageRubrique'));
@@ -37,9 +38,10 @@ export default function App() {
           <Route path="/" element={<Accueil />} />
           <Route path="/inviter" element={<Inviter />} />
           <Route path="/a-propos" element={<APropos />} />
-          <Route path="/formateur" element={<Formateur />} />
-          <Route path="/formateur/:planId" element={<FormateurPlan />} />
-          <Route path="/formateur/:planId/:rubrique" element={<FormateurPlan />} />
+          <Route path="/formateur" element={<GardeFormateur><Formateur /></GardeFormateur>} />
+          <Route path="/formateur/:planId" element={<GardeFormateur><FormateurPlan /></GardeFormateur>} />
+          <Route path="/formateur/:planId/:rubrique" element={<GardeFormateur><FormateurPlan /></GardeFormateur>} />
+          <Route path="/formateur/*" element={<GardeFormateur><Formateur /></GardeFormateur>} />
           <Route path="/p/:id" element={<Sommaire />} />
           <Route path="/p/:id/formation" element={<Formation />} />
           <Route path="/p/:id/exporter" element={<Exporter />} />
