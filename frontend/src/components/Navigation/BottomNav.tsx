@@ -41,7 +41,15 @@ import { CSS } from '@dnd-kit/utilities';
 const PUDI_SECTOR_COLORS = ['#C2512D', '#0B93A1', '#2E8B4E', '#D0386A', '#6A4DC4', '#1C7DC4', '#D3940E', '#55678A', '#E16A22', '#A53A8D', '#2C3C82'];
 
 const ModuleIcon = ({ module }: { module: Module }) =>
-  module.id === 'validation' ? (
+  module.id === 'plan' ? (
+    // Mon business plan (NEC-CC-01) : barres montantes sur carré violet de la charte NEC.
+    <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>
+      <svg viewBox="0 0 20 20" className="w-5 h-5" aria-hidden="true">
+        <rect x="1" y="1" width="18" height="18" rx="4" fill="#60005A" />
+        <path d="M6 14.5v-3M10 14.5v-6M14 14.5v-9" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    </span>
+  ) : module.id === 'validation' ? (
     // Validation client (VALIDCLIENT-CC-02) : coche dans un carré, bleu de la charte du module.
     <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>
       <svg viewBox="0 0 20 20" className="w-5 h-5" aria-hidden="true">

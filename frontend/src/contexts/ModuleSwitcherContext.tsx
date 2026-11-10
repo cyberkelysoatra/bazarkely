@@ -95,14 +95,22 @@ const DEFAULT_MODULES: Module[] = [
     name: 'Validation',
     icon: 'V',
     path: '/validation/'
+  },
+  {
+    // Mon business plan (NEC-CC-01) : entrée légère séparée (/plan/, build dédié), traitée comme
+    // Validation : navigation pleine page, jamais module actif ni mémorisé. Visible pour admin seul.
+    id: 'plan',
+    name: 'Business plan',
+    icon: 'B',
+    path: '/plan/'
   }
 ];
 
-/** Pages séparées (PUDi, Validation) : jamais module actif ni dernier module (local ou compte). */
-const EXTERNAL_MODULE_IDS = ['pudi', 'validation'];
+/** Pages séparées (PUDi, Validation, Business plan) : jamais module actif ni dernier module (local ou compte). */
+const EXTERNAL_MODULE_IDS = ['pudi', 'validation', 'plan'];
 
 /** Adresse pleine page de chaque page séparée. */
-const EXTERNAL_MODULE_URLS: Record<string, string> = { pudi: '/pudi/', validation: '/validation/' };
+const EXTERNAL_MODULE_URLS: Record<string, string> = { pudi: '/pudi/', validation: '/validation/', plan: '/plan/' };
 
 /**
  * Préfixes de route propres à chaque module (hors bazarkely qui est le défaut).

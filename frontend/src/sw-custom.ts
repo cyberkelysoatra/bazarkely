@@ -575,7 +575,9 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
     // PUDi (v3.93.0) : page légère séparée, jamais servie par la coquille de l'hôte.
     /^\/pudi(\/|$|\?)/,
     // Validation client (VALIDCLIENT-CC-02) : idem, page légère /validation avec son propre SW.
-    /^\/validation(\/|$|\?)/
+    /^\/validation(\/|$|\?)/,
+    // Mon business plan (NEC-CC-01) : idem, page légère /plan avec son propre SW.
+    /^\/plan(\/|$|\?)/
   ]
 });
 registerRoute(navigationRoute);

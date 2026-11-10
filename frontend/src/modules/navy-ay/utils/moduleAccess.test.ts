@@ -27,14 +27,22 @@ describe('resolveAccessibleModules (A1)', () => {
     expect(res).not.toContain('construction');
   });
 
-  it('admin → all 4 modules (+ validation, VALIDCLIENT-CC-02)', () => {
+  it('admin → all 4 modules (+ validation, VALIDCLIENT-CC-02, + plan, NEC-CC-01)', () => {
     expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false, AFTER_PUDI)).toEqual([
       'bazarkely',
       'construction',
       'gestion-eau',
       'navy-ay',
       'validation',
+      'plan',
     ]);
+  });
+
+  it('business plan (NEC-CC-01) → admin only, never a start module', () => {
+    const everything = { role: 'user', preferences: { modules: ['bazarkely', 'gestion-eau', 'construction', 'validation', 'plan'] } };
+    expect(resolveAccessibleModules(everything, true, true, AFTER_PUDI)).not.toContain('plan');
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['plan'] } }, null, null)).not.toContain('plan');
+    expect(pickStartModule({ id: 'plan', at: '2026-11-10T10:00:00Z' }, null, ['bazarkely', 'navy-ay', 'plan'])).toBe('bazarkely');
   });
 
   it('Eau present only when confirmed (or remembered and not refused)', () => {
@@ -68,6 +76,7 @@ describe('PUDi (v3.93.0)', () => {
       'navy-ay',
       'pudi',
       'validation',
+      'plan',
     ]);
   });
   it('nobody sees pudi from the purge date, and never without an account', () => {

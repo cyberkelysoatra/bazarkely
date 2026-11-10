@@ -1,0 +1,17 @@
+{
+  "name": "Mon Business Plan",
+  "short_name": "Business plan",
+  "description": "Votre business plan NEC 2026, rempli sur votre téléphone, même sans connexion.",
+  "lang": "fr",
+  "id": "/plan/",
+  "start_url": "/plan/",
+  "scope": "/plan/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#60005A",
+  "icons": [
+    { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

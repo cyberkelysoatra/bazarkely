@@ -123,7 +123,8 @@ function scheduleRetry() {
 export function queuePreferencesPatch(userId: string, patch: PreferencesPatch, localAuthoritative = false) {
   // PUDi (separate /pudi page) is never stored as last module on the account.
   // Validation client (separate /validation page, VALIDCLIENT-CC-02): same.
-  if (patch.lastModule?.id === 'pudi' || patch.lastModule?.id === MODULE_IDS.VALIDATION) {
+  // Mon business plan (separate /plan page, NEC-CC-01): same.
+  if (patch.lastModule?.id === 'pudi' || patch.lastModule?.id === MODULE_IDS.VALIDATION || patch.lastModule?.id === MODULE_IDS.PLAN) {
     patch = { ...patch };
     delete patch.lastModule;
   }

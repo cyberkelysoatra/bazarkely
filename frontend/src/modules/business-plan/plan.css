@@ -1,0 +1,94 @@
+@config "../../../tailwind.plan.config.js";
+
+/* Lato bundled with the page (latin subset, 400 and 700): works offline. */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../../../node_modules/@fontsource/lato/files/lato-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../../../node_modules/@fontsource/lato/files/lato-latin-700-normal.woff2') format('woff2');
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 16px;
+}
+/* Never `overflow: hidden` on an ancestor of a sticky element (sticky trap): `clip` only. */
+html,
+body {
+  overflow-x: clip;
+}
+body {
+  @apply bg-white text-encre font-lato;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.bp-ecran {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+  background: #ffffff;
+}
+.bp-avec-nav {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+.bp-entete {
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+}
+.bp-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* Text inputs: 16 px (no zoom on focus), 48 px high, charter border. */
+input.bp-champ,
+textarea.bp-champ {
+  display: block;
+}
+.bp-champ {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #333333;
+  background: #ffffff;
+  border: 2px solid #e3d6e1;
+  border-radius: 12px;
+}
+.bp-champ::placeholder {
+  color: #8a8a8a;
+}
+input.bp-champ:focus,
+textarea.bp-champ:focus {
+  outline: 3px solid #0f98a3;
+  outline-offset: 1px;
+  border-color: #0f98a3;
+}
+/* Sections of module 5 under the sticky tab bar. */
+.bp-section {
+  scroll-margin-top: 68px;
+}
+.bp-ecran a:focus-visible,
+.bp-ecran button:focus-visible {
+  outline: 3px solid #0f98a3;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

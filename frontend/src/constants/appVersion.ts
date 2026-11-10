@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.128.0';
-export const APP_VERSION_NAME = 'Scan de ticket lu par IA';
-export const LAST_UPDATED = '2026-11-08';
-export const APP_BUILD_DATE = '2026-11-08';
+export const APP_VERSION = '3.129.0';
+export const APP_VERSION_NAME = 'Mon Business Plan NEC 2026';
+export const LAST_UPDATED = '2026-11-10';
+export const APP_BUILD_DATE = '2026-11-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.129.0',
+    date: '2026-11-10',
+    description: 'Mon Business Plan NEC 2026 : socle hors ligne et chiffres clés (NEC-CC-01)',
+    changes: [
+      'Nouvelle page légère /plan/ : plusieurs projets par téléphone, sans compte, rien n’est envoyé, tout marche en mode avion après une première visite',
+      'Module 5 « Les chiffres clés » : coût d’une unité, marge, seuil de rentabilité, besoins et ressources de démarrage, résultats sur 3 ans, alertes et partage WhatsApp',
+      'Fiche d’identité, Mes notes, exemple JUS’NOSY en lecture seule à copier, page Inviter avec QR code ; module « Business plan » dans le sélecteur des administrateurs'
+    ]
+  },
   {
     version: '3.128.0',
     date: '2026-11-08',

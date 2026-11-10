@@ -17,10 +17,12 @@ export const MODULE_IDS = {
   PUDI: 'pudi',
   /** Validation client (VALIDCLIENT-CC-02): separate light page /validation, like PUDi. */
   VALIDATION: 'validation',
+  /** Mon business plan (NEC-CC-01): separate light page /plan, admin only in the switcher. */
+  PLAN: 'plan',
 } as const;
 
 /** Separate light pages (full-page navigation): never an active module, never `lastModule`. */
-export const EXTERNAL_MODULE_IDS: string[] = [MODULE_IDS.PUDI, MODULE_IDS.VALIDATION];
+export const EXTERNAL_MODULE_IDS: string[] = [MODULE_IDS.PUDI, MODULE_IDS.VALIDATION, MODULE_IDS.PLAN];
 
 /**
  * PUDi (v3.93.0): shown to every connected account (and admin) until the data purge date.
@@ -40,6 +42,7 @@ export const ALL_MODULE_IDS: string[] = [
   MODULE_IDS.NAVY_AY,
   MODULE_IDS.PUDI,
   MODULE_IDS.VALIDATION,
+  MODULE_IDS.PLAN,
 ];
 
 /** Last used module, stored locally and on the account (`preferences.lastModule`). */

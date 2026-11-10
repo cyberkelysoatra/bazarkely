@@ -77,6 +77,42 @@ function validationEntry(): Plugin {
   }
 }
 
+/**
+ * "Mon business plan" light entry (frontend/plan/index.html, served under /plan), built separately
+ * by vite.plan.config.ts (NEC-CC-01). Same rules as validationEntry(): no host manifest /
+ * registerSW.js in its page; dev and preview servers serve the page for /plan and /plan/<route>
+ * (same behaviour as functions/plan/_middleware.ts).
+ */
+function planEntry(): Plugin {
+  const isPlanRoute = (url: string) => {
+    const path = url.split('?')[0]
+    return path === '/plan' || (path.startsWith('/plan/') && !/\.[a-z0-9]+$/i.test(path))
+  }
+  const rewrite = (req: { url?: string }, _res: unknown, next: () => void) => {
+    if (req.url && isPlanRoute(req.url)) req.url = '/plan/index.html'
+    next()
+  }
+  return {
+    name: 'plan-entry',
+    enforce: 'post',
+    configureServer(server) {
+      server.middlewares.use(rewrite)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite)
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!/[\\/]plan[\\/]index\.html$/.test(ctx.filename) && !ctx.path.startsWith('/plan/')) return html
+        return html
+          .replace(/<link[^>]+rel="manifest"[^>]+href="\/manifest\.webmanifest"[^>]*>\s*/g, '')
+          .replace(/<script[^>]+id="vite-plugin-pwa:register-sw"[^>]*><\/script>\s*/g, '')
+      }
+    }
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
   // `vite build` always ships the production React, whatever NODE_ENV says. The Cloudflare
@@ -102,7 +138,8 @@ export default defineConfig(({ command }) => {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm,gz}'],
         // PUDi (/pudi) has its own service worker: its folder stays out of the host precache.
         // Validation client (/validation, VALIDCLIENT-CC-02): same, own service worker.
-        globIgnores: ['**/node_modules/**/*', 'pudi/**', 'validation/**'],
+        // Mon business plan (/plan, NEC-CC-01): same, own service worker.
+        globIgnores: ['**/node_modules/**/*', 'pudi/**', 'validation/**', 'plan/**'],
         rollupFormat: 'iife',
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB (cœur Tesseract simd-lstm ~3.9 MB)
       },
@@ -188,7 +225,8 @@ export default defineConfig(({ command }) => {
       }
     }),
     pudiEntry(),
-    validationEntry()
+    validationEntry(),
+    planEntry()
   ],
   base: '/',
         server: {
