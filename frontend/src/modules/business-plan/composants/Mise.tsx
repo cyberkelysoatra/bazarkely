@@ -1,5 +1,5 @@
 // Page shell: header, back bar, example banner, content, bottom nav (Projets, Sommaire, Chiffres, Exporter).
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { Plan } from '../types';
 import { EnTete } from './EnTete';
@@ -67,6 +67,57 @@ export function NavBas({ plan }: { plan: Plan }) {
   );
 }
 
+// « Retour » line sticky right under the header (NEC-CC-09, decision of 11/11/2026), look copied from
+// Validation: transparent at rest, frosted glass once stuck. The position is pure CSS sticky; the
+// passive scroll listener only toggles the class. Its height is published as `--bp-retour` on <html>
+// (ResizeObserver, 0px once unmounted) for the module 5 tab bar and the `scroll-margin-top`.
+// Stacking order: header 30, Retour line 20, module 5 tabs 10, content below.
+function LigneRetour({ vers, texte }: { vers: string; texte: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [colle, setColle] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const racine = document.documentElement;
+    const publier = () => racine.style.setProperty('--bp-retour', `${Math.round(el.getBoundingClientRect().height)}px`);
+    const surDefilement = () => {
+      const entete = document.querySelector('.bp-entete');
+      if (!entete) return;
+      setColle(window.scrollY > 0 && el.getBoundingClientRect().top <= entete.getBoundingClientRect().bottom + 7);
+    };
+    // A focused input already "in the viewport" but under the sticky stack is not scrolled by the
+    // browser: bring it below (its scroll-margin-top counts the whole stack), keyboard open included.
+    const degager = () => {
+      const champ = document.activeElement;
+      if (!(champ instanceof HTMLInputElement || champ instanceof HTMLTextAreaElement || champ instanceof HTMLSelectElement)) return;
+      const onglets = document.querySelector('.bp-onglets');
+      const bas = Math.max(el.getBoundingClientRect().bottom, onglets ? onglets.getBoundingClientRect().bottom : 0);
+      if (champ.getBoundingClientRect().top < bas) champ.scrollIntoView({ block: 'nearest' });
+    };
+    publier();
+    surDefilement();
+    window.addEventListener('scroll', surDefilement, { passive: true });
+    document.addEventListener('focusin', degager);
+    window.addEventListener('resize', degager);
+    const obs = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publier);
+    obs?.observe(el);
+    return () => {
+      window.removeEventListener('scroll', surDefilement);
+      document.removeEventListener('focusin', degager);
+      window.removeEventListener('resize', degager);
+      obs?.disconnect();
+      racine.style.setProperty('--bp-retour', '0px');
+    };
+  }, []);
+  return (
+    <div ref={ref} className={`bp-retour px-2 pt-1 ${colle ? 'bp-colle' : ''}`} data-barre-retour={colle ? 'collee' : 'repos'}>
+      <Link to={vers} className="inline-flex min-h-[44px] items-center gap-1 px-2 text-[15px] font-bold text-violet">
+        <Icone nom="retour" /> {texte}
+      </Link>
+    </div>
+  );
+}
+
 export function Mise({
   titre,
   sousTitre,
@@ -87,13 +138,7 @@ export function Mise({
   return (
     <div className={`bp-ecran ${plan ? 'bp-avec-nav' : ''}`}>
       <EnTete titre={titre} sousTitre={sousTitre} droite={droite} surTitre={surTitre} />
-      {retour ? (
-        <div className="px-2 pt-1">
-          <Link to={retour.vers} className="inline-flex min-h-[44px] items-center gap-1 px-2 text-[15px] font-bold text-violet">
-            <Icone nom="retour" /> {retour.texte}
-          </Link>
-        </div>
-      ) : null}
+      {retour ? <LigneRetour vers={retour.vers} texte={retour.texte} /> : null}
       {plan?.exemple ? <BandeauExemple plan={plan} /> : null}
       <main className="flex-1 px-4 pt-3 pb-6">{children}</main>
       {plan ? <NavBas plan={plan} /> : null}

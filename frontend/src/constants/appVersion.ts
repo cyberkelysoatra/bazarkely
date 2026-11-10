@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.133.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : en-tête toujours visible, écran formateur verrouillé, logos plus nets, lien de connexion formateur (NEC-CC-07)';
-export const LAST_UPDATED = '2026-11-10';
-export const APP_BUILD_DATE = '2026-11-10';
+export const APP_VERSION = '3.134.0';
+export const APP_VERSION_NAME = "Mon Business Plan : ligne Retour fixée sous l'en-tête, effet verre au défilement (NEC-CC-09)";
+export const LAST_UPDATED = '2026-11-11';
+export const APP_BUILD_DATE = '2026-11-11';
 export const VERSION_HISTORY = [
+  {
+    version: '3.134.0',
+    date: '2026-11-11',
+    description: "Mon Business Plan : ligne Retour fixée sous l'en-tête, effet verre au défilement (NEC-CC-09)",
+    changes: [
+      "La ligne « Retour » reste collée juste sous l'en-tête violet pendant le défilement : transparente en haut de page, verre dépoli dès que le contenu passe dessous",
+      "Module 5 : la barre d'onglets se cale juste sous la ligne Retour ; un champ touché n'est jamais caché sous l'en-tête, la ligne Retour ou les onglets, clavier ouvert compris"
+    ]
+  },
   {
     version: '3.133.0',
     date: '2026-11-10',
