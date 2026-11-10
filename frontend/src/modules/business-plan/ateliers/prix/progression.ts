@@ -1,6 +1,7 @@
-// Progress of section prix (0 to 100). Placeholder: 0 until its phase builds the section.
+// Progress of "Mes prix relevés": 3 filled lines or more = 100 %, proportionally below.
 import type { Plan } from '../../types';
 
-export function progression(_plan: Plan): number {
-  return 0;
+export function progression(plan: Plan): number {
+  const pleines = plan.prix.filter((l) => l.element.trim() && l.prix !== null).length;
+  return Math.round((Math.min(pleines, 3) / 3) * 100);
 }
