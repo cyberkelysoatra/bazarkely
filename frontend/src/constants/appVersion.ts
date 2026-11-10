@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.129.0';
-export const APP_VERSION_NAME = 'Mon Business Plan NEC 2026';
+export const APP_VERSION = '3.130.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : suivi du formateur en direct';
 export const LAST_UPDATED = '2026-11-10';
 export const APP_BUILD_DATE = '2026-11-10';
 export const VERSION_HISTORY = [
+  {
+    version: '3.130.0',
+    date: '2026-11-10',
+    description: 'Mon Business Plan : suivi du formateur en direct (NEC-CC-02)',
+    changes: [
+      'Rejoindre la formation (code, prénom, accord) juste après « Nouveau projet » ou depuis le sommaire ; « Travailler seul » n’envoie jamais rien',
+      'Le plan d’un participant qui a rejoint part vers le formateur 5 secondes après sa dernière saisie, dès que le téléphone a du réseau ; téléphone et e-mail ne quittent jamais le téléphone ; pastille d’état dans le sommaire ; « Arrêter l’envoi » efface le plan du serveur',
+      'Écran formateur /plan/formateur : participants en direct (avancement par partie, dernière activité, alertes du module 5), actualisé toutes les 15 secondes, plan en lecture seule, fermeture et réouverture de la session'
+    ]
+  },
   {
     version: '3.129.0',
     date: '2026-11-10',

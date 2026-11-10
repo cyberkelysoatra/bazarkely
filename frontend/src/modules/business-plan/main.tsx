@@ -6,6 +6,7 @@ import './plan.css';
 import App from './App';
 import { demarrerPwa } from './etat/pwa';
 import { VERSION_PLAN } from './version';
+import { demarrerSuivi } from './sync';
 
 // ?code= of the invitation link: kept for phase 2 (trainer tracking), then removed from the address.
 try {
@@ -22,6 +23,8 @@ try {
 
 document.documentElement.dataset.version = VERSION_PLAN;
 demarrerPwa();
+// Trainer tracking retries (no request while no plan joined the training).
+demarrerSuivi();
 
 createRoot(document.getElementById('plan-root')!).render(
   <StrictMode>

@@ -11,6 +11,7 @@ import { Carte } from '../composants/Carte';
 import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
 import { lancerInstallation, useInstallationDisponible, usePretModeAvion } from '../etat/pwa';
+import { EMAIL_FORMATEUR, emailSession } from '../sync/supabase';
 
 export default function Accueil() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
@@ -18,6 +19,8 @@ export default function Accueil() {
   const naviguer = useNavigate();
   const pret = usePretModeAvion();
   const installable = useInstallationDisponible();
+  // Discreet trainer link: shared host session read from localStorage only (no request).
+  const [formateur] = useState(() => emailSession() === EMAIL_FORMATEUR);
 
   const charger = () => {
     listerPlans()
@@ -28,7 +31,8 @@ export default function Accueil() {
 
   const nouveau = async () => {
     const plan = await creerPlan();
-    naviguer(`/p/${plan.id}`);
+    // Offered right away: join the training (trainer tracking) or work alone.
+    naviguer(`/p/${plan.id}/formation`);
   };
 
   const supprimer = async (id: string) => {
@@ -114,6 +118,11 @@ export default function Accueil() {
         <Link to="/a-propos" className="min-h-[44px] flex items-center justify-center text-[15px] text-doux underline">
           À propos et confidentialité
         </Link>
+        {formateur ? (
+          <Link to="/formateur" className="bp-lien-formateur min-h-[44px] flex items-center justify-center text-[14px] text-doux">
+            Suivi formateur
+          </Link>
+        ) : null}
       </div>
     </Mise>
   );

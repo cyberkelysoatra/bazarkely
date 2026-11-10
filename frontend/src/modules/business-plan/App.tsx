@@ -9,6 +9,9 @@ const Sommaire = lazy(() => import('./pages/Sommaire'));
 const PageRubrique = lazy(() => import('./pages/PageRubrique'));
 const Inviter = lazy(() => import('./pages/Inviter'));
 const APropos = lazy(() => import('./pages/APropos'));
+const Formation = lazy(() => import('./pages/Formation'));
+const Formateur = lazy(() => import('./pages/Formateur'));
+const FormateurPlan = lazy(() => import('./pages/FormateurPlan'));
 
 function BandeauMiseAJour() {
   const dispo = useMiseAJourDisponible();
@@ -33,7 +36,11 @@ export default function App() {
           <Route path="/" element={<Accueil />} />
           <Route path="/inviter" element={<Inviter />} />
           <Route path="/a-propos" element={<APropos />} />
+          <Route path="/formateur" element={<Formateur />} />
+          <Route path="/formateur/:planId" element={<FormateurPlan />} />
+          <Route path="/formateur/:planId/:rubrique" element={<FormateurPlan />} />
           <Route path="/p/:id" element={<Sommaire />} />
+          <Route path="/p/:id/formation" element={<Formation />} />
           <Route path="/p/:id/:rubrique" element={<PageRubrique />} />
           <Route path="*" element={<Accueil />} />
         </Routes>
