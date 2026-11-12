@@ -6,7 +6,8 @@ import { Patience, RenvoiAccueil } from '../composants/GardeFormateur';
 import { Mise } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { RUBRIQUES } from '../rubriques/registre';
-import { TEXTES_ALERTES, changerSession, effacerSession, listeParticipants, retirerPlan, sessionOuverte, type Participant } from '../sync/formateur';
+import { TEXTES_ALERTES, changerPosttest, changerSession, effacerSession, etatSession, lireEvaluation, listeParticipants, retirerPlan, sessionOuverte, type Participant } from '../sync/formateur';
+import { lirePosttest } from '../utils/posttest';
 import { DATE_PURGE } from '../composants/Confidentialite';
 import { codeMemorise } from '../sync';
 
@@ -36,7 +37,7 @@ export function tagPretest(p: Pick<Participant, 'pretest_valide' | 'pretest_form
   return '';
 }
 
-function CarteParticipant({ p, maintenant, retirer }: { p: Participant; maintenant: number; retirer: (planId: string) => Promise<boolean> }) {
+function CarteParticipant({ p, maintenant, retirer, postFait }: { p: Participant; maintenant: number; retirer: (planId: string) => Promise<boolean>; postFait: boolean }) {
   const [voirAlertes, setVoirAlertes] = useState(false);
   const [confirmer, setConfirmer] = useState(false);
   const [enCours, setEnCours] = useState(false);
@@ -69,6 +70,7 @@ function CarteParticipant({ p, maintenant, retirer }: { p: Participant; maintena
             {tagPretest(p) ? (
               <span className="bp-tag-pretest shrink-0 rounded-full bg-violetClair px-2 py-0.5 text-[12px] font-bold text-violet">{tagPretest(p)}</span>
             ) : null}
+            {postFait ? <span className="bp-tag-posttest shrink-0 rounded-full bg-turquoiseClair px-2 py-0.5 text-[12px] font-bold text-turquoiseTexte">post-test fait</span> : null}
           </span>
           <span className="block text-[14px] text-doux break-words">{p.nom_projet || 'Projet sans nom'}</span>
         </Link>
@@ -163,7 +165,10 @@ export default function Formateur() {
   const [ouverte, setOuverte] = useState<boolean | null>(null);
   const [majA, setMajA] = useState<number | null>(null);
   const [actualisations, setActualisations] = useState(0);
-  const [confirmer, setConfirmer] = useState<null | 'basculer' | 'effacer'>(null);
+  const [confirmer, setConfirmer] = useState<null | 'basculer' | 'effacer' | 'posttest'>(null);
+  /** NEC-CC-22: post-test of the session (null = unknown) and plans whose post-test is finished. */
+  const [posttest, setPosttest] = useState<{ ouvert: boolean; le: string | null } | null>(null);
+  const [postFaits, setPostFaits] = useState<Set<string>>(() => new Set());
   const [message, setMessage] = useState('');
   const [effacement, setEffacement] = useState(false);
   /** Plans removed from this screen: kept out even if a refresh started before the removal answers. */
@@ -183,6 +188,12 @@ export default function Formateur() {
         setMajA(Date.now());
         setActualisations((n) => n + 1);
         void sessionOuverte(code).then(setOuverte);
+        void etatSession(code).then((e) => {
+          if (e.statut === 'ok' && e.valeur) setPosttest({ ouvert: !!e.valeur.posttest_ouvert, le: e.valeur.posttest_ouvert_at ?? null });
+        });
+        void lireEvaluation(code).then((e) => {
+          if (e.statut === 'ok') setPostFaits(new Set((e.valeur ?? []).filter((l) => !!lirePosttest(l.posttest)?.termineLe).map((l) => l.plan_id)));
+        });
       } else {
         setEtat((avant) => (r.statut === 'refuse' ? { statut: 'refuse' } : avant.statut === 'ok' ? avant : { statut: 'erreur' }));
       }
@@ -238,6 +249,14 @@ export default function Formateur() {
     setConfirmer(null);
     setMessage('');
     if (r.statut === 'ok') setOuverte(!ouverte);
+    void charger();
+  };
+
+  const basculerPosttest = async () => {
+    if (posttest === null) return;
+    const r = await changerPosttest(code, !posttest.ouvert);
+    setConfirmer(null);
+    if (r.statut === 'ok' && r.valeur?.ok) setPosttest({ ouvert: !posttest.ouvert, le: !posttest.ouvert ? new Date().toISOString() : posttest.le });
     void charger();
   };
 
@@ -298,16 +317,21 @@ export default function Formateur() {
           <p className="text-[13px] text-doux">
             {majA ? `Mis à jour à ${new Date(majA).toLocaleTimeString('fr-FR')}` : ''} · toutes les 15 s
           </p>
-          <button type="button" onClick={() => void charger()} className="min-h-[40px] px-3 rounded-xl border-2 border-filet text-violet font-bold text-[14px]">
-            Actualiser
-          </button>
+          <span className="flex shrink-0 gap-2">
+            <Link to="/formateur/evaluation" className="bp-lien-evaluation min-h-[40px] px-3 rounded-xl bg-violet text-white font-bold text-[14px] flex items-center">
+              Évaluation
+            </Link>
+            <button type="button" onClick={() => void charger()} className="min-h-[40px] px-3 rounded-xl border-2 border-filet text-violet font-bold text-[14px]">
+              Actualiser
+            </button>
+          </span>
         </div>
         {liste.length === 0 ? (
           <p className="text-doux mb-4">Aucun participant n'a encore rejoint la session.</p>
         ) : (
           <ul className="space-y-3 mb-4">
             {liste.map((p) => (
-              <CarteParticipant key={p.plan_id} p={p} maintenant={maintenant} retirer={retirer} />
+              <CarteParticipant key={p.plan_id} p={p} maintenant={maintenant} retirer={retirer} postFait={postFaits.has(p.plan_id)} />
             ))}
           </ul>
         )}
@@ -316,6 +340,41 @@ export default function Formateur() {
             Session <b>{code}</b> : {ouverte === null ? 'état inconnu' : ouverte ? 'ouverte, les participants peuvent envoyer' : 'fermée, plus aucun envoi accepté'}.
           </p>
           <p className="mt-1 text-[14px] text-doux">Les projets reçus sont effacés automatiquement le {DATE_PURGE}.</p>
+          <div className="bp-posttest-formateur mt-3 rounded-xl bg-white p-3" data-ouvert={posttest?.ouvert ?? ''}>
+            <p className="text-[15px] text-encre">
+              Post-test : <b>{posttest === null ? 'état inconnu' : posttest.ouvert ? 'ouvert' : 'fermé'}</b>
+              {posttest?.ouvert && posttest.le ? ` depuis ${new Date(posttest.le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+            </p>
+            {confirmer === 'posttest' ? (
+              <div className="bp-confirmer-posttest mt-2.5">
+                <p className="text-[15px] font-bold text-encre leading-snug">
+                  {posttest?.ouvert
+                    ? "Fermer le post-test ? Les téléphones qui l'ont déjà vu ouvert le gardent ouvert."
+                    : "Ouvrir le post-test ? Chaque téléphone en ligne le verra ouvert en moins d'une minute, sur le sommaire."}
+                </p>
+                <div className="mt-2.5 flex gap-2.5">
+                  <button type="button" onClick={basculerPosttest} className="bp-posttest-confirmer flex-1 min-h-[44px] rounded-xl bg-violet text-white font-bold">
+                    Confirmer
+                  </button>
+                  <button type="button" onClick={() => setConfirmer(null)} className="flex-1 min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white">
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={posttest === null || confirmer !== null}
+                onClick={() => {
+                  setMessage('');
+                  setConfirmer('posttest');
+                }}
+                className="bp-posttest-basculer mt-2.5 w-full min-h-[44px] rounded-xl border-2 border-turquoise text-turquoiseTexte font-bold bg-white disabled:opacity-50"
+              >
+                {posttest?.ouvert ? 'Fermer le post-test' : 'Ouvrir le post-test'}
+              </button>
+            )}
+          </div>
           {confirmer === 'basculer' ? (
             <div className="mt-3">
               <p className="text-[15px] font-bold text-encre leading-snug">

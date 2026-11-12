@@ -25,6 +25,21 @@ export interface Plan {
   niveauChiffres?: NiveauChiffres;
   /** NEC-CC-16, optional: pre-test typed again in the app (not a section: global progress unchanged). */
   pretest?: Pretest;
+  /** NEC-CC-22, optional: post-test done in the app (sent with the plan, never printed). */
+  posttest?: Posttest;
+  /** NEC-CC-22: ISO time the phone first saw the post-test open; never unset (stays open offline). */
+  posttestOuvertLe?: string;
+}
+/** NEC-CC-22: same 15 questions and 6 lines B as the pre-test, plus part C (5 notes, 2 free texts). */
+export interface Posttest {
+  reponses: Record<number, ReponsePretest>;
+  auto: AutoPretest[];
+  /** Part C, 5 lines noted 1 to 4 (0 = not answered). */
+  satisfaction: AutoPretest[];
+  servi: string;
+  ameliorer: string;
+  /** ISO time of "Terminer" (null = in progress); frozen after. */
+  termineLe: string | null;
 }
 export type ReponsePretest = '' | 'a' | 'b' | 'c' | 'd' | 'jnsp';
 export type AutoPretest = 0 | 1 | 2 | 3 | 4;

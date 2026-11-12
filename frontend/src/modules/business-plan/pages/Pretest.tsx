@@ -16,7 +16,7 @@ import { Introuvable } from './Introuvable';
 
 const LETTRES: Lettre[] = ['a', 'b', 'c', 'd'];
 
-function Choix({ nom, coche, desactive, onChoisir, children }: { nom: string; coche: boolean; desactive: boolean; onChoisir: () => void; children: ReactNode }) {
+export function Choix({ nom, coche, desactive, onChoisir, children }: { nom: string; coche: boolean; desactive: boolean; onChoisir: () => void; children: ReactNode }) {
   return (
     <label
       className={`flex items-start gap-2.5 rounded-xl border-2 px-3 py-2.5 min-h-[44px] text-[15px] leading-snug ${coche ? 'border-violet bg-violetClair text-encre font-bold' : 'border-filet bg-white text-encre'} ${desactive ? 'opacity-80' : 'active:bg-violetClair'}`}

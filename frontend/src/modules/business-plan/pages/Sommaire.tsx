@@ -13,6 +13,7 @@ import { arreterEnvoi, recupererPretest, texteStatut, useLien, type Lien } from 
 import { Introuvable } from './Introuvable';
 import type { Plan } from '../types';
 import { PRETEST_PAPIER, pretestDe, score } from '../utils/pretest';
+import { POSTTEST_VERROUILLE, posttestOuvert } from '../utils/posttest';
 
 function Pastille({ lien }: { lien: Lien }) {
   const { texte, ton } = texteStatut(lien);
@@ -106,6 +107,42 @@ function CartePretest({ plan }: { plan: Plan }) {
   );
 }
 
+/** NEC-CC-22: post-test entry, right under the pre-test: locked, to do or in progress, done. */
+function CartePosttest({ plan }: { plan: Plan }) {
+  if (!posttestOuvert(plan)) {
+    return (
+      <div className="bp-carte-posttest bp-posttest-verrouille mb-4 flex items-center gap-3 rounded-2xl border-2 border-filet bg-white p-3.5" data-etat="verrouille" aria-disabled="true">
+        <span className="shrink-0 w-9 h-9 rounded-full bg-violetClair text-doux flex items-center justify-center">
+          <Icone nom="cadenas" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-bold text-doux">Mon post-test</span>
+          <span className="block text-[14px] text-doux leading-snug">{POSTTEST_VERROUILLE}</span>
+        </span>
+      </div>
+    );
+  }
+  const fait = !!plan.posttest?.termineLe;
+  return (
+    <Link
+      to={`/p/${plan.id}/posttest`}
+      className="bp-carte-posttest mb-4 flex items-center gap-3 rounded-2xl border-2 border-turquoise bg-white p-3.5 active:bg-turquoiseClair"
+      data-etat={fait ? 'fait' : 'afaire'}
+    >
+      <span className="shrink-0 w-9 h-9 rounded-full bg-turquoiseClair text-turquoiseTexte flex items-center justify-center">
+        <Icone nom={fait ? 'coche' : 'livre'} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-bold text-encre">Mon post-test</span>
+        <span className="block text-[14px] text-doux leading-snug">{fait ? 'Mes résultats' : '15 min, mêmes questions que le pré-test'}</span>
+      </span>
+      <span className="text-doux shrink-0">
+        <Icone nom="chevron" />
+      </span>
+    </Link>
+  );
+}
+
 export default function Sommaire() {
   const { id } = useParams();
   const { etat } = usePlan(id);
@@ -148,6 +185,7 @@ export default function Sommaire() {
         <Progression pct={progressionJournee(plan)} label="Ma journée est faite à" />
       </div>
       {plan.exemple ? null : <CartePretest plan={plan} />}
+      {plan.exemple ? null : <CartePosttest plan={plan} />}
       <ol className="space-y-2.5">
         {RUBRIQUES.map((r, i) => (
           <li key={r.id}>

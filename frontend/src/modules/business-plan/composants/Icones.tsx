@@ -18,9 +18,16 @@ export type NomIcone =
   | 'whatsapp'
   | 'chevron'
   | 'avion'
-  | 'livre';
+  | 'livre'
+  | 'cadenas';
 
 const TRACES: Record<NomIcone, ReactNode> = {
+  cadenas: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
   retour: <path d="M15 5l-7 7 7 7" />,
   plus: <path d="M12 5v14M5 12h14" />,
   poubelle: (

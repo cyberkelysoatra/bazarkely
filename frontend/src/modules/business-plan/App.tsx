@@ -15,6 +15,8 @@ const Formateur = lazy(() => import('./pages/Formateur'));
 const FormateurPlan = lazy(() => import('./pages/FormateurPlan'));
 const Exporter = lazy(() => import('./pages/Exporter'));
 const Pretest = lazy(() => import('./pages/Pretest'));
+const Posttest = lazy(() => import('./pages/Posttest'));
+const Evaluation = lazy(() => import('./pages/Evaluation'));
 
 /** NEC-CC-21: a route change is a safe moment for the automatic update (not the first render). */
 function SuiviPages() {
@@ -55,6 +57,7 @@ export default function App() {
           <Route path="/inviter" element={<Inviter />} />
           <Route path="/a-propos" element={<APropos />} />
           <Route path="/formateur" element={<GardeFormateur><Formateur /></GardeFormateur>} />
+          <Route path="/formateur/evaluation" element={<GardeFormateur><Evaluation /></GardeFormateur>} />
           <Route path="/formateur/:planId" element={<GardeFormateur><FormateurPlan /></GardeFormateur>} />
           <Route path="/formateur/:planId/:rubrique" element={<GardeFormateur><FormateurPlan /></GardeFormateur>} />
           <Route path="/formateur/*" element={<GardeFormateur><Formateur /></GardeFormateur>} />
@@ -62,6 +65,7 @@ export default function App() {
           <Route path="/p/:id/formation" element={<Formation />} />
           <Route path="/p/:id/exporter" element={<Exporter />} />
           <Route path="/p/:id/pretest" element={<Pretest />} />
+          <Route path="/p/:id/posttest" element={<Posttest />} />
           <Route path="/p/:id/:rubrique" element={<PageRubrique />} />
           <Route path="*" element={<Accueil />} />
         </Routes>

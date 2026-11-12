@@ -10,6 +10,7 @@ import { RUBRIQUES } from '../rubriques/registre';
 import { alertes } from '../utils/chiffres';
 import { completerPlan, copier } from '../etat/vide';
 import { adopterPretest } from '../utils/pretest';
+import { marquerPosttestOuvert } from '../utils/posttest';
 import { clientParticipant, withTimeout } from './supabase';
 
 export type { Lien } from '../db/base';
@@ -192,18 +193,25 @@ export async function recupererPretest(planId: string): Promise<void> {
     if (!lien || !lien.confirme || estRetire(lien)) return;
     const local = await lirePlan(planId);
     // NEC-CC-21: a pre-test received from the trainer is still pulled (correction or clear, adopterPretest).
-    if (!local || local.exemple || (local.pretest?.valideLe && local.pretest.source !== 'formateur')) return;
+    // NEC-CC-22: the same call says whether the post-test is open; not asked again once seen open.
+    if (!local || local.exemple) return;
+    const veutPretest = !(local.pretest?.valideLe && local.pretest.source !== 'formateur');
+    if (!veutPretest && local.posttestOuvertLe) return;
     const sb = await withTimeout(clientParticipant());
     const { data, error } = await withTimeout(sb.rpc('bp_lire_pretest', { p_plan_id: planId, p_jeton: lien.jeton }));
     if (error) return;
-    const r = data as { ok?: boolean; pretest?: unknown; le?: string | null } | null;
+    const r = data as { ok?: boolean; pretest?: unknown; le?: string | null; posttest_ouvert?: boolean } | null;
     if (!r?.ok) return;
     const le = typeof r.le === 'string' ? r.le : null;
     // Read and written in one transaction: a save of the phone in between is never lost.
     const sauve = await db.transaction('rw', db.plans, async () => {
       const stocke = await db.plans.get(planId);
       if (!stocke) return null;
-      const adopte = adopterPretest(completerPlan(stocke), r.pretest ?? null, new Date().toISOString(), le);
+      const maintenant = new Date().toISOString();
+      const complet = completerPlan(stocke);
+      const avecPretest = adopterPretest(complet, r.pretest ?? null, maintenant, le);
+      const avecOuverture = marquerPosttestOuvert(avecPretest ?? complet, r.posttest_ouvert, maintenant);
+      const adopte = avecOuverture ?? avecPretest;
       if (!adopte) return null;
       const aSauver: Plan = { ...adopte, rev: (adopte.rev ?? 0) + 1, modifieLe: new Date().toISOString() };
       await db.plans.put(aSauver);

@@ -93,15 +93,23 @@ export function usePlan(id: string | undefined) {
       abonnerPretest((sauve) => {
         const actuel = planRef.current;
         if (!actuel || actuel.id !== sauve.id) return;
+        // NEC-CC-22: the post-test seen open is kept in memory too (never unset by a later save).
+        const ouvertLe = actuel.posttestOuvertLe ?? sauve.posttestOuvertLe;
+        const ouverture = ouvertLe ? { posttestOuvertLe: ouvertLe } : {};
         // NEC-CC-21: a pre-test received from the trainer is replaced or cleared by his correction.
         if (actuel.pretest?.valideLe && actuel.pretest.source !== 'formateur') {
+          planRef.current = { ...actuel, ...ouverture, rev: sauve.rev };
+          if (sauve.pretest?.valideLe && sauve.pretest.source !== 'formateur') {
+            // NEC-CC-22: only the post-test opening was saved behind this screen; nothing to save again.
+            setEtat({ statut: 'pret', plan: planRef.current });
+            return;
+          }
           // Validated on this phone meanwhile: it wins, saved again over the trainer's one.
-          planRef.current = { ...actuel, rev: sauve.rev };
           enAttente.current = true;
           void sauver();
           return;
         }
-        const suivant: Plan = { ...actuel, pretest: sauve.pretest, niveauChiffres: sauve.niveauChiffres, rev: sauve.rev };
+        const suivant: Plan = { ...actuel, ...ouverture, pretest: sauve.pretest, niveauChiffres: sauve.niveauChiffres, rev: sauve.rev };
         planRef.current = suivant;
         setEtat({ statut: 'pret', plan: suivant });
       }),

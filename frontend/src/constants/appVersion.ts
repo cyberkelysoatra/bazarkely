@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.146.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : pré-test papier saisi par le formateur, reçu par le téléphone (NEC-CC-20)';
+export const APP_VERSION = '3.147.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : post-test ouvert par le formateur, résultats et onglet Évaluation (NEC-CC-22)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.147.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : post-test ouvert à distance par le formateur, résultats et corrigé, onglet Évaluation (NEC-CC-22)',
+    changes: [
+      "Téléphone : carte « Mon post-test » sous le pré-test (verrouillée, à faire, Mes résultats) ; une fois vue ouverte, elle reste ouverte hors ligne",
+      'Post-test : parties A, B et C (5 notes, 2 textes libres), enregistré à chaque réponse, figé après « Terminer », puis tableau des scores et gains et corrigé question par question',
+      "Formateur : bouton « Ouvrir / Fermer le post-test », étiquette « post-test fait », bloc Post-test sur la page du participant",
+      'Onglet Évaluation : résultats par participant et Moyenne, taux de bonnes réponses par question, satisfaction, commentaires, indicateurs B-lossom, « Copier pour WhatsApp »',
+      'Serveur : bp_admin_posttest, bp_admin_etat_session, bp_admin_evaluation ; bp_lire_pretest dit aussi si le post-test est ouvert'
+    ]
+  },
   {
     version: '3.146.0',
     date: '2026-11-12',

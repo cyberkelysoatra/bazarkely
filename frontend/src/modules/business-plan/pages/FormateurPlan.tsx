@@ -12,6 +12,8 @@ import { completerPlan } from '../etat/vide';
 import { planParticipant, poserPretest, type PretestPapier } from '../sync/formateur';
 import { dateFr } from '../utils/format';
 import { AUTO, NOM_NIVEAU, QUESTIONS, calculerParcours, lirePretestDistant, pretestDe, score } from '../utils/pretest';
+import { lirePosttest, pretestReference, resultats } from '../utils/posttest';
+import { TableauResultats } from './Posttest';
 
 type Etat =
   | { statut: 'chargement' }
@@ -38,6 +40,18 @@ export function LignePretest({ plan }: { plan: Plan }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** NEC-CC-22: post-test scores and gains of the participant, or "pas encore fait". */
+export function BlocPosttest({ plan, papier }: { plan: Plan; papier: PretestPapier | null }) {
+  const post = lirePosttest(plan.posttest);
+  if (!post?.termineLe) return <p className="bp-posttest-bloc mb-4 text-[15px] font-bold text-encre">Post-test : pas encore fait</p>;
+  return (
+    <div className="bp-posttest-bloc mb-4 rounded-2xl border border-filet bg-white p-3.5">
+      <p className="text-[15px] font-bold text-encre mb-1.5">Post-test</p>
+      <TableauResultats r={resultats(pretestReference(plan) ?? papier, post)} />
     </div>
   );
 }
@@ -247,6 +261,7 @@ export default function FormateurPlan() {
         <Progression pct={progressionGlobale(plan)} label="Avancement du cahier" />
       </div>
       <LignePretest plan={plan} />
+      <BlocPosttest plan={plan} papier={papier} />
       <CartePretestPapier planId={plan.id} plan={plan} initial={papier} />
       <ol className="space-y-2.5">
         {RUBRIQUES.map((x, i) => (

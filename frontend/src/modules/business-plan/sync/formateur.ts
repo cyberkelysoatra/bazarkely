@@ -1,6 +1,7 @@
 // Calls of the trainer screen (NEC-CC-02), through the session shared with 1sakely.org. Whether the
 // visitor is the trainer is decided by the server only: bp_admin_* raise NON_AUTORISE otherwise.
 import type { AutoPretest, ReponsePretest } from '../types';
+import type { LigneServeur } from '../utils/posttest';
 import { clientFormateur, withTimeout } from './supabase';
 
 export interface Participant {
@@ -76,6 +77,21 @@ export function poserPretest(planId: string, pretest: PretestPapier | null): Pro
 /** NEC-CC-10: closes the session and erases (and tombstones) every plan received in it. */
 export function effacerSession(code: string): Promise<Acces<{ ok: boolean; efface?: number; raison?: string }>> {
   return appeler('bp_admin_effacer_session', { p_code: code });
+}
+
+/** NEC-CC-22: the trainer opens or closes the post-test of the session. */
+export function changerPosttest(code: string, ouvert: boolean): Promise<Acces<{ ok: boolean }>> {
+  return appeler('bp_admin_posttest', { p_code: code, p_ouvert: ouvert });
+}
+
+/** NEC-CC-22: state of the session (null when the code is unknown). */
+export function etatSession(code: string): Promise<Acces<{ ouverte: boolean; posttest_ouvert: boolean; posttest_ouvert_at: string | null } | null>> {
+  return appeler('bp_admin_etat_session', { p_code: code });
+}
+
+/** NEC-CC-22: every row needed by the evaluation tab (pre-tests, post-tests, progress). */
+export function lireEvaluation(code: string): Promise<Acces<LigneServeur[]>> {
+  return appeler<LigneServeur[]>('bp_admin_evaluation', { p_code: code });
 }
 
 /** Open or closed (read with bp_rejoindre, the call every participant makes); null when unknown. */

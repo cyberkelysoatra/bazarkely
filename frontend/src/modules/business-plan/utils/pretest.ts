@@ -293,6 +293,23 @@ export function calculerParcours(p: Pretest): Parcours {
   return { score: score(p), lignes };
 }
 
+/** NEC-CC-22: correct answer of a question (answer key of the post-test results). */
+export function bonneReponse(n: number): Lettre {
+  return CORRIGE[n];
+}
+
+/**
+ * NEC-CC-22: explanation of a missed question, the same texts as "Ton parcours" (module 5: PIEGES of the
+ * error code of the answer given). Empty list when the answer is right.
+ */
+export function explicationsQuestion(n: number, r: ReponsePretest): string[] {
+  if (r === CORRIGE[n]) return [];
+  const codes = codesM5(n, r);
+  if (codes.length) return codes.map((c) => PIEGES[c]);
+  const t = EXPLICATIONS[n];
+  return t ? [t] : [];
+}
+
 /** Module 5 codes of the missed questions (tests and trainer: "pièges FR et CA"). */
 export function codesPieges(p: Pretest): CodePiege[] {
   const out: CodePiege[] = [];
