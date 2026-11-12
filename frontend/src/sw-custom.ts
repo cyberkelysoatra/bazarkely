@@ -42,7 +42,10 @@ self.addEventListener('activate', (event: any) => {
         const names = await caches.keys();
         // NAVY ay island map kept for offline use (navy-map-<date>): replaced by the app
         // itself when map-version.json changes, never purged by an app update.
-        await Promise.all(names.filter((n) => !keep.has(n) && !n.startsWith('navy-map-')).map((n) => caches.delete(n)));
+        // Light entries /plan, /pudi, /validation own their caches (airplane mode): each of their
+        // service workers removes its own old versions, the host never touches them.
+        const autresModules = ['navy-map-', 'plan-', 'pudi-', 'validation-'];
+        await Promise.all(names.filter((n) => !keep.has(n) && !autresModules.some((p) => n.startsWith(p))).map((n) => caches.delete(n)));
       } catch (e) {
         console.warn('[SW] ⚠️ Purge des caches obsolètes échouée (non bloquant):', e);
       }

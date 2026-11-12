@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.137.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : un exemple résolu par secteur (NEC-CC-13)';
+export const APP_VERSION = '3.137.1';
+export const APP_VERSION_NAME = "Mon Business Plan, PUDi, Validation : le mode avion survit à la mise à jour de l'appli principale (NEC-CC-12)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.137.1',
+    date: '2026-11-12',
+    description: "Mon Business Plan, PUDi, Validation : le mode avion survit à la mise à jour de l'appli principale (NEC-CC-12)",
+    changes: [
+      "Quand l'appli principale installe une nouvelle version, elle n'efface plus les fichiers gardés pour le mode avion par Mon Business Plan, PUDi et Validation (chacun nettoie lui-même ses anciennes versions)"
+    ]
+  },
   {
     version: '3.137.0',
     date: '2026-11-12',
