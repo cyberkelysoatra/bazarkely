@@ -1,5 +1,6 @@
 // Module 5 "Les chiffres clés" (workbook pages 13 to 15): 5a to 5f, live results and alerts.
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { AtelierProps, Plan } from '../../types';
 import { ChampMontant, ChampNombre, ChampTexte } from '../../composants/Champs';
 import { ListeLignes } from '../../composants/ListeLignes';
@@ -10,6 +11,7 @@ import { Icone } from '../../composants/Icones';
 import { alertes, calculer, phraseSeuil, texteChiffres, type AlerteChiffres } from '../../utils/chiffres';
 import { ariary, grouper, pluriel, pourcent } from '../../utils/format';
 import { partagerTexte } from '../../utils/partage';
+import { useEtapesInternes, type EtatNavigation } from '../../composants/SuivantPrecedent';
 
 const SECTIONS = [
   { id: '5a', t: 'Unité' },
@@ -52,6 +54,45 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
   const [message, setMessage] = useState('');
   const set = (recette: (m: Plan['m5'], p: Plan) => void) => modifier((p) => recette(p.m5, p));
   const seuil = phraseSeuil(plan, c);
+
+  // "Suivant / Précédent" walk 5a to 5f (NEC-CC-11): step 0 = top of the page, step k = section k.
+  // Reached by "Précédent" from the next section: start on 5f.
+  const depuisPrecedent = (useLocation().state as EtatNavigation | null)?.bpDepuis === 'precedent';
+  // The current step follows the real scroll position (manual scrolling included): number of
+  // sections whose top has reached the tab bar, all of them once the page bottom is reached.
+  const [etape, setEtape] = useState(depuisPrecedent ? SECTIONS.length : 0);
+  useEffect(() => {
+    if (depuisPrecedent) document.getElementById('s' + SECTIONS[SECTIONS.length - 1].id)?.scrollIntoView({ block: 'start' });
+    const lire = () => {
+      const racine = document.documentElement;
+      if (window.scrollY <= 0) return setEtape(0);
+      if (window.scrollY + window.innerHeight >= racine.scrollHeight - 2) return setEtape(SECTIONS.length);
+      // Bottom of the tab bar once stuck (its sticky top + its height), not its current position.
+      const onglets = document.querySelector<HTMLElement>('.bp-onglets');
+      const seuil = (onglets ? (parseFloat(getComputedStyle(onglets).top) || 0) + onglets.offsetHeight : 0) + 24;
+      setEtape(SECTIONS.filter((s) => (document.getElementById('s' + s.id)?.getBoundingClientRect().top ?? Infinity) <= seuil).length);
+    };
+    lire();
+    window.addEventListener('scroll', lire, { passive: true });
+    return () => window.removeEventListener('scroll', lire);
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Tab bar: smooth scroll as before; Suivant / Précédent: instant jump (never stuck mid-animation).
+  const allerEtape = useCallback((k: number, doux = false) => {
+    setEtape(k);
+    if (doux) aller(SECTIONS[k - 1].id);
+    else if (k === 0) window.scrollTo(0, 0);
+    else document.getElementById('s' + SECTIONS[k - 1].id)?.scrollIntoView({ block: 'start' });
+  }, []);
+  const avancer = useCallback(() => allerEtape(etape + 1), [allerEtape, etape]);
+  const reculer = useCallback(() => allerEtape(etape - 1), [allerEtape, etape]);
+  useEtapesInternes({
+    suivante: etape < SECTIONS.length ? `${SECTIONS[etape].id}. ${SECTIONS[etape].t}` : null,
+    precedente: etape > 0 ? 'haut' : null,
+    avancer,
+    reculer
+  });
 
   const ouvrirAnnee = (i: number) => {
     setAnnee(i);
@@ -104,7 +145,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         <p className="mt-3 font-bold">Exemple JUS'NOSY</p>
         <p>
           Coût d'une bouteille 1&#8239;400 Ar, prix 3&#8239;000 Ar, marge 1&#8239;600 Ar (53 %). Charges fixes 1&#8239;200&#8239;000 Ar par mois, seuil 750 bouteilles par mois
-          (30 par jour). Besoins 9&#8239;000&#8239;000 Ar = ressources 9&#8239;000&#8239;000 Ar. Résultat avant impôt : 8&#8239;640&#8239;000 Ar en année 1, 15&#8239;120&#8239;000 Ar en
+          (30 par jour). Besoins 9&#8239;000&#8239;000 Ar = ressources 9&#8239;000&#8239;000 Ar. Résultat avant amortissements et avant impôt : 8&#8239;640&#8239;000 Ar en année 1, 15&#8239;120&#8239;000 Ar en
           année 2, 20&#8239;400&#8239;000 Ar en année 3.
         </p>
       </Aide>
@@ -118,8 +159,8 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       ) : null}
 
       <nav className="bp-onglets sticky top-[calc(var(--bp-haut,106px)+var(--bp-retour,0px))] z-10 -mx-4 px-2 py-1.5 bg-white border-b border-filet flex" aria-label="Parties du module 5">
-        {SECTIONS.map((s) => (
-          <button key={s.id} type="button" onClick={() => aller(s.id)} className="flex-1 min-w-0 min-h-[48px] rounded-lg flex flex-col items-center justify-center active:bg-violetClair">
+        {SECTIONS.map((s, i) => (
+          <button key={s.id} type="button" onClick={() => allerEtape(i + 1, true)} className="flex-1 min-w-0 min-h-[48px] rounded-lg flex flex-col items-center justify-center active:bg-violetClair">
             <span className="text-[15px] font-bold text-violet leading-none">{s.id}</span>
             <span className="text-[11px] text-doux leading-tight mt-0.5 truncate max-w-full">{s.t}</span>
           </button>
@@ -347,7 +388,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               <Resultat label="Coûts variables" valeur={ariary(a.cv)} />
               <Resultat label="Marge totale" valeur={ariary(a.marge)} />
               <Resultat label="Charges fixes de l'année" valeur={ariary(a.chargesAnnee)} />
-              <Resultat label="Résultat avant impôt" valeur={ariary(a.resultat)} fort />
+              <Resultat label="Résultat avant amortissements et avant impôt" valeur={ariary(a.resultat)} fort />
               {a.impot !== null ? <Resultat label="Impôt" valeur={ariary(a.impot)} /> : null}
               {a.net !== null ? <Resultat label="Résultat net" valeur={ariary(a.net)} fort /> : null}
             </div>

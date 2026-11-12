@@ -106,7 +106,7 @@ describe('share text', () => {
     expect(t).toContain("JUS'NOSY");
     expect(t).toContain('750 bouteilles de 50 cl par mois');
     expect(t).toContain('Besoins de d\u00e9marrage : 9 000 000 Ar');
-    expect(t).toContain("Ann\u00e9e 3 : chiffre d'affaires 72 000 000 Ar, r\u00e9sultat avant imp\u00f4t 20 400 000 Ar");
+    expect(t).toContain("Ann\u00e9e 3 : chiffre d'affaires 72 000 000 Ar, r\u00e9sultat avant amortissements et avant imp\u00f4t 20 400 000 Ar");
     expect(/[\u2014\u2013\u00B7]/.test(texteChiffres(planExemple()))).toBe(false);
   });
 });

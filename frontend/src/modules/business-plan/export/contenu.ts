@@ -336,7 +336,7 @@ function m5(plan: Plan): Section {
           ['Coûts variables', ...[0, 1, 2].map((i) => cel(i, (a) => a.cv))],
           ['Marge totale', ...[0, 1, 2].map((i) => cel(i, (a) => a.marge))],
           ["Charges fixes de l'année", ...[0, 1, 2].map((i) => cel(i, (a) => a.chargesAnnee))],
-          ['Résultat avant impôt', ...[0, 1, 2].map((i) => cel(i, (a) => a.resultat))],
+          ['Résultat avant amortissements et avant impôt', ...[0, 1, 2].map((i) => cel(i, (a) => a.resultat))],
           ...(m.tauxImpot !== null
             ? [
                 [`Impôt (${grouper(m.tauxImpot)} %)`, ...[0, 1, 2].map((i) => cel(i, (a) => a.impot))],

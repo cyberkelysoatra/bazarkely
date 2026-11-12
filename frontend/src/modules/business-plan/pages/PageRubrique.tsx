@@ -5,6 +5,7 @@ import { usePlan } from '../etat/usePlan';
 import { rubrique } from '../rubriques/registre';
 import { Mise } from '../composants/Mise';
 import { Introuvable } from './Introuvable';
+import { FournisseurEtapes } from '../composants/SuivantPrecedent';
 
 export default function PageRubrique() {
   const { id, rubrique: chemin } = useParams();
@@ -16,9 +17,11 @@ export default function PageRubrique() {
   const Page = r.page;
   return (
     <Mise titre={r.titre} sousTitre={plan.identite.nomProjet.trim() || 'Projet sans nom'} retour={{ vers: `/p/${plan.id}`, texte: 'Sommaire' }} plan={plan}>
-      <Suspense fallback={<p className="text-doux">Chargement...</p>}>
-        <Page plan={plan} modifier={modifier} lectureSeule={!!plan.exemple} />
-      </Suspense>
+      <FournisseurEtapes key={r.chemin} planId={plan.id} chemin={r.chemin}>
+        <Suspense fallback={<p className="text-doux">Chargement...</p>}>
+          <Page plan={plan} modifier={modifier} lectureSeule={!!plan.exemple} />
+        </Suspense>
+      </FournisseurEtapes>
     </Mise>
   );
 }

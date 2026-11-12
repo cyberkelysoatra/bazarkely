@@ -149,7 +149,7 @@ export function texteChiffres(plan: Plan, c: Chiffres = calculer(plan)): string 
   if (seuil) l.push(seuil.replace('Mon seuil de rentabilité', 'Seuil de rentabilité'));
   l.push('', `Besoins de démarrage : ${ariary(c.besoins)}`, `Ressources : ${ariary(c.ressources)}`);
   if (c.ecart !== 0) l.push(c.ecart < 0 ? `Il manque : ${ariary(-c.ecart)}` : `Excédent : ${ariary(c.ecart)}`);
-  const annees = c.annees.map((a, i) => (a ? `Année ${i + 1} : chiffre d'affaires ${ariary(a.ca)}, résultat avant impôt ${ariary(a.resultat)}${a.net !== null ? `, résultat net ${ariary(a.net)}` : ''}` : null)).filter((x): x is string => !!x);
+  const annees = c.annees.map((a, i) => (a ? `Année ${i + 1} : chiffre d'affaires ${ariary(a.ca)}, résultat avant amortissements et avant impôt ${ariary(a.resultat)}${a.net !== null ? `, résultat net ${ariary(a.net)}` : ''}` : null)).filter((x): x is string => !!x);
   if (annees.length) l.push('', 'Résultats sur 3 ans', ...annees);
   l.push('', 'Fait avec Mon business plan, NEC 2026');
   return l.join('\n').replace(/[—–·]/g, ' ');

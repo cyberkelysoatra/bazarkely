@@ -62,7 +62,7 @@ describe('Contenu du PDF', () => {
     expect(tab && tab.type === 'tableau').toBe(true);
     const lignes = tab!.type === 'tableau' ? tab!.lignes.map((l) => l.map(textePdf)) : [];
     expect(lignes.find((l) => l[0] === "Chiffre d'affaires")).toEqual(["Chiffre d'affaires", '43 200 000 Ar', '57 600 000 Ar', '72 000 000 Ar']);
-    expect(lignes.find((l) => l[0] === 'Résultat avant impôt')).toEqual(['Résultat avant impôt', '8 640 000 Ar', '15 120 000 Ar', '20 400 000 Ar']);
+    expect(lignes.find((l) => l[0] === 'Résultat avant amortissements et avant impôt')).toEqual(['Résultat avant amortissements et avant impôt', '8 640 000 Ar', '15 120 000 Ar', '20 400 000 Ar']);
   });
 
   it('empty answers are "(non rempli)"; telephone and e-mail never in the sections', () => {

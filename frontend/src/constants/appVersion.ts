@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.134.0';
-export const APP_VERSION_NAME = "Mon Business Plan : ligne Retour fixée sous l'en-tête, effet verre au défilement (NEC-CC-09)";
-export const LAST_UPDATED = '2026-11-11';
-export const APP_BUILD_DATE = '2026-11-11';
+export const APP_VERSION = '3.135.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : boutons Suivant / Précédent en bas de chaque rubrique, résultat avant amortissements (NEC-CC-11)';
+export const LAST_UPDATED = '2026-11-12';
+export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.135.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : boutons Suivant / Précédent en bas de chaque rubrique, résultat avant amortissements (NEC-CC-11)',
+    changes: [
+      "Bas de chaque rubrique : « ‹ Précédent » et « Suivant : <rubrique suivante> › » dans l'ordre du cahier ; dernière rubrique : « Retour au sommaire » ; aussi sur l'exemple en lecture seule",
+      "Module 5 : Suivant / Précédent passent d'abord par les parties 5a à 5f (position réelle de la page suivie, défilement à la main compris)",
+      "Libellé « Résultat avant amortissements et avant impôt » dans le module 5, le PDF et le texte WhatsApp ; calculs inchangés"
+    ]
+  },
   {
     version: '3.134.0',
     date: '2026-11-11',
