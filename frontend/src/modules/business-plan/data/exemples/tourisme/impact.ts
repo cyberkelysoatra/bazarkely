@@ -16,5 +16,8 @@ export const impact: Partial<Impact> = {
     { id: 'to-p2', nom: 'un taxi', local: true },
     { id: 'to-p3', nom: "des guides d'excursion", local: true }
   ],
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Bouteilles d'eau en plastique des clients ; déchets des chambres",
+  envReduction: "Fontaine d'eau filtrée et gourdes ; tri des déchets",
   phrase: 'TRANO KELY fait vivre 2 personnes dès la première année, 3 en 2028, et fait travailler une blanchisserie, un taxi et des guides de Nosy Be.'
 };

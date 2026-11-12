@@ -1,5 +1,5 @@
 // "Impact et emplois" (fiche ETAPE-06): pure computations, prefill from module 4 and the canvas, the
-// proposed impact sentence and the rule checks V1 to V6 plus the cross-check with module 5. No React here.
+// proposed impact sentence and the rule checks V1 to V7 plus the cross-check with module 5. No React here.
 import type { Impact, Plan } from '../../types';
 import { impactDe, nouvelId } from '../../etat/vide';
 import { calculerMarche } from '../m3/calculs';
@@ -128,6 +128,10 @@ export function regles(plan: Plan): Regle[] {
   }
   if (n1 > 10) out.push({ cle: 'V5', texte: '10 personnes dès la première année : as-tu les ventes et le capital pour les payer ?' });
   if (!impact.phrase.trim()) out.push({ cle: 'V6', texte: 'Une phrase pour le jury : combien de personnes fait vivre ton projet ?' });
+  // NEC-CC-17: "Mon projet et l'environnement", never blocking, no score.
+  if (!(impact.envTrace ?? '').trim() && !(impact.envReduction ?? '').trim()) {
+    out.push({ cle: 'V7', texte: "Aucun projet n'est sans trace. Note la tienne et une chose que tu fais pour la réduire : le jury et les bailleurs le demandent de plus en plus." });
+  }
   return out;
 }
 

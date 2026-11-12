@@ -75,9 +75,9 @@ describe('impact et emplois', () => {
     const plan = planVide();
     plan.m4.equipe = [{ id: 'b', personne: 'Un livreur', role: 'Livraison', competences: '', temps: 'partiel' }];
     const cles = () => reglesImpact(plan).map((r) => r.cle);
-    expect(cles()).toEqual(['V1', 'V2-b', 'V6']);
+    expect(cles()).toEqual(['V1', 'V2-b', 'V6', 'V7']); // V7 since NEC-CC-17
     plan.impact!.emplois = [{ id: 'x', role: 'Livraison', statut: 'salarie', annees: ['partiel', '', ''], equipeId: 'b' }];
-    expect(cles()).toEqual(['V6']);
+    expect(cles()).toEqual(['V6', 'V7']);
     expect(reglesChiffres(plan).map((r) => r.cle)).toEqual(['S1']);
     plan.m5.chargesFixes.salaires = 150000;
     expect(reglesChiffres(plan)).toEqual([]);

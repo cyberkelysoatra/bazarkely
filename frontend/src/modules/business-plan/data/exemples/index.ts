@@ -9,6 +9,7 @@ import { sections as tourisme } from './tourisme';
 import { sections as energie } from './energie';
 import { sections as numerique } from './numerique';
 import { sections as education } from './education';
+import { sections as environnement } from './environnement';
 
 export interface ExempleSecteur {
   /** Value of `identite.secteur` (SECTEURS of ateliers/identite/Page.tsx). */
@@ -33,7 +34,8 @@ export const EXEMPLES: ExempleSecteur[] = [
   depuis('tourisme', 'Tourisme', tourisme),
   depuis('energie', 'Énergie', energie),
   depuis('numerique', 'Numérique', numerique),
-  depuis('education', 'Éducation', education)
+  depuis('education', 'Éducation', education),
+  depuis('environnement', 'Environnement et recyclage', environnement)
 ];
 
 /** Example shown for "autre", an empty or an unknown sector. */

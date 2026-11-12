@@ -15,5 +15,8 @@ export const impact: Partial<Impact> = {
     { id: 'ex-ip2', nom: 'un imprimeur de Hell-Ville', local: true }
   ],
   autreEffet: 'Moins de bouteilles en plastique (verre consigné).',
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Peaux et pulpes de fruits ; bouteilles",
+  envReduction: "Pulpes données à un éleveur de porcs ; bouteilles en verre consignées",
   phrase: "JUS'NOSY fait vivre 2 personnes dès la première année, 3 en 2029, et achète ses fruits à une coopérative de Nosy Be."
 };

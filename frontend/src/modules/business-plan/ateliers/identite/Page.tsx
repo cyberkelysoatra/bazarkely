@@ -10,6 +10,7 @@ const SECTEURS = [
   { v: 'energie', t: 'Énergie' },
   { v: 'numerique', t: 'Numérique' },
   { v: 'education', t: 'Éducation' },
+  { v: 'environnement', t: 'Environnement et recyclage' },
   { v: 'autre', t: 'Autre' }
 ];
 

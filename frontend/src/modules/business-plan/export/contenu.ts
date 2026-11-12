@@ -43,6 +43,7 @@ const SECTEURS: Record<string, string> = {
   energie: 'Énergie',
   numerique: 'Numérique',
   education: 'Éducation',
+  environnement: 'Environnement et recyclage',
   autre: 'Autre'
 };
 const AVANCEMENT: Record<string, string> = { idee: "C'est une idée", essais: 'Premiers essais', clients: 'Déjà des clients', activite: 'Déjà une activité' };
@@ -413,6 +414,13 @@ function notes(plan: Plan): Section {
 
 const TEMPS_EMPLOI: Record<string, string> = { plein: 'Temps plein', partiel: 'Temps partiel' };
 
+function environnement(trace: string | undefined, reduction: string | undefined): Bloc[] {
+  const lignes: Bloc[] = [];
+  if (trace?.trim()) lignes.push(champ("Ce qu'il abîme", trace));
+  if (reduction?.trim()) lignes.push(champ('Ce que je fais pour la réduire', reduction));
+  return lignes.length ? [st("Mon projet et l'environnement"), ...lignes] : [];
+}
+
 function impact(plan: Plan): Section {
   const im = impactDe(plan);
   const t = totaux(im);
@@ -443,7 +451,9 @@ function impact(plan: Plan): Section {
       st('6b. Qui en profite'),
       champ('Clients servis par mois en année 1', nombre(im.clientsMois)),
       champ('Fournisseurs et partenaires locaux payés', partenaires.join(', ')),
-      champ('Autre effet positif', im.autreEffet)
+      champ('Autre effet positif', im.autreEffet),
+      // NEC-CC-17: omitted when both lines are empty, each empty line omitted.
+      ...environnement(im.envTrace, im.envReduction)
     ]
   };
 }

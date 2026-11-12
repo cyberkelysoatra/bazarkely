@@ -14,5 +14,8 @@ export const impact: Partial<Impact> = {
     { id: 'ed-p2', nom: 'le réparateur informatique', local: true }
   ],
   autreEffet: "Des élèves qui arrivent à l'université en sachant se servir d'un ordinateur.",
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Papier ; électricité des ordinateurs",
+  envReduction: "Exercices sur écran, impression recto verso ; ordinateurs éteints après les cours",
   phrase: 'MIANATRA PLUS fait vivre 2 personnes et accompagne chaque année 60 élèves de Hell-Ville vers leur examen.'
 };

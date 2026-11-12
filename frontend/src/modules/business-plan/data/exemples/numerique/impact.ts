@@ -14,5 +14,8 @@ export const impact: Partial<Impact> = {
     { id: 'nu-p2', nom: "les vendeurs d'accessoires voisins (clients envoyés)", local: true }
   ],
   autreEffet: 'Moins de téléphones jetés ; un jeune formé au métier en année 2.',
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Batteries et pièces cassées",
+  envReduction: "Pièces encore bonnes réutilisées ; batteries rendues à un collecteur",
   phrase: 'FIX\'NOSY crée mon emploi dès la première année, forme un apprenti en 2028, et répare 90 téléphones par mois au lieu de les jeter.'
 };

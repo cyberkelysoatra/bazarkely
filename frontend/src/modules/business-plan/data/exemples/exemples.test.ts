@@ -12,7 +12,9 @@ const SOURCE: Record<string, { cu: number; marge: number; taux: number; cf: numb
   tourisme: { cu: 15250, marge: 29750, taux: 66, cf: 680000, seuil: 23, besoins: 7830000, ca1: 29160000, res: [11118000, 12336000, 13404000], ventesM3: 54 },
   energie: { cu: 150, marge: 850, taux: 85, cf: 590000, seuil: 695, besoins: 9370000, ca1: 18720000, res: [8832000, 13320000, 15540000], ventesM3: 1560 },
   numerique: { cu: 13500, marge: 11500, taux: 46, cf: 580000, seuil: 51, besoins: 6740000, ca1: 27000000, res: [5460000, 9060000, 11340000], ventesM3: 90 },
-  education: { cu: 2500, marge: 17500, taux: 88, cf: 750000, seuil: 43, besoins: 8150000, ca1: 12000000, res: [1500000, 3250000, 4700000], ventesM3: 60 }
+  education: { cu: 2500, marge: 17500, taux: 88, cf: 750000, seuil: 43, besoins: 8150000, ca1: 12000000, res: [1500000, 3250000, 4700000], ventesM3: 60 },
+  // NEC-CC-17: MADIO NOSY, compost sale left out of the revenues as in the source.
+  environnement: { cu: 13000, marge: 37000, taux: 74, cf: 740000, seuil: 20, besoins: 10720000, ca1: 14400000, res: [1776000, 6216000, 7848000], ventesM3: 24 }
 };
 
 /** Known differences between the source and what the app computes (written in the NEC-CC-13 report). */
@@ -23,9 +25,9 @@ const ECARTS: Record<string, { ca1?: number; res?: number[]; ventesM3?: number }
 
 describe('NEC-CC-13 worked examples', () => {
   it('one example per sector, stable ids, JUS\'NOSY keeps "exemple"', () => {
-    expect(EXEMPLES.map((e) => e.secteur)).toEqual(['agriculture', 'economie-bleue', 'tourisme', 'energie', 'numerique', 'education']);
-    expect(EXEMPLES.map((e) => e.id)).toEqual(['exemple', 'exemple-economie-bleue', 'exemple-tourisme', 'exemple-energie', 'exemple-numerique', 'exemple-education']);
-    expect(EXEMPLES.map((e) => e.nom)).toEqual(["JUS'NOSY", 'FRAÎCHEUR BAY', 'TRANO KELY', 'JIRO KELY', "FIX'NOSY", 'MIANATRA PLUS']);
+    expect(EXEMPLES.map((e) => e.secteur)).toEqual(['agriculture', 'economie-bleue', 'tourisme', 'energie', 'numerique', 'education', 'environnement']);
+    expect(EXEMPLES.map((e) => e.id)).toEqual(['exemple', 'exemple-economie-bleue', 'exemple-tourisme', 'exemple-energie', 'exemple-numerique', 'exemple-education', 'exemple-environnement']);
+    expect(EXEMPLES.map((e) => e.nom)).toEqual(["JUS'NOSY", 'FRAÎCHEUR BAY', 'TRANO KELY', 'JIRO KELY', "FIX'NOSY", 'MIANATRA PLUS', 'MADIO NOSY']);
   });
 
   it('autre, empty or unknown sector: TRANO KELY', () => {
@@ -34,6 +36,7 @@ describe('NEC-CC-13 worked examples', () => {
     expect(exempleDuSecteur(undefined).nom).toBe('TRANO KELY');
     expect(exempleDuSecteur('economie-bleue').nom).toBe('FRAÎCHEUR BAY');
     expect(exempleDuSecteur('energie').nom).toBe('JIRO KELY');
+    expect(exempleDuSecteur('environnement').nom).toBe('MADIO NOSY');
   });
 
   it('an id that is not an example loads nothing', () => {
@@ -79,6 +82,11 @@ describe('NEC-CC-13 worked examples', () => {
         expect(c.annees[0]?.ca).toBe(x.ca1 ?? s.ca1);
         expect(c.annees.map((a) => a?.resultat)).toEqual(x.res ?? s.res);
         expect(alertes(p)).toEqual([]);
+      });
+
+      it('both environment lines filled (ETAPE-06 v0.2, part 7 bis)', () => {
+        expect(p.impact?.envTrace?.trim()).toBeTruthy();
+        expect(p.impact?.envReduction?.trim()).toBeTruthy();
       });
 
       it('module 3 market matches the source', () => {

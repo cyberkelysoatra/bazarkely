@@ -50,6 +50,9 @@ export interface Impact {
   clientsMois: Montant;
   partenaires: { id: string; nom: string; local: boolean }[];
   autreEffet: string;
+  /** NEC-CC-17, optional: "Mon projet et l'environnement" (plans saved before have none, see impactDe). */
+  envTrace?: string;
+  envReduction?: string;
   phrase: string;
 }
 export interface Mission {

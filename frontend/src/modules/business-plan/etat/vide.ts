@@ -15,7 +15,7 @@ export function ligneVide(): Ligne {
 }
 
 export function impactVide(): Impact {
-  return { boucle: { statut: '', explications: 0 }, prerempli: false, emplois: [], femmes: null, jeunes: null, clientsMois: null, partenaires: [], autreEffet: '', phrase: '' };
+  return { boucle: { statut: '', explications: 0 }, prerempli: false, emplois: [], femmes: null, jeunes: null, clientsMois: null, partenaires: [], autreEffet: '', envTrace: '', envReduction: '', phrase: '' };
 }
 
 export function missionVide(): Mission {
@@ -37,9 +37,13 @@ export function missionVide(): Mission {
   };
 }
 
-/** The impact page of a plan, with safe defaults for a plan saved before NEC-CC-12. */
+/** The impact page of a plan, with safe defaults for a plan saved before NEC-CC-12 (and NEC-CC-17). */
 export function impactDe(plan: Plan): Impact {
-  return plan.impact ?? impactVide();
+  const impact = plan.impact;
+  if (!impact) return impactVide();
+  if (typeof impact.envTrace === 'string' && typeof impact.envReduction === 'string') return impact;
+  // Read only copy: the stored plan is never changed here.
+  return { ...impact, envTrace: impact.envTrace ?? '', envReduction: impact.envReduction ?? '' };
 }
 
 export function missionDe(plan: Plan): Mission {

@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.140.0';
-export const APP_VERSION_NAME = "Mon Business Plan : pré-test et « Ton parcours » (NEC-CC-16)";
+export const APP_VERSION = '3.141.0';
+export const APP_VERSION_NAME = "Mon Business Plan : secteur environnement et MADIO NOSY, lignes environnement en 6b (NEC-CC-17)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.141.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : secteur environnement et MADIO NOSY, lignes environnement en 6b (NEC-CC-17)",
+    changes: [
+      "Fiche d'identité : 8e choix « Environnement et recyclage », avant « Autre » ; les plans existants gardent leur secteur",
+      "Exemple résolu MADIO NOSY (collecte des déchets de cuisine, compost), 7e exemple : Mes projets, encadrés d'exemple du secteur, « Voir un autre exemple », copie pour m'entraîner, hors ligne",
+      "Impact et emplois, 6b : deux lignes facultatives « Mon projet et l'environnement », contrôle V7 non bloquant, les réponses des 7 exemples, les lignes dans le PDF ; plans anciens ouverts sans migration"
+    ]
+  },
   {
     version: '3.140.0',
     date: '2026-11-12',

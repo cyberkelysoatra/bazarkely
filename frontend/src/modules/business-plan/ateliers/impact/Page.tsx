@@ -62,6 +62,7 @@ function ExempleTranoKely() {
       <ul className="list-disc pl-5 text-[15px] text-encre leading-relaxed space-y-1">
         <li>Clients servis : environ 13 voyageurs par mois en année 1 (54 nuits, 4 nuits par séjour).</li>
         <li>Fournisseurs et partenaires locaux payés : la blanchisserie, un taxi, des guides d'excursion (repris du bloc 8 du canvas).</li>
+        <li>Mon projet et l'environnement : bouteilles d'eau en plastique des clients, déchets des chambres ; fontaine d'eau filtrée et gourdes, tri des déchets.</li>
         <li>
           Phrase d'impact : « TRANO KELY fait vivre 2 personnes dès la première année, 3 en 2028, et fait travailler une blanchisserie, un taxi et des guides de Nosy Be. »
         </li>
@@ -267,6 +268,29 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
           onChange={(v) => set((i) => void (i.autreEffet = v))}
           lectureSeule={ls}
         />
+
+        {/* NEC-CC-17: two optional lines for every plan (ETAPE-06 v0.2, part 4). */}
+        <div className="bp-environnement rounded-xl border border-filet p-3 mb-4">
+          <p className="text-[15px] font-bold text-encre mb-2">Mon projet et l'environnement</p>
+          <ChampTexte
+            label="Ce qu'il abîme (une ou deux lignes)"
+            aide={
+              <p className="text-[14px] text-doux mt-1 leading-snug">
+                Tout projet laisse une trace : un déchet, un emballage, du carburant, du bruit, de l'eau gaspillée. Quelle est la trace du tien ?
+              </p>
+            }
+            valeur={impact.envTrace ?? ''}
+            onChange={(v) => set((i) => void (i.envTrace = v))}
+            lectureSeule={ls}
+          />
+          <ChampTexte
+            label="Ce que je fais pour la réduire (une ou deux lignes)"
+            aide={<p className="text-[14px] text-doux mt-1 leading-snug">Que fais-tu pour la réduire : réutiliser, trier, donner à quelqu'un qui s'en sert, consommer moins ?</p>}
+            valeur={impact.envReduction ?? ''}
+            onChange={(v) => set((i) => void (i.envReduction = v))}
+            lectureSeule={ls}
+          />
+        </div>
 
         {!ls ? (
           <div className="rounded-xl bg-turquoiseClair px-3.5 py-3 mb-3">

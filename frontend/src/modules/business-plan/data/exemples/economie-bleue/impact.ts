@@ -15,5 +15,8 @@ export const impact: Partial<Impact> = {
     { id: 'eb-p2', nom: 'le fabricant de glace', local: true }
   ],
   autreEffet: 'Moins de poisson perdu.',
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Viscères de poisson ; caisses en polystyrène ; risque de pêcher des poissons trop petits",
+  envReduction: "Viscères données aux éleveurs ; glacières réutilisables ; je n'achète pas les poissons sous la taille permise",
   phrase: "FRAÎCHEUR BAY fait vivre 2 personnes dès la première année, 3 en 2028, et achète comptant la pêche de 8 pêcheurs d'Ambatozavavy."
 };

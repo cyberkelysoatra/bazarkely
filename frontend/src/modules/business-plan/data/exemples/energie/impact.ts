@@ -12,5 +12,8 @@ export const impact: Partial<Impact> = {
   clientsMois: 60,
   partenaires: [{ id: 'en-p1', nom: "l'association des commerçants (emplacement)", local: true }],
   autreEffet: "Moins de fumée et de risque d'incendie, téléphones rechargés, heures de vente gagnées le soir.",
+  // NEC-CC-17: answers of ETAPE-06 v0.2, part 7 bis.
+  envTrace: "Batteries usées",
+  envReduction: "Rendues au fournisseur, jamais à la décharge",
   phrase: 'JIRO KELY fait vivre 2 personnes et éclaire chaque soir 60 vendeurs et familles de Hell-Ville, sans fumée.'
 };
