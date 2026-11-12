@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.144.0';
-export const APP_VERSION_NAME = "Mon Business Plan : Ma journée, badge d'avance ou de décalage, jauge de la journée, écran de fin d'étape (NEC-CC-18)";
+export const APP_VERSION = '3.145.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : pré-test papier saisi par le formateur, reçu par le téléphone (NEC-CC-20)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.145.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : pré-test papier saisi par le formateur, reçu par le téléphone (NEC-CC-20)',
+    changes: [
+      "Écran formateur : carte « Pré-test papier » (15 questions a, b, c, d, ?, puis B1 à B6), enregistrer, modifier, effacer ; « Fait dans l'app » si le participant l'a déjà validé",
+      'Liste des participants : étiquette « pré-test app » ou « pré-test papier »',
+      "Téléphone : récupère le pré-test papier (colonne à part, bp_lire_pretest) à l'ouverture du sommaire, chaque minute et après chaque envoi ; jamais par-dessus un pré-test validé sur le téléphone",
+      "Mention « Ton pré-test papier a été ajouté par le formateur » ; parcours et niveau du module 5 comme un pré-test saisi sur le téléphone"
+    ]
+  },
   {
     version: '3.144.0',
     date: '2026-11-12',

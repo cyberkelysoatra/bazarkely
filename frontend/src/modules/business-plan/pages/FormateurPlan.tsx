@@ -3,17 +3,22 @@
 import { Suspense, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Patience, RenvoiAccueil } from '../composants/GardeFormateur';
-import type { Plan } from '../types';
+import type { AutoPretest, Plan, ReponsePretest } from '../types';
 import { Mise } from '../composants/Mise';
 import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
 import { RUBRIQUES, progressionGlobale, rubrique } from '../rubriques/registre';
 import { completerPlan } from '../etat/vide';
-import { planParticipant } from '../sync/formateur';
+import { planParticipant, poserPretest, type PretestPapier } from '../sync/formateur';
 import { dateFr } from '../utils/format';
-import { NOM_NIVEAU, calculerParcours, pretestDe } from '../utils/pretest';
+import { AUTO, NOM_NIVEAU, QUESTIONS, calculerParcours, lirePretestDistant, pretestDe, score } from '../utils/pretest';
 
-type Etat = { statut: 'chargement' } | { statut: 'refuse' } | { statut: 'erreur' } | { statut: 'absent' } | { statut: 'ok'; plan: Plan; prenom: string; majAt: string };
+type Etat =
+  | { statut: 'chargement' }
+  | { statut: 'refuse' }
+  | { statut: 'erreur' }
+  | { statut: 'absent' }
+  | { statut: 'ok'; plan: Plan; prenom: string; majAt: string; papier: PretestPapier | null };
 
 const rien = () => undefined;
 
@@ -37,6 +42,152 @@ export function LignePretest({ plan }: { plan: Plan }) {
   );
 }
 
+const CHOIX_PAPIER: { v: ReponsePretest; t: string; titre: string }[] = [
+  { v: 'a', t: 'a', titre: 'a' },
+  { v: 'b', t: 'b', titre: 'b' },
+  { v: 'c', t: 'c', titre: 'c' },
+  { v: 'd', t: 'd', titre: 'd' },
+  { v: 'jnsp', t: '?', titre: 'Je ne sais pas' }
+];
+const NOTES_PAPIER: Exclude<AutoPretest, 0>[] = [1, 2, 3, 4];
+const AUTO_VIDE: AutoPretest[] = [0, 0, 0, 0, 0, 0];
+
+function Bouton({ actif, titre, onClick, children }: { actif: boolean; titre: string; onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={titre}
+      aria-label={titre}
+      aria-pressed={actif}
+      className={`min-h-[40px] min-w-[40px] rounded-lg border-2 text-[16px] font-bold ${actif ? 'border-violet bg-violet text-white' : 'border-filet bg-white text-encre active:bg-violetClair'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * NEC-CC-20: the trainer types the participant's paper pre-test (15 answers, B1 to B6). Saved in its own
+ * column (bp_admin_poser_pretest); the phone pulls it when online and keeps a pre-test validated on it.
+ */
+export function CartePretestPapier({ planId, plan, initial }: { planId: string; plan: Plan; initial: PretestPapier | null }) {
+  const [reponses, setReponses] = useState<Record<number, ReponsePretest>>(() => ({ ...(initial?.reponses ?? {}) }));
+  const [auto, setAuto] = useState<AutoPretest[]>(() => (initial?.auto ? [...initial.auto] : [...AUTO_VIDE]));
+  const [enregistre, setEnregistre] = useState<PretestPapier | null>(initial);
+  const [enCours, setEnCours] = useState(false);
+  const [message, setMessage] = useState<{ texte: string; ok: boolean } | null>(null);
+  const valide = plan.pretest?.valideLe ? (plan.pretest.source === 'formateur' ? 'formateur' : 'app') : null;
+
+  if (valide) {
+    return (
+      <div className="bp-pretest-papier-formateur mb-4 rounded-2xl border border-filet bg-white p-3.5">
+        <p className="text-[15px] font-bold text-encre">Pré-test papier</p>
+        <p className="bp-pretest-etat mt-1 text-[15px] text-encre">{valide === 'app' ? "Fait dans l'app" : 'Pré-test papier reçu par le téléphone'}</p>
+      </div>
+    );
+  }
+
+  const complet = QUESTIONS.every((q) => !!reponses[q.n]) && auto.length === AUTO.length && auto.every((v) => v > 0);
+  const envoyer = async (pretest: PretestPapier | null) => {
+    setEnCours(true);
+    setMessage(null);
+    const r = await poserPretest(planId, pretest);
+    setEnCours(false);
+    if (r.statut === 'ok' && r.valeur?.ok) {
+      setEnregistre(pretest);
+      if (pretest) {
+        const s = score({ reponses: pretest.reponses, auto: pretest.auto, valideLe: null });
+        setMessage({ texte: `Enregistré, le téléphone le recevra dès qu'il sera en ligne. Score : ${s}/15`, ok: true });
+      } else {
+        setReponses({});
+        setAuto([...AUTO_VIDE]);
+        setMessage({ texte: 'Pré-test papier effacé.', ok: true });
+      }
+    } else {
+      setMessage({ texte: 'Enregistrement impossible pour le moment, réessayez.', ok: false });
+    }
+  };
+
+  return (
+    <div className="bp-pretest-papier-formateur mb-4 rounded-2xl border-2 border-violet bg-white p-3.5">
+      <p className="text-[16px] font-bold text-encre">Pré-test papier</p>
+      <p className="text-[14px] text-doux leading-snug mb-3">Recopiez les réponses de la feuille. « ? » = Je ne sais pas.</p>
+      <ol className="space-y-2">
+        {QUESTIONS.map((q) => (
+          <li key={q.n} className="bp-papier-question sm:flex sm:items-center sm:gap-3" data-question={q.n}>
+            <p className="text-[14px] text-encre leading-snug truncate sm:flex-1 sm:min-w-0" title={q.texte}>
+              <b>{q.n}.</b> {q.texte}
+            </p>
+            <div className="mt-1 sm:mt-0 grid grid-cols-5 gap-1.5 sm:w-[240px] sm:shrink-0">
+              {CHOIX_PAPIER.map((c) => (
+                <Bouton
+                  key={c.v}
+                  actif={reponses[q.n] === c.v}
+                  titre={`Question ${q.n} : ${c.titre}`}
+                  onClick={() => {
+                    setMessage(null);
+                    setReponses((r) => ({ ...r, [q.n]: c.v }));
+                  }}
+                >
+                  {c.t}
+                </Bouton>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <ol className="mt-4 space-y-2">
+        {AUTO.map((texte, i) => (
+          <li key={i} className="bp-papier-auto sm:flex sm:items-center sm:gap-3" data-auto={i + 1}>
+            <p className="text-[14px] text-encre leading-snug truncate sm:flex-1 sm:min-w-0" title={`Je sais ${texte}`}>
+              <b>B{i + 1}.</b> Je sais {texte}
+            </p>
+            <div className="mt-1 sm:mt-0 grid grid-cols-4 gap-1.5 sm:w-[192px] sm:shrink-0">
+              {NOTES_PAPIER.map((v) => (
+                <Bouton
+                  key={v}
+                  actif={auto[i] === v}
+                  titre={`B${i + 1} : ${v}`}
+                  onClick={() => {
+                    setMessage(null);
+                    setAuto((a) => a.map((x, j) => (j === i ? v : x)));
+                  }}
+                >
+                  {String(v)}
+                </Bouton>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        disabled={!complet || enCours}
+        onClick={() => void envoyer({ reponses, auto })}
+        className="bp-enregistrer-papier mt-4 w-full min-h-[48px] rounded-xl bg-violet text-white text-[16px] font-bold px-3 disabled:opacity-50"
+      >
+        Enregistrer le pré-test papier
+      </button>
+      {enregistre ? (
+        <button
+          type="button"
+          disabled={enCours}
+          onClick={() => void envoyer(null)}
+          className="bp-effacer-papier mt-2 w-full min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white disabled:opacity-50"
+        >
+          Effacer
+        </button>
+      ) : null}
+      {message ? (
+        <p role="status" className={`bp-message-papier mt-2.5 text-[15px] font-bold ${message.ok ? 'text-turquoiseTexte' : 'text-alerte'}`}>
+          {message.texte}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function FormateurPlan() {
   const { planId, rubrique: chemin } = useParams();
   const [etat, setEtat] = useState<Etat>({ statut: 'chargement' });
@@ -50,7 +201,7 @@ export default function FormateurPlan() {
       if (!r.valeur) return setEtat({ statut: 'absent' });
       const plan = completerPlan({ ...(r.valeur.contenu as Partial<Plan>), id: r.valeur.plan_id });
       delete plan.exemple;
-      setEtat({ statut: 'ok', plan, prenom: r.valeur.prenom, majAt: r.valeur.maj_at });
+      setEtat({ statut: 'ok', plan, prenom: r.valeur.prenom, majAt: r.valeur.maj_at, papier: lirePretestDistant(r.valeur.pretest_formateur) });
     });
     return () => {
       vivant = false;
@@ -69,7 +220,7 @@ export default function FormateurPlan() {
     );
   }
 
-  const { plan, prenom, majAt } = etat;
+  const { plan, prenom, majAt, papier } = etat;
   const titre = `${prenom || 'Sans prénom'} : ${plan.identite.nomProjet.trim() || 'Projet sans nom'}`;
   const r = rubrique(chemin);
   if (r) {
@@ -90,6 +241,7 @@ export default function FormateurPlan() {
         <Progression pct={progressionGlobale(plan)} label="Avancement du cahier" />
       </div>
       <LignePretest plan={plan} />
+      <CartePretestPapier planId={plan.id} plan={plan} initial={papier} />
       <ol className="space-y-2.5">
         {RUBRIQUES.map((x, i) => (
           <li key={x.id}>

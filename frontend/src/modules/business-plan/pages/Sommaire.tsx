@@ -1,6 +1,6 @@
 // Contents /plan/p/:id: the 11 sections in order, progress of each, global progress, and the trainer
 // tracking of the NEC 2026 training (status pill in the header, join or stop sending).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePlan } from '../etat/usePlan';
 import { RUBRIQUES } from '../rubriques/registre';
@@ -9,10 +9,10 @@ import { MaJournee } from '../composants/MaJournee';
 import { Mise } from '../composants/Mise';
 import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
-import { arreterEnvoi, texteStatut, useLien, type Lien } from '../sync';
+import { arreterEnvoi, recupererPretest, texteStatut, useLien, type Lien } from '../sync';
 import { Introuvable } from './Introuvable';
 import type { Plan } from '../types';
-import { pretestDe, score } from '../utils/pretest';
+import { PRETEST_PAPIER, pretestDe, score } from '../utils/pretest';
 
 function Pastille({ lien }: { lien: Lien }) {
   const { texte, ton } = texteStatut(lien);
@@ -80,6 +80,9 @@ function Formation({ planId, lien }: { planId: string; lien: Lien | null | undef
   );
 }
 
+/** NEC-CC-20: the trainer's paper pre-test is pulled every minute while the contents page is open. */
+const RECUPERER_PRETEST_MS = 60000;
+
 /** NEC-CC-16: entry to the pre-test (not done yet) or to the path (done), above the sections. */
 function CartePretest({ plan }: { plan: Plan }) {
   const t = pretestDe(plan);
@@ -91,6 +94,9 @@ function CartePretest({ plan }: { plan: Plan }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] font-bold text-encre">Mon pré-test</span>
+        {fait && t.source === 'formateur' ? (
+          <span className="bp-pretest-papier block text-[14px] font-bold text-violet leading-snug">{PRETEST_PAPIER}</span>
+        ) : null}
         <span className="block text-[14px] text-doux leading-snug">{fait ? `Ton parcours : ${score(t)}/15` : 'Fais ton pré-test (5 min)'}</span>
       </span>
       <span className="text-doux shrink-0">
@@ -104,6 +110,18 @@ export default function Sommaire() {
   const { id } = useParams();
   const { etat } = usePlan(id);
   const lien = useLien(id);
+  const lie = etat.statut === 'pret' && !etat.plan.exemple && !!lien?.confirme && lien.refus !== 'RETIRE';
+  useEffect(() => {
+    if (!lie || !id) return;
+    const tirer = () => void recupererPretest(id);
+    tirer();
+    const t = window.setInterval(tirer, RECUPERER_PRETEST_MS);
+    window.addEventListener('online', tirer);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener('online', tirer);
+    };
+  }, [lie, id]);
   if (etat.statut === 'chargement') return <Mise titre="Mon business plan">{null}</Mise>;
   if (etat.statut === 'absent') return <Introuvable />;
   const plan = etat.plan;

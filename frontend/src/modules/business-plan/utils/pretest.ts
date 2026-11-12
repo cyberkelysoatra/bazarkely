@@ -178,7 +178,51 @@ export function pretestDe(plan: Plan): Pretest {
   if (!p) return pretestVide();
   const auto = Array.isArray(p.auto) ? p.auto.slice(0, 6) : [];
   while (auto.length < 6) auto.push(0);
-  return { reponses: p.reponses ?? {}, auto, valideLe: p.valideLe ?? null };
+  const t: Pretest = { reponses: p.reponses ?? {}, auto, valideLe: p.valideLe ?? null };
+  if (p.source) t.source = p.source;
+  return t;
+}
+
+/** NEC-CC-20: shown above "Ton parcours" when the pre-test comes from the trainer's paper copy. */
+export const PRETEST_PAPIER = 'Ton pré-test papier a été ajouté par le formateur';
+
+const REPONSES_VALIDES: ReponsePretest[] = ['a', 'b', 'c', 'd', 'jnsp'];
+
+/**
+ * NEC-CC-20: the paper pre-test typed by the trainer (bp_lire_pretest), checked: the 15 answers and the
+ * 6 self-assessment lines all filled. Anything else (null, malformed, incomplete) gives null.
+ */
+export function lirePretestDistant(x: unknown): { reponses: Record<number, ReponsePretest>; auto: AutoPretest[] } | null {
+  if (!x || typeof x !== 'object') return null;
+  const brut = x as { reponses?: unknown; auto?: unknown };
+  if (!brut.reponses || typeof brut.reponses !== 'object' || Array.isArray(brut.reponses) || !Array.isArray(brut.auto)) return null;
+  const sources = brut.reponses as Record<string, unknown>;
+  const reponses: Record<number, ReponsePretest> = {};
+  for (const q of QUESTIONS) {
+    const r = sources[String(q.n)];
+    if (typeof r !== 'string' || !REPONSES_VALIDES.includes(r as ReponsePretest)) return null;
+    reponses[q.n] = r as ReponsePretest;
+  }
+  if (brut.auto.length !== AUTO.length) return null;
+  const auto: AutoPretest[] = [];
+  for (const v of brut.auto) {
+    if (v !== 1 && v !== 2 && v !== 3 && v !== 4) return null;
+    auto.push(v);
+  }
+  return { reponses, auto };
+}
+
+/**
+ * NEC-CC-20, merge rule: the trainer's paper pre-test is adopted only when the phone has no validated
+ * pre-test (a pre-test validated on the phone is never replaced). Returns the updated copy, or null
+ * when nothing changes. Same effect as "Voir mon parcours": module 5 opens at the computed level.
+ */
+export function adopterPretest(plan: Plan, distant: unknown, maintenant: string): Plan | null {
+  if (plan.exemple || plan.pretest?.valideLe) return null;
+  const lu = lirePretestDistant(distant);
+  if (!lu) return null;
+  const pretest: Pretest = { reponses: lu.reponses, auto: lu.auto, valideLe: maintenant, source: 'formateur' };
+  return { ...plan, pretest, niveauChiffres: calculerParcours(pretest).lignes.find((l) => l.id === 'm5')?.niveau ?? 'cible' };
 }
 
 export function reponse(p: Pretest, n: number): ReponsePretest {

@@ -8,7 +8,8 @@ import { db, type Lien } from '../db/base';
 import { lirePlan } from '../db/plans';
 import { RUBRIQUES } from '../rubriques/registre';
 import { alertes } from '../utils/chiffres';
-import { copier } from '../etat/vide';
+import { completerPlan, copier } from '../etat/vide';
+import { adopterPretest } from '../utils/pretest';
 import { clientParticipant, withTimeout } from './supabase';
 
 export type { Lien } from '../db/base';
@@ -153,6 +154,7 @@ async function envoyer(planId: string): Promise<void> {
     if (r?.ok) {
       const changeEntreTemps = (modifications.get(planId) ?? 0) !== vuAvant;
       await majLien(planId, { envoyeLe: new Date().toISOString(), enAttente: false, refus: null, sale: changeEntreTemps });
+      void recupererPretest(planId);
     } else {
       await majLien(planId, { refus: r?.raison ?? 'INCONNU', enAttente: false });
     }
@@ -162,6 +164,56 @@ async function envoyer(planId: string): Promise<void> {
   } finally {
     enCours.delete(planId);
     if (aRelancer.delete(planId)) planifier(planId, 0);
+  }
+}
+
+/** NEC-CC-20: screens holding a plan in memory (usePlan), told when the trainer's pre-test was saved. */
+const abonnesPretest = new Set<(plan: Plan) => void>();
+
+export function abonnerPretest(f: (plan: Plan) => void): () => void {
+  abonnesPretest.add(f);
+  return () => {
+    abonnesPretest.delete(f);
+  };
+}
+
+const recuperationEnCours = new Set<string>();
+
+/**
+ * NEC-CC-20: pulls the paper pre-test typed by the trainer (bp_lire_pretest, with this phone's token)
+ * and saves it in the plan when the phone has no validated pre-test (adopterPretest). Linked, confirmed
+ * and not removed plans only; offline or on error: silent, tried again later. Never changes bp_envoyer.
+ */
+export async function recupererPretest(planId: string): Promise<void> {
+  if (!enLigne() || recuperationEnCours.has(planId)) return;
+  recuperationEnCours.add(planId);
+  try {
+    const lien = await lireLien(planId);
+    if (!lien || !lien.confirme || estRetire(lien)) return;
+    const local = await lirePlan(planId);
+    if (!local || local.exemple || local.pretest?.valideLe) return;
+    const sb = await withTimeout(clientParticipant());
+    const { data, error } = await withTimeout(sb.rpc('bp_lire_pretest', { p_plan_id: planId, p_jeton: lien.jeton }));
+    if (error) return;
+    const r = data as { ok?: boolean; pretest?: unknown } | null;
+    if (!r?.ok || !r.pretest) return;
+    // Read and written in one transaction: a save of the phone in between is never lost.
+    const sauve = await db.transaction('rw', db.plans, async () => {
+      const stocke = await db.plans.get(planId);
+      if (!stocke) return null;
+      const adopte = adopterPretest(completerPlan(stocke), r.pretest, new Date().toISOString());
+      if (!adopte) return null;
+      const aSauver: Plan = { ...adopte, rev: (adopte.rev ?? 0) + 1, modifieLe: new Date().toISOString() };
+      await db.plans.put(aSauver);
+      return aSauver;
+    });
+    if (!sauve) return;
+    abonnesPretest.forEach((f) => f(sauve));
+    signalerModification(sauve);
+  } catch {
+    // No network, timeout or storage error: tried again at the next call.
+  } finally {
+    recuperationEnCours.delete(planId);
   }
 }
 

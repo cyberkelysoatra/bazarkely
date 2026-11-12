@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Plan } from '../types';
 import { effacerSecours, ecrireSecours, enregistrerPlan, lirePlan } from '../db/plans';
 import { planExempleParId } from '../data/exemples';
-import { signalerModification } from '../sync';
+import { abonnerPretest, signalerModification } from '../sync';
 import { copier } from './vide';
 
 const DELAI = 400;
@@ -73,6 +73,27 @@ export function usePlan(id: string | undefined) {
       void sauver();
     };
   }, [sauver]);
+
+  // NEC-CC-20: the trainer's paper pre-test was saved behind this screen; keep it (and its rev) in memory
+  // so the next save neither erases it nor reuses a rev the server already holds.
+  useEffect(
+    () =>
+      abonnerPretest((sauve) => {
+        const actuel = planRef.current;
+        if (!actuel || actuel.id !== sauve.id) return;
+        if (actuel.pretest?.valideLe) {
+          // Validated on this phone meanwhile: it wins, saved again over the trainer's one.
+          planRef.current = { ...actuel, rev: sauve.rev };
+          enAttente.current = true;
+          void sauver();
+          return;
+        }
+        const suivant: Plan = { ...actuel, pretest: sauve.pretest, niveauChiffres: sauve.niveauChiffres, rev: sauve.rev };
+        planRef.current = suivant;
+        setEtat({ statut: 'pret', plan: suivant });
+      }),
+    [sauver]
+  );
 
   const modifier = useCallback(
     (recette: (p: Plan) => void) => {

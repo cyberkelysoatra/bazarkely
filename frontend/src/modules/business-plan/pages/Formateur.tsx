@@ -29,6 +29,13 @@ export function pctGlobal(progression: Record<string, number>): number {
   return Math.round(total / RUBRIQUES.length);
 }
 
+/** NEC-CC-20: small tag next to the name: pre-test typed in the app, paper one, or nothing. */
+export function tagPretest(p: Pick<Participant, 'pretest_valide' | 'pretest_formateur'>): string {
+  if (p.pretest_valide === 'app') return 'pré-test app';
+  if (p.pretest_valide === 'formateur' || p.pretest_formateur) return 'pré-test papier';
+  return '';
+}
+
 function CarteParticipant({ p, maintenant, retirer }: { p: Participant; maintenant: number; retirer: (planId: string) => Promise<boolean> }) {
   const [voirAlertes, setVoirAlertes] = useState(false);
   const [confirmer, setConfirmer] = useState(false);
@@ -59,6 +66,9 @@ function CarteParticipant({ p, maintenant, retirer }: { p: Participant; maintena
               title={actif ? 'Actif en ce moment' : 'Inactif'}
             />
             <span className="text-[17px] font-bold text-encre break-words">{p.prenom || 'Sans prénom'}</span>
+            {tagPretest(p) ? (
+              <span className="bp-tag-pretest shrink-0 rounded-full bg-violetClair px-2 py-0.5 text-[12px] font-bold text-violet">{tagPretest(p)}</span>
+            ) : null}
           </span>
           <span className="block text-[14px] text-doux break-words">{p.nom_projet || 'Projet sans nom'}</span>
         </Link>

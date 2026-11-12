@@ -11,7 +11,7 @@ import { Aide } from '../composants/Aide';
 import { Icone } from '../composants/Icones';
 import { FournisseurEtapes } from '../composants/SuivantPrecedent';
 import { Gras, NIVEAUX } from '../ateliers/m5/niveaux';
-import { AUTO, ECART, ECHELLE, NOM_NIVEAU, QUESTIONS, calculerParcours, pretestComplet, pretestDe, reponse, type Lettre } from '../utils/pretest';
+import { AUTO, ECART, ECHELLE, NOM_NIVEAU, PRETEST_PAPIER, QUESTIONS, calculerParcours, pretestComplet, pretestDe, reponse, type Lettre } from '../utils/pretest';
 import { Introuvable } from './Introuvable';
 
 const LETTRES: Lettre[] = ['a', 'b', 'c', 'd'];
@@ -96,6 +96,8 @@ export default function Pretest() {
   const valider = () => {
     changer((t, p) => {
       t.valideLe = new Date().toISOString();
+      // Updated on the phone: the participant's own pre-test from now on (NEC-CC-20).
+      t.source = 'app';
       // Module 5 opens at the computed level (still changeable there, NEC-CC-15).
       p.niveauChiffres = calculerParcours(t).lignes.find((l) => l.id === 'm5')?.niveau ?? 'cible';
     });
@@ -178,6 +180,9 @@ export default function Pretest() {
         ) : null}
 
         <div ref={refParcours} className="mt-4 scroll-mt-20">
+          {pretest.valideLe && pretest.source === 'formateur' ? (
+            <p className="bp-pretest-papier mb-3 rounded-xl bg-violetClair px-3.5 py-2.5 text-[15px] font-bold text-violet">{PRETEST_PAPIER}</p>
+          ) : null}
           {pretest.valideLe ? <CarteParcours planId={plan.id} pretest={pretest} /> : null}
         </div>
       </FournisseurEtapes>
