@@ -45,14 +45,14 @@ describe('Synthèse : brouillons', () => {
   const plan = planExemple();
   const textes = textesDuPlan(plan);
 
-  it('card 5 figures of JUS\'NOSY: 9 000 000, 7 000 000, 43 200 000, 750', () => {
+  it('card 5 figures of JUS\'NOSY: 9 000 000, 7 000 000, 43 200 000, 769', () => {
     const k = chiffresCles(plan);
     expect(k.besoinTotal).toBe(9_000_000);
     expect(k.financementDemande).toBe(7_000_000);
     expect(k.caAnnee1).toBe(43_200_000);
-    expect(k.seuilMois).toBe(750);
+    expect(k.seuilMois).toBe(769);
     const t = sp(brouillon(plan, 'chiffres'));
-    for (const n of ['9 000 000 Ar', '7 000 000 Ar', '43 200 000 Ar', '750 bouteilles de 50 cl par mois']) expect(t).toContain(n);
+    for (const n of ['9 000 000 Ar', '7 000 000 Ar', '43 200 000 Ar', '769 bouteilles de 50 cl par mois']) expect(t).toContain(n);
   });
 
   it('every labelled sentence quotes an answer of the plan, word for word (no invented text)', () => {

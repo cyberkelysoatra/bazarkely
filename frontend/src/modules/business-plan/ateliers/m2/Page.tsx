@@ -1,5 +1,5 @@
 // Module 2 "Le Business Model Canvas" (workbook pages 6 and 7): version date, the 9 blocks in filling
-// order with the JUS'NOSY example of each, and the overview "Voir mon canvas".
+// order with the example of each (the sector of the plan, NEC-CC-13), and the overview "Voir mon canvas".
 import { useCallback, useId, useState } from 'react';
 import type { AtelierProps, Plan } from '../../types';
 import { ChampTexte } from '../../composants/Champs';
@@ -8,6 +8,9 @@ import { Icone } from '../../composants/Icones';
 import { Aide } from '../../composants/Aide';
 import { BLOCS, aujourdhuiMadagascar, jourFr, type Bloc } from './blocs';
 import { Canvas } from './Canvas';
+import { AutreExemple } from '../../composants/AutreExemple';
+import { useExempleDuPlan } from '../../etat/exempleChoisi';
+import type { ExempleSecteur } from '../../data/exemples';
 
 /** Canvas outline (5 columns on top, 2 at the bottom), drawn like the icons of composants/Icones. */
 function IconeCanvas() {
@@ -19,7 +22,22 @@ function IconeCanvas() {
   );
 }
 
-function CarteBloc({ bloc, valeur, onChange, lectureSeule }: { bloc: Bloc; valeur: string; onChange: (v: string) => void; lectureSeule: boolean }) {
+function CarteBloc({
+  bloc,
+  valeur,
+  onChange,
+  lectureSeule,
+  exemple: ex,
+  choisir
+}: {
+  bloc: Bloc;
+  valeur: string;
+  onChange: (v: string) => void;
+  lectureSeule: boolean;
+  /** NEC-CC-13: the example of the sector of the plan (or the one chosen with "Voir un autre exemple"). */
+  exemple: ExempleSecteur;
+  choisir: (secteur: string) => void;
+}) {
   const [exemple, setExemple] = useState(false);
   const id = useId();
   return (
@@ -43,10 +61,13 @@ function CarteBloc({ bloc, valeur, onChange, lectureSeule }: { bloc: Bloc; valeu
         {exemple ? "Masquer l'exemple" : "Voir l'exemple"}
       </button>
       {exemple ? (
-        <p id={id} className="rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
-          <span className="font-bold">JUS'NOSY : </span>
-          {bloc.exemple}
-        </p>
+        <div id={id} className="rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
+          <p>
+            <span className="font-bold">{ex.nom} : </span>
+            {ex.plan().m2[bloc.cle]}
+          </p>
+          <AutreExemple actuel={ex} choisir={choisir} />
+        </div>
       ) : null}
     </section>
   );
@@ -54,6 +75,7 @@ function CarteBloc({ bloc, valeur, onChange, lectureSeule }: { bloc: Bloc; valeu
 
 export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps) {
   const m2 = plan.m2;
+  const { exemple, choisir } = useExempleDuPlan(plan);
   const [ouvert, setOuvert] = useState(false);
   const fermer = useCallback(() => setOuvert(false), []);
   const idDate = useId();
@@ -113,7 +135,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       </button>
 
       {BLOCS.map((b) => (
-        <CarteBloc key={b.cle} bloc={b} valeur={m2[b.cle]} onChange={(v) => set((m) => void (m[b.cle] = v))} lectureSeule={ls} />
+        <CarteBloc key={b.cle} bloc={b} valeur={m2[b.cle]} onChange={(v) => set((m) => void (m[b.cle] = v))} lectureSeule={ls} exemple={exemple} choisir={choisir} />
       ))}
 
       <button

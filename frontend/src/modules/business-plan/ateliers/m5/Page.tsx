@@ -12,6 +12,8 @@ import { alertes, calculer, phraseSeuil, texteChiffres, type AlerteChiffres } fr
 import { ariary, grouper, pluriel, pourcent } from '../../utils/format';
 import { partagerTexte } from '../../utils/partage';
 import { useEtapesInternes, type EtatNavigation } from '../../composants/SuivantPrecedent';
+import { AutreExemple } from '../../composants/AutreExemple';
+import { useExempleDuPlan } from '../../etat/exempleChoisi';
 
 const SECTIONS = [
   { id: '5a', t: 'Unité' },
@@ -45,6 +47,28 @@ const CHARGES: { cle: keyof Omit<Plan['m5']['chargesFixes'], 'lignes'>; label: s
   { cle: 'telephone', label: 'Téléphone et internet' },
   { cle: 'autres', label: 'Autres' }
 ];
+
+/** NEC-CC-13: the key figures of the example of the sector of the plan, computed by the app itself. */
+function ExempleChiffres({ plan }: { plan: Plan }) {
+  const { exemple, choisir } = useExempleDuPlan(plan);
+  const ex = exemple.plan();
+  const c = calculer(ex);
+  const u = pluriel(ex.uniteVente, 1);
+  const res = c.annees.map((a) => (a ? ariary(a.resultat) : null));
+  return (
+    <div className="bp-exemple-chiffres">
+      <p className="mt-3 font-bold">Exemple {exemple.nom}</p>
+      <p>
+        Coût de revient par {u} : {ariary(c.coutUnitaire)}, prix {ariary(c.prix ?? 0)}, marge {ariary(c.marge ?? 0)}
+        {c.tauxMarge !== null ? ` (${c.tauxMarge} %)` : ''}. Charges fixes {ariary(c.chargesFixes)} par mois
+        {c.seuilMois !== null ? `, seuil ${grouper(c.seuilMois)} ${pluriel(ex.uniteVente, c.seuilMois)} par mois${c.seuilJour !== null ? ` (${grouper(c.seuilJour)} par jour)` : ''}` : ''}. Besoins{' '}
+        {ariary(c.besoins)} = ressources {ariary(c.ressources)}. Résultat avant amortissements et avant impôt : {res[0]} en année 1, {res[1]} en année 2, {res[2]} en
+        année 3.
+      </p>
+      <AutreExemple actuel={exemple} choisir={choisir} />
+    </div>
+  );
+}
 
 export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps) {
   const m5 = plan.m5;
@@ -142,12 +166,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
           <li>Un apport personnel, même modeste, rassure le bailleur : il montre que vous prenez une part du risque.</li>
           <li>Soyez prudent sur les ventes de l'année 1 et réaliste sur les charges : un jury repère tout de suite un chiffre trop beau.</li>
         </ul>
-        <p className="mt-3 font-bold">Exemple JUS'NOSY</p>
-        <p>
-          Coût d'une bouteille 1&#8239;400 Ar, prix 3&#8239;000 Ar, marge 1&#8239;600 Ar (53 %). Charges fixes 1&#8239;200&#8239;000 Ar par mois, seuil 750 bouteilles par mois
-          (30 par jour). Besoins 9&#8239;000&#8239;000 Ar = ressources 9&#8239;000&#8239;000 Ar. Résultat avant amortissements et avant impôt : 8&#8239;640&#8239;000 Ar en année 1, 15&#8239;120&#8239;000 Ar en
-          année 2, 20&#8239;400&#8239;000 Ar en année 3.
-        </p>
+        <ExempleChiffres plan={plan} />
       </Aide>
 
       {liste.length ? (

@@ -1,4 +1,6 @@
 // JUS'NOSY example, module 5 (workbook pages 13 to 15). Exact figures: see utils/chiffres.test.ts.
+// NEC-CC-13: salaries set to the minimum wage (630 000 for 2 full time, source EXEMPLE-AGRICULTURE-JUS-NOSY.md),
+// so fixed costs 1 230 000, years 2 and 3 at 1 330 000 and 1 530 000, starting stock 310 000 (needs stay 9 000 000).
 import type { Plan } from '../../types';
 
 const l = (id: string, libelle: string, montant: number) => ({ id, libelle, montant });
@@ -12,7 +14,7 @@ export const m5: Partial<Plan['m5']> = {
     l('ex-c5', 'Énergie de production', 150)
   ],
   prixVente: 3000,
-  chargesFixes: { loyer: 300000, salaires: 600000, energie: 100000, transport: 150000, telephone: 50000, autres: null, lignes: [] },
+  chargesFixes: { loyer: 300000, salaires: 630000, energie: 100000, transport: 150000, telephone: 50000, autres: null, lignes: [] },
   joursParMois: 25,
   investissements: [
     l('ex-i1', 'Extracteur de jus professionnel', 1500000),
@@ -20,13 +22,13 @@ export const m5: Partial<Plan['m5']> = {
     l('ex-i3', "Matériel de cuisine et d'hygiène", 800000),
     l('ex-i4', '1 000 bouteilles en verre', 700000)
   ],
-  stockDepart: 400000,
+  stockDepart: 310000,
   fondsRoulementSaisi: null,
   ressources: { apport: 2000000, subvention: 5000000, pret: 2000000, autre: null, autreLibelle: '' },
   annees: [
     { ventesParMois: 1200, chargesFixesMois: null },
-    { ventesParMois: 1600, chargesFixesMois: 1300000 },
-    { ventesParMois: 2000, chargesFixesMois: 1500000 }
+    { ventesParMois: 1600, chargesFixesMois: 1330000 },
+    { ventesParMois: 2000, chargesFixesMois: 1530000 }
   ],
   tauxImpot: null,
   hypotheses:

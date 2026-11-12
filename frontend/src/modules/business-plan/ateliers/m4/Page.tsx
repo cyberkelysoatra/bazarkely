@@ -7,7 +7,9 @@ import { Carte } from '../../composants/Carte';
 import { Aide } from '../../composants/Aide';
 import { Icone } from '../../composants/Icones';
 import { nouvelId } from '../../etat/vide';
-import { m4 as exemple } from '../../data/exemple/m4';
+import { AutreExemple } from '../../composants/AutreExemple';
+import { useExempleDuPlan } from '../../etat/exempleChoisi';
+import type { ExempleSecteur } from '../../data/exemples';
 
 type Membre = Plan['m4']['equipe'][number];
 type CleP = 'produit' | 'prix' | 'place' | 'promotion';
@@ -60,7 +62,7 @@ function jourFr(iso: string): string {
   return m ? `${Number(m[3])} ${MOIS[Number(m[2]) - 1]} ${m[1]}` : iso;
 }
 
-function VoirExemple({ texte }: { texte: string }) {
+function VoirExemple({ texte, exemple, choisir }: { texte: string; exemple: ExempleSecteur; choisir: (secteur: string) => void }) {
   const [ouvert, setOuvert] = useState(false);
   const id = useId();
   return (
@@ -69,10 +71,13 @@ function VoirExemple({ texte }: { texte: string }) {
         <Icone nom="livre" /> {ouvert ? "Masquer l'exemple" : "Voir l'exemple"}
       </button>
       {ouvert ? (
-        <p id={id} className="rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
-          <span className="font-bold">JUS'NOSY : </span>
-          {texte}
-        </p>
+        <div id={id} className="rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
+          <p>
+            <span className="font-bold">{exemple.nom} : </span>
+            {texte}
+          </p>
+          <AutreExemple actuel={exemple} choisir={choisir} />
+        </div>
       ) : null}
     </div>
   );
@@ -80,6 +85,9 @@ function VoirExemple({ texte }: { texte: string }) {
 
 export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps) {
   const m4 = plan.m4;
+  // The 4 P of the example of the sector of the plan (NEC-CC-13).
+  const { exemple: exempleSecteur, choisir } = useExempleDuPlan(plan);
+  const exemple = exempleSecteur.plan().m4;
   const set = (recette: (m: Plan['m4']) => void) => modifier((p) => recette(p.m4));
 
   const changerMembre = (id: string, patch: Partial<Membre>) =>
@@ -120,7 +128,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               onChange={(v) => set((m) => void (m[q.cle] = v))}
               lectureSeule={ls}
             />
-            {!ls && exemple[q.cle] ? <VoirExemple texte={exemple[q.cle] as string} /> : null}
+            {!ls && exemple[q.cle] ? <VoirExemple texte={exemple[q.cle] as string} exemple={exempleSecteur} choisir={choisir} /> : null}
           </div>
         ))}
       </Carte>

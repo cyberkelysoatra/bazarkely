@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.136.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : rubriques Impact et emplois, Ma mission de terrain (NEC-CC-12)';
+export const APP_VERSION = '3.137.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : un exemple résolu par secteur (NEC-CC-13)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.137.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : un exemple résolu par secteur (NEC-CC-13)',
+    changes: [
+      "Mes projets : « Voir un exemple » liste 6 projets fictifs, un par secteur (JUS'NOSY, FRAÎCHEUR BAY, TRANO KELY, JIRO KELY, FIX'NOSY, MIANATRA PLUS), chacun en lecture seule et copiable « pour m'entraîner »",
+      "Dans un plan, chaque encadré d'exemple (modules 1, 2, 4 et 5) montre l'exemple du secteur de la fiche d'identité (TRANO KELY pour « Autre » ou sans secteur) ; « Voir un autre exemple » change de secteur, choix gardé sur le téléphone pour ce plan",
+      "Module 5 : l'encadré d'exemple est calculé par l'app à partir de l'exemple choisi",
+      "JUS'NOSY : salaires recalés sur le salaire minimum (630 000 Ar), seuil 769 bouteilles, résultat de l'année 1 : 8 280 000 Ar",
+      "Les 6 exemples marchent hors ligne ; rien n'est envoyé au serveur ; les plans des participants ne sont pas modifiés"
+    ]
+  },
   {
     version: '3.136.0',
     date: '2026-11-12',

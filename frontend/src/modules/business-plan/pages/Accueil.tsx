@@ -1,10 +1,10 @@
-// Home /plan/: my projects on this phone, new project, the JUS'NOSY example, airplane-mode status.
+// Home /plan/: my projects on this phone, new project, the 6 worked examples (one per sector), airplane-mode status.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Plan } from '../types';
 import { creerPlan, listerPlans, supprimerPlan } from '../db/plans';
 import { progressionGlobale } from '../rubriques/registre';
-import { ID_EXEMPLE } from '../data/exemple';
+import { EXEMPLES } from '../data/exemples';
 import { SauvegardeInvalide, lireSauvegarde } from '../export/sauvegarde';
 import { dateFr } from '../utils/format';
 import { Mise } from '../composants/Mise';
@@ -134,11 +134,23 @@ export default function Accueil() {
       ) : null}
 
       <Carte ton="violet" className="mt-4">
-        <p className="text-[16px] font-bold text-violet">Voir l'exemple JUS'NOSY</p>
-        <p className="text-[15px] text-encre mt-1">Le projet fictif du cahier, avec tous ses chiffres.</p>
-        <Link to={`/p/${ID_EXEMPLE}`} className="mt-3 min-h-[44px] rounded-xl border-2 border-violet text-violet font-bold flex items-center justify-center gap-2">
-          <Icone nom="livre" /> Voir l'exemple JUS'NOSY
-        </Link>
+        <p className="text-[16px] font-bold text-violet">Voir un exemple</p>
+        <p className="text-[15px] text-encre mt-1">Un projet fictif par secteur, avec tous ses chiffres.</p>
+        <ul className="bp-exemples mt-3 grid gap-2">
+          {EXEMPLES.map((e) => (
+            <li key={e.id}>
+              <Link
+                to={`/p/${e.id}`}
+                className="min-h-[48px] rounded-xl border-2 border-violet text-violet px-3 py-2 flex items-center gap-2 active:bg-violetClair"
+              >
+                <Icone nom="livre" />
+                <span className="min-w-0 break-words leading-snug">
+                  <span className="font-bold">{e.libelleSecteur}</span> : {e.nom}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </Carte>
 
       <div className="grid gap-2.5">

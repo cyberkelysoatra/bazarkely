@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Plan } from '../types';
 import { effacerSecours, ecrireSecours, enregistrerPlan, lirePlan } from '../db/plans';
-import { ID_EXEMPLE, planExemple } from '../data/exemple';
+import { planExempleParId } from '../data/exemples';
 import { signalerModification } from '../sync';
 import { copier } from './vide';
 
@@ -48,7 +48,8 @@ export function usePlan(id: string | undefined) {
       return;
     }
     (async () => {
-      const plan = id === ID_EXEMPLE ? planExemple() : await lirePlan(id).catch(() => null);
+      // The 6 worked examples (JUS'NOSY keeps its id 'exemple') are bundled and read only (NEC-CC-13).
+      const plan = planExempleParId(id) ?? (await lirePlan(id).catch(() => null));
       if (annule) return;
       planRef.current = plan;
       setEtat(plan ? { statut: 'pret', plan } : { statut: 'absent' });

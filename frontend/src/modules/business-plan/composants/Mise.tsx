@@ -5,6 +5,7 @@ import type { Plan } from '../types';
 import { EnTete } from './EnTete';
 import { Icone, type NomIcone } from './Icones';
 import { dupliquerPlan } from '../db/plans';
+import { ID_EXEMPLE } from '../data/exemple';
 
 export function BandeauExemple({ plan }: { plan: Plan }) {
   const naviguer = useNavigate();
@@ -13,7 +14,7 @@ export function BandeauExemple({ plan }: { plan: Plan }) {
   const copier = async () => {
     setEnCours(true);
     try {
-      const copie = await dupliquerPlan(plan, "JUS'NOSY (ma copie)");
+      const copie = await dupliquerPlan(plan, `${plan.identite.nomProjet.trim() || 'Exemple'} (ma copie)`);
       // Same screen, on the copy.
       naviguer(lieu.pathname.replace(`/p/${plan.id}`, `/p/${copie.id}`));
     } finally {
@@ -22,7 +23,9 @@ export function BandeauExemple({ plan }: { plan: Plan }) {
   };
   return (
     <div className="bp-exemple mx-4 mt-3 rounded-xl bg-violetClair border border-violet/20 px-3.5 py-3">
-      <p className="text-[15px] font-bold text-violet leading-snug">Exemple : projet fictif du cahier, en lecture seule</p>
+      <p className="text-[15px] font-bold text-violet leading-snug">
+        {plan.id === ID_EXEMPLE ? 'Exemple : projet fictif du cahier, en lecture seule' : `Exemple ${plan.identite.nomProjet} : projet fictif, en lecture seule`}
+      </p>
       <button
         type="button"
         onClick={copier}

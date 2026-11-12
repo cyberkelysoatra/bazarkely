@@ -62,7 +62,7 @@ describe('Contenu du PDF', () => {
     expect(tab && tab.type === 'tableau').toBe(true);
     const lignes = tab!.type === 'tableau' ? tab!.lignes.map((l) => l.map(textePdf)) : [];
     expect(lignes.find((l) => l[0] === "Chiffre d'affaires")).toEqual(["Chiffre d'affaires", '43 200 000 Ar', '57 600 000 Ar', '72 000 000 Ar']);
-    expect(lignes.find((l) => l[0] === 'Résultat avant amortissements et avant impôt')).toEqual(['Résultat avant amortissements et avant impôt', '8 640 000 Ar', '15 120 000 Ar', '20 400 000 Ar']);
+    expect(lignes.find((l) => l[0] === 'Résultat avant amortissements et avant impôt')).toEqual(['Résultat avant amortissements et avant impôt', '8 280 000 Ar', '14 760 000 Ar', '20 040 000 Ar']);
   });
 
   it('empty answers are "(non rempli)"; telephone and e-mail never in the sections', () => {
@@ -92,7 +92,7 @@ describe('Texte WhatsApp', () => {
     expect(t).toContain('Besoin total : 9 000 000 Ar');
     expect(t).toContain('Financement demandé : 7 000 000 Ar');
     expect(t).toContain("Chiffre d'affaires année 1 : 43 200 000 Ar");
-    expect(t).toContain('Seuil de rentabilité : 750 bouteilles de 50 cl par mois');
+    expect(t).toContain('Seuil de rentabilité : 769 bouteilles de 50 cl par mois');
     expect(/[—–· ]/.test(t)).toBe(false);
   });
 });

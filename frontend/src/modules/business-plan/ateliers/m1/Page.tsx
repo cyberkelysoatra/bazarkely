@@ -7,6 +7,11 @@ import { ChampTexte } from '../../composants/Champs';
 import { Carte } from '../../composants/Carte';
 import { Aide } from '../../composants/Aide';
 import { phraseValeur } from './phrase';
+import { AutreExemple } from '../../composants/AutreExemple';
+import { useExempleDuPlan } from '../../etat/exempleChoisi';
+
+/** "Argent qui sort" -> "argent qui sort" after a colon (an acronym such as "NIF" is kept). */
+const minuscule = (t: string) => (/^\p{Lu}\p{Ll}/u.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
 
 type Client = Plan['m1']['client'];
 
@@ -57,6 +62,9 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
   const set = (recette: (m: Plan['m1']) => void) => modifier((p) => recette(p.m1));
   const nomProjet = plan.identite.nomProjet.trim();
   const phrase = phraseValeur(plan);
+  // Inline example of the sector of the fiche d'identité (NEC-CC-13).
+  const { exemple, choisir } = useExempleDuPlan(plan);
+  const ex = exemple.plan().m1;
 
   return (
     <>
@@ -76,16 +84,17 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       </Aide>
 
       <Carte titre="1a. Mon arbre à problèmes" sousTitre="Les branches en haut, le tronc au milieu, les racines en bas." className="bp-m1a">
-        <Aide titre="Exemple JUS'NOSY">
+        <Aide titre={`Exemple ${exemple.nom}`}>
           <p>
-            <span className="font-bold">Conséquences :</span> argent qui sort de l'île, producteurs mal payés, déchets plastique.
+            <span className="font-bold">Conséquences :</span> {minuscule(ex.consequences)}
           </p>
           <p className="mt-1.5">
-            <span className="font-bold">Problème central :</span> les hôtels de Nosy Be servent surtout des jus importés ou industriels.
+            <span className="font-bold">Problème central :</span> {minuscule(ex.probleme)}
           </p>
           <p className="mt-1.5">
-            <span className="font-bold">Causes :</span> peu d'offre locale régulière, fruits perdus faute de transformation.
+            <span className="font-bold">Causes :</span> {minuscule(ex.causes)}
           </p>
+          <AutreExemple actuel={exemple} choisir={choisir} />
         </Aide>
         <Etage etiquette="CONSÉQUENCES" ton="blanc">
           <ChampTexte label="Que se passe-t-il si personne ne règle ce problème ?" valeur={m1.consequences} onChange={(v) => set((m) => void (m.consequences = v))} lectureSeule={ls} />
