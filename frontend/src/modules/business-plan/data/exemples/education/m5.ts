@@ -1,7 +1,10 @@
 // MIANATRA PLUS example, module 5 (source step 8): cost 2 500, margin 17 500 (88 %), fixed costs 750 000,
 // break-even 43 pupils, needs = resources = 8 150 000. The source counts 10 paying months a year
-// (results 1 500 000, 3 250 000, 4 700 000); the app counts 12 (sales per month x 12): see the
-// NEC-CC-13 report. Working days left at 0: the source gives none (no "per day" break-even).
+// (results 1 500 000, 3 250 000, 4 700 000) while the app counts sales per month x 12 (NEC-CC-15-B):
+// sales per month are the 12-month average of the source's yearly subscriptions (600, 700, 800 / 12),
+// so turnover, costs and results equal the source. 700 / 12 and 800 / 12 x 12 give back 700 and 800
+// exactly in floating point; read-only display rounds them to 58 and 67.
+// Working days left at 0: the source gives none (no "per day" break-even).
 import type { Plan } from '../../../types';
 import { l } from '../assembler';
 
@@ -22,13 +25,14 @@ export const m5: Partial<Plan['m5']> = {
   fondsRoulementSaisi: null,
   ressources: { apport: 1150000, subvention: 5000000, pret: 2000000, autre: null, autreLibelle: '' },
   annees: [
-    { ventesParMois: 60, chargesFixesMois: null },
-    { ventesParMois: 70, chargesFixesMois: 750000 },
-    { ventesParMois: 80, chargesFixesMois: 775000 }
+    // Pupils per school month 60, 70, 80 over 10 paying months: 600, 700, 800 subscriptions a year.
+    { ventesParMois: 600 / 12, chargesFixesMois: null },
+    { ventesParMois: 700 / 12, chargesFixesMois: 750000 },
+    { ventesParMois: 800 / 12, chargesFixesMois: 775000 }
   ],
   tauxImpot: null,
   hypotheses:
-    "10 mois payants par an, 12 mois de charges ; le stage d'août n'est pas compté, par prudence ; 80 élèves en année 3 = la salle pleine. Charges fixes de l'année 3 : hausse du loyer (775 000 par mois).",
+    "Cours payés 10 mois par an : ventes ramenées à une moyenne sur 12 mois (60, 70 et 80 élèves par mois d'école, soit 600, 700 et 800 abonnements par an). 10 mois payants par an, 12 mois de charges ; le stage d'août n'est pas compté, par prudence ; 80 élèves en année 3 = la salle pleine. Charges fixes de l'année 3 : hausse du loyer (775 000 par mois).",
   risques: [
     { id: 'ed-r1', risque: 'Vacances sans revenus.', reponse: "Stage de révision en août (non compté)." },
     { id: 'ed-r2', risque: 'Parents qui paient en retard.', reponse: "Paiement d'avance." },

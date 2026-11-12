@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.138.0';
-export const APP_VERSION_NAME = "Mon Business Plan : mon pitch de 2 minutes, aperçu de lien et icône (NEC-CC-14)";
+export const APP_VERSION = '3.139.0';
+export const APP_VERSION_NAME = "Mon Business Plan : trois niveaux pour les chiffres clés (NEC-CC-15)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.139.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : trois niveaux pour les chiffres clés (NEC-CC-15)",
+    changes: [
+      "Module 5 : choix « Mon niveau pour les chiffres » (Je sais déjà faire, J'ai quelques notions, Je découvre), Ciblé par défaut, gardé dans le plan et changeable à tout moment",
+      "Rapide : résultats seuls, « Voir le calcul » pour la formule ; une alerte propose une fois l'explication du piège et le passage en Ciblé",
+      "Ciblé : un encadré « Attention au piège » en haut de 5a à 5d ; Bases : l'exemple de la vendeuse de beignets écran par écran avant chaque partie, puis chaque calcul écrit avec ses propres nombres",
+      "Exemple MIANATRA PLUS : cours payés 10 mois par an, ventes ramenées à une moyenne sur 12 mois (résultat année 1 : 1 500 000 Ar, comme le fichier source)"
+    ]
+  },
   {
     version: '3.138.0',
     date: '2026-11-12',

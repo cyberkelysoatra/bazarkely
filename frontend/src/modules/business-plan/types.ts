@@ -21,7 +21,10 @@ export interface Plan {
   mission?: Mission;
   /** NEC-CC-14, optional: plans created before this version have none (see pitchDe). */
   pitch?: Pitch;
+  /** NEC-CC-15, optional: learning level of module 5 (plans created before this version: 'cible'). */
+  niveauChiffres?: NiveauChiffres;
 }
+export type NiveauChiffres = 'rapide' | 'cible' | 'bases';
 /** Result of a comprehension loop: '' not done, passed, or passed after 2 explanations ("à revoir"). */
 export interface Boucle { statut: '' | 'reussi' | 'arevoir'; explications: number }
 export type TempsEmploi = '' | 'plein' | 'partiel';

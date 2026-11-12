@@ -17,8 +17,6 @@ const SOURCE: Record<string, { cu: number; marge: number; taux: number; cf: numb
 
 /** Known differences between the source and what the app computes (written in the NEC-CC-13 report). */
 const ECARTS: Record<string, { ca1?: number; res?: number[]; ventesM3?: number }> = {
-  // The source counts 10 paying months a year; the app always counts sales per month x 12.
-  education: { ca1: 14400000, res: [3600000, 5700000, 7500000] },
   // 10 % of 3 840 kg is 384; the source rounds to 400 kg (module 5 keeps the source's 400).
   'economie-bleue': { ventesM3: 384 }
 };
@@ -42,6 +40,17 @@ describe('NEC-CC-13 worked examples', () => {
     expect(planExempleParId('a1b2')).toBeNull();
     expect(planExempleParId(undefined)).toBeNull();
     expect(exempleParId('exemple-energie')?.nom).toBe('JIRO KELY');
+  });
+
+  it('MIANATRA PLUS: 10 paying months spread over 12, source totals, visible sentence (NEC-CC-15-B)', () => {
+    const p = exempleParId('exemple-education')!.plan();
+    const c = calculer(p);
+    expect(c.annees.map((a) => a?.quantites)).toEqual([600, 700, 800]);
+    expect(c.annees.map((a) => a?.ca)).toEqual([12000000, 14000000, 16000000]);
+    expect(c.annees.map((a) => a?.cv)).toEqual([1500000, 1750000, 2000000]);
+    expect(c.annees.map((a) => a?.chargesAnnee)).toEqual([9000000, 9000000, 9300000]);
+    expect(c.annees[0]?.resultat).toBe(1500000);
+    expect(p.m5.hypotheses).toContain('Cours payés 10 mois par an : ventes ramenées à une moyenne sur 12 mois');
   });
 
   for (const e of EXEMPLES) {
