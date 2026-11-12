@@ -1,0 +1,274 @@
+{
+ "format": "nec-business-plan",
+ "version": 1,
+ "enregistreLe": "2026-11-12T12:17:56.984Z",
+ "plan": {
+  "id": "b4f339f7-63a8-428a-9322-f880f20cd3cb",
+  "creeLe": "2026-11-12T12:17:51.593Z",
+  "modifieLe": "2026-11-12T12:17:51.593Z",
+  "rev": 0,
+  "uniteVente": "",
+  "identite": {
+   "nomPrenom": "Rasoa Hanta",
+   "nomProjet": "JUS DES ECOLES",
+   "telephone": "0340000000",
+   "email": "rasoa@exemple.mg",
+   "secteur": "agriculture",
+   "secteurAutre": "",
+   "lieu": "Hell-Ville",
+   "unePhrase": "Des jus frais et sains pour les élèves de Hell-Ville.",
+   "avancement": "idee",
+   "porteurs": "Rasoa, porteuse du projet",
+   "attentes": "Un plan clair à présenter au jury."
+  },
+  "m1": {
+   "consequences": "Caries, enfants fatigués l’après-midi.",
+   "probleme": "Les élèves boivent des sodas sucrés à la récréation.",
+   "causes": "Aucun jus local vendu près des écoles.",
+   "client": {
+    "qui": "Les parents d’élèves des écoles de Hell-Ville",
+    "ou": "Hell-Ville, devant les 4 écoles primaires",
+    "combien": "Environ 1 200 familles",
+    "aujourdhui": "",
+    "prixAujourdhui": "",
+    "decideur": ""
+   },
+   "pv": {
+    "pour": "",
+    "qui": "",
+    "propose": "",
+    "quiBenefice": "",
+    "contrairement": ""
+   },
+   "pourquoiMoi": ""
+  },
+  "m2": {
+   "segments": "",
+   "proposition": "",
+   "canaux": "",
+   "relation": "",
+   "revenus": "",
+   "ressources": "",
+   "activites": "",
+   "partenaires": "",
+   "couts": "",
+   "versionDu": ""
+  },
+  "m3": {
+   "nbClients": null,
+   "nbClientsSource": "",
+   "qteParAchat": null,
+   "qteSource": "",
+   "achatsParMois": null,
+   "achatsSource": "",
+   "prixPrevu": null,
+   "partVisee": null,
+   "concurrents": [],
+   "swot": {
+    "forces": "",
+    "faiblesses": "",
+    "opportunites": "",
+    "menaces": ""
+   }
+  },
+  "m4": {
+   "produit": "",
+   "prix": "",
+   "place": "",
+   "promotion": "",
+   "etapes": "",
+   "equipe": [],
+   "fournisseurs": "",
+   "calendrier": [
+    {
+     "periode": "t1",
+     "objectif": "",
+     "responsable": ""
+    },
+    {
+     "periode": "t2",
+     "objectif": "",
+     "responsable": ""
+    },
+    {
+     "periode": "t3",
+     "objectif": "",
+     "responsable": ""
+    },
+    {
+     "periode": "t4",
+     "objectif": "",
+     "responsable": ""
+    }
+   ],
+   "forme": "",
+   "formePourquoi": "",
+   "demarches": [
+    {
+     "id": "statuts",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "nif",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "stat",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "rcs",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "carteFiscale",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "compte",
+     "fait": false,
+     "datePrevue": ""
+    },
+    {
+     "id": "cnaps",
+     "fait": false,
+     "datePrevue": ""
+    }
+   ]
+  },
+  "m5": {
+   "couts": [
+    {
+     "id": "8b27dcee-f904-433a-8c81-bf9b43ceb3a6",
+     "libelle": "",
+     "montant": null
+    }
+   ],
+   "prixVente": null,
+   "chargesFixes": {
+    "loyer": null,
+    "salaires": null,
+    "energie": null,
+    "transport": null,
+    "telephone": null,
+    "autres": null,
+    "lignes": []
+   },
+   "joursParMois": 25,
+   "investissements": [
+    {
+     "id": "e8ae36e1-0200-40af-a318-6b16daa494c0",
+     "libelle": "",
+     "montant": null
+    }
+   ],
+   "stockDepart": null,
+   "fondsRoulementSaisi": null,
+   "ressources": {
+    "apport": null,
+    "subvention": null,
+    "pret": null,
+    "autre": null,
+    "autreLibelle": ""
+   },
+   "annees": [
+    {
+     "ventesParMois": null,
+     "chargesFixesMois": null
+    },
+    {
+     "ventesParMois": null,
+     "chargesFixesMois": null
+    },
+    {
+     "ventesParMois": null,
+     "chargesFixesMois": null
+    }
+   ],
+   "tauxImpot": null,
+   "hypotheses": "",
+   "risques": [
+    {
+     "id": "9bb7dd10-0851-46f3-9961-3975e71c423b",
+     "risque": "",
+     "reponse": ""
+    },
+    {
+     "id": "4045f624-beaa-410b-bc59-c834b359f57a",
+     "risque": "",
+     "reponse": ""
+    },
+    {
+     "id": "5438b9d2-2362-4784-907f-43b5a543c620",
+     "risque": "",
+     "reponse": ""
+    }
+   ]
+  },
+  "synthese": {
+   "probleme": "",
+   "solution": "",
+   "marche": "",
+   "organisation": "",
+   "chiffres": "",
+   "equipeDemande": ""
+  },
+  "relecture": {
+   "points": {},
+   "questionBinome": ""
+  },
+  "actions": [],
+  "prix": [],
+  "notes": "",
+  "impact": {
+   "boucle": {
+    "statut": "",
+    "explications": 0
+   },
+   "prerempli": false,
+   "emplois": [],
+   "femmes": null,
+   "jeunes": null,
+   "clientsMois": null,
+   "partenaires": [],
+   "autreEffet": "",
+   "envTrace": "",
+   "envReduction": "",
+   "phrase": ""
+  },
+  "mission": {
+   "boucle": {
+    "statut": "",
+    "explications": 0
+   },
+   "prerempli": false,
+   "questions": "",
+   "clientsAInterroger": "",
+   "prixARelever": "",
+   "elementsUnite": "",
+   "chargesADemander": "",
+   "presentation": "",
+   "camarade": "",
+   "debut": null,
+   "entretiens": [],
+   "appris": {
+    "aujourdhui": "",
+    "paie": "",
+    "embete": "",
+    "surprise": ""
+   },
+   "decision": "",
+   "reports": {}
+  },
+  "pitch": {
+   "motsCles": {},
+   "essais": [],
+   "reponses": {}
+  }
+ }
+}
