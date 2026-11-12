@@ -68,7 +68,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet" titre="Structurer le projet">
+      <Carte ton="violet" ecouter titre="Structurer le projet">
         <p className="text-[16px] leading-relaxed text-encre">
           Un projet solide répond clairement à quatre questions, dans cet ordre : quel problème ? pour qui ? quelle solution ? pourquoi moi ? Beaucoup de projets échouent parce
           qu'ils commencent par la solution (« je veux ouvrir un restaurant ») sans avoir vérifié le problème ni le client.

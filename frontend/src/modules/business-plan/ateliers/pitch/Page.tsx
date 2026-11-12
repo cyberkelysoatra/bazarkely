@@ -281,7 +281,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet" titre="Mon pitch de 2 minutes">
+      <Carte ton="violet" ecouter titre="Mon pitch de 2 minutes">
         <p className="text-[16px] leading-relaxed text-encre">
           L'app construit les 5 temps de ton pitch à partir de ton résumé, en <strong>mots-clés</strong> (au plus 12 mots par temps), avec la durée de chaque temps. Tu peux changer
           les mots-clés, pas en faire des phrases à lire.

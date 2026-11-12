@@ -222,7 +222,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet" titre="Les chiffres clés">
+      <Carte ton="violet" ecouter titre="Les chiffres clés">
         <p className="text-[16px] leading-relaxed text-encre">
           Les chiffres répondent à trois questions : combien faut-il pour démarrer ? combien je gagne sur chaque vente ? à partir de combien de ventes je ne perds plus d'argent ?
           Tous les montants sont en ariary (Ar). Utilisez les prix réels relevés hier soir.

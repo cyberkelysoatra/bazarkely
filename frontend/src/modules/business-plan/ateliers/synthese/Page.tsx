@@ -62,7 +62,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
   const k = chiffresCles(plan);
   return (
     <>
-      <Carte ton="violet" titre="Le résumé de mon business plan">
+      <Carte ton="violet" ecouter titre="Le résumé de mon business plan">
         <p className="text-[16px] leading-relaxed text-encre">
           Le résumé est la page la plus lue : beaucoup de jurys ne lisent qu'elle. On l'écrit en dernier, en une page maximum, en reprenant vos meilleures réponses des modules 1
           à 5.

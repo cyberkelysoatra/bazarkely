@@ -1,10 +1,12 @@
 // Collapsible help (ⓘ), closed by default.
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
+import { BoutonEcouter } from './Ecouter';
 import { Icone } from './Icones';
 
 export function Aide({ titre = 'Aide', children }: { titre?: string; children: ReactNode }) {
   const [ouvert, setOuvert] = useState(false);
   const id = useId();
+  const contenu = useRef<HTMLDivElement>(null);
   return (
     <div className="mb-3">
       <button
@@ -18,7 +20,9 @@ export function Aide({ titre = 'Aide', children }: { titre?: string; children: R
         {titre}
       </button>
       {ouvert ? (
-        <div id={id} className="bp-aide rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
+        <div ref={contenu} id={id} className="bp-aide flow-root rounded-xl bg-turquoiseClair px-3.5 py-3 text-[15px] leading-relaxed text-encre">
+          {/* NEC-CC-23: explanations only, never an example block. */}
+          {/^exemple/i.test(titre) ? null : <BoutonEcouter cible={contenu} className="float-right ml-2 mb-1 -mt-1 -mr-1.5" />}
           {children}
         </div>
       ) : null}

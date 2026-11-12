@@ -147,7 +147,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet">
+      <Carte ton="violet" ecouter>
         <p className="text-[19px] font-bold text-violet leading-tight mb-2">Ton projet ne fait pas vivre que toi.</p>
         <p className="text-[15px] text-encre leading-relaxed">
           Combien de personnes seront payées grâce à lui ? Qui en profite autour de toi ? Le jury d'un concours et ceux qui donnent une subvention posent toujours cette question.

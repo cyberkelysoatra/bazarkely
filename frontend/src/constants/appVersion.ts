@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.147.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : post-test ouvert par le formateur, résultats et onglet Évaluation (NEC-CC-22)';
+export const APP_VERSION = '3.148.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : bouton « Écouter » qui lit les explications avec la voix du téléphone (NEC-CC-23)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.148.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : « Écouter » lit à voix haute les explications de chaque étape avec la voix française du téléphone (NEC-CC-23, NEC-173)',
+    changes: [
+      "Bouton « Écouter » / « Arrêter » sur la carte d'introduction de chaque étape, dans les aides ouvertes, les explications de la boucle de compréhension et les explications du module 5 (Bases et Ciblé)",
+      'Voix du téléphone seulement (speechSynthesis), voix installée préférée : marche hors ligne ; rien enregistré, rien envoyé, aucun fichier son',
+      'Un seul texte lu à la fois ; arrêt au second toucher, en changeant d’écran, en fermant l’aide ou quand la page est cachée',
+      'Sans voix française sur le téléphone : aucun bouton ; plan, PDF et texte WhatsApp inchangés'
+    ]
+  },
   {
     version: '3.147.0',
     date: '2026-11-12',

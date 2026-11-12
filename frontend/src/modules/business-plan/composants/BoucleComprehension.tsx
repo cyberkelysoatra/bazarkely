@@ -1,7 +1,8 @@
 // Comprehension loop (fiche ETAPE-02, section 1), data driven: several right boxes, each box carries an
 // error code; the first code met (in the order of the fiche) shows its explanation, then the next question
 // (or the same one again). Passed when all right; after 2 explanations, passed with the notion "à revoir".
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { BoutonEcouter } from './Ecouter';
 import type { Boucle } from '../types';
 import { Icone } from './Icones';
 
@@ -30,6 +31,17 @@ export function premiereErreur(q: QuestionBoucle, cochees: boolean[], ordre: str
   const codes = new Set(q.cases.filter((c, i) => c.juste !== !!cochees[i]).map((c) => c.code));
   if (!codes.size) return null;
   return ordre.find((c) => codes.has(c)) ?? [...codes][0];
+}
+
+/** Explanation after a wrong answer, with "Écouter" (NEC-CC-23). */
+function Explication({ texte, className, statut }: { texte: string; className: string; statut?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={ref} role={statut ? 'status' : undefined} className={`bp-explication flow-root ${className} rounded-lg bg-turquoiseClair px-3 py-2 text-[15px] leading-relaxed text-encre`}>
+      <BoutonEcouter cible={ref} className="float-right ml-2 mb-1 -mr-1" />
+      <p>{texte}</p>
+    </div>
+  );
 }
 
 export function BoucleComprehension({
@@ -66,7 +78,7 @@ export function BoucleComprehension({
             {etat.statut === 'reussi' ? 'Bravo, tu as compris.' : 'Notion à revoir : on la reprendra à la relecture.'}
           </p>
         )}
-        {explication ? <p className="bp-explication mt-2 rounded-lg bg-turquoiseClair px-3 py-2 text-[15px] leading-relaxed text-encre">{explication}</p> : null}
+        {explication ? <Explication texte={explication} className="mt-2" /> : null}
       </div>
     );
   }
@@ -89,9 +101,7 @@ export function BoucleComprehension({
   return (
     <div className="bp-boucle rounded-xl border-2 border-violet bg-white p-3.5 mb-4">
       {explication ? (
-        <p role="status" className="bp-explication mb-3 rounded-lg bg-turquoiseClair px-3 py-2 text-[15px] leading-relaxed text-encre">
-          {explication}
-        </p>
+        <Explication texte={explication} className="mb-3" statut />
       ) : null}
       <p className="text-[15px] font-bold text-encre leading-snug mb-2">{q.enonce}</p>
       <ul className="space-y-2 mb-3">

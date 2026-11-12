@@ -2,7 +2,8 @@
 // ETAPE-08-M5-chiffres-cles.md, section 12 (12.1 targeted explanations, 12.2 to 12.5 level Bases).
 // The beignet seller is a fictitious worked example, shown as is. Display only: no computation here
 // changes a figure, the formulas only repeat the numbers computed by utils/chiffres.
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { BoutonEcouter } from '../../composants/Ecouter';
 import type { NiveauChiffres, Plan } from '../../types';
 import type { Chiffres, CleAlerte } from '../../utils/chiffres';
 import { ariary, grouper, pluriel } from '../../utils/format';
@@ -60,8 +61,10 @@ export function Gras({ texte }: { texte: string }) {
 
 /** Ciblé: box "Attention au piège" at the top of a part. */
 export function Piege({ partie }: { partie: Partie }) {
+  const ref = useRef<HTMLDivElement>(null);
   return (
-    <div className="bp-piege rounded-xl border-2 border-violet bg-violetClair px-3.5 py-3 mb-4">
+    <div ref={ref} className="bp-piege flow-root rounded-xl border-2 border-violet bg-violetClair px-3.5 py-3 mb-4">
+      <BoutonEcouter cible={ref} className="float-right ml-2 mb-1 -mt-1.5 -mr-1.5" />
       <p className="text-[15px] font-bold text-violet mb-1">Attention au piège</p>
       {PIEGES_PARTIE[partie].map((code) => (
         <p key={code} className="text-[15px] leading-snug text-encre mt-1.5">
@@ -315,6 +318,17 @@ export function suivante(ecrans: Ecran[], p: Position): Position | null {
   return null;
 }
 
+/** Readable part of a Bases screen (title and pieces shown), with "Écouter" (NEC-CC-23); the buttons are not read. */
+function TexteBases({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={ref} className="flow-root">
+      <BoutonEcouter cible={ref} className="float-right ml-2 mb-1 -mt-1 -mr-1.5" />
+      {children}
+    </div>
+  );
+}
+
 /** Level Bases: the current explanation screen of a part, with "Continuer" and "J'ai compris, voir ma page". */
 export function EcranBases({ ecrans, position, continuer, passer }: { ecrans: Ecran[]; position: Position; continuer: () => void; passer: () => void }) {
   const e = ecrans[position.ecran];
@@ -323,7 +337,8 @@ export function EcranBases({ ecrans, position, continuer, passer }: { ecrans: Ec
   const seuil500 = e.titre.startsWith('Combien de beignets');
   return (
     <div className="bp-bases rounded-xl bg-violetClair px-3.5 py-3 mb-2">
-      <p className="text-[13px] text-doux">
+      <TexteBases>
+      <p className="text-[13px] text-doux" data-ne-pas-lire="">
         Explication {position.ecran + 1} sur {ecrans.length}
       </p>
       <p className="text-[17px] font-bold text-violet leading-tight mt-0.5 mb-1.5">{e.titre}</p>
@@ -334,6 +349,7 @@ export function EcranBases({ ecrans, position, continuer, passer }: { ecrans: Ec
           </div>
         ))}
       </div>
+      </TexteBases>
       {seuil500 ? <Barre sur={position.morceaux >= 2 ? 500 : 0} de={500} /> : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={continuer} className="bp-continuer min-h-[48px] px-5 rounded-xl bg-violet text-white text-[16px] font-bold active:opacity-90">

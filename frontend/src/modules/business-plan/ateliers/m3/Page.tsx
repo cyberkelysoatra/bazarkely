@@ -60,7 +60,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet" titre="Marché et concurrence">
+      <Carte ton="violet" ecouter titre="Marché et concurrence">
         <p className="text-[16px] leading-relaxed text-encre">
           Un jury ne vous demande pas un chiffre exact, il veut voir que vous savez raisonner. Marché potentiel par mois = nombre de clients possibles x quantité achetée par achat x
           nombre d'achats par mois. Puis on fixe la part réaliste que l'on peut prendre la première année (souvent de 5 à 20 %), en fonction de sa capacité de production et de vente.

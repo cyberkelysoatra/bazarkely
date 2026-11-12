@@ -89,7 +89,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet" titre="Le Business Model Canvas">
+      <Carte ton="violet" ecouter titre="Le Business Model Canvas">
         <p className="text-[16px] leading-relaxed text-encre">
           Le Business Model Canvas montre sur une seule page comment votre projet crée de la valeur et gagne de l'argent. Il compte 9 blocs. On le remplit dans l'ordre : d'abord le
           client et la valeur, ensuite l'organisation, enfin l'argent.

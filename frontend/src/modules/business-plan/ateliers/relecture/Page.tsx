@@ -27,7 +27,7 @@ function Badge({ s }: { s: Suggestion }) {
 export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps) {
   return (
     <>
-      <Carte ton="violet" titre="Relecture en binôme">
+      <Carte ton="violet" ecouter titre="Relecture en binôme">
         <p className="text-[16px] leading-relaxed text-encre">
           Échangez votre téléphone avec votre voisin. Il coche ce qui est clair et vous pose une question sur ce qui ne l'est pas.
         </p>

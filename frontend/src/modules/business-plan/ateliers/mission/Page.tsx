@@ -191,7 +191,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
   return (
     <>
-      <Carte ton="violet">
+      <Carte ton="violet" ecouter>
         <p className="text-[19px] font-bold text-violet leading-tight mb-2">Avant de dépenser 1 ariary, va vérifier.</p>
         <p className="text-[15px] text-encre leading-relaxed">
           Tes clients et les vrais prix valent plus que tes suppositions. Le jury le voit tout de suite : un chiffre « je l'ai demandé » pèse plus qu'un chiffre « je l'estime ».
