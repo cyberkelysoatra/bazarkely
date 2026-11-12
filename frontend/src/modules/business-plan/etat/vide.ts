@@ -1,6 +1,6 @@
 // planVide(): a plan with every field initialised (contract of types.ts), and the merge that keeps
 // unknown fields of a stored plan (written by a later version) through a load and a save.
-import type { Ligne, Plan } from '../types';
+import type { Impact, Ligne, Mission, Plan } from '../types';
 
 export function nouvelId(): string {
   try {
@@ -12,6 +12,38 @@ export function nouvelId(): string {
 
 export function ligneVide(): Ligne {
   return { id: nouvelId(), libelle: '', montant: null };
+}
+
+export function impactVide(): Impact {
+  return { boucle: { statut: '', explications: 0 }, prerempli: false, emplois: [], femmes: null, jeunes: null, clientsMois: null, partenaires: [], autreEffet: '', phrase: '' };
+}
+
+export function missionVide(): Mission {
+  return {
+    boucle: { statut: '', explications: 0 },
+    prerempli: false,
+    questions: '',
+    clientsAInterroger: '',
+    prixARelever: '',
+    elementsUnite: '',
+    chargesADemander: '',
+    presentation: '',
+    camarade: '',
+    debut: null,
+    entretiens: [],
+    appris: { aujourdhui: '', paie: '', embete: '', surprise: '' },
+    decision: '',
+    reports: {}
+  };
+}
+
+/** The impact page of a plan, with safe defaults for a plan saved before NEC-CC-12. */
+export function impactDe(plan: Plan): Impact {
+  return plan.impact ?? impactVide();
+}
+
+export function missionDe(plan: Plan): Mission {
+  return plan.mission ?? missionVide();
 }
 
 export function planVide(): Plan {
@@ -75,7 +107,9 @@ export function planVide(): Plan {
     relecture: { points: {}, questionBinome: '' },
     actions: [],
     prix: [],
-    notes: ''
+    notes: '',
+    impact: impactVide(),
+    mission: missionVide()
   };
 }
 

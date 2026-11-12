@@ -16,5 +16,39 @@ export interface Plan {
   actions: { id: string; action: string; quand: string }[];
   prix: { id: string; element: string; unite: string; prix: Montant; ou: string }[];
   notes: string;
+  /** NEC-CC-12, optional: plans created before this version have none (see impactDe / missionDe). */
+  impact?: Impact;
+  mission?: Mission;
+}
+/** Result of a comprehension loop: '' not done, passed, or passed after 2 explanations ("à revoir"). */
+export interface Boucle { statut: '' | 'reussi' | 'arevoir'; explications: number }
+export type TempsEmploi = '' | 'plein' | 'partiel';
+export interface Impact {
+  boucle: Boucle;
+  /** True once year 1 was prefilled from the team of module 4 (done once). */
+  prerempli: boolean;
+  /** One line per person; `annees` = time worked in years 1, 2, 3 ('' = not paid that year). */
+  emplois: { id: string; role: string; statut: '' | 'moi' | 'salarie' | 'benevole'; annees: [TempsEmploi, TempsEmploi, TempsEmploi]; equipeId?: string }[];
+  femmes: Montant; jeunes: Montant;
+  clientsMois: Montant;
+  partenaires: { id: string; nom: string; local: boolean }[];
+  autreEffet: string;
+  phrase: string;
+}
+export interface Mission {
+  boucle: Boucle;
+  prerempli: boolean;
+  questions: string; clientsAInterroger: string; prixARelever: string; elementsUnite: string; chargesADemander: string;
+  presentation: string; camarade: string;
+  /** ISO time the 40 min countdown started (null = not started). */
+  debut: string | null;
+  /** Interview evidence: never a name or a phone number of the person interviewed. */
+  entretiens: { id: string; date: string; typeClient: string; aujourdhui: string; paie: Montant; embete: string; probleme: '' | 'oui' | 'non'; phrase: string }[];
+  appris: { aujourdhui: '' | 'pareil' | 'different'; paie: '' | 'pareil' | 'different'; embete: '' | 'pareil' | 'different'; surprise: string };
+  decision: '' | 'continuer' | 'ajuster' | 'changer';
+  /** 7c: each proposed update, validated or refused. */
+  reports: Record<string, '' | 'valide' | 'refuse'>;
+  /** "Changer d'angle" erases nothing: modules 1 to 4 as they were, kept as "version 1". */
+  version1?: { date: string; m1: Plan['m1']; m2: Plan['m2']; m3: Plan['m3']; m4: Plan['m4'] };
 }
 export interface AtelierProps { plan: Plan; modifier: (recette: (p: Plan) => void) => void; lectureSeule: boolean }

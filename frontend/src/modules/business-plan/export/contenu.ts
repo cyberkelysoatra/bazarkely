@@ -11,6 +11,9 @@ import { CARTES, chiffresCles } from '../ateliers/synthese/brouillons';
 import { POINTS } from '../ateliers/relecture/points';
 import { CALENDRIER_NEC, NB_ACTIONS } from '../ateliers/apres/calendrier';
 import { RUBRIQUES, type IdRubrique } from '../rubriques/registre';
+import { impactDe, missionDe } from '../etat/vide';
+import { PREMIERE_ANNEE, totaux } from '../ateliers/impact/regles';
+import { DECISIONS, entretienFait, nbEntretiens, nbPrix } from '../ateliers/mission/regles';
 
 export const NON_REMPLI = '(non rempli)';
 
@@ -406,9 +409,94 @@ function notes(plan: Plan): Section {
   return { titre: titreDe('notes'), blocs: [champ('Mes notes', plan.notes)] };
 }
 
+const TEMPS_EMPLOI: Record<string, string> = { plein: 'Temps plein', partiel: 'Temps partiel' };
+
+function impact(plan: Plan): Section {
+  const im = impactDe(plan);
+  const t = totaux(im);
+  const payes = im.emplois.filter((e) => e.statut !== 'benevole' && e.role.trim());
+  const benevoles = im.emplois.filter((e) => e.statut === 'benevole' && e.role.trim());
+  const nombre = (n: number | null) => (n === null ? NON_REMPLI : grouper(n));
+  const partenaires = im.partenaires.filter((p) => p.nom.trim()).map((p) => `${p.nom.trim()}${p.local ? ' (local)' : ''}`);
+  return {
+    titre: titreDe('impact'),
+    blocs: [
+      st('Mes emplois en chiffres'),
+      ...t.map((n, k): Bloc => ({ type: 'texte', texte: `Année ${k + 1} (${PREMIERE_ANNEE + k}) : ${'•'.repeat(Math.min(n, 30))}${n ? ' ' : ''}${n} personne${n > 1 ? 's' : ''} payée${n > 1 ? 's' : ''}` })),
+      champ("Ma phrase d'impact", im.phrase),
+      st('6a. Mes emplois'),
+      {
+        type: 'tableau',
+        entetes: ['Personne payée', 'Année 1', 'Année 2', 'Année 3'],
+        largeurs: [0.4, 0.2, 0.2, 0.2],
+        lignes: [
+          ...payes.map((e) => [`${e.role.trim()}${e.statut === 'moi' ? " (j'en vis)" : e.statut === 'salarie' ? ' (salarié)' : ''}`, ...e.annees.map((a) => TEMPS_EMPLOI[a] ?? '')]),
+          ['Total des personnes payées', ...t.map(String)]
+        ],
+        total: true
+      },
+      champ('Bénévoles (non comptés)', benevoles.map((e) => e.role.trim()).join(', ')),
+      champ('Dont femmes, en année 1', nombre(im.femmes)),
+      champ('Dont jeunes de moins de 35 ans, en année 1', nombre(im.jeunes)),
+      st('6b. Qui en profite'),
+      champ('Clients servis par mois en année 1', nombre(im.clientsMois)),
+      champ('Fournisseurs et partenaires locaux payés', partenaires.join(', ')),
+      champ('Autre effet positif', im.autreEffet)
+    ]
+  };
+}
+
+function mission(plan: Plan): Section {
+  const m = missionDe(plan);
+  const faits = m.entretiens.filter(entretienFait);
+  const premier = faits.map((e) => e.date).sort()[0] ?? m.debut ?? '';
+  const date = premier ? jour(premier.slice(0, 10)) : '';
+  const decision = DECISIONS.find((d) => d.v === m.decision);
+  const comparaison = (c: string) => (c === 'pareil' ? 'Pareil' : c === 'different' ? 'Différent' : NON_REMPLI);
+  return {
+    titre: titreDe('mission'),
+    blocs: [
+      st('Vérifié sur le terrain'),
+      {
+        type: 'tableau',
+        entetes: ['Preuve', 'Valeur'],
+        largeurs: [0.6, 0.4],
+        lignes: [
+          ['Clients interrogés', String(nbEntretiens(plan))],
+          ['Prix relevés', String(nbPrix(plan))],
+          ['Date', v(date)]
+        ]
+      },
+      champ("La phrase qui m'a le plus surpris", m.appris.surprise),
+      st('Mes entretiens (aucun nom, aucun numéro)'),
+      faits.length
+        ? {
+            type: 'tableau',
+            entetes: ['Type de client', "Ce qu'il utilise aujourd'hui", 'Il paie', "Ce qu'il a dit"],
+            largeurs: [0.22, 0.3, 0.16, 0.32],
+            lignes: faits.map((e) => [v(e.typeClient), v(e.aujourdhui), montant(e.paie), v(e.phrase)])
+          }
+        : champ('Entretiens', ''),
+      st("7a. Ce que j'ai appris"),
+      {
+        type: 'tableau',
+        entetes: ['Point comparé', 'Pareil ou différent ?'],
+        largeurs: [0.6, 0.4],
+        lignes: [
+          ["Ce qu'il fait aujourd'hui", comparaison(m.appris.aujourdhui)],
+          ['Combien il paie', comparaison(m.appris.paie)],
+          ["Ce qui l'embête", comparaison(m.appris.embete)]
+        ]
+      },
+      st('7b. Mon point de décision'),
+      champ('Ma décision', decision ? `${decision.t} : ${decision.detail}` : '')
+    ]
+  };
+}
+
 /** Every section after the cover: the synthesis first, then the workbook order. */
 export function sectionsPdf(plan: Plan): Section[] {
-  return [synthese(plan), identite(plan), m1(plan), m2(plan), m3(plan), m4(plan), m5(plan), relecture(plan), apres(plan), prix(plan), notes(plan)];
+  return [synthese(plan), identite(plan), m1(plan), m2(plan), m3(plan), m4(plan), impact(plan), mission(plan), m5(plan), relecture(plan), apres(plan), prix(plan), notes(plan)];
 }
 
 /** Text safe for the PDF standard font: no em dash, en dash, middle dot; spaces instead of thin spaces. */

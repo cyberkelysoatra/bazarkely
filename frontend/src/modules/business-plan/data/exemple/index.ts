@@ -13,6 +13,8 @@ import { relecture } from './relecture';
 import { apres } from './apres';
 import { prix } from './prix';
 import { notes } from './notes';
+import { impact } from './impact';
+import { mission } from './mission';
 
 export const ID_EXEMPLE = 'exemple';
 
@@ -37,5 +39,7 @@ export function planExemple(): Plan {
   Object.assign(plan.m5, m5);
   Object.assign(plan.synthese, synthese);
   Object.assign(plan.relecture, relecture);
+  Object.assign(plan.impact!, impact);
+  Object.assign(plan.mission!, mission);
   return JSON.parse(JSON.stringify(plan)) as Plan;
 }

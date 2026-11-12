@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.135.1';
-export const APP_VERSION_NAME = 'Mon Business Plan : module 5, la rangée Suivant / Précédent reste collée au-dessus de la barre du bas (NEC-CC-11)';
+export const APP_VERSION = '3.136.0';
+export const APP_VERSION_NAME = 'Mon Business Plan : rubriques Impact et emplois, Ma mission de terrain (NEC-CC-12)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.136.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : rubriques Impact et emplois, Ma mission de terrain (NEC-CC-12)',
+    changes: [
+      "Deux rubriques entre le module 4 et le module 5 (sommaire et Suivant / Précédent) : « Impact et emplois » et « Ma mission de terrain »",
+      "Impact et emplois : boucle de compréhension, personnes payées en années 1 à 3 préremplies avec l'équipe du module 4, bénévoles à part, qui en profite, phrase d'impact proposée, contrôles et rappel des salaires du module 5",
+      "Mission de terrain : boucle de compréhension, feuille de mission préremplie, oser aller voir, compte à rebours de 40 minutes avec rappel à 10 minutes (garde l'heure de départ, sans réseau), entretiens sans nom ni numéro, prix ajoutés à « Mes prix relevés »",
+      "Retour : ce que j'ai appris, point de décision (continuer, ajuster, changer d'angle) avec les pages à revoir, mises à jour en un geste ; tout passe dans le PDF"
+    ]
+  },
   {
     version: '3.135.1',
     date: '2026-11-12',
