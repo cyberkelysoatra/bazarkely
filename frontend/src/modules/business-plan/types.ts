@@ -19,6 +19,8 @@ export interface Plan {
   /** NEC-CC-12, optional: plans created before this version have none (see impactDe / missionDe). */
   impact?: Impact;
   mission?: Mission;
+  /** NEC-CC-14, optional: plans created before this version have none (see pitchDe). */
+  pitch?: Pitch;
 }
 /** Result of a comprehension loop: '' not done, passed, or passed after 2 explanations ("à revoir"). */
 export interface Boucle { statut: '' | 'reussi' | 'arevoir'; explications: number }
@@ -50,5 +52,17 @@ export interface Mission {
   reports: Record<string, '' | 'valide' | 'refuse'>;
   /** "Changer d'angle" erases nothing: modules 1 to 4 as they were, kept as "version 1". */
   version1?: { date: string; m1: Plan['m1']; m2: Plan['m2']; m3: Plan['m3']; m4: Plan['m4'] };
+}
+export type TempsPitch = 'probleme' | 'solution' | 'marche' | 'chiffres' | 'demande';
+export type ModeEssai = 'complet' | 'morceau1' | 'morceau2';
+/** One timed rehearsal: start time, total and time spent on each part (ms). */
+export interface EssaiPitch { id: string; date: string; mode: ModeEssai; totalMs: number; partiesMs: number[] }
+export interface Pitch {
+  /** Keywords typed by the participant for a part (absent = built from the summary). */
+  motsCles: Partial<Record<TempsPitch, string>>;
+  /** Newest first. */
+  essais: EssaiPitch[];
+  /** Answers to the trap questions, by question id. */
+  reponses: Record<string, string>;
 }
 export interface AtelierProps { plan: Plan; modifier: (recette: (p: Plan) => void) => void; lectureSeule: boolean }

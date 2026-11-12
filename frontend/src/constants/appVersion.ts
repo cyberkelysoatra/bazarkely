@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.137.1';
-export const APP_VERSION_NAME = "Mon Business Plan, PUDi, Validation : le mode avion survit à la mise à jour de l'appli principale (NEC-CC-12)";
+export const APP_VERSION = '3.138.0';
+export const APP_VERSION_NAME = "Mon Business Plan : mon pitch de 2 minutes, aperçu de lien et icône (NEC-CC-14)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.138.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : mon pitch de 2 minutes, aperçu de lien et icône (NEC-CC-14)",
+    changes: [
+      "Nouvelle section « Mon pitch de 2 minutes » après la Synthèse : les 5 temps en mots-clés tirés du résumé (12 mots au plus, compteur), avec l'exemple du secteur",
+      "Répétition chronométrée de 2 minutes : signal à 1 min 45 (et vibration), un toucher par temps, temps par partie, conseil de couper un mot-clé au-delà de 2 minutes, essais gardés ; option « Répéter par morceaux »",
+      "Les 3 questions pièges du jury choisies d'après les points faibles du plan, avec une réponse en une phrase ; trame et réponses dans le PDF",
+      "Aperçu de lien de /plan/ (image og-plan) et nouvelle icône de l'appli"
+    ]
+  },
   {
     version: '3.137.1',
     date: '2026-11-12',

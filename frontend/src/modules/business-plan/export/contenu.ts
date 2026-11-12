@@ -11,7 +11,9 @@ import { CARTES, chiffresCles } from '../ateliers/synthese/brouillons';
 import { POINTS } from '../ateliers/relecture/points';
 import { CALENDRIER_NEC, NB_ACTIONS } from '../ateliers/apres/calendrier';
 import { RUBRIQUES, type IdRubrique } from '../rubriques/registre';
-import { impactDe, missionDe } from '../etat/vide';
+import { impactDe, missionDe, pitchDe } from '../etat/vide';
+import { MARGE, trame } from '../ateliers/pitch/trame';
+import { questionsPieges } from '../ateliers/pitch/questions';
 import { PREMIERE_ANNEE, totaux } from '../ateliers/impact/regles';
 import { DECISIONS, entretienFait, nbEntretiens, nbPrix } from '../ateliers/mission/regles';
 
@@ -494,9 +496,28 @@ function mission(plan: Plan): Section {
   };
 }
 
+/** NEC-CC-14: the pitch frame (keywords) and the answers to the 3 trap questions. */
+function pitch(plan: Plan): Section {
+  const r = pitchDe(plan).reponses;
+  return {
+    titre: titreDe('pitch'),
+    blocs: [
+      st('Ma trame (mots-clés, pas de texte à lire)'),
+      {
+        type: 'tableau',
+        entetes: ['Temps', 'Durée', 'Mots-clés'],
+        largeurs: [0.36, 0.12, 0.52],
+        lignes: [...trame(plan).map((t) => [`${t.n}. ${t.titre}`, `${t.duree} s`, v(t.mots)]), ['Marge', `${MARGE} s`, '']]
+      },
+      st('Les 3 questions pièges du jury'),
+      ...questionsPieges(plan).map((q, i) => champ(`${i + 1}. ${q.texte}`, r[q.id]))
+    ]
+  };
+}
+
 /** Every section after the cover: the synthesis first, then the workbook order. */
 export function sectionsPdf(plan: Plan): Section[] {
-  return [synthese(plan), identite(plan), m1(plan), m2(plan), m3(plan), m4(plan), impact(plan), mission(plan), m5(plan), relecture(plan), apres(plan), prix(plan), notes(plan)];
+  return [synthese(plan), identite(plan), m1(plan), m2(plan), m3(plan), m4(plan), impact(plan), mission(plan), m5(plan), pitch(plan), relecture(plan), apres(plan), prix(plan), notes(plan)];
 }
 
 /** Text safe for the PDF standard font: no em dash, en dash, middle dot; spaces instead of thin spaces. */

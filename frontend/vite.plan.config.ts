@@ -21,7 +21,7 @@ function precacheList(): Plugin {
         .map((name) => '/' + name)
         .sort()
       const logos = ['nec-logo-v1.png', 'nec-logo-v2.png', 'blossom-blanc-v2.png', 'blossom-couleur-v1.png'].map((f) => '/plan/logos/' + f)
-      const list = ['/plan/', '/plan/manifest.webmanifest', '/icon-192x192.png', '/icon-512x512.png', ...logos, ...files]
+      const list = ['/plan/', '/plan/manifest.webmanifest', '/icon-192x192.png', '/icon-512x512.png', '/plan/plan-icon-192.png', '/plan/plan-icon-512.png', '/plan/og-plan.png', ...logos, ...files]
       this.emitFile({ type: 'asset', fileName: 'plan/precache.json', source: JSON.stringify({ version, files: list }, null, 1) })
     }
   }

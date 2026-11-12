@@ -10,12 +10,13 @@ import { progression as pImpact } from '../ateliers/impact/progression';
 import { progression as pMission } from '../ateliers/mission/progression';
 import { progression as pM5 } from '../ateliers/m5/progression';
 import { progression as pSynthese } from '../ateliers/synthese/progression';
+import { progression as pPitch } from '../ateliers/pitch/progression';
 import { progression as pRelecture } from '../ateliers/relecture/progression';
 import { progression as pApres } from '../ateliers/apres/progression';
 import { progression as pPrix } from '../ateliers/prix/progression';
 import { progression as pNotes } from '../ateliers/notes/progression';
 
-export type IdRubrique = 'identite' | 'm1' | 'm2' | 'm3' | 'm4' | 'impact' | 'mission' | 'm5' | 'synthese' | 'relecture' | 'apres' | 'prix' | 'notes';
+export type IdRubrique = 'identite' | 'm1' | 'm2' | 'm3' | 'm4' | 'impact' | 'mission' | 'm5' | 'synthese' | 'pitch' | 'relecture' | 'apres' | 'prix' | 'notes';
 
 export interface Rubrique {
   id: IdRubrique;
@@ -37,6 +38,7 @@ export const RUBRIQUES: Rubrique[] = [
   { id: 'mission', titre: 'Ma mission de terrain', sousTitre: 'Interroger 3 clients, relever les prix, décider', chemin: 'mission', page: lazy(() => import('../ateliers/mission/Page')), progression: pMission },
   { id: 'm5', titre: 'Module 5. Les chiffres clés', sousTitre: 'Coûts, prix, seuil, financement, résultats', chemin: 'm5', page: lazy(() => import('../ateliers/m5/Page')), progression: pM5 },
   { id: 'synthese', titre: 'Synthèse', sousTitre: 'Le résumé de mon business plan', chemin: 'synthese', page: lazy(() => import('../ateliers/synthese/Page')), progression: pSynthese },
+  { id: 'pitch', titre: 'Mon pitch de 2 minutes', sousTitre: 'Ma trame, ma répétition chronométrée, les 3 questions pièges', chemin: 'pitch', page: lazy(() => import('../ateliers/pitch/Page')), progression: pPitch },
   { id: 'relecture', titre: 'Relecture en binôme', sousTitre: 'Les 10 points vérifiés par un autre participant', chemin: 'relecture', page: lazy(() => import('../ateliers/relecture/Page')), progression: pRelecture },
   { id: 'apres', titre: 'Et après ?', sousTitre: 'Le calendrier NEC et mes trois prochaines actions', chemin: 'apres', page: lazy(() => import('../ateliers/apres/Page')), progression: pApres },
   { id: 'prix', titre: 'Mes prix relevés', sousTitre: 'Les prix vus sur le terrain', chemin: 'prix', page: lazy(() => import('../ateliers/prix/Page')), progression: pPrix },

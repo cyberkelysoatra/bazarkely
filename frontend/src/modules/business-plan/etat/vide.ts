@@ -1,6 +1,6 @@
 // planVide(): a plan with every field initialised (contract of types.ts), and the merge that keeps
 // unknown fields of a stored plan (written by a later version) through a load and a save.
-import type { Impact, Ligne, Mission, Plan } from '../types';
+import type { Impact, Ligne, Mission, Pitch, Plan } from '../types';
 
 export function nouvelId(): string {
   try {
@@ -44,6 +44,15 @@ export function impactDe(plan: Plan): Impact {
 
 export function missionDe(plan: Plan): Mission {
   return plan.mission ?? missionVide();
+}
+
+export function pitchVide(): Pitch {
+  return { motsCles: {}, essais: [], reponses: {} };
+}
+
+/** The pitch of a plan, with safe defaults for a plan saved before NEC-CC-14. */
+export function pitchDe(plan: Plan): Pitch {
+  return plan.pitch ?? pitchVide();
 }
 
 export function planVide(): Plan {
@@ -109,7 +118,8 @@ export function planVide(): Plan {
     prix: [],
     notes: '',
     impact: impactVide(),
-    mission: missionVide()
+    mission: missionVide(),
+    pitch: pitchVide()
   };
 }
 
