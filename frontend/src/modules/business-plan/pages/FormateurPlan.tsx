@@ -11,10 +11,31 @@ import { RUBRIQUES, progressionGlobale, rubrique } from '../rubriques/registre';
 import { completerPlan } from '../etat/vide';
 import { planParticipant } from '../sync/formateur';
 import { dateFr } from '../utils/format';
+import { NOM_NIVEAU, calculerParcours, pretestDe } from '../utils/pretest';
 
 type Etat = { statut: 'chargement' } | { statut: 'refuse' } | { statut: 'erreur' } | { statut: 'absent' } | { statut: 'ok'; plan: Plan; prenom: string; majAt: string };
 
 const rien = () => undefined;
+
+/** NEC-CC-16: pre-test score and level per module, same computation as the participant screen. */
+export function LignePretest({ plan }: { plan: Plan }) {
+  const t = plan.pretest ? pretestDe(plan) : null;
+  if (!t?.valideLe) return <p className="bp-pretest-formateur mb-4 text-[15px] font-bold text-encre">Pré-test : non fait</p>;
+  const parcours = calculerParcours(t);
+  return (
+    <div className="bp-pretest-formateur mb-4 rounded-2xl border border-filet bg-white p-3.5">
+      <p className="text-[15px] font-bold text-encre">Pré-test : {parcours.score}/15</p>
+      <ul className="mt-1.5 text-[14px] text-encre leading-snug space-y-0.5">
+        {parcours.lignes.map((l) => (
+          <li key={l.id}>
+            {/^(Module \d+)\./.exec(l.titre)?.[1] ?? l.titre} : <b>{NOM_NIVEAU[l.niveau]}</b>
+            {l.ecart ? ' (s\'estime à l\'aise)' : ''}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function FormateurPlan() {
   const { planId, rubrique: chemin } = useParams();
@@ -68,6 +89,7 @@ export default function FormateurPlan() {
         <p className="text-[15px] font-bold text-violet mb-2">Cahier rempli à</p>
         <Progression pct={progressionGlobale(plan)} label="Avancement du cahier" />
       </div>
+      <LignePretest plan={plan} />
       <ol className="space-y-2.5">
         {RUBRIQUES.map((x, i) => (
           <li key={x.id}>

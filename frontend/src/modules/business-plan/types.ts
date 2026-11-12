@@ -23,6 +23,18 @@ export interface Plan {
   pitch?: Pitch;
   /** NEC-CC-15, optional: learning level of module 5 (plans created before this version: 'cible'). */
   niveauChiffres?: NiveauChiffres;
+  /** NEC-CC-16, optional: pre-test typed again in the app (not a section: global progress unchanged). */
+  pretest?: Pretest;
+}
+export type ReponsePretest = '' | 'a' | 'b' | 'c' | 'd' | 'jnsp';
+export type AutoPretest = 0 | 1 | 2 | 3 | 4;
+export interface Pretest {
+  /** Answer by question number (1 to 15); 'jnsp' = "Je ne sais pas". */
+  reponses: Record<number, ReponsePretest>;
+  /** Self-assessment lines B1 to B6, 0 = not answered. */
+  auto: AutoPretest[];
+  /** ISO time of "Voir mon parcours" (null = not validated yet). */
+  valideLe: string | null;
 }
 export type NiveauChiffres = 'rapide' | 'cible' | 'bases';
 /** Result of a comprehension loop: '' not done, passed, or passed after 2 explanations ("à revoir"). */

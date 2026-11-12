@@ -9,6 +9,8 @@ import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
 import { arreterEnvoi, texteStatut, useLien, type Lien } from '../sync';
 import { Introuvable } from './Introuvable';
+import type { Plan } from '../types';
+import { pretestDe, score } from '../utils/pretest';
 
 function Pastille({ lien }: { lien: Lien }) {
   const { texte, ton } = texteStatut(lien);
@@ -76,6 +78,26 @@ function Formation({ planId, lien }: { planId: string; lien: Lien | null | undef
   );
 }
 
+/** NEC-CC-16: entry to the pre-test (not done yet) or to the path (done), above the sections. */
+function CartePretest({ plan }: { plan: Plan }) {
+  const t = pretestDe(plan);
+  const fait = !!t.valideLe;
+  return (
+    <Link to={`/p/${plan.id}/pretest`} className="bp-carte-pretest mb-4 flex items-center gap-3 rounded-2xl border-2 border-violet bg-white p-3.5 active:bg-violetClair">
+      <span className="shrink-0 w-9 h-9 rounded-full bg-violetClair text-violet flex items-center justify-center">
+        <Icone nom={fait ? 'coche' : 'livre'} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-bold text-encre">Mon pré-test</span>
+        <span className="block text-[14px] text-doux leading-snug">{fait ? `Ton parcours : ${score(t)}/15` : 'Fais ton pré-test (5 min)'}</span>
+      </span>
+      <span className="text-doux shrink-0">
+        <Icone nom="chevron" />
+      </span>
+    </Link>
+  );
+}
+
 export default function Sommaire() {
   const { id } = useParams();
   const { etat } = usePlan(id);
@@ -104,6 +126,7 @@ export default function Sommaire() {
         <p className="text-[15px] font-bold text-violet mb-2">Mon cahier est rempli à</p>
         <Progression pct={progressionGlobale(plan)} label="Avancement du cahier" />
       </div>
+      {plan.exemple ? null : <CartePretest plan={plan} />}
       <ol className="space-y-2.5">
         {RUBRIQUES.map((r, i) => (
           <li key={r.id}>

@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.139.0';
-export const APP_VERSION_NAME = "Mon Business Plan : trois niveaux pour les chiffres clés (NEC-CC-15)";
+export const APP_VERSION = '3.140.0';
+export const APP_VERSION_NAME = "Mon Business Plan : pré-test et « Ton parcours » (NEC-CC-16)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.140.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : pré-test et « Ton parcours » (NEC-CC-16)",
+    changes: [
+      "Écran « Mon pré-test » : les 15 questions du pré-test papier (une seule réponse, « Je ne sais pas » compris) et les 6 lignes d'auto-évaluation, chaque choix enregistré tout de suite, hors ligne compris",
+      "Carte « Ton parcours » : note sur 15, niveau Rapide, Ciblé ou Bases par module avec les explications des questions ratées et l'écart d'auto-évaluation ; le niveau du module 5 est posé à la validation",
+      "Sommaire : carte « Mon pré-test » (pas sur un exemple) ; écran formateur : ligne « Pré-test » et niveaux par module ; avancement du cahier inchangé"
+    ]
+  },
   {
     version: '3.139.0',
     date: '2026-11-12',
