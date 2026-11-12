@@ -79,11 +79,12 @@ export function CartePretestPapier({ planId, plan, initial }: { planId: string; 
   const [message, setMessage] = useState<{ texte: string; ok: boolean } | null>(null);
   const valide = plan.pretest?.valideLe ? (plan.pretest.source === 'formateur' ? 'formateur' : 'app') : null;
 
-  if (valide) {
+  // NEC-CC-21 (NEC-170): only a pre-test done in the app is closed; a paper one received can be corrected.
+  if (valide === 'app') {
     return (
       <div className="bp-pretest-papier-formateur mb-4 rounded-2xl border border-filet bg-white p-3.5">
         <p className="text-[15px] font-bold text-encre">Pré-test papier</p>
-        <p className="bp-pretest-etat mt-1 text-[15px] text-encre">{valide === 'app' ? "Fait dans l'app" : 'Pré-test papier reçu par le téléphone'}</p>
+        <p className="bp-pretest-etat mt-1 text-[15px] text-encre">Fait dans l'app</p>
       </div>
     );
   }
@@ -112,6 +113,11 @@ export function CartePretestPapier({ planId, plan, initial }: { planId: string; 
   return (
     <div className="bp-pretest-papier-formateur mb-4 rounded-2xl border-2 border-violet bg-white p-3.5">
       <p className="text-[16px] font-bold text-encre">Pré-test papier</p>
+      {valide === 'formateur' ? (
+        <p className="bp-pretest-etat bp-pretest-recu mt-1 mb-2 rounded-xl bg-violetClair px-3 py-2 text-[14px] font-bold text-violet leading-snug">
+          Pré-test papier reçu par le téléphone. Ta correction le remplacera à sa prochaine ouverture en ligne.
+        </p>
+      ) : null}
       <p className="text-[14px] text-doux leading-snug mb-3">Recopiez les réponses de la feuille. « ? » = Je ne sais pas.</p>
       <ol className="space-y-2">
         {QUESTIONS.map((q) => (

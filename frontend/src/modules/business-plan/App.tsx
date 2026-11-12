@@ -1,8 +1,8 @@
 // Routes of "Mon business plan" (/plan). Pages loaded on demand except the home.
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import Accueil from './pages/Accueil';
-import { appliquerMiseAJour, useMiseAJourDisponible } from './etat/pwa';
+import { mettreAJourMaintenant, signalerChangementDePage, useMiseAJourDisponible } from './etat/pwa';
 import { Icone } from './composants/Icones';
 import { GardeFormateur } from './composants/GardeFormateur';
 
@@ -16,13 +16,27 @@ const FormateurPlan = lazy(() => import('./pages/FormateurPlan'));
 const Exporter = lazy(() => import('./pages/Exporter'));
 const Pretest = lazy(() => import('./pages/Pretest'));
 
+/** NEC-CC-21: a route change is a safe moment for the automatic update (not the first render). */
+function SuiviPages() {
+  const { pathname } = useLocation();
+  const premier = useRef(true);
+  useEffect(() => {
+    if (premier.current) {
+      premier.current = false;
+      return;
+    }
+    signalerChangementDePage();
+  }, [pathname]);
+  return null;
+}
+
 function BandeauMiseAJour() {
   const dispo = useMiseAJourDisponible();
   if (!dispo) return null;
   return (
     <button
       type="button"
-      onClick={appliquerMiseAJour}
+      onClick={() => void mettreAJourMaintenant()}
       className="bp-maj fixed top-0 left-1/2 -translate-x-1/2 z-40 w-full max-w-[480px] min-h-[52px] bg-turquoiseTexte text-white text-[16px] font-bold flex items-center justify-center gap-2 px-4"
     >
       <Icone nom="installer" /> Nouvelle version : toucher pour mettre à jour
@@ -34,6 +48,7 @@ export default function App() {
   return (
     <BrowserRouter basename="/plan">
       <BandeauMiseAJour />
+      <SuiviPages />
       <Suspense fallback={<div className="bp-ecran" />}>
         <Routes>
           <Route path="/" element={<Accueil />} />

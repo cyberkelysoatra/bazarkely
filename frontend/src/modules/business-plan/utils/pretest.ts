@@ -180,6 +180,7 @@ export function pretestDe(plan: Plan): Pretest {
   while (auto.length < 6) auto.push(0);
   const t: Pretest = { reponses: p.reponses ?? {}, auto, valideLe: p.valideLe ?? null };
   if (p.source) t.source = p.source;
+  if (p.recuLe) t.recuLe = p.recuLe;
   return t;
 }
 
@@ -212,16 +213,41 @@ export function lirePretestDistant(x: unknown): { reponses: Record<number, Repon
   return { reponses, auto };
 }
 
+/** Strictly later server time (ISO strings from Postgres; plain string order when not a date). */
+function plusRecent(a: string, b: string): boolean {
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  return Number.isNaN(ta) || Number.isNaN(tb) ? a > b : ta > tb;
+}
+
 /**
- * NEC-CC-20, merge rule: the trainer's paper pre-test is adopted only when the phone has no validated
+ * NEC-CC-20, merge rule: the trainer's paper pre-test is adopted when the phone has no validated
  * pre-test (a pre-test validated on the phone is never replaced). Returns the updated copy, or null
  * when nothing changes. Same effect as "Voir mon parcours": module 5 opens at the computed level.
+ * NEC-CC-21 (NEC-170): `le` = server time of the trainer's version. A pre-test already received from the
+ * trainer (source 'formateur') is replaced by a later version (or when `recuLe` is missing, plans of
+ * v3.145.0), and removed when the trainer cleared it (`distant` null) after the phone received it.
+ * A pre-test done in the app (source 'app' or missing) is never touched.
  */
-export function adopterPretest(plan: Plan, distant: unknown, maintenant: string): Plan | null {
-  if (plan.exemple || plan.pretest?.valideLe) return null;
+export function adopterPretest(plan: Plan, distant: unknown, maintenant: string, le?: string | null): Plan | null {
+  if (plan.exemple) return null;
+  const local = plan.pretest;
+  const recu = !!local?.valideLe && local.source === 'formateur';
+  if (local?.valideLe && !recu) return null;
+  if (distant === null || distant === undefined) {
+    if (!recu || !local?.recuLe) return null;
+    const sans: Plan = { ...plan };
+    delete sans.pretest;
+    return sans;
+  }
+  if (recu) {
+    if (!le) return null;
+    if (local?.recuLe && !plusRecent(le, local.recuLe)) return null;
+  }
   const lu = lirePretestDistant(distant);
   if (!lu) return null;
   const pretest: Pretest = { reponses: lu.reponses, auto: lu.auto, valideLe: maintenant, source: 'formateur' };
+  if (le) pretest.recuLe = le;
   return { ...plan, pretest, niveauChiffres: calculerParcours(pretest).lignes.find((l) => l.id === 'm5')?.niveau ?? 'cible' };
 }
 

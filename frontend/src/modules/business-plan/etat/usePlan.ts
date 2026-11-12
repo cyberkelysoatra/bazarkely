@@ -6,6 +6,7 @@ import { effacerSecours, ecrireSecours, enregistrerPlan, lirePlan } from '../db/
 import { planExempleParId } from '../data/exemples';
 import { abonnerPretest, signalerModification } from '../sync';
 import { copier } from './vide';
+import { inscrireSauvegarde, suivreSauvegarde } from './pwa';
 
 const DELAI = 400;
 
@@ -18,7 +19,7 @@ export function usePlan(id: string | undefined) {
   const enAttente = useRef(false);
 
   /** `urgence`: the page is being hidden or closed, a synchronous safety copy is written first. */
-  const sauver = useCallback(async (urgence = false) => {
+  const sauverInterne = useCallback(async (urgence = false) => {
     if (minuterie.current !== null) {
       window.clearTimeout(minuterie.current);
       minuterie.current = null;
@@ -38,6 +39,17 @@ export function usePlan(id: string | undefined) {
       enAttente.current = true;
     }
   }, []);
+
+  // NEC-CC-21: every save is followed by the automatic update, which waits for it before reloading.
+  const sauver = useCallback(
+    (urgence = false) => {
+      const p = sauverInterne(urgence);
+      suivreSauvegarde(p);
+      return p;
+    },
+    [sauverInterne]
+  );
+  useEffect(() => inscrireSauvegarde(() => sauver()), [sauver]);
 
   useEffect(() => {
     let annule = false;
@@ -81,7 +93,8 @@ export function usePlan(id: string | undefined) {
       abonnerPretest((sauve) => {
         const actuel = planRef.current;
         if (!actuel || actuel.id !== sauve.id) return;
-        if (actuel.pretest?.valideLe) {
+        // NEC-CC-21: a pre-test received from the trainer is replaced or cleared by his correction.
+        if (actuel.pretest?.valideLe && actuel.pretest.source !== 'formateur') {
           // Validated on this phone meanwhile: it wins, saved again over the trainer's one.
           planRef.current = { ...actuel, rev: sauve.rev };
           enAttente.current = true;

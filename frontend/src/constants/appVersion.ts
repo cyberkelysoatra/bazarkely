@@ -1,8 +1,18 @@
-export const APP_VERSION = '3.145.0';
+export const APP_VERSION = '3.146.0';
 export const APP_VERSION_NAME = 'Mon Business Plan : pré-test papier saisi par le formateur, reçu par le téléphone (NEC-CC-20)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.146.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : B-lossom sur la couverture du PDF, correction du pré-test papier, mise à jour sans geste (NEC-CC-21)',
+    changes: [
+      'PDF : « Organisé par B-lossom Center » de retour sous « NOSY BE ENTREPRENEURSHIP CAMP 2026 » (NEC-171)',
+      "Formateur : un pré-test papier déjà reçu par le téléphone peut être corrigé ou effacé ; le téléphone prend la version plus récente ; un pré-test fait dans l'app n'est jamais touché (NEC-170)",
+      'Téléphone : cherche une nouvelle version au démarrage, au retour du réseau, au retour sur l’app et toutes les 10 minutes, puis l’installe seul au prochain moment sûr (arrière-plan, changement de page, 60 s sans saisie), après avoir enregistré la saisie (NEC-172)'
+    ]
+  },
   {
     version: '3.145.0',
     date: '2026-11-12',

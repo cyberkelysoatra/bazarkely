@@ -191,17 +191,19 @@ export async function recupererPretest(planId: string): Promise<void> {
     const lien = await lireLien(planId);
     if (!lien || !lien.confirme || estRetire(lien)) return;
     const local = await lirePlan(planId);
-    if (!local || local.exemple || local.pretest?.valideLe) return;
+    // NEC-CC-21: a pre-test received from the trainer is still pulled (correction or clear, adopterPretest).
+    if (!local || local.exemple || (local.pretest?.valideLe && local.pretest.source !== 'formateur')) return;
     const sb = await withTimeout(clientParticipant());
     const { data, error } = await withTimeout(sb.rpc('bp_lire_pretest', { p_plan_id: planId, p_jeton: lien.jeton }));
     if (error) return;
-    const r = data as { ok?: boolean; pretest?: unknown } | null;
-    if (!r?.ok || !r.pretest) return;
+    const r = data as { ok?: boolean; pretest?: unknown; le?: string | null } | null;
+    if (!r?.ok) return;
+    const le = typeof r.le === 'string' ? r.le : null;
     // Read and written in one transaction: a save of the phone in between is never lost.
     const sauve = await db.transaction('rw', db.plans, async () => {
       const stocke = await db.plans.get(planId);
       if (!stocke) return null;
-      const adopte = adopterPretest(completerPlan(stocke), r.pretest, new Date().toISOString());
+      const adopte = adopterPretest(completerPlan(stocke), r.pretest ?? null, new Date().toISOString(), le);
       if (!adopte) return null;
       const aSauver: Plan = { ...adopte, rev: (adopte.rev ?? 0) + 1, modifieLe: new Date().toISOString() };
       await db.plans.put(aSauver);

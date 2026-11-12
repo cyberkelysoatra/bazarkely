@@ -62,6 +62,64 @@ describe('adopterPretest', () => {
   });
 });
 
+describe('adopterPretest, correction by the trainer (NEC-CC-21)', () => {
+  const LE1 = '2026-11-12T15:00:00.123456+00:00';
+  const LE2 = '2026-11-12T15:05:00.654321+00:00';
+  const TREIZE: ReponsePretest[] = ['a', 'a', ...BONNES.slice(2)];
+  const recu = () => adopterPretest(completerPlan(planVide()), papier(TREIZE), MAINTENANT, LE1)!;
+  const app = () => {
+    const plan = completerPlan(planVide());
+    plan.pretest = { reponses: { 1: 'a' }, auto: [1, 1, 1, 1, 1, 1], valideLe: '2026-11-12T08:00:00.000Z', source: 'app' };
+    return plan;
+  };
+
+  it('stores the server time of the version adopted', () => {
+    const plan = recu();
+    expect(score(pretestDe(plan))).toBe(13);
+    expect(pretestDe(plan).recuLe).toBe(LE1);
+    expect(pretestDe(completerPlan(JSON.parse(JSON.stringify(plan)))).recuLe).toBe(LE1);
+  });
+  it('adopts a correction when the server time is later', () => {
+    const corrige = adopterPretest(recu(), papier(), '2026-11-12T16:10:00.000Z', LE2);
+    expect(corrige).not.toBeNull();
+    const t = pretestDe(corrige!);
+    expect(score(t)).toBe(15);
+    expect(t.source).toBe('formateur');
+    expect(t.recuLe).toBe(LE2);
+    expect(corrige!.niveauChiffres).toBe('rapide');
+  });
+  it('ignores the same or an older server time', () => {
+    expect(adopterPretest(recu(), papier(), MAINTENANT, LE1)).toBeNull();
+    expect(adopterPretest(recu(), papier(), MAINTENANT, '2026-11-12T14:00:00+00:00')).toBeNull();
+    expect(adopterPretest(recu(), papier(), MAINTENANT, null)).toBeNull();
+  });
+  it('a clear by the trainer removes the paper pre-test (back to not done)', () => {
+    const efface = adopterPretest(recu(), null, MAINTENANT, null);
+    expect(efface).not.toBeNull();
+    expect(efface!.pretest).toBeUndefined();
+    expect(pretestDe(efface!).valideLe).toBeNull();
+  });
+  it('a pre-test done in the app is kept, for a correction and for a clear', () => {
+    expect(adopterPretest(app(), papier(), MAINTENANT, LE2)).toBeNull();
+    expect(adopterPretest(app(), null, MAINTENANT, null)).toBeNull();
+    const sansSource = app();
+    delete sansSource.pretest!.source;
+    expect(adopterPretest(sansSource, papier(), MAINTENANT, LE2)).toBeNull();
+    expect(adopterPretest(sansSource, null, MAINTENANT, null)).toBeNull();
+  });
+  it('an old plan without recuLe takes the correction (and is not cleared)', () => {
+    const vieux = adopterPretest(completerPlan(planVide()), papier(TREIZE), MAINTENANT)!;
+    expect(pretestDe(vieux).recuLe).toBeUndefined();
+    const corrige = adopterPretest(vieux, papier(), MAINTENANT, LE2);
+    expect(score(pretestDe(corrige!))).toBe(15);
+    expect(pretestDe(corrige!).recuLe).toBe(LE2);
+    expect(adopterPretest(vieux, null, MAINTENANT, null)).toBeNull();
+  });
+  it('nothing on the server and nothing received: no change', () => {
+    expect(adopterPretest(completerPlan(planVide()), null, MAINTENANT, null)).toBeNull();
+  });
+});
+
 describe('tagPretest', () => {
   it('app, paper or nothing', () => {
     expect(tagPretest({ pretest_valide: 'app', pretest_formateur: papier() as never })).toBe('pré-test app');

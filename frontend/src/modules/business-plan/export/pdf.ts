@@ -188,12 +188,15 @@ function lignesCoupees(r: Redaction, texte: string, largeur: number, taille: num
 function couverture(r: Redaction, plan: Plan, opts: OptionsPdf, nom: string, date: string): void {
   const { doc } = r;
   const i = plan.identite;
-  r.y = 68;
+  // NEC-CC-21: 5 mm higher than NEC-CC-19 to make room for the organiser line, the rest unchanged.
+  r.y = 63;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(...TURQUOISE);
   doc.text('NOSY BE ENTREPRENEURSHIP CAMP 2026', MARGE, r.y, { charSpace: 0.8 });
-  r.y += 5;
+  // NEC-171: organiser line back under the camp name, wording and style of the cover before NEC-CC-19.
+  r.y += 1.5;
+  r.paragraphe('Organisé par B-lossom Center', { taille: 11, couleur: DOUX, apres: 3.5 });
   r.paragraphe("Plan d'action", { taille: 32, style: 'bold', couleur: ENCRE, apres: 4 });
   doc.setFillColor(...VIOLET);
   doc.rect(MARGE, r.y, 40, 1.4, 'F');

@@ -44,6 +44,156 @@ function surveiller(reg: ServiceWorkerRegistration) {
   });
 }
 
+// ---------------------------------------------------------------------------------------------------
+// NEC-CC-21 (NEC-172): the app updates itself without a tap.
+// The worker address carries the entry file name of the build (?v=), so reg.update() alone never sees
+// a new deploy: the check also reads /plan/ from the network (never answered from the cache) and, when
+// its entry file differs from ours, registers the new worker address. The new worker installs, waits,
+// then is applied by itself at the first safe moment (page hidden, route change, or no input for a
+// while), after the last typed answer is saved locally.
+// Test only: localStorage `nec.test.majVerif` (check period, ms) and `nec.test.majInactif` (idle and
+// typing delay, ms) shorten the delays; read once at start, ignored when absent or invalid.
+// ---------------------------------------------------------------------------------------------------
+
+function delaiTest(cle: string, defaut: number): number {
+  try {
+    const v = Number(localStorage.getItem(cle));
+    return Number.isFinite(v) && v >= 1000 ? v : defaut;
+  } catch {
+    return defaut;
+  }
+}
+
+let delaiVerif = 10 * 60 * 1000;
+let delaiInactif = 60 * 1000;
+let enregistrement: ServiceWorkerRegistration | null = null;
+let dernierGeste = Date.now();
+let derniereFrappe = 0;
+let verificationEnCours = false;
+let applicationEnCours = false;
+
+/** Local saves to finish before the page reloads (usePlan registers its flush here). */
+const sauvegardes = new Set<() => Promise<void>>();
+const sauvegardesEnVol = new Set<Promise<unknown>>();
+
+/** usePlan: flush of the plan on screen, called before an automatic update. Returns the unsubscribe. */
+export function inscrireSauvegarde(f: () => Promise<void>): () => void {
+  sauvegardes.add(f);
+  return () => {
+    sauvegardes.delete(f);
+  };
+}
+
+/** usePlan: a local save in progress, awaited before an automatic update. */
+export function suivreSauvegarde(p: Promise<unknown>): void {
+  sauvegardesEnVol.add(p);
+  void p.finally(() => sauvegardesEnVol.delete(p)).catch(() => undefined);
+}
+
+async function toutSauver(): Promise<void> {
+  await Promise.all([...sauvegardes].map((f) => f().catch(() => undefined)));
+  await Promise.all([...sauvegardesEnVol].map((p) => p.catch(() => undefined)));
+}
+
+function champActif(): boolean {
+  const e = document.activeElement as HTMLElement | null;
+  if (!e) return false;
+  return e.tagName === 'INPUT' || e.tagName === 'TEXTAREA' || e.tagName === 'SELECT' || e.isContentEditable;
+}
+
+/** Never while a field has focus and was typed in less than the delay ago. */
+function saisieEnCours(): boolean {
+  return champActif() && Date.now() - derniereFrappe < delaiInactif;
+}
+
+/** Entry file of the build served now at /plan/ (network only), or null. */
+async function versionEnLigne(): Promise<string | null> {
+  const r = await fetch(`/plan/?maj=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+  if (!r.ok) return null;
+  const html = await r.text();
+  const m = /<script[^>]*\bsrc="([^"]*\/assets\/plan\/c\/[^"]+\.js)"/i.exec(html);
+  return m ? m[1].split('/').pop() || null : null;
+}
+
+async function chercherMiseAJour(): Promise<void> {
+  const reg = enregistrement;
+  if (!reg || verificationEnCours || attente || !navigator.onLine) return;
+  verificationEnCours = true;
+  try {
+    const enLigne = await versionEnLigne().catch(() => null);
+    const ici = versionDuCode();
+    if (enLigne && enLigne !== ici && enLigne !== reg.installing?.scriptURL.split('v=')[1]) {
+      await navigator.serviceWorker.register('/plan/sw.js?v=' + encodeURIComponent(enLigne), { scope: '/plan/' });
+    } else {
+      await reg.update();
+    }
+  } catch {
+    // No network or server error: tried again at the next occasion.
+  } finally {
+    verificationEnCours = false;
+  }
+}
+
+/** Applies the waiting worker by itself, when nothing is being typed; the typed answers are saved first. */
+export async function appliquerSiSur(): Promise<void> {
+  if (!attente || applicationEnCours || saisieEnCours()) return;
+  applicationEnCours = true;
+  try {
+    await toutSauver();
+    if (!attente || saisieEnCours()) return;
+    appliquerMiseAJour();
+  } finally {
+    applicationEnCours = false;
+  }
+}
+
+/** Banner "Nouvelle version": immediate, the typed answers saved first. */
+export async function mettreAJourMaintenant(): Promise<void> {
+  if (!attente) return;
+  await toutSauver();
+  appliquerMiseAJour();
+}
+
+/** App: the route changed (a safe moment). */
+export function signalerChangementDePage(): void {
+  void appliquerSiSur();
+}
+
+function suivreAutoMaj(reg: ServiceWorkerRegistration): void {
+  enregistrement = reg;
+  delaiVerif = delaiTest('nec.test.majVerif', delaiVerif);
+  delaiInactif = delaiTest('nec.test.majInactif', delaiInactif);
+  const geste = () => {
+    dernierGeste = Date.now();
+  };
+  const frappe = () => {
+    dernierGeste = Date.now();
+    derniereFrappe = dernierGeste;
+  };
+  window.addEventListener('keydown', frappe, true);
+  window.addEventListener('input', frappe, true);
+  window.addEventListener('pointerdown', geste, true);
+  window.addEventListener('touchstart', geste, { capture: true, passive: true });
+  window.addEventListener('online', () => void chercherMiseAJour());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void chercherMiseAJour();
+    else void appliquerSiSur();
+  });
+  let derniereVerif = Date.now();
+  // One light tick: periodic check while visible, and the idle rule when a worker is waiting.
+  window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const maintenant = Date.now();
+    if (maintenant - derniereVerif >= delaiVerif) {
+      derniereVerif = maintenant;
+      void chercherMiseAJour();
+    }
+    // The trainer screen keeps an unsaved paper grid in memory: there, only hidden page or route change.
+    if (attente && maintenant - dernierGeste >= delaiInactif && !location.pathname.startsWith('/plan/formateur')) void appliquerSiSur();
+  }, Math.min(5000, delaiVerif, delaiInactif));
+  void chercherMiseAJour();
+}
+
 export function demarrerPwa(): void {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -74,7 +224,10 @@ export function demarrerPwa(): void {
     const enregistrer = () => {
       navigator.serviceWorker
         .register('/plan/sw.js?v=' + encodeURIComponent(versionDuCode()), { scope: '/plan/' })
-        .then(surveiller)
+        .then((reg) => {
+          surveiller(reg);
+          suivreAutoMaj(reg);
+        })
         .catch(() => undefined);
     };
     if (document.readyState === 'complete') enregistrer();

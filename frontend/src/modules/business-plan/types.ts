@@ -37,6 +37,8 @@ export interface Pretest {
   valideLe: string | null;
   /** NEC-CC-20, optional: 'formateur' = paper pre-test typed by the trainer and received by the phone. */
   source?: 'app' | 'formateur';
+  /** NEC-CC-21, optional: server time (pretest_formateur_at) of the trainer's version adopted by the phone. */
+  recuLe?: string;
 }
 export type NiveauChiffres = 'rapide' | 'cible' | 'bases';
 /** Result of a comprehension loop: '' not done, passed, or passed after 2 explanations ("à revoir"). */
