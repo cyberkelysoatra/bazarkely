@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePlan } from '../etat/usePlan';
-import { RUBRIQUES, progressionGlobale } from '../rubriques/registre';
+import { RUBRIQUES } from '../rubriques/registre';
+import { progressionJournee } from '../etat/journee';
+import { MaJournee } from '../composants/MaJournee';
 import { Mise } from '../composants/Mise';
 import { Progression } from '../composants/Progression';
 import { Icone } from '../composants/Icones';
@@ -121,10 +123,11 @@ export default function Sommaire() {
       retour={{ vers: '/', texte: 'Mes projets' }}
       plan={plan}
     >
+      {plan.exemple ? null : <MaJournee plan={plan} />}
       {plan.exemple ? null : <Formation planId={plan.id} lien={lien} />}
       <div className="rounded-2xl bg-violetClair p-4 mb-4">
-        <p className="text-[15px] font-bold text-violet mb-2">Mon cahier est rempli à</p>
-        <Progression pct={progressionGlobale(plan)} label="Avancement du cahier" />
+        <p className="text-[15px] font-bold text-violet mb-2">Ma journée est faite à</p>
+        <Progression pct={progressionJournee(plan)} label="Ma journée est faite à" />
       </div>
       {plan.exemple ? null : <CartePretest plan={plan} />}
       <ol className="space-y-2.5">
@@ -133,7 +136,12 @@ export default function Sommaire() {
             <Link to={`/p/${plan.id}/${r.chemin}`} className="bp-rubrique flex items-center gap-3 rounded-2xl border border-filet bg-white p-3.5 active:bg-violetClair">
               <span className="shrink-0 w-9 h-9 rounded-full bg-turquoiseClair text-turquoiseTexte font-bold flex items-center justify-center">{i + 1}</span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[16px] font-bold text-encre leading-snug break-words">{r.titre}</span>
+                <span className="block text-[16px] font-bold text-encre leading-snug break-words">
+                  {r.titre}
+                  {r.id === 'prix' || r.id === 'notes' ? (
+                    <span className="bp-facultatif ml-2 inline-block align-middle rounded-full bg-violetClair px-2 py-0.5 text-[12px] font-bold text-violet">facultatif</span>
+                  ) : null}
+                </span>
                 <span className="block text-[14px] text-doux leading-snug">{r.sousTitre}</span>
                 <span className="block mt-1.5">
                   <Progression pct={r.progression(plan)} compact label={`Avancement : ${r.titre}`} />

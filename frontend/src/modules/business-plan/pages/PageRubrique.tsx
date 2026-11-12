@@ -6,11 +6,15 @@ import { rubrique } from '../rubriques/registre';
 import { Mise } from '../composants/Mise';
 import { Introuvable } from './Introuvable';
 import { FournisseurEtapes } from '../composants/SuivantPrecedent';
+import { FinEtape, useFeteEtape } from '../composants/FinEtape';
 
 export default function PageRubrique() {
   const { id, rubrique: chemin } = useParams();
   const r = rubrique(chemin);
   const { etat, modifier } = usePlan(id);
+  // NEC-CC-18: participant view only (never an example; the trainer view does not use this page).
+  const planPret = etat.statut === 'pret' ? etat.plan : null;
+  const { fete, fermer } = useFeteEtape(planPret, r?.id, !!planPret && !planPret.exemple);
   if (!r || etat.statut === 'absent') return <Introuvable />;
   if (etat.statut === 'chargement') return <Mise titre={r.titre}>{null}</Mise>;
   const plan = etat.plan;
@@ -22,6 +26,7 @@ export default function PageRubrique() {
           <Page plan={plan} modifier={modifier} lectureSeule={!!plan.exemple} />
         </Suspense>
       </FournisseurEtapes>
+      {fete !== null ? <FinEtape plan={plan} n={fete} onFermer={fermer} /> : null}
     </Mise>
   );
 }

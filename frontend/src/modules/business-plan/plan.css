@@ -155,3 +155,92 @@ textarea.bp-champ:focus {
 html:has(.bp-suivant-colle) {
   scroll-padding-bottom: 140px;
 }
+/* NEC-CC-18 "Ma journée": soft pulse of the scheduled dot, end-of-step check mark and confetti (CSS only). */
+.bp-points {
+  scrollbar-width: none;
+}
+.bp-points::-webkit-scrollbar {
+  display: none;
+}
+.bp-point-prevu {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #60005a;
+}
+.bp-point-prevu.bp-pouls {
+  animation: bp-pouls 1.8s ease-in-out infinite;
+}
+@keyframes bp-pouls {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #60005a;
+  }
+  50% {
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px #60005a, 0 0 0 10px rgba(96, 0, 90, 0.18);
+  }
+}
+.bp-fete-voile {
+  animation: bp-fondu 0.2s ease-out;
+}
+@keyframes bp-fondu {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.bp-coche-trace {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: bp-trace 0.5s 0.15s ease-out forwards;
+}
+.bp-coche-cercle {
+  stroke-dasharray: 164;
+  stroke-dashoffset: 164;
+  animation: bp-trace-cercle 0.45s ease-out forwards;
+}
+@keyframes bp-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes bp-trace-cercle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.bp-confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: bp-chute 1.5s ease-in forwards;
+}
+@keyframes bp-chute {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--bp-derive, 0px), 70vh, 0) rotate(540deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-point-prevu.bp-pouls,
+  .bp-fete-voile {
+    animation: none;
+  }
+  .bp-coche-trace,
+  .bp-coche-cercle {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .bp-confetti {
+    display: none;
+  }
+}

@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.142.0';
-export const APP_VERSION_NAME = "Mon Business Plan : confidentialité exacte, Retirer et Tout effacer côté formateur (NEC-CC-10)";
+export const APP_VERSION = '3.143.0';
+export const APP_VERSION_NAME = "Mon Business Plan : Ma journée, badge d'avance ou de décalage, jauge de la journée, écran de fin d'étape (NEC-CC-18)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.143.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : Ma journée, badge d'avance ou de décalage, jauge de la journée, écran de fin d'étape (NEC-CC-18)",
+    changes: [
+      "Sommaire : frise « Ma journée » des 12 étapes (faites cochées, étape prévue qui pulse, étape en cours en gras), un toucher ouvre la rubrique",
+      "Badge d'avance (turquoise), « À l'heure » ou de décalage (ambre, sans reproche), rafraîchi chaque minute, rien hors de 8 h 15 à 17 h 30 ni sur les exemples",
+      "Jauge « Ma journée est faite à » (moyenne des étapes 1 à 11) au sommaire et dans Mes projets ; suivi formateur inchangé",
+      "Écran de fin d'étape (coche dessinée, confettis CSS, vibration courte), une seule fois par étape et par projet, aucun pour les étapes déjà finies avant cette version",
+      "Étiquette « facultatif » sur Mes prix relevés et Mes notes ; mouvement réduit respecté ; tout hors ligne"
+    ]
+  },
   {
     version: '3.142.0',
     date: '2026-11-12',

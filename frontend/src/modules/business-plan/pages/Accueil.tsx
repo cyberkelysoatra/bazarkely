@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Plan } from '../types';
 import { creerPlan, listerPlans, supprimerPlan } from '../db/plans';
-import { progressionGlobale } from '../rubriques/registre';
+import { progressionJournee } from '../etat/journee';
 import { EXEMPLES } from '../data/exemples';
 import { SauvegardeInvalide, lireSauvegarde } from '../export/sauvegarde';
 import { dateFr } from '../utils/format';
@@ -91,7 +91,8 @@ export default function Accueil() {
                     <p className="text-[17px] font-bold text-encre break-words">{p.identite.nomProjet.trim() || 'Projet sans nom'}</p>
                     {p.identite.nomPrenom.trim() ? <p className="text-[14px] text-doux break-words">{p.identite.nomPrenom}</p> : null}
                     <div className="mt-2">
-                      <Progression pct={progressionGlobale(p)} compact label="Rempli" />
+                      <p className="text-[13px] text-doux mb-1">Ma journée est faite à</p>
+                      <Progression pct={progressionJournee(p)} compact label="Ma journée est faite à" />
                     </div>
                     <p className="text-[13px] text-doux mt-1.5">Modifié le {dateFr(p.modifieLe)}</p>
                   </Link>
