@@ -64,7 +64,7 @@ export default function FormateurPlan() {
   if (etat.statut === 'erreur' || etat.statut === 'absent') {
     return (
       <Mise titre="Suivi formateur" retour={retourListe}>
-        <p className="text-[16px] text-encre">{etat.statut === 'absent' ? "Ce projet n'est plus envoyé au formateur." : 'Connexion impossible pour le moment.'}</p>
+        <p className="text-[16px] text-encre">{etat.statut === 'absent' ? 'Ce projet a été retiré.' : 'Connexion impossible pour le moment.'}</p>
       </Mise>
     );
   }

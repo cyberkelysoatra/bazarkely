@@ -9,9 +9,10 @@ import { Carte } from '../composants/Carte';
 import { Icone } from '../composants/Icones';
 import { codeMemorise, rejoindre, texteRaison, useLien } from '../sync';
 import { Introuvable } from './Introuvable';
+import { TexteEnvoi } from '../composants/Confidentialite';
 
 export const TEXTE_ACCORD =
-  "J'accepte que le formateur voie mon travail pendant la formation NEC 2026. Mon téléphone et mon e-mail restent sur mon téléphone. Je peux arrêter quand je veux.";
+  "J'accepte d'envoyer au formateur mon prénom, le nom de mon projet et tout mon plan pendant la formation, pour qu'il m'aide. Mon téléphone et mon e-mail restent sur mon téléphone. Je peux arrêter quand je veux : mon projet est alors effacé du serveur.";
 
 export default function Formation() {
   const { id } = useParams();
@@ -23,6 +24,7 @@ export default function Formation() {
   const [accord, setAccord] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [voirDetail, setVoirDetail] = useState(false);
 
   if (etat.statut === 'absent') return <Introuvable />;
   if (etat.statut === 'chargement' || lien === undefined) return <Mise titre="Rejoindre la formation">{null}</Mise>;
@@ -71,6 +73,21 @@ export default function Formation() {
           <input type="checkbox" checked={accord} onChange={(e) => setAccord(e.target.checked)} className="mt-0.5 w-6 h-6 shrink-0 accent-violet" />
           <span className="text-[15px] text-encre leading-snug">{TEXTE_ACCORD}</span>
         </label>
+        {/* In-page explanation: a link to /a-propos would lose the code and first name typed here. */}
+        <button
+          type="button"
+          onClick={() => setVoirDetail((v) => !v)}
+          aria-expanded={voirDetail}
+          aria-controls="bp-detail-envoi"
+          className="bp-voir-envoi mt-1 min-h-[44px] w-full flex items-center gap-1.5 text-left text-[15px] font-bold text-violet underline"
+        >
+          <Icone nom="info" className="w-5 h-5 shrink-0" /> Ce qui est envoyé, et comment l'arrêter
+        </button>
+        {voirDetail ? (
+          <div id="bp-detail-envoi" className="mt-1 rounded-xl border border-filet p-3.5 text-encre">
+            <TexteEnvoi />
+          </div>
+        ) : null}
       </Carte>
       {erreur ? (
         <p role="alert" className="text-[15px] font-bold text-alerte mb-3 flex items-start gap-2">

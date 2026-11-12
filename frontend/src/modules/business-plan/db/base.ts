@@ -19,7 +19,7 @@ export interface Lien {
   envoyeLe: string | null;
   /** Waiting for the network to send. */
   enAttente: boolean;
-  /** Reason given by the server for the last refusal (SESSION_FERMEE, CODE_INCONNU, JETON, TROP_GROS). */
+  /** Reason given by the server for the last refusal (SESSION_FERMEE, CODE_INCONNU, JETON, TROP_GROS, RETIRE). */
   refus: string | null;
 }
 

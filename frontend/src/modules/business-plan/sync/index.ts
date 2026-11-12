@@ -49,6 +49,11 @@ function enLigne(): boolean {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
 }
 
+/** NEC-CC-10: the server answered RETIRE (plan removed by the trainer); it will never accept it again. */
+function estRetire(lien: Lien): boolean {
+  return lien.refus === 'RETIRE';
+}
+
 function planifier(planId: string, ms: number): void {
   const avant = minuteries.get(planId);
   if (avant !== undefined) window.clearTimeout(avant);
@@ -115,7 +120,7 @@ async function envoyer(planId: string): Promise<void> {
     return;
   }
   const lien = await lireLien(planId);
-  if (!lien) return;
+  if (!lien || estRetire(lien)) return;
   if (!enLigne()) {
     if (!lien.enAttente) await majLien(planId, { enAttente: true });
     return;
@@ -166,7 +171,8 @@ export function signalerModification(plan: Plan): void {
   modifications.set(plan.id, (modifications.get(plan.id) ?? 0) + 1);
   void (async () => {
     const lien = await lireLien(plan.id);
-    if (!lien) return;
+    // Removed by the trainer: never sent again, no request on each keystroke.
+    if (!lien || estRetire(lien)) return;
     await majLien(plan.id, enLigne() ? { sale: true } : { sale: true, enAttente: true }).catch(() => undefined);
     planifier(plan.id, DELAI_ENVOI);
   })();
@@ -217,7 +223,7 @@ export async function relancer(): Promise<void> {
   } catch {
     return;
   }
-  for (const l of liens) if (l.sale || !l.confirme) void envoyer(l.planId);
+  for (const l of liens) if ((l.sale || !l.confirme) && !estRetire(l)) void envoyer(l.planId);
 }
 
 let demarre = false;
@@ -304,7 +310,8 @@ const RAISONS: Record<string, string> = {
   SESSION_FERMEE: 'session fermée',
   CODE_INCONNU: 'code inconnu',
   JETON: 'projet lié à un autre téléphone',
-  TROP_GROS: 'projet trop gros'
+  TROP_GROS: 'projet trop gros',
+  RETIRE: 'projet retiré par le formateur'
 };
 
 export function texteRaison(raison: string): string {

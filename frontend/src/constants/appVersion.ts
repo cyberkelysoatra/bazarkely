@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.141.0';
-export const APP_VERSION_NAME = "Mon Business Plan : secteur environnement et MADIO NOSY, lignes environnement en 6b (NEC-CC-17)";
+export const APP_VERSION = '3.142.0';
+export const APP_VERSION_NAME = "Mon Business Plan : confidentialité exacte, Retirer et Tout effacer côté formateur (NEC-CC-10)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.142.0',
+    date: '2026-11-12',
+    description: "Mon Business Plan : confidentialité exacte, Retirer et Tout effacer côté formateur (NEC-CC-10)",
+    changes: [
+      "À propos : deux cartes, « Vos données restent sur votre téléphone » et « Si vous rejoignez la formation » (quand, quoi, à qui, comment arrêter, effacement au 31/12/2026)",
+      "Rejoindre la formation : nouveau texte d'accord et explication dépliable sur place (le code et le prénom tapés restent)",
+      "Suivi formateur : bouton Retirer par participant avec confirmation, Tout effacer la session, date d'effacement affichée",
+      "Serveur : table bp_plans_retires, bp_envoyer refuse un projet retiré (RETIRE), bp_admin_retirer et bp_admin_effacer_session réservés au formateur, purge élargie",
+      "Téléphone : un projet retiré n'est plus envoyé (aucune requête), pastille « Envoi refusé : projet retiré par le formateur »"
+    ]
+  },
   {
     version: '3.141.0',
     date: '2026-11-12',

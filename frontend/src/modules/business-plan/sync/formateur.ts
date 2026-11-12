@@ -50,6 +50,16 @@ export function changerSession(code: string, ouverte: boolean): Promise<Acces<{ 
   return appeler('bp_admin_session', { p_code: code, p_ouverte: ouverte });
 }
 
+/** NEC-CC-10: removes one plan from the server; the server never accepts it again (tombstone). */
+export function retirerPlan(planId: string): Promise<Acces<{ ok: boolean; efface: number }>> {
+  return appeler('bp_admin_retirer', { p_plan_id: planId });
+}
+
+/** NEC-CC-10: closes the session and erases (and tombstones) every plan received in it. */
+export function effacerSession(code: string): Promise<Acces<{ ok: boolean; efface?: number; raison?: string }>> {
+  return appeler('bp_admin_effacer_session', { p_code: code });
+}
+
 /** Open or closed (read with bp_rejoindre, the call every participant makes); null when unknown. */
 export async function sessionOuverte(code: string): Promise<boolean | null> {
   try {

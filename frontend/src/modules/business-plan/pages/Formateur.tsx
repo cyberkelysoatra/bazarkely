@@ -6,7 +6,8 @@ import { Patience, RenvoiAccueil } from '../composants/GardeFormateur';
 import { Mise } from '../composants/Mise';
 import { Icone } from '../composants/Icones';
 import { RUBRIQUES } from '../rubriques/registre';
-import { TEXTES_ALERTES, changerSession, listeParticipants, sessionOuverte, type Participant } from '../sync/formateur';
+import { TEXTES_ALERTES, changerSession, effacerSession, listeParticipants, retirerPlan, sessionOuverte, type Participant } from '../sync/formateur';
+import { DATE_PURGE } from '../composants/Confidentialite';
 import { codeMemorise } from '../sync';
 
 const RAFRAICHIR_MS = 15000;
@@ -28,8 +29,21 @@ export function pctGlobal(progression: Record<string, number>): number {
   return Math.round(total / RUBRIQUES.length);
 }
 
-function CarteParticipant({ p, maintenant }: { p: Participant; maintenant: number }) {
+function CarteParticipant({ p, maintenant, retirer }: { p: Participant; maintenant: number; retirer: (planId: string) => Promise<boolean> }) {
   const [voirAlertes, setVoirAlertes] = useState(false);
+  const [confirmer, setConfirmer] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+  const [echec, setEchec] = useState(false);
+  const valider = async () => {
+    setEnCours(true);
+    setEchec(false);
+    const ok = await retirer(p.plan_id);
+    // On success the card is gone (unmounted); on failure it stays with a short message.
+    if (!ok) {
+      setEnCours(false);
+      setEchec(true);
+    }
+  };
   const actif = maintenant - new Date(p.vu_at).getTime() < EN_LIGNE_MS;
   const pct = pctGlobal(p.progression);
   const alertes = Array.isArray(p.alertes) ? p.alertes : [];
@@ -63,28 +77,72 @@ function CarteParticipant({ p, maintenant }: { p: Participant; maintenant: numbe
         </span>
         <span className="mt-2 block text-[13px] text-doux">Dernière activité {depuis(p.maj_at, maintenant)}</span>
       </Link>
-      {alertes.length ? (
-        <div className="border-t border-filet px-3.5 py-2">
-          <button
-            type="button"
-            onClick={() => setVoirAlertes((v) => !v)}
-            className="bp-alertes min-h-[40px] flex items-center gap-1.5 text-alerte font-bold text-[14px]"
-            aria-expanded={voirAlertes}
-          >
-            {alertes.map((a) => (
-              <Icone key={a} nom="alerte" className="w-5 h-5" titre={TEXTES_ALERTES[a] ?? a} />
-            ))}
-            {alertes.length} alerte{alertes.length > 1 ? 's' : ''} du module 5
-          </button>
-          {voirAlertes ? (
-            <ul className="pb-1 text-[14px] text-alerte space-y-1">
+      <div className="border-t border-filet px-3.5 py-1">
+        <div className="flex items-center justify-between gap-2">
+          {alertes.length ? (
+            <button
+              type="button"
+              onClick={() => setVoirAlertes((v) => !v)}
+              className="bp-alertes min-h-[44px] flex items-center gap-1.5 text-alerte font-bold text-[14px] text-left"
+              aria-expanded={voirAlertes}
+            >
               {alertes.map((a) => (
-                <li key={a}>{TEXTES_ALERTES[a] ?? a}</li>
+                <Icone key={a} nom="alerte" className="w-5 h-5 shrink-0" titre={TEXTES_ALERTES[a] ?? a} />
               ))}
-            </ul>
-          ) : null}
+              {alertes.length} alerte{alertes.length > 1 ? 's' : ''} du module 5
+            </button>
+          ) : (
+            <span />
+          )}
+          {confirmer ? null : (
+            <button
+              type="button"
+              onClick={() => {
+                setEchec(false);
+                setConfirmer(true);
+              }}
+              className="bp-retirer shrink-0 min-h-[44px] min-w-[44px] px-2 -mr-2 flex items-center justify-center gap-1.5 rounded-xl text-doux text-[14px] font-bold active:bg-violetClair"
+            >
+              <Icone nom="poubelle" className="w-5 h-5" /> Retirer
+            </button>
+          )}
         </div>
-      ) : null}
+        {voirAlertes && alertes.length ? (
+          <ul className="pb-1 text-[14px] text-alerte space-y-1">
+            {alertes.map((a) => (
+              <li key={a}>{TEXTES_ALERTES[a] ?? a}</li>
+            ))}
+          </ul>
+        ) : null}
+        {confirmer ? (
+          <div className="bp-confirmer-retrait pb-2 pt-1">
+            <p className="text-[15px] font-bold text-encre leading-snug">
+              Retirer « {p.prenom || 'Sans prénom'}, {p.nom_projet || 'Projet sans nom'} » ? Le projet est effacé du serveur et ne sera plus accepté. Il reste sur le
+              téléphone du participant.
+            </p>
+            <div className="mt-2.5 flex gap-2.5">
+              <button type="button" onClick={valider} disabled={enCours} className="flex-1 min-h-[44px] rounded-xl bg-alerte text-white font-bold disabled:opacity-60">
+                Retirer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmer(false);
+                  setEchec(false);
+                }}
+                className="flex-1 min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white"
+              >
+                Annuler
+              </button>
+            </div>
+            {echec ? (
+              <p role="alert" className="mt-2 text-[14px] font-bold text-alerte">
+                Retrait impossible pour le moment, réessayez.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -95,7 +153,11 @@ export default function Formateur() {
   const [ouverte, setOuverte] = useState<boolean | null>(null);
   const [majA, setMajA] = useState<number | null>(null);
   const [actualisations, setActualisations] = useState(0);
-  const [confirmer, setConfirmer] = useState(false);
+  const [confirmer, setConfirmer] = useState<null | 'basculer' | 'effacer'>(null);
+  const [message, setMessage] = useState('');
+  const [effacement, setEffacement] = useState(false);
+  /** Plans removed from this screen: kept out even if a refresh started before the removal answers. */
+  const retires = useRef(new Set<string>());
   const [tirage, setTirage] = useState(0);
   const depart = useRef<number | null>(null);
   const tire = useRef(0);
@@ -107,7 +169,7 @@ export default function Formateur() {
     try {
       const r = await listeParticipants(code);
       if (r.statut === 'ok') {
-        setEtat({ statut: 'ok', liste: [...(r.valeur ?? [])].sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr')) });
+        setEtat({ statut: 'ok', liste: [...(r.valeur ?? [])].filter((p) => !retires.current.has(p.plan_id)).sort((a, b) => a.prenom.localeCompare(b.prenom, 'fr')) });
         setMajA(Date.now());
         setActualisations((n) => n + 1);
         void sessionOuverte(code).then(setOuverte);
@@ -163,8 +225,38 @@ export default function Formateur() {
   const basculer = async () => {
     if (ouverte === null) return;
     const r = await changerSession(code, !ouverte);
-    setConfirmer(false);
+    setConfirmer(null);
+    setMessage('');
     if (r.statut === 'ok') setOuverte(!ouverte);
+    void charger();
+  };
+
+  const retirer = async (planId: string): Promise<boolean> => {
+    const r = await retirerPlan(planId);
+    if (r.statut !== 'ok') return false;
+    retires.current.add(planId);
+    setEtat((avant) => (avant.statut === 'ok' ? { statut: 'ok', liste: avant.liste.filter((p) => p.plan_id !== planId) } : avant));
+    void charger();
+    return true;
+  };
+
+  const toutEffacer = async () => {
+    if (etat.statut !== 'ok') return;
+    setEffacement(true);
+    setMessage('');
+    const ids = etat.liste.map((p) => p.plan_id);
+    const r = await effacerSession(code);
+    setEffacement(false);
+    setConfirmer(null);
+    if (r.statut === 'ok' && r.valeur?.ok) {
+      ids.forEach((id) => retires.current.add(id));
+      const n = r.valeur.efface ?? 0;
+      setEtat({ statut: 'ok', liste: [] });
+      setOuverte(false);
+      setMessage(`${n} projet${n > 1 ? 's' : ''} effacé${n > 1 ? 's' : ''}.`);
+    } else {
+      setMessage('Effacement impossible pour le moment, réessayez.');
+    }
     void charger();
   };
 
@@ -205,7 +297,7 @@ export default function Formateur() {
         ) : (
           <ul className="space-y-3 mb-4">
             {liste.map((p) => (
-              <CarteParticipant key={p.plan_id} p={p} maintenant={maintenant} />
+              <CarteParticipant key={p.plan_id} p={p} maintenant={maintenant} retirer={retirer} />
             ))}
           </ul>
         )}
@@ -213,28 +305,69 @@ export default function Formateur() {
           <p className="text-[15px] text-encre">
             Session <b>{code}</b> : {ouverte === null ? 'état inconnu' : ouverte ? 'ouverte, les participants peuvent envoyer' : 'fermée, plus aucun envoi accepté'}.
           </p>
-          {confirmer ? (
+          <p className="mt-1 text-[14px] text-doux">Les projets reçus sont effacés automatiquement le {DATE_PURGE}.</p>
+          {confirmer === 'basculer' ? (
             <div className="mt-3">
-              <p className="text-[15px] font-bold text-encre">{ouverte ? 'Fermer la session ? Les participants ne pourront plus envoyer.' : 'Rouvrir la session ?'}</p>
+              <p className="text-[15px] font-bold text-encre leading-snug">
+                {ouverte
+                  ? `Fermer la session ? Les participants ne pourront plus envoyer. Les projets déjà reçus restent sur le serveur jusqu'au ${DATE_PURGE}, sauf si vous les effacez.`
+                  : 'Rouvrir la session ?'}
+              </p>
               <div className="mt-2.5 flex gap-2.5">
                 <button type="button" onClick={basculer} className="flex-1 min-h-[44px] rounded-xl bg-violet text-white font-bold">
                   Confirmer
                 </button>
-                <button type="button" onClick={() => setConfirmer(false)} className="flex-1 min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white">
+                <button type="button" onClick={() => setConfirmer(null)} className="flex-1 min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : confirmer === 'effacer' ? (
+            <div className="bp-confirmer-effacer mt-3">
+              <p className="text-[15px] font-bold text-encre leading-snug">
+                {liste.length > 1 ? `Effacer définitivement les ${liste.length} projets` : 'Effacer définitivement le projet'} de la session {code} ? La session sera
+                fermée. Les projets restent sur les téléphones des participants, mais ne pourront plus être renvoyés.
+              </p>
+              <div className="mt-2.5 flex gap-2.5">
+                <button type="button" onClick={toutEffacer} disabled={effacement} className="flex-1 min-h-[44px] rounded-xl bg-alerte text-white font-bold disabled:opacity-60">
+                  Tout effacer
+                </button>
+                <button type="button" onClick={() => setConfirmer(null)} className="flex-1 min-h-[44px] rounded-xl border-2 border-filet text-encre font-bold bg-white">
                   Annuler
                 </button>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              disabled={ouverte === null}
-              onClick={() => setConfirmer(true)}
-              className="mt-3 w-full min-h-[44px] rounded-xl border-2 border-violet text-violet font-bold bg-white disabled:opacity-50"
-            >
-              {ouverte === false ? 'Rouvrir' : 'Fermer la session'}
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={ouverte === null}
+                onClick={() => {
+                  setMessage('');
+                  setConfirmer('basculer');
+                }}
+                className="mt-3 w-full min-h-[44px] rounded-xl border-2 border-violet text-violet font-bold bg-white disabled:opacity-50"
+              >
+                {ouverte === false ? 'Rouvrir' : 'Fermer la session'}
+              </button>
+              <button
+                type="button"
+                disabled={liste.length === 0}
+                onClick={() => {
+                  setMessage('');
+                  setConfirmer('effacer');
+                }}
+                className="bp-tout-effacer mt-2.5 w-full min-h-[44px] rounded-xl border-2 border-alerte text-alerte font-bold bg-white flex items-center justify-center gap-1.5 disabled:opacity-40"
+              >
+                <Icone nom="poubelle" className="w-5 h-5" /> Tout effacer
+              </button>
+            </>
           )}
+          {message ? (
+            <p role="status" className="bp-message-effacement mt-2.5 text-[15px] font-bold text-encre">
+              {message}
+            </p>
+          ) : null}
         </div>
       </div>
     </Mise>
