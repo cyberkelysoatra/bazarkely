@@ -20,7 +20,8 @@ function ancienPlan(): Plan {
   return brut as Plan;
 }
 
-const blocsImpact = (p: Plan) => sectionsPdf(p).find((s) => s.titre === 'Impact et emplois')!.blocs;
+// NEC-CC-19: a section not started is left out of the PDF (no block).
+const blocsImpact = (p: Plan) => sectionsPdf(p).find((s) => s.titre === 'Impact et emplois')?.blocs ?? [];
 
 describe("NEC-CC-17 Mon projet et l'environnement", () => {
   it('a plan saved before this version opens and exports without error', () => {
@@ -57,6 +58,7 @@ describe("NEC-CC-17 Mon projet et l'environnement", () => {
 
   it('PDF: subtitle and the two lines after "Autre effet positif"; nothing when both are empty', () => {
     const p = planVide();
+    p.impact!.autreEffet = 'Un quartier plus propre';
     expect(JSON.stringify(blocsImpact(p))).not.toContain("Mon projet et l'environnement");
     p.impact!.envTrace = 'Sacs plastique';
     let blocs = blocsImpact(p);

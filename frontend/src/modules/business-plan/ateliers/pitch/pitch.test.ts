@@ -91,12 +91,14 @@ describe('pitch: data and PDF', () => {
     const q = questionsPieges(p);
     p.pitch!.reponses[q[0].id] = 'Ma réponse un.';
     const sections = sectionsPdf(p);
-    expect(sections[0].titre).toMatch(/^Synthèse/);
+    expect(sections[0].titre).toBe("Fiche d'identité");
     const i = sections.findIndex((s) => s.titre === 'Mon pitch de 2 minutes');
     expect(sections[i - 1].titre).toMatch(/^Module 5/);
     const json = JSON.stringify(sections[i]);
     for (const t of trame(p)) expect(json).toContain(t.mots);
-    for (const x of q) expect(json).toContain(x.texte);
+    // NEC-CC-19: an unanswered trap question is omitted (no empty field in the PDF).
+    expect(json).toContain(q[0].texte);
+    for (const x of q.slice(1)) expect(json).not.toContain(x.texte);
     expect(json).toContain('Ma réponse un.');
   });
 });

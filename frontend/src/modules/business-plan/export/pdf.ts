@@ -3,7 +3,7 @@
 // NEC violet titles, page numbers, logos NEC and B-lossom Center on the cover.
 import type JsPdf from 'jspdf';
 import type { Plan } from '../types';
-import { NON_REMPLI, secteur, sectionsPdf, textePdf, type Bloc } from './contenu';
+import { NON_REMPLI, etapesComptees, phraseCouverture, resteAFaire, resumePdf, secteur, sectionsPdf, textePdf, type Bloc } from './contenu';
 import { nomFichier } from './sauvegarde';
 
 const VIOLET: [number, number, number] = [96, 0, 90];
@@ -173,6 +173,197 @@ class Redaction {
   }
 }
 
+/** Text cut to `max` lines of `largeur` mm, the last one ending with "..." when cut. */
+function lignesCoupees(r: Redaction, texte: string, largeur: number, taille: number, max: number, style: 'normal' | 'bold' | 'italic' = 'normal'): string[] {
+  const toutes = r.lignes(texte, largeur, taille, style);
+  if (toutes.length <= max) return toutes;
+  if (max <= 0) return [];
+  const gardees = toutes.slice(0, max);
+  let derniere = gardees[max - 1].replace(/\s+$/, '');
+  while (derniere.length > 0 && r.doc.getTextWidth(`${derniere}...`) > largeur) derniere = derniere.slice(0, -1).replace(/\s+$/, '');
+  gardees[max - 1] = `${derniere.replace(/[\s.,;:]+$/, '')}...`;
+  return gardees;
+}
+
+function couverture(r: Redaction, plan: Plan, opts: OptionsPdf, nom: string, date: string): void {
+  const { doc } = r;
+  const i = plan.identite;
+  r.y = 68;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...TURQUOISE);
+  doc.text('NOSY BE ENTREPRENEURSHIP CAMP 2026', MARGE, r.y, { charSpace: 0.8 });
+  r.y += 5;
+  r.paragraphe("Plan d'action", { taille: 32, style: 'bold', couleur: ENCRE, apres: 4 });
+  doc.setFillColor(...VIOLET);
+  doc.rect(MARGE, r.y, 40, 1.4, 'F');
+  r.y += 9;
+  r.paragraphe(nom, { taille: 26, style: 'bold', couleur: VIOLET, apres: 5 });
+  if (i.nomPrenom.trim()) r.paragraphe(i.nomPrenom.trim(), { taille: 14, style: 'bold', apres: 1.5 });
+  const sect = secteur(plan);
+  if (sect) r.paragraphe(sect, { taille: 11.5, couleur: DOUX, apres: 1.5 });
+  if (opts.coordonnees) {
+    for (const c of [i.telephone, i.email]) if (c.trim()) r.paragraphe(c.trim(), { taille: 11, couleur: DOUX, apres: 1 });
+  }
+  r.y += 10;
+
+  const phrase = phraseCouverture(plan);
+  if (phrase) {
+    const taille = 12.5;
+    const pad = 7;
+    const lignes = lignesCoupees(r, phrase, UTILE - 2 * pad, taille, 8, 'italic');
+    const hl = r.hauteurLigne(taille, 1.35);
+    const h = lignes.length * hl + 2 * pad;
+    doc.setFillColor(...VIOLET_CLAIR);
+    doc.roundedRect(MARGE, r.y, UTILE, h, 3, 3, 'F');
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(taille);
+    doc.setTextColor(...VIOLET);
+    lignes.forEach((l, k) => doc.text(l, MARGE + pad, r.y + pad + hl * k + hl * 0.78));
+    r.y += h + 12;
+  }
+
+  r.paragraphe(date, { taille: 11, couleur: DOUX, apres: 8 });
+
+  const etapes = etapesComptees(plan);
+  const faites = etapes.filter((e) => e.fait).length;
+  r.paragraphe(`${faites} étape${faites > 1 ? 's' : ''} franchie${faites > 1 ? 's' : ''} sur ${etapes.length}`, { taille: 11.5, style: 'bold', couleur: TURQUOISE, apres: 3 });
+  const rayon = 2.4;
+  etapes.forEach((e, k) => {
+    const x = MARGE + rayon + k * (2 * rayon + 3.2);
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(...(e.fait ? TURQUOISE : FILET));
+    if (e.fait) {
+      doc.setFillColor(...TURQUOISE);
+      doc.circle(x, r.y + rayon, rayon, 'FD');
+    } else doc.circle(x, r.y + rayon, rayon, 'S');
+  });
+}
+
+/** Page 2, "Mon projet en une page": never more than one page (long texts cut with "..."). */
+function resume(r: Redaction, plan: Plan): void {
+  const { cartes, chiffres } = resumePdf(plan);
+  if (!cartes.length && !chiffres.length) return;
+  const { doc } = r;
+  r.titreSection('Mon projet en une page');
+  const ecart = 5;
+  const largeur = (UTILE - ecart) / 2;
+  const pad = 3.5;
+  const tTitre = 10;
+  const tTexte = 9.5;
+  const tMention = 8;
+  const hlTitre = r.hauteurLigne(tTitre, 1.25);
+  const hlTexte = r.hauteurLigne(tTexte, 1.3);
+  const hlMention = r.hauteurLigne(tMention, 1.3);
+  const tChiffre = chiffres.length > 2 ? 14 : 17;
+  const hChiffres = chiffres.length ? 28 : 0;
+  const rangs = Math.ceil(cartes.length / 2);
+  const dispo = BAS - r.y - hChiffres - 2;
+  const plafond = rangs ? (dispo - (rangs - 1) * ecart) / rangs : 0;
+
+  const mesure = cartes.map((c) => {
+    const titre = r.lignes(c.titre, largeur - 2 * pad, tTitre, 'bold');
+    const fixe = 2 * pad + titre.length * hlTitre + 1.5 + (c.tire ? hlMention + 1 : 0);
+    const max = Math.max(1, Math.floor((plafond - fixe) / hlTexte));
+    const texte = lignesCoupees(r, c.texte, largeur - 2 * pad, tTexte, max);
+    return { c, titre, texte, h: fixe + texte.length * hlTexte };
+  });
+
+  for (let rang = 0; rang < rangs; rang++) {
+    const paire = mesure.slice(rang * 2, rang * 2 + 2);
+    const h = Math.max(...paire.map((m) => m.h));
+    paire.forEach((m, k) => {
+      const x = MARGE + k * (largeur + ecart);
+      doc.setFillColor(250, 246, 249);
+      doc.setDrawColor(...FILET);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, r.y, largeur, h, 2.5, 2.5, 'FD');
+      let y = r.y + pad;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(tTitre);
+      doc.setTextColor(...VIOLET);
+      for (const l of m.titre) {
+        doc.text(l, x + pad, y + hlTitre * 0.78);
+        y += hlTitre;
+      }
+      y += 1.5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(tTexte);
+      doc.setTextColor(...ENCRE);
+      for (const l of m.texte) {
+        doc.text(l, x + pad, y + hlTexte * 0.78);
+        y += hlTexte;
+      }
+      if (m.c.tire) {
+        y += 1;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(tMention);
+        doc.setTextColor(...DOUX);
+        doc.text(textePdf('tiré de mes réponses'), x + pad, y + hlMention * 0.78);
+      }
+    });
+    r.y += h + ecart;
+  }
+
+  if (chiffres.length) {
+    r.y += 3;
+    const col = UTILE / chiffres.length;
+    chiffres.forEach((c, k) => {
+      const x = MARGE + k * col;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...TURQUOISE);
+      doc.text(textePdf(c.label), x, r.y + 3);
+      const valeur = lignesCoupees(r, c.valeur, col - 4, tChiffre, 2, 'bold');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(tChiffre);
+      doc.setTextColor(...VIOLET);
+      valeur.forEach((l, j) => doc.text(l, x, r.y + 10 + j * 6.5));
+    });
+    r.y += hChiffres;
+  }
+}
+
+/** Last page "Mon plan continue": the steps 1 to 11 not done, each with its percentage (not for examples). */
+function planContinue(r: Redaction, plan: Plan): void {
+  const reste = resteAFaire(plan);
+  if (!reste) return;
+  const { doc } = r;
+  r.titreSection('Mon plan continue');
+  if (!reste.length) {
+    r.paragraphe('Ton plan est complet. Prochaine étape : le pitch devant le jury.', { taille: 13, style: 'bold', couleur: TURQUOISE, avant: 2 });
+    return;
+  }
+  r.paragraphe(
+    "Voici ce qui reste à compléter pour présenter ton projet au jury le 14 novembre. Tu peux le faire dans l'app, même sans réseau, puis refaire ce PDF.",
+    { taille: 11.5, avant: 1, apres: 6 }
+  );
+  const hl = 11;
+  for (const e of reste) {
+    r.place(hl);
+    const y = r.y + 6.5;
+    const label = lignesCoupees(r, `${e.n}. ${e.label}`, UTILE - 60, 11, 1, 'bold')[0] ?? '';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...ENCRE);
+    doc.text(label, MARGE, y);
+    // Small progress bar, then the percentage right aligned.
+    const xb = LARGEUR - MARGE - 52;
+    doc.setFillColor(...FILET);
+    doc.roundedRect(xb, y - 3, 34, 3.2, 1.6, 1.6, 'F');
+    if (e.pct > 0) {
+      doc.setFillColor(...TURQUOISE);
+      doc.roundedRect(xb, y - 3, Math.max(3.2, (34 * e.pct) / 100), 3.2, 1.6, 1.6, 'F');
+    }
+    doc.setTextColor(...(e.pct > 0 ? TURQUOISE : DOUX));
+    doc.text(`${e.pct} %`, LARGEUR - MARGE, y, { align: 'right' });
+    doc.setDrawColor(...FILET);
+    doc.setLineWidth(0.25);
+    doc.line(MARGE, r.y + hl, LARGEUR - MARGE, r.y + hl);
+    r.y += hl;
+  }
+}
+
 export interface OptionsPdf {
   /** Telephone and e-mail on the cover, only when the participant ticked "Ajouter mes coordonnées". */
   coordonnees: boolean;
@@ -188,38 +379,21 @@ export async function creerPdf(plan: Plan, opts: OptionsPdf): Promise<File> {
   doc.setProperties({ title: textePdf(`Mon business plan : ${nom}`), subject: 'NEC 2026, Nosy Be', creator: 'Mon business plan, 1saKELY' });
   const r = new Redaction(doc);
 
-  // Cover: NEC logo top left, B-lossom Center (colour) top right.
+  // NEC-CC-19 cover: NEC logo top left, B-lossom Center (colour) top right, then the project.
   const [nec, blossom] = await Promise.all([imageDataUrl('/plan/logos/nec-logo-v1.png'), imageDataUrl('/plan/logos/blossom-couleur-v1.png')]);
   const hLogo = 22;
   if (nec) doc.addImage(nec, 'PNG', MARGE, MARGE, (hLogo * 195) / 120, hLogo);
   if (blossom) doc.addImage(blossom, 'PNG', LARGEUR - MARGE - (hLogo * 126) / 120, MARGE, (hLogo * 126) / 120, hLogo);
-  r.y = 92;
-  r.paragraphe('Mon business plan', { taille: 30, style: 'bold', couleur: VIOLET, apres: 3 });
-  r.paragraphe('Organisé par B-lossom Center, Hell-Ville, Nosy Be', { taille: 11, couleur: DOUX, apres: 10 });
-  doc.setFillColor(...VIOLET);
-  doc.rect(MARGE, r.y, 40, 1.4, 'F');
-  r.y += 8;
-  r.paragraphe(nom, { taille: 22, style: 'bold', apres: 6 });
-  const i = plan.identite;
-  const lignesCouv: [string, string][] = [
-    ['Porteur du projet', i.nomPrenom],
-    ['Secteur', secteur(plan)],
-    ['Lieu', i.lieu],
-    ...(opts.coordonnees ? ([['Téléphone', i.telephone], ['E-mail', i.email]] as [string, string][]) : []),
-    ['Date', date.fr]
-  ];
-  for (const [label, valeur] of lignesCouv) {
-    r.paragraphe(label, { taille: 9.5, style: 'bold', couleur: TURQUOISE });
-    r.paragraphe(valeur.trim() || NON_REMPLI, { taille: 12, style: valeur.trim() ? 'normal' : 'italic', couleur: valeur.trim() ? ENCRE : DOUX, apres: 3 });
-  }
-  r.y = HAUTEUR - 40;
-  r.paragraphe('NEC 2026, Nosy Be', { taille: 14, style: 'bold', couleur: VIOLET });
-  r.paragraphe('Nosy Be Entrepreneurship Camp 2026', { taille: 10.5, couleur: DOUX });
+  couverture(r, plan, opts, nom, date.fr);
+
+  resume(r, plan);
 
   for (const s of sectionsPdf(plan)) {
     r.titreSection(s.titre);
     for (const b of s.blocs) r.bloc(b);
   }
+
+  planContinue(r, plan);
 
   // Page numbers (and the project name) on every page but the cover.
   // Same cast as the PDF of PUDi and Validation (the host's jspdf typing lacks this method).

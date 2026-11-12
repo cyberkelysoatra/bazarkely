@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.143.0';
+export const APP_VERSION = '3.144.0';
 export const APP_VERSION_NAME = "Mon Business Plan : Ma journée, badge d'avance ou de décalage, jauge de la journée, écran de fin d'étape (NEC-CC-18)";
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.144.0',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : PDF du soir sans champ vide, vraie page de garde, projet en une page et ce qui reste (NEC-CC-19)',
+    changes: [
+      "Plus aucun « (non rempli) » : champ vide, ligne vide, tableau vide, sous-titre et section sans contenu omis",
+      "Page de garde : Plan d'action, nom du projet, porteur, secteur, proposition de valeur, date, étapes franchies sur 11",
+      "Page 2 « Mon projet en une page » : les 6 cartes (ou leur brouillon « tiré de mes réponses ») et les chiffres clés, toujours sur une seule page",
+      "Dernière page « Mon plan continue » : les étapes restantes avec leur pourcentage, ou « Ton plan est complet » ; pas pour les exemples",
+      "Écran Exporter : une ligne explique que ce qui manque est listé à la fin du PDF"
+    ]
+  },
   {
     version: '3.143.0',
     date: '2026-11-12',

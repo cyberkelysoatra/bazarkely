@@ -1,16 +1,18 @@
-// Content of the PDF "Mon business plan", as plain data (no jsPDF here, unit tested): the synthesis
-// first, then every section in workbook order, module 5 as tables. An empty answer is "(non rempli)".
-// Telephone and e-mail appear only when the participant asks for them (cover, see pdf.ts).
+// Content of the PDF "Mon business plan", as plain data (no jsPDF here, unit tested): the one-page
+// summary (resumePdf), then every section in workbook order, module 5 as tables, then what is left
+// (resteAFaire). NEC-CC-19: an empty answer is omitted, never printed as "(non rempli)"; an empty table
+// row, table, sub-title or section is dropped. Telephone and e-mail only on the cover (see pdf.ts).
 import type { Plan } from '../types';
 import { calculer, phraseSeuil } from '../utils/chiffres';
 import { ariary, grouper, pluriel, pourcent } from '../utils/format';
 import { BLOCS, jourFr } from '../ateliers/m2/blocs';
 import { calculerMarche } from '../ateliers/m3/calculs';
 import { textePhrase } from '../ateliers/m1/phrase';
-import { CARTES, chiffresCles } from '../ateliers/synthese/brouillons';
+import { CARTES, brouillon, chiffresCles } from '../ateliers/synthese/brouillons';
 import { POINTS } from '../ateliers/relecture/points';
 import { CALENDRIER_NEC, NB_ACTIONS } from '../ateliers/apres/calendrier';
 import { RUBRIQUES, type IdRubrique } from '../rubriques/registre';
+import { etapesDuPlan, NB_ETAPES_COMPTEES } from '../etat/journee';
 import { impactDe, missionDe, pitchDe } from '../etat/vide';
 import { MARGE, trame } from '../ateliers/pitch/trame';
 import { questionsPieges } from '../ateliers/pitch/questions';
@@ -32,6 +34,8 @@ export interface Section {
 
 const v = (s: string | null | undefined) => (s && s.trim() ? s.trim() : NON_REMPLI);
 const montant = (n: number | null | undefined) => (n === null || n === undefined ? NON_REMPLI : ariary(n));
+/** A computed sum: 0 means nothing was typed (NEC-CC-19: omitted). */
+const somme = (n: number) => (n ? ariary(n) : NON_REMPLI);
 const champ = (label: string, valeur: string | null | undefined): Bloc => ({ type: 'champ', label, valeur: v(valeur) });
 const st = (texte: string): Bloc => ({ type: 'sousTitre', texte });
 const titreDe = (id: IdRubrique) => RUBRIQUES.find((r) => r.id === id)?.titre ?? id;
@@ -184,7 +188,7 @@ function m3(plan: Plan): Section {
       st('3b. Mes concurrents'),
       ...(concurrents.length
         ? concurrents.flatMap((c, i): Bloc[] => [
-            { type: 'texte', texte: `Concurrent ${i + 1} : ${v(c.nom)}${c.type ? ` (${c.type === 'direct' ? 'direct' : 'indirect'})` : ''}` },
+            { type: 'texte', texte: `Concurrent ${i + 1}${c.nom.trim() ? ` : ${c.nom.trim()}` : ''}${c.type ? ` (${c.type === 'direct' ? 'direct' : 'indirect'})` : ''}` },
             champ('Prix', c.prix),
             champ('Ses points forts', c.forts),
             champ('Ses points faibles', c.faibles),
@@ -236,7 +240,8 @@ function m4(plan: Plan): Section {
         largeurs: [0.5, 0.2, 0.3],
         lignes: Object.keys(DEMARCHES).map((id) => {
           const d = m.demarches.find((x) => x.id === id);
-          return [DEMARCHES[id], d?.fait ? 'Oui' : 'Non', d?.fait ? '' : d?.datePrevue ? jour(d.datePrevue) : NON_REMPLI];
+          // "Non" without a date is the untouched default of a participant's plan (NEC-CC-19: row omitted).
+          return [DEMARCHES[id], d?.fait ? 'Oui' : d?.datePrevue || plan.exemple ? 'Non' : NON_REMPLI, d?.fait ? '' : d?.datePrevue ? jour(d.datePrevue) : NON_REMPLI];
         })
       }
     ]
@@ -277,7 +282,7 @@ function m5(plan: Plan): Section {
         largeurs: [0.65, 0.35],
         total: true,
         lignes: [
-          ['Coût variable unitaire (A)', ariary(c.coutUnitaire)],
+          ['Coût variable unitaire (A)', somme(c.coutUnitaire)],
           ['Prix de vente (B)', montant(c.prix)],
           ['Marge unitaire (B moins A)', montant(c.marge)],
           ['Taux de marge', c.tauxMarge === null ? NON_REMPLI : pourcent(c.tauxMarge)]
@@ -297,23 +302,23 @@ function m5(plan: Plan): Section {
           ['Téléphone et internet', montant(cf.telephone)],
           ['Autres', montant(cf.autres)],
           ...cf.lignes.filter((l) => l.libelle.trim() || l.montant !== null).map((l) => [v(l.libelle), montant(l.montant)]),
-          ['Total des charges fixes (C)', ariary(c.chargesFixes)]
+          ['Total des charges fixes (C)', somme(c.chargesFixes)]
         ]
       },
-      champ('Jours de travail par mois', String(m.joursParMois)),
+      champ('Jours de travail par mois', c.chargesFixes > 0 ? String(m.joursParMois) : ''),
       champ('Mon seuil de rentabilité', seuil ?? ''),
       st('5c. Mon démarrage'),
-      { type: 'tableau', entetes: ['Investissements', 'Montant'], largeurs: [0.65, 0.35], lignes: [...lignesMontants(m.investissements), ['Total des investissements', ariary(c.investissements)]], total: true },
+      { type: 'tableau', entetes: ['Investissements', 'Montant'], largeurs: [0.65, 0.35], lignes: [...lignesMontants(m.investissements), ['Total des investissements', somme(c.investissements)]], total: true },
       {
         type: 'tableau',
         entetes: ['Besoins', 'Montant'],
         largeurs: [0.65, 0.35],
         total: true,
         lignes: [
-          ['Investissements', ariary(c.investissements)],
+          ['Investissements', somme(c.investissements)],
           ['Stock de départ (inclus dans le fonds de roulement)', montant(m.stockDepart)],
-          ['Fonds de roulement', ariary(c.fondsRetenu)],
-          ['Total des besoins', ariary(c.besoins)]
+          ['Fonds de roulement', somme(c.fondsRetenu)],
+          ['Total des besoins', somme(c.besoins)]
         ]
       },
       {
@@ -326,10 +331,10 @@ function m5(plan: Plan): Section {
           ['Subvention visée', montant(r.subvention)],
           ['Prêt familial ou microfinance', montant(r.pret)],
           [r.autreLibelle.trim() || 'Autre ressource', montant(r.autre)],
-          ['Total des ressources', ariary(c.ressources)]
+          ['Total des ressources', somme(c.ressources)]
         ]
       },
-      champ('Écart (ressources moins besoins)', c.ecart === 0 ? '0 Ar : équilibré' : ariary(c.ecart)),
+      champ('Écart (ressources moins besoins)', !c.besoins && !c.ressources ? '' : c.ecart === 0 ? '0 Ar : équilibré' : ariary(c.ecart)),
       st('5d. Mes résultats sur 3 ans'),
       {
         type: 'tableau',
@@ -432,7 +437,7 @@ function impact(plan: Plan): Section {
     titre: titreDe('impact'),
     blocs: [
       st('Mes emplois en chiffres'),
-      ...t.map((n, k): Bloc => ({ type: 'texte', texte: `Année ${k + 1} (${PREMIERE_ANNEE + k}) : ${'•'.repeat(Math.min(n, 30))}${n ? ' ' : ''}${n} personne${n > 1 ? 's' : ''} payée${n > 1 ? 's' : ''}` })),
+      ...(t.some((n) => n > 0) ? t : []).map((n, k): Bloc => ({ type: 'texte', texte: `Année ${k + 1} (${PREMIERE_ANNEE + k}) : ${'•'.repeat(Math.min(n, 30))}${n ? ' ' : ''}${n} personne${n > 1 ? 's' : ''} payée${n > 1 ? 's' : ''}` })),
       champ("Ma phrase d'impact", im.phrase),
       st('6a. Mes emplois'),
       {
@@ -474,8 +479,8 @@ function mission(plan: Plan): Section {
         entetes: ['Preuve', 'Valeur'],
         largeurs: [0.6, 0.4],
         lignes: [
-          ['Clients interrogés', String(nbEntretiens(plan))],
-          ['Prix relevés', String(nbPrix(plan))],
+          ['Clients interrogés', nbEntretiens(plan) || plan.exemple ? String(nbEntretiens(plan)) : NON_REMPLI],
+          ['Prix relevés', nbPrix(plan) || plan.exemple ? String(nbPrix(plan)) : NON_REMPLI],
           ['Date', v(date)]
         ]
       },
@@ -517,7 +522,7 @@ function pitch(plan: Plan): Section {
         type: 'tableau',
         entetes: ['Temps', 'Durée', 'Mots-clés'],
         largeurs: [0.36, 0.12, 0.52],
-        lignes: [...trame(plan).map((t) => [`${t.n}. ${t.titre}`, `${t.duree} s`, v(t.mots)]), ['Marge', `${MARGE} s`, '']]
+        lignes: [...trame(plan).map((t) => [`${t.n}. ${t.titre}`, t.mots.trim() ? `${t.duree} s` : '', v(t.mots)]), ['Marge', trame(plan).some((t) => t.mots.trim()) ? `${MARGE} s` : '', '']]
       },
       st('Les 3 questions pièges du jury'),
       ...questionsPieges(plan).map((q, i) => champ(`${i + 1}. ${q.texte}`, r[q.id]))
@@ -525,9 +530,103 @@ function pitch(plan: Plan): Section {
   };
 }
 
-/** Every section after the cover: the synthesis first, then the workbook order. */
+/** Kept for the code importing it; never printed since NEC-CC-19. */
+export function sectionSynthese(plan: Plan): Section {
+  return synthese(plan);
+}
+
+const vide = (t: string | undefined) => !t || !t.trim() || t.trim() === NON_REMPLI;
+
+/** NEC-CC-19: drops empty fields, empty rows (label alone), empty tables and sub-titles followed by nothing. */
+export function nettoyerBlocs(blocs: Bloc[]): Bloc[] {
+  const gardes: Bloc[] = [];
+  for (const b of blocs) {
+    if (b.type === 'champ') {
+      if (!vide(b.valeur)) gardes.push(b);
+    } else if (b.type === 'texte') {
+      if (!vide(b.texte)) gardes.push(b);
+    } else if (b.type === 'tableau') {
+      const plein = (l: string[]) => (l.length > 1 ? l.slice(1) : l).some((c) => !vide(c));
+      const lignes = b.lignes.filter(plein).map((l) => l.map((c) => (vide(c) ? '' : c)));
+      const derniere = b.lignes[b.lignes.length - 1];
+      const total = !!b.total && !!derniere && plein(derniere);
+      // A total row alone (every line above it empty) says nothing.
+      if (lignes.length === 0 || (total && lignes.length === 1)) continue;
+      gardes.push({ ...b, lignes, total });
+    } else gardes.push(b);
+  }
+  return gardes.filter((b, i) => b.type !== 'sousTitre' || (i + 1 < gardes.length && gardes[i + 1].type !== 'sousTitre'));
+}
+
+/** Detailed sections in workbook order (the synthesis is the one-page summary), empty blocks dropped. */
 export function sectionsPdf(plan: Plan): Section[] {
-  return [synthese(plan), identite(plan), m1(plan), m2(plan), m3(plan), m4(plan), impact(plan), mission(plan), m5(plan), pitch(plan), relecture(plan), apres(plan), prix(plan), notes(plan)];
+  const toutes: [IdRubrique, Section][] = [
+    ['identite', identite(plan)],
+    ['m1', m1(plan)],
+    ['m2', m2(plan)],
+    ['m3', m3(plan)],
+    ['m4', m4(plan)],
+    ['impact', impact(plan)],
+    ['mission', mission(plan)],
+    ['m5', m5(plan)],
+    ['pitch', pitch(plan)],
+    ['relecture', relecture(plan)],
+    ['apres', apres(plan)],
+    ['prix', prix(plan)],
+    ['notes', notes(plan)]
+  ];
+  return toutes
+    .map(([, s]) => ({ ...s, blocs: nettoyerBlocs(s.blocs) }))
+    .filter((s) => s.blocs.length > 0);
+}
+
+export interface CarteResume {
+  titre: string;
+  texte: string;
+  /** True when the text is the draft built from the answers (the card itself is empty). */
+  tire: boolean;
+}
+
+export interface Resume {
+  cartes: CarteResume[];
+  chiffres: { label: string; valeur: string }[];
+}
+
+/** NEC-CC-19, page 2 "Mon projet en une page": the 6 cards (own text, else the draft) and the key figures. */
+export function resumePdf(plan: Plan): Resume {
+  const cartes = CARTES.map((c): CarteResume | null => {
+    const propre = plan.synthese[c.cle].trim();
+    if (propre) return { titre: c.titre, texte: propre, tire: false };
+    const b = brouillon(plan, c.cle).trim();
+    return b ? { titre: c.titre, texte: b, tire: true } : null;
+  }).filter((c): c is CarteResume => !!c);
+  const k = chiffresCles(plan);
+  const chiffres = [
+    k.besoinTotal !== null ? { label: 'Besoin total', valeur: ariary(k.besoinTotal) } : null,
+    k.caAnnee1 !== null ? { label: "Chiffre d'affaires année 1", valeur: ariary(k.caAnnee1) } : null,
+    k.seuilMois !== null ? { label: 'Seuil de rentabilité', valeur: `${grouper(k.seuilMois)} ${pluriel(plan.uniteVente, k.seuilMois)} par mois` } : null
+  ].filter((x): x is { label: string; valeur: string } => !!x);
+  return { cartes, chiffres };
+}
+
+/** Value proposition of the cover: the 1c sentence when complete, else "Mon projet en une phrase", else ''. */
+export function phraseCouverture(plan: Plan): string {
+  const pv = plan.m1.pv;
+  const complete = [pv.pour, pv.qui, pv.propose, pv.quiBenefice, pv.contrairement].every((x) => x.trim()) && plan.identite.nomProjet.trim();
+  return complete ? textePhrase(plan) : plan.identite.unePhrase.trim();
+}
+
+/** Steps 1 to 11 with their state (cover dots and the last page). */
+export function etapesComptees(plan: Plan) {
+  return etapesDuPlan(plan).slice(0, NB_ETAPES_COMPTEES);
+}
+
+/** NEC-CC-19, last page "Mon plan continue": steps 1 to 11 not done; null for an example plan. */
+export function resteAFaire(plan: Plan): { n: number; label: string; pct: number }[] | null {
+  if (plan.exemple) return null;
+  return etapesComptees(plan)
+    .filter((e) => !e.fait)
+    .map((e) => ({ n: e.n, label: e.label, pct: e.pct }));
 }
 
 /** Text safe for the PDF standard font: no em dash, en dash, middle dot; spaces instead of thin spaces. */

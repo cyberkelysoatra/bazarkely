@@ -76,7 +76,7 @@ export default function Exporter() {
 
   return (
     <Mise titre="Exporter" sousTitre={nom} retour={{ vers: `/p/${plan.id}`, texte: 'Sommaire' }} plan={plan}>
-      <Carte titre="Mon business plan en PDF" sousTitre="La page de garde, la synthèse, puis tout le cahier dans l'ordre. Les réponses vides sont notées « (non rempli) ».">
+      <Carte titre="Mon business plan en PDF" sousTitre="La page de garde, mon projet en une page, puis tout le cahier dans l'ordre.">
         <label className="bp-coordonnees mb-3 flex items-start gap-3 rounded-xl border border-filet px-3.5 py-3 min-h-[48px]">
           <input
             type="checkbox"
@@ -92,6 +92,9 @@ export default function Exporter() {
             <span className="block text-[14px] text-doux">Téléphone et e-mail sur la page de garde. Sans cette case, ils ne sont jamais dans le PDF.</span>
           </span>
         </label>
+        <p className="bp-pdf-explication mb-2.5 text-[15px] text-encre leading-snug">
+          Ton PDF montre ce que tu as rempli. Ce qui manque est listé à la fin : tu pourras le compléter et refaire ton PDF.
+        </p>
         <button
           type="button"
           onClick={partagerPdf}
