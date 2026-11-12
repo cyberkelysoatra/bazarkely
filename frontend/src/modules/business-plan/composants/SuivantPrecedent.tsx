@@ -60,7 +60,8 @@ export function FournisseurEtapes({ planId, chemin, children }: { planId: string
   return (
     <ContexteEtapes.Provider value={setInterne}>
       {children}
-      <div className="bp-suivant-precedent mt-6 flex gap-2.5">
+      {/* With internal steps the row stays stuck above the bottom nav: tapping it never needs a scroll to the page end. */}
+      <div className={`bp-suivant-precedent mt-6 flex gap-2.5 ${interne ? 'bp-suivant-colle' : ''}`}>
         {avecPrecedent ? (
           <button
             type="button"

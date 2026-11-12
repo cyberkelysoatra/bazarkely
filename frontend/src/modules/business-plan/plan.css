@@ -138,3 +138,20 @@ textarea.bp-champ:focus {
     scroll-behavior: auto;
   }
 }
+/* "Suivant / Précédent" row of a page with internal steps (module 5, NEC-CC-11): stuck right above
+   the fixed bottom nav (57 px), frosted; focused fields are kept clear of it. */
+.bp-suivant-colle {
+  position: sticky;
+  bottom: calc(57px + env(safe-area-inset-bottom, 0px));
+  z-index: 15;
+  margin-left: -16px;
+  margin-right: -16px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid #e3d6e1;
+}
+html:has(.bp-suivant-colle) {
+  scroll-padding-bottom: 140px;
+}

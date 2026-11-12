@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.135.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : boutons Suivant / Précédent en bas de chaque rubrique, résultat avant amortissements (NEC-CC-11)';
+export const APP_VERSION = '3.135.1';
+export const APP_VERSION_NAME = 'Mon Business Plan : module 5, la rangée Suivant / Précédent reste collée au-dessus de la barre du bas (NEC-CC-11)';
 export const LAST_UPDATED = '2026-11-12';
 export const APP_BUILD_DATE = '2026-11-12';
 export const VERSION_HISTORY = [
+  {
+    version: '3.135.1',
+    date: '2026-11-12',
+    description: 'Mon Business Plan : module 5, la rangée Suivant / Précédent reste collée au-dessus de la barre du bas (NEC-CC-11)',
+    changes: [
+      "Module 5 : la rangée « ‹ Précédent / Suivant › » reste visible au-dessus de la barre du bas pendant la lecture de 5a à 5f ; la toucher ne demande plus de descendre en bas de page (ce qui faisait sauter 5d, 5e et 5f)"
+    ]
+  },
   {
     version: '3.135.0',
     date: '2026-11-12',
