@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Aide } from './Aide';
-import { arreterLecture, choisirVoix, decouperPhrases, demarrerLecture, nettoyerTexte, texteALire, trouverVoix } from './Ecouter';
+import { arreterLecture, choisirVoix, decouperPhrases, demarrerLecture, nettoyerTexte, texteALire, textePourLaVoix, trouverVoix } from './Ecouter';
 
 const voix = (lang: string, localService = true, name = lang) => ({ lang, localService, name, default: false, voiceURI: name }) as SpeechSynthesisVoice;
 
@@ -53,8 +53,21 @@ describe('nettoyerTexte / texteALire', () => {
 });
 
 describe('decouperPhrases', () => {
-  it('splits on . ! ? : and line breaks, drops empty pieces', () => {
-    expect(decouperPhrases('Un. Deux ! Trois ? Quatre : cinq\nSix\n\n-')).toEqual(['Un.', 'Deux !', 'Trois ?', 'Quatre :', 'cinq', 'Six']);
+  it('splits on . ! ? and line breaks (NEC-CC-25: never on a colon), drops empty pieces', () => {
+    expect(decouperPhrases('Un. Deux ! Trois ? Quatre : cinq\nSix\n\n-')).toEqual(['Un.', 'Deux !', 'Trois ?', 'Quatre : cinq', 'Six']);
+  });
+
+  it('NEC-CC-25: a colon followed by a line break still ends the piece', () => {
+    expect(decouperPhrases('Total :\n120 Ar.')).toEqual(['Total :', '120 ariary.']);
+  });
+
+  it('NEC-CC-25: "Total : 120 Ar. Marge : 40 Ar." gives exactly 2 sentences', () => {
+    expect(decouperPhrases('Total : 120 Ar. Marge : 40 Ar.')).toEqual(['Total : 120 ariary.', 'Marge : 40 ariary.']);
+  });
+
+  it('NEC-CC-25: "Total : 120 Ar." and "Ma part : 20 %" stay one sentence each', () => {
+    expect(decouperPhrases('Total : 120 Ar.')).toEqual(['Total : 120 ariary.']);
+    expect(decouperPhrases('Ma part : 20 %')).toEqual(['Ma part : 20 pour cent']);
   });
 
   it('splits a very long sentence on commas', () => {
@@ -62,6 +75,36 @@ describe('decouperPhrases', () => {
     const p = decouperPhrases(long);
     expect(p.length).toBeGreaterThan(1);
     expect(p.every((x) => x.length <= 220)).toBe(true);
+  });
+});
+
+describe('textePourLaVoix (NEC-CC-25)', () => {
+  it.each([
+    ['2 x 8', '2 fois 8'],
+    ['2x8', '2 fois 8'],
+    ['2 X 8', '2 fois 8'],
+    ['50 × 15 %', '50 fois 15 pour cent'],
+    ['8 000 Ar x 12', '8000 ariary fois 12'],
+    ['(2 + 3) x (4)', '(2 plus 3) fois (4)'],
+    ['Total : 120 Ar.', 'Total : 120 ariary.'],
+    ['8 000 Ar/mois', '8000 ariary par mois'],
+    ['3 000 Ar / jour', '3000 ariary par jour'],
+    ['120/semaine', '120 par semaine'],
+    ['15 990 000 Ar', '15990000 ariary'],
+    ['15 990 000 Ar', '15990000 ariary'],
+    ['15 990 000 Ar', '15990000 ariary'],
+    ['prix = coût + marge', 'prix égale coût + marge'],
+    ['10 + 5', '10 plus 5'],
+    ['Ma part : 20 %', 'Ma part : 20 pour cent'],
+    ['un taxi', 'un taxi'],
+    ['Excel', 'Excel'],
+    ['le point x du plan', 'le point x du plan'],
+    ['Arrivage et Art', 'Arrivage et Art'],
+    ['2 8', '2 8'],
+    ['en 2024 2025 2026', 'en 2024 2025 2026'],
+    ['et/ou', 'et/ou'],
+  ])('%s -> %s', (avant, apres) => {
+    expect(textePourLaVoix(avant)).toBe(apres);
   });
 });
 

@@ -1,5 +1,6 @@
 // Routes of "Mon business plan" (/plan). Pages loaded on demand except the home.
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { annonceAvisPlanPlusRecent, suivreAvisPlanPlusRecent } from './etat/avisPlan';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import Accueil from './pages/Accueil';
 import { mettreAJourMaintenant, signalerChangementDePage, useMiseAJourDisponible } from './etat/pwa';
@@ -46,10 +47,34 @@ function BandeauMiseAJour() {
   );
 }
 
+/** NEC-CC-25: said once when this page's change was refused because another page saved a newer plan. */
+function AvisPlanPlusRecent() {
+  const n = useSyncExternalStore(suivreAvisPlanPlusRecent, annonceAvisPlanPlusRecent);
+  const [vu, setVu] = useState(n);
+  useEffect(() => {
+    if (n === vu) return;
+    const t = window.setTimeout(() => setVu(n), 6000);
+    return () => window.clearTimeout(t);
+  }, [n, vu]);
+  if (n === vu) return null;
+  return (
+    <button
+      type="button"
+      role="status"
+      data-avis-plan-recent
+      onClick={() => setVu(n)}
+      className="fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-32px)] max-w-[448px] rounded-xl border-2 border-turquoise bg-white px-3 py-2 text-left text-[14px] leading-snug text-encre shadow-md"
+    >
+      Ce projet a été modifié dans une autre page : la version la plus récente est affichée.
+    </button>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter basename="/plan">
       <BandeauMiseAJour />
+      <AvisPlanPlusRecent />
       <SuiviPages />
       <Suspense fallback={<div className="bp-ecran" />}>
         <Routes>

@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.148.0';
+export const APP_VERSION = '3.149.0';
 export const APP_VERSION_NAME = 'Mon Business Plan : bouton « Écouter » qui lit les explications avec la voix du téléphone (NEC-CC-23)';
 export const LAST_UPDATED = '2026-11-12';
-export const APP_BUILD_DATE = '2026-11-12';
+export const APP_BUILD_DATE = '2026-11-13';
 export const VERSION_HISTORY = [
+  {
+    version: '3.149.0',
+    date: '2026-11-13',
+    description: 'Mon Business Plan : une ancienne page ne réenregistre jamais par-dessus un plan plus récent, et « Écouter » lit naturellement (NEC-CC-25, NEC-174, NEC-173)',
+    changes: [
+      'Enregistrement refusé quand le plan stocké a déjà une révision plus haute : la page se recharge sur la version la plus récente et le dit en une phrase',
+      'Page revenue au premier plan : relit le plan stocké et se met à jour ; les autres pages ouvertes sur le même plan sont prévenues à chaque enregistrement (numéro de révision seulement)',
+      'Copie de secours d’une ancienne page rejetée à la réouverture',
+      '« Écouter » : plus de coupure aux deux-points ; « x » et « × » lus « fois », « Ar » lu « ariary », « / » lu « par », « = » « égale », « % » « pour cent », « + » « plus », milliers lus comme un seul nombre (texte affiché inchangé)'
+    ]
+  },
   {
     version: '3.148.0',
     date: '2026-11-12',

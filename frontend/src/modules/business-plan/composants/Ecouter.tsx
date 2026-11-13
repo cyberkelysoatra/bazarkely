@@ -14,15 +14,40 @@ export function nettoyerTexte(texte: string): string {
   return texte
     .replace(/\(\s*\?\s*\)/g, ' ')
     .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}\u{2190}-\u{21FF}\u{2460}-\u{24FF}\u{2500}-\u{25FF}\u{2700}-\u{27BF}]/gu, ' ')
-    .replace(/[ \t\f\v  ]+/g, ' ')
+    .replace(/[ \t\f\v\u00A0\u202F]+/g, ' ')
     .replace(/ *\n[\s]*/g, '\n')
     .trim();
 }
 
-/** Sentences to queue (Chrome Android cuts long utterances): split on . ! ? : and line breaks, long ones on , ; */
+// NEC-CC-25 (NEC-173): French spoken forms, applied to the text sent to the voice only (never displayed).
+const UNITES = String.raw`ariary|kg|g|km|m|l|L|litres?|kilos?|heures?|h|jours?|unités?|pièces?|sacs?|min|places?|repas|clients?|personnes?|plats?|bouteilles?|kapoaka`;
+
+/** "2 x 8" -> "2 fois 8", "15 990 000 Ar" -> "15990000 ariary", "Ar/mois" -> "ariary par mois", "=", "%", "+". */
+export function textePourLaVoix(texte: string): string {
+  return (
+    texte
+      // Grouped thousands (normal, non-breaking or narrow non-breaking space): one number for the voice.
+      .replace(/(?<![\d.,])\d{1,3}(?:[ \u00A0\u202F]\d{3})+(?!\d)/g, (m) => m.replace(/[ \u00A0\u202F]/g, ''))
+      .replace(/[ \u00A0\u202F]*×[ \u00A0\u202F]*/g, ' fois ')
+      // x or X alone between two numbers (or a number, a parenthesis, a percent, Ar): never inside a word.
+      .replace(/(\d|\)|%|(?<![\p{L}\p{N}])Ar)[ \u00A0\u202F]*[xX][ \u00A0\u202F]*(?=[\d(])/gu, '$1 fois ')
+      .replace(/(?<![\p{L}\p{N}_])Ar(?![\p{L}\p{N}])/gu, 'ariary')
+      // "/" between a number or a unit and a word: "par" (Ar/mois, 120/jour, kg / semaine).
+      .replace(new RegExp(String.raw`(\d|%|(?<![\p{L}])(?:${UNITES}))[ \u00A0\u202F]*\/[ \u00A0\u202F]*(?=\p{L})`, 'gu'), '$1 par ')
+      .replace(/(?<=\S)[ \u00A0\u202F]*=[ \u00A0\u202F]*(?=\S)/g, ' égale ')
+      .replace(/(\d)[ \u00A0\u202F]*%/g, '$1 pour cent')
+      .replace(/(\d)[ \u00A0\u202F]*\+[ \u00A0\u202F]*(?=\d)/g, '$1 plus ')
+      .replace(/[ \u00A0\u202F]{2,}/g, ' ')
+  );
+}
+
+/**
+ * Sentences to queue (Chrome Android cuts long utterances): split on . ! ? … and line breaks, long ones
+ * on , ; (NEC-CC-25: never on a colon, "Total : 120 Ar." stays one sentence).
+ */
 export function decouperPhrases(texte: string): string[] {
-  const phrases = nettoyerTexte(texte)
-    .split(/\n+|(?<=[.!?:…])\s+/)
+  const phrases = textePourLaVoix(nettoyerTexte(texte))
+    .split(/\n+|(?<=[.!?…])\s+/)
     .map((p) => p.trim())
     .filter((p) => /[\p{L}\p{N}]/u.test(p));
   return phrases.flatMap((p) => (p.length > LONGUEUR_MAX ? p.split(/(?<=[,;])\s+/).filter(Boolean) : [p]));

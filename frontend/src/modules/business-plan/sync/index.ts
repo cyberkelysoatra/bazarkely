@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { Plan } from '../types';
 import { db, type Lien } from '../db/base';
-import { lirePlan } from '../db/plans';
+import { annoncerPlan, lirePlan } from '../db/plans';
 import { RUBRIQUES } from '../rubriques/registre';
 import { alertes } from '../utils/chiffres';
 import { completerPlan, copier } from '../etat/vide';
@@ -219,6 +219,8 @@ export async function recupererPretest(planId: string): Promise<void> {
     });
     if (!sauve) return;
     abonnesPretest.forEach((f) => f(sauve));
+    // NEC-CC-25: the other open pages holding this plan reload it (rev and id only).
+    annoncerPlan(sauve.id, sauve.rev);
     signalerModification(sauve);
   } catch {
     // No network, timeout or storage error: tried again at the next call.
