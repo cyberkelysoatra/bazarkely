@@ -4,12 +4,12 @@
  * admin et gestion électricité ; lecture seule réelle (aucun bouton) pour promoteur et
  * lecture électricité. Rien n'est pré-rempli : RTB saisit ses clients et compteurs.
  */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
-import { Users, Gauge, Plus, Save, X, NotebookPen, Trash2, Search, Replace, Layers, Building } from 'lucide-react';
+import { Users, Gauge, Plus, Save, X, NotebookPen, Trash2, Search, Replace, Layers, Building, FileSignature } from 'lucide-react';
 import EauPageShell from '../EauPageShell';
 import EauTabs from '../EauTabs';
-import { ElecBouton, ElecVide, LectureSeule, Pastille, StatutPastille, Tiroir, champCls, useDonneesElec, STATUT_LIBELLE } from './ElecUi';
+import { AideChamp, ElecBouton, ElecVide, LectureSeule, Pastille, StatutPastille, Tiroir, champCls, useDonneesElec, STATUT_LIBELLE } from './ElecUi';
 import {
   CLIENT_VIDE,
   COMPTEUR_VIDE,
@@ -223,6 +223,7 @@ function OngletClients({
                     </span>
                     {c.facture_groupee && <Pastille><Layers className="w-3 h-3" aria-hidden="true" />Facture groupée</Pastille>}
                     {c.hors_domaine && <Pastille tone="neutral"><Building className="w-3 h-3" aria-hidden="true" />Hors domaine</Pastille>}
+                    {c.contrat_signe && <Pastille tone="green"><FileSignature className="w-3 h-3" aria-hidden="true" />Contrat signé</Pastille>}
                     <StatutPastille statut={c.statut} />
                   </div>
                 </div>
@@ -297,6 +298,13 @@ function FormClient({
       <div className="flex flex-col gap-1">
         <Case checked={form.facture_groupee} onChange={(v) => setForm({ ...form, facture_groupee: v })} libelle="Facture groupée (tous ses compteurs sur une seule facture)" champ="facture_groupee" />
         <Case checked={form.hors_domaine} onChange={(v) => setForm({ ...form, hors_domaine: v })} libelle="Hors du domaine" champ="hors_domaine" />
+        <Case
+          checked={!!form.contrat_signe}
+          onChange={(v) => setForm({ ...form, contrat_signe: v })}
+          libelle="Contrat de vente d'énergie signé"
+          champ="contrat_signe"
+          aide="À cocher seulement si ce client a signé le contrat de vente d'énergie. Le bas de ses factures citera alors ce contrat ; sinon, aucune mention du contrat n'y figure."
+        />
       </div>
       <label className="text-sm block">
         <span className="block text-gray-700 mb-1">Notes internes</span>
@@ -477,6 +485,7 @@ function OngletCompteurs({
                         <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs text-gray-500">
                           <StatutPastille statut={c.statut} />
                           {c.index_reprise != null && <span>reprise {fmtIndex(c.index_reprise, c.decimales)} kWh</span>}
+                          {c.sans_abonnement && <Pastille tone="neutral">Sans abonnement</Pastille>}
                           {c.remplace_compteur_id && <span>remplace {parCode.get(c.remplace_compteur_id)?.code ?? 'un ancien compteur'}</span>}
                           {c.statut === 'arrete' && c.date_arret && <span>arrêté le {c.date_arret.split('-').reverse().join('/')}</span>}
                           <span>{nbReleves(c.id)} relevé{nbReleves(c.id) > 1 ? 's' : ''}</span>
@@ -626,6 +635,15 @@ function FormCompteur({
             <input type="date" value={form.date_arret ?? ''} onChange={(e) => setForm({ ...form, date_arret: e.target.value || null })} className={champCls} />
           </label>
         )}
+        <div className="col-span-2">
+          <Case
+            checked={!!form.sans_abonnement}
+            onChange={(v) => setForm({ ...form, sans_abonnement: v })}
+            libelle="Facturé à part, sans abonnement"
+            champ="sans_abonnement"
+            aide="Pour un équipement commun, comme la pompe du bassin principal : son client paie déjà l'abonnement sur une autre facture. Ce compteur a alors sa propre facture, sans ligne d'abonnement."
+          />
+        </div>
         <label className="text-sm block col-span-2">
           <span className="block text-gray-700 mb-1">Note</span>
           <input value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} className={champCls} />
@@ -716,8 +734,10 @@ function FormRemplacement({
   );
 }
 
-function Case({ checked, onChange, libelle, champ }: { checked: boolean; onChange: (v: boolean) => void; libelle: string; champ: string }) {
-  return (
+function Case({
+  checked, onChange, libelle, champ, aide,
+}: { checked: boolean; onChange: (v: boolean) => void; libelle: string; champ: string; aide?: ReactNode }) {
+  const caseACocher = (
     <label className="flex items-center gap-2 min-h-[44px] text-sm text-gray-700 cursor-pointer">
       <input
         type="checkbox"
@@ -728,6 +748,14 @@ function Case({ checked, onChange, libelle, champ }: { checked: boolean; onChang
       />
       {libelle}
     </label>
+  );
+  if (!aide) return caseACocher;
+  // Aide (i) à côté de la case, hors du libellé : la toucher ne coche rien (ELEC-CC-04).
+  return (
+    <div className="flex flex-wrap items-center gap-x-1">
+      {caseACocher}
+      <AideChamp id={champ} libelle={libelle}>{aide}</AideChamp>
+    </div>
   );
 }
 

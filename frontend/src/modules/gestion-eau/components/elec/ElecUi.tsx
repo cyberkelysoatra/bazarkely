@@ -3,7 +3,7 @@
  * Ambre, rose et émeraude gardent leur sens (alerte, à relever, fait). Zones tactiles ≥ 44 px.
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Info } from 'lucide-react';
 import type { LucideIcon } from '../EauUi';
 import { useGestionEau } from '../../context/GestionEauContext';
 import { eauIsOnline } from '../../utils/online';
@@ -96,6 +96,37 @@ export function ElecVide({ icon: Icon, titre, texte, action }: { icon: LucideIco
       {texte && <p className="mt-1 text-sm text-gray-600 max-w-sm mx-auto">{texte}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
+  );
+}
+
+/**
+ * Aide ⓘ d'un contrôle (ELEC-CC-04) : bouton de 44 px qui déplie une phrase en français simple
+ * sous le contrôle. `children` = le texte d'aide.
+ */
+export function AideChamp({ id, libelle, children }: { id: string; libelle: string; children: ReactNode }) {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          setOuvert((v) => !v);
+        }}
+        aria-expanded={ouvert}
+        aria-controls={`aide-${id}`}
+        aria-label={`Aide : ${libelle}`}
+        className="inline-flex items-center justify-center w-11 h-11 -my-2 rounded-full text-rtb-green hover:bg-rtb-gold/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-rtb-gold flex-shrink-0"
+        data-elec-aide={id}
+      >
+        <Info className="w-4 h-4" aria-hidden="true" />
+      </button>
+      {ouvert && (
+        <span id={`aide-${id}`} role="note" className="basis-full block text-xs text-gray-600 bg-rtb-gold/10 rounded-lg px-2 py-1.5 mt-1" data-elec-aide-texte={id}>
+          {children}
+        </span>
+      )}
+    </>
   );
 }
 

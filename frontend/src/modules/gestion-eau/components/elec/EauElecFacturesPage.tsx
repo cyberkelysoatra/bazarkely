@@ -1,5 +1,5 @@
 /**
- * Factures RTB Énergie /gestion-eau/elec/factures (ELEC-CC-03), sans document (PDF : phase 2b).
+ * Factures RTB Énergie /gestion-eau/elec/factures (ELEC-CC-03 ; PDF, cours BCM, sans abonnement : ELEC-CC-04).
  *  - Gestion : préparer le cycle (hors ligne), émettre, re-dater, soumettre aux gérants,
  *    répondre aux remarques, clore la validation, marquer envoyée, effacer l'essai.
  *  - Valideur : avis Bon ou Remarque sur les factures à valider, rien d'autre.
@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Receipt, Calculator, Send, Stamp, CheckCircle2, MessageSquareWarning, Trash2, CalendarClock,
-  FileSpreadsheet, ShieldCheck, Eraser, RotateCcw, ChevronDown, CloudUpload, AlertTriangle, ThumbsUp, Save,
+  FileSpreadsheet, ShieldCheck, Eraser, RotateCcw, ChevronDown, CloudUpload, AlertTriangle, ThumbsUp, Save, FileDown,
 } from 'lucide-react';
 import EauPageShell from '../EauPageShell';
 import { ElecBouton, ElecVide, LectureSeule, Pastille, Tiroir, champCls, useDonneesElec } from './ElecUi';
@@ -29,6 +29,11 @@ import {
   comparerFactures,
   dateFr,
   estVerrouillee,
+  etatCoursBcm,
+  identiteIncomplete,
+  messageCoursAncien,
+  MSG_COURS_MANQUANT,
+  MSG_IDENTITE_MANQUANTE,
   libelleAvis,
   lignesCsvCycle,
   preparerFacturesCycle,
@@ -53,11 +58,13 @@ import {
   type DonneesFactures,
 } from '../../services/eauElecFactureService';
 import { listRoles } from '../../services/eauRoleService';
+import { buildElecCyclePdf, buildElecFacturePdf, nomFichierCycle, nomFichierFacture } from '../../utils/elecFacturePdf';
 import type {
   ElecClientLocal,
   ElecFactureLigneLocal,
   ElecFactureLocal,
   ElecFactureStatut,
+  ElecReglagesLocal,
   ElecValidationLocal,
 } from '../../types/gestionEau';
 
@@ -98,6 +105,9 @@ export default function EauElecFacturesPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [dateLimite, setDateLimite] = useState(() => ajouterJours(aujourdhuiMg(), 3));
   const [soumettreOuvert, setSoumettreOuvert] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
+  /** Échelle des compteurs (décimales des index), constante physique réglée par l'administrateur. */
+  const decimales = useMemo(() => new Map(compteurs.map((c) => [c.id, c.decimales])), [compteurs]);
 
   const relire = useCallback(async () => {
     setFact(await lireFactures());
@@ -171,6 +181,74 @@ export default function EauElecFacturesPage() {
     }
   };
 
+  /**
+   * Avant d'émettre ou de re-dater (ELEC-CC-04) : cours BCM saisi (sinon refus, comme la
+   * base), identité de RTB complète en mode officiel (émission seulement), cours de plus de
+   * 4 jours = confirmation (décision de Joël, jamais un blocage).
+   */
+  const verifierAvantServeur = async (emission: boolean): Promise<boolean> => {
+    const etat = etatCoursBcm(reglages, aujourdhuiMg());
+    if (etat.manquant) {
+      toast.error(MSG_COURS_MANQUANT);
+      return false;
+    }
+    if (emission && identiteIncomplete(reglages)) {
+      toast.error(MSG_IDENTITE_MANQUANTE);
+      return false;
+    }
+    if (etat.ancien && reglages?.date_cours_bcm && etat.age != null) {
+      return showConfirm(messageCoursAncien(reglages.date_cours_bcm, etat.age), 'Cours de référence BCM', {
+        confirmText: 'Confirmer',
+        variant: 'warning',
+      });
+    }
+    return true;
+  };
+
+  // ───────────────────────── PDF (local, hors ligne compris) ─────────────────────────
+  const telechargerFacture = async (f: ElecFactureLocal, lignes: ElecFactureLigneLocal[]) => {
+    if (pdfBusy) return;
+    setPdfBusy(f.id);
+    try {
+      const client = clientsParId.get(f.client_id) ?? null;
+      const doc = await buildElecFacturePdf(f, lignes, {
+        decimales,
+        // Aperçu courant pour un brouillon seulement : une facture émise lit ses instantanés.
+        apercu: f.numero ? undefined : { client, reglages: reglages as ElecReglagesLocal | null },
+      });
+      const code = (f.client_snapshot?.code as string | undefined) ?? client?.code ?? '';
+      doc.save(nomFichierFacture(f, code));
+    } catch (e: any) {
+      console.warn('⚠️ [eauFactures] PDF :', e?.message);
+      toast.error('PDF impossible à produire');
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+
+  /** Factures émises du cycle dans le mode courant (essai ou officiel), dans l'ordre des numéros. */
+  const facturesPdfCycle = facturesCycle
+    .filter((f) => !!f.numero && f.essai === essai)
+    .sort((a, b) => (a.numero_seq ?? 0) - (b.numero_seq ?? 0));
+
+  const telechargerCycle = async () => {
+    if (pdfBusy || facturesPdfCycle.length === 0) return;
+    setPdfBusy('cycle');
+    try {
+      const doc = await buildElecCyclePdf({
+        cycle,
+        factures: facturesPdfCycle.map((facture) => ({ facture, lignes: fact.lignes.get(facture.id) ?? [] })),
+        decimales,
+      });
+      doc.save(nomFichierCycle(cycle, essai));
+    } catch (e: any) {
+      console.warn('⚠️ [eauFactures] PDF du cycle :', e?.message);
+      toast.error('PDF du cycle impossible à produire');
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+
   // ───────────────────────── Actions de cycle (gestion) ─────────────────────────
   const preparer = () =>
     action('preparer', async () => {
@@ -186,6 +264,7 @@ export default function EauElecFacturesPage() {
 
   const emettreTout = async () => {
     if (!reglages || pretes.length === 0) return;
+    if (!(await verifierAvantServeur(true))) return;
     const numeros = prochainsNumeros(reglages, cycle, pretes.length);
     const ordre = pretes.slice().sort((a, b) =>
       comparerFactures(
@@ -321,6 +400,9 @@ export default function EauElecFacturesPage() {
               <ElecBouton icon={FileSpreadsheet} variante="secondaire" onClick={exporter} disabled={facturesCycle.length === 0} data-elec-export>
                 Exporter le cycle (CSV)
               </ElecBouton>
+              <ElecBouton icon={FileDown} variante="secondaire" onClick={telechargerCycle} disabled={!!pdfBusy || facturesPdfCycle.length === 0} data-elec-pdf-cycle>
+                {pdfBusy === 'cycle' ? 'PDF en cours…' : `PDF du cycle (${facturesPdfCycle.length})`}
+              </ElecBouton>
               <ElecBouton icon={Eraser} variante="danger" onClick={effacer} disabled={!online || !!busy || nbEssaiEffacables === 0} data-elec-effacer-essai>
                 Effacer les factures d’essai ({nbEssaiEffacables})
               </ElecBouton>
@@ -342,9 +424,14 @@ export default function EauElecFacturesPage() {
           </div>
         )}
         {!gestion && facturesCycle.length > 0 && (
-          <ElecBouton icon={FileSpreadsheet} variante="secondaire" onClick={exporter} className="w-full" data-elec-export>
-            Exporter le cycle (CSV)
-          </ElecBouton>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <ElecBouton icon={FileSpreadsheet} variante="secondaire" onClick={exporter} className="w-full" data-elec-export>
+              Exporter le cycle (CSV)
+            </ElecBouton>
+            <ElecBouton icon={FileDown} variante="secondaire" onClick={telechargerCycle} disabled={!!pdfBusy || facturesPdfCycle.length === 0} className="w-full" data-elec-pdf-cycle>
+              {pdfBusy === 'cycle' ? 'PDF en cours…' : `PDF du cycle (${facturesPdfCycle.length})`}
+            </ElecBouton>
+          </div>
         )}
 
         {attentes.length > 0 && (
@@ -410,6 +497,9 @@ export default function EauElecFacturesPage() {
                 action={action}
                 recalculerLignes={() => lignesRecalculees(f)}
                 devise={reglages?.devise ?? 'MGA'}
+                verifier={verifierAvantServeur}
+                telecharger={() => telechargerFacture(f, fact.lignes.get(f.id) ?? [])}
+                pdfBusy={pdfBusy === f.id}
               />
             ))}
           </ul>
@@ -475,9 +565,17 @@ type Recalcul =
   | { readonly erreur: string }
   | { readonly kwh: number; readonly ttc: number; readonly lignes: ReadonlyArray<Pick<ElecFactureLigneLocal, 'id' | 'compteur_id' | 'code_compteur' | 'index_debut' | 'date_index_debut' | 'index_fin' | 'date_index_fin' | 'releve_fin_id' | 'ordre'>> };
 
+interface PropsPdf {
+  /** Contrôles avant émission (vrai) ou re-datation (faux) ; faux = action abandonnée. */
+  verifier: (emission: boolean) => Promise<boolean>;
+  telecharger: () => void;
+  pdfBusy: boolean;
+}
+
 function CarteFacture({
   f, client, lignes, avis, nbValideurs, ouvert, basculer, gestion, valideur, userId, online, busy, action, recalculerLignes, devise,
-}: {
+  verifier, telecharger, pdfBusy,
+}: PropsPdf & {
   f: ElecFactureLocal;
   client: ElecClientLocal | undefined;
   lignes: ElecFactureLigneLocal[];
@@ -520,6 +618,7 @@ function CarteFacture({
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-600">
           <PastilleStatut statut={f.statut} remarque={r.remarquesOuvertes > 0} />
           {f.essai && <Pastille>Essai</Pastille>}
+          {f.avec_abonnement === false && <Pastille tone="neutral">Sans abonnement</Pastille>}
           {f.en_attente_releve && <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">En attente de relevé</span>}
           {f._dirty && <Pastille tone="neutral"><CloudUpload className="w-3 h-3" aria-hidden="true" />à envoyer</Pastille>}
           <span>{tri.length} compteur{tri.length > 1 ? 's' : ''} · {fmtKwh(f.total_kwh)}</span>
@@ -541,6 +640,9 @@ function CarteFacture({
             action={action}
             recalculerLignes={recalculerLignes}
             devise={devise}
+            verifier={verifier}
+            telecharger={telecharger}
+            pdfBusy={pdfBusy}
           />
         </Tiroir>
       )}
@@ -549,8 +651,8 @@ function CarteFacture({
 }
 
 function Detail({
-  f, lignes, avis, gestion, valideur, userId, online, busy, action, recalculerLignes, devise,
-}: {
+  f, lignes, avis, gestion, valideur, userId, online, busy, action, recalculerLignes, devise, verifier, telecharger, pdfBusy,
+}: PropsPdf & {
   f: ElecFactureLocal;
   lignes: ElecFactureLigneLocal[];
   avis: ElecValidationLocal[];
@@ -574,15 +676,19 @@ function Detail({
   const recalc = gestion && ['emise', 'a_valider', 'validee'].includes(f.statut) ? recalculerLignes() : null;
   const change = recalc && 'lignes' in recalc && (recalc.kwh !== (f.total_kwh ?? 0) || recalc.ttc !== (f.montant_ttc ?? 0));
 
-  const emettre = () => action('emettre-' + f.id, async () => {
-    const n = await emettreFacture(f.id);
-    toast.success(`Facture émise : ${n}`);
-  });
+  const emettre = async () => {
+    if (!(await verifier(true))) return;
+    await action('emettre-' + f.id, async () => {
+      const n = await emettreFacture(f.id);
+      toast.success(`Facture émise : ${n}`);
+    });
+  };
   const redater = async () => {
     if (!recalc || !('lignes' in recalc)) {
       toast.error(recalc && 'erreur' in recalc ? recalc.erreur : 'Recalcul impossible');
       return;
     }
+    if (!(await verifier(false))) return;
     const ok = await showConfirm(
       `La facture garde son numéro ${f.numero}, prend la date d’aujourd’hui ; l’échéance suit et les avis des gérants repartent à zéro.` +
         (change ? `\n\nAprès correction : ${fmtKwh(recalc.kwh)}, ${recalc.ttc.toLocaleString('fr-FR')} Ar TTC (au lieu de ${fmtKwh(f.total_kwh)}, ${(f.montant_ttc ?? 0).toLocaleString('fr-FR')} Ar).` : ''),
@@ -684,13 +790,25 @@ function Detail({
 
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5" data-elec-detail-totaux>
         <dt>Énergie</dt><dd className="text-right">{fmtAr(f.montant_energie, 2)}</dd>
-        <dt>Forfait d’amortissement</dt><dd className="text-right">{fmtAr(f.forfait_ht, 2)}</dd>
+        <dt>{f.avec_abonnement === false ? 'Sans abonnement' : 'Abonnement'}</dt><dd className="text-right" data-elec-abonnement>{fmtAr(f.avec_abonnement === false ? 0 : f.forfait_ht, 2)}</dd>
         <dt>Total HT</dt><dd className="text-right" data-elec-ht>{fmtAr(f.montant_ht, 2)}</dd>
         <dt>TVA {f.tva_pct ?? '-'} %</dt><dd className="text-right" data-elec-tva>{fmtAr(f.montant_tva, 2)}</dd>
         <dt className="font-bold text-rtb-green">Total TTC</dt><dd className="text-right font-bold text-rtb-green" data-elec-detail-ttc>{fmtAr(f.montant_ttc)}</dd>
         <dt>Échéance</dt><dd className="text-right" data-elec-echeance>{dateFr(f.date_echeance) || '-'}</dd>
+        {f.contre_valeur_eur != null && f.cours_bcm != null && (
+          <>
+            <dt className="text-gray-500">Équivalent indicatif (BCM du {dateFr(f.date_cours_bcm)})</dt>
+            <dd className="text-right text-gray-500" data-elec-eur>
+              ≈ {f.contre_valeur_eur.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            </dd>
+          </>
+        )}
       </dl>
-      <p className="text-[11px] text-gray-400">Montants en {devise}. Le document de facture arrive avec la phase suivante.</p>
+      <p className="text-[11px] text-gray-400">Montants en {devise}, seule monnaie exigible ; l’euro est indicatif.</p>
+
+      <ElecBouton icon={FileDown} variante="secondaire" onClick={telecharger} disabled={pdfBusy} className="w-full" data-elec-pdf>
+        {pdfBusy ? 'PDF en cours…' : f.numero ? 'PDF' : 'PDF (brouillon, filigrané)'}
+      </ElecBouton>
 
       <Historique f={f} />
 

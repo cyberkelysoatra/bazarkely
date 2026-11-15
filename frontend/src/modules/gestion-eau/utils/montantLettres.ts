@@ -3,6 +3,7 @@
  * Arrondit à l'entier le plus proche et gère 0 → milliards. Règles d'orthographe :
  *  - « et » : vingt et un … soixante et un, soixante et onze (mais pas quatre-vingt-un).
  *  - « cents » : pluriel uniquement si multiplié et rien ne suit (deux cents / deux cent un).
+ *  - « vingt » / « cent » : pas de s devant « mille » (deux cent quatre-vingt mille).
  *  - « mille » invariable et sans « un » (mille, et non « un mille »).
  *  - « million(s) » / « milliard(s) » : pluriel quand > 1, prennent « un million ».
  *
@@ -25,8 +26,12 @@ const UNITES = [
 // Dizaines (index = chiffre des dizaines). 70 et 90 réutilisent soixante / quatre-vingt.
 const DIZAINES = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
 
-/** Nombre 0..99 en lettres (chaîne vide pour 0). */
-function below100(n: number): string {
+/**
+ * Nombre 0..99 en lettres (chaîne vide pour 0). `finale` = le groupe termine le nombre ou
+ * précède un nom (million, milliard) : « quatre-vingts ». Devant « mille » (adjectif
+ * numéral invariable) : « quatre-vingt mille » (orthographe traditionnelle, cahier RTB 6.1).
+ */
+function below100(n: number, finale = true): string {
   if (n < 20) return UNITES[n];
   const t = Math.floor(n / 10);
   const u = n % 10;
@@ -42,15 +47,15 @@ function below100(n: number): string {
 
   if (u === 0) {
     // 80 = quatre-vingts (pluriel), 20/30/…/60 invariables
-    return t === 8 ? `${base}s` : base;
+    return t === 8 && finale ? `${base}s` : base;
   }
   // vingt et un … soixante et un (mais quatre-vingt-un sans « et »)
   if (u === 1 && t !== 8) return `${base} et un`;
   return `${base}-${UNITES[u]}`;
 }
 
-/** Nombre 0..999 en lettres (chaîne vide pour 0). */
-function below1000(n: number): string {
+/** Nombre 0..999 en lettres (chaîne vide pour 0). `finale` : voir `below100`. */
+function below1000(n: number, finale = true): string {
   if (n === 0) return '';
   const c = Math.floor(n / 100);
   const reste = n % 100;
@@ -58,16 +63,19 @@ function below1000(n: number): string {
   if (c > 0) {
     s = c === 1 ? 'cent' : `${UNITES[c]} cent`;
     // « cents » pluriel uniquement si multiplié ET rien ne suit
-    if (c > 1 && reste === 0) s += 's';
+    if (c > 1 && reste === 0 && finale) s += 's';
   }
-  if (reste > 0) s = s ? `${s} ${below100(reste)}` : below100(reste);
+  if (reste > 0) s = s ? `${s} ${below100(reste, finale)}` : below100(reste, finale);
   return s;
 }
 
-/** Convertit un montant en toutes lettres, suffixé par la devise (ex. « Ariary »). */
-export function montantEnLettres(n: number, devise = 'Ariary'): string {
+/**
+ * Nombre entier en toutes lettres, en minuscules, sans devise (ex. 280000 → « deux cent
+ * quatre-vingt mille »). Arrondi à l'entier le plus proche. Phrase RTB : « ... Ariary TTC. »
+ */
+export function nombreEnLettres(n: number): string {
   const r = Math.round(Math.abs(n));
-  if (r === 0) return `Zéro ${devise}`;
+  if (r === 0) return 'zéro';
 
   const milliards = Math.floor(r / 1_000_000_000);
   const millions = Math.floor((r % 1_000_000_000) / 1_000_000);
@@ -77,10 +85,14 @@ export function montantEnLettres(n: number, devise = 'Ariary'): string {
   const parts: string[] = [];
   if (milliards > 0) parts.push(`${below1000(milliards)} milliard${milliards > 1 ? 's' : ''}`);
   if (millions > 0) parts.push(`${below1000(millions)} million${millions > 1 ? 's' : ''}`);
-  if (milliers > 0) parts.push(milliers === 1 ? 'mille' : `${below1000(milliers)} mille`);
+  if (milliers > 0) parts.push(milliers === 1 ? 'mille' : `${below1000(milliers, false)} mille`);
   if (reste > 0) parts.push(below1000(reste));
 
-  const phrase = parts.join(' ').trim();
-  const capitalized = phrase.charAt(0).toUpperCase() + phrase.slice(1);
-  return `${capitalized} ${devise}`;
+  return parts.join(' ').trim();
+}
+
+/** Convertit un montant en toutes lettres, capitalisé et suffixé par la devise (ex. « Ariary »). */
+export function montantEnLettres(n: number, devise = 'Ariary'): string {
+  const phrase = nombreEnLettres(n);
+  return `${phrase.charAt(0).toUpperCase() + phrase.slice(1)} ${devise}`;
 }

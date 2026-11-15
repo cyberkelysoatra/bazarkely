@@ -6,9 +6,10 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import toast from 'react-hot-toast';
-import { Building2, Landmark, FileText, Calculator, Hash, Save, ChevronDown } from 'lucide-react';
+import { Building2, Landmark, FileText, Calculator, Hash, Save, ChevronDown, Euro } from 'lucide-react';
 import EauPageShell from '../EauPageShell';
-import { ElecBouton, LectureSeule, champCls, useDonneesElec } from './ElecUi';
+import { AideChamp, ElecBouton, LectureSeule, champCls, useDonneesElec } from './ElecUi';
+import { aujourdhuiMg, etatCoursBcm } from '../../utils/elecFacture';
 import { saveReglages, REGLAGES_DEFAUT } from '../../services/eauElecService';
 import { controlerReglages, formaterIban, numeroFacture, type ErreursReglages } from '../../utils/elecReglages';
 import { cycleParDefaut } from '../../utils/elecReleves';
@@ -50,8 +51,26 @@ const NUMEROTATION: Champ[] = [
   { cle: 'numero_prochain', libelle: 'Prochain numéro officiel', mode: 'numeric' },
   { cle: 'numero_essai_prochain', libelle: 'Prochain numéro d’essai', aide: 'Compteur à part : jamais mélangé avec l’officiel', mode: 'numeric' },
 ];
-const TOUS = [...IDENTITE, ...REGLEMENT, ...DESIGNATION, ...CALCUL, ...NUMEROTATION];
-const NUMERIQUES = new Set<string>(['puissance_kwc', 'tarif_kwh', 'forfait_ht', 'tva_pct', 'echeance_jours', 'numero_annee', 'numero_prochain', 'numero_essai_prochain']);
+// Cours de référence BCM (ELEC-CC-04) : rendu à part (une phrase), enregistré comme les autres.
+const BCM: Champ[] = [
+  { cle: 'cours_bcm', libelle: 'Cours de référence BCM (Ar pour 1 €)', mode: 'decimal' },
+  { cle: 'date_cours_bcm', libelle: 'Date du cours' },
+];
+const TOUS = [...IDENTITE, ...REGLEMENT, ...DESIGNATION, ...CALCUL, ...NUMEROTATION, ...BCM];
+const NUMERIQUES = new Set<string>(['puissance_kwc', 'tarif_kwh', 'forfait_ht', 'tva_pct', 'echeance_jours', 'numero_annee', 'numero_prochain', 'numero_essai_prochain', 'cours_bcm']);
+
+/** Contrôle du cours BCM : nombre positif à 2 décimales au plus, date connue et pas dans le futur. */
+export function controlerCoursBcm(cours: string, date: string, aujourdhui: string): { cours_bcm?: string; date_cours_bcm?: string } {
+  const e: { cours_bcm?: string; date_cours_bcm?: string } = {};
+  const c = cours.trim().replace(/\s+/g, '').replace(',', '.');
+  const d = date.trim();
+  if (c === '' && d === '') return e;
+  const n = Number(c);
+  if (c === '' || !Number.isFinite(n) || n <= 0 || !/^\d+(\.\d{1,2})?$/.test(c)) e.cours_bcm = 'Cours : nombre positif, 2 décimales au plus';
+  if (d === '') e.date_cours_bcm = 'Date du cours attendue';
+  else if (d > aujourdhui) e.date_cours_bcm = 'La date du cours ne peut pas être dans le futur';
+  return e;
+}
 
 function versFormulaire(r: ElecReglagesLocal): Record<string, string> {
   const f: Record<string, string> = {};
@@ -95,7 +114,7 @@ export default function EauElecReglagesPage() {
 
   const enregistrer = async () => {
     if (!ecriture || busy) return;
-    const e = controlerReglages(form);
+    const e = { ...controlerReglages(form), ...controlerCoursBcm(form.cours_bcm ?? '', form.date_cours_bcm ?? '', aujourdhuiMg()) };
     const bloquantes = Object.fromEntries(Object.entries(e).filter(([, v]) => v));
     setErreurs(bloquantes);
     if (Object.keys(bloquantes).length > 0) {
@@ -106,7 +125,7 @@ export default function EauElecReglagesPage() {
     for (const { cle } of TOUS) {
       const brut = (form[cle as string] ?? '').trim();
       if (NUMERIQUES.has(cle as string)) {
-        (patch as any)[cle] = brut === '' ? null : Number(brut.replace(',', '.'));
+        (patch as any)[cle] = brut === '' ? null : Number(brut.replace(/\s+/g, '').replace(',', '.'));
       } else if (cle === 'iban') {
         patch.iban = brut === '' ? null : formaterIban(brut);
       } else if (cle === 'bic') {
@@ -193,6 +212,17 @@ export default function EauElecReglagesPage() {
         <div className="text-gray-400 text-sm py-8 text-center">Chargement…</div>
       ) : (
         <div className="space-y-3" data-elec-reglages>
+          <Section icon={Euro} titre="Cours de référence BCM" ouvert>
+            <CoursBcm
+              cours={form.cours_bcm ?? ''}
+              date={form.date_cours_bcm ?? ''}
+              setCours={(v) => set('cours_bcm', v)}
+              setDate={(v) => set('date_cours_bcm', v)}
+              ecriture={ecriture}
+              erreurs={erreurs}
+              enregistre={reglages ?? null}
+            />
+          </Section>
           <Section icon={Building2} titre="Identité de RTB" ouvert>{champs(IDENTITE)}</Section>
           <Section icon={Landmark} titre="Règlement">{champs(REGLEMENT)}</Section>
           <Section icon={FileText} titre="Désignation sur la facture">{champs(DESIGNATION)}</Section>
@@ -242,6 +272,69 @@ export default function EauElecReglagesPage() {
         </div>
       )}
     </EauPageShell>
+  );
+}
+
+/** « Cours de référence BCM : 1 € = ... Ar, du JJ/MM/AAAA » (cahier 5.5). */
+function CoursBcm({
+  cours, date, setCours, setDate, ecriture, erreurs, enregistre,
+}: {
+  cours: string;
+  date: string;
+  setCours: (v: string) => void;
+  setDate: (v: string) => void;
+  ecriture: boolean;
+  erreurs: ErreursReglages;
+  enregistre: ElecReglagesLocal | null;
+}) {
+  const etat = etatCoursBcm(enregistre, aujourdhuiMg());
+  return (
+    <div className="space-y-2" data-elec-bcm>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm">
+        <span className="text-gray-700 font-medium">Cours de référence BCM : 1 € =</span>
+        <AideChamp id="bcm" libelle="cours de référence BCM">
+          Sur le site de la Banque centrale de Madagascar (BCM), rubrique marché de change, recherche de taux de
+          change : lisez la troisième colonne, « cours de référence », pour l’euro, et sa date. Le cours sert à écrire
+          l’équivalent en euros, à titre indicatif, sur chaque facture émise ce jour-là.
+        </AideChamp>
+      </div>
+      <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,12rem)_auto_auto_minmax(0,11rem)] items-center gap-2 text-sm">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={cours}
+          onChange={(e) => setCours(e.target.value)}
+          disabled={!ecriture}
+          placeholder="5 000,00"
+          aria-label="Cours de référence BCM, Ariary pour 1 euro"
+          aria-invalid={!!erreurs.cours_bcm}
+          data-reglage="cours_bcm"
+          className={`${champCls} ${erreurs.cours_bcm ? 'border-rose-400' : ''}`}
+        />
+        <span className="text-gray-700">Ar, du</span>
+        <input
+          type="date"
+          value={date}
+          max={aujourdhuiMg()}
+          onChange={(e) => setDate(e.target.value)}
+          disabled={!ecriture}
+          aria-label="Date du cours de référence BCM"
+          aria-invalid={!!erreurs.date_cours_bcm}
+          data-reglage="date_cours_bcm"
+          className={`${champCls} col-span-2 sm:col-span-1 ${erreurs.date_cours_bcm ? 'border-rose-400' : ''}`}
+        />
+      </div>
+      {(erreurs.cours_bcm || erreurs.date_cours_bcm) && (
+        <p className="text-xs text-rose-700" role="alert">{erreurs.cours_bcm || erreurs.date_cours_bcm}</p>
+      )}
+      <p className={`text-xs ${etat.manquant ? 'text-rose-700' : etat.ancien ? 'text-amber-800' : 'text-gray-500'}`} data-elec-bcm-etat>
+        {etat.manquant
+          ? 'Aucun cours enregistré : l’émission des factures est refusée tant qu’il manque.'
+          : etat.ancien
+          ? `Cours enregistré il y a ${etat.age} jours : une confirmation sera demandée à l’émission.`
+          : `Cours enregistré il y a ${etat.age} jour${(etat.age ?? 0) > 1 ? 's' : ''}.`}
+      </p>
+    </div>
   );
 }
 

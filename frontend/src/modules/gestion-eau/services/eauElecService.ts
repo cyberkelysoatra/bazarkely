@@ -168,6 +168,8 @@ export const REGLAGES_DEFAUT: ElecReglagesLocal = {
   mode_essai: true,
   numero_essai_prochain: 50,
   numero_essai_annee: 2026,
+  cours_bcm: null,
+  date_cours_bcm: null,
   created_at: null,
   updated_at: null,
 };
@@ -200,6 +202,7 @@ export const CLIENT_VIDE: ClientInput = {
   telephone: null,
   facture_groupee: false,
   hors_domaine: false,
+  contrat_signe: false,
   statut: 'actif',
   user_id: null,
   notes_internes: null,
@@ -254,6 +257,7 @@ export const COMPTEUR_VIDE: CompteurElecInput = {
   index_reprise: null,
   date_index_reprise: null,
   ordre: null,
+  sans_abonnement: false,
   note: null,
 };
 

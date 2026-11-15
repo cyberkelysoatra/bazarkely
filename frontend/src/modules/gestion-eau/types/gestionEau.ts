@@ -203,6 +203,9 @@ export interface ElecReglagesRow {
   /** Compteur d'essai (ELEC-CC-03) : distinct de l'officiel, jamais mélangé. Absent d'un vieux cache = 50 / 2026. */
   numero_essai_prochain?: number;
   numero_essai_annee?: number;
+  /** Cours de référence BCM (Ariary pour 1 €) et sa date (ELEC-CC-04). Absents d'un vieux cache = null. */
+  cours_bcm?: number | null;
+  date_cours_bcm?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -230,6 +233,12 @@ export interface ElecFactureRow {
   tarif_kwh: number | null;
   forfait_ht: number | null;
   tva_pct: number | null;
+  /** Faux pour un compteur « sans abonnement » (équipement commun) : forfait 0 (ELEC-CC-04). Absent = vrai. */
+  avec_abonnement?: boolean;
+  /** Cours BCM et date copiés à l'émission / re-datation ; contre-valeur calculée par la base. */
+  cours_bcm?: number | null;
+  date_cours_bcm?: string | null;
+  contre_valeur_eur?: number | null;
   total_kwh: number | null;
   montant_energie: number | null;
   montant_ht: number | null;
@@ -297,6 +306,8 @@ export interface ElecClientRow {
   /** Plusieurs compteurs sur une seule facture. */
   facture_groupee: boolean;
   hors_domaine: boolean;
+  /** Contrat de vente d'énergie signé : seul cas où le pied de facture cite le contrat (ELEC-CC-04). */
+  contrat_signe?: boolean;
   statut: ElecStatut;
   /** Compte 1sakely.org du client (espace client, plus tard). */
   user_id: string | null;
@@ -325,6 +336,8 @@ export interface ElecCompteurRow {
   date_index_reprise: string | null;
   /** Ordre de tournée. */
   ordre: number | null;
+  /** Facturé à part, sans abonnement (équipement commun : pompe du bassin) (ELEC-CC-04). */
+  sans_abonnement?: boolean;
   note: string | null;
   created_at: string | null;
   updated_at: string | null;

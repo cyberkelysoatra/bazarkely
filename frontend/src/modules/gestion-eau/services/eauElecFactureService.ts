@@ -117,8 +117,10 @@ export async function preparerCycle(
       date_emission: null,
       date_echeance: null,
       tarif_kwh: reglages.tarif_kwh,
-      forfait_ht: reglages.forfait_ht,
+      // Sans abonnement : forfait 0 dès le brouillon (la base recalcule les mêmes totaux).
+      forfait_ht: p.avecAbonnement ? reglages.forfait_ht : 0,
       tva_pct: reglages.tva_pct,
+      avec_abonnement: p.avecAbonnement,
       total_kwh: p.totaux.totalKwh,
       montant_energie: p.totaux.montantEnergie,
       montant_ht: p.totaux.montantHt,
@@ -203,6 +205,8 @@ export async function supprimerBrouillon(id: string): Promise<void> {
 export class ErreurServeur extends Error {}
 
 const MESSAGES: Array<[RegExp, string]> = [
+  [/cours de r.f.rence BCM/i, 'Saisissez le cours de référence BCM dans les réglages.'],
+  [/identit. et la banque/i, 'Complétez l’identité et la banque de RTB dans les réglages.'],
   [/en attente de releve/i, 'Facture en attente de relevé : elle ne peut pas être émise.'],
   [/sans ligne/i, 'Facture sans ligne : rien à émettre.'],
   [/Date limite passee/i, 'La date limite ne peut pas être dans le passé.'],

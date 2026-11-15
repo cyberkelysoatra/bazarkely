@@ -218,6 +218,8 @@ export interface FacturePreparee {
   lignes: LignePreparee[];
   /** Motifs d'attente (vide = prête à émettre). */
   attente: string[];
+  /** Faux pour un compteur « sans abonnement » : forfait 0 (ELEC-CC-04). */
+  avecAbonnement: boolean;
   periodeDebut: string;
   periodeFin: string;
   totaux: TotauxFacture;
@@ -239,8 +241,77 @@ export interface PreparationCycle {
   brouillonsObsoletes: ElecFactureLocal[];
 }
 
-export function cleRegroupement(client: Pick<ElecClientLocal, 'id' | 'facture_groupee'>, bien: string): string {
+/**
+ * Clé de facture. Un compteur « sans abonnement » (équipement commun, ELEC-CC-04) a TOUJOURS
+ * sa propre facture, même chez un client groupé : `${client}|sa|${compteur}`.
+ */
+export function cleRegroupement(
+  client: Pick<ElecClientLocal, 'id' | 'facture_groupee'>,
+  bien: string,
+  compteur?: Pick<ElecCompteurLocal, 'id' | 'sans_abonnement'>
+): string {
+  if (compteur?.sans_abonnement) return `${client.id}|sa|${compteur.id}`;
   return client.facture_groupee ? client.id : `${client.id}|${bien}`;
+}
+
+/** La clé désigne-t-elle une facture sans abonnement ? */
+export function cleSansAbonnement(cle: string): boolean {
+  return cle.includes('|sa|');
+}
+
+// ───────────────────────────── Cours BCM et identité (ELEC-CC-04) ─────────────────────────────
+/** Contre-valeur en euros : arrondi(TTC / cours, 2), demi vers le haut (même règle que la base). */
+export function contreValeurEur(ttc: number | null | undefined, cours: number | null | undefined): number | null {
+  if (ttc == null || cours == null || !(cours > 0)) return null;
+  const c = BigInt(Math.round(cours * 100)); // cours en centimes d'Ariary
+  const t = BigInt(Math.round(ttc)) * 100n * 100n; // TTC en centimes, × 100 pour des centimes d'euro
+  return Number(diviserArrondi(t, c)) / 100;
+}
+
+/** Nombre de jours entre deux jours `AAAA-MM-JJ` (b - a). */
+export function joursEntre(a: string, b: string): number {
+  const ms = (j: string) => {
+    const [y, m, d] = j.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((ms(b) - ms(a)) / 86400000);
+}
+
+export interface EtatCoursBcm {
+  /** Cours absent, nul ou daté après aujourd'hui : émission refusée. */
+  manquant: boolean;
+  /** Âge du cours en jours (null si manquant). */
+  age: number | null;
+  /** Plus de 4 jours : confirmation demandée (jamais un blocage). */
+  ancien: boolean;
+}
+
+export function etatCoursBcm(
+  r: Pick<ElecReglagesLocal, 'cours_bcm' | 'date_cours_bcm'> | null | undefined,
+  aujourdhui: string
+): EtatCoursBcm {
+  const date = r?.date_cours_bcm ?? null;
+  if (!r || r.cours_bcm == null || !(r.cours_bcm > 0) || !date || date.slice(0, 10) > aujourdhui) {
+    return { manquant: true, age: null, ancien: false };
+  }
+  const age = joursEntre(date.slice(0, 10), aujourdhui);
+  return { manquant: false, age, ancien: age > 4 };
+}
+
+/** Message de confirmation d'un cours de plus de 4 jours. */
+export function messageCoursAncien(dateCours: string, age: number): string {
+  return `Cours BCM du ${dateFr(dateCours)} utilisé (il y a ${age} jour${age > 1 ? 's' : ''}). Confirmer ?`;
+}
+
+export const MSG_COURS_MANQUANT = 'Saisissez le cours de référence BCM dans les réglages';
+export const MSG_IDENTITE_MANQUANTE = 'Complétez l’identité et la banque de RTB dans les réglages';
+
+/** Mode officiel : raison sociale, NIF, STAT, IBAN et banque obligatoires (cahier 8, point 7). */
+export function identiteIncomplete(
+  r: Pick<ElecReglagesLocal, 'mode_essai' | 'raison_sociale' | 'nif' | 'stat' | 'iban' | 'banque'> | null | undefined
+): boolean {
+  if (!r || r.mode_essai) return false;
+  return [r.raison_sociale, r.nif, r.stat, r.iban, r.banque].some((v) => !v || !String(v).trim());
 }
 
 /** Une facture émise (numérotée) compte-t-elle pour le mode courant ? Les essais sont ignorés en mode officiel. */
@@ -371,8 +442,9 @@ export function preparerFacturesCycle(
   for (const c of trierCompteurs(compteurs)) {
     const client = clientsParId.get(c.client_id);
     if (!client || client.statut === 'pause') continue;
-    const cle = cleRegroupement(client, c.bien);
-    const g = groupes.get(cle) ?? { client, bien: client.facture_groupee ? null : c.bien, compteurs: [] };
+    const cle = cleRegroupement(client, c.bien, c);
+    const bien = client.facture_groupee && !c.sans_abonnement ? null : c.bien;
+    const g = groupes.get(cle) ?? { client, bien, compteurs: [] };
     g.compteurs.push(c);
     groupes.set(cle, g);
   }
@@ -397,15 +469,22 @@ export function preparerFacturesCycle(
     const premier = premierJour(cycle);
     const debuts = lignes.map((l) => (l.dateIndexDebut ? jourMg(l.dateIndexDebut) : premier));
     const plusTot = debuts.length > 0 ? debuts.reduce((a, b) => (a < b ? a : b)) : premier;
+    const avecAbonnement = !cleSansAbonnement(cle);
     factures.push({
       cle,
       client: g.client,
       bien: g.bien,
       lignes,
       attente,
+      avecAbonnement,
       periodeDebut: plusTot > premier ? plusTot : premier,
       periodeFin: dernierJour(cycle),
-      totaux: totauxFacture(lignes.map((l) => l.kwh), reglages.tarif_kwh, reglages.forfait_ht, reglages.tva_pct),
+      totaux: totauxFacture(
+        lignes.map((l) => l.kwh),
+        reglages.tarif_kwh,
+        avecAbonnement ? reglages.forfait_ht : 0,
+        reglages.tva_pct
+      ),
       brouillon: brouillonsParCle.get(cle) ?? null,
     });
   }

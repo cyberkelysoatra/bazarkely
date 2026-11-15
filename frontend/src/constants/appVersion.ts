@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.149.0';
-export const APP_VERSION_NAME = 'Mon Business Plan : bouton « Écouter » qui lit les explications avec la voix du téléphone (NEC-CC-23)';
-export const LAST_UPDATED = '2026-11-12';
-export const APP_BUILD_DATE = '2026-11-13';
+export const APP_VERSION = '3.150.0';
+export const APP_VERSION_NAME = 'RTB Énergie : PDF de facture et du cycle, équivalent en euros, facture sans abonnement (ELEC-CC-04)';
+export const LAST_UPDATED = '2026-11-15';
+export const APP_BUILD_DATE = '2026-11-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.150.0',
+    date: '2026-11-15',
+    description: 'RTB Énergie : PDF de la facture d’énergie et du cycle, équivalent en euros au cours BCM, facture sans abonnement, contrat signé (ELEC-CC-04)',
+    changes: [
+      'Bouton « PDF » dans le tiroir de chaque facture (brouillon filigrané, essai « ESSAI, SANS VALEUR »), A4 une page au modèle RTB, hors ligne compris',
+      '« PDF du cycle » : page de validation (numéros, montants, total à encaisser, euros) puis une page par facture',
+      'Réglages : cours de référence BCM et sa date ; émission et re-datation refusées sans cours, confirmation si le cours a plus de 4 jours ; contre-valeur en euros sur la facture',
+      'Compteur « facturé à part, sans abonnement » : sa propre facture, sans ligne d’abonnement ; client « contrat de vente d’énergie signé » : seul cas où le pied de facture cite le contrat',
+      'Mode officiel : émission refusée tant que l’identité et la banque de RTB sont incomplètes ; montant en lettres corrigé (« deux cent quatre-vingt mille »), facture d’eau comprise'
+    ]
+  },
   {
     version: '3.149.0',
     date: '2026-11-13',
