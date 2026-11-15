@@ -130,7 +130,9 @@ export function EauFitText({ children, className }: { children: React.ReactNode;
       if (range && typeof range.getBoundingClientRect === 'function') {
         range.selectNodeContents(el);
         const w = range.getBoundingClientRect().width;
-        if (w > 0) return w <= el.clientWidth + 0.01;
+        // Compare with the exact box width: clientWidth is rounded down, so a block child that
+        // fills the box exactly (e.g. a flex row) would always look 0.x px too wide.
+        if (w > 0) return w <= el.getBoundingClientRect().width + 0.01;
       }
       return el.scrollWidth <= el.clientWidth;
     };

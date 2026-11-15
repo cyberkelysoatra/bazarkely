@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.151.1';
+export const APP_VERSION = '3.151.2';
 export const APP_VERSION_NAME = 'Logos NAVY ay gris clair, sous-titres Eau sur une ligne, garde du service worker et reprise de page blanche (MICRO-CC-01)';
 export const LAST_UPDATED = '2026-11-15';
 export const APP_BUILD_DATE = '2026-11-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.151.2',
+    date: '2026-11-15',
+    description: 'Cartes Eau : un sous-titre qui remplit exactement sa case n’est plus réduit à 9 px (MICRO-CC-01)',
+    changes: [
+      'Sous-titre en deux parties (« 106,2 m³/j » et « 4,4 m³/h ») : mesure comparée à la largeur exacte de la case, il garde sa taille normale'
+    ]
+  },
   {
     version: '3.151.1',
     date: '2026-11-15',
