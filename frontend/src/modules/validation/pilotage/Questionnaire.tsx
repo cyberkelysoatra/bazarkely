@@ -7,8 +7,9 @@ import ChoixQuestion from '../composants/ChoixQuestion';
 import { NOM_CYCLE } from '../utils/regles';
 import { questionSuivante, verifierArbre } from '../utils/arbre';
 import { ficheClient, publier, questionnaire, supprimerBrouillon, type FicheClient, type QuestionComplete, type QuestionnaireComplet } from './api';
-import { DANGER, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_OK, Pilule } from './Commun';
-import { dateCourte } from './regles';
+import { ConfirmationEnLigne, DANGER, EnTetePilotage, ErreurReseau, MessageACopier, P_ATTENTE, P_INFO, P_OK, Pilule } from './Commun';
+import { dateCourte, suiteAProposer } from './regles';
+import { publierPuisSuite } from './publication';
 
 const ERREURS_PUBLIER: Record<string, string> = {
   SANS_VALIDANT: 'Désignez d’abord un validant.',
@@ -34,7 +35,7 @@ export default function Questionnaire() {
   const [mode, setMode] = useState<'arbre' | 'apercu'>('arbre');
   const [confirmer, setConfirmer] = useState<'publier' | 'supprimer' | null>(null);
   const [envoi, setEnvoi] = useState(false);
-  const [retour, setRetour] = useState<{ ok: boolean; texte: string } | null>(null);
+  const [retour, setRetour] = useState<{ ok: boolean; texte: string; message?: string; zone: 'publier' | 'supprimer' } | null>(null);
   const [supprime, setSupprime] = useState(false);
 
   const charger = useCallback(async () => {
@@ -61,28 +62,89 @@ export default function Questionnaire() {
   const validant = fiche?.personnes.find((p) => p.role === 'validant' && !p.revoque_at);
   const clientId = q?.questionnaire.client_id ?? '';
 
-  async function agir(action: 'publier' | 'supprimer') {
+  /**
+   * « Publier » (CC-13 gap 4): same flow as the client detail. When the client already had a published
+   * consultation, the follow-up WhatsApp message to the validant is proposed (or shown to copy); a first
+   * consultation goes by the invitation of the fiche.
+   */
+  async function publierIci() {
+    const suite = !!fiche && !!validant && suiteAProposer(fiche.questionnaires, id);
+    const numero = suite ? (validant?.whatsapp ?? validant?.whatsapp_fiche ?? '').replace(/\D/g, '') : '';
+    const fenetre = numero ? window.open('', '_blank') : null;
     setEnvoi(true);
     setRetour(null);
     try {
-      if (action === 'publier') {
-        const r = await publier(id);
-        if (r.ok) {
-          setRetour({ ok: true, texte: 'Questionnaire publié : il ne se modifie plus. Vous pouvez inviter depuis la fiche du client.' });
-          await charger();
-        } else setRetour({ ok: false, texte: ERREURS_PUBLIER[r.code ?? ''] ?? 'Le serveur a refusé la publication.' });
-      } else {
-        const r = await supprimerBrouillon(id);
-        if (r.ok) setSupprime(true);
-        else setRetour({ ok: false, texte: 'Ce brouillon n’existe plus ou n’est plus un brouillon.' });
+      const issue = await publierPuisSuite({
+        id,
+        publier,
+        relire: () => void charger(),
+        destinataire:
+          suite && fiche && validant ? { nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, numero, type: q?.document.type ?? null } : null
+      });
+      if (!issue.ok) {
+        fenetre?.close();
+        setRetour({
+          ok: false,
+          texte: issue.reseau ? 'Le réseau ne répond pas. Réessayez.' : ERREURS_PUBLIER[issue.code ?? ''] ?? 'Le serveur a refusé la publication.',
+          zone: 'publier'
+        });
+        return;
       }
-    } catch {
-      setRetour({ ok: false, texte: 'Le réseau ne répond pas. Réessayez.' });
+      if (issue.adresse) {
+        if (fenetre) fenetre.location.href = issue.adresse;
+        else window.location.href = issue.adresse;
+      } else fenetre?.close();
+      setRetour({
+        ok: true,
+        texte: !suite
+          ? 'Questionnaire publié : il ne se modifie plus. Vous pouvez inviter depuis la fiche du client.'
+          : issue.adresse
+            ? 'Questionnaire publié : le client est prévenu que la suite est prête. WhatsApp s’ouvre avec le message pour le validant : envoyez-le vous-même.'
+            : 'Questionnaire publié : le client est prévenu que la suite est prête.',
+        message: issue.adresse ? undefined : issue.message ?? undefined,
+        zone: 'publier'
+      });
     } finally {
       setEnvoi(false);
       setConfirmer(null);
     }
   }
+
+  async function agir(action: 'publier' | 'supprimer') {
+    if (action === 'publier') return publierIci();
+    setEnvoi(true);
+    setRetour(null);
+    try {
+      const r = await supprimerBrouillon(id);
+      if (r.ok) setSupprime(true);
+      else setRetour({ ok: false, texte: 'Ce brouillon n’existe plus ou n’est plus un brouillon.', zone: 'supprimer' });
+    } catch {
+      setRetour({ ok: false, texte: 'Le réseau ne répond pas. Réessayez.', zone: 'supprimer' });
+    } finally {
+      setEnvoi(false);
+      setConfirmer(null);
+    }
+  }
+
+  const confirmation = (cle: 'publier' | 'supprimer') =>
+    confirmer === cle ? (
+      <ConfirmationEnLigne
+        texte={cle === 'publier' ? 'Une fois publiée, la consultation ne se modifie plus. Publier ?' : 'Supprimer ce brouillon ? Le texte importé est perdu.'}
+        bouton={cle === 'publier' ? 'Publier' : 'Supprimer'}
+        danger={cle === 'supprimer'}
+        envoi={envoi}
+        annuler={() => setConfirmer(null)}
+        confirmer={() => void agir(cle)}
+        type={cle}
+      />
+    ) : retour && retour.zone === cle ? (
+      <div className="flex flex-col gap-1.5">
+        <p className={`text-[14px] font-semibold m-0 ${retour.ok ? 'text-[#166534]' : 'text-danger'}`} role={retour.ok ? 'status' : 'alert'} data-retour="">
+          {retour.texte}
+        </p>
+        {retour.message && <MessageACopier message={retour.message} />}
+      </div>
+    ) : null;
 
   const sousTitre = fiche ? `pour ${fiche.client.entreprise}` : '';
   const retourFiche = clientId ? `/pilotage/client/${clientId}` : '/pilotage';
@@ -153,54 +215,26 @@ export default function Questionnaire() {
               {q.arbre.chemin_max} selon le chemin. Une fois publiée, la consultation ne se modifie plus.
             </p>
 
-            {retour && (
-              <p className={`text-[14px] font-semibold m-0 ${retour.ok ? 'text-[#166534]' : 'text-danger'}`} role={retour.ok ? 'status' : 'alert'} data-retour="">
-                {retour.texte}
-              </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setMode('apercu')} disabled={envoi} data-apercu-client="">
+                Aperçu client
+              </button>
+              {brouillon ? (
+                <button type="button" className={`${PRIMAIRE} !text-[15px]`} disabled={!validant || !arbreOk || envoi} onClick={() => setConfirmer('publier')} data-publier="">
+                  Publier
+                </button>
+              ) : (
+                <span />
+              )}
+            </div>
+            {confirmation('publier')}
+            {brouillon && fiche && !validant && <p className="text-[13px] text-doux m-0">Désignez d'abord un validant (fiche du client).</p>}
+            {brouillon && (
+              <button type="button" className={`${DANGER} !min-h-11 !text-[15px]`} onClick={() => setConfirmer('supprimer')} disabled={envoi} data-supprimer="">
+                Supprimer le brouillon
+              </button>
             )}
-
-            {confirmer ? (
-              <div className={`${CARTE} !border-2 ${confirmer === 'publier' ? '!border-ciel' : '!border-danger'}`} role="alertdialog" aria-label="Confirmation" data-confirmation={confirmer}>
-                <p className="text-[15px] font-semibold m-0">
-                  {confirmer === 'publier' ? 'Une fois publiée, la consultation ne se modifie plus. Publier ?' : 'Supprimer ce brouillon ? Le texte importé est perdu.'}
-                </p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setConfirmer(null)} disabled={envoi}>
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    className={confirmer === 'publier' ? `${PRIMAIRE} !text-[15px]` : `${DANGER} !text-[15px]`}
-                    onClick={() => void agir(confirmer)}
-                    disabled={envoi}
-                    data-confirmer=""
-                  >
-                    {confirmer === 'publier' ? 'Publier' : 'Supprimer'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={() => setMode('apercu')} data-apercu-client="">
-                    Aperçu client
-                  </button>
-                  {brouillon ? (
-                    <button type="button" className={`${PRIMAIRE} !text-[15px]`} disabled={!validant || !arbreOk} onClick={() => setConfirmer('publier')} data-publier="">
-                      Publier
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                </div>
-                {brouillon && fiche && !validant && <p className="text-[13px] text-doux m-0">Désignez d'abord un validant (fiche du client).</p>}
-                {brouillon && (
-                  <button type="button" className={`${DANGER} !min-h-11 !text-[15px]`} onClick={() => setConfirmer('supprimer')} data-supprimer="">
-                    Supprimer le brouillon
-                  </button>
-                )}
-              </>
-            )}
+            {confirmation('supprimer')}
           </>
         )}
       </Corps>

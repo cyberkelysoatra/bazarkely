@@ -1662,6 +1662,14 @@ Faire valider par un client de CyberKELY, depuis son téléphone, chaque documen
 - **Pilotage** : dans le détail du client, sur chaque version confirmée d'un type d'étape, « Marquer l'étape franchie » (confirmation), puis pastille « Étape franchie le … » et « Annuler » (confirmation) ; lignes grises d'historique sous le bloc. Les messages WhatsApp (invitation, relance, suite) nomment l'étape (« pour valider la 1re étape, le résumé de votre projet (note de cadrage) ») ; sans type d'étape, textes inchangés.
 - **Fiche client** : dès qu'un changement n'est pas enregistré, ligne orange « Modifications non enregistrées : touchez « Enregistrer la fiche » pour les garder. » au-dessus du bouton, pastille « À enregistrer » sur la personne corrigée, « Quitter sans enregistrer ? » (Rester / Quitter) sur la ligne Retour, et alerte du navigateur avant de fermer ou recharger.
 
+### 🧭 Correctif 13 : écarts Stay Easy du lot 1a et avertissement de la porte (v3.151.0, VALIDCLIENT-CC-13)
+- **Accords (`questionsEtDuree`)** : « 1 question au plus, environ 1 minute », « 4 questions au plus, environ 4 minutes », dans le message d'invitation et la ligne de la fiche. Sans consultation publiée (0 question), le message dit « nous avons besoin de votre avis, en quelques minutes, depuis votre téléphone. » et la ligne sous l'aperçu « Le nombre de questions s'affichera dès qu'une consultation sera publiée. ».
+- **Invitation** : sous une personne, « Envoyer l'invitation » tant qu'aucune n'a été envoyée, « Renvoyer l'invitation » ensuite (même action).
+- **Confirmations en ligne (`ConfirmationEnLigne`, `pilotage/Commun.tsx`)** : au détail du client et sur la page du questionnaire, chaque confirmation (publier, supprimer, clore, porte, révoquer, nommer, archiver) s'affiche juste sous le bouton qui l'a demandée, défile dans la vue et prend le focus ; le résultat du geste s'affiche au même endroit.
+- **Publication (`pilotage/publication.ts`)** : un seul parcours pour les deux écrans. Rien ne change à l'écran tant que `vc_admin_publier` n'a pas répondu oui ; ensuite la fiche est relue (« Disponible » vient du serveur) et le message de suite est proposé : WhatsApp vers le validant, ou message à copier sans numéro. Depuis la page du questionnaire, seulement si le client avait déjà une consultation publiée (une première passe par l'invitation de la fiche).
+- **Suivi promis** : avant la confirmation du client, ni « En préparation » ni bouton de publication, seulement « Pas encore confirmée par le client… ».
+- **Porte** : la confirmation de « Marquer l'étape franchie » ajoute « Attention : cette version compte N refus et M réserves. La règle de la porte demande un accord complet avant de franchir l'étape. » quand il y a refus, réserve ou accord sous 100 % (cahier métier, Q2) ; le geste reste possible.
+
 ---
 
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT

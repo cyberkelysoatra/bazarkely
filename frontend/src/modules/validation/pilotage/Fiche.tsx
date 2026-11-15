@@ -20,7 +20,7 @@ import {
   type QuestionnaireClient
 } from './api';
 import { CHAMP, DANGER, ETIQUETTE, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
-import { adresseWhatsApp, dateCourte, lienInvitation, lignesCorrections, messageInvitation, numeroWhatsApp } from './regles';
+import { adresseWhatsApp, dateCourte, lienInvitation, ligneSousApercu, lignesCorrections, messageInvitation, numeroWhatsApp, questionsEtDuree } from './regles';
 
 interface PersonneForm {
   id?: string;
@@ -668,7 +668,7 @@ export default function Fiche() {
               {pub && (
                 <p className="text-[13px] text-doux m-0">
                   {pub.q.id !== dernier?.id ? `Publié : ${etatQuestionnaire(pub.q)}. ` : ''}
-                  {n} questions au plus, environ {minutes} minutes.
+                  {questionsEtDuree(n, minutes) ? `${questionsEtDuree(n, minutes)}.` : 'Aucune question sur le chemin le plus long.'}
                 </p>
               )}
               {!pub && <p className="text-[13px] text-doux m-0">Sans questionnaire publié, « Inviter sur WhatsApp » reste grisé.</p>}
@@ -706,7 +706,9 @@ export default function Fiche() {
               <div className="bg-[#dcf8c6] rounded-[12px_12px_4px_12px] p-3 text-[14px] leading-normal text-encre self-end max-w-[95%] break-words" data-message="">
                 <MessageWhatsApp texte={message} />
               </div>
-              <p className="text-[13px] text-doux m-0">Le nombre de questions et la durée sont calculés à partir du questionnaire publié.</p>
+              <p className="text-[13px] text-doux m-0" data-ligne-sous-apercu="">
+                {ligneSousApercu(n)}
+              </p>
               <button
                 type="button"
                 className="text-[14px] font-semibold text-ciel min-h-11 flex items-center gap-1.5 self-start disabled:opacity-60 disabled:text-doux"

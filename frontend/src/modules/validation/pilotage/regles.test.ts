@@ -12,7 +12,14 @@ import {
   messageInvitation,
   messageRelance,
   messageSuite,
-  numeroWhatsApp
+  numeroWhatsApp,
+  questionsEtDuree,
+  ligneSousApercu,
+  libelleInvitation,
+  etapeSuivi,
+  actionsSuivi,
+  avertissementPorte,
+  suiteAProposer
 } from './regles';
 import type { EntreeJournal, QuestionnaireClient } from './api';
 
@@ -190,5 +197,72 @@ describe('messages naming the step (VC-46)', () => {
       'Étape marquée franchie le 04/11/2026 à 09 h 00 par Joël SOATRA.'
     ]);
     expect(lignesPorte(undefined, 'q1')).toEqual([]);
+  });
+});
+
+describe('gaps reported by Stay Easy (VALIDCLIENT-CC-13)', () => {
+  it('gap 1: count and duration agree in number, nothing for 0', () => {
+    expect(questionsEtDuree(0, 1)).toBeNull();
+    expect(questionsEtDuree(1, 1)).toBe('1 question au plus, environ 1 minute');
+    expect(questionsEtDuree(2, 2)).toBe('2 questions au plus, environ 2 minutes');
+    expect(questionsEtDuree(4, 4)).toBe('4 questions au plus, environ 4 minutes');
+    expect(questionsEtDuree(10, 10)).toBe('10 questions au plus, environ 10 minutes');
+    expect(questionsEtDuree(2, 1)).toBe('2 questions au plus, environ 1 minute');
+  });
+
+  it('gap 1: invitation without a published questionnaire shows no count', () => {
+    const base = { nomCourt: 'x', phraseReve: '', civilite: 'Madame', nom: 'Fara', lien: lienInvitation('abc') };
+    const zero = messageInvitation({ ...base, questions: 0, minutes: 1 });
+    expect(zero).toContain('Votre projet prend forme. Avant de le construire, nous avons besoin de votre avis, en quelques minutes, depuis votre téléphone.');
+    expect(zero).not.toMatch(/0 question|au plus|environ/);
+    expect(messageInvitation({ ...base, questions: 0, minutes: 1, type: 'note_cadrage' })).toContain(
+      'Pour valider la 1re étape, le résumé de votre projet (note de cadrage), nous avons besoin de votre avis, en quelques minutes, depuis votre téléphone.'
+    );
+    expect(messageInvitation({ ...base, questions: 1, minutes: 1 })).toContain('nous avons besoin de votre avis : 1 question au plus, environ 1 minute, depuis votre téléphone.');
+    expect(ligneSousApercu(0)).toBe("Le nombre de questions s'affichera dès qu'une consultation sera publiée.");
+    expect(ligneSousApercu(4)).toBe('Le nombre de questions et la durée sont calculés à partir du questionnaire publié.');
+  });
+
+  it('gap 2: « Envoyer » until an invitation was sent, then « Renvoyer »', () => {
+    expect(libelleInvitation(null)).toBe("Envoyer l'invitation");
+    expect(libelleInvitation(undefined)).toBe("Envoyer l'invitation");
+    expect(libelleInvitation('annulee')).toBe("Envoyer l'invitation");
+    expect(libelleInvitation('envoyee')).toBe("Renvoyer l'invitation");
+  });
+
+  const draft = { id: 'd', etat: 'brouillon', type: 'note_cadrage', version: '1.10', titre_client: '', saisi_par: 'joel', cree_at: '2026-11-06T00:00:00Z', publie_at: null, confirme_at: null, questions: null } as QuestionnaireClient;
+
+  it('gap 3: the follow-up step comes from the server only', () => {
+    expect(etapeSuivi({ etape_suivi: null, confirme_at: null })).toBeNull();
+    expect(etapeSuivi({ etape_suivi: null, confirme_at: '2026-11-03T07:31:00Z' })).toBe('analyse');
+    expect(etapeSuivi({ etape_suivi: 'preparation', confirme_at: '2026-11-03T07:31:00Z' })).toBe('preparation');
+    expect(etapeSuivi({ etape_suivi: 'disponible', confirme_at: '2026-11-03T07:31:00Z' })).toBe('disponible');
+  });
+
+  it('gap 5: no « En préparation » nor publish before the confirmation', () => {
+    const aucune = { preparation: false, publier: false, importer: false };
+    expect(actionsSuivi({ etape_suivi: null, confirme_at: null }, null)).toEqual(aucune);
+    expect(actionsSuivi({ etape_suivi: null, confirme_at: null }, draft)).toEqual(aucune);
+    expect(actionsSuivi({ etape_suivi: 'preparation', confirme_at: null }, draft)).toEqual(aucune);
+    expect(actionsSuivi({ etape_suivi: null, confirme_at: '2026-11-03T07:31:00Z' }, draft)).toEqual({ preparation: true, publier: true, importer: false });
+    expect(actionsSuivi({ etape_suivi: 'analyse', confirme_at: '2026-11-03T07:31:00Z' }, null)).toEqual({ preparation: true, publier: false, importer: true });
+    expect(actionsSuivi({ etape_suivi: 'disponible', confirme_at: '2026-11-03T07:31:00Z' }, draft)).toEqual(aucune);
+  });
+
+  it('gap 6: gate warning with the right counts, none at 100 % without refusal or reservation', () => {
+    const fin = " La règle de la porte demande un accord complet avant de franchir l'étape.";
+    expect(avertissementPorte({ refus: 2, reserves: 3, jauge: 80 })).toBe(`Attention : cette version compte 2 refus et 3 réserves.${fin}`);
+    expect(avertissementPorte({ refus: 1, reserves: 1, jauge: 90 })).toBe(`Attention : cette version compte 1 refus et 1 réserve.${fin}`);
+    expect(avertissementPorte({ refus: 0, reserves: 2, jauge: 100 })).toBe(`Attention : cette version compte 0 refus et 2 réserves.${fin}`);
+    expect(avertissementPorte({ refus: 0, reserves: 0, jauge: 90 })).toBe(`Attention : cette version compte 0 refus et 0 réserve.${fin}`);
+    expect(avertissementPorte({ refus: 0, reserves: 0, jauge: 100 })).toBeNull();
+    expect(avertissementPorte(null)).toBeNull();
+  });
+
+  it('gap 4: the follow-up message is proposed after a publication when the client already had one', () => {
+    expect(suiteAProposer([{ id: 'd', etat: 'brouillon' }], 'd')).toBe(false);
+    expect(suiteAProposer([{ id: 'd', etat: 'brouillon' }, { id: 'o', etat: 'brouillon' }], 'd')).toBe(false);
+    expect(suiteAProposer([{ id: 'd', etat: 'brouillon' }, { id: 'c', etat: 'confirme' }], 'd')).toBe(true);
+    expect(suiteAProposer([{ id: 'd', etat: 'ouvert' }, { id: 'r', etat: 'remplace' }], 'd')).toBe(true);
   });
 });

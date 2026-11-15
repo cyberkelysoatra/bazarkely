@@ -26,8 +26,21 @@ import {
   type QuestionnaireClient,
   type ReponseClient
 } from './api';
-import { DANGER, EnTetePilotage, ErreurReseau, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
-import { adresseWhatsApp, brouillonSuivant, lienInvitation, lignesCorrections, lignesPorte, messageInvitation, messageRelance, messageSuite } from './regles';
+import { ConfirmationEnLigne, DANGER, EnTetePilotage, ErreurReseau, MessageACopier, P_ATTENTE, P_INFO, P_NON, P_OK, Pilule } from './Commun';
+import {
+  actionsSuivi,
+  adresseWhatsApp,
+  avertissementPorte,
+  brouillonSuivant,
+  etapeSuivi,
+  libelleInvitation,
+  lienInvitation,
+  lignesCorrections,
+  lignesPorte,
+  messageInvitation,
+  messageRelance
+} from './regles';
+import { publierPuisSuite } from './publication';
 import { etapeDuType, ligneEtape, type Etape } from '../utils/etapes';
 import { RELECTURE_MS, useRelecture } from './Tableau';
 import { DISCUSSION } from '../composants/VersDiscussion';
@@ -70,6 +83,15 @@ type Action =
   | { type: 'archiver'; archiver: boolean }
   | { type: 'porte'; q: QuestionnaireClient; etape: Etape; franchie: boolean };
 
+/** Place of a confirmation or of a result: right under the button that asked for it (CC-13, gap 4). */
+export function zoneAction(a: Action): string {
+  if (a.type === 'revoquer' || a.type === 'nommer') return `personne:${a.p.id}`;
+  if (a.type === 'archiver') return 'archiver';
+  return `${a.type}:${a.q.id}`;
+}
+
+type Retour = { ok: boolean; texte: string; lien?: string; message?: string; zone?: string };
+
 /** « le résumé de votre projet (note de cadrage) », inside a sentence. */
 const nomEtape = (e: Etape) => `${e.nom} (${e.terme})`;
 
@@ -100,7 +122,7 @@ export default function Detail() {
   const [erreur, setErreur] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [action, setAction] = useState<Action | null>(null);
-  const [retour, setRetour] = useState<{ ok: boolean; texte: string; lien?: string } | null>(null);
+  const [retour, setRetour] = useState<Retour | null>(null);
   const defile = useRef<string | null>(null);
   // Unread messages: vc_admin_client gives none; the dashboard line already has it (state), else one call.
   const { state } = useLocation();
@@ -150,16 +172,16 @@ export default function Detail() {
   const ouvert = questionnaires.find((q) => q.etat === 'ouvert');
   const vitrine = questionnaires.find((q) => q.etat !== 'brouillon');
 
-  async function faire(f: () => Promise<{ ok: boolean; code?: string }>, reussite: string) {
+  async function faire(f: () => Promise<{ ok: boolean; code?: string }>, reussite: string, zone?: string) {
     setEnvoi(true);
     setRetour(null);
     try {
       const r = await f();
-      setRetour(r.ok ? { ok: true, texte: reussite } : { ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé cette action.' });
+      setRetour(r.ok ? { ok: true, texte: reussite, zone } : { ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé cette action.', zone });
       lire();
     } catch (e) {
       const m = e instanceof Error ? e.message : '';
-      setRetour({ ok: false, texte: m === 'timeout' ? 'Le réseau ne répond pas. Réessayez.' : `Le serveur a refusé cette action : ${m}` });
+      setRetour({ ok: false, texte: m === 'timeout' ? 'Le réseau ne répond pas. Réessayez.' : `Le serveur a refusé cette action : ${m}`, zone });
     } finally {
       setEnvoi(false);
       setAction(null);
@@ -168,38 +190,48 @@ export default function Detail() {
 
   async function confirmerAction() {
     if (!action || !fiche) return;
-    if (action.type === 'publier') await publierSuite(action.brouillon);
-    else if (action.type === 'revoquer') await faire(() => revoquerAcces(action.p.id), `Accès de ${action.p.civilite} ${action.p.nom} retiré. Ses réponses restent.`);
+    const zone = zoneAction(action);
+    if (action.type === 'publier') await publierSuite(action.brouillon, zone);
+    else if (action.type === 'revoquer') await faire(() => revoquerAcces(action.p.id), `Accès de ${action.p.civilite} ${action.p.nom} retiré. Ses réponses restent.`, zone);
     else if (action.type === 'nommer')
-      await faire(() => nommerValidant(action.p.id), `${action.p.civilite} ${action.p.nom} est maintenant ${feminin(action.p) ? 'validante' : 'validant'}.`);
-    else if (action.type === 'clore') await faire(() => clore(action.q.id), 'Consultation close. Les réponses sont conservées.');
+      await faire(() => nommerValidant(action.p.id), `${action.p.civilite} ${action.p.nom} est maintenant ${feminin(action.p) ? 'validante' : 'validant'}.`, zone);
+    else if (action.type === 'clore') await faire(() => clore(action.q.id), 'Consultation close. Les réponses sont conservées.', zone);
     else if (action.type === 'porte')
       await faire(
         () => marquerPorte(action.q.id, action.franchie),
-        action.franchie ? `Étape « ${nomEtape(action.etape)} » marquée franchie : le client la voit cochée.` : 'Étape franchie annulée : le client ne la voit plus cochée.'
+        action.franchie ? `Étape « ${nomEtape(action.etape)} » marquée franchie : le client la voit cochée.` : 'Étape franchie annulée : le client ne la voit plus cochée.',
+        zone
       );
     else
       await faire(
         () => archiverClient(fiche.client.id, action.archiver),
-        action.archiver ? 'Client archivé. Vous pouvez le désarchiver à tout moment.' : 'Client désarchivé.'
+        action.archiver ? 'Client archivé. Vous pouvez le désarchiver à tout moment.' : 'Client désarchivé.',
+        zone
       );
   }
 
-  /** « Renvoyer l'invitation »: new link (the previous one is cancelled), then the WhatsApp message of phase 3. */
+  /**
+   * « Envoyer l'invitation » / « Renvoyer l'invitation » (same action, CC-13 gap 2): new link (a previous
+   * one is cancelled), then the WhatsApp message of phase 3.
+   */
   async function renvoyer(p: PersonneClient) {
     if (!fiche) return;
+    const zone = `personne:${p.id}`;
+    const dejaEnvoyee = p.invitation === 'envoyee';
     const numero = (p.whatsapp_fiche ?? p.whatsapp ?? '').replace(/\D/g, '');
-    const fenetre = numero ? window.open('', '_blank') : null;
+    const fenetre = numero && ouvert ? window.open('', '_blank') : null;
     setEnvoi(true);
     setRetour(null);
+    setAction(null);
     try {
       const r = await creerInvitation(p.id);
       if (!r.ok || !r.jeton) {
         fenetre?.close();
-        setRetour({ ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé l’invitation.' });
+        setRetour({ ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé l’invitation.', zone });
         return;
       }
       const lien = lienInvitation(r.jeton);
+      const whatsapp = !!(numero && ouvert);
       if (numero && ouvert) {
         const n = verifierArbre((ouvert.questions ?? []).map((x) => ({ numero: x.numero, choix: x.choix ?? [] }))).cheminMax;
         const texte = messageInvitation({ nomCourt: fiche.client.nom_court, phraseReve: fiche.client.phrase_reve, civilite: p.civilite, nom: p.nom, questions: n, minutes: Math.max(n, 1), lien, type: ouvert.type });
@@ -207,17 +239,19 @@ export default function Detail() {
         if (fenetre) fenetre.location.href = adresse;
         else window.location.href = adresse;
       }
+      const debut = dejaEnvoyee ? 'Nouvelle invitation : l’ancien lien ne marche plus.' : 'Invitation créée.';
       setRetour({
         ok: true,
-        texte: numero
-          ? `Nouvelle invitation : l’ancien lien ne marche plus. WhatsApp s’ouvre avec le message pour ${p.civilite} ${p.nom} : envoyez-le vous-même.`
-          : 'Nouvelle invitation : l’ancien lien ne marche plus. Numéro WhatsApp manquant : envoyez ce lien par un autre moyen.',
-        lien
+        texte: whatsapp
+          ? `${debut} WhatsApp s’ouvre avec le message pour ${p.civilite} ${p.nom} : envoyez-le vous-même.`
+          : `${debut} ${numero ? 'Aucune consultation ouverte pour le message' : 'Numéro WhatsApp manquant'} : envoyez ce lien par un autre moyen.`,
+        lien,
+        zone
       });
       lire();
     } catch {
       fenetre?.close();
-      setRetour({ ok: false, texte: 'Le réseau ne répond pas : aucune invitation créée. Réessayez.' });
+      setRetour({ ok: false, texte: 'Le réseau ne répond pas : aucune invitation créée. Réessayez.', zone });
     } finally {
       setEnvoi(false);
     }
@@ -225,41 +259,52 @@ export default function Detail() {
 
   /**
    * « Publier la version <v> » (VC-38 amended): publishes the next draft with vc_admin_publier, which
-   * sets the confirmed version to « Disponible » and notifies the people, then WhatsApp to the validant.
+   * sets the confirmed version to « Disponible » and notifies the people, then WhatsApp to the validant
+   * (or the message to copy when the number is missing). Same flow as the questionnaire page.
    */
-  async function publierSuite(brouillon: QuestionnaireClient) {
+  async function publierSuite(brouillon: QuestionnaireClient, zone: string) {
     if (!fiche) return;
     const numero = (validant?.whatsapp ?? validant?.whatsapp_fiche ?? '').replace(/\D/g, '');
     const fenetre = numero ? window.open('', '_blank') : null;
     setEnvoi(true);
     setRetour(null);
     try {
-      const r = await publier(brouillon.id);
-      if (!r.ok) {
+      const issue = await publierPuisSuite({
+        id: brouillon.id,
+        publier,
+        relire: lire,
+        destinataire: validant ? { nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, numero, type: brouillon.type } : null
+      });
+      if (!issue.ok) {
         fenetre?.close();
-        setRetour({ ok: false, texte: ERREURS[r.code ?? ''] ?? 'Le serveur a refusé cette action.' });
+        setRetour({ ok: false, texte: issue.reseau ? 'Le réseau ne répond pas. Réessayez.' : ERREURS[issue.code ?? ''] ?? 'Le serveur a refusé cette action.', zone });
         return;
       }
-      if (numero && validant) {
-        const adresse = adresseWhatsApp(numero, messageSuite({ nomCourt: fiche.client.nom_court, civilite: validant.civilite, nom: validant.nom, type: brouillon.type }));
-        if (fenetre) fenetre.location.href = adresse;
-        else window.location.href = adresse;
-      }
+      if (issue.adresse) {
+        if (fenetre) fenetre.location.href = issue.adresse;
+        else window.location.href = issue.adresse;
+      } else fenetre?.close();
       setRetour({
         ok: true,
-        texte: numero
+        texte: issue.adresse
           ? `Version ${brouillon.version} publiée : le client est prévenu que la suite est prête. WhatsApp s’ouvre avec le message pour le validant : envoyez-le vous-même.`
-          : `Version ${brouillon.version} publiée : le client est prévenu que la suite est prête.`
+          : `Version ${brouillon.version} publiée : le client est prévenu que la suite est prête.`,
+        message: issue.adresse ? undefined : issue.message ?? undefined,
+        zone
       });
-      lire();
-    } catch {
-      fenetre?.close();
-      setRetour({ ok: false, texte: 'Le réseau ne répond pas. Réessayez.' });
     } finally {
       setEnvoi(false);
       setAction(null);
     }
   }
+
+  /** Confirmation (if asked there) then result of the last action, right under the button of that zone. */
+  const zone = (cle: string): ReactNode => (
+    <>
+      {action && zoneAction(action) === cle && <Confirmation action={action} envoi={envoi} annuler={() => setAction(null)} confirmer={() => void confirmerAction()} />}
+      {retour && retour.zone === cle && !(action && zoneAction(action) === cle) && <CarteRetour retour={retour} />}
+    </>
+  );
 
   const titre = fiche ? `Pilotage : ${fiche.client.entreprise}` : 'Pilotage : détail du client';
   const sousTitre = vitrine ? nomCycle(vitrine.type, vitrine.version) : '';
@@ -278,17 +323,7 @@ export default function Detail() {
                 Client archivé : ses consultations et ses réponses sont conservées.
               </p>
             )}
-            {retour && (
-              <div className={`${CARTE} !gap-1.5 ${retour.ok ? '!border-[#86efac] !bg-[#f0fdf4]' : '!border-[#fca5a5] !bg-[#fef2f2]'}`} role={retour.ok ? 'status' : 'alert'} data-retour={retour.ok ? 'ok' : 'erreur'}>
-                <p className={`text-[14px] font-semibold m-0 ${retour.ok ? 'text-[#166534]' : 'text-danger'}`}>{retour.texte}</p>
-                {retour.lien && (
-                  <p className="text-[13px] m-0 break-all" data-nouveau-lien="">
-                    Nouveau lien : {retour.lien}
-                  </p>
-                )}
-              </div>
-            )}
-            {action && <Confirmation action={action} envoi={envoi} annuler={() => setAction(null)} confirmer={() => void confirmerAction()} />}
+            {retour && !retour.zone && <CarteRetour retour={retour} />}
 
             <section className={CARTE} aria-labelledby="titre-personnes" data-personnes="">
               <h2 id="titre-personnes" className="text-[17px] leading-[1.3] font-bold m-0">
@@ -305,6 +340,7 @@ export default function Detail() {
                   envoi={envoi}
                   renvoyer={() => void renvoyer(p)}
                   demander={setAction}
+                  zone={zone(`personne:${p.id}`)}
                 />
               ))}
             </section>
@@ -317,8 +353,12 @@ export default function Detail() {
                 validant={validant}
                 envoi={envoi}
                 suivant={q.etat === 'confirme' ? brouillonSuivant(questionnaires, q) : null}
-                preparer={() => void faire(() => suivi(q.id, 'preparation'), 'Suivi « Version suivante en préparation » : le client le voit sur son accueil.')}
+                preparer={() => {
+                  setAction(null);
+                  void faire(() => suivi(q.id, 'preparation'), 'Suivi « Version suivante en préparation » : le client le voit sur son accueil.', `publier:${q.id}`);
+                }}
                 demander={setAction}
+                zone={zone}
               />
             ))}
 
@@ -343,6 +383,7 @@ export default function Detail() {
             >
               {fiche.client.statut === 'actif' ? 'Archiver le client' : 'Désarchiver le client'}
             </button>
+            {zone('archiver')}
             <p className="text-[13px] text-doux m-0" data-pied="">
               Aucune réponse ne peut être modifiée ni effacée. Heures de Madagascar.
             </p>
@@ -383,17 +424,33 @@ function Confirmation({ action, envoi, annuler, confirmer }: { action: Action; e
     bouton = action.archiver ? 'Archiver' : 'Désarchiver';
   }
   const danger = action.type !== 'nommer' && action.type !== 'publier' && !(action.type === 'archiver' && !action.archiver) && !(action.type === 'porte' && action.franchie);
+  // Gate warning (CC-13, book Q2): refusals, reservations or agreement under 100 %; the gesture stays possible.
+  const avertissement = action.type === 'porte' && action.franchie ? avertissementPorte(action.q.etat_validant) : null;
   return (
-    <div className={`${CARTE} !border-2 ${danger ? '!border-danger' : '!border-ciel'}`} role="alertdialog" aria-label="Confirmation" data-confirmation={action.type}>
-      <p className="text-[15px] font-semibold m-0">{texte}</p>
-      <div className="grid grid-cols-2 gap-2.5">
-        <button type="button" className={`${SECONDAIRE} !text-[15px]`} onClick={annuler} disabled={envoi}>
-          Annuler
-        </button>
-        <button type="button" className={danger ? `${DANGER} !text-[15px]` : `${PRIMAIRE} !text-[15px]`} onClick={confirmer} disabled={envoi} data-confirmer="">
-          {bouton}
-        </button>
-      </div>
+    <ConfirmationEnLigne
+      key={zoneAction(action) + action.type}
+      texte={texte}
+      avertissement={avertissement}
+      bouton={bouton}
+      danger={danger}
+      envoi={envoi}
+      annuler={annuler}
+      confirmer={confirmer}
+      type={action.type}
+    />
+  );
+}
+
+function CarteRetour({ retour }: { retour: Retour }) {
+  return (
+    <div className={`${CARTE} !gap-1.5 ${retour.ok ? '!border-[#86efac] !bg-[#f0fdf4]' : '!border-[#fca5a5] !bg-[#fef2f2]'}`} role={retour.ok ? 'status' : 'alert'} data-retour={retour.ok ? 'ok' : 'erreur'}>
+      <p className={`text-[14px] font-semibold m-0 ${retour.ok ? 'text-[#166534]' : 'text-danger'}`}>{retour.texte}</p>
+      {retour.lien && (
+        <p className="text-[13px] m-0 break-all" data-nouveau-lien="">
+          Lien : {retour.lien}
+        </p>
+      )}
+      {retour.message && <MessageACopier message={retour.message} />}
     </div>
   );
 }
@@ -405,7 +462,8 @@ function Personne({
   journal,
   envoi,
   renvoyer,
-  demander
+  demander,
+  zone
 }: {
   p: PersonneClient;
   validant: PersonneClient | undefined;
@@ -414,6 +472,7 @@ function Personne({
   envoi: boolean;
   renvoyer: () => void;
   demander: (a: Action) => void;
+  zone: ReactNode;
 }) {
   const numero = p.whatsapp ?? p.whatsapp_fiche;
   const revoque = !!p.revoque_at;
@@ -422,8 +481,8 @@ function Personne({
   const actions: ReactNode[] = [];
   if (!revoque && !rejoint)
     actions.push(
-      <button key="r" type="button" className={LIEN} disabled={envoi} onClick={renvoyer} data-renvoyer={p.id}>
-        Renvoyer l'invitation
+      <button key="r" type="button" className={LIEN} disabled={envoi} onClick={renvoyer} data-renvoyer={p.id} data-invitation={p.invitation ?? 'aucune'}>
+        {libelleInvitation(p.invitation)}
       </button>
     );
   if (!revoque && p.role === 'contributeur')
@@ -496,6 +555,7 @@ function Personne({
         </p>
       )}
       {actions.length > 0 && <div className="flex flex-wrap items-center gap-x-4">{actions}</div>}
+      {zone}
     </div>
   );
 }
@@ -507,7 +567,8 @@ function Consultation({
   envoi,
   suivant,
   preparer,
-  demander
+  demander,
+  zone
 }: {
   q: QuestionnaireClient;
   fiche: FicheClient;
@@ -516,6 +577,7 @@ function Consultation({
   suivant: QuestionnaireClient | null;
   preparer: () => void;
   demander: (a: Action) => void;
+  zone: (cle: string) => ReactNode;
 }) {
   const etat = ETATS[q.etat];
   const e = q.etat_validant;
@@ -575,6 +637,7 @@ function Consultation({
             </button>
           </div>
         )}
+        {zone(`clore:${q.id}`)}
         {relancer && !numero && <p className="text-[13px] text-doux m-0">Numéro WhatsApp du validant manquant : la relance est impossible.</p>}
         {q.confirme_at && etapeQ && (
           <div className="flex flex-col gap-1.5 pt-2.5 border-t border-[#e2e8f0]" data-porte={q.porte_franchie_at ? 'franchie' : 'non'}>
@@ -593,6 +656,7 @@ function Consultation({
                 Marquer l'étape franchie
               </button>
             )}
+            {zone(`porte:${q.id}`)}
             {lignesPorte(fiche.journal, q.id).map((l, i) => (
               <p key={i} className="text-[13px] text-doux m-0 break-words" data-historique-porte="">
                 {l}
@@ -603,7 +667,15 @@ function Consultation({
       </div>
 
       {(q.etat === 'ouvert' || q.confirme_at) && (
-        <Suivi q={q} client={fiche.client.id} suivant={suivant} envoi={envoi} preparer={preparer} publierSuite={() => suivant && demander({ type: 'publier', q, brouillon: suivant })} />
+        <Suivi
+          q={q}
+          client={fiche.client.id}
+          suivant={suivant}
+          envoi={envoi}
+          preparer={preparer}
+          publierSuite={() => suivant && demander({ type: 'publier', q, brouillon: suivant })}
+          zone={zone(`publier:${q.id}`)}
+        />
       )}
 
       {!brouillon &&
@@ -620,7 +692,8 @@ function Suivi({
   suivant,
   envoi,
   preparer,
-  publierSuite
+  publierSuite,
+  zone
 }: {
   q: QuestionnaireClient;
   client: string;
@@ -628,9 +701,11 @@ function Suivi({
   envoi: boolean;
   preparer: () => void;
   publierSuite: () => void;
+  zone: ReactNode;
 }) {
-  const etape = q.etape_suivi ?? (q.confirme_at ? 'analyse' : null);
+  const etape = etapeSuivi(q);
   const disponible = etape === 'disponible';
+  const boutons = actionsSuivi(q, suivant);
   const reste = q.echeance_at ? delaiRestant(q.echeance_at) : null;
   return (
     <div className={CARTE} data-suivi={etape ?? 'non-confirme'}>
@@ -661,22 +736,24 @@ function Suivi({
           Préparez d'abord la version suivante : importez-la, puis publiez-la ici.
         </p>
       )}
-      {!disponible && (
+      {boutons.preparation && (
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className={`${SECONDAIRE} !text-[14px] !px-2`} disabled={envoi || etape === 'preparation'} onClick={preparer} data-preparation="">
             En préparation
           </button>
-          {suivant ? (
+          {boutons.publier && suivant && (
             <button type="button" className={`${PRIMAIRE} !text-[14px] !px-2`} disabled={envoi} onClick={publierSuite} data-publier-suite={suivant.id}>
               Publier la version {suivant.version}
             </button>
-          ) : (
-            q.confirme_at && <Link to={`/pilotage/import/${client}`} className={`${SECONDAIRE} !text-[14px] !px-2 text-center`} data-importer-suite="">
+          )}
+          {boutons.importer && (
+            <Link to={`/pilotage/import/${client}`} className={`${SECONDAIRE} !text-[14px] !px-2 text-center`} data-importer-suite="">
               Importer la version suivante
             </Link>
           )}
         </div>
       )}
+      {zone}
     </div>
   );
 }

@@ -1,8 +1,21 @@
-export const APP_VERSION = '3.150.0';
+export const APP_VERSION = '3.151.0';
 export const APP_VERSION_NAME = 'RTB Énergie : PDF de facture et du cycle, équivalent en euros, facture sans abonnement (ELEC-CC-04)';
 export const LAST_UPDATED = '2026-11-15';
 export const APP_BUILD_DATE = '2026-11-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.151.0',
+    date: '2026-11-15',
+    description: 'Validation client : écarts Stay Easy du lot 1a et avertissement de la porte (VALIDCLIENT-CC-13)',
+    changes: [
+      'Message d’invitation : « 1 question au plus, environ 1 minute » ; sans consultation publiée, aucun nombre (« en quelques minutes ») et ligne d’explication sous l’aperçu',
+      '« Envoyer l’invitation » tant qu’aucune n’a été envoyée, « Renvoyer l’invitation » ensuite',
+      'Confirmations affichées juste sous leur bouton, dans la vue et avec le focus, au détail du client et sur la page du questionnaire',
+      'Après une publication depuis l’un ou l’autre écran : message de suite proposé sur WhatsApp, ou à copier sans numéro ; rien ne change si le serveur refuse',
+      'Suivi promis d’une consultation non confirmée : ni « En préparation » ni publication',
+      '« Marquer l’étape franchie » : avertissement avec le nombre de refus et de réserves quand l’accord n’est pas complet (le geste reste possible)'
+    ]
+  },
   {
     version: '3.150.0',
     date: '2026-11-15',

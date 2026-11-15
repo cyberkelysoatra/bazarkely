@@ -10,6 +10,24 @@ export function lienInvitation(jeton: string): string {
 }
 
 /**
+ * « 1 question au plus, environ 1 minute », « 4 questions au plus, environ 4 minutes » (VALIDCLIENT-CC-13).
+ * Null when no questionnaire is published yet (0 questions): no count is shown then.
+ */
+export function questionsEtDuree(questions: number, minutes: number): string | null {
+  const n = Math.max(0, Math.floor(questions));
+  if (n < 1) return null;
+  const m = Math.max(1, Math.floor(minutes));
+  return `${n} question${n > 1 ? 's' : ''} au plus, environ ${m} minute${m > 1 ? 's' : ''}`;
+}
+
+/** Line under the WhatsApp preview of the fiche: count explained, or announced when nothing is published. */
+export function ligneSousApercu(questions: number): string {
+  return questions >= 1
+    ? 'Le nombre de questions et la durée sont calculés à partir du questionnaire publié.'
+    : "Le nombre de questions s'affichera dès qu'une consultation sera publiée.";
+}
+
+/**
  * WhatsApp message of VC-24 (bold title, dream in italics, link, signature). `type`: document type
  * of the questionnaire whose questions are counted; a step type names the step (VC-46).
  */
@@ -25,7 +43,10 @@ export function messageInvitation(p: {
 }): string {
   const reve = (p.phraseReve ?? '').trim() || PHRASE_GENERALE;
   const etape = etapeDuType(p.type);
-  const avis = `nous avons besoin de votre avis : ${p.questions} questions au plus, environ ${p.minutes} minutes, depuis votre téléphone.`;
+  const duree = questionsEtDuree(p.questions, p.minutes);
+  const avis = duree
+    ? `nous avons besoin de votre avis : ${duree}, depuis votre téléphone.`
+    : 'nous avons besoin de votre avis, en quelques minutes, depuis votre téléphone.';
   return [
     `*VOTRE PROJET : ${p.nomCourt.trim().toLocaleUpperCase('fr')}*`,
     '',
@@ -150,6 +171,49 @@ export function brouillonSuivant(qs: QuestionnaireClient[], confirme: Questionna
       .filter((x) => x.etat === 'brouillon' && x.type === confirme.type && x.id !== confirme.id && Date.parse(x.cree_at) > t)
       .sort((a, b) => Date.parse(b.cree_at) - Date.parse(a.cree_at))[0] ?? null
   );
+}
+
+/** Label of the invitation action of a person card: « Renvoyer » only once one was sent and not used (CC-13, gap 2). */
+export function libelleInvitation(invitation: string | null | undefined): string {
+  return invitation === 'envoyee' ? "Renvoyer l'invitation" : "Envoyer l'invitation";
+}
+
+/** Follow-up step shown for a questionnaire: only what the server says (never set by the screen, CC-13 gap 3). */
+export function etapeSuivi(q: Pick<QuestionnaireClient, 'etape_suivi' | 'confirme_at'>): 'analyse' | 'preparation' | 'disponible' | null {
+  return q.etape_suivi ?? (q.confirme_at ? 'analyse' : null);
+}
+
+/**
+ * Buttons of the block « Suivi promis au client » (CC-13 gap 5): none before the client's confirmation;
+ * once confirmed and not « Disponible »: « En préparation », plus publish (a next draft) or import.
+ */
+export function actionsSuivi(
+  q: Pick<QuestionnaireClient, 'etape_suivi' | 'confirme_at'>,
+  suivant: QuestionnaireClient | null
+): { preparation: boolean; publier: boolean; importer: boolean } {
+  const aucune = { preparation: false, publier: false, importer: false };
+  if (!q.confirme_at || etapeSuivi(q) === 'disponible') return aucune;
+  return { preparation: true, publier: !!suivant, importer: !suivant };
+}
+
+/**
+ * Warning of « Marquer l'étape franchie » (CC-13, book Q2 and R2): when the validant refused or reserved
+ * something, or the agreement is under 100 %. A warning only: the gesture stays possible.
+ */
+export function avertissementPorte(e: { refus: number; reserves: number; jauge: number } | null | undefined): string | null {
+  if (!e) return null;
+  const refus = Math.max(0, e.refus);
+  const reserves = Math.max(0, e.reserves);
+  if (refus === 0 && reserves === 0 && e.jauge >= 100) return null;
+  return `Attention : cette version compte ${refus} refus et ${reserves} réserve${reserves > 1 ? 's' : ''}. La règle de la porte demande un accord complet avant de franchir l'étape.`;
+}
+
+/**
+ * After a publication from the questionnaire page: the follow-up message is proposed when the client
+ * already had a published consultation (the validant knows the space); a first one goes by invitation.
+ */
+export function suiteAProposer(qs: Pick<QuestionnaireClient, 'id' | 'etat'>[], publie: string): boolean {
+  return qs.some((x) => x.id !== publie && x.etat !== 'brouillon');
 }
 
 /** « Publier la suite » of VC-38 (`type`: the newly published version, its step named, VC-46). */
