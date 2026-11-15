@@ -19,7 +19,7 @@ const DESCRIPTION =
 const SITE_NAME = 'NAVY ay';
 const DOC_TITLE = 'NAVY ay';
 // `?v=N`: cache-buster to force WhatsApp/Facebook to re-download after an image change.
-const IMAGE_PATH = '/navy-ay/og-navy.png?v=1';
+const IMAGE_PATH = '/navy-ay/og-navy.png?v=2';
 
 function escapeHtml(s: string): string {
   return s

@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import './index.css'
 import './styles/ios-optimizations.css'
 import App from './App.tsx'
+import { installChunkReloadListener } from './utils/chunkReload'
+
+// A code file that cannot be loaded reloads the page once (MICRO-CC-01), then the error screen.
+installChunkReloadListener()
 
 // Initialiser le système de chiffrement AES-256
 import './services/encryptionInit'

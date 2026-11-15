@@ -106,6 +106,92 @@ export function eauSegmentTabClass(active: boolean): string {
  *                      cartes). Si les DEUX sont fournis, `waterFraction` est PRIORITAIRE (les
  *                      deux calques ne coexistent jamais sur une même carte).
  */
+/** Smallest size of a shrunk subtitle; below it the text is cut with an ellipsis. */
+export const EAU_FIT_TEXT_MIN_PX = 9;
+
+/**
+ * Text kept on ONE line (MICRO-CC-01): when it does not fit, its font size is lowered (binary
+ * search, floor 9 px) directly on the element, never through React state (React 19 update
+ * loop pitfall); still too long at 9 px: ellipsis and the full text in `title`. Measured again
+ * when its width changes, when its content changes and once the fonts are loaded.
+ */
+export function EauFitText({ children, className }: { children: React.ReactNode; className?: string }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const lastWidth = React.useRef<number>(-1);
+
+  const fit = React.useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    lastWidth.current = el.clientWidth;
+    // scrollWidth is rounded: a text 0.4 px too wide passes it and still gets an ellipsis.
+    // The exact width of the content (Range, fractional) decides when the browser gives it.
+    const fits = () => {
+      const range = typeof document.createRange === 'function' ? document.createRange() : null;
+      if (range && typeof range.getBoundingClientRect === 'function') {
+        range.selectNodeContents(el);
+        const w = range.getBoundingClientRect().width;
+        if (w > 0) return w <= el.clientWidth + 0.01;
+      }
+      return el.scrollWidth <= el.clientWidth;
+    };
+    el.style.fontSize = '';
+    el.removeAttribute('title');
+    if (fits()) return;
+    const base = parseFloat(window.getComputedStyle(el).fontSize) || 14;
+    const floor = Math.min(EAU_FIT_TEXT_MIN_PX, base);
+    let lo = floor;
+    let hi = base;
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      el.style.fontSize = `${mid}px`;
+      if (fits()) lo = mid;
+      else hi = mid;
+    }
+    el.style.fontSize = `${Math.floor(lo * 10) / 10}px`;
+    if (!fits()) {
+      const full = (el.textContent ?? '').trim();
+      if (full) el.setAttribute('title', full);
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
+    fit();
+  }, [children, fit]);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let cancelled = false;
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      // Only a WIDTH change re-measures: the height moves with the font size we set.
+      observer = new ResizeObserver(() => {
+        if (ref.current && ref.current.clientWidth !== lastWidth.current) fit();
+      });
+      observer.observe(el);
+    }
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+    fonts?.ready?.then(() => {
+      if (!cancelled) fit();
+    }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+    };
+  }, [fit]);
+
+  return (
+    <div
+      ref={ref}
+      data-eau-fit-text=""
+      className={className}
+      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function EauStatCard({
   icon: Icon,
   label,
@@ -204,7 +290,7 @@ export function EauStatCard({
         </div>
       </div>
         <div className={cn('mt-2 text-2xl font-bold', hasFill ? 'text-ahuvi-forest' : TONE_VALUE[tone])}>{value}</div>
-        {hint && <div className={cn('text-sm mt-0.5', hasFill ? 'text-gray-700' : 'text-gray-500')}>{hint}</div>}
+        {hint && <EauFitText className={cn('text-sm mt-0.5', hasFill ? 'text-gray-700' : 'text-gray-500')}>{hint}</EauFitText>}
       </div>
     </>
   );

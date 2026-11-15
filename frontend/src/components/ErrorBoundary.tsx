@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { isChunkLoadError, reloadOnceAfterChunkError } from '../utils/chunkReload';
 
 interface Props {
   children: ReactNode;
@@ -21,6 +22,8 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // A code file that failed to load: one reload with a fresh address (MICRO-CC-01).
+    if (isChunkLoadError(error) && reloadOnceAfterChunkError()) return;
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     // Details are only shown on screen in development: keep the full stacks in the console
     // so a production error can still be diagnosed with F12.

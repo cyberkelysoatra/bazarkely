@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.151.0';
-export const APP_VERSION_NAME = 'RTB Énergie : PDF de facture et du cycle, équivalent en euros, facture sans abonnement (ELEC-CC-04)';
+export const APP_VERSION = '3.151.1';
+export const APP_VERSION_NAME = 'Logos NAVY ay gris clair, sous-titres Eau sur une ligne, garde du service worker et reprise de page blanche (MICRO-CC-01)';
 export const LAST_UPDATED = '2026-11-15';
 export const APP_BUILD_DATE = '2026-11-15';
 export const VERSION_HISTORY = [
+  {
+    version: '3.151.1',
+    date: '2026-11-15',
+    description: 'Trois micro-correctifs : logos NAVY ay gris clair, sous-titres des cartes Eau sur une ligne, garde du service worker et reprise de page blanche (MICRO-CC-01)',
+    changes: [
+      'NAVY ay : logos et image d’aperçu WhatsApp en gris #4A4A4A (copies exactes des sources), aperçu servi en og-navy.png?v=2 ; couleurs de l’interface inchangées',
+      'Cartes du tableau de bord Eau : sous-titre toujours sur une ligne (taille réduite jusqu’à 9 px, puis points de suspension avec le texte complet en info-bulle), sans état React',
+      'Service worker principal : une page HTML n’est jamais gardée à la place d’un fichier de code (/assets/, script, style)',
+      'Fichier de code introuvable : la page se recharge une seule fois avec une adresse neuve, puis l’écran d’erreur habituel (aucune boucle)'
+    ]
+  },
   {
     version: '3.151.0',
     date: '2026-11-15',

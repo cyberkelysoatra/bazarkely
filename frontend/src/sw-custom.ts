@@ -6,7 +6,8 @@
  * Ce fichier est utilisé comme SW principal avec Vite PWA en mode injectManifest
  */
 
-import { precacheAndRoute, matchPrecache, cleanupOutdatedCaches } from 'workbox-precaching';
+import { precacheAndRoute, matchPrecache, cleanupOutdatedCaches, addPlugins } from 'workbox-precaching';
+import { htmlForCodeGuardPlugin, isHtmlForCodeFile } from './sw/htmlGuard';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
 import { cacheNames } from 'workbox-core';
@@ -539,6 +540,11 @@ declare const self: any & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
+// Never store an HTML page in place of a code file (MICRO-CC-01): the guard also refuses
+// status >= 400 (it replaces Workbox's default precache cacheability plugin). A refused file
+// fails this install: the current service worker stays and the next load retries.
+addPlugins([htmlForCodeGuardPlugin]);
+
 // Précharger les assets définis par Vite PWA
 precacheAndRoute(self.__WB_MANIFEST);
 
@@ -593,8 +599,8 @@ registerRoute(
     plugins: [
       {
         cacheKeyWillBeUsed: async ({ request }) => request.url,
-        cacheWillUpdate: async ({ response }) => {
-          return response && response.status === 200 ? response : null;
+        cacheWillUpdate: async ({ request, response }) => {
+          return response && response.status === 200 && !isHtmlForCodeFile(request, response) ? response : null;
         }
       }
     ]
