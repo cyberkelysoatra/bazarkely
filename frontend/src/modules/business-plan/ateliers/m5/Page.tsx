@@ -1,23 +1,25 @@
 // Module 5 "Les chiffres clés" (workbook pages 13 to 15): 5a to 5f, live results and alerts.
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { AtelierProps, NiveauChiffres, Plan } from '../../types';
-import { ChampMontant, ChampNombre, ChampTexte } from '../../composants/Champs';
+import type { AtelierProps, Investissement, NiveauChiffres, Plan, Produit, Ressource } from '../../types';
+import { ChampDecimal, ChampMontant, ChampNombre, ChampTexte } from '../../composants/Champs';
 import { ListeLignes } from '../../composants/ListeLignes';
 import { Carte, Resultat } from '../../composants/Carte';
 import { Alerte } from '../../composants/Alerte';
 import { Aide } from '../../composants/Aide';
 import { Icone } from '../../composants/Icones';
-import { alertes, calculer, phraseSeuil, texteChiffres, type AlerteChiffres } from '../../utils/chiffres';
-import { ariary, grouper, pluriel, pourcent } from '../../utils/format';
+import { alertes, calculer, phraseSeuil, phraseSeuilUnites, texteChiffres, type AlerteChiffres } from '../../utils/chiffres';
+import { ariary, grouper, pluriel } from '../../utils/format';
 import { partagerTexte } from '../../utils/partage';
 import { useEtapesInternes, type EtatNavigation } from '../../composants/SuivantPrecedent';
 import { AutreExemple } from '../../composants/AutreExemple';
 import { useExempleDuPlan } from '../../etat/exempleChoisi';
+import { investissementVide, produitVide, ressourceVide } from '../../etat/vide';
 import { Calcul, ChoixNiveau, DEBUT, EcranBases, Gras, PIEGES, PIEGE_ALERTE, Piege, ecransBases, formules, suivante, type Partie, type Position } from './niveaux';
+import { BoutonAjouter, CarteProduit, ListeInvestissements, ListeRessources } from './listes';
 
 const SECTIONS = [
-  { id: '5a', t: 'Unité' },
+  { id: '5a', t: 'Produits' },
   { id: '5b', t: 'Charges' },
   { id: '5c', t: 'Départ' },
   { id: '5d', t: '3 ans' },
@@ -54,24 +56,22 @@ const CHARGES: { cle: keyof Omit<Plan['m5']['chargesFixes'], 'lignes'>; label: s
   { cle: 'autres', label: 'Autres' }
 ];
 
-/** NEC-CC-13: the key figures of the example of the sector of the plan, computed by the app itself. */
+/** NEC-CC-13: the key figures of the example of the sector of the plan, computed by the app itself
+ * (NEC-CC-38: every product, break-even in turnover; never hard-coded). */
 function ExempleChiffres({ plan }: { plan: Plan }) {
   const { exemple, choisir } = useExempleDuPlan(plan);
   const ex = exemple.plan();
   const c = calculer(ex);
-  const u = pluriel(ex.uniteVente, 1);
   const res = c.annees.map((a) => (a ? ariary(a.resultat) : null));
+  const produits = c.produits.map((p) => `${p.nom} (coût ${ariary(p.cout)}, prix ${ariary(p.prix ?? 0)}${p.tauxMarge !== null ? `, marge ${p.tauxMarge} %` : ''})`);
   return (
     <div className="bp-exemple-chiffres">
       <p className="mt-3 font-bold">Exemple {exemple.nom}</p>
       <p>
-        Coût de revient par {u} : {ariary(c.coutUnitaire)}, prix {ariary(c.prix ?? 0)}, marge {ariary(c.marge ?? 0)}
-        {c.tauxMarge !== null ? ` (${c.tauxMarge} %)` : ''}. Charges fixes {ariary(c.chargesFixes)} par mois
-        {c.seuilMois !== null
-          ? `, seuil ${grouper(c.seuilMois)} ${pluriel(ex.uniteVente, c.seuilMois)} par mois${c.seuilJour !== null ? ` (${grouper(c.seuilJour)} par jour)` : ''}`
-          : ''}
-        . Besoins {ariary(c.besoins)} = ressources {ariary(c.ressources)}. Résultat avant amortissements et avant impôt : {res[0]} en année 1, {res[1]} en année 2, {res[2]} en
-        année 3.
+        {produits.length} produit{produits.length > 1 ? 's' : ''} : {produits.join(' ; ')}. Chiffre d'affaires {ariary(c.caMois)} par mois, marge {ariary(c.margeMois)}. Charges fixes{' '}
+        {ariary(c.chargesFixes)} par mois
+        {c.seuilCaMois !== null ? `, seuil ${ariary(c.seuilCaMois)} de chiffre d'affaires par mois${c.seuilCaJour !== null ? ` (${ariary(c.seuilCaJour)} par jour)` : ''}` : ''}. Besoins{' '}
+        {ariary(c.besoins)} = ressources {ariary(c.ressources)}. Résultat avant amortissements et avant impôt : {res.map((r, i) => (r ? `${r} en année ${i + 1}` : null)).filter(Boolean).join(', ')}.
       </p>
       <AutreExemple actuel={exemple} choisir={choisir} />
     </div>
@@ -86,6 +86,69 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
   const [message, setMessage] = useState('');
   const set = (recette: (m: Plan['m5'], p: Plan) => void) => modifier((p) => recette(p.m5, p));
   const seuil = phraseSeuil(plan, c);
+  const seuilUnites = phraseSeuilUnites(plan, c);
+
+  // NEC-CC-38: one product card open at a time (a plan with one product opens it).
+  const [ouvert, setOuvert] = useState<string | null>(() => (m5.produits.length === 1 ? m5.produits[0].id : null));
+  const basculer = useCallback((id: string) => setOuvert((o) => (o === id ? null : id)), []);
+  const changerProduit = useCallback(
+    (id: string, recette: (p: Produit) => void) =>
+      modifier((p) => {
+        const x = p.m5.produits.find((y) => y.id === id);
+        if (x) recette(x);
+      }),
+    [modifier]
+  );
+  // "Mettre en tête": the product becomes the produit principal (R8); its unit becomes the plan's one.
+  const monter = useCallback(
+    (id: string) =>
+      modifier((p) => {
+        const i = p.m5.produits.findIndex((y) => y.id === id);
+        if (i <= 0) return;
+        const ancien = p.m5.produits[0];
+        if (!ancien.unite.trim() && p.uniteVente.trim()) ancien.unite = p.uniteVente;
+        const [x] = p.m5.produits.splice(i, 1);
+        p.m5.produits.unshift(x);
+        if (x.unite.trim()) p.uniteVente = x.unite;
+      }),
+    [modifier]
+  );
+  const supprimerProduit = useCallback(
+    (id: string) => {
+      modifier((p) => {
+        p.m5.produits = p.m5.produits.filter((y) => y.id !== id);
+        // The last product deleted leaves one empty product.
+        if (!p.m5.produits.length) p.m5.produits = [produitVide(p.uniteVente)];
+      });
+      setOuvert(null);
+    },
+    [modifier]
+  );
+  const ajouterProduit = () => {
+    const nouveau = produitVide();
+    modifier((p) => void p.m5.produits.push(nouveau));
+    setOuvert(nouveau.id);
+  };
+  const changerInvest = (id: string, patch: Partial<Investissement>) =>
+    set((m) => {
+      const x = m.investissements.find((y) => y.id === id);
+      if (x) Object.assign(x, patch);
+    });
+  const supprimerInvest = (id: string) =>
+    set((m) => {
+      m.investissements = m.investissements.filter((y) => y.id !== id);
+      if (!m.investissements.length) m.investissements = [investissementVide()];
+    });
+  const changerRessource = (id: string, patch: Partial<Ressource>) =>
+    set((m) => {
+      const x = m.ressources.find((y) => y.id === id);
+      if (x) Object.assign(x, patch);
+    });
+  const supprimerRessource = (id: string) =>
+    set((m) => {
+      m.ressources = m.ressources.filter((y) => y.id !== id);
+      if (!m.ressources.length) m.ressources = [ressourceVide()];
+    });
 
   // NEC-CC-15: learning level. Default Ciblé (plans created before this version). A read-only plan
   // (example, trainer) switches the display locally and saves nothing.
@@ -225,7 +288,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
       <Carte ton="violet" ecouter titre="Les chiffres clés">
         <p className="text-[16px] leading-relaxed text-encre">
           Les chiffres répondent à trois questions : combien faut-il pour démarrer ? combien je gagne sur chaque vente ? à partir de combien de ventes je ne perds plus d'argent ?
-          Tous les montants sont en ariary (Ar). Utilisez les prix réels relevés hier soir.
+          Tous les montants sont en ariary. Utilisez les prix réels relevés hier soir.
         </p>
       </Carte>
 
@@ -239,7 +302,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
             fixes plus le stock de départ.
           </li>
           <li>
-            <span className="font-bold">Coût variable unitaire :</span> ce que coûte une unité vendue (matières, emballage, énergie liée à la production).
+            <span className="font-bold">Coût de revient d'une unité :</span> ce que coûte une unité vendue (matières, emballage, énergie liée à la production), calculé à partir de sa recette.
           </li>
         </ul>
       </Aide>
@@ -282,56 +345,40 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
 
       <div className="h-3" />
 
-      <Carte id="s5a" titre="5a. Mon unité de vente" className="bp-section">
+      <Carte id="s5a" titre="5a. Mes produits et leur recette" sousTitre="Tout ce que vous vendrez : le premier de la liste est votre produit principal." className="bp-section">
         {tete('5a')}
         {enExplication('5a') ? null : (
           <>
-            <ChampTexte
-              label="Mon unité de vente"
-              placeholder="une bouteille, une nuitée, un repas, un kg de poisson, un élève par mois"
-              valeur={plan.uniteVente}
-              onChange={(v) =>
-                modifier((p) => {
-                  p.uniteVente = v;
-                })
-              }
-              lectureSeule={ls}
-            />
-            <p className="text-[15px] font-bold text-encre mb-1.5">Ce que coûte UNE unité</p>
-            <ListeLignes
-              titre="Coûts d'une unité"
-              lignes={m5.couts}
-              onChange={(l) =>
-                set((m) => {
-                  m.couts = l;
-                })
-              }
-              lectureSeule={ls}
-              placeholder="Ex. : fruits, emballage"
-              ajouter="Ajouter un coût"
-            />
-            <div className="rounded-xl bg-turquoiseClair px-3 py-1 mb-4">
-              <Resultat label="Coût variable unitaire (A)" valeur={ariary(c.coutUnitaire)} fort />
-              <Calcul niveau={niveau} texte={f.cout} />
+            <ul className="bp-produits space-y-2.5" aria-label="Mes produits">
+              {m5.produits.map((p, i) => (
+                <CarteProduit
+                  key={p.id}
+                  produit={p}
+                  cp={c.produits[i]}
+                  rang={i}
+                  ouvert={ouvert === p.id}
+                  lectureSeule={ls}
+                  niveau={niveau}
+                  uniteDefaut={plan.uniteVente}
+                  basculer={basculer}
+                  changer={changerProduit}
+                  monter={monter}
+                  supprimer={supprimerProduit}
+                />
+              ))}
+            </ul>
+            {!ls ? <BoutonAjouter texte="Ajouter un produit" onClick={ajouterProduit} className="mb-4" /> : <div className="h-3" />}
+            <div className="bp-totaux-produits rounded-xl bg-turquoiseClair px-3 py-1">
+              <p className="pt-1.5 text-[14px] font-bold text-doux">Tous mes produits, par mois (année 1)</p>
+              <Resultat label="Chiffre d'affaires" valeur={<span className="bp-ca-mois">{ariary(c.caMois)}</span>} />
+              <Calcul niveau={niveau} texte={f.caMois} />
+              <Resultat label="Coûts variables" valeur={<span className="bp-cv-mois">{ariary(c.cvMois)}</span>} />
+              <Calcul niveau={niveau} texte={f.cvMois} />
+              <Resultat label="Marge totale" valeur={<span className="bp-marge-mois">{ariary(c.margeMois)}</span>} fort />
+              <Calcul niveau={niveau} texte={f.margeMois} />
+              {c.tauxMoyen !== null ? <Resultat label="Taux de marge moyen" valeur={`${String(Math.round(c.tauxMoyen * 10000) / 100).replace('.', ',')} %`} /> : null}
+              <Calcul niveau={niveau} texte={f.tauxMoyen} />
             </div>
-            <ChampMontant
-              label="Prix de vente (B)"
-              valeur={m5.prixVente}
-              onChange={(v) =>
-                set((m) => {
-                  m.prixVente = v;
-                })
-              }
-              lectureSeule={ls}
-            />
-            {c.marge !== null ? (
-              <div className="rounded-xl bg-turquoiseClair px-3 py-1">
-                <Resultat label="Marge unitaire (B moins A)" valeur={ariary(c.marge)} fort />
-                <Calcul niveau={niveau} texte={f.marge} />
-                {c.tauxMarge !== null ? <Resultat label="Taux de marge" valeur={pourcent(c.tauxMarge)} /> : null}
-                {c.tauxMarge !== null ? <Calcul niveau={niveau} texte={f.taux} /> : null}
-              </div>
-            ) : null}
             <Alertes liste={liste} section="5a" offre={offre} />
           </>
         )}
@@ -381,7 +428,19 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               suffixe="jours"
               lectureSeule={ls}
             />
-            {seuil ? <p className="bp-seuil rounded-xl bg-violetClair px-3.5 py-3 text-[17px] font-bold text-violet leading-snug">{seuil}</p> : null}
+            <div className="bp-resultats rounded-xl border-2 border-violetClair bg-white px-3 py-2">
+              <p className="text-[16px] font-bold text-violet">Mes résultats</p>
+              <Resultat label="Chiffre d'affaires par mois" valeur={ariary(c.caMois)} />
+              <Resultat label="Marge totale par mois" valeur={ariary(c.margeMois)} />
+              <Resultat label="Charges fixes par mois" valeur={ariary(c.chargesFixes)} />
+              <Resultat label="Seuil de rentabilité par mois" valeur={<span className="bp-seuil-mois">{c.seuilCaMois === null ? 'non calculé' : ariary(c.seuilCaMois)}</span>} fort />
+              <Resultat label="Seuil par jour de travail" valeur={<span className="bp-seuil-jour">{c.seuilCaJour === null ? 'non calculé' : ariary(c.seuilCaJour)}</span>} />
+              <Resultat label="Besoins de démarrage" valeur={ariary(c.besoins)} />
+              <Resultat label="Ressources" valeur={ariary(c.ressources)} />
+              <Resultat label="Écart (ressources moins besoins)" valeur={<span className="bp-ecart-resultats">{c.ecart === 0 ? '0 Ar : équilibré' : ariary(c.ecart)}</span>} />
+            </div>
+            {seuil ? <p className="bp-seuil mt-3 rounded-xl bg-violetClair px-3.5 py-3 text-[17px] font-bold text-violet leading-snug">{seuil}</p> : null}
+            {seuilUnites ? <p className="bp-seuil-unites mt-2 rounded-xl bg-violetClair px-3.5 py-2.5 text-[15px] font-bold text-violet leading-snug">{seuilUnites}</p> : null}
             {seuil ? (
               <div className="mt-2">
                 <Calcul niveau={niveau} texte={f.seuil} />
@@ -396,21 +455,18 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
         {enExplication('5c') ? null : (
           <>
             <p className="text-[15px] font-bold text-encre mb-1.5">Investissements</p>
-            <ListeLignes
-              titre="Investissements"
+            <ListeInvestissements
               lignes={m5.investissements}
-              onChange={(l) =>
-                set((m) => {
-                  m.investissements = l;
-                })
-              }
+              apportes={m5.ressources.filter((r) => r.nature === 'materiel')}
               lectureSeule={ls}
-              placeholder="Ex. : machine, réfrigérateur"
-              ajouter="Ajouter un investissement"
+              changer={changerInvest}
+              supprimer={supprimerInvest}
+              ajouter={() => set((m) => void m.investissements.push(investissementVide()))}
             />
             <div className="rounded-xl bg-turquoiseClair px-3 py-1 mb-4">
-              <Resultat label="Total des investissements" valeur={ariary(c.investissements)} fort />
+              <Resultat label="Investissements achetés" valeur={<span className="bp-investissements">{ariary(c.investissements)}</span>} fort />
               <Calcul niveau={niveau} texte={f.investissements} />
+              {c.apporte ? <Resultat label="Matériel apporté" valeur={ariary(c.apporte)} /> : null}
             </div>
             <ChampMontant
               label="Stock de départ"
@@ -455,34 +511,24 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               </button>
             ) : null}
 
-            <p className="text-[15px] font-bold text-encre mb-2 mt-2">Mes ressources</p>
-            <ChampMontant label="Apport personnel" valeur={m5.ressources.apport} onChange={(v) => set((m) => void (m.ressources.apport = v))} lectureSeule={ls} />
-            <ChampMontant
-              label="Subvention visée (GEW, partenaires)"
-              valeur={m5.ressources.subvention}
-              onChange={(v) => set((m) => void (m.ressources.subvention = v))}
+            <p className="text-[15px] font-bold text-encre mb-1 mt-2">Mes ressources</p>
+            <p className="text-[14px] text-doux mb-2 leading-snug">
+              Argent du porteur ou des associés, matériel apporté, subvention, prêt : une ligne par ressource. Le matériel que vous apportez se saisit ici, une seule fois : l'app
+              l'ajoute à vos besoins.
+            </p>
+            <ListeRessources
+              lignes={m5.ressources}
               lectureSeule={ls}
-            />
-            <ChampMontant label="Prêt familial ou microfinance" valeur={m5.ressources.pret} onChange={(v) => set((m) => void (m.ressources.pret = v))} lectureSeule={ls} />
-            <ChampTexte
-              label="Autre ressource : laquelle ?"
-              ligne
-              valeur={m5.ressources.autreLibelle}
-              onChange={(v) => set((m) => void (m.ressources.autreLibelle = v))}
-              lectureSeule={ls}
-            />
-            <ChampMontant
-              label={m5.ressources.autreLibelle.trim() || 'Autre ressource'}
-              valeur={m5.ressources.autre}
-              onChange={(v) => set((m) => void (m.ressources.autre = v))}
-              lectureSeule={ls}
+              changer={changerRessource}
+              supprimer={supprimerRessource}
+              ajouter={() => set((m) => void m.ressources.push(ressourceVide()))}
             />
 
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-xl bg-violetClair p-3 min-w-0">
                 <p className="text-[13px] text-doux">Besoins</p>
                 <p className="bp-besoins text-[17px] font-bold text-violet tabular-nums break-words">{ariary(c.besoins)}</p>
-                <p className="text-[12px] text-doux mt-0.5">Investissements + fonds de roulement</p>
+                <p className="text-[12px] text-doux mt-0.5">Investissements achetés + matériel apporté + fonds de roulement</p>
               </div>
               <div className="rounded-xl bg-turquoiseClair p-3 min-w-0">
                 <p className="text-[13px] text-doux">Ressources</p>
@@ -521,37 +567,52 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               ))}
             </div>
             <div role="tabpanel" aria-label={`Année ${annee + 1}`} className="bp-annee">
-              <ChampNombre
-                label={`Ventes par mois${plan.uniteVente.trim() ? ` (${pluriel(plan.uniteVente, 2)})` : ''}`}
-                valeur={m5.annees[annee].ventesParMois}
-                onChange={(v) =>
-                  set((m) => {
-                    m.annees[annee].ventesParMois = v;
-                  })
-                }
-                lectureSeule={ls}
-              />
               {annee === 0 ? (
-                <div className="rounded-xl border border-filet px-3 py-1 mb-4">
-                  <Resultat label="Charges fixes par mois (reprises de 5b)" valeur={ariary(c.chargesFixes)} />
-                </div>
+                <>
+                  <p className="text-[14px] text-doux mb-2 leading-snug">Les ventes par mois de l'année 1 se saisissent produit par produit, en 5a.</p>
+                  <div className="rounded-xl border border-filet px-3 py-1 mb-4">
+                    <Resultat label="Charges fixes par mois (reprises de 5b)" valeur={ariary(c.chargesFixes)} />
+                  </div>
+                </>
               ) : (
-                <ChampMontant
-                  label="Charges fixes par mois"
-                  valeur={m5.annees[annee].chargesFixesMois}
-                  onChange={(v) =>
-                    set((m) => {
-                      m.annees[annee].chargesFixesMois = v;
-                    })
-                  }
-                  lectureSeule={ls}
-                />
+                <>
+                  <ChampDecimal
+                    key={`h${annee}`}
+                    label="Hausse des ventes (%)"
+                    aide={
+                      <p className="text-[14px] text-doux mt-1 leading-snug">
+                        Par rapport à l'année {annee}, pour tous vos produits. 0 = ventes stables ; un nombre négatif = une baisse. Laissez vide si vous ne savez pas : l'année
+                        reste vide.
+                      </p>
+                    }
+                    valeur={m5.hausses[annee - 1]}
+                    onChange={(v) =>
+                      set((m) => {
+                        m.hausses[annee - 1] = v;
+                      })
+                    }
+                    suffixe="%"
+                    negatif
+                    refuse={(v) => (v <= -100 ? 'Une baisse de 100 % ou plus voudrait dire ne plus rien vendre : indiquez une baisse plus petite.' : null)}
+                    lectureSeule={ls}
+                  />
+                  <ChampMontant
+                    label="Charges fixes par mois"
+                    valeur={m5.annees[annee].chargesFixesMois}
+                    onChange={(v) =>
+                      set((m) => {
+                        m.annees[annee].chargesFixesMois = v;
+                      })
+                    }
+                    lectureSeule={ls}
+                  />
+                </>
               )}
               {a ? (
                 <div className="rounded-xl bg-turquoiseClair px-3 py-1">
-                  <Resultat label="Quantités vendues dans l'année" valeur={`${grouper(a.quantites)} ${unites(a.quantites)}`} />
-                  <Calcul key={`q${annee}`} niveau={niveau} texte={f.quantites} />
-                  <Resultat label="Chiffre d'affaires" valeur={ariary(a.ca)} />
+                  {c.produits.length === 1 ? <Resultat label="Quantités vendues dans l'année" valeur={`${grouper(a.quantites)} ${unites(a.quantites)}`} /> : null}
+                  {c.produits.length === 1 ? <Calcul key={`q${annee}`} niveau={niveau} texte={f.quantites} /> : null}
+                  <Resultat label="Chiffre d'affaires" valeur={<span className="bp-annee-ca">{ariary(a.ca)}</span>} />
                   <Calcul key={`ca${annee}`} niveau={niveau} texte={f.ca} />
                   <Resultat label="Coûts variables" valeur={ariary(a.cv)} />
                   <Calcul key={`cv${annee}`} niveau={niveau} texte={f.cv} />
@@ -559,13 +620,19 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
                   <Calcul key={`m${annee}`} niveau={niveau} texte={f.margeTotale} />
                   <Resultat label="Charges fixes de l'année" valeur={ariary(a.chargesAnnee)} />
                   <Calcul key={`cf${annee}`} niveau={niveau} texte={f.chargesAnnee} />
-                  <Resultat label="Résultat avant amortissements et avant impôt" valeur={ariary(a.resultat)} fort />
+                  <Resultat label="Résultat avant amortissements et avant impôt" valeur={<span className="bp-annee-resultat">{ariary(a.resultat)}</span>} fort />
                   <Calcul key={`r${annee}`} niveau={niveau} texte={f.resultat} />
                   {a.impot !== null ? <Resultat label="Impôt" valeur={ariary(a.impot)} /> : null}
                   {a.net !== null ? <Resultat label="Résultat net" valeur={ariary(a.net)} fort /> : null}
                 </div>
               ) : (
-                <p className="text-doux italic">Indiquez les ventes par mois pour voir les résultats de cette année.</p>
+                <p className="bp-annee-vide text-doux italic">
+                  {annee === 0
+                    ? 'Indiquez le prix et les ventes par mois de vos produits (5a) pour voir les résultats de cette année.'
+                    : annee === 2 && !c.annees[1]
+                      ? "Remplissez d'abord la hausse des ventes de l'année 2."
+                      : 'Indiquez la hausse des ventes pour voir les résultats de cette année.'}
+                </p>
               )}
             </div>
             <div className="mt-4">

@@ -1,6 +1,7 @@
 // planVide(): a plan with every field initialised (contract of types.ts), and the merge that keeps
 // unknown fields of a stored plan (written by a later version) through a load and a save.
-import type { Impact, Ligne, Mission, Pitch, Plan } from '../types';
+import type { Composant, Impact, Investissement, Ligne, Mission, Pitch, Plan, Produit, Ressource } from '../types';
+import { migrerM5 } from './migrerM5';
 
 export function nouvelId(): string {
   try {
@@ -12,6 +13,23 @@ export function nouvelId(): string {
 
 export function ligneVide(): Ligne {
   return { id: nouvelId(), libelle: '', montant: null };
+}
+
+/** NEC-CC-38: empty component (one global cost by default: lot 1 piece, 1 piece used). */
+export function composantVide(): Composant {
+  return { id: nouvelId(), designation: '', prixLot: null, quantiteLot: 1, uniteLot: 'piece', quantiteUtilisee: 1, uniteUtilisee: 'piece' };
+}
+
+export function produitVide(unite = ''): Produit {
+  return { id: nouvelId(), nom: '', unite, prix: null, ventesParMois: null, composants: [composantVide()] };
+}
+
+export function investissementVide(): Investissement {
+  return { id: nouvelId(), designation: '', quantite: 1, prixUnitaire: null };
+}
+
+export function ressourceVide(nature: Ressource['nature'] = 'argent'): Ressource {
+  return { id: nouvelId(), nature, designation: '', valeur: null };
 }
 
 export function impactVide(): Impact {
@@ -103,15 +121,16 @@ export function planVide(): Plan {
       demarches: (['statuts', 'nif', 'stat', 'rcs', 'carteFiscale', 'compte', 'cnaps'] as const).map((id) => ({ id, fait: false, datePrevue: '' }))
     },
     m5: {
-      couts: [ligneVide()],
-      prixVente: null,
+      modele: 2,
+      produits: [produitVide()],
       chargesFixes: { loyer: null, salaires: null, energie: null, transport: null, telephone: null, autres: null, lignes: [] },
       joursParMois: 25,
-      investissements: [ligneVide()],
+      investissements: [investissementVide()],
       stockDepart: null,
       fondsRoulementSaisi: null,
-      ressources: { apport: null, subvention: null, pret: null, autre: null, autreLibelle: '' },
-      annees: [0, 1, 2].map(() => ({ ventesParMois: null, chargesFixesMois: null })),
+      ressources: [ressourceVide()],
+      hausses: [null, null],
+      annees: [0, 1, 2].map(() => ({ chargesFixesMois: null })),
       tauxImpot: null,
       hypotheses: '',
       risques: [0, 1, 2].map(() => ({ id: nouvelId(), risque: '', reponse: '' }))
@@ -141,11 +160,22 @@ function fusionner(base: unknown, stocke: unknown): unknown {
 
 /** A stored plan completed with every field of the current model (unknown future fields survive). */
 export function completerPlan(stocke: Partial<Plan> & { id: string }): Plan {
-  const plan = fusionner(planVide(), stocke) as Plan;
+  // NEC-CC-38: an old module 5 (single product) is moved into the lists BEFORE the merge, otherwise
+  // the merge would add the empty product of planVide() to the old plan.
+  const brut = stocke as Record<string, unknown>;
+  const entree = brut.m5 !== undefined && brut.m5 !== null ? { ...stocke, m5: migrerM5(brut.m5, typeof brut.uniteVente === 'string' ? brut.uniteVente : '') } : stocke;
+  const plan = fusionner(planVide(), entree) as Plan;
+  const m5 = plan.m5;
+  if (!Array.isArray(m5.produits) || !m5.produits.length) m5.produits = [produitVide(plan.uniteVente)];
+  for (const p of m5.produits) if (!Array.isArray(p.composants)) p.composants = [];
+  if (!Array.isArray(m5.investissements)) m5.investissements = [];
+  if (!Array.isArray(m5.ressources)) m5.ressources = [];
+  const h = Array.isArray(m5.hausses) ? m5.hausses : [];
+  m5.hausses = [typeof h[0] === 'number' ? h[0] : null, typeof h[1] === 'number' ? h[1] : null];
   // `annees` always has 3 items.
-  const annees = Array.isArray(plan.m5.annees) ? plan.m5.annees.slice(0, 3) : [];
-  while (annees.length < 3) annees.push({ ventesParMois: null, chargesFixesMois: null });
-  plan.m5.annees = annees;
+  const annees = Array.isArray(m5.annees) ? m5.annees.slice(0, 3) : [];
+  while (annees.length < 3) annees.push({ chargesFixesMois: null });
+  m5.annees = annees;
   return plan;
 }
 

@@ -6,7 +6,7 @@ import { ChampMontant, ChampNombre, ChampTexte, Choix } from '../../composants/C
 import { Carte, Resultat } from '../../composants/Carte';
 import { Aide } from '../../composants/Aide';
 import { Icone } from '../../composants/Icones';
-import { nouvelId } from '../../etat/vide';
+import { nouvelId, produitVide } from '../../etat/vide';
 import { ariary, grouper, pluriel } from '../../utils/format';
 import { calculerMarche } from './calculs';
 
@@ -47,8 +47,9 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
   const [repris, setRepris] = useState(false);
   const set = (recette: (m: Plan['m3']) => void) => modifier((p) => recette(p.m3));
   const unites = (n: number) => pluriel(plan.uniteVente, n);
-  const prix5 = plan.m5.prixVente;
-  const ventes5 = plan.m5.annees[0]?.ventesParMois ?? null;
+  // NEC-CC-38: page 3a talks with the produit principal of module 5 (first product, cahier R8).
+  const prix5 = plan.m5.produits[0]?.prix ?? null;
+  const ventes5 = plan.m5.produits[0]?.ventesParMois ?? null;
 
   const changerConcurrent = (id: string, patch: Partial<Concurrent>) =>
     set((m) => {
@@ -155,7 +156,8 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
             onClick={() => {
               const v = r.ventesMois;
               modifier((p) => {
-                p.m5.annees[0].ventesParMois = v;
+                if (!p.m5.produits.length) p.m5.produits.push(produitVide(p.uniteVente));
+                p.m5.produits[0].ventesParMois = v;
               });
               setRepris(true);
             }}

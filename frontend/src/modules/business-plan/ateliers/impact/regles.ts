@@ -122,8 +122,10 @@ export function regles(plan: Plan): Regle[] {
   for (const e of impact.emplois) {
     if (e.statut !== 'benevole' && /b[ée]n[ée]vole/i.test(e.role) && e.annees.some(Boolean)) out.push({ cle: `V3-${e.id}`, texte: RAPPEL_BENEVOLE });
   }
-  const v = plan.m5.annees.map((a) => a.ventesParMois);
-  if (v.every((x) => typeof x === 'number') && ((n2 > n1 && (v[1] as number) <= (v[0] as number)) || (n3 > n2 && (v[2] as number) <= (v[1] as number)))) {
+  // NEC-CC-38: sales of years 2 and 3 come from one growth in % (cahier R3): flat or down = growth <= 0.
+  const ventes1 = plan.m5.produits.some((p) => typeof p.ventesParMois === 'number');
+  const [h2, h3] = plan.m5.hausses;
+  if (ventes1 && typeof h2 === 'number' && typeof h3 === 'number' && ((n2 > n1 && h2 <= 0) || (n3 > n2 && h3 <= 0))) {
     out.push({ cle: 'V4', texte: 'Tu embauches, mais tes ventes ne bougent pas : qui paiera ce salaire ?' });
   }
   if (n1 > 10) out.push({ cle: 'V5', texte: '10 personnes dès la première année : as-tu les ventes et le capital pour les payer ?' });

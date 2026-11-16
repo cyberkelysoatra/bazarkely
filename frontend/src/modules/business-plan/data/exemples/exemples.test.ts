@@ -6,15 +6,18 @@ import { calculer, alertes } from '../../utils/chiffres';
 import { calculerMarche } from '../../ateliers/m3/calculs';
 import { textePhrase } from '../../ateliers/m1/phrase';
 
+// NEC-CC-38: 3 products per example (LISTES-M5-EXEMPLES.md v0.3, validated by CGA). `cu`, `marge`, `taux` =
+// produit principal (product 1 = the old single product, same cost); `seuil` = break-even in turnover per month
+// (cahier R4); needs = resources unchanged; year results computed by the app (growth = exact ratio of the old sales).
 const SOURCE: Record<string, { cu: number; marge: number; taux: number; cf: number; seuil: number; besoins: number; ca1: number; res: number[]; ventesM3: number }> = {
-  agriculture: { cu: 1400, marge: 1600, taux: 53, cf: 1230000, seuil: 769, besoins: 9000000, ca1: 43200000, res: [8280000, 14760000, 20040000], ventesM3: 1200 },
-  'economie-bleue': { cu: 12800, marge: 4200, taux: 25, cf: 785000, seuil: 187, besoins: 7655000, ca1: 81600000, res: [10740000, 16380000, 22080000], ventesM3: 400 },
-  tourisme: { cu: 15250, marge: 29750, taux: 66, cf: 680000, seuil: 23, besoins: 7830000, ca1: 29160000, res: [11118000, 12336000, 13404000], ventesM3: 54 },
-  energie: { cu: 150, marge: 850, taux: 85, cf: 590000, seuil: 695, besoins: 9370000, ca1: 18720000, res: [8832000, 13320000, 15540000], ventesM3: 1560 },
-  numerique: { cu: 13500, marge: 11500, taux: 46, cf: 580000, seuil: 51, besoins: 6740000, ca1: 27000000, res: [5460000, 9060000, 11340000], ventesM3: 90 },
-  education: { cu: 2500, marge: 17500, taux: 88, cf: 750000, seuil: 43, besoins: 8150000, ca1: 12000000, res: [1500000, 3250000, 4700000], ventesM3: 60 },
+  agriculture: { cu: 1400, marge: 1600, taux: 53, cf: 1230000, seuil: 2297634, besoins: 9000000, ca1: 54000000, res: [14148000, 22487640, 29699550], ventesM3: 1200 },
+  'economie-bleue': { cu: 12800, marge: 4200, taux: 25, cf: 785000, seuil: 3262819, besoins: 7655000, ca1: 105840000, res: [16044000, 23673000, 31362000], ventesM3: 400 },
+  tourisme: { cu: 15250, marge: 29750, taux: 66, cf: 680000, seuil: 1004968, besoins: 7830000, ca1: 35700000, res: [15996000, 18478667, 19908000], ventesM3: 54 },
+  energie: { cu: 150, marge: 850, taux: 85, cf: 590000, seuil: 689185, besoins: 9370000, ca1: 22680000, res: [12336000, 17812308, 20930770], ventesM3: 1560 },
+  numerique: { cu: 13500, marge: 11500, taux: 46, cf: 580000, seuil: 1246192, besoins: 6740000, ca1: 41640000, res: [12420000, 19113334, 23713334], ventesM3: 90 },
+  education: { cu: 2500, marge: 17500, taux: 88, cf: 750000, seuil: 866719, besoins: 8150000, ca1: 18000000, res: [6576000, 9172000, 11468000], ventesM3: 60 },
   // NEC-CC-17: MADIO NOSY, compost sale left out of the revenues as in the source.
-  environnement: { cu: 13000, marge: 37000, taux: 74, cf: 740000, seuil: 20, besoins: 10720000, ca1: 14400000, res: [1776000, 6216000, 7848000], ventesM3: 24 }
+  environnement: { cu: 13000, marge: 37000, taux: 74, cf: 740000, seuil: 991172, besoins: 10720000, ca1: 21120000, res: [6888000, 13458000, 16794000], ventesM3: 24 }
 };
 
 /** Known differences between the source and what the app computes (written in the NEC-CC-13 report). */
@@ -45,15 +48,22 @@ describe('NEC-CC-13 worked examples', () => {
     expect(exempleParId('exemple-energie')?.nom).toBe('JIRO KELY');
   });
 
-  it('MIANATRA PLUS: 10 paying months spread over 12, source totals, visible sentence (NEC-CC-15-B)', () => {
+  it('MIANATRA PLUS: 50 pupils a month = the 600 yearly subscriptions of the source (NEC-CC-15-B), sentence kept', () => {
     const p = exempleParId('exemple-education')!.plan();
     const c = calculer(p);
-    expect(c.annees.map((a) => a?.quantites)).toEqual([600, 700, 800]);
-    expect(c.annees.map((a) => a?.ca)).toEqual([12000000, 14000000, 16000000]);
-    expect(c.annees.map((a) => a?.cv)).toEqual([1500000, 1750000, 2000000]);
-    expect(c.annees.map((a) => a?.chargesAnnee)).toEqual([9000000, 9000000, 9300000]);
-    expect(c.annees[0]?.resultat).toBe(1500000);
+    expect(p.m5.produits[0].ventesParMois).toBe(50);
+    expect(c.produits[0].caMois * 12).toBe(12000000);
+    expect(c.seuilCaJour).toBeNull();
     expect(p.m5.hypotheses).toContain('Cours payés 10 mois par an : ventes ramenées à une moyenne sur 12 mois');
+  });
+
+  it('NEC-CC-38: 3 products each, positive margins, equipment brought in JUS\'NOSY, product 1 = the old cost', () => {
+    for (const e of EXEMPLES) {
+      const c = calculer(e.plan());
+      expect(c.produits).toHaveLength(3);
+      expect(c.produits.every((x) => x.marge !== null && x.marge > 0)).toBe(true);
+    }
+    expect(calculer(exempleParId('exemple')!.plan()).apporte).toBe(800000);
   });
 
   for (const e of EXEMPLES) {
@@ -76,7 +86,7 @@ describe('NEC-CC-13 worked examples', () => {
         expect(c.marge).toBe(s.marge);
         expect(c.tauxMarge).toBe(s.taux);
         expect(c.chargesFixes).toBe(s.cf);
-        expect(c.seuilMois).toBe(s.seuil);
+        expect(c.seuilCaMois).toBe(s.seuil);
         expect(c.besoins).toBe(s.besoins);
         expect(c.ressources).toBe(s.besoins);
         expect(c.annees[0]?.ca).toBe(x.ca1 ?? s.ca1);

@@ -1,6 +1,7 @@
-// "Envoyer vers mon prix de revient": a price seen in the field becomes a cost line of 5a.
+// "Envoyer vers mon prix de revient": a price seen in the field becomes a component of the recipe
+// of the produit principal (NEC-CC-38: first product of the list, one global cost line, cahier R2).
 import type { Plan } from '../../types';
-import { nouvelId } from '../../etat/vide';
+import { nouvelId, produitVide } from '../../etat/vide';
 
 type PrixReleve = Plan['prix'][number];
 
@@ -10,9 +11,12 @@ export function libelleCout(l: PrixReleve): string {
   return unite ? `${element} (${unite})` : element;
 }
 
-/** Appends the line to plan.m5.couts (mutable recipe). The single blank line of a new plan is replaced. */
+/** Appends the line to the recipe of the first product (mutable recipe). Its single blank line is replaced. */
 export function ajouterAuxCouts(p: Plan, l: PrixReleve): void {
-  const ligne = { id: nouvelId(), libelle: libelleCout(l), montant: l.prix };
-  const vide = p.m5.couts.length === 1 && !p.m5.couts[0].libelle.trim() && p.m5.couts[0].montant === null;
-  p.m5.couts = vide ? [ligne] : [...p.m5.couts, ligne];
+  if (!p.m5.produits.length) p.m5.produits.push(produitVide(p.uniteVente));
+  const produit = p.m5.produits[0];
+  const ligne = { id: nouvelId(), designation: libelleCout(l), prixLot: l.prix, quantiteLot: 1, uniteLot: 'piece', quantiteUtilisee: 1, uniteUtilisee: 'piece' };
+  const c = produit.composants;
+  const vide = c.length === 1 && !c[0].designation.trim() && c[0].prixLot === null;
+  produit.composants = vide ? [ligne] : [...c, ligne];
 }

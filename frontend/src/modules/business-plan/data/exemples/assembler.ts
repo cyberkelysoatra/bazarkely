@@ -1,6 +1,6 @@
 // NEC-CC-13: builds one read-only worked example from its per-section files, exactly like
 // data/exemple/index.ts does for JUS'NOSY (which stays untouched, same id 'exemple').
-import type { Impact, Ligne, Mission, Plan } from '../../types';
+import type { Composant, Impact, Investissement, Ligne, Mission, Plan, Produit, Ressource, Unite } from '../../types';
 import { completerPlan } from '../../etat/vide';
 
 export interface SectionsExemple {
@@ -17,6 +17,22 @@ export interface SectionsExemple {
 
 /** A cost or investment line of an example. */
 export const l = (id: string, libelle: string, montant: number): Ligne => ({ id, libelle, montant });
+
+/** NEC-CC-38: a recipe line "désignation : prix du lot / quantité du lot unité, quantité utilisée (unité)". */
+export const k = (id: string, designation: string, prixLot: number, quantiteLot: number, uniteLot: Unite, quantiteUtilisee: number, uniteUtilisee: Unite = uniteLot): Composant => ({
+  id,
+  designation,
+  prixLot,
+  quantiteLot,
+  uniteLot,
+  quantiteUtilisee,
+  uniteUtilisee
+});
+/** A direct cost typed on one line ("1 autre": lot 1 piece, 1 piece used). */
+export const direct = (id: string, designation: string, montant: number): Composant => k(id, designation, montant, 1, 'piece', 1);
+export const produit = (id: string, nom: string, unite: string, prix: number, ventesParMois: number, composants: Composant[]): Produit => ({ id, nom, unite, prix, ventesParMois, composants });
+export const inv = (id: string, designation: string, quantite: number, prixUnitaire: number): Investissement => ({ id, designation, quantite, prixUnitaire });
+export const res = (id: string, nature: Ressource['nature'], designation: string, valeur: number): Ressource => ({ id, nature, designation, valeur });
 
 type Demarche = Plan['m4']['demarches'][number];
 /** The 7 procedures of 4d, in the app order, with the planned date of each ('' when not given). */

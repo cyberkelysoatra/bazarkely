@@ -101,9 +101,23 @@ class Redaction {
     this.paragraphe(titre, { taille: 17, style: 'bold', couleur: VIOLET, apres: 3 });
   }
 
-  bloc(b: Bloc): void {
+  /** NEC-CC-38: height of a whole table (header and rows), to keep it with its sub-title. */
+  hauteurTableau(entetes: string[], lignes: string[][], parts: number[], total: boolean): number {
+    const taille = 9.5;
+    const hl = this.hauteurLigne(taille, 1.25);
+    const pad = 1.6;
+    const largeurs = parts.map((x) => x * UTILE);
+    const h = (cellules: string[], gras: boolean) =>
+      Math.max(...cellules.map((c, i) => this.lignes(c, largeurs[i] - 2 * pad, taille, gras ? 'bold' : 'normal').length)) * hl + 2 * pad;
+    return (entetes.length ? h(entetes, true) : 0) + lignes.reduce((t, l, k) => t + h(l, total && k === lignes.length - 1), 0) + 1;
+  }
+
+  bloc(b: Bloc, suivant?: Bloc): void {
     if (b.type === 'sousTitre') {
-      this.place(this.hauteurLigne(13) + 12);
+      // A sub-title never stays alone at the bottom of a page: kept with the table that follows when it fits.
+      const titre = this.hauteurLigne(13) + 4;
+      const table = suivant?.type === 'tableau' ? this.hauteurTableau(suivant.entetes, suivant.lignes, suivant.largeurs, !!suivant.total) : 0;
+      this.place(table && titre + table <= BAS - MARGE ? titre + table : this.hauteurLigne(13) + 12);
       this.paragraphe(b.texte, { taille: 13, style: 'bold', couleur: VIOLET, avant: 2.5, apres: 1.5 });
     } else if (b.type === 'texte') {
       this.place(this.hauteurLigne(10.5) * 2);
@@ -159,10 +173,13 @@ class Redaction {
 
     const tete = entetes.length ? ligne(entetes, 'entete') : null;
     this.y += 1;
-    this.place((tete?.h ?? 0) + hl + 2 * pad);
+    const rangs = lignes.map((cellules, k) => ligne(cellules, total && k === lignes.length - 1 ? 'total' : 'normal'));
+    // NEC-CC-38: a table that fits on one page is never cut across two pages.
+    const hauteur = (tete?.h ?? 0) + rangs.reduce((t, l) => t + l.h, 0);
+    this.place(hauteur <= BAS - MARGE ? hauteur : (tete?.h ?? 0) + hl + 2 * pad);
     if (tete) dessiner(tete, entetes);
     lignes.forEach((cellules, k) => {
-      const l = ligne(cellules, total && k === lignes.length - 1 ? 'total' : 'normal');
+      const l = rangs[k];
       if (this.y + l.h > BAS) {
         this.nouvellePage();
         if (tete) dessiner(tete, entetes);
@@ -393,7 +410,7 @@ export async function creerPdf(plan: Plan, opts: OptionsPdf): Promise<File> {
 
   for (const s of sectionsPdf(plan)) {
     r.titreSection(s.titre);
-    for (const b of s.blocs) r.bloc(b);
+    s.blocs.forEach((b, i) => r.bloc(b, s.blocs[i + 1]));
   }
 
   planContinue(r, plan);

@@ -180,7 +180,7 @@ export async function dupliquerPlan(source: Plan, nomProjet?: string): Promise<P
   const copie = copier(source);
   if (nomProjet !== undefined) copie.identite.nomProjet = nomProjet;
   // New ids for the lines, so that the copy never shares an id with its source.
-  for (const l of [...copie.m5.couts, ...copie.m5.investissements, ...copie.m5.chargesFixes.lignes]) l.id = nouvelId();
+  for (const l of [...copie.m5.produits, ...copie.m5.produits.flatMap((p) => p.composants), ...copie.m5.investissements, ...copie.m5.ressources, ...copie.m5.chargesFixes.lignes]) l.id = nouvelId();
   for (const r of copie.m5.risques) r.id = nouvelId();
   return creerPlan(copie);
 }

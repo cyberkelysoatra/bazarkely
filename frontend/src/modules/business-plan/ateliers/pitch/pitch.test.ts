@@ -57,8 +57,8 @@ describe('pitch: rehearsal', () => {
 describe('pitch: trap questions', () => {
   it('asks about the grant when it covers more than 70 % of the needs', () => {
     const p = planVide();
-    p.m5.investissements = [{ id: 'i', libelle: 'Matériel', montant: 1_000_000 }];
-    p.m5.ressources.subvention = 900_000;
+    p.m5.investissements = [{ id: 'i', designation: 'Matériel', quantite: 1, prixUnitaire: 1_000_000 }];
+    p.m5.ressources = [{ id: 'r', nature: 'subvention', designation: 'GEW', valeur: 900_000 }];
     const q = questionsPieges(p);
     expect(q[0].texte).toBe("« Et si tu n'obtiens pas la subvention ? »");
     expect(q).toHaveLength(3);

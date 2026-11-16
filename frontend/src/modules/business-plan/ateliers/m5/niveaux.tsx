@@ -4,8 +4,8 @@
 // changes a figure, the formulas only repeat the numbers computed by utils/chiffres.
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BoutonEcouter } from '../../composants/Ecouter';
-import type { NiveauChiffres, Plan } from '../../types';
-import type { Chiffres, CleAlerte } from '../../utils/chiffres';
+import type { Composant, NiveauChiffres, Plan } from '../../types';
+import { coutComposant, libelleUnite, normaliserUnite, totalInvestissement, uniteUtiliseeEffective, type Chiffres, type ChiffresProduit, type CleAlerte } from '../../utils/chiffres';
 import { ariary, grouper, pluriel } from '../../utils/format';
 
 export const NIVEAUX: { v: NiveauChiffres; t: string; d: string }[] = [
@@ -135,38 +135,64 @@ function nb(n: number): string {
 const plus = (valeurs: number[]) => (valeurs.length ? valeurs.map(nb).join(' + ') : '0');
 const remplis = (valeurs: (number | null | undefined)[]) => valeurs.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
 
-/** Every formula of module 5, written with the participant's own numbers. */
+/** Percent with 2 decimals and a comma: 0.369312 -> "36,93 %". */
+function pct(x: number): string {
+  return `${(Math.round(x * 10000) / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',')} %`;
+}
+
+/** Formula of one component (R2): "150 000 ÷ 50 kg × 300 g (= 0,3 kg) = 900 Ar" (null when not computable). */
+export function formuleComposant(k: Composant): string | null {
+  const r = coutComposant(k);
+  if (r.cout === null || k.prixLot === null || k.quantiteLot === null || k.quantiteUtilisee === null) return null;
+  const lot = normaliserUnite(k.uniteLot);
+  const util = uniteUtiliseeEffective(k);
+  const enLot = lot === 'kg' || lot === 'l' ? k.quantiteUtilisee / 1000 : k.quantiteUtilisee * 1000;
+  const conv = lot !== util ? ` (= ${nb(enLot)} ${lot})` : '';
+  return `${nb(k.prixLot)} ÷ ${nb(k.quantiteLot)} ${libelleUnite(lot, k.quantiteLot)} × ${nb(k.quantiteUtilisee)} ${libelleUnite(util, k.quantiteUtilisee)}${conv} = ${ariary(r.cout)}`;
+}
+
+/** Formulas of one product: cost (sum of the components), margin, margin rate. */
+export function formulesProduit(p: ChiffresProduit) {
+  const couts = p.composants.map((x) => x.cout).filter((x): x is number => x !== null);
+  return {
+    cout: couts.length ? `Coût de revient d'une unité = ${plus(couts)} = ${ariary(p.cout)}` : null,
+    marge: p.prix !== null && p.marge !== null ? `Marge = ${nb(p.prix)} moins ${nb(p.cout)} = ${ariary(p.marge)}` : null,
+    taux: p.prix !== null && p.marge !== null && p.tauxMarge !== null ? `Taux de marge = ${nb(p.marge)} ÷ ${nb(p.prix)} × 100 = ${p.tauxMarge} %` : null
+  };
+}
+
+/** Every formula of module 5, written with the participant's own numbers (NEC-CC-38: all products). */
 export function formules(plan: Plan, c: Chiffres, annee: number) {
   const m5 = plan.m5;
-  const B = c.prix;
-  const lignesCouts = remplis(m5.couts.map((l) => l.montant));
+  const vendus = c.produits.filter((p) => p.ventesParMois !== null && p.prix !== null);
   const cf = m5.chargesFixes;
   const lignesCharges = remplis([cf.loyer, cf.salaires, cf.energie, cf.transport, cf.telephone, cf.autres, ...cf.lignes.map((l) => l.montant)]);
-  const lignesInvest = remplis(m5.investissements.map((l) => l.montant));
-  const r = m5.ressources;
-  const lignesRes = remplis([r.apport, r.subvention, r.pret, r.autre]);
+  const lignesInvest = m5.investissements.map(totalInvestissement).filter((x) => x > 0);
+  const lignesRes = remplis(m5.ressources.map((r) => r.valeur));
   const a = c.annees[annee];
-  const v = m5.annees[annee]?.ventesParMois;
-  const u = (n: number) => pluriel(plan.uniteVente, n);
+  const h = annee > 0 ? m5.hausses[annee - 1] : null;
+  const seul = c.produits.length === 1 ? c.produits[0] : null;
+  const u = (n: number) => pluriel(seul?.unite || plan.uniteVente, n);
   return {
-    cout: lignesCouts.length ? `Coût d'une unité (A) = ${plus(lignesCouts)} = ${ariary(c.coutUnitaire)}` : null,
-    marge: B !== null && c.marge !== null ? `Marge = ${nb(B)} moins ${nb(c.coutUnitaire)} = ${ariary(c.marge)}` : null,
-    taux: B !== null && c.marge !== null && c.tauxMarge !== null ? `Taux de marge = ${nb(c.marge)} ÷ ${nb(B)} × 100 = ${c.tauxMarge} %` : null,
+    caMois: vendus.length ? `Chiffre d'affaires par mois = ${vendus.map((p) => `${nb(p.prix!)} × ${nb(p.ventesParMois!)}`).join(' + ')} = ${ariary(c.caMois)}` : null,
+    cvMois: vendus.length ? `Coûts variables par mois = ${vendus.map((p) => `${nb(p.cout)} × ${nb(p.ventesParMois!)}`).join(' + ')} = ${ariary(c.cvMois)}` : null,
+    margeMois: c.caMois > 0 ? `Marge totale par mois = ${nb(c.caMois)} moins ${nb(c.cvMois)} = ${ariary(c.margeMois)}` : null,
+    tauxMoyen: c.tauxMoyen !== null ? `Taux de marge moyen = ${nb(c.margeMois)} ÷ ${nb(c.caMois)} = ${pct(c.tauxMoyen)}` : null,
     charges: lignesCharges.length ? `Charges fixes (C) = ${plus(lignesCharges)} = ${ariary(c.chargesFixes)}` : null,
     seuil:
-      c.seuilMois !== null && c.marge !== null && c.chargesFixes > 0
-        ? `Seuil = charges fixes ÷ marge d'une unité = ${nb(c.chargesFixes)} ÷ ${nb(c.marge)} = ${nb(Math.round((c.chargesFixes / c.marge) * 100) / 100)}, arrondi au-dessus : ${grouper(c.seuilMois)} ${u(c.seuilMois)} par mois${
-            c.seuilJour !== null ? ` ; ${grouper(c.seuilMois)} ÷ ${m5.joursParMois} jours = ${grouper(c.seuilJour)} par jour (arrondi au-dessus)` : ''
-          }`
+      c.seuilCaMois !== null && c.tauxMoyen !== null && c.chargesFixes > 0
+        ? `Seuil = charges fixes ÷ taux de marge moyen = ${nb(c.chargesFixes)} ÷ ${pct(c.tauxMoyen)} = ${ariary(c.seuilCaMois)} de chiffre d'affaires par mois (arrondi au-dessus)${
+            c.seuilCaJour !== null ? ` ; ${nb(c.seuilCaMois)} ÷ ${m5.joursParMois} jours = ${ariary(c.seuilCaJour)} par jour (arrondi au-dessus)` : ''
+          }${seul && c.seuilUnites !== null && seul.marge !== null ? `. En unités : ${nb(c.chargesFixes)} ÷ ${nb(seul.marge)} = ${nb(Math.round((c.chargesFixes / seul.marge) * 100) / 100)}, arrondi au-dessus : ${grouper(c.seuilUnites)} ${u(c.seuilUnites)} par mois` : ''}`
         : null,
-    investissements: lignesInvest.length ? `Investissements = ${plus(lignesInvest)} = ${ariary(c.investissements)}` : null,
+    investissements: lignesInvest.length ? `Investissements achetés = ${plus(lignesInvest)} = ${ariary(c.investissements)}` : null,
     fonds: `Fonds de roulement proposé = 3 × ${nb(c.chargesFixes)} + ${nb(c.stock)} = ${ariary(c.fondsPropose)}${c.fondsRetenu !== c.fondsPropose ? ` ; vous avez retenu ${ariary(c.fondsRetenu)}` : ''}`,
-    besoins: `Besoins = investissements + fonds de roulement = ${nb(c.investissements)} + ${nb(c.fondsRetenu)} = ${ariary(c.besoins)}`,
+    besoins: `Besoins = investissements achetés + matériel apporté + fonds de roulement = ${nb(c.investissements)} + ${nb(c.apporte)} + ${nb(c.fondsRetenu)} = ${ariary(c.besoins)}`,
     ressources: lignesRes.length ? `Ressources = ${plus(lignesRes)} = ${ariary(c.ressources)}` : null,
     ecart: `Écart = ${nb(c.ressources)} moins ${nb(c.besoins)} = ${ariary(c.ecart)}`,
-    quantites: a && typeof v === 'number' ? `Quantités = ${nb(v)} par mois × 12 mois = ${grouper(a.quantites)}` : null,
-    ca: a && B !== null ? `Chiffre d'affaires = ${grouper(a.quantites)} × ${nb(B)} = ${ariary(a.ca)}` : null,
-    cv: a ? `Coûts variables = ${grouper(a.quantites)} × ${nb(c.coutUnitaire)} = ${ariary(a.cv)}` : null,
+    quantites: a && seul && seul.ventesParMois !== null ? `Quantités = ${nb(seul.ventesParMois)} par mois × 12 mois${annee > 0 ? ', puis les hausses' : ''} = ${nb(a.quantites)}` : null,
+    ca: a ? (annee === 0 ? `Chiffre d'affaires = ${nb(c.caMois)} × 12 mois = ${ariary(a.ca)}` : h !== null ? `Chiffre d'affaires = celui de l'année ${annee} × (1 + ${nb(h)} %) = ${ariary(a.ca)}` : null) : null,
+    cv: a ? (annee === 0 ? `Coûts variables = ${nb(c.cvMois)} × 12 mois = ${ariary(a.cv)}` : h !== null ? `Coûts variables = ceux de l'année ${annee} × (1 + ${nb(h)} %) = ${ariary(a.cv)}` : null) : null,
     margeTotale: a ? `Marge totale = ${nb(a.ca)} moins ${nb(a.cv)} = ${ariary(a.marge)}` : null,
     chargesAnnee: a ? `Charges fixes de l'année = ${nb(a.chargesFixesMois)} × 12 mois = ${ariary(a.chargesAnnee)}` : null,
     resultat: a ? `Résultat = ${nb(a.marge)} moins ${nb(a.chargesAnnee)} = ${ariary(a.resultat)}` : null
@@ -204,7 +230,7 @@ function Piece() {
 }
 
 /** Screens of level Bases for a part (12.2 to 12.5); 5d ends with the participant's own staircase. */
-export function ecransBases(partie: Partie, plan: Plan, c: Chiffres): Ecran[] {
+export function ecransBases(partie: Partie, _plan: Plan, c: Chiffres): Ecran[] {
   if (partie === '5a') {
     return [
       {
@@ -217,7 +243,9 @@ export function ecransBases(partie: Partie, plan: Plan, c: Chiffres): Ecran[] {
       },
       {
         titre: 'À toi',
-        morceaux: ["Une ligne par ingrédient ou fourniture : l'app additionne. Puis ton prix de vente : la marge s'affiche avec la formule et tes nombres."]
+        morceaux: [
+          "Pour chaque produit, sa recette : une ligne par ingrédient ou fourniture, avec le prix du lot acheté et la quantité qui part dans UNE unité. L'app calcule et additionne. Puis ton prix de vente : la marge s'affiche avec la formule et tes nombres."
+        ]
       }
     ];
   }
@@ -265,27 +293,23 @@ export function ecransBases(partie: Partie, plan: Plan, c: Chiffres): Ecran[] {
       }
     ];
   }
-  // 5d: the staircase of the seller's month, one step per tap, then the participant's own month.
-  const v = plan.m5.annees[0]?.ventesParMois;
-  const B = c.prix;
-  const A = c.coutUnitaire;
-  const C = c.chargesFixes;
-  const u = (n: number) => pluriel(plan.uniteVente || 'unité', n);
+  // 5d: the staircase of the seller's month, one step per tap, then the participant's own month
+  // (NEC-CC-38: all products added).
   const sien: Ecran =
-    typeof v === 'number' && B !== null
+    c.caMois > 0
       ? {
           titre: 'Ton escalier du mois (année 1)',
           morceaux: [
-            `Ventes : ${nb(v)} ${u(v)} × ${nb(B)} Ar = ${ariary(v * B)}`,
-            `Moins coûts variables : ${nb(v)} × ${nb(A)} Ar = ${ariary(v * A)}`,
-            `Il reste ${ariary(v * B - v * A)}`,
-            `Moins charges fixes : ${ariary(C)}`,
-            `**Résultat avant amortissements : ${ariary(v * B - v * A - C)}**`
+            `Ventes de tous tes produits : ${ariary(c.caMois)}`,
+            `Moins coûts variables : ${ariary(c.cvMois)}`,
+            `Il reste ${ariary(c.margeMois)}`,
+            `Moins charges fixes : ${ariary(c.chargesFixes)}`,
+            `**Résultat avant amortissements : ${ariary(c.margeMois - c.chargesFixes)}**`
           ]
         }
       : {
           titre: 'Ton escalier du mois (année 1)',
-          morceaux: ["Indique tes ventes par mois de l'année 1 ci-dessous (et ton prix en 5a) : l'app remplit ton escalier avec tes pages 5a à 5c."]
+          morceaux: ["Indique le prix et les ventes par mois de tes produits (en 5a) : l'app remplit ton escalier avec tes pages 5a à 5c."]
         };
   return [
     {

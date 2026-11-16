@@ -3,7 +3,7 @@
 // (resteAFaire). NEC-CC-19: an empty answer is omitted, never printed as "(non rempli)"; an empty table
 // row, table, sub-title or section is dropped. Telephone and e-mail only on the cover (see pdf.ts).
 import type { Plan } from '../types';
-import { calculer, phraseSeuil } from '../utils/chiffres';
+import { calculer, libelleUnite, nomProduit, normaliserUnite, phraseSeuil, phraseSeuilUnites, totalInvestissement, uniteUtiliseeEffective } from '../utils/chiffres';
 import { ariary, grouper, pluriel, pourcent } from '../utils/format';
 import { BLOCS, jourFr } from '../ateliers/m2/blocs';
 import { calculerMarche } from '../ateliers/m3/calculs';
@@ -87,7 +87,7 @@ function synthese(plan: Plan): Section {
           ['Besoin total', montant(k.besoinTotal)],
           ['Financement demandé (subvention, prêt, autre)', montant(k.financementDemande)],
           ["Chiffre d'affaires année 1", montant(k.caAnnee1)],
-          ['Seuil de rentabilité', k.seuilMois === null ? NON_REMPLI : `${grouper(k.seuilMois)} ${pluriel(plan.uniteVente, k.seuilMois)} par mois`]
+          ['Seuil de rentabilité', k.seuil ?? NON_REMPLI]
         ]
       }
     ]
@@ -248,17 +248,26 @@ function m4(plan: Plan): Section {
   };
 }
 
-function lignesMontants(lignes: { libelle: string; montant: number | null }[]): string[][] {
-  const pleines = lignes.filter((l) => l.libelle.trim() || l.montant !== null);
-  return pleines.length ? pleines.map((l) => [v(l.libelle), montant(l.montant)]) : [[NON_REMPLI, '']];
+const NATURES_PDF: Record<string, string> = {
+  argent: 'Argent du porteur ou des associés',
+  materiel: 'Matériel apporté',
+  subvention: 'Subvention',
+  pret: 'Prêt',
+  autre: 'Autre'
+};
+
+/** "0,3", "1 000": decimals with a comma, integers grouped. */
+function quantite(n: number | null): string {
+  if (n === null) return NON_REMPLI;
+  return Number.isInteger(n) ? grouper(n) : String(Math.round(n * 1000) / 1000).replace('.', ',');
 }
 
 function m5(plan: Plan): Section {
   const m = plan.m5;
   const c = calculer(plan);
   const cf = m.chargesFixes;
-  const r = m.ressources;
   const seuil = phraseSeuil(plan, c);
+  const seuilUnites = phraseSeuilUnites(plan, c);
   const an = (i: number) => c.annees[i];
   const cel = (i: number, f: (a: NonNullable<(typeof c.annees)[number]>) => number | null) => {
     const a = an(i);
@@ -266,26 +275,66 @@ function m5(plan: Plan): Section {
     const x = f(a);
     return x === null ? NON_REMPLI : ariary(x);
   };
-  const ventes = (i: number) => {
-    const x = m.annees[i]?.ventesParMois;
-    return x === null || x === undefined ? NON_REMPLI : grouper(x);
-  };
+  // NEC-CC-38 (cahier, section 6): products, recipes in annex, investments with the equipment brought,
+  // resources with their nature, break-even in turnover.
+  const produits = c.produits.filter((p, i) => i === 0 || p.nom.trim() || p.prix !== null || p.coutCalcule);
+  const unite = (p: (typeof produits)[number]) => p.unite.trim() || (p.rang === 0 ? plan.uniteVente.trim() : '');
+  const apportes = m.ressources.filter((r) => r.nature === 'materiel' && r.valeur !== null);
+  const hausse = (h: number | null) => (h === null ? NON_REMPLI : `${quantite(Math.round(h * 100) / 100)} %`);
+  const annexe: Bloc[] = produits.flatMap((p): Bloc[] => {
+    const src = m.produits[p.rang];
+    const lignes = src.composants
+      .filter((k) => k.designation.trim() || k.prixLot !== null)
+      .map((k, j) => {
+        const r = p.composants[src.composants.indexOf(k)] ?? p.composants[j];
+        const lot = normaliserUnite(k.uniteLot);
+        return [
+          v(k.designation),
+          k.prixLot === null ? NON_REMPLI : `${ariary(k.prixLot)}`,
+          k.quantiteLot === null ? NON_REMPLI : `${quantite(k.quantiteLot)} ${libelleUnite(lot, k.quantiteLot)}`,
+          k.quantiteUtilisee === null ? NON_REMPLI : `${quantite(k.quantiteUtilisee)} ${libelleUnite(uniteUtiliseeEffective(k), k.quantiteUtilisee)}`,
+          r?.cout === null || r?.cout === undefined ? 'non calculé' : ariary(r.cout)
+        ];
+      });
+    if (!lignes.length) return [];
+    return [
+      {
+        type: 'tableau',
+        entetes: [`${nomProduit(p, p.rang)} : composant`, 'Prix du lot', 'Quantité du lot', 'Quantité utilisée', 'Coût'],
+        largeurs: [0.32, 0.18, 0.17, 0.17, 0.16],
+        total: true,
+        lignes: [...lignes, [`Coût de revient d'une unité${unite(p) ? ` (${pluriel(unite(p), 1)})` : ''}`, '', '', '', ariary(p.cout)]]
+      }
+    ];
+  });
   return {
     titre: titreDe('m5'),
     blocs: [
-      st('5a. Mon unité de vente et ma marge'),
-      champ('Mon unité de vente', plan.uniteVente),
-      { type: 'tableau', entetes: ['Ce que coûte UNE unité', 'Montant'], largeurs: [0.65, 0.35], lignes: lignesMontants(m.couts) },
+      st('5a. Mes produits et leur marge'),
+      champ('Mon unité de vente (produit principal)', plan.uniteVente),
       {
         type: 'tableau',
-        entetes: ['Résultat', 'Montant'],
+        entetes: ['Produit', 'Prix', 'Coût de revient', 'Marge', 'Taux', 'Ventes par mois (année 1)'],
+        largeurs: [0.27, 0.14, 0.15, 0.14, 0.1, 0.2],
+        lignes: produits.map((p) => [
+          `${nomProduit(p, p.rang)}${unite(p) ? ` (${pluriel(unite(p), 1)})` : ''}`,
+          montant(p.prix),
+          p.coutCalcule ? ariary(p.cout) : NON_REMPLI,
+          montant(p.marge),
+          p.tauxMarge === null ? NON_REMPLI : pourcent(p.tauxMarge),
+          p.ventesParMois === null ? NON_REMPLI : quantite(p.ventesParMois)
+        ])
+      },
+      champ('Produit principal', produits.length > 1 ? `${nomProduit(produits[0], 0)} (le premier de la liste)` : ''),
+      {
+        type: 'tableau',
+        entetes: ['Tous les produits, par mois (année 1)', 'Montant'],
         largeurs: [0.65, 0.35],
-        total: true,
         lignes: [
-          ['Coût variable unitaire (A)', somme(c.coutUnitaire)],
-          ['Prix de vente (B)', montant(c.prix)],
-          ['Marge unitaire (B moins A)', montant(c.marge)],
-          ['Taux de marge', c.tauxMarge === null ? NON_REMPLI : pourcent(c.tauxMarge)]
+          ["Chiffre d'affaires", somme(c.caMois)],
+          ['Coûts variables', somme(c.cvMois)],
+          ['Marge totale', c.caMois ? ariary(c.margeMois) : NON_REMPLI],
+          ['Taux de marge moyen', c.tauxMoyen === null ? NON_REMPLI : `${String(Math.round(c.tauxMoyen * 10000) / 100).replace('.', ',')} %`]
         ]
       },
       st('5b. Mes charges fixes par mois'),
@@ -307,15 +356,29 @@ function m5(plan: Plan): Section {
       },
       champ('Jours de travail par mois', c.chargesFixes > 0 ? String(m.joursParMois) : ''),
       champ('Mon seuil de rentabilité', seuil ?? ''),
+      champ('Mon seuil en unités', seuilUnites ?? ''),
       st('5c. Mon démarrage'),
-      { type: 'tableau', entetes: ['Investissements', 'Montant'], largeurs: [0.65, 0.35], lignes: [...lignesMontants(m.investissements), ['Total des investissements', somme(c.investissements)]], total: true },
+      {
+        type: 'tableau',
+        entetes: ['Investissement', 'Quantité', 'Prix unitaire', 'Total'],
+        largeurs: [0.4, 0.14, 0.23, 0.23],
+        total: true,
+        lignes: [
+          ...m.investissements
+            .filter((i) => i.designation.trim() || i.prixUnitaire !== null)
+            .map((i) => [v(i.designation), quantite(i.quantite ?? 1), montant(i.prixUnitaire), i.prixUnitaire === null ? NON_REMPLI : ariary(totalInvestissement(i))]),
+          ...apportes.map((r) => [`${v(r.designation)} (apporté)`, '', '', montant(r.valeur)]),
+          ['Total des investissements', '', '', somme(c.investissements + c.apporte)]
+        ]
+      },
       {
         type: 'tableau',
         entetes: ['Besoins', 'Montant'],
         largeurs: [0.65, 0.35],
         total: true,
         lignes: [
-          ['Investissements', somme(c.investissements)],
+          ['Investissements achetés', somme(c.investissements)],
+          ['Matériel apporté', somme(c.apporte)],
           ['Stock de départ (inclus dans le fonds de roulement)', montant(m.stockDepart)],
           ['Fonds de roulement', somme(c.fondsRetenu)],
           ['Total des besoins', somme(c.besoins)]
@@ -323,15 +386,12 @@ function m5(plan: Plan): Section {
       },
       {
         type: 'tableau',
-        entetes: ['Ressources', 'Montant'],
-        largeurs: [0.65, 0.35],
+        entetes: ['Nature', 'Ressource', 'Valeur'],
+        largeurs: [0.33, 0.37, 0.3],
         total: true,
         lignes: [
-          ['Apport personnel', montant(r.apport)],
-          ['Subvention visée', montant(r.subvention)],
-          ['Prêt familial ou microfinance', montant(r.pret)],
-          [r.autreLibelle.trim() || 'Autre ressource', montant(r.autre)],
-          ['Total des ressources', somme(c.ressources)]
+          ...m.ressources.filter((r) => r.designation.trim() || r.valeur !== null).map((r) => [NATURES_PDF[r.nature] ?? 'Autre', v(r.designation), montant(r.valeur)]),
+          ['Total des ressources', '', somme(c.ressources)]
         ]
       },
       champ('Écart (ressources moins besoins)', !c.besoins && !c.ressources ? '' : c.ecart === 0 ? '0 Ar : équilibré' : ariary(c.ecart)),
@@ -341,8 +401,10 @@ function m5(plan: Plan): Section {
         entetes: ['', 'Année 1', 'Année 2', 'Année 3'],
         largeurs: [0.31, 0.23, 0.23, 0.23],
         lignes: [
-          [`Ventes par mois${plan.uniteVente.trim() ? ` (${pluriel(plan.uniteVente, 2)})` : ''}`, ventes(0), ventes(1), ventes(2)],
-          ['Quantités vendues dans l’année', ...[0, 1, 2].map((i) => (an(i) ? grouper(an(i)!.quantites) : NON_REMPLI))],
+          ['Hausse des ventes', an(0) && an(1) ? 'Base' : NON_REMPLI, hausse(m.hausses[0]), hausse(m.hausses[1])],
+          ...(produits.length === 1
+            ? [[`Quantités vendues dans l’année${unite(produits[0]) ? ` (${pluriel(unite(produits[0]), 2)})` : ''}`, ...[0, 1, 2].map((i) => (an(i) ? quantite(Math.round(an(i)!.quantites)) : NON_REMPLI))]]
+            : []),
           ["Chiffre d'affaires", ...[0, 1, 2].map((i) => cel(i, (a) => a.ca))],
           ['Coûts variables', ...[0, 1, 2].map((i) => cel(i, (a) => a.cv))],
           ['Marge totale', ...[0, 1, 2].map((i) => cel(i, (a) => a.marge))],
@@ -366,7 +428,9 @@ function m5(plan: Plan): Section {
         lignes: m.risques.filter((x) => x.risque.trim() || x.reponse.trim()).length
           ? m.risques.filter((x) => x.risque.trim() || x.reponse.trim()).map((x) => [v(x.risque), v(x.reponse)])
           : [[NON_REMPLI, NON_REMPLI]]
-      }
+      },
+      st('Annexe : la recette de chaque produit'),
+      ...annexe
     ]
   };
 }
@@ -604,7 +668,7 @@ export function resumePdf(plan: Plan): Resume {
   const chiffres = [
     k.besoinTotal !== null ? { label: 'Besoin total', valeur: ariary(k.besoinTotal) } : null,
     k.caAnnee1 !== null ? { label: "Chiffre d'affaires année 1", valeur: ariary(k.caAnnee1) } : null,
-    k.seuilMois !== null ? { label: 'Seuil de rentabilité', valeur: `${grouper(k.seuilMois)} ${pluriel(plan.uniteVente, k.seuilMois)} par mois` } : null
+    k.seuil !== null ? { label: 'Seuil de rentabilité', valeur: k.seuil } : null
   ].filter((x): x is { label: string; valeur: string } => !!x);
   return { cartes, chiffres };
 }

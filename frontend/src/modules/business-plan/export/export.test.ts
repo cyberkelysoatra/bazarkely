@@ -33,7 +33,8 @@ describe('Sauvegarde', () => {
     ['an array', '[1,2]'],
     ['another JSON file', '{"nom":"liste de courses"}'],
     ['a plan without module 5', JSON.stringify({ ...planVide(), m5: undefined })],
-    ['a plan whose costs are not a list', JSON.stringify({ ...planVide(), m5: { ...planVide().m5, couts: 'x' } })],
+    ['a plan whose products are not a list', JSON.stringify({ ...planVide(), m5: { ...planVide().m5, produits: 'x' } })],
+    ['an old plan whose costs are not a list', JSON.stringify({ ...planVide(), m5: { prixVente: 1, couts: 'x', investissements: [], ressources: {} } })],
     ['a wrapper without plan', JSON.stringify({ format: 'nec-business-plan', version: 1 })]
   ])('refuses %s with a plain message', (_nom, texte) => {
     expect(() => lireSauvegarde(texte)).toThrow(SauvegardeInvalide);
@@ -98,8 +99,8 @@ describe('Contenu du PDF', () => {
     const tab = m5.blocs.find((b) => b.type === 'tableau' && b.entetes[1] === 'Année 1');
     expect(tab && tab.type === 'tableau').toBe(true);
     const lignes = tab!.type === 'tableau' ? tab!.lignes.map((l) => l.map(textePdf)) : [];
-    expect(lignes.find((l) => l[0] === "Chiffre d'affaires")).toEqual(["Chiffre d'affaires", '43 200 000 Ar', '57 600 000 Ar', '72 000 000 Ar']);
-    expect(lignes.find((l) => l[0] === 'Résultat avant amortissements et avant impôt')).toEqual(['Résultat avant amortissements et avant impôt', '8 280 000 Ar', '14 760 000 Ar', '20 040 000 Ar']);
+    expect(lignes.find((l) => l[0] === "Chiffre d'affaires")).toEqual(["Chiffre d'affaires", '54 000 000 Ar', '71 820 000 Ar', '89 775 000 Ar']);
+    expect(lignes.find((l) => l[0] === 'Résultat avant amortissements et avant impôt')).toEqual(['Résultat avant amortissements et avant impôt', '14 148 000 Ar', '22 487 640 Ar', '29 699 550 Ar']);
   });
 
   it('empty answers are omitted; telephone and e-mail never in the sections', () => {
@@ -169,8 +170,8 @@ describe('Texte WhatsApp', () => {
     expect(t).toContain("*Mon business plan : JUS'NOSY*");
     expect(t).toContain('Besoin total : 9 000 000 Ar');
     expect(t).toContain('Financement demandé : 7 000 000 Ar');
-    expect(t).toContain("Chiffre d'affaires année 1 : 43 200 000 Ar");
-    expect(t).toContain('Seuil de rentabilité : 769 bouteilles de 50 cl par mois');
+    expect(t).toContain("Chiffre d'affaires année 1 : 54 000 000 Ar");
+    expect(t).toContain("Seuil de rentabilité : 2 297 634 Ar de chiffre d'affaires par mois");
     expect(/[—–· ]/.test(t)).toBe(false);
   });
 });

@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.151.2';
+export const APP_VERSION = '3.152.0';
 export const APP_VERSION_NAME = 'Logos NAVY ay gris clair, sous-titres Eau sur une ligne, garde du service worker et reprise de page blanche (MICRO-CC-01)';
 export const LAST_UPDATED = '2026-11-15';
-export const APP_BUILD_DATE = '2026-11-15';
+export const APP_BUILD_DATE = '2026-11-16';
 export const VERSION_HISTORY = [
+  {
+    version: '3.152.0',
+    date: '2026-11-16',
+    description: 'Mon Business Plan : module 5 en listes (plusieurs produits avec leur recette, investissements détaillés, une liste de ressources), reprise sans perte des anciens plans (NEC-CC-38)',
+    changes: [
+      'Produits en cartes repliées, recette par lots avec conversion g / kg et ml / l, « Mettre en tête » pour le produit principal',
+      'Seuil de rentabilité en chiffre d’affaires par mois et par jour ; hausse des ventes en % pour les années 2 et 3',
+      'Matériel apporté saisi une fois dans les ressources, affiché grisé « apporté » dans les investissements',
+      'Anciens plans convertis automatiquement, chiffres identiques ; PDF avec tableaux des produits, recettes en annexe, ressources par nature'
+    ]
+  },
   {
     version: '3.151.2',
     date: '2026-11-15',

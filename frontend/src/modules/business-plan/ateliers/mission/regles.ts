@@ -82,10 +82,8 @@ export function feuilleProposee(plan: Plan): Pick<Mission, 'questions' | 'client
       .filter((x) => x.nom.trim() && !x.prix.trim())
       .map((x) => x.nom.trim())
       .join('\n'),
-    elementsUnite: plan.m5.couts
-      .map((l) => l.libelle.trim())
-      .filter(Boolean)
-      .join('\n'),
+    // NEC-CC-38: the components of every product, each name once.
+    elementsUnite: [...new Set(plan.m5.produits.flatMap((p) => p.composants.map((x) => x.designation.trim())).filter(Boolean))].join('\n'),
     chargesADemander: sansDoublon(['Loyer', 'Électricité', 'Téléphone', ...plan.m2.couts.split(/[\n,;]+/)]).join('\n'),
     presentation: `Bonjour, je suis ${prenom(plan.identite.nomPrenom)}, je prépare un projet de ${projet}. Est-ce que je peux vous poser 3 questions, ça prend 3 minutes ?`
   };
@@ -129,7 +127,7 @@ export function elementsSansPrix(plan: Plan): string[] {
   });
 }
 
-const prixPrevu = (plan: Plan) => plan.m3.prixPrevu ?? plan.m5.prixVente;
+const prixPrevu = (plan: Plan) => plan.m3.prixPrevu ?? plan.m5.produits[0]?.prix ?? null;
 
 /** 7b: the box suggested by the rules of the fiche (null = no suggestion yet). */
 export function suggestion(plan: Plan): Mission['decision'] | null {

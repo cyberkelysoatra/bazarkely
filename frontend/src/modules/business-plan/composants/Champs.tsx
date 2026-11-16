@@ -1,6 +1,6 @@
 // Input fields of the workbook: text (auto-grow), amount in ariary, number, choices. Each one renders
 // the plain value instead of an input in read only mode (example JUS'NOSY).
-import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { grouper, lireEntier } from '../utils/format';
 
 interface Base {
@@ -129,6 +129,114 @@ export function ChampNombre({ label, aide, lectureSeule, mention, valeur, onChan
         <Valeur vide={valeur === null}>{valeur === null ? '' : `${grouper(valeur)}${suffixe ? ' ' + suffixe : ''}`}</Valeur>
       ) : (
         <SaisieEntiere id={id} valeur={valeur} onChange={onChange} suffixe={suffixe} placeholder={placeholder} />
+      )}
+    </div>
+  );
+}
+
+/** NEC-CC-38: "0,3" or "33,33" -> number (comma or dot); '' or '-' -> null. */
+export function lireDecimal(texte: string): number | null {
+  const t = texte.replace(/[\s  ]/g, '').replace(',', '.');
+  if (!t || t === '-' || t === '.') return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** 0.3 -> "0,3"; 1000 -> "1000"; null -> "". At most 4 decimals shown. */
+export function ecrireDecimal(n: number | null): string {
+  if (n === null || !Number.isFinite(n)) return '';
+  return String(Math.round(n * 10000) / 10000).replace('.', ',');
+}
+
+/** Decimal number input (quantities of a recipe, growth in %), numeric keyboard with a comma. The typed
+ * text is kept while it means the stored value ("0," while typing "0,3"). `refuse` returns a message
+ * when a value is not accepted (it is then not stored). */
+export function SaisieDecimale({
+  id,
+  valeur,
+  onChange,
+  suffixe,
+  placeholder,
+  label,
+  negatif = false,
+  refuse,
+  className = ''
+}: {
+  id?: string;
+  valeur: number | null;
+  onChange: (v: number | null) => void;
+  suffixe?: string;
+  placeholder?: string;
+  label?: string;
+  negatif?: boolean;
+  refuse?: (v: number) => string | null;
+  className?: string;
+}) {
+  const [texte, setTexte] = useState(ecrireDecimal(valeur));
+  const [erreur, setErreur] = useState<string | null>(null);
+  const connue = useRef(valeur);
+  if (valeur !== connue.current) {
+    // Changed from outside (reset, other page): show the stored value.
+    connue.current = valeur;
+    if (lireDecimal(texte) !== valeur) setTexte(ecrireDecimal(valeur));
+  }
+  return (
+    <div className={className}>
+      <div className="bp-champ mt-1.5 flex items-center gap-2 focus-within:outline focus-within:outline-[3px] focus-within:outline-turquoise focus-within:outline-offset-1">
+        <input
+          id={id}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          aria-label={label}
+          aria-invalid={erreur ? true : undefined}
+          className="min-w-0 flex-1 bg-transparent outline-none text-right tabular-nums"
+          value={texte}
+          placeholder={placeholder}
+          onChange={(e) => {
+            const brut = e.target.value.replace('.', ',').replace(negatif ? /[^\d,-]/g : /[^\d,]/g, '');
+            const propre = negatif ? brut.replace(/(?!^)-/g, '') : brut;
+            setTexte(propre);
+            const n = lireDecimal(propre);
+            const motif = n !== null && refuse ? refuse(n) : null;
+            setErreur(motif);
+            if (motif) return;
+            connue.current = n;
+            onChange(n);
+          }}
+        />
+        {suffixe ? <span className="text-doux font-bold shrink-0">{suffixe}</span> : null}
+      </div>
+      {erreur ? (
+        <p role="alert" className="mt-1 text-[14px] font-bold text-violet leading-snug">
+          {erreur}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ChampDecimal({
+  label,
+  aide,
+  lectureSeule,
+  mention,
+  valeur,
+  onChange,
+  suffixe,
+  placeholder,
+  negatif,
+  refuse
+}: Base & { valeur: number | null; onChange: (v: number | null) => void; suffixe?: string; placeholder?: string; negatif?: boolean; refuse?: (v: number) => string | null }) {
+  const id = useId();
+  return (
+    <div className="mb-4">
+      <Etiquette id={id} label={label} mention={mention} />
+      {aide}
+      {lectureSeule ? (
+        <Valeur vide={valeur === null}>{valeur === null ? '' : `${ecrireDecimal(valeur)}${suffixe ? ' ' + suffixe : ''}`}</Valeur>
+      ) : (
+        <SaisieDecimale id={id} valeur={valeur} onChange={onChange} suffixe={suffixe} placeholder={placeholder} negatif={negatif} refuse={refuse} />
       )}
     </div>
   );

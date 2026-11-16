@@ -45,14 +45,15 @@ describe('Synthèse : brouillons', () => {
   const plan = planExemple();
   const textes = textesDuPlan(plan);
 
-  it('card 5 figures of JUS\'NOSY: 9 000 000, 7 000 000, 43 200 000, 769', () => {
+  it('card 5 figures of JUS\'NOSY: 9 000 000, 7 000 000, 54 000 000, break-even 2 297 634 Ar (NEC-CC-38)', () => {
     const k = chiffresCles(plan);
     expect(k.besoinTotal).toBe(9_000_000);
     expect(k.financementDemande).toBe(7_000_000);
-    expect(k.caAnnee1).toBe(43_200_000);
-    expect(k.seuilMois).toBe(769);
+    expect(k.caAnnee1).toBe(54_000_000);
+    expect(k.seuilCaMois).toBe(2_297_634);
+    expect(k.principal?.nom).toBe('Jus de fruits 1 L');
     const t = sp(brouillon(plan, 'chiffres'));
-    for (const n of ['9 000 000 Ar', '7 000 000 Ar', '43 200 000 Ar', '769 bouteilles de 50 cl par mois']) expect(t).toContain(n);
+    for (const n of ['9 000 000 Ar', '7 000 000 Ar', '54 000 000 Ar', "2 297 634 Ar de chiffre d'affaires par mois", 'Produit principal : Jus de fruits 1 L']) expect(t).toContain(n);
   });
 
   it('every labelled sentence quotes an answer of the plan, word for word (no invented text)', () => {
@@ -113,7 +114,7 @@ describe('Synthèse : brouillons', () => {
 describe('Relecture : suggestions', () => {
   it("JUS'NOSY: every computable point says oui", () => {
     const plan = planExemple();
-    expect(calculerMarche(plan.m3).ventesMois).toBe(plan.m5.annees[0].ventesParMois);
+    expect(calculerMarche(plan.m3).ventesMois).toBe(plan.m5.produits[0].ventesParMois);
     const s = Object.fromEntries(POINTS.map((p) => [p.id, p.suggestion(plan)]));
     expect(s).toEqual({ probleme: null, client: 'oui', phrase: null, concurrent: 'oui', marge: 'oui', equilibre: 'oui', seuil: 'oui', ventes: 'oui', calendrier: 'oui', forme: 'oui' });
   });

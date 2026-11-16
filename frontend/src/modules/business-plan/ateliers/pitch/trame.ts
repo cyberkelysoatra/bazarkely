@@ -3,7 +3,7 @@
 // functions, no React here.
 import type { Plan, Pitch, TempsPitch } from '../../types';
 import { pitchDe } from '../../etat/vide';
-import { calculer } from '../../utils/chiffres';
+import { calculer, libelleAutres } from '../../utils/chiffres';
 import { ESPACE, grouper, pluriel } from '../../utils/format';
 import { brouillon, chiffresCles, nettoyer, type CleCarte } from '../synthese/brouillons';
 import { PREMIERE_ANNEE, totaux } from '../impact/regles';
@@ -157,11 +157,13 @@ function chiffres(plan: Plan): string {
   const k = chiffresCles(plan);
   const c = calculer(plan);
   const a1 = c.annees[0];
-  const u = uniteCourte(plan);
+  // NEC-CC-38 (R8): the produit principal is the first product of the list; break-even in turnover (R4).
+  const p = k.principal;
   const items = [
+    p ? (p.prix !== null ? [`${nettoyer(p.nom)} à ${court(p.prix)}`, nettoyer(p.nom)] : [nettoyer(p.nom)]) : [],
     k.besoinTotal !== null ? [`${court(k.besoinTotal)} pour démarrer`, court(k.besoinTotal)] : [],
-    k.seuilMois !== null ? [`seuil ${grouper(k.seuilMois)} ${u} par mois`, `seuil ${grouper(k.seuilMois)} ${u}`] : [],
-    a1 && c.prix !== null ? [`résultat année 1 : ${court(a1.resultat)}`] : []
+    k.seuilCaMois !== null ? [`seuil ${court(k.seuilCaMois)} par mois`, `seuil ${court(k.seuilCaMois)}`] : [],
+    a1 && a1.ca > 0 ? [`résultat année 1 : ${court(a1.resultat)}`] : []
   ];
   if (!items.some((v) => v.length)) return assembler(clauses(carte(plan, 'chiffres')));
   return ajuster(items);
@@ -169,7 +171,7 @@ function chiffres(plan: Plan): string {
 
 function demande(plan: Plan): string {
   const k = chiffresCles(plan);
-  const autre = nettoyer(plan.m5.ressources.autreLibelle) || 'autre ressource';
+  const autre = nettoyer(libelleAutres(plan.m5)) || 'autre ressource';
   const emplois = plan.impact ? totaux(plan.impact) : null;
   const etape = plan.m4.demarches.find((d) => !d.fait && d.datePrevue);
   const objectif = plan.m4.calendrier.map((x) => x.objectif.trim()).find(Boolean);

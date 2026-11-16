@@ -6,7 +6,7 @@ import type { AtelierProps } from '../../types';
 import { ChampTexte } from '../../composants/Champs';
 import { Carte, Resultat } from '../../composants/Carte';
 import { Icone } from '../../composants/Icones';
-import { ariary, grouper, pluriel } from '../../utils/format';
+import { ariary } from '../../utils/format';
 import { CARTES, brouillon, chiffresCles, type CleCarte } from './brouillons';
 
 function Reprendre({ cle, actuel, plan, remplir }: { cle: CleCarte; actuel: string; plan: AtelierProps['plan']; remplir: (v: string) => void }) {
@@ -78,7 +78,7 @@ export default function Page({ plan, modifier, lectureSeule: ls }: AtelierProps)
               <Resultat label="Chiffre d'affaires année 1" valeur={<span className="bp-cle-ca">{k.caAnnee1 === null ? 'Non calculé' : ariary(k.caAnnee1)}</span>} />
               <Resultat
                 label="Seuil de rentabilité"
-                valeur={<span className="bp-cle-seuil">{k.seuilMois === null ? 'Non calculé' : `${grouper(k.seuilMois)} ${pluriel(plan.uniteVente, k.seuilMois)} par mois`}</span>}
+                valeur={<span className="bp-cle-seuil">{k.seuil ?? 'Non calculé'}</span>}
               />
               <p className="text-[13px] text-doux pb-1.5">Calculés à partir du module 5. Financement demandé : subvention, prêt et autre ressource.</p>
             </div>

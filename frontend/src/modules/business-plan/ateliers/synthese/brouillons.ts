@@ -2,7 +2,7 @@
 // each sentence is a fixed label followed by the participant's own words or a computed figure. An
 // empty answer is skipped, never invented. No React here.
 import type { Plan } from '../../types';
-import { calculer } from '../../utils/chiffres';
+import { calculer, libelleAutres, nomProduit, seuilTexte, totalNature } from '../../utils/chiffres';
 import { ariary, grouper, pluriel } from '../../utils/format';
 import { calculerMarche } from '../m3/calculs';
 import { contracter } from '../m1/phrase';
@@ -39,34 +39,49 @@ export interface ChiffresCles {
   subvention: number | null;
   pret: number | null;
   autre: number | null;
+  /** Money and equipment brought by the founder (resources argent + materiel). */
   apport: number | null;
   caAnnee1: number | null;
-  seuilMois: number | null;
+  /** NEC-CC-38: break-even in turnover per month (ariary), cahier R4. */
+  seuilCaMois: number | null;
+  /** "5 686 247 Ar de chiffre d'affaires par mois" (one product: with the units), null when not computed. */
+  seuil: string | null;
+  /** Produit principal (R8): first product of the list, null when it has no name nor price. */
+  principal: { nom: string; prix: number | null; marge: number | null; tauxMarge: number | null } | null;
 }
 
 /** Figures of card 5: total need, money asked (grant + loan + other), year 1 turnover, break-even point. */
 export function chiffresCles(plan: Plan): ChiffresCles {
   const c = calculer(plan);
-  const r = plan.m5.ressources;
+  const m5 = plan.m5;
   const besoinSaisi = c.besoins > 0;
-  const demandes = [r.subvention, r.pret, r.autre];
+  const subvention = totalNature(m5, 'subvention');
+  const pret = totalNature(m5, 'pret');
+  const autre = totalNature(m5, 'autre');
+  const demandes = [subvention, pret, autre];
   const financement = demandes.some((v) => v !== null) ? demandes.reduce<number>((t, v) => t + (v ?? 0), 0) : null;
+  const argent = totalNature(m5, 'argent');
+  const materiel = totalNature(m5, 'materiel');
+  const apport = argent === null && materiel === null ? null : (argent ?? 0) + (materiel ?? 0);
   const a1 = c.annees[0];
+  const p = c.principal;
   return {
     besoinTotal: besoinSaisi ? c.besoins : null,
     financementDemande: financement,
-    subvention: r.subvention,
-    pret: r.pret,
-    autre: r.autre,
-    apport: r.apport,
-    caAnnee1: a1 && c.prix !== null ? a1.ca : null,
-    seuilMois: c.chargesFixes > 0 ? c.seuilMois : null
+    subvention,
+    pret,
+    autre,
+    apport,
+    caAnnee1: a1 && a1.ca > 0 ? a1.ca : null,
+    seuilCaMois: c.chargesFixes > 0 ? c.seuilCaMois : null,
+    seuil: seuilTexte(plan, c),
+    principal: p && (p.nom.trim() || p.prix !== null) ? { nom: nomProduit(p, 0), prix: p.prix, marge: p.marge, tauxMarge: p.tauxMarge } : null
   };
 }
 
 function texteFinancement(plan: Plan, k: ChiffresCles): string | null {
   if (k.financementDemande === null) return null;
-  const autreLibelle = nettoyer(plan.m5.ressources.autreLibelle) || 'autre ressource';
+  const autreLibelle = nettoyer(libelleAutres(plan.m5)) || 'autre ressource';
   const detail = [
     k.subvention ? `subvention ${ariary(k.subvention)}` : null,
     k.pret ? `prêt ${ariary(k.pret)}` : null,
@@ -143,7 +158,10 @@ function carteChiffres(plan: Plan, k = chiffresCles(plan)): string {
     k.apport !== null ? `Apport personnel : ${ariary(k.apport)}.` : null,
     texteFinancement(plan, k),
     k.caAnnee1 !== null ? `Chiffre d'affaires de l'année 1 : ${ariary(k.caAnnee1)}.` : null,
-    k.seuilMois !== null ? `Seuil de rentabilité : ${grouper(k.seuilMois)} ${pluriel(plan.uniteVente, k.seuilMois)} par mois.` : null
+    k.principal
+      ? `Produit principal : ${k.principal.nom}${k.principal.prix !== null ? `, vendu ${ariary(k.principal.prix)}` : ''}${k.principal.marge !== null ? `, marge ${ariary(k.principal.marge)}${k.principal.tauxMarge !== null ? ` (${k.principal.tauxMarge} %)` : ''}` : ''}.`
+      : null,
+    k.seuil !== null ? `Seuil de rentabilité : ${k.seuil}.` : null
   ]);
 }
 

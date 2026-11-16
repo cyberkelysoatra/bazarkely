@@ -24,8 +24,9 @@ export const POINTS: Point[] = [
     id: 'marge',
     texte: 'Le prix couvre le coût variable avec une marge',
     suggestion: (p) => {
-      const c = calculer(p);
-      return si(c.marge !== null && c.marge > 0);
+      // NEC-CC-38: every product with a price covers its cost.
+      const avecPrix = calculer(p).produits.filter((x) => x.prix !== null);
+      return si(avecPrix.length > 0 && avecPrix.every((x) => x.marge !== null && x.marge > 0));
     }
   },
   {
@@ -41,7 +42,7 @@ export const POINTS: Point[] = [
     texte: 'Le seuil de rentabilité est calculé et comparé aux ventes par mois',
     suggestion: (p) => {
       const c = calculer(p);
-      return si(c.seuilMois !== null && c.chargesFixes > 0 && p.m5.annees[0]?.ventesParMois !== null);
+      return si(c.seuilCaMois !== null && c.chargesFixes > 0 && p.m5.produits.some((x) => x.ventesParMois !== null));
     }
   },
   {
@@ -49,7 +50,7 @@ export const POINTS: Point[] = [
     texte: "Les ventes de l'année 1 viennent du calcul de marché (3a)",
     suggestion: (p) => {
       const v = calculerMarche(p.m3).ventesMois;
-      return si(v !== null && v === p.m5.annees[0]?.ventesParMois);
+      return si(v !== null && v === p.m5.produits[0]?.ventesParMois);
     }
   },
   { id: 'calendrier', texte: 'Le calendrier contient des objectifs SMART', suggestion: (p) => si(p.m4.calendrier.length > 0 && p.m4.calendrier.every((c) => c.objectif.trim() !== '')) },

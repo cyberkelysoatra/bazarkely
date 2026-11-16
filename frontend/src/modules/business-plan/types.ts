@@ -2,6 +2,42 @@
 // (NEC-CC-02 to NEC-CC-05): never change a field after NEC-CC-01, only add.
 export type Montant = number | null; // integer ariary
 export interface Ligne { id: string; libelle: string; montant: Montant }
+/** NEC-CC-38: unit of a lot or of a quantity used. g and kg convert, ml and l convert; any other unit
+ * (piece included) has no conversion: the used unit is forced equal to the lot unit (cahier R2). */
+export type Unite = 'kg' | 'g' | 'l' | 'ml' | 'piece' | (string & {});
+/** One line of the recipe of ONE unit sold (cahier R2). */
+export interface Composant { id: string; designation: string; prixLot: Montant; quantiteLot: number | null; uniteLot: Unite; quantiteUtilisee: number | null; uniteUtilisee: Unite }
+/** One product or service sold; index 0 of the list = "produit principal" (cahier R3, R8). */
+export interface Produit { id: string; nom: string; unite: string; prix: Montant; ventesParMois: number | null; composants: Composant[] }
+/** Bought equipment (cahier R5: no duration, no depreciation). */
+export interface Investissement { id: string; designation: string; quantite: number | null; prixUnitaire: Montant }
+export type NatureRessource = 'argent' | 'materiel' | 'subvention' | 'pret' | 'autre';
+/** One resource (cahier R6); 'materiel' = equipment brought, added to the needs by the app. */
+export interface Ressource { id: string; nature: NatureRessource; designation: string; valeur: Montant }
+/** Module 5 in lists (NEC-CC-38, `modele: 2`). Old plans (no `modele`) are migrated by etat/migrerM5. */
+export interface M5 {
+  modele: 2;
+  produits: Produit[];
+  chargesFixes: { loyer: Montant; salaires: Montant; energie: Montant; transport: Montant; telephone: Montant; autres: Montant; lignes: Ligne[] };
+  joursParMois: number;
+  investissements: Investissement[];
+  stockDepart: Montant;
+  fondsRoulementSaisi: Montant;
+  ressources: Ressource[];
+  /** Sales growth in % of years 2 and 3 (null = that year stays empty; 0 valid; > -100). */
+  hausses: [number | null, number | null];
+  /** Index 0 = year 1 (unused, fixed costs of 5b), 1 and 2 = fixed costs per month of years 2 and 3. */
+  annees: { chargesFixesMois: Montant }[];
+  tauxImpot: Montant;
+  hypotheses: string;
+  risques: { id: string; risque: string; reponse: string }[];
+}
+/** Module 5 as saved before NEC-CC-38 (single product); read only by the migration. */
+export interface M5Ancien {
+  couts: Ligne[]; prixVente: Montant; chargesFixes: M5['chargesFixes']; joursParMois: number; investissements: Ligne[]; stockDepart: Montant; fondsRoulementSaisi: Montant;
+  ressources: { apport: Montant; subvention: Montant; pret: Montant; autre: Montant; autreLibelle: string };
+  annees: { ventesParMois: Montant; chargesFixesMois: Montant }[]; tauxImpot: Montant; hypotheses: string; risques: M5['risques'];
+}
 export interface Plan {
   id: string; creeLe: string; modifieLe: string; rev: number; exemple?: boolean;
   uniteVente: string; // shared by 3a and 5a
@@ -10,7 +46,7 @@ export interface Plan {
   m2: { segments: string; proposition: string; canaux: string; relation: string; revenus: string; ressources: string; activites: string; partenaires: string; couts: string; versionDu: string };
   m3: { nbClients: Montant; nbClientsSource: string; qteParAchat: Montant; qteSource: string; achatsParMois: Montant; achatsSource: string; prixPrevu: Montant; partVisee: Montant; concurrents: { id: string; nom: string; type: '' | 'direct' | 'indirect'; prix: string; forts: string; faibles: string; mieux: string }[]; swot: { forces: string; faiblesses: string; opportunites: string; menaces: string } };
   m4: { produit: string; prix: string; place: string; promotion: string; etapes: string; equipe: { id: string; personne: string; role: string; competences: string; temps: '' | 'plein' | 'partiel' | 'benevole' }[]; fournisseurs: string; calendrier: { periode: 't1' | 't2' | 't3' | 't4'; objectif: string; responsable: string }[]; forme: string; formePourquoi: string; demarches: { id: 'statuts' | 'nif' | 'stat' | 'rcs' | 'carteFiscale' | 'compte' | 'cnaps'; fait: boolean; datePrevue: string }[] };
-  m5: { couts: Ligne[]; prixVente: Montant; chargesFixes: { loyer: Montant; salaires: Montant; energie: Montant; transport: Montant; telephone: Montant; autres: Montant; lignes: Ligne[] }; joursParMois: number; investissements: Ligne[]; stockDepart: Montant; fondsRoulementSaisi: Montant; ressources: { apport: Montant; subvention: Montant; pret: Montant; autre: Montant; autreLibelle: string }; annees: { ventesParMois: Montant; chargesFixesMois: Montant }[]; tauxImpot: Montant; hypotheses: string; risques: { id: string; risque: string; reponse: string }[] };
+  m5: M5;
   synthese: { probleme: string; solution: string; marche: string; organisation: string; chiffres: string; equipeDemande: string };
   relecture: { points: Record<string, '' | 'oui' | 'revoir'>; questionBinome: string };
   actions: { id: string; action: string; quand: string }[];

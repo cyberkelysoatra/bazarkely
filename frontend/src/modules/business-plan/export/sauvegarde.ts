@@ -53,7 +53,10 @@ export function lireSauvegarde(texte: string): Plan {
   if (!estObjet(plan) || typeof plan.id !== 'string') throw new SauvegardeInvalide(MESSAGE);
   for (const k of OBJETS) if (!estObjet(plan[k])) throw new SauvegardeInvalide(MESSAGE);
   const m5 = plan.m5 as Record<string, unknown>;
-  if (!Array.isArray(m5.couts) || !Array.isArray(m5.investissements) || !estObjet(m5.ressources)) throw new SauvegardeInvalide(MESSAGE);
+  // Both shapes are read: lists (NEC-CC-38, `modele: 2`) or the old single product (migrated by completerPlan).
+  const liste = m5.modele === 2 && Array.isArray(m5.produits) && Array.isArray(m5.investissements) && Array.isArray(m5.ressources);
+  const ancien = Array.isArray(m5.couts) && Array.isArray(m5.investissements) && estObjet(m5.ressources);
+  if (!liste && !ancien) throw new SauvegardeInvalide(MESSAGE);
   for (const k of ['actions', 'prix'] as const) if (plan[k] !== undefined && !Array.isArray(plan[k])) throw new SauvegardeInvalide(MESSAGE);
   if (plan.notes !== undefined && typeof plan.notes !== 'string') throw new SauvegardeInvalide(MESSAGE);
   if (!estObjet(plan.identite) || typeof plan.identite.nomProjet !== 'string') throw new SauvegardeInvalide(MESSAGE);

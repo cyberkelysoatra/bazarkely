@@ -47,9 +47,12 @@ describe('send a price to module 5', () => {
   it('replaces the blank default line, then appends', () => {
     const p = planVide();
     ajouterAuxCouts(p, { id: 'a', element: 'Mangues', unite: 'le kg', prix: 2000, ou: '' });
-    expect(p.m5.couts.map((l) => [l.libelle, l.montant])).toEqual([['Mangues (le kg)', 2000]]);
+    // NEC-CC-38: a component of the produit principal (one global cost line: 1 piece, 1 piece used).
+    const recette = () => p.m5.produits[0].composants.map((l) => [l.designation, l.prixLot]);
+    expect(recette()).toEqual([['Mangues (le kg)', 2000]]);
+    expect(p.m5.produits[0].composants[0]).toMatchObject({ quantiteLot: 1, uniteLot: 'piece', quantiteUtilisee: 1 });
     ajouterAuxCouts(p, { id: 'b', element: 'Sucre', unite: '', prix: 4000, ou: '' });
-    expect(p.m5.couts.map((l) => [l.libelle, l.montant])).toEqual([
+    expect(recette()).toEqual([
       ['Mangues (le kg)', 2000],
       ['Sucre', 4000]
     ]);
