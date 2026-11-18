@@ -1,0 +1,54 @@
+{
+ "parties": {
+  "1": {
+   "url": "/releve/r/a0000000-0000-4000-8000-0000000000c9/saisie",
+   "bandeau": "En saisie sur le téléphone de R depuis le 18/11 à 07:42. Lecture seule.dernière donnée reçue à 09:12",
+   "carte": "Accès nordStations reçues3Calagesauté (bornes vérifiées)BornesA, B, Cdernière donnée reçue à 09:12",
+   "barre": "CarteRésultats",
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\01-ecran-14-tenu-ailleurs.png",
+   "dialogue": "Reprendre la saisie ?La saisie est tenue par le téléphone de R depuis le 18/11 à 07:42 ; ce qu'il n'a pas encore envoyé arrivera plus tard. La reprendre ?AnnulerOui, reprendre la saisie",
+   "captureDialogue": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\02-ecran-14-avertissement.png"
+  },
+  "2": {
+   "bandeau": "Vous tenez la saisie, tout est envoyéTerminer",
+   "tardives": "4 stations arrivées après reprise : à garder ou à écarterS04VERTarrivé après repriseS05VERTarrivé après repriseS06VERTarrivé après repriseS07VERTarrivé après reprise",
+   "pastilles": 4,
+   "appels": [
+    "rt_saisie_reprendre"
+   ],
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\03-ecran-15-arrivees-apres-reprise.png",
+   "station": "Station S05arrivé après repriseVERT",
+   "captureStation": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\04-station-arrivee-apres-reprise.png",
+   "anneaux": 4,
+   "captureCarte": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\05-carte-anneaux-jaunes.png"
+  },
+  "3": {
+   "url": "/releve/r/a0000000-0000-4000-8000-0000000000c9/saisie",
+   "bandeau": "Fin de saisie enregistrée : elle partira au retour du réseauTout est envoyé",
+   "carte": "Fin de journéeStations saisies7Envoyées7En attente0",
+   "appelsHorsLigne": 0,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\06-ecran-13-fin-en-attente.png",
+   "apresRetour": "Saisie libredernière donnée reçue à 23:42Prendre la saisie",
+   "appelsRetour": [
+    "rt_saisie_terminer",
+    "rt_mes_terrains"
+   ],
+   "terminerEnDernier": true,
+   "captureLibre": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\07-saisie-libre.png"
+  },
+  "4": {
+   "tuiles": [
+    "releve",
+    "bazarkely",
+    "construction",
+    "gestion-eau",
+    "navy-ay",
+    "pudi",
+    "validation"
+   ],
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-09\\08-commutateur.png"
+  }
+ },
+ "erreurs": []
+}
