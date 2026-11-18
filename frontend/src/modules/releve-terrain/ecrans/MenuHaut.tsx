@@ -1,13 +1,16 @@
 // Screen 5: top menu (Menu.dc.html). « Mes terrains », « + Nouveau domaine foncier », « Aide : le principe
-// de mesure », « Version de l'outil ». No account item before phase 3.
+// de mesure », « Version de l'outil », then « Se déconnecter » (phase 3; refused while rows wait to be
+// sent) or « Se connecter ».
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { BoutonEnTete } from '../composants/EnTete'
 import { Feuille, FeuilleMenu } from '../composants/Feuilles'
 import { FeuilleNom } from '../composants/Formulaires'
 import { Icone, Point } from '../composants/Icones'
 import { creerDomaine } from '../db/depot'
-import { executer } from '../etat/avis'
+import { executer, montrerAvis } from '../etat/avis'
+import { verifierDeconnexion } from '../sync/regles'
+import { deconnexion, useSession } from '../sync/session'
 import { lancerInstallation, useInstallationDisponible, usePretModeAvion } from '../etat/pwa'
 import { VERSION_RELEVE } from '../version'
 
@@ -42,9 +45,33 @@ export function AidePrincipe() {
 export function MenuHaut() {
   const [vue, setVue] = useState<Vue>(null)
   const naviguer = useNavigate()
+  const { pathname } = useLocation()
   const pret = usePretModeAvion()
   const installable = useInstallationDisponible()
+  const session = useSession()
   const fermer = () => setVue(null)
+  const compte = session
+    ? {
+        libelle: 'Se déconnecter',
+        onClick: async () => {
+          fermer()
+          // Refused while rows wait to be sent (section 8).
+          const v = await verifierDeconnexion()
+          if (!v.ok) {
+            montrerAvis(v.message, 'alerte')
+            return
+          }
+          await deconnexion()
+          naviguer('/connexion')
+        },
+      }
+    : {
+        libelle: 'Se connecter',
+        onClick: () => {
+          fermer()
+          naviguer(`/connexion?retour=${encodeURIComponent(pathname)}`)
+        },
+      }
   return (
     <>
       <BoutonEnTete libelle="Menu" onClick={() => setVue('menu')} />
@@ -63,6 +90,7 @@ export function MenuHaut() {
           { libelle: '+ Nouveau domaine foncier', onClick: () => setVue('domaine') },
           { libelle: 'Aide : le principe de mesure', onClick: () => setVue('aide') },
           { libelle: "Version de l'outil", onClick: () => setVue('version') },
+          compte,
         ]}
       />
       <FeuilleNom
@@ -89,7 +117,11 @@ export function MenuHaut() {
             <Point couleur={pret ? '#15803D' : '#3F3F3A'} taille={12} />
             {pret ? 'Prêt pour le mode avion' : 'Préparation du mode avion : restez connecté une minute'}
           </p>
-          <p className="m-0 text-encre2">Vos relevés sont enregistrés sur ce téléphone. Rien n'est envoyé pour le moment.</p>
+          <p className="m-0 text-encre2">
+            {session
+              ? `Vos relevés sont enregistrés sur ce téléphone et partent au serveur de 1sakely.org dès qu'il y a du réseau. Compte : ${session.nomGoogle || session.email}.`
+              : "Vos relevés sont enregistrés sur ce téléphone. Connectez-vous pour les retrouver sur tout téléphone."}
+          </p>
           {installable ? (
             <button
               type="button"

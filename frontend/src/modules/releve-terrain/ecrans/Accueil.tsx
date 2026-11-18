@@ -13,6 +13,7 @@ import { creerDomaine } from '../db/depot'
 import { dernierReleve, listeTerrains, type DomaineListe } from '../db/lecture'
 import { executer } from '../etat/avis'
 import { lancerInstallation, useInstallationDisponible } from '../etat/pwa'
+import { useBandeauTelephone } from '../etat/useEnvoi'
 import { cheminChantier, cheminEtape, heureMadagascar, pluriel } from '../etat/navigation'
 import { calculerMesure } from '../etat/useReleve'
 import { useRequete } from '../etat/useRequete'
@@ -107,11 +108,12 @@ export default function Accueil() {
   const [menu, setMenu] = useState<CibleMenu | null>(null)
   const [nouveauDomaine, setNouveauDomaine] = useState(false)
   const installable = useInstallationDisponible()
+  const envoi = useBandeauTelephone()
 
   return (
     <div className="rt-ecran">
       <EnTete titre="Relevé terrain" sousTitre="Mes terrains" droite={<MenuHaut />} />
-      <Bandeau />
+      <Bandeau {...envoi} />
       <main className="flex flex-1 flex-col gap-3 px-4 pb-6 pt-3.5">
         <Reprendre />
         {terrains === undefined ? null : terrains.length === 0 ? (

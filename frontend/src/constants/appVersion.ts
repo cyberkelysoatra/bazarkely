@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.154.0';
-export const APP_VERSION_NAME = 'Relevé terrain : bornes, calage, stations, bornes éphémères, carte, résultats et exports, sur le téléphone (RELEVE-CC-07)';
+export const APP_VERSION = '3.155.0';
+export const APP_VERSION_NAME = 'Relevé terrain : compte 1saKELY, envoi au serveur et lecture (RELEVE-CC-08)';
 export const LAST_UPDATED = '2026-11-18';
 export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.155.0',
+    date: '2026-11-18',
+    description: 'Relevé terrain : compte 1saKELY, envoi au serveur et lecture (RELEVE-CC-08)',
+    changes: [
+      'Écran « Connectez-vous » à la première ouverture avec du réseau (Google ou e-mail, même compte que 1sakely.org) ; sans réseau, le relevé s’ouvre comme avant',
+      'Tout ce qui est saisi part au serveur dès qu’il y a du réseau, dans l’ordre (domaines, chantiers, relevés, saisies, suppressions), sans doublon ; repère « Tout est envoyé » ou « N saisies en attente d’envoi » dans le bandeau',
+      'Les terrains et relevés du compte se retrouvent sur un autre téléphone ; un chantier retiré disparaît, sauf ce qui attend encore d’être envoyé',
+      'Les relevés saisis avant le compte lui sont rattachés à la première connexion, sans perte',
+      'Déconnexion refusée tant que des saisies attendent ; suppression refusée quand un relevé est tenu par un autre téléphone'
+    ]
+  },
   {
     version: '3.154.0',
     date: '2026-11-18',

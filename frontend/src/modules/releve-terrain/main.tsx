@@ -1,17 +1,23 @@
-// Entry of the "Relevé terrain" light page (/releve). Loads nothing from the host app, nothing from
-// Supabase: every relevé stays in this phone's IndexedDB (phase 2, D28).
+// Entry of the "Relevé terrain" light page (/releve). Loads nothing from the host app. Every relevé is
+// written in this phone's IndexedDB first; with a 1saKELY account (phase 3, RELEVE-CC-08) the engine of
+// sync/ sends it to the server and reads it back. supabase-js is loaded only when a session exists or a
+// sign-in starts.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './releve.css'
 import App from './App'
 import { appareil } from './db/depot'
+import { montrerAvis } from './etat/avis'
 import { demarrerPwa } from './etat/pwa'
+import { demarrerSynchro } from './sync/moteur'
 import { VERSION_RELEVE } from './version'
 
 document.documentElement.dataset.version = VERSION_RELEVE
 demarrerPwa()
-// Identity of this phone, drawn at the first opening (D25).
-void appareil().catch(() => undefined)
+// Identity of this phone, drawn at the first opening (D25), then the sending engine.
+void appareil()
+  .catch(() => undefined)
+  .finally(() => demarrerSynchro({ signaler: (m) => montrerAvis(m, 'alerte') }))
 
 createRoot(document.getElementById('releve-root')!).render(
   <StrictMode>

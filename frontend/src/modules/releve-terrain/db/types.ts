@@ -17,7 +17,12 @@ export interface Domaine {
   maj_at: string
   supprime_at: string | null
   envoi: Envoi
+  /** Phase 3: name of the owner account, as returned by the server. */
+  proprietaire_nom?: string
 }
+
+/** Right of the account on a work site, as returned by the server (phase 3). */
+export type Droit = 'proprietaire' | 'relever' | 'consulter'
 
 export interface Chantier {
   id: string
@@ -27,6 +32,18 @@ export interface Chantier {
   maj_at: string
   supprime_at: string | null
   envoi: Envoi
+  /** Phase 3: right of the account, as returned by the server. */
+  droit?: Droit
+}
+
+/** Phase 3: who holds the input of a relevé, as returned by the server. */
+export interface Detenteur {
+  user_id: string
+  nom: string
+  appareil: string
+  appareil_libelle: string | null
+  depuis: string
+  moi: boolean
 }
 
 export type EtatCalage = 'a_faire' | 'valide' | 'force' | 'saute'
@@ -76,6 +93,16 @@ export interface Releve {
   terminer_demande: boolean | null
   /** Phase 3: relevé accepted by the server. */
   serveur_connu: boolean
+  /** Phase 3: name of the author account (server), shown instead of « ce téléphone ». */
+  cree_par_nom?: string
+  /** Phase 3: holder of the input (server), null when nobody holds it. */
+  detenteur?: Detenteur | null
+  /** Phase 3: time of the last data received by the server. */
+  derniere_donnee_at?: string | null
+  /** Phase 3: number of stations on the server. */
+  nb_stations?: number
+  /** Phase 3: derniere_donnee_at of the last full read of the objects (rt_releve_lire). */
+  lu_donnee_at?: string | null
 }
 
 export interface ValeursPlanBorne {
@@ -159,6 +186,8 @@ export type ActionJournal =
   | 'reglages_modifies'
   | 'saisie_prise'
   | 'saisie_terminee'
+  /** Phase 3 (D28): ids drawn again because the server refused the old ones. */
+  | 'ids_renouveles'
 
 export interface DonneesJournal {
   action: ActionJournal
@@ -204,6 +233,17 @@ export interface ValeursCles {
   reglages_defaut: Partial<Reglages>
   /** Interval of the contour lines chosen on this phone (display preference, never sent). */
   vue_intervalle: number
+  /** Phase 3: account known on this phone (set by rt_ouvrir). */
+  compte: { user_id: string; nom: string }
+  /** Phase 3: cases met while sending (D28 ids drawn again, deletions refused), kept on the phone. */
+  journal_envoi: CasEnvoi[]
+}
+
+/** One case of the sending journal (phase 3). */
+export interface CasEnvoi {
+  le: string
+  cas: 'ids_renouveles' | 'suppression_refusee' | 'envoi_suspendu' | 'appareil_renouvele'
+  detail: Record<string, unknown>
 }
 export type NomCle = keyof ValeursCles
 

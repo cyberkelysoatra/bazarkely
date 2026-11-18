@@ -2,19 +2,25 @@
 // Every write from a screen sets maj_at, envoi = 'a_envoyer' and increments the relevé rev. A write
 // from a screen holding an older rev than the stored one is refused (ConflitReleve); the other tabs
 // are told through BroadcastChannel('releve-terrain'). A storage error (quota) becomes MemoirePleine,
-// thrown before anything is lost. Phase 3 (RELEVE-CC-08) adds here marquerEnvoye and appliquerServeur,
-// which never set 'a_envoyer' and never increase rev.
+// thrown before anything is lost. Phase 3 (RELEVE-CC-08) adds here the writes reserved to sync/:
+// marquerEnvoye and appliquerServeur, which never set 'a_envoyer' on a sent row and never increase the rev
+// of a relevé held by this phone, and, for D28, rattacherAuCompte, renouvelerIdsDomaine,
+// renouvelerIdsReleve (new ids when the server refuses the old ones), plus the account keys.
 import Dexie from 'dexie'
 import { db } from './base'
 import type {
+  CasEnvoi,
   Chantier,
+  Detenteur,
   DonneesParType,
   Domaine,
+  Droit,
   EnteteReleve,
   Objet,
   ObjetBorne,
   ObjetSauvegarde,
   Releve,
+  Saisie,
   SauvegardeReleve,
   TypeObjet,
   ValeursCles,
@@ -316,6 +322,15 @@ function enteteVide(nom: string, date: string, operateurs: string, hi: number, h
     cote_c: null,
     calage: { etat: 'a_faire', le: null },
   }
+}
+
+/** An entete received from the server, completed with the defaults of schema 1 (never trusted as is). */
+export function enteteDepuis(nom: string, e: unknown): EnteteReleve {
+  const base = enteteVide(nom, dateMadagascar(), '', HAUTEUR_DEFAUT, HAUTEUR_DEFAUT)
+  const entete = estObjetSimple(e) ? fusionProfonde(base, e) : base
+  entete.schema = 1
+  entete.nom = nom
+  return entete
 }
 
 function objetNeuf<T extends TypeObjet>(releveId: string, type: T, donnees: DonneesParType[T], t: string, id = nouvelId()): Objet {
@@ -664,6 +679,483 @@ export async function lireSauvegarde(releveId: string): Promise<SauvegardeReleve
     releve: { id: r.id, nom: r.nom, entete: r.entete, cree_at: r.cree_at },
     objets: objets.map((o) => ({ id: o.id, type: o.type, donnees: o.donnees, saisi_at: o.saisi_at, maj_at: o.maj_at }) as ObjetSauvegarde),
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 (RELEVE-CC-08): writes reserved to sync/. None of them sets 'a_envoyer' on a row that was
+// sent, none increases the rev of a relevé held by this phone.
+// ---------------------------------------------------------------------------------------------
+
+export type TableEnvoi = 'domaines' | 'chantiers' | 'releves' | 'objets'
+
+/** A row as read for sending: its table, its id and its maj_at at that moment. */
+export interface LigneLue {
+  table: TableEnvoi
+  id: string
+  maj_at: string
+}
+
+/**
+ * Sets envoi = 'envoye' on the rows whose maj_at has not changed since they were read for sending
+ * (a row written meanwhile stays 'a_envoyer' and leaves at the next pass). Never touches rev.
+ * Returns the number of rows marked.
+ */
+export async function marquerEnvoye(lignes: LigneLue[]): Promise<number> {
+  if (!lignes.length) return 0
+  const n = await proteger(() =>
+    db.transaction('rw', db.domaines, db.chantiers, db.releves, db.objets, async () => {
+      let k = 0
+      for (const l of lignes) {
+        const table = db[l.table] as unknown as Dexie.Table<{ id: string; maj_at: string; envoi: string }, string>
+        const r = await table.get(l.id)
+        if (!r || r.envoi !== 'a_envoyer' || r.maj_at !== l.maj_at) continue
+        await table.update(l.id, { envoi: 'envoye' })
+        k++
+      }
+      return k
+    }),
+  )
+  annoncer({ type: 'terrains' })
+  return n
+}
+
+export interface DomaineServeur {
+  id: string
+  nom: string
+  a_moi: boolean
+  proprietaire_nom?: string
+}
+
+export interface ChantierServeur {
+  id: string
+  domaine_id: string
+  nom: string
+  droit: Droit | null
+}
+
+export interface ReleveServeur {
+  id: string
+  chantier_id: string
+  nom: string
+  entete: EnteteReleve
+  cree_par: string
+  cree_par_nom?: string
+  cree_at: string
+  maj_at: string
+  saisie: Detenteur | null
+  derniere_donnee_at?: string | null
+  nb_stations?: number
+}
+
+export interface ObjetServeur {
+  id: string
+  releve_id: string
+  type: TypeObjet
+  donnees: unknown
+  supprime: boolean
+  saisi_at: string | null
+  recu_at?: string
+  apres_reprise: boolean
+}
+
+/** Local state of a relevé set by sync/ (never envoi, rev or maj_at). */
+export interface EtatLocalReleve {
+  id: string
+  serveur_connu?: boolean
+  saisie?: Saisie | null
+  lu_donnee_at?: string | null
+}
+
+export interface IdsTerrains {
+  domaines?: string[]
+  chantiers?: string[]
+  releves?: string[]
+}
+
+/** What sync/ writes from the server (and the local states it decides). */
+export interface DonneesServeur {
+  /** Account of this phone (owner of the domains `a_moi`). */
+  compteId?: string
+  /** Identity of this phone (input held here when the holder is this device). */
+  appareilId?: string
+  domaines?: DomaineServeur[]
+  chantiers?: ChantierServeur[]
+  releves?: ReleveServeur[]
+  objets?: ObjetServeur[]
+  etats?: EtatLocalReleve[]
+  /** No longer returned by the server (DR11): removed, except what still has rows 'a_envoyer'. */
+  retirer?: IdsTerrains
+  /** Deletion refused by the server: the rows come back on the phone. */
+  restaurer?: IdsTerrains
+}
+
+/** What appliquerServeur did. */
+export interface BilanServeur {
+  /** Relevés kept in read-only because rows still wait to be sent (DR11). */
+  gardesEnLecture: string[]
+  retires: { domaines: number; chantiers: number; releves: number }
+}
+
+/** Input state from the holder returned by the server. */
+export function saisieDepuisServeur(det: Detenteur | null | undefined, appareilId: string | undefined, actuelle: Saisie | null, droit: Droit | null | undefined): Saisie {
+  if (droit === 'consulter') return 'lecture'
+  if (det && appareilId && det.appareil === appareilId) return 'ici'
+  if (actuelle === 'lecture' || actuelle === 'reprise') return actuelle
+  if (det) return 'ailleurs'
+  return 'libre'
+}
+
+/** Deep equality, key order ignored (the server's jsonb sorts the keys). */
+function memeJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => memeJson(x, b[i]))
+  const ka = Object.keys(a as object).filter((k) => (a as Record<string, unknown>)[k] !== undefined)
+  const kb = Object.keys(b as object).filter((k) => (b as Record<string, unknown>)[k] !== undefined)
+  return ka.length === kb.length && ka.every((k) => memeJson((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+}
+
+/**
+ * Writes what the server returns. Never sets 'a_envoyer', never overwrites a row 'a_envoyer' (only
+ * its server fields: author name, holder, last data), never increases the rev of a relevé held by
+ * this phone. Removal (DR11) keeps every relevé that still has rows 'a_envoyer', in read-only.
+ * The other tabs are told through the BroadcastChannel.
+ */
+export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanServeur> {
+  const t = maintenant()
+  const changes = new Map<string, number>()
+  const bilan: BilanServeur = { gardesEnLecture: [], retires: { domaines: 0, chantiers: 0, releves: 0 } }
+  await proteger(() =>
+    db.transaction('rw', db.domaines, db.chantiers, db.releves, db.objets, async () => {
+      const droits = new Map<string, Droit | null>()
+      for (const c of donnees.chantiers ?? []) droits.set(c.id, c.droit)
+
+      for (const d of donnees.domaines ?? []) {
+        const l = await db.domaines.get(d.id)
+        const proprietaire = d.a_moi ? (donnees.compteId ?? l?.proprietaire ?? 'local') : 'partage'
+        if (!l) {
+          await db.domaines.add({ id: d.id, nom: d.nom, proprietaire, a_moi: d.a_moi, cree_at: t, maj_at: t, supprime_at: null, envoi: 'envoye', proprietaire_nom: d.proprietaire_nom })
+        } else if (l.envoi === 'a_envoyer') {
+          await db.domaines.update(d.id, { proprietaire_nom: d.proprietaire_nom })
+        } else {
+          await db.domaines.update(d.id, { nom: d.nom, a_moi: d.a_moi, proprietaire, proprietaire_nom: d.proprietaire_nom, supprime_at: null })
+        }
+      }
+
+      for (const c of donnees.chantiers ?? []) {
+        const l = await db.chantiers.get(c.id)
+        const droit = c.droit ?? undefined
+        if (!l) {
+          await db.chantiers.add({ id: c.id, domaine_id: c.domaine_id, nom: c.nom, cree_at: t, maj_at: t, supprime_at: null, envoi: 'envoye', droit })
+        } else if (l.envoi === 'a_envoyer') {
+          await db.chantiers.update(c.id, { droit })
+        } else {
+          await db.chantiers.update(c.id, { nom: c.nom, domaine_id: c.domaine_id, supprime_at: null, droit })
+        }
+      }
+
+      for (const s of donnees.releves ?? []) {
+        const l = await db.releves.get(s.id)
+        const droit = droits.get(s.chantier_id) ?? (await db.chantiers.get(s.chantier_id))?.droit
+        const meta = {
+          cree_par: s.cree_par,
+          cree_par_nom: s.cree_par_nom,
+          detenteur: s.saisie ?? null,
+          derniere_donnee_at: s.derniere_donnee_at ?? null,
+          nb_stations: s.nb_stations,
+          serveur_connu: true,
+        }
+        if (!l) {
+          await db.releves.add({
+            id: s.id,
+            chantier_id: s.chantier_id,
+            nom: s.nom,
+            entete: s.entete,
+            cree_at: s.cree_at,
+            maj_at: s.maj_at,
+            ouvert_at: null,
+            rev: 1,
+            supprime_at: null,
+            envoi: 'envoye',
+            saisie: saisieDepuisServeur(s.saisie, donnees.appareilId, null, droit),
+            terminer_demande: null,
+            lu_donnee_at: null,
+            ...meta,
+          })
+          changes.set(s.id, 1)
+          continue
+        }
+        const saisie = saisieDepuisServeur(s.saisie, donnees.appareilId, l.saisie, droit)
+        if (l.envoi === 'a_envoyer') {
+          await db.releves.update(s.id, { ...meta, saisie })
+          continue
+        }
+        const contenu = l.nom !== s.nom || !memeJson(l.entete, s.entete) || l.chantier_id !== s.chantier_id || l.supprime_at !== null
+        const tenuIci = saisie === 'ici' || l.saisie === 'ici'
+        const patch: Partial<Releve> = { ...meta, saisie }
+        if (contenu) Object.assign(patch, { nom: s.nom, entete: s.entete, chantier_id: s.chantier_id, supprime_at: null, maj_at: s.maj_at })
+        if (contenu && !tenuIci) patch.rev = l.rev + 1
+        await db.releves.update(s.id, patch)
+        if (patch.rev) changes.set(s.id, patch.rev)
+      }
+
+      const objetsParReleve = new Map<string, ObjetServeur[]>()
+      for (const o of donnees.objets ?? []) objetsParReleve.set(o.releve_id, [...(objetsParReleve.get(o.releve_id) ?? []), o])
+      for (const [releveId, liste] of objetsParReleve) {
+        const r = await db.releves.get(releveId)
+        if (!r) continue
+        let modifie = false
+        for (const o of liste) {
+          const l = await db.objets.get(o.id)
+          if (l && (l.envoi === 'a_envoyer' || l.releve_id !== releveId)) continue
+          const neuf = {
+            id: o.id,
+            releve_id: releveId,
+            type: o.type,
+            donnees: o.donnees,
+            supprime: o.supprime === true,
+            saisi_at: o.saisi_at ?? o.recu_at ?? t,
+            maj_at: o.recu_at ?? t,
+            apres_reprise: o.apres_reprise === true,
+            envoi: 'envoye',
+          } as Objet
+          if (l && memeJson(l.donnees, neuf.donnees) && l.supprime === neuf.supprime && l.apres_reprise === neuf.apres_reprise) continue
+          await db.objets.put(neuf)
+          modifie = true
+        }
+        if (modifie && r.saisie !== 'ici') {
+          const rev = (changes.get(releveId) ?? r.rev) + (changes.has(releveId) ? 0 : 1)
+          await db.releves.update(releveId, { rev })
+          changes.set(releveId, rev)
+        }
+      }
+
+      for (const e of donnees.etats ?? []) {
+        const l = await db.releves.get(e.id)
+        if (!l) continue
+        const patch: Partial<Releve> = {}
+        if (e.serveur_connu !== undefined) patch.serveur_connu = e.serveur_connu
+        if (e.saisie !== undefined) patch.saisie = e.saisie
+        if (e.lu_donnee_at !== undefined) patch.lu_donnee_at = e.lu_donnee_at
+        await db.releves.update(e.id, patch)
+      }
+
+      // Deletion refused by the server: the rows come back. A domain or a work site keeps its envoi (sent
+      // again, idempotent); a relevé known by the server is the server's again ('envoye').
+      const rest = donnees.restaurer
+      if (rest) {
+        for (const id of rest.domaines ?? []) await db.domaines.update(id, { supprime_at: null })
+        for (const id of rest.chantiers ?? []) await db.chantiers.update(id, { supprime_at: null })
+        for (const id of rest.releves ?? []) {
+          const l = await db.releves.get(id)
+          if (!l) continue
+          const rev = l.saisie === 'ici' ? l.rev : l.rev + 1
+          await db.releves.update(id, l.serveur_connu ? { supprime_at: null, envoi: 'envoye', rev } : { supprime_at: null, rev })
+          changes.set(id, rev)
+        }
+      }
+
+      const ret = donnees.retirer
+      if (ret) {
+        // A relevé with rows still to send stays, read-only and exportable; its work site and domain stay too.
+        const retirerReleve = async (r: Releve): Promise<boolean> => {
+          const objets = await db.objets.where('releve_id').equals(r.id).toArray()
+          if (r.envoi === 'a_envoyer' || objets.some((o) => o.envoi === 'a_envoyer')) {
+            if (r.saisie !== 'lecture') await db.releves.update(r.id, { saisie: 'lecture' })
+            bilan.gardesEnLecture.push(r.id)
+            return false
+          }
+          await db.objets.bulkDelete(objets.map((o) => o.id))
+          await db.releves.delete(r.id)
+          bilan.retires.releves++
+          return true
+        }
+        const retirerChantier = async (c: Chantier): Promise<boolean> => {
+          let tous = true
+          for (const r of await db.releves.where('chantier_id').equals(c.id).toArray()) if (!(await retirerReleve(r))) tous = false
+          if (!tous || c.envoi === 'a_envoyer') return false
+          await db.chantiers.delete(c.id)
+          bilan.retires.chantiers++
+          return true
+        }
+        for (const id of ret.releves ?? []) {
+          const r = await db.releves.get(id)
+          if (r) await retirerReleve(r)
+        }
+        for (const id of ret.chantiers ?? []) {
+          const c = await db.chantiers.get(id)
+          if (c) await retirerChantier(c)
+        }
+        for (const id of ret.domaines ?? []) {
+          const d = await db.domaines.get(id)
+          if (!d) continue
+          let tous = true
+          for (const c of await db.chantiers.where('domaine_id').equals(id).toArray()) if (!(await retirerChantier(c))) tous = false
+          if (tous && d.envoi !== 'a_envoyer') {
+            await db.domaines.delete(id)
+            bilan.retires.domaines++
+          }
+        }
+      }
+    }),
+  )
+  for (const [id, rev] of changes) annoncer({ type: 'releve', id, rev })
+  annoncer({ type: 'terrains' })
+  return bilan
+}
+
+/** D28: the domains and relevés made before the account become the account's (ids kept). */
+export async function rattacherAuCompte(compteId: string): Promise<string[]> {
+  const ids = await proteger(() =>
+    db.transaction('rw', db.domaines, db.releves, async () => {
+      const ds = (await db.domaines.toArray()).filter((d) => d.proprietaire === 'local')
+      for (const d of ds) await db.domaines.update(d.id, { proprietaire: compteId, a_moi: true })
+      const rs = (await db.releves.toArray()).filter((r) => r.cree_par === 'local')
+      for (const r of rs) await db.releves.update(r.id, { cree_par: compteId })
+      return ds.map((d) => d.id)
+    }),
+  )
+  if (ids.length) annoncer({ type: 'terrains' })
+  return ids
+}
+
+/** Applies an id mapping to the ids and the links (sides, sights, origin station) of objects. */
+function appliquerCorrespondance(objets: Objet[], m: Map<string, string>): { objet: Objet; change: boolean }[] {
+  const lien = (id: string | null): string | null => (id === null ? null : (m.get(id) ?? id))
+  return objets.map((o) => {
+    const d = JSON.parse(JSON.stringify(o.donnees)) as Record<string, unknown>
+    if (o.type === 'cote') {
+      d.de = lien(d.de as string)
+      d.vers = lien(d.vers as string)
+    } else if (o.type === 'station') {
+      d.visees = ((d.visees as { borne_id: string }[]) ?? []).map((v) => ({ ...v, borne_id: lien(v.borne_id) }))
+      d.sans_visee = lien((d.sans_visee as string | null) ?? null)
+    } else if (o.type === 'borne') {
+      d.station_origine = lien((d.station_origine as string | null) ?? null)
+    }
+    const id = m.get(o.id) ?? o.id
+    const change = id !== o.id || !memeJson(d, o.donnees)
+    return { objet: { ...o, id, donnees: d } as unknown as Objet, change }
+  })
+}
+
+function journalIds(releveId: string, t: string, detail: Record<string, unknown>): Objet {
+  return objetNeuf(releveId, 'journal', { action: 'ids_renouveles', detail, le: t }, t)
+}
+
+/** Sending journal kept on the phone (last 200 cases). */
+export async function ajouterJournalEnvoi(cas: Omit<CasEnvoi, 'le'>): Promise<void> {
+  const t = maintenant()
+  await proteger(() =>
+    db.transaction('rw', db.cles, async () => {
+      const l = ((await db.cles.get('journal_envoi'))?.valeur as CasEnvoi[] | undefined) ?? []
+      await db.cles.put({ cle: 'journal_envoi', valeur: [...l, { ...cas, le: t }].slice(-200) })
+    }),
+  )
+}
+
+/**
+ * D28: the server refused the id of a domain (taken, or owned by another account): the domain and
+ * all its children get new ids on the phone (links kept), every row 'a_envoyer', relevés not yet known
+ * by the server, held by this phone. A journal object is added to each relevé. Returns the mapping.
+ */
+export async function renouvelerIdsDomaine(domaineId: string, raison: string): Promise<Map<string, string>> {
+  const t = maintenant()
+  const m = new Map<string, string>()
+  const res = await proteger(() =>
+    db.transaction('rw', [db.domaines, db.chantiers, db.releves, db.objets, db.cles], async () => {
+      const d = await db.domaines.get(domaineId)
+      if (!d) return []
+      m.set(d.id, nouvelId())
+      const chantiers = await db.chantiers.where('domaine_id').equals(d.id).toArray()
+      for (const c of chantiers) m.set(c.id, nouvelId())
+      const releves = chantiers.length ? await db.releves.where('chantier_id').anyOf(chantiers.map((c) => c.id)).toArray() : []
+      for (const r of releves) m.set(r.id, nouvelId())
+      const objets = releves.length ? await db.objets.where('releve_id').anyOf(releves.map((r) => r.id)).toArray() : []
+      for (const o of objets) m.set(o.id, nouvelId())
+      await db.domaines.delete(d.id)
+      await db.domaines.add({ ...d, id: m.get(d.id)!, maj_at: t, envoi: 'a_envoyer' })
+      for (const c of chantiers) {
+        await db.chantiers.delete(c.id)
+        await db.chantiers.add({ ...c, id: m.get(c.id)!, domaine_id: m.get(d.id)!, maj_at: t, envoi: 'a_envoyer' })
+      }
+      const annonces: { id: string; rev: number }[] = []
+      for (const r of releves) {
+        const nid = m.get(r.id)!
+        await db.releves.delete(r.id)
+        await db.releves.add({ ...r, id: nid, chantier_id: m.get(r.chantier_id)!, maj_at: t, envoi: 'a_envoyer', serveur_connu: false, saisie: 'ici', detenteur: null, rev: r.rev + 1 })
+        annonces.push({ id: nid, rev: r.rev + 1 })
+        annonces.push({ id: r.id, rev: r.rev + 1 })
+      }
+      const remappes = appliquerCorrespondance(objets, m)
+      await db.objets.bulkDelete(objets.map((o) => o.id))
+      await db.objets.bulkAdd(remappes.map(({ objet }) => ({ ...objet, releve_id: m.get(objet.releve_id) ?? objet.releve_id, maj_at: t, envoi: 'a_envoyer' as const }) as Objet))
+      for (const r of releves) await db.objets.add(journalIds(m.get(r.id)!, t, { raison, domaine: { ancien: d.id, nouveau: m.get(d.id) }, releve: { ancien: r.id, nouveau: m.get(r.id) } }))
+      const dernier = (await db.cles.get('dernier_releve'))?.valeur as ValeursCles['dernier_releve'] | undefined
+      if (dernier && m.has(dernier.releve_id)) await db.cles.put({ cle: 'dernier_releve', valeur: { ...dernier, releve_id: m.get(dernier.releve_id)! } })
+      return annonces
+    }),
+  )
+  for (const a of res) annoncer({ type: 'releve', ...a })
+  annoncer({ type: 'terrains' })
+  return m
+}
+
+/**
+ * The server refused the id of a relevé (RT_ID_PRIS) or of some of its objects: new ids on the phone
+ * for the relevé and all its objects (`objets` absent), or for the listed objects only. Links kept,
+ * changed rows 'a_envoyer', journal object added. Returns the mapping.
+ */
+export async function renouvelerIdsReleve(releveId: string, raison: string, objets?: string[]): Promise<Map<string, string>> {
+  const t = maintenant()
+  const m = new Map<string, string>()
+  const res = await proteger(() =>
+    db.transaction('rw', db.releves, db.objets, db.cles, async () => {
+      const r = await db.releves.get(releveId)
+      if (!r) return null
+      const tous = await db.objets.where('releve_id').equals(r.id).toArray()
+      const cibles = objets ? tous.filter((o) => objets.includes(o.id)) : tous
+      for (const o of cibles) m.set(o.id, nouvelId())
+      let id = r.id
+      if (!objets) {
+        id = nouvelId()
+        m.set(r.id, id)
+        await db.releves.delete(r.id)
+        await db.releves.add({ ...r, id, maj_at: t, envoi: 'a_envoyer', serveur_connu: false, saisie: 'ici', detenteur: null, rev: r.rev + 1 })
+      } else {
+        await db.releves.update(r.id, { maj_at: t, envoi: 'a_envoyer' })
+      }
+      const aEcrire = appliquerCorrespondance(tous, m)
+        .map((x, i) => ({ ...x, ancienId: tous[i].id }))
+        .filter((x) => x.change || !objets)
+      await db.objets.bulkDelete(aEcrire.map((x) => x.ancienId))
+      await db.objets.bulkPut(aEcrire.map(({ objet }) => ({ ...objet, releve_id: id, maj_at: t, envoi: 'a_envoyer' as const }) as Objet))
+      await db.objets.add(journalIds(id, t, { raison, releve: { ancien: r.id, nouveau: id }, objets: [...m.entries()].filter(([a]) => a !== r.id).map(([ancien, nouveau]) => ({ ancien, nouveau })) }))
+      const dernier = (await db.cles.get('dernier_releve'))?.valeur as ValeursCles['dernier_releve'] | undefined
+      if (dernier && dernier.releve_id === r.id && id !== r.id) await db.cles.put({ cle: 'dernier_releve', valeur: { ...dernier, releve_id: id } })
+      return { id, ancien: r.id, rev: r.rev + 1 }
+    }),
+  )
+  if (res) {
+    annoncer({ type: 'releve', id: res.id, rev: res.rev })
+    if (res.ancien !== res.id) annoncer({ type: 'releve', id: res.ancien, rev: res.rev })
+  }
+  annoncer({ type: 'terrains' })
+  return m
+}
+
+/** Account known on this phone (rt_ouvrir). */
+export async function poserCompte(compte: ValeursCles['compte']): Promise<void> {
+  await poserCle('compte', compte)
+}
+
+/** The server refused this phone's identity (another account): a new one is drawn, same label. */
+export async function renouvelerAppareil(): Promise<ValeursCles['appareil']> {
+  const ancien = await appareil()
+  const valeur = { id: nouvelId(), libelle: ancien.libelle }
+  await poserCle('appareil', valeur)
+  return valeur
 }
 
 /** Principal targets of a relevé, in order A, B, C (ordre 1, 2, 3). */

@@ -6,6 +6,7 @@ import { REGLAGES_DEFAUT, type Reglages } from '../calcul'
 import * as depot from '../db/depot'
 import { lireReleve, type ReleveComplet } from '../db/lecture'
 import type { EnteteReleve, Objet } from '../db/types'
+import { lireReleveOuvert } from '../sync/moteur'
 import { ecouterConflits, executer } from './avis'
 import { calculerReleve, reglagesEffectifs, type ReleveCalcule } from './releveCalcule'
 import { useRequete } from './useRequete'
@@ -53,9 +54,12 @@ export function useReleve(releveId: string | undefined): { etat: EtatReleve; rev
 
   const calcule = useMemo(() => (donnees ? calculerMesure(donnees.releve.entete, donnees.objets, reglagesDefaut) : null), [donnees, reglagesDefaut])
 
-  // Opening: ouvert_at and « Reprendre » of the home screen.
+  // Opening: ouvert_at and « Reprendre » of the home screen; a relevé this phone does not hold is read
+  // from the server (phase 3, H29), never over a row waiting to be sent.
   useEffect(() => {
-    if (releveId) void depot.marquerOuvert(releveId).catch(() => undefined)
+    if (!releveId) return
+    void depot.marquerOuvert(releveId).catch(() => undefined)
+    void lireReleveOuvert(releveId)
   }, [releveId])
 
   // Refused write (older tab), another tab's write, or back to the front: read the stored relevé again.

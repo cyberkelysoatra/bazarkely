@@ -15,13 +15,16 @@ export interface DomaineListe {
 
 const parCreation = <T extends { cree_at: string }>(a: T, b: T) => a.cree_at.localeCompare(b.cree_at)
 
-/** Domains of this phone with their work sites and number of relevés (deleted ones left out). */
+/**
+ * Domains of this phone with their work sites and number of relevés (deleted ones left out). The
+ * domains shared with the account (phase 3 reads them already) wait for « Partagés avec moi » (phase 4).
+ */
 export async function listeTerrains(): Promise<DomaineListe[]> {
   const [domaines, chantiers, releves] = await Promise.all([db.domaines.toArray(), db.chantiers.toArray(), db.releves.toArray()])
   const nb = new Map<string, number>()
   for (const r of releves) if (!r.supprime_at) nb.set(r.chantier_id, (nb.get(r.chantier_id) ?? 0) + 1)
   return domaines
-    .filter((d) => !d.supprime_at)
+    .filter((d) => !d.supprime_at && d.a_moi !== false)
     .sort(parCreation)
     .map((domaine) => {
       const cs = chantiers
@@ -78,6 +81,53 @@ export async function dernierReleve(): Promise<ReleveComplet | null> {
   const r = await lireReleve(v.releve_id)
   if (!r || !r.chantier || r.chantier.supprime_at || !r.domaine || r.domaine.supprime_at) return null
   return r
+}
+
+/**
+ * Waiting rows of a relevé, as the band counts them (H02): its objects 'a_envoyer', or 1 when only the
+ * relevé itself (its entete, its deletion) waits.
+ */
+export function compterReleve(releve: Releve | undefined, objets: Objet[]): number {
+  const n = objets.filter((o) => o.envoi === 'a_envoyer').length
+  return n > 0 ? n : releve?.envoi === 'a_envoyer' ? 1 : 0
+}
+
+/** Rows of a relevé waiting to be sent (live in the band). */
+export async function enAttenteReleve(releveId: string): Promise<number> {
+  const [r, objets] = await Promise.all([db.releves.get(releveId), db.objets.where('releve_id').equals(releveId).toArray()])
+  return compterReleve(r, objets)
+}
+
+/** Every row waiting to be sent on this phone (domains, work sites, relevés counted as in the band). */
+export async function compterEnAttente(): Promise<number> {
+  const [domaines, chantiers, releves, objets] = await Promise.all([db.domaines.toArray(), db.chantiers.toArray(), db.releves.toArray(), db.objets.toArray()])
+  const parReleve = new Map<string, Objet[]>()
+  for (const o of objets) if (o.envoi === 'a_envoyer') parReleve.set(o.releve_id, [...(parReleve.get(o.releve_id) ?? []), o])
+  let n = domaines.filter((d) => d.envoi === 'a_envoyer').length + chantiers.filter((c) => c.envoi === 'a_envoyer').length
+  const vus = new Set<string>()
+  for (const r of releves) {
+    vus.add(r.id)
+    n += compterReleve(r, parReleve.get(r.id) ?? [])
+  }
+  for (const [id, l] of parReleve) if (!vus.has(id)) n += l.length
+  return n
+}
+
+/**
+ * First live relevé of a relevé, a work site or a domain known to be held by another phone (holder
+ * returned by the server, not this device), or null.
+ */
+export async function releveTenuAilleurs(cible: { releveId: string } | { chantierId: string } | { domaineId: string }, appareilId: string | null): Promise<Releve | null> {
+  let releves: Releve[]
+  if ('releveId' in cible) {
+    const r = await db.releves.get(cible.releveId)
+    releves = r ? [r] : []
+  } else {
+    const chantiers =
+      'chantierId' in cible ? [cible.chantierId] : (await db.chantiers.where('domaine_id').equals(cible.domaineId).toArray()).filter((c) => !c.supprime_at).map((c) => c.id)
+    releves = chantiers.length ? await db.releves.where('chantier_id').anyOf(chantiers).toArray() : []
+  }
+  return releves.find((r) => !r.supprime_at && r.detenteur && r.detenteur.appareil !== appareilId) ?? null
 }
 
 /** Ids of the live relevés of a domain or of a work site (export before deletion). */

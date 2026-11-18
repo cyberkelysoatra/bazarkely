@@ -20,7 +20,9 @@ import { executer, montrerAvis } from '../etat/avis'
 import { cheminEtape, dateFr, NOMS_ETAPES, pluriel } from '../etat/navigation'
 import type { ReleveCalcule } from '../etat/releveCalcule'
 import { calculerMesure } from '../etat/useReleve'
+import { useBandeauTelephone } from '../etat/useEnvoi'
 import { useRequete } from '../etat/useRequete'
+import { refusSuppression } from '../sync/regles'
 import { MenuHaut } from './MenuHaut'
 import { MenuTerrain } from './MenuTerrain'
 import { exporterSauvegarde } from './registre'
@@ -107,7 +109,7 @@ function LigneReleve({ releve, calcule, onMenu }: { releve: Releve; calcule: Rel
             {dateFr(releve.entete.date)}, étape {calcule.etape} {NOMS_ETAPES[calcule.etape]}, {pluriel(n, 'station', 'stations', 'aucune station')}
           </span>
           <span className="flex flex-wrap items-center gap-2 text-[14px] text-encre2">
-            <span>ce téléphone</span>
+            <span data-auteur>{releve.cree_par_nom || 'ce téléphone'}</span>
             <PastilleEtat couleur={p.couleur} mot={p.mot} petite />
           </span>
         </span>
@@ -128,6 +130,7 @@ export default function Chantier() {
   const [menuChantier, setMenuChantier] = useState(false)
   const [menuReleve, setMenuReleve] = useState<Releve | null>(null)
   const [aSupprimer, setASupprimer] = useState<Releve | null>(null)
+  const envoi = useBandeauTelephone()
 
   const releves = useMemo(
     () => (donnees ? donnees.releves.map(({ releve, objets }) => ({ releve, calcule: calculerMesure(releve.entete, objets, REGLAGES_DEFAUT) })) : []),
@@ -151,7 +154,7 @@ export default function Chantier() {
   return (
     <div className="rt-ecran">
       <EnTete titre={chantier.nom} sousTitre={domaine ? domaine.nom : null} droite={<MenuHaut />} />
-      <Bandeau />
+      <Bandeau {...envoi} />
       <main className="flex flex-1 flex-col gap-3 px-4 pb-6 pt-3.5">
         <div className="flex items-center gap-2">
           <h2 className="rt-etroite m-0 flex-1 text-[24px] font-extrabold">Relevés</h2>
@@ -191,9 +194,14 @@ export default function Chantier() {
           {
             libelle: 'Supprimer le relevé',
             danger: true,
-            onClick: () => {
-              setASupprimer(menuReleve)
+            onClick: async () => {
+              const r = menuReleve
               setMenuReleve(null)
+              if (!r) return
+              // Never a relevé held by another phone (6.8, section 8).
+              const refus = await refusSuppression({ releveId: r.id })
+              if (refus) montrerAvis(refus, 'alerte')
+              else setASupprimer(r)
             },
           },
         ]}

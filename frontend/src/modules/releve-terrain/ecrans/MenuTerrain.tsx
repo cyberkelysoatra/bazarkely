@@ -12,6 +12,7 @@ import { idsReleves } from '../db/lecture'
 import type { Chantier, Domaine } from '../db/types'
 import { executer, montrerAvis } from '../etat/avis'
 import { cheminChantier, pluriel } from '../etat/navigation'
+import { refusSuppression } from '../sync/regles'
 import { exporterSauvegarde, ouvrirSauvegarde } from './registre'
 
 export type CibleMenu = ({ type: 'domaine'; domaine: Domaine; releves: number } | { type: 'chantier'; chantier: Chantier; releves: number }) & {
@@ -37,11 +38,20 @@ export function MenuTerrain({ cible, onFermer }: { cible: CibleMenu; onFermer: (
   const estDomaine = cible.type === 'domaine'
   const nom = estDomaine ? cible.domaine.nom : cible.chantier.nom
 
+  // Never a domain or a work site holding a relevé held by another phone (6.8, section 8).
+  const demanderSuppression = async () => {
+    const refus = await refusSuppression(estDomaine ? { domaineId: cible.domaine.id } : { chantierId: cible.chantier.id })
+    if (refus) {
+      montrerAvis(refus, 'alerte')
+      onFermer()
+    } else setVue('supprimer')
+  }
+
   const elements: ElementMenu[] = estDomaine
     ? [
         { libelle: '+ Nouveau chantier', onClick: () => setVue('nouveau_chantier') },
         { libelle: 'Renommer le domaine', onClick: () => setVue('renommer') },
-        { libelle: 'Supprimer le domaine', onClick: () => setVue('supprimer'), danger: true },
+        { libelle: 'Supprimer le domaine', onClick: () => void demanderSuppression(), danger: true },
       ]
     : [
         { libelle: 'Renommer le chantier', onClick: () => setVue('renommer') },
@@ -56,7 +66,7 @@ export function MenuTerrain({ cible, onFermer }: { cible: CibleMenu; onFermer: (
               },
             ]
           : []),
-        { libelle: 'Supprimer le chantier', onClick: () => setVue('supprimer'), danger: true },
+        { libelle: 'Supprimer le chantier', onClick: () => void demanderSuppression(), danger: true },
       ]
 
   const supprimer = async () => {

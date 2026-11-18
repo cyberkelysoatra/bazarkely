@@ -1,0 +1,47 @@
+{
+ "parties": {
+  "1": {
+   "url": "/releve/connexion?retour=%2F",
+   "google": true,
+   "email": true,
+   "texte": "Connectez-vousRelevé terrain utilise votre compte 1sakely.org, le même que pour vos autres modules. Il faut du réseau cette fois-ci seulement.Continuer avec GoogleSe connecter par e-mailPas encore de compte ? Il se crée à la première connexion.EnsuiteRelevé terrain apparaît dans votre sélecteur de modules, sans demande à l'administrateur. Vos terrains vous suivent sur tout téléphone connecté à votre compte.",
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\01-ecran-1-connexion.png",
+   "formulaireEmail": true,
+   "capture2": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\02-ecran-1-email.png",
+   "appelsSupabase": 0
+  },
+  "2": {
+   "releveId": "8df519f0-ce9c-4f2e-890e-268d6aee81d7",
+   "avant": "Tout est envoyé",
+   "capture0": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\03-releve-envoye.png",
+   "appelsAvantHorsLigne": 7,
+   "stations": [
+    "S01",
+    "S02",
+    "S03"
+   ],
+   "horsLigne": "3 saisies en attente d'envoi",
+   "capture1": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\04-hors-ligne-3-en-attente.png",
+   "appelsPendantHorsLigne": 0,
+   "apres": "Tout est envoyé",
+   "capture2": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\05-en-ligne-tout-envoye.png",
+   "stationsRecues": [
+    "S01",
+    "S02",
+    "S03"
+   ],
+   "ordreAppels": [
+    "rt_ouvrir",
+    "rt_mes_terrains",
+    "rt_domaine_enregistrer",
+    "rt_chantier_enregistrer",
+    "rt_releve_creer",
+    "rt_envoyer"
+   ],
+   "defilement": 412,
+   "auteur": "Banc CC08",
+   "capture3": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-08\\06-chantier-auteur.png"
+  }
+ }
+}

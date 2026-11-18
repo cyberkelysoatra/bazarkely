@@ -7,6 +7,7 @@ import { Bandeau, type PropsBandeau } from '../composants/Bandeau'
 import { BarreBas, type OngletBas } from '../composants/BarreBas'
 import { EnTete } from '../composants/EnTete'
 import { Etapes, type NumeroEtape } from '../composants/Etapes'
+import { useBandeauReleve } from '../etat/useEnvoi'
 import type { useReleve } from '../etat/useReleve'
 import { MenuHaut } from './MenuHaut'
 
@@ -27,6 +28,7 @@ export interface PropsCadreReleve {
 
 export function CadreReleve({ releve, etape, onglet = null, bandeauCompact = false, bandeau, children }: PropsCadreReleve) {
   const { etat } = releve
+  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined)
   if (etat.statut !== 'pret') {
     return (
       <div className="rt-ecran">
@@ -53,7 +55,7 @@ export function CadreReleve({ releve, etape, onglet = null, bandeauCompact = fal
   return (
     <div className="rt-ecran">
       <EnTete titre={r.nom} sousTitre={sousTitre} droite={<MenuHaut />} />
-      <Bandeau compacte={bandeauCompact} {...bandeau} />
+      <Bandeau compacte={bandeauCompact} {...(bandeau ?? envoi)} />
       {etape ? <Etapes releveId={r.id} actuelle={etape} faites={faites} reduite={calcule.etatCalage !== 'a_faire'} /> : null}
       <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{children}</main>
       <BarreBas releveId={r.id} actif={onglet} incompletes={calcule.stationsIncompletes} calageFait={calcule.etatCalage !== 'a_faire'} />

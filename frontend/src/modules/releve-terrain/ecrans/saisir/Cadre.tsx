@@ -7,6 +7,7 @@ import { Bandeau } from '../../composants/Bandeau'
 import { BarreBas } from '../../composants/BarreBas'
 import { EnTete } from '../../composants/EnTete'
 import { Etapes, type NumeroEtape } from '../../composants/Etapes'
+import { useBandeauReleve } from '../../etat/useEnvoi'
 import type { useReleve } from '../../etat/useReleve'
 import { MenuHaut } from '../MenuHaut'
 
@@ -24,6 +25,7 @@ export interface PropsCadreStations {
 
 export function CadreStations({ releve, etape = 3, lienEphemeres = true, pied, children }: PropsCadreStations) {
   const { etat } = releve
+  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined)
   if (etat.statut !== 'pret') {
     return (
       <div className="rt-ecran">
@@ -64,7 +66,7 @@ export function CadreStations({ releve, etape = 3, lienEphemeres = true, pied, c
   return (
     <div className="rt-ecran">
       <EnTete titre={r.nom} sousTitre={sousTitre} droite={droite} />
-      <Bandeau compacte />
+      <Bandeau compacte {...envoi} />
       <Etapes releveId={r.id} actuelle={etape} faites={faites} reduite={calcule.etatCalage !== 'a_faire'} />
       <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{children}</main>
       <div className="sticky bottom-0 z-[6]">
