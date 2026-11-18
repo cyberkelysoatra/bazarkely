@@ -1,0 +1,514 @@
+{
+ "c1": {
+  "resumeCourbes": {
+   "ok": true,
+   "detail": "11 points, 17 triangles gardés sur 17 (coupure 100 m)."
+  },
+  "ligneFausseListee": {
+   "ok": true,
+   "detail": null
+  },
+  "tableau": {
+   "P2": {
+    "releve": "28,483",
+    "ecart": "+0,48",
+    "rouge": false
+   },
+   "P4": {
+    "releve": "32,076",
+    "ecart": "+0,08",
+    "rouge": false
+   },
+   "P3": {
+    "releve": "33,257",
+    "ecart": "−0,64",
+    "rouge": true
+   },
+   "P1": {
+    "releve": "30,872",
+    "ecart": "+0,87",
+    "rouge": true
+   }
+  },
+  "P1": {
+   "ok": true,
+   "detail": {
+    "releve": "30,872",
+    "ecart": "+0,87",
+    "rouge": true
+   }
+  },
+  "P2": {
+   "ok": true,
+   "detail": {
+    "releve": "28,483",
+    "ecart": "+0,48",
+    "rouge": false
+   }
+  },
+  "P3": {
+   "ok": true,
+   "detail": {
+    "releve": "33,257",
+    "ecart": "−0,64",
+    "rouge": true
+   }
+  },
+  "P1rouge": {
+   "ok": true,
+   "detail": null
+  },
+  "courbesCarte": {
+   "ok": true,
+   "detail": [
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ]
+  }
+ },
+ "c2": {
+  "huitTriangles": {
+   "ok": true,
+   "detail": "11 points, 8 triangles gardés sur 17 (coupure 20 m)."
+  },
+  "coupure20": {
+   "P3": {
+    "releve": "non couvert",
+    "ecart": "",
+    "rouge": false
+   },
+   "P2": {
+    "releve": "28,483",
+    "ecart": "+0,48",
+    "rouge": false
+   },
+   "P4": {
+    "releve": "32,076",
+    "ecart": "+0,08",
+    "rouge": false
+   },
+   "P1": {
+    "releve": "30,872",
+    "ecart": "+0,87",
+    "rouge": true
+   }
+  },
+  "P1-20": {
+   "ok": true,
+   "detail": {
+    "releve": "30,872",
+    "ecart": "+0,87",
+    "rouge": true
+   }
+  },
+  "P2-20": {
+   "ok": true,
+   "detail": {
+    "releve": "28,483",
+    "ecart": "+0,48",
+    "rouge": false
+   }
+  },
+  "P3-20-non-couvert": {
+   "ok": true,
+   "detail": {
+    "releve": "non couvert",
+    "ecart": "",
+    "rouge": false
+   }
+  },
+  "pasDeCourbe35SurY0": {
+   "ok": true,
+   "detail": []
+  },
+  "coupure15": {
+   "P3": {
+    "releve": "non couvert",
+    "ecart": "",
+    "rouge": false
+   },
+   "P2": {
+    "releve": "non couvert",
+    "ecart": "",
+    "rouge": false
+   },
+   "P4": {
+    "releve": "32,076",
+    "ecart": "+0,08",
+    "rouge": false
+   },
+   "P1": {
+    "releve": "non couvert",
+    "ecart": "",
+    "rouge": false
+   }
+  },
+  "P4-15": {
+   "ok": true,
+   "detail": {
+    "releve": "32,076",
+    "ecart": "+0,08",
+    "rouge": false
+   }
+  },
+  "P1P2P3-15-non-couverts": {
+   "ok": true,
+   "detail": {
+    "P3": {
+     "releve": "non couvert",
+     "ecart": "",
+     "rouge": false
+    },
+    "P2": {
+     "releve": "non couvert",
+     "ecart": "",
+     "rouge": false
+    },
+    "P4": {
+     "releve": "32,076",
+     "ecart": "+0,08",
+     "rouge": false
+    },
+    "P1": {
+     "releve": "non couvert",
+     "ecart": "",
+     "rouge": false
+    }
+   }
+  }
+ },
+ "c3": {
+  "nom": "Releve_Stations-B-F-G_2026-11-18_points.csv",
+  "extrait": [
+   "Point;Endroit;Type;Rang;État;X;Y;Altitude;Couleur;Écart altitude;Écart position;Indice géométrie;Bornes visées;Heure;Note",
+   "A;Borne ouest;borne principale;0;active;0,000;0,000;38,110;;;;;;;",
+   "B;Borne nord;borne principale;0;active;47,290;22,670;26,830;;;;;;;",
+   "C;Borne sud-est;borne principale;0;active;69,150;-17,320;21,330;;;;;;;",
+   "D (1);Piquet du manguier;borne éphémère;1;retirée;35,000;11,999;29,728;;;;;;;",
+   "D (2);Angle sud du parking;borne éphémère;1;active;19,993;0,006;33,274;;;;;;;",
+   "S01;;station;;normale;19,993;0,006;33,274;vert;0,010;0,000;1,55;A, B, C;08:10;"
+  ],
+  "bom": {
+   "ok": true,
+   "detail": null
+  },
+  "entete": {
+   "ok": true,
+   "detail": "Point;Endroit;Type;Rang;État;X;Y;Altitude;Couleur;Écart altitude;Écart position;Indice géométrie;Bornes visées;Heure;Note"
+  },
+  "D1": {
+   "ok": true,
+   "detail": null
+  },
+  "D2": {
+   "ok": true,
+   "detail": null
+  },
+  "S10": {
+   "ok": true,
+   "detail": [
+    "S10",
+    "",
+    "station",
+    "",
+    "normale",
+    "54,993",
+    "11,995",
+    "24,906",
+    "vert",
+    "0,033",
+    "0,003",
+    "1,41",
+    "B, C, D (1)",
+    "08:22",
+    ""
+   ]
+  },
+  "virgule": {
+   "ok": true,
+   "detail": "54,993"
+  },
+  "sansTiretLong": {
+   "ok": true,
+   "detail": null
+  }
+ },
+ "c4": {
+  "nom": "Releve_Stations-B-F-G-2_2026-11-18.releve.json",
+  "nomFichier": {
+   "ok": true,
+   "detail": "Releve_Stations-B-F-G-2_2026-11-18.releve.json"
+  },
+  "idsDifferents": {
+   "ok": true,
+   "detail": {
+    "copie": "Stations B F G (2) (2)",
+    "objets": [
+     19,
+     19
+    ]
+   }
+  },
+  "pasDeBorneEnPlus": {
+   "ok": true,
+   "detail": null
+  },
+  "memeCalcul": {
+   "ok": true,
+   "detail": {
+    "lignes": 19
+   }
+  },
+  "remplacerGardeLesIds": {
+   "ok": true,
+   "detail": {
+    "avant": 19,
+    "apres": 19
+   }
+  },
+  "refus-faux": {
+   "ok": true,
+   "detail": "Ce fichier n'est pas une sauvegarde de relevé. | Enregistré sur ce téléphone"
+  },
+  "refus-pasJson": {
+   "ok": true,
+   "detail": "Ce fichier n'est pas une sauvegarde de relevé. | Enregistré sur ce téléphone"
+  }
+ },
+ "c5": {
+  "chunksPdf": [
+   "jspdf.es.min-BL6VevIF.js",
+   "pdf-CkZf731s.js"
+  ],
+  "chunkDansPrecache": {
+   "ok": true,
+   "detail": [
+    "jspdf.es.min-BL6VevIF.js",
+    "pdf-CkZf731s.js"
+   ]
+  },
+  "pasDansLaPage": {
+   "ok": true,
+   "detail": null
+  },
+  "pasChargeAvantLeToucher": {
+   "ok": true,
+   "detail": []
+  },
+  "chargeAuToucher": {
+   "ok": true,
+   "detail": [
+    "http://127.0.0.1:4103/assets/releve/c/pdf-CkZf731s.js",
+    "http://127.0.0.1:4103/assets/releve/c/jspdf.es.min-BL6VevIF.js"
+   ]
+  },
+  "pdf": {
+   "ok": true,
+   "detail": {
+    "nom": "Releve_Stations-B-F-G_2026-11-18.pdf",
+    "octets": 9997
+   }
+  }
+ },
+ "c6": {
+  "mesures": [
+   18.1,
+   15.3,
+   16.9,
+   17.5,
+   20.1
+  ],
+  "courbes": 17,
+  "centStations": {
+   "ok": true,
+   "detail": 100
+  },
+  "moinsDe100ms": {
+   "ok": true,
+   "detail": [
+    18.1,
+    15.3,
+    16.9,
+    17.5,
+    20.1
+   ]
+  },
+  "courbesDessinees": {
+   "ok": true,
+   "detail": {
+    "duree": 18.100000023841858,
+    "stations": 100,
+    "courbes": 17
+   }
+  },
+  "changementIntervalle05": 15.5,
+  "changementIntervalleMoinsDe100ms": {
+   "ok": true,
+   "detail": 15.5
+  },
+  "pince": {
+   "avant": 4.4541,
+   "apres": 13.3623
+  },
+  "pinceChangeEchelle": {
+   "ok": true,
+   "detail": {
+    "avant": 4.4541,
+    "apres": 13.3623
+   }
+  },
+  "recentrer": {
+   "ok": true,
+   "detail": {
+    "recentre": 4.4541,
+    "avant": 4.4541
+   }
+  },
+  "toucherStationOuvreSaisir": {
+   "ok": true,
+   "detail": "http://127.0.0.1:4103/releve/r/cent-stations/saisir/C45"
+  },
+  "banniereEphemere": {
+   "ok": true,
+   "detail": null
+  },
+  "zonesDifferentes": {
+   "ok": true,
+   "detail": {
+    "zonesNormal": 113,
+    "zonesEph": 395
+   }
+  }
+ },
+ "c7": {
+  "confirmation": {
+   "ok": true,
+   "detail": "Modifier les seuils\nTous les résultats seront recalculés. Continuer ?\nAnnuler\nContinuer"
+  },
+  "coupureEcrite": {
+   "ok": true,
+   "detail": {
+    "reglages": 15,
+    "rev": [
+     2,
+     4
+    ]
+   }
+  },
+  "journal": {
+   "ok": true,
+   "detail": [
+    {
+     "action": "reglages_modifies",
+     "detail": {
+      "avant": {
+       "coupure": 20
+      },
+      "apres": {
+       "coupure": 15
+      }
+     },
+     "le": "2026-11-18T16:56:30.827Z"
+    }
+   ]
+  },
+  "intervalleCle": {
+   "ok": true,
+   "detail": [
+    {
+     "cle": "vue_intervalle",
+     "valeur": 2
+    }
+   ]
+  },
+  "intervalleSansEcritureReleve": {
+   "ok": true,
+   "detail": {
+    "rev": 4
+   }
+  }
+ },
+ "c8": {
+  "largeur-carte-ephemere": {
+   "ok": true,
+   "detail": {
+    "largeur": 412,
+    "defilement": 412
+   }
+  },
+  "largeur-carte": {
+   "ok": true,
+   "detail": {
+    "largeur": 412,
+    "defilement": 412
+   }
+  },
+  "largeur-resultats": {
+   "ok": true,
+   "detail": {
+    "largeur": 412,
+    "defilement": 412
+   }
+  },
+  "largeur-reglages-feuille": {
+   "ok": true,
+   "detail": {
+    "largeur": 412,
+    "defilement": 412
+   }
+  },
+  "ancrePointsPlan": {
+   "ok": true,
+   "detail": {
+    "haut": 16,
+    "defile": 512
+   }
+  }
+ },
+ "contrastesMin": {
+  "ecran": "carte",
+  "texte": "13 stations, 1 borne éphémère",
+  "couleur": "#3F3F3A",
+  "fond": "#F4F4F1",
+  "ratio": 9.61,
+  "taille": "17px",
+  "graisse": "600"
+ },
+ "erreurs": [],
+ "contrastesSous45": [],
+ "requetesPage": [
+  "/assets/releve/c/releve-BPUdR6lE.js",
+  "/assets/releve/c/releve-BnEvbXx0.css",
+  "/assets/releve/c/barlow-condensed-latin-800-normal-BKzMuPgK.woff2",
+  "/assets/releve/c/barlow-latin-500-normal-BPAOfeC8.woff2",
+  "/assets/releve/c/barlow-latin-600-normal-DILqtrty.woff2",
+  "/assets/releve/c/barlow-latin-400-normal-qiz4-Cze.woff2",
+  "/assets/releve/c/Chantier-Cd-AqIFK.js",
+  "/assets/releve/c/ChampNombre-COvpM13C.js",
+  "/assets/releve/c/barlow-condensed-latin-700-normal-v1xN8_Wq.woff2",
+  "/assets/releve/c/barlow-latin-700-normal-A9pxMQ4z.woff2",
+  "/assets/releve/c/Resultats-DhNgetAb.js",
+  "/assets/releve/c/CadreReleve-DdOYYiO_.js",
+  "/assets/releve/c/useCourbes-DWDEnsz8.js",
+  "/assets/releve/c/barlow-condensed-latin-600-normal-DepVgxBB.woff2",
+  "/assets/releve/c/Carte-De5rtr-2.js",
+  "/assets/releve/c/pdf-CkZf731s.js",
+  "/assets/releve/c/jspdf.es.min-BL6VevIF.js",
+  "/assets/releve/c/Prochainement-BNrL_HuN.js"
+ ]
+}

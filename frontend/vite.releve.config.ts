@@ -40,6 +40,10 @@ export default defineConfig({
   base: '/',
   // public/ is already copied by the host build.
   publicDir: false,
+  resolve: {
+    // Optional modules of jsPDF, never used by the plan PDF (exports/pdf.ts, RELEVE-CC-06): kept out of the precache.
+    alias: Object.fromEntries(['html2canvas', 'canvg', 'dompurify'].map((m) => [m, resolve(__dirname, 'src/modules/releve-terrain/exports/sansModule.ts')]))
+  },
   define: {
     __RELEVE_VERSION__: JSON.stringify(version)
   },
