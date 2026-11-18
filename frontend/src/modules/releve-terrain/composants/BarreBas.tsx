@@ -12,20 +12,26 @@ export interface PropsBarreBas {
   incompletes: number
   /** Calibration done or skipped: Saisir opens the station input, else the calibration. */
   calageFait: boolean
+  /** Phase 3b (6.8): relevé not held by this phone: no Saisir, Carte and Résultats stay. */
+  lectureSeule?: boolean
 }
 
 export function libelleIncompletes(n: number): string {
   return n === 1 ? '1 station incomplète' : `${n} stations incomplètes`
 }
 
-export function BarreBas({ releveId, actif, incompletes, calageFait }: PropsBarreBas) {
-  const onglets: { cle: OngletBas; libelle: string; icone: NomIcone; chemin: string }[] = [
+export function BarreBas({ releveId, actif, incompletes, calageFait, lectureSeule = false }: PropsBarreBas) {
+  const tous: { cle: OngletBas; libelle: string; icone: NomIcone; chemin: string }[] = [
     { cle: 'saisir', libelle: 'Saisir', icone: 'saisir', chemin: calageFait ? 'saisir' : 'calage' },
     { cle: 'carte', libelle: 'Carte', icone: 'carte', chemin: 'carte' },
     { cle: 'resultats', libelle: 'Résultats', icone: 'resultats', chemin: 'resultats' },
   ]
+  const onglets = lectureSeule ? tous.filter((o) => o.cle !== 'saisir') : tous
   return (
-    <nav aria-label="Barre du relevé" className="rt-sombre sticky bottom-0 z-[5] grid grid-cols-3 gap-1.5 bg-encre p-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))]">
+    <nav
+      aria-label="Barre du relevé"
+      className={`rt-sombre sticky bottom-0 z-[5] grid ${lectureSeule ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 bg-encre p-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))]`}
+    >
       {onglets.map((o) => {
         const est = actif === o.cle
         return (

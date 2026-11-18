@@ -6,7 +6,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { formaterNombre } from '../../composants/ChampNombre'
 import { Bouton } from '../../composants/Bouton'
 import { useReleve } from '../../etat/useReleve'
-import { CadreReleve } from '../CadreReleve'
+import { saisieTenueIci } from '../../db/depot'
+import { CadreReleve, LectureSeule } from '../CadreReleve'
 import { ChoixIntervalle } from '../carte/ChoixIntervalle'
 import { POINTS_MIN_COURBES } from '../carte/modele'
 import { useCourbes, useIntervalle } from '../carte/useCourbes'
@@ -34,6 +35,7 @@ export default function Resultats() {
   if (r.etat.statut !== 'pret' || !calcule || !donnees) return <CadreReleve releve={r} etape={4} onglet="resultats">{null}</CadreReleve>
   const { releve: rel, chantier, domaine, objets } = r.etat
   const nbPoints = calcule.pointsCourbes.length
+  const tenue = saisieTenueIci(rel)
 
   return (
     <CadreReleve releve={r} etape={4} onglet="resultats">
@@ -55,7 +57,14 @@ export default function Resultats() {
         </Bouton>
       </section>
 
-      <ComparaisonPlan objets={objets} triangulation={donnees.triangulation} actions={r.actions} />
+      {/* Phase 3b (6.8): plan points, thresholds, cut-off and declination read-only when the input is held elsewhere; exports and the contour interval stay. */}
+      {tenue ? (
+        <ComparaisonPlan objets={objets} triangulation={donnees.triangulation} actions={r.actions} />
+      ) : (
+        <LectureSeule>
+          <ComparaisonPlan objets={objets} triangulation={donnees.triangulation} actions={r.actions} />
+        </LectureSeule>
+      )}
 
       <Exporter
         calcule={calcule}
@@ -70,7 +79,13 @@ export default function Resultats() {
         }}
       />
 
-      <ReglagesSeuils reglages={calcule.reglages} actions={r.actions} />
+      {tenue ? (
+        <ReglagesSeuils reglages={calcule.reglages} actions={r.actions} />
+      ) : (
+        <LectureSeule>
+          <ReglagesSeuils reglages={calcule.reglages} actions={r.actions} />
+        </LectureSeule>
+      )}
     </CadreReleve>
   )
 }

@@ -7,8 +7,10 @@ import { Bandeau } from '../../composants/Bandeau'
 import { BarreBas } from '../../composants/BarreBas'
 import { EnTete } from '../../composants/EnTete'
 import { Etapes, type NumeroEtape } from '../../composants/Etapes'
+import { saisieTenueIci } from '../../db/depot'
 import { useBandeauReleve } from '../../etat/useEnvoi'
 import type { useReleve } from '../../etat/useReleve'
+import { LectureSeule } from '../CadreReleve'
 import { MenuHaut } from '../MenuHaut'
 
 export type ResultatUseReleve = ReturnType<typeof useReleve>
@@ -25,7 +27,7 @@ export interface PropsCadreStations {
 
 export function CadreStations({ releve, etape = 3, lienEphemeres = true, pied, children }: PropsCadreStations) {
   const { etat } = releve
-  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined)
+  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined, { compacte: true, chantier: etat.statut === 'pret' ? etat.chantier : null })
   if (etat.statut !== 'pret') {
     return (
       <div className="rt-ecran">
@@ -49,6 +51,7 @@ export function CadreStations({ releve, etape = 3, lienEphemeres = true, pied, c
   if (calcule.etatCalage !== 'a_faire') faites.push(2)
   if (calcule.stations.length > 0) faites.push(3)
   const sousTitre = [chantier?.nom, domaine?.nom].filter(Boolean).join(', ')
+  const lecture = !saisieTenueIci(r)
   const droite = (
     <>
       {lienEphemeres ? (
@@ -68,14 +71,14 @@ export function CadreStations({ releve, etape = 3, lienEphemeres = true, pied, c
       <EnTete titre={r.nom} sousTitre={sousTitre} droite={droite} />
       <Bandeau compacte {...envoi} />
       <Etapes releveId={r.id} actuelle={etape} faites={faites} reduite={calcule.etatCalage !== 'a_faire'} />
-      <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{children}</main>
+      <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{lecture ? <LectureSeule>{children}</LectureSeule> : children}</main>
       <div className="sticky bottom-0 z-[6]">
-        {pied ? (
+        {pied && !lecture ? (
           <div data-pied-station className="flex flex-col gap-2 border-t-[3px] border-encre bg-fond px-4 py-2.5">
             {pied}
           </div>
         ) : null}
-        <BarreBas releveId={r.id} actif="saisir" incompletes={calcule.stationsIncompletes} calageFait={calcule.etatCalage !== 'a_faire'} />
+        <BarreBas releveId={r.id} actif="saisir" incompletes={calcule.stationsIncompletes} calageFait={calcule.etatCalage !== 'a_faire'} lectureSeule={lecture} />
       </div>
     </div>
   )

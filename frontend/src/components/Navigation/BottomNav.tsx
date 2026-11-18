@@ -49,6 +49,14 @@ const ModuleIcon = ({ module }: { module: Module }) =>
         <path d="M6 14.5v-3M10 14.5v-6M14 14.5v-9" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" />
       </svg>
     </span>
+  ) : module.id === 'releve' ? (
+    // Relevé terrain (RELEVE-CC-09) : carré noir, montagne jaune (logo du module, MODÈLE B).
+    <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>
+      <svg viewBox="0 0 20 20" className="w-5 h-5" aria-hidden="true">
+        <rect x="1" y="1" width="18" height="18" rx="4" fill="#000000" />
+        <path d="M3.5 15.5l4.5-7 2.6 3.8 1.9-2.6 4 5.8z" fill="#FACC15" />
+      </svg>
+    </span>
   ) : module.id === 'validation' ? (
     // Validation client (VALIDCLIENT-CC-02) : coche dans un carré, bleu de la charte du module.
     <span className="block w-5 h-5 leading-none" role="img" aria-label={module.name}>

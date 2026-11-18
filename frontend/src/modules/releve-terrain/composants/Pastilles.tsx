@@ -34,3 +34,15 @@ export function PastilleEtat({ couleur, mot, petite = false }: { couleur: Couleu
     </span>
   )
 }
+
+/** Phase 3b (6.10, D19): data sent by the old phone after the owner's take-over. */
+export const MOT_APRES_REPRISE = 'arrivé après reprise'
+
+/** Yellow pill « arrivé après reprise » (screens 8, 9 and the late stations list). */
+export function PastilleReprise() {
+  return (
+    <span data-apres-reprise className="inline-flex flex-none items-center rounded-pastille border-2 border-encre bg-jaune px-2 py-[2px] text-[13px] font-bold leading-tight text-encre">
+      {MOT_APRES_REPRISE}
+    </span>
+  )
+}

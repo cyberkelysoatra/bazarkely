@@ -3,10 +3,11 @@
 // incomplete station (H11) and screen 9 « Station rouge » (orange or red station). `refaire=<borne>`
 // reopens the input on that row (screen 9).
 import { useCallback, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Bouton } from '../../composants/Bouton'
 import { Confirmation, Feuille } from '../../composants/Feuilles'
-import { PastilleEtat } from '../../composants/Pastilles'
+import { PastilleEtat, PastilleReprise } from '../../composants/Pastilles'
+import { saisieTenueIci } from '../../db/depot'
 import { montrerAvis } from '../../etat/avis'
 import type { StationCalculee } from '../../etat/releveCalcule'
 import { useReleve } from '../../etat/useReleve'
@@ -25,6 +26,8 @@ export default function Saisir() {
   const r = useReleve(releveId)
   useVerrouEcran(true)
   if (r.etat.statut !== 'pret') return <CadreStations releve={r}>{null}</CadreStations>
+  // Phase 3b (6.8): a relevé this phone does not hold has no input screen (screens 13 and 14 instead).
+  if (!saisieTenueIci(r.etat.releve)) return <Navigate to={`/r/${r.etat.releve.id}/saisie`} replace />
   return <SaisirPret r={r as Pret} />
 }
 
@@ -69,6 +72,8 @@ function EcranSaisie({ r, stationId, refaire }: { r: Pret; stationId: string | n
   const saisie = useSaisieStation(calcule, r.actions, stationId, onCreee)
   const [calcul, setCalcul] = useState(false)
   const incompletes = calcule.stations.filter((s) => s.incomplete && s.id !== saisie.stationId)
+  const enCours = stationId ? (calcule.stations.find((s) => s.id === stationId) ?? null) : null
+  const tardives = calcule.stations.filter((s) => s.apresReprise && s.donnees.etat !== 'ecartee')
 
   const calculer = async () => {
     if (calcul) return
@@ -96,6 +101,25 @@ function EcranSaisie({ r, stationId, refaire }: { r: Pret; stationId: string | n
         </Bouton>
       }
     >
+      {enCours?.apresReprise ? (
+        <p className="m-0 flex items-center gap-2 text-[16px] font-semibold">
+          Station {enCours.numero} <PastilleReprise />
+        </p>
+      ) : null}
+      {tardives.length && !stationId ? (
+        <section className="flex flex-col gap-1.5 rounded-rt border-[3px] border-encre bg-surface p-3" data-tardives>
+          <p className="m-0 text-[16px] font-bold">
+            {tardives.length === 1 ? '1 station arrivée après reprise' : `${tardives.length} stations arrivées après reprise`} : à garder ou à écarter
+          </p>
+          {tardives.map((s) => (
+            <Link key={s.id} to={`${base}/saisir/${s.id}?vue=resultat`} className="flex min-h-[48px] items-center gap-2 text-[17px] font-bold text-encre no-underline" data-tardive={s.numero}>
+              <span className="underline">{s.numero}</span>
+              {s.couleur ? <PastilleEtat couleur={s.couleur} mot={MOT_COULEUR[s.couleur]} petite /> : null}
+              <PastilleReprise />
+            </Link>
+          ))}
+        </section>
+      ) : null}
       <LignesStation saisie={saisie} refaire={refaire} />
       {incompletes.length ? (
         <p className="m-0 text-[16px] font-semibold" data-incompletes>
@@ -138,6 +162,7 @@ function EcranVert({ r, station }: { r: Pret; station: StationCalculee }) {
       >
         <div className="flex items-center justify-between gap-3" data-resultat-station={station.numero} data-couleur="vert">
           <h2 className="rt-etroite m-0 text-[34px] font-extrabold leading-none">Station {station.numero}</h2>
+          {station.apresReprise ? <PastilleReprise /> : null}
           <PastilleEtat couleur="vert" mot={MOT_COULEUR.vert} />
         </div>
         <p className="m-0 text-[16px] font-semibold">{garde && station.donnees.note ? `Station gardée : ${station.donnees.note}` : 'Bonne lecture : station retenue.'}</p>
@@ -184,6 +209,7 @@ function EcranIncomplete({ r, station }: { r: Pret; station: StationCalculee }) 
     >
       <div className="flex items-center justify-between gap-3" data-resultat-station={station.numero} data-couleur="incomplete">
         <h2 className="rt-etroite m-0 text-[34px] font-extrabold leading-none">Station {station.numero}</h2>
+        {station.apresReprise ? <PastilleReprise /> : null}
         <PastilleEtat couleur="gris" mot="INCOMPLÈTE" />
       </div>
       <div className="rounded-rt border-[3px] border-encre bg-surface p-3">

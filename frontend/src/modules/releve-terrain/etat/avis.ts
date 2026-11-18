@@ -1,7 +1,7 @@
 // Short notices of the app (6 s): relevé changed in another tab, phone memory full, blank name...
 // `executer` runs a write of db/depot.ts from a screen and turns its known errors into a notice.
 import { useSyncExternalStore } from 'react'
-import { ConflitReleve, MemoirePleine, NomVide, SauvegardeInvalide } from '../db/depot'
+import { ConflitReleve, MemoirePleine, NomVide, SaisieNonTenue, SauvegardeInvalide } from '../db/depot'
 
 export interface Avis {
   n: number
@@ -70,7 +70,7 @@ export async function executer<T>(f: () => Promise<T>): Promise<T | null> {
       montrerAvis(e.message)
     } else if (e instanceof MemoirePleine) {
       montrerAvis(e.message, 'alerte', null)
-    } else if (e instanceof NomVide || e instanceof SauvegardeInvalide) {
+    } else if (e instanceof NomVide || e instanceof SauvegardeInvalide || e instanceof SaisieNonTenue) {
       montrerAvis(e.message, 'alerte')
     } else {
       montrerAvis("L'enregistrement n'a pas pu se faire : réessayez.", 'alerte')

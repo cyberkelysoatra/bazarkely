@@ -27,6 +27,8 @@ export interface StationCalculee {
   couleur: Couleur | null
   /** Fewer than 3 usable sights (D22), never for a station set aside. */
   incomplete: boolean
+  /** Phase 3b (6.10, D19): sent by the old phone after the owner's take-over (« arrivé après reprise »). */
+  apresReprise: boolean
 }
 
 export interface CotesCalcules {
@@ -242,6 +244,7 @@ export function calculerReleve(entete: EnteteReleve, objets: Objet[], reglagesDe
       retenu,
       couleur: resultat.calculee ? (resultat.couleur ?? null) : null,
       incomplete: s.donnees.etat !== 'ecartee' && resultat.incomplete,
+      apresReprise: s.apres_reprise === true,
     }
   })
 

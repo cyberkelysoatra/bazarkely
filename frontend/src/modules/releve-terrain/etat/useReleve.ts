@@ -11,6 +11,9 @@ import { ecouterConflits, executer } from './avis'
 import { calculerReleve, reglagesEffectifs, type ReleveCalcule } from './releveCalcule'
 import { useRequete } from './useRequete'
 
+/** H29: reading period of a relevé held by another phone. */
+export const RELECTURE_MS = 30000
+
 export type EtatReleve =
   | { statut: 'chargement' }
   | { statut: 'absent' }
@@ -61,6 +64,16 @@ export function useReleve(releveId: string | undefined): { etat: EtatReleve; rev
     void depot.marquerOuvert(releveId).catch(() => undefined)
     void lireReleveOuvert(releveId)
   }, [releveId])
+
+  // H29: a relevé this phone does not hold is read again every 30 s while visible and online.
+  const tenu = donnees ? depot.saisieTenueIci(donnees.releve) : true
+  useEffect(() => {
+    if (!releveId || tenu) return
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine !== false) void lireReleveOuvert(releveId)
+    }, RELECTURE_MS)
+    return () => clearInterval(id)
+  }, [releveId, tenu])
 
   // Refused write (older tab), another tab's write, or back to the front: read the stored relevé again.
   useEffect(() => {

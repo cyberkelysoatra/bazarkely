@@ -15,6 +15,7 @@ import {
 } from '../modules/navy-ay/services/modulePrefsSync';
 import {
   hasResolvedModules,
+  lightEntryRedirect,
   mostRecent,
   pickStartModule,
   resolveAccessibleModules
@@ -103,14 +104,23 @@ const DEFAULT_MODULES: Module[] = [
     name: 'Business plan',
     icon: 'B',
     path: '/plan/'
+  },
+  {
+    // Relevé terrain (RELEVE-CC-09) : entrée légère séparée (/releve/, build dédié), traitée comme
+    // Validation : navigation pleine page, jamais module actif ni mémorisé. Visible si
+    // preferences.modules contient 'releve' (posé par le serveur, rt_ouvrir).
+    id: 'releve',
+    name: 'Relevé terrain',
+    icon: 'R',
+    path: '/releve/'
   }
 ];
 
 /** Pages séparées (PUDi, Validation, Business plan) : jamais module actif ni dernier module (local ou compte). */
-const EXTERNAL_MODULE_IDS = ['pudi', 'validation', 'plan'];
+const EXTERNAL_MODULE_IDS = ['pudi', 'validation', 'plan', 'releve'];
 
 /** Adresse pleine page de chaque page séparée. */
-const EXTERNAL_MODULE_URLS: Record<string, string> = { pudi: '/pudi/', validation: '/validation/', plan: '/plan/' };
+const EXTERNAL_MODULE_URLS: Record<string, string> = { pudi: '/pudi/', validation: '/validation/', plan: '/plan/', releve: '/releve/' };
 
 /**
  * Préfixes de route propres à chaque module (hors bazarkely qui est le défaut).
@@ -240,9 +250,12 @@ const ModuleSwitcherProviderInner: React.FC<ModuleSwitcherProviderProps> = ({ ch
     const path = location.pathname;
     if (path !== '/' && path !== '/dashboard') return;
     const accessible = resolveAccessibleModules({ role: userRole, preferences: userPrefs }, null, null);
-    if (accessible.length === 1 && accessible[0] === 'validation') {
+    // D27 (RELEVE-CC-09) : liste faite seulement de modules à entrée légère → /releve/ si 'releve'
+    // y figure, sinon /validation/ ; exactement ['validation'] → /validation/ (inchangé).
+    const cible = lightEntryRedirect(accessible);
+    if (cible) {
       validationOnlyRedirectRef.current = true;
-      window.location.assign('/validation/');
+      window.location.assign(cible);
     }
   }, [location.pathname, user, modulesResolved, userRole, userPrefs]);
 

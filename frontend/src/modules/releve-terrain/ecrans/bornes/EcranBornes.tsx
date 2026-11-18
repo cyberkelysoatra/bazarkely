@@ -43,7 +43,7 @@ export default function EcranBornes() {
   const { releve } = useParams()
   const r = useReleve(releve)
   return (
-    <CadreReleve releve={r} etape={1}>
+    <CadreReleve releve={r} etape={1} verrouiller>
       {r.etat.statut === 'pret' ? <Contenu r={r} /> : null}
     </CadreReleve>
   )

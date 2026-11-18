@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.155.0';
-export const APP_VERSION_NAME = 'Relevé terrain : compte 1saKELY, envoi au serveur et lecture (RELEVE-CC-08)';
+export const APP_VERSION = '3.156.0';
+export const APP_VERSION_NAME = 'Relevé terrain : un téléphone à la fois, reprise, données tardives, sélecteur de modules (RELEVE-CC-09)';
 export const LAST_UPDATED = '2026-11-18';
 export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.156.0',
+    date: '2026-11-18',
+    description: 'Relevé terrain : un téléphone à la fois, reprise, données tardives, sélecteur de modules (RELEVE-CC-09)',
+    changes: [
+      'Bandeau de saisie sur chaque écran d’un relevé : « Vous tenez la saisie » et « Terminer la saisie », relevé tenu par un autre téléphone (avec l’heure de la dernière donnée reçue), saisie libre et « Prendre la saisie », fin en attente du réseau, reprise, droit retiré',
+      'Un relevé tenu ailleurs est en lecture seule : pas de Saisir dans la barre du bas, bornes, calage, bornes éphémères et réglages non modifiables, exports permis ; relu toutes les 30 secondes',
+      'Le propriétaire peut reprendre la saisie d’un téléphone perdu après avertissement ; l’ancien téléphone envoie ce qu’il avait saisi, marqué « arrivé après reprise » (écran, carte, export CSV), puis passe en lecture seule',
+      '« Terminer la saisie » sans réseau est enregistré et part au retour du réseau, après les dernières saisies',
+      'Relevé terrain dans le sélecteur de modules de 1sakely.org ; dans le module, le logo ouvre les autres modules du compte'
+    ]
+  },
   {
     version: '3.155.0',
     date: '2026-11-18',

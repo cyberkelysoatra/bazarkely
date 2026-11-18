@@ -23,6 +23,8 @@ export interface BilanLecture {
   lus: string[]
   gardesEnLecture: string[]
   retires: { domaines: number; chantiers: number; releves: number }
+  /** Relevés this phone held, taken over by the owner (learnt by reading, D19). */
+  reprises: string[]
 }
 
 type Brut = Record<string, unknown>
@@ -60,7 +62,13 @@ export function releveDepuisResume(v: unknown, chantierId?: string): depot.Relev
     saisie: detenteur(v.saisie),
     derniere_donnee_at: texte(v.derniere_donnee_at),
     nb_stations: typeof v.nb_stations === 'number' ? v.nb_stations : undefined,
+    reprise_at: texte(v.reprise_at),
   }
+}
+
+/** Holder returned by a server answer (rt_saisie_prendre EN_SAISIE, rt_envoyer refusals), or null. */
+export function detenteurDepuis(v: unknown): Detenteur | null {
+  return detenteur(v)
 }
 
 export interface Terrains {
@@ -157,10 +165,19 @@ export async function lireServeur(ctx: ContexteSync): Promise<BilanLecture> {
   const lus: string[] = []
   for (const s of t.releves) {
     const l = await db.releves.get(s.id)
-    if (!l || l.saisie === 'ici') continue
+    if (!l || l.saisie === 'ici' || l.saisie === 'fin_en_attente') continue
     const aJour = l.lu_donnee_at !== undefined && l.lu_donnee_at === (s.derniere_donnee_at ?? null)
     if (aJour) continue
     if (await lireReleve(ctx, s.id)) lus.push(s.id)
   }
-  return { complete: t.complete, domaines: t.domaines.length, chantiers: t.chantiers.length, releves: t.releves.length, lus, gardesEnLecture: b.gardesEnLecture, retires: b.retires }
+  return {
+    complete: t.complete,
+    domaines: t.domaines.length,
+    chantiers: t.chantiers.length,
+    releves: t.releves.length,
+    lus,
+    gardesEnLecture: b.gardesEnLecture,
+    retires: b.retires,
+    reprises: b.reprises,
+  }
 }

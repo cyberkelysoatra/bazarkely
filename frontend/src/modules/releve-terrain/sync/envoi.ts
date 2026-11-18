@@ -18,8 +18,11 @@ export interface ContexteSync {
 
 export const TAILLE_LOT = 500
 
-/** Local states that stop the sending of a relevé (full behaviour in RELEVE-CC-09). */
-export const SAISIES_SUSPENDUES: readonly Saisie[] = ['ailleurs', 'lecture', 'reprise']
+/**
+ * Local states that stop the sending of a relevé: held elsewhere, free, read-only after a withdrawn
+ * right (DR10), taken over (except the rows typed before learning it, sent once, D19).
+ */
+export const SAISIES_SUSPENDUES: readonly Saisie[] = ['ailleurs', 'lecture', 'reprise', 'libre']
 
 /** Server answers about the input lock and the local state they give. */
 const SAISIE_DU_CODE: Record<string, Saisie> = { DROIT_RETIRE: 'lecture', SAISIE_REPRISE: 'reprise', PAS_LA_SAISIE: 'ailleurs', EN_SAISIE: 'ailleurs' }
@@ -155,7 +158,7 @@ async function unePasse(ctx: ContexteSync, bilan: BilanEnvoi): Promise<boolean> 
     if (!c || c.supprime_at || c.envoi !== 'envoye') continue
     try {
       await appel('rt_releve_creer', { p_id: r.id, p_chantier: r.chantier_id, p_appareil: ctx.appareil.id, p_nom: nom80(r.nom), p_entete: { ...r.entete, nom: nom80(r.nom) } })
-      await depot.appliquerServeur({ etats: [{ id: r.id, serveur_connu: true, saisie: 'ici' }] })
+      await depot.appliquerServeur({ etats: [{ id: r.id, serveur_connu: true, saisie: r.saisie === 'fin_en_attente' ? 'fin_en_attente' : 'ici' }] })
       await marquer([ref('releves', r)])
     } catch (e) {
       const { code } = serveur(e)
@@ -175,16 +178,19 @@ async function unePasse(ctx: ContexteSync, bilan: BilanEnvoi): Promise<boolean> 
   // 4. Objects of the relevés known by the server, by saisi_at, in batches of 500, with the entete when it waits.
   const connus = (await db.releves.toArray()).filter((r) => !r.supprime_at && r.serveur_connu).sort(parCreation)
   for (const r of connus) {
-    if (r.saisie && SAISIES_SUSPENDUES.includes(r.saisie)) continue
+    // D19: after a take-over, the old phone still sends what it typed before learning it, then acknowledges.
+    let solder = r.reprise_a_accuser === true
+    if (!solder && r.saisie && SAISIES_SUSPENDUES.includes(r.saisie)) continue
     const attente = (await db.objets.where('releve_id').equals(r.id).toArray()).filter((o) => o.envoi === 'a_envoyer').sort(parSaisie)
     const avecEntete = r.envoi === 'a_envoyer'
-    if (!attente.length && !avecEntete) continue
+    const finir = !solder && r.terminer_demande === true
+    if (!attente.length && !avecEntete && !solder && !finir) continue
     const lots = morceaux(attente, TAILLE_LOT)
-    if (!lots.length) lots.push([])
+    if (!lots.length && avecEntete) lots.push([])
     let arret = false
     for (let i = 0; i < lots.length && !arret; i++) {
       const lot = lots[i]
-      let rep: { ok?: boolean; code?: string; apres_reprise?: boolean }
+      let rep: { ok?: boolean; code?: string; apres_reprise?: boolean; reprise_at?: string | null }
       try {
         rep = ((await appel('rt_envoyer', {
           p_releve: r.id,
@@ -212,16 +218,49 @@ async function unePasse(ctx: ContexteSync, bilan: BilanEnvoi): Promise<boolean> 
       if (rep.ok !== true) {
         const code = rep.code ?? 'REFUSE'
         await suspendre(r, SAISIE_DU_CODE[code] ?? 'ailleurs', code)
-        arret = true
-      } else if (rep.apres_reprise === true) {
-        // Taken back by the owner: rows kept 'a_envoyer' (RELEVE-CC-09 decides what follows).
-        await suspendre(r, 'reprise', 'APRES_REPRISE')
+        // Already acknowledged (another tab, an older pass): nothing more of this phone enters.
+        if (code === 'SAISIE_REPRISE') await depot.appliquerServeur({ etats: [{ id: r.id, reprise_a_accuser: false, terminer_demande: null }] })
         arret = true
       } else {
+        // Accepted, marked « arrivé après reprise » by the server when it is late (D19): sent either way.
         await marquer(lot.map((o) => ref('objets', o)))
+        if (rep.apres_reprise === true && !solder) {
+          solder = true
+          await depot.appliquerServeur({ etats: [{ id: r.id, saisie: 'reprise', reprise_a_accuser: true, reprise_at: rep.reprise_at ?? null, terminer_demande: null }] })
+          await depot.ajouterJournalEnvoi({ cas: 'envoi_suspendu', detail: { releve: r.id, code: 'APRES_REPRISE' } })
+        }
       }
     }
-    if (!arret) await marquer([ref('releves', r)])
+    if (arret) continue
+    if (avecEntete) await marquer([ref('releves', r)])
+    if (solder) {
+      // Everything typed before learning the take-over has left: the old phone acknowledges (D19).
+      const reste = (await db.objets.where('releve_id').equals(r.id).toArray()).some((o) => o.envoi === 'a_envoyer')
+      if (reste) continue
+      try {
+        await appel('rt_reprise_accuser', { p_releve: r.id, p_appareil: ctx.appareil.id })
+      } catch (e) {
+        await refuser('reprise', r.id, serveur(e).code)
+        continue
+      }
+      await depot.appliquerServeur({ etats: [{ id: r.id, saisie: 'reprise', reprise_a_accuser: false, terminer_demande: null }] })
+      await depot.ajouterJournalEnvoi({ cas: 'reprise_accusee', detail: { releve: r.id } })
+      continue
+    }
+    if (finir) {
+      // H28: rt_saisie_terminer last, only once every row of the relevé is on the server.
+      const frais = await db.releves.get(r.id)
+      const reste = (await db.objets.where('releve_id').equals(r.id).toArray()).some((o) => o.envoi === 'a_envoyer')
+      if (!frais || frais.envoi === 'a_envoyer' || reste || frais.terminer_demande !== true) continue
+      try {
+        await appel('rt_saisie_terminer', { p_releve: r.id, p_appareil: ctx.appareil.id })
+      } catch (e) {
+        await refuser('fin_saisie', r.id, serveur(e).code)
+        continue
+      }
+      await depot.appliquerServeur({ etats: [{ id: r.id, saisie: 'libre', terminer_demande: null, detenteur: null }] })
+      await depot.ajouterJournalEnvoi({ cas: 'saisie_terminee', detail: { releve: r.id } })
+    }
   }
 
   // 5. Deletions: relevés, work sites, domains. A relevé or a work site deleted with its parent goes with it.

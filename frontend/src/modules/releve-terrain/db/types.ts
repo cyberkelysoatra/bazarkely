@@ -103,6 +103,13 @@ export interface Releve {
   nb_stations?: number
   /** Phase 3: derniere_donnee_at of the last full read of the objects (rt_releve_lire). */
   lu_donnee_at?: string | null
+  /** Phase 3b: time of the owner's take-over (server), when one happened. */
+  reprise_at?: string | null
+  /**
+   * Phase 3b (D19): this phone held the input when the owner took it over; it still sends everything it
+   * typed before learning it (marked by the server), then acknowledges (rt_reprise_accuser).
+   */
+  reprise_a_accuser?: boolean
 }
 
 export interface ValeursPlanBorne {
@@ -186,6 +193,8 @@ export type ActionJournal =
   | 'reglages_modifies'
   | 'saisie_prise'
   | 'saisie_terminee'
+  /** Phase 3b: input taken over by the owner (6.10). */
+  | 'saisie_reprise'
   /** Phase 3 (D28): ids drawn again because the server refused the old ones. */
   | 'ids_renouveles'
 
@@ -242,7 +251,7 @@ export interface ValeursCles {
 /** One case of the sending journal (phase 3). */
 export interface CasEnvoi {
   le: string
-  cas: 'ids_renouveles' | 'suppression_refusee' | 'envoi_suspendu' | 'appareil_renouvele'
+  cas: 'ids_renouveles' | 'suppression_refusee' | 'envoi_suspendu' | 'appareil_renouvele' | 'saisie_terminee' | 'reprise_accusee'
   detail: Record<string, unknown>
 }
 export type NomCle = keyof ValeursCles

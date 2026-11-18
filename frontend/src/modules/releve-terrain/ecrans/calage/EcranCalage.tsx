@@ -44,7 +44,7 @@ export default function EcranCalage() {
   const r = useReleve(releve)
   useVeille(true)
   return (
-    <CadreReleve releve={r} etape={2} onglet="saisir">
+    <CadreReleve releve={r} etape={2} onglet="saisir" verrouiller>
       {r.etat.statut === 'pret' ? <Contenu r={r} /> : null}
     </CadreReleve>
   )

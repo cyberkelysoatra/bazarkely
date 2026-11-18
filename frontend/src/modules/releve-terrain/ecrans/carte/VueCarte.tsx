@@ -327,6 +327,8 @@ export const VueCarte = forwardRef<PoigneeCarte, PropsVueCarte>(function VueCart
           return (
             <g key={s.id} data-station={s.id} style={{ cursor: 'pointer' }} role="link" aria-label={`Station ${s.numero}`}>
               <circle cx={x} cy={y} r={16} fill="transparent" />
+              {/* Phase 3b (6.10): yellow ring around a station arrived after the take-over */}
+              {s.apresReprise ? <circle data-apres-reprise cx={x} cy={y} r={11} fill="none" stroke="#FACC15" strokeWidth={4} /> : null}
               <circle cx={x} cy={y} r={7} fill={TEINTES[teinteStation(s)]} stroke="#FFFFFF" strokeWidth={2} />
               {numeros ? (
                 <text x={x + 9} y={y - 6} fontSize={12} fontWeight={700} fill={s.donnees.etat === 'ecartee' ? '#3F3F3A' : '#000000'} stroke="#FFFFFF" strokeWidth={3} paintOrder="stroke">

@@ -76,7 +76,23 @@ export async function cycle(rpc: Rpc, ouvertPour?: { user_id: string; appareil: 
   const ctx: ContexteSync = { rpc, appareil: o.appareil, compteId: o.user_id }
   const envoi = await envoyerTout(ctx)
   const lecture = await lireServeur(ctx)
+  // D19: a take-over learnt by reading: the old phone sends what it still holds and acknowledges now.
+  if (lecture.reprises.length) {
+    const suite = await envoyerTout(ctx)
+    envoi.appels += suite.appels
+    envoi.marques += suite.marques
+    envoi.suspendus.push(...suite.suspendus)
+    envoi.refus.push(...suite.refus)
+  }
   return { ctx, envoi, lecture }
+}
+
+/** Context of the page engine for an action of the user (take, take over), or null without network or session. */
+export async function contextePage(): Promise<ContexteSync | null> {
+  if (!rpcPage || !sessionLocale() || !enLigne()) return null
+  const o = ouvert ?? (await ouvrir(rpcPage))
+  ouvert = { user_id: o.user_id, appareil: o.appareil }
+  return { rpc: rpcPage, appareil: o.appareil, compteId: o.user_id }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -159,7 +175,7 @@ export function synchroniser(): Promise<void> {
 export async function lireReleveOuvert(releveId: string): Promise<void> {
   if (!rpcPage || !sessionLocale() || !enLigne()) return
   const r = await db.releves.get(releveId)
-  if (!r || !r.serveur_connu || r.saisie === 'ici') return
+  if (!r || !r.serveur_connu || r.saisie === 'ici' || r.saisie === 'fin_en_attente') return
   try {
     const o = ouvert ?? (await ouvrir(rpcPage))
     ouvert = { user_id: o.user_id, appareil: o.appareil }

@@ -7,6 +7,7 @@ import {
   hasResolvedModules,
   isPudiVisible,
   PUDI_VISIBLE_UNTIL,
+  lightEntryRedirect,
 } from './moduleAccess';
 
 /** After the PUDi purge date: the original four-module rules. */
@@ -27,7 +28,7 @@ describe('resolveAccessibleModules (A1)', () => {
     expect(res).not.toContain('construction');
   });
 
-  it('admin → all 4 modules (+ validation, VALIDCLIENT-CC-02, + plan, NEC-CC-01)', () => {
+  it('admin → all 4 modules (+ validation, VALIDCLIENT-CC-02, + plan, NEC-CC-01, + releve, RELEVE-CC-09)', () => {
     expect(resolveAccessibleModules({ role: 'admin', preferences: {} }, false, false, AFTER_PUDI)).toEqual([
       'bazarkely',
       'construction',
@@ -35,6 +36,7 @@ describe('resolveAccessibleModules (A1)', () => {
       'navy-ay',
       'validation',
       'plan',
+      'releve',
     ]);
   });
 
@@ -77,6 +79,7 @@ describe('PUDi (v3.93.0)', () => {
       'pudi',
       'validation',
       'plan',
+      'releve',
     ]);
   });
   it('nobody sees pudi from the purge date, and never without an account', () => {
@@ -203,5 +206,40 @@ describe('mergePreferences (A3)', () => {
     expect(p.addModules).toBeUndefined();
     expect(p.removeModules).toEqual(['gestion-eau']);
     expect(p.lastModule?.id).toBe('a');
+  });
+});
+
+describe('Relevé terrain (RELEVE-CC-09, D27)', () => {
+  const BEFORE = new Date('2026-11-18T08:00:00+03:00');
+  it("['releve'] alone: neither NAVY ay nor PUDi, host opened on / goes to /releve/", () => {
+    const a = resolveAccessibleModules({ role: 'user', preferences: { modules: ['releve'] } }, null, null, BEFORE);
+    expect(a).toEqual(['releve']);
+    expect(lightEntryRedirect(a)).toBe('/releve/');
+  });
+  it("['validation', 'releve']: only both, /releve/ wins", () => {
+    const a = resolveAccessibleModules({ role: 'user', preferences: { modules: ['validation', 'releve'] } }, null, null, BEFORE);
+    expect(a).toEqual(['validation', 'releve']);
+    expect(lightEntryRedirect(a)).toBe('/releve/');
+    expect(lightEntryRedirect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['releve', 'validation'] } }, null, null, BEFORE))).toBe('/releve/');
+  });
+  it("['releve', 'bazarkely']: the usual modules plus releve, no redirect", () => {
+    const a = resolveAccessibleModules({ role: 'user', preferences: { modules: ['releve', 'bazarkely'] } }, null, null, BEFORE);
+    expect(a).toEqual(['bazarkely', 'navy-ay', 'pudi', 'releve']);
+    expect(lightEntryRedirect(a)).toBeNull();
+  });
+  it("['validation'] unchanged: only validation, /validation/", () => {
+    const a = resolveAccessibleModules({ role: 'user', preferences: { modules: ['validation'] } }, null, null, BEFORE);
+    expect(a).toEqual(['validation']);
+    expect(lightEntryRedirect(a)).toBe('/validation/');
+  });
+  it('admin sees releve, no redirect; an account without releve never sees it', () => {
+    const a = resolveAccessibleModules({ role: 'admin', preferences: {} }, null, null, BEFORE);
+    expect(a).toContain('releve');
+    expect(lightEntryRedirect(a)).toBeNull();
+    expect(resolveAccessibleModules({ role: 'user', preferences: { modules: ['bazarkely'] } }, null, null, BEFORE)).not.toContain('releve');
+    expect(lightEntryRedirect(resolveAccessibleModules({ role: 'user', preferences: {} }, null, null, BEFORE))).toBeNull();
+  });
+  it('releve is never a start module (external page)', () => {
+    expect(pickStartModule({ id: 'releve', at: '2026-11-18T10:00:00Z' }, null, ['bazarkely', 'navy-ay', 'releve'])).toBe('bazarkely');
   });
 });

@@ -106,7 +106,7 @@ export function lignesCsv(calcule: ReleveCalcule): string[] {
         nombreCsv(r?.indice, 2),
         texteCsv(bornesVisees(calcule, s)),
         texteCsv(heureMadagascar(s.donnees.heure)),
-        texteCsv(s.donnees.note),
+        texteCsv(noteStation(s.donnees.note, s.apresReprise)),
       ]),
     )
   }
@@ -120,4 +120,10 @@ export function texteCsvReleve(calcule: ReleveCalcule): string {
 
 export function fichierCsv(calcule: ReleveCalcule, base: string): File {
   return new File([texteCsvReleve(calcule)], `${base}_points.csv`, { type: 'text/csv;charset=utf-8' })
+}
+
+/** CSV « Note »: a station arrived after the take-over starts with « arrivé après reprise » (6.10). */
+export function noteStation(note: string | null | undefined, apresReprise: boolean): string | null {
+  if (!apresReprise) return note ?? null
+  return note ? `arrivé après reprise ; ${note}` : 'arrivé après reprise'
 }

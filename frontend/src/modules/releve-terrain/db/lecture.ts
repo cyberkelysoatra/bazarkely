@@ -73,14 +73,31 @@ export async function lireReleve(releveId: string): Promise<ReleveComplet | null
   return { releve, objets, chantier, domaine }
 }
 
-/** The last relevé opened on this phone (block « Reprendre »), when it still exists. */
+/** Input held by this phone (created here and not yet sent, held, or finish waiting for the network). */
+function tenuIci(r: Releve): boolean {
+  return r.saisie === null || r.saisie === undefined || r.saisie === 'ici' || r.saisie === 'fin_en_attente'
+}
+
+/**
+ * Block « Reprendre » of the home screen (P1): the relevé whose input THIS phone holds, the last opened
+ * first, else the most recently opened or changed one held here; null when it holds none.
+ */
 export async function dernierReleve(): Promise<ReleveComplet | null> {
   const l = await db.cles.get('dernier_releve')
   const v = l?.valeur as { releve_id?: string } | undefined
-  if (!v?.releve_id) return null
-  const r = await lireReleve(v.releve_id)
-  if (!r || !r.chantier || r.chantier.supprime_at || !r.domaine || r.domaine.supprime_at) return null
-  return r
+  const valide = (r: ReleveComplet | null): r is ReleveComplet => !!r && !!r.chantier && !r.chantier.supprime_at && !!r.domaine && !r.domaine.supprime_at && tenuIci(r.releve)
+  if (v?.releve_id) {
+    const r = await lireReleve(v.releve_id)
+    if (valide(r)) return r
+  }
+  const candidats = (await db.releves.toArray())
+    .filter((r) => !r.supprime_at && tenuIci(r))
+    .sort((a, b) => (b.ouvert_at ?? b.maj_at).localeCompare(a.ouvert_at ?? a.maj_at))
+  for (const c of candidats) {
+    const r = await lireReleve(c.id)
+    if (valide(r)) return r
+  }
+  return null
 }
 
 /**

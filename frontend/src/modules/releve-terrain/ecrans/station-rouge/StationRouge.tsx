@@ -9,7 +9,7 @@ import type { ResultatStation } from '../../calcul'
 import { Bouton } from '../../composants/Bouton'
 import { Confirmation, Feuille } from '../../composants/Feuilles'
 import { ChampTexte } from '../../composants/Formulaires'
-import { PastilleEtat } from '../../composants/Pastilles'
+import { PastilleEtat, PastilleReprise } from '../../composants/Pastilles'
 import type { BorneCalculee, StationCalculee } from '../../etat/releveCalcule'
 import { CadreStations, type ResultatUseReleve } from '../saisir/Cadre'
 import { Chiffres, MOT_COULEUR, altitudesParBorne } from '../saisir/Chiffres'
@@ -121,6 +121,7 @@ export default function StationRouge({ r, station, onRefaire, onSuivante }: Prop
     <CadreStations releve={r} pied={pied}>
       <div className="flex items-center justify-between gap-3" data-resultat-station={station.numero} data-couleur={couleur}>
         <h2 className="rt-etroite m-0 text-[30px] font-extrabold leading-none">Station {station.numero} : résultat</h2>
+        {station.apresReprise ? <PastilleReprise /> : null}
       </div>
       <section className={`flex flex-col gap-1.5 rounded-rt border-[3px] p-3 ${fond}`} data-bloc-rouge>
         <div className="flex items-center justify-between gap-2">

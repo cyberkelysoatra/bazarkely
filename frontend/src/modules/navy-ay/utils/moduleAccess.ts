@@ -19,10 +19,32 @@ export const MODULE_IDS = {
   VALIDATION: 'validation',
   /** Mon business plan (NEC-CC-01): separate light page /plan, admin only in the switcher. */
   PLAN: 'plan',
+  /** Relevé terrain (RELEVE-CC-09): separate light page /releve/, shown when `preferences.modules` has it. */
+  RELEVE: 'releve',
 } as const;
 
 /** Separate light pages (full-page navigation): never an active module, never `lastModule`. */
-export const EXTERNAL_MODULE_IDS: string[] = [MODULE_IDS.PUDI, MODULE_IDS.VALIDATION, MODULE_IDS.PLAN];
+export const EXTERNAL_MODULE_IDS: string[] = [MODULE_IDS.PUDI, MODULE_IDS.VALIDATION, MODULE_IDS.PLAN, MODULE_IDS.RELEVE];
+
+/**
+ * Light-entry modules given to an account by an invitation (D27, RELEVE-CC-09): a list made ONLY of
+ * these shows neither NAVY ay nor PUDi, and the host opened on '/' or '/dashboard' goes to their page.
+ */
+export const LIGHT_ENTRY_MODULE_IDS: string[] = [MODULE_IDS.VALIDATION, MODULE_IDS.RELEVE];
+
+/** True when the stored list is non-empty and made only of light-entry modules. */
+export function isLightEntryOnly(stored: unknown): boolean {
+  return Array.isArray(stored) && stored.length > 0 && stored.every((id) => LIGHT_ENTRY_MODULE_IDS.includes(id));
+}
+
+/**
+ * D27: page an account whose accessible list is made only of light-entry modules goes to from '/' or
+ * '/dashboard': '/releve/' when `releve` is in the list, else '/validation/'; null otherwise.
+ */
+export function lightEntryRedirect(accessible: string[]): string | null {
+  if (!isLightEntryOnly(accessible)) return null;
+  return accessible.includes(MODULE_IDS.RELEVE) ? '/releve/' : '/validation/';
+}
 
 /**
  * PUDi (v3.93.0): shown to every connected account (and admin) until the data purge date.
@@ -43,6 +65,7 @@ export const ALL_MODULE_IDS: string[] = [
   MODULE_IDS.PUDI,
   MODULE_IDS.VALIDATION,
   MODULE_IDS.PLAN,
+  MODULE_IDS.RELEVE,
 ];
 
 /** Last used module, stored locally and on the account (`preferences.lastModule`). */
@@ -81,11 +104,13 @@ export function resolveAccessibleModules(
   if (user.role === 'admin') return ALL_MODULE_IDS.filter((id) => id !== MODULE_IDS.PUDI || pudi);
 
   const stored: string[] = Array.isArray(user.preferences?.modules) ? user.preferences!.modules : [];
-  // VALIDCLIENT-CC-02 (VC-02, D10): an account whose list is exactly ['validation'] sees no other
-  // module (neither NAVY ay nor PUDi, otherwise open to every connected account).
-  if (stored.length === 1 && stored[0] === MODULE_IDS.VALIDATION) return [MODULE_IDS.VALIDATION];
+  // VALIDCLIENT-CC-02 (VC-02, D10), widened by D27 (RELEVE-CC-09): an account whose list is made only
+  // of light-entry modules (['validation'], ['releve'], ['validation', 'releve']) sees only them
+  // (neither NAVY ay nor PUDi, otherwise open to every connected account).
+  if (isLightEntryOnly(stored)) return ALL_MODULE_IDS.filter((id) => stored.includes(id));
   const out = new Set<string>([MODULE_IDS.NAVY_AY]);
   if (stored.includes(MODULE_IDS.VALIDATION)) out.add(MODULE_IDS.VALIDATION);
+  if (stored.includes(MODULE_IDS.RELEVE)) out.add(MODULE_IDS.RELEVE);
 
   if (stored.includes(MODULE_IDS.BAZARKELY)) out.add(MODULE_IDS.BAZARKELY);
 

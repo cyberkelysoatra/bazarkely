@@ -7,6 +7,7 @@ import { Bandeau, type PropsBandeau } from '../composants/Bandeau'
 import { BarreBas, type OngletBas } from '../composants/BarreBas'
 import { EnTete } from '../composants/EnTete'
 import { Etapes, type NumeroEtape } from '../composants/Etapes'
+import { saisieTenueIci } from '../db/depot'
 import { useBandeauReleve } from '../etat/useEnvoi'
 import type { useReleve } from '../etat/useReleve'
 import { MenuHaut } from './MenuHaut'
@@ -23,12 +24,14 @@ export interface PropsCadreReleve {
   bandeauCompact?: boolean
   /** Phase 3: state of the band. */
   bandeau?: Omit<PropsBandeau, 'compacte'>
+  /** Phase 3b (6.8): every control of the content disabled when this phone does not hold the input. */
+  verrouiller?: boolean
   children: ReactNode
 }
 
-export function CadreReleve({ releve, etape, onglet = null, bandeauCompact = false, bandeau, children }: PropsCadreReleve) {
+export function CadreReleve({ releve, etape, onglet = null, bandeauCompact = false, bandeau, verrouiller = false, children }: PropsCadreReleve) {
   const { etat } = releve
-  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined)
+  const envoi = useBandeauReleve(etat.statut === 'pret' ? etat.releve : undefined, { compacte: bandeauCompact, chantier: etat.statut === 'pret' ? etat.chantier : null })
   if (etat.statut !== 'pret') {
     return (
       <div className="rt-ecran">
@@ -57,8 +60,21 @@ export function CadreReleve({ releve, etape, onglet = null, bandeauCompact = fal
       <EnTete titre={r.nom} sousTitre={sousTitre} droite={<MenuHaut />} />
       <Bandeau compacte={bandeauCompact} {...(bandeau ?? envoi)} />
       {etape ? <Etapes releveId={r.id} actuelle={etape} faites={faites} reduite={calcule.etatCalage !== 'a_faire'} /> : null}
-      <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{children}</main>
-      <BarreBas releveId={r.id} actif={onglet} incompletes={calcule.stationsIncompletes} calageFait={calcule.etatCalage !== 'a_faire'} />
+      <main className="flex flex-1 flex-col gap-3 px-4 py-3.5">{verrouiller && !saisieTenueIci(r) ? <LectureSeule>{children}</LectureSeule> : children}</main>
+      <BarreBas releveId={r.id} actif={onglet} incompletes={calcule.stationsIncompletes} calageFait={calcule.etatCalage !== 'a_faire'} lectureSeule={!saisieTenueIci(r)} />
     </div>
+  )
+}
+
+/**
+ * Read-only content (6.8): a disabled fieldset turns off every button and field inside (number pads
+ * included); links and the steps stay. The guard of db/depot.ts refuses any write anyway.
+ */
+export function LectureSeule({ children }: { children: ReactNode }) {
+  return (
+    <fieldset disabled data-lecture-seule className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0 opacity-90">
+      <p className="m-0 text-[15px] font-semibold text-encre2">Lecture seule : ce téléphone ne tient pas la saisie.</p>
+      {children}
+    </fieldset>
   )
 }

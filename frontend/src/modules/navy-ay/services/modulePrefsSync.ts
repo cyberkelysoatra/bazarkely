@@ -124,7 +124,8 @@ export function queuePreferencesPatch(userId: string, patch: PreferencesPatch, l
   // PUDi (separate /pudi page) is never stored as last module on the account.
   // Validation client (separate /validation page, VALIDCLIENT-CC-02): same.
   // Mon business plan (separate /plan page, NEC-CC-01): same.
-  if (patch.lastModule?.id === 'pudi' || patch.lastModule?.id === MODULE_IDS.VALIDATION || patch.lastModule?.id === MODULE_IDS.PLAN) {
+  // Relevé terrain (separate /releve/ page, RELEVE-CC-09): same.
+  if (patch.lastModule?.id === 'pudi' || patch.lastModule?.id === MODULE_IDS.VALIDATION || patch.lastModule?.id === MODULE_IDS.PLAN || patch.lastModule?.id === MODULE_IDS.RELEVE) {
     patch = { ...patch };
     delete patch.lastModule;
   }
@@ -227,7 +228,7 @@ export function readLocalLastModule(): LastModule | null {
 
 export function writeLocalLastModule(last: LastModule) {
   // PUDi (separate /pudi page) is never stored as last module.
-  if (last.id === 'pudi' || last.id === MODULE_IDS.VALIDATION) return;
+  if (last.id === 'pudi' || last.id === MODULE_IDS.VALIDATION || last.id === MODULE_IDS.RELEVE) return;
   try {
     localStorage.setItem(LEGACY_ACTIVE_MODULE_KEY, last.id);
     localStorage.setItem(LOCAL_LAST_MODULE_KEY, JSON.stringify(last));

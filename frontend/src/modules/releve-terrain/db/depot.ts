@@ -67,6 +67,29 @@ export class ReleveIntrouvable extends Error {
   }
 }
 
+export const MESSAGE_REPRISE_REFUS = 'Saisie reprise par le propriétaire : ce relevé est en lecture seule.'
+export const MESSAGE_DROIT_RETIRE_REFUS = "Vous n'avez plus le droit de relever ici : ce relevé est en lecture seule."
+export const MESSAGE_LECTURE_SEULE = 'Ce téléphone ne tient pas la saisie : ce relevé est en lecture seule.'
+
+/** Phase 3b (6.8, 6.10): only the phone holding the input writes into a relevé. */
+export class SaisieNonTenue extends Error {
+  readonly saisie: Saisie | null
+  constructor(saisie: Saisie | null) {
+    super(saisie === 'reprise' ? MESSAGE_REPRISE_REFUS : saisie === 'lecture' ? MESSAGE_DROIT_RETIRE_REFUS : MESSAGE_LECTURE_SEULE)
+    this.name = 'SaisieNonTenue'
+    this.saisie = saisie
+  }
+}
+
+/**
+ * The input of a relevé is held by this phone: created here and not yet known by the server (null,
+ * phase 2 relevés included), held ('ici'), or finished but not yet released ('fin_en_attente', H28).
+ */
+export function saisieTenueIci(r: Pick<Releve, 'saisie'> | null | undefined): boolean {
+  const s = r?.saisie ?? null
+  return s === null || s === 'ici' || s === 'fin_en_attente'
+}
+
 /** The file is not a backup of this tool. */
 export class SauvegardeInvalide extends Error {
   constructor(raison: string) {
@@ -383,13 +406,20 @@ export async function creerReleve(chantierId: string, n: NouveauReleve): Promise
  * Write guard of a relevé: refused when the stored rev is higher than the screen's one; otherwise
  * `f` runs in the same transaction and the relevé gets rev + 1, maj_at and envoi = 'a_envoyer'.
  */
-async function ecrireDansReleve<T>(releveId: string, revEcran: number, f: (r: Releve, t: string) => Promise<{ patch?: Partial<Releve>; retour: T }>): Promise<{ retour: T; rev: number }> {
+async function ecrireDansReleve<T>(
+  releveId: string,
+  revEcran: number,
+  f: (r: Releve, t: string) => Promise<{ patch?: Partial<Releve>; retour: T }>,
+  sansGardeSaisie = false,
+): Promise<{ retour: T; rev: number }> {
   const t = maintenant()
   const res = await proteger(() =>
     db.transaction('rw', db.releves, db.objets, async () => {
       const r = await db.releves.get(releveId)
       if (!r || r.supprime_at) throw new ReleveIntrouvable(releveId)
       if (r.rev > revEcran) throw new ConflitReleve(releveId, r.rev)
+      // Phase 3b: a relevé this phone does not hold is read-only, whatever the screen shows.
+      if (!sansGardeSaisie && !saisieTenueIci(r)) throw new SaisieNonTenue(r.saisie)
       const { patch, retour } = await f(r, t)
       const rev = r.rev + 1
       await db.releves.update(releveId, { ...(patch ?? {}), rev, maj_at: t, envoi: 'a_envoyer' })
@@ -407,10 +437,13 @@ export async function renommerReleve(releveId: string, nom: string, revEcran: nu
   return rev
 }
 
-/** Soft delete of a relevé (its objects stay attached to it). */
+/**
+ * Soft delete of a relevé (its objects stay attached to it). Not bound to the input: the server
+ * arbitrates (RT_RELEVE_TENU_AILLEURS restores it), and a relevé held elsewhere is refused before.
+ */
 export async function supprimerReleve(releveId: string, revEcran: number): Promise<number> {
   const t = maintenant()
-  const { rev } = await ecrireDansReleve(releveId, revEcran, async () => ({ patch: { supprime_at: t }, retour: null }))
+  const { rev } = await ecrireDansReleve(releveId, revEcran, async () => ({ patch: { supprime_at: t }, retour: null }), true)
   annoncer({ type: 'terrains' })
   return rev
 }
@@ -630,6 +663,7 @@ export async function importerReleve(chantierId: string, sauvegarde: SauvegardeR
           if (r.nom === nom && r.id !== id) await db.releves.update(r.id, { supprime_at: t, maj_at: t, envoi: 'a_envoyer', rev: r.rev + 1 })
         }
         const existant = await db.releves.get(id)
+        if (existant && !existant.supprime_at && !saisieTenueIci(existant)) throw new SaisieNonTenue(existant.saisie)
         if (existant) {
           rev = existant.rev + 1
           const idsFichier = new Set(base.map((o) => o.id))
@@ -745,6 +779,8 @@ export interface ReleveServeur {
   saisie: Detenteur | null
   derniere_donnee_at?: string | null
   nb_stations?: number
+  /** Phase 3b: time of the last take-over by the owner. */
+  reprise_at?: string | null
 }
 
 export interface ObjetServeur {
@@ -764,6 +800,30 @@ export interface EtatLocalReleve {
   serveur_connu?: boolean
   saisie?: Saisie | null
   lu_donnee_at?: string | null
+  /** Phase 3b. */
+  terminer_demande?: boolean | null
+  detenteur?: Detenteur | null
+  reprise_at?: string | null
+  reprise_a_accuser?: boolean
+}
+
+/**
+ * H28: « Terminer la saisie » pressed. The relevé stays held ('fin_en_attente') until every waiting row
+ * has reached the server, then sync/ calls rt_saisie_terminer last. No rev, nothing more to send.
+ */
+export async function demanderFinSaisie(releveId: string): Promise<boolean> {
+  const ok = await proteger(() =>
+    db.transaction('rw', db.releves, async () => {
+      const r = await db.releves.get(releveId)
+      if (!r || r.supprime_at) throw new ReleveIntrouvable(releveId)
+      if (!saisieTenueIci(r)) throw new SaisieNonTenue(r.saisie)
+      if (r.saisie === 'fin_en_attente' && r.terminer_demande) return false
+      await db.releves.update(releveId, { saisie: 'fin_en_attente', terminer_demande: true })
+      return true
+    }),
+  )
+  annoncer({ type: 'terrains' })
+  return ok
 }
 
 export interface IdsTerrains {
@@ -794,13 +854,39 @@ export interface BilanServeur {
   /** Relevés kept in read-only because rows still wait to be sent (DR11). */
   gardesEnLecture: string[]
   retires: { domaines: number; chantiers: number; releves: number }
+  /** Phase 3b: relevés this phone held and learnt, by reading, that the owner took over. */
+  reprises: string[]
 }
 
-/** Input state from the holder returned by the server. */
-export function saisieDepuisServeur(det: Detenteur | null | undefined, appareilId: string | undefined, actuelle: Saisie | null, droit: Droit | null | undefined): Saisie {
+/** What the phone knows besides the holder, to read the server's answer (phase 3b). */
+export interface ContexteSaisie {
+  /** Time of the last take-over, as returned by the server. */
+  repriseAt?: string | null
+  /** Rows of the relevé still waiting to be sent. */
+  enAttente?: number
+  /** Holder known on the phone before this answer. */
+  detenteurConnu?: Detenteur | null
+  /** The phone still has to send and acknowledge after a take-over. */
+  aAccuser?: boolean
+}
+
+/**
+ * Input state from the holder returned by the server (6.8, 6.10). A phone that held the input and now
+ * sees another holder (or none) after a take-over is 'reprise' (D19); a relevé kept read-only after a
+ * withdrawn right keeps its waiting rows apart ('lecture', DR10).
+ */
+export function saisieDepuisServeur(det: Detenteur | null | undefined, appareilId: string | undefined, actuelle: Saisie | null, droit: Droit | null | undefined, c: ContexteSaisie = {}): Saisie {
   if (droit === 'consulter') return 'lecture'
-  if (det && appareilId && det.appareil === appareilId) return 'ici'
-  if (actuelle === 'lecture' || actuelle === 'reprise') return actuelle
+  if (det && appareilId && det.appareil === appareilId) return actuelle === 'fin_en_attente' ? 'fin_en_attente' : 'ici'
+  if (actuelle === 'lecture' && (c.enAttente ?? 0) > 0) return 'lecture'
+  if (actuelle === 'reprise' && (det || c.aAccuser)) return 'reprise'
+  if (actuelle === 'ici' || actuelle === 'fin_en_attente') {
+    if (det && c.repriseAt) return 'reprise'
+    if (!det && c.repriseAt) {
+      const depuis = c.detenteurConnu?.depuis ? Date.parse(c.detenteurConnu.depuis) : NaN
+      if (Number.isNaN(depuis) || Date.parse(c.repriseAt) >= depuis) return 'reprise'
+    }
+  }
   if (det) return 'ailleurs'
   return 'libre'
 }
@@ -825,7 +911,7 @@ function memeJson(a: unknown, b: unknown): boolean {
 export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanServeur> {
   const t = maintenant()
   const changes = new Map<string, number>()
-  const bilan: BilanServeur = { gardesEnLecture: [], retires: { domaines: 0, chantiers: 0, releves: 0 } }
+  const bilan: BilanServeur = { gardesEnLecture: [], retires: { domaines: 0, chantiers: 0, releves: 0 }, reprises: [] }
   await proteger(() =>
     db.transaction('rw', db.domaines, db.chantiers, db.releves, db.objets, async () => {
       const droits = new Map<string, Droit | null>()
@@ -865,6 +951,7 @@ export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanSe
           derniere_donnee_at: s.derniere_donnee_at ?? null,
           nb_stations: s.nb_stations,
           serveur_connu: true,
+          reprise_at: s.reprise_at ?? null,
         }
         if (!l) {
           await db.releves.add({
@@ -886,14 +973,25 @@ export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanSe
           changes.set(s.id, 1)
           continue
         }
-        const saisie = saisieDepuisServeur(s.saisie, donnees.appareilId, l.saisie, droit)
+        const enAttente = (await db.objets.where('releve_id').equals(s.id).toArray()).filter((o) => o.envoi === 'a_envoyer').length + (l.envoi === 'a_envoyer' ? 1 : 0)
+        const saisie = saisieDepuisServeur(s.saisie, donnees.appareilId, l.saisie, droit, {
+          repriseAt: s.reprise_at ?? null,
+          enAttente,
+          detenteurConnu: l.detenteur ?? null,
+          aAccuser: l.reprise_a_accuser === true,
+        })
+        // D19: this phone held the input and learns the take-over by reading: it still sends what it typed,
+        // then acknowledges; meanwhile it is read-only.
+        const repris = saisie === 'reprise' && (l.saisie === 'ici' || l.saisie === 'fin_en_attente')
+        const suite: Partial<Releve> = repris ? { reprise_a_accuser: true, terminer_demande: null } : {}
+        if (repris) bilan.reprises.push(s.id)
         if (l.envoi === 'a_envoyer') {
-          await db.releves.update(s.id, { ...meta, saisie })
+          await db.releves.update(s.id, { ...meta, saisie, ...suite })
           continue
         }
         const contenu = l.nom !== s.nom || !memeJson(l.entete, s.entete) || l.chantier_id !== s.chantier_id || l.supprime_at !== null
         const tenuIci = saisie === 'ici' || l.saisie === 'ici'
-        const patch: Partial<Releve> = { ...meta, saisie }
+        const patch: Partial<Releve> = { ...meta, saisie, ...suite }
         if (contenu) Object.assign(patch, { nom: s.nom, entete: s.entete, chantier_id: s.chantier_id, supprime_at: null, maj_at: s.maj_at })
         if (contenu && !tenuIci) patch.rev = l.rev + 1
         await db.releves.update(s.id, patch)
@@ -938,6 +1036,10 @@ export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanSe
         if (e.serveur_connu !== undefined) patch.serveur_connu = e.serveur_connu
         if (e.saisie !== undefined) patch.saisie = e.saisie
         if (e.lu_donnee_at !== undefined) patch.lu_donnee_at = e.lu_donnee_at
+        if (e.terminer_demande !== undefined) patch.terminer_demande = e.terminer_demande
+        if (e.detenteur !== undefined) patch.detenteur = e.detenteur
+        if (e.reprise_at !== undefined) patch.reprise_at = e.reprise_at
+        if (e.reprise_a_accuser !== undefined) patch.reprise_a_accuser = e.reprise_a_accuser
         await db.releves.update(e.id, patch)
       }
 
