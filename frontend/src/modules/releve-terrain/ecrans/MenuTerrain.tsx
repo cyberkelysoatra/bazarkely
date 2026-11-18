@@ -1,6 +1,9 @@
 // Screen 3: menu ⋯ of a domain or of a work site (MenuTerrain.dc.html), as a bottom sheet.
-// Domain: « + Nouveau chantier », « Renommer le domaine », « Supprimer le domaine ».
-// Work site: « Renommer le chantier », « Supprimer le chantier », « Ouvrir une sauvegarde ici » (when provided).
+// Domain (owner only): « + Nouveau chantier », « Partager ce domaine », « Qui a accès », « Renommer le
+// domaine », « Supprimer le domaine ».
+// Work site: owner « Partager ce chantier », « Qui a accès », « Ouvrir une sauvegarde ici » (when provided),
+// « Renommer le chantier », « Supprimer le chantier »; invited « relever » only « Ouvrir une sauvegarde
+// ici »; invited « consulter » nothing (6.8, see elementsChantier).
 // Deleting a domain or a work site that holds relevés: confirmation that says how many relevés go with
 // it, with « Exporter leurs sauvegardes d'abord » (when provided).
 import { useState } from 'react'
@@ -9,7 +12,7 @@ import { Confirmation, FeuilleMenu, type ElementMenu } from '../composants/Feuil
 import { FeuilleNom } from '../composants/Formulaires'
 import * as depot from '../db/depot'
 import { idsReleves } from '../db/lecture'
-import type { Chantier, Domaine } from '../db/types'
+import type { Chantier, Domaine, Droit } from '../db/types'
 import { executer, montrerAvis } from '../etat/avis'
 import { cheminChantier, pluriel } from '../etat/navigation'
 import { refusSuppression } from '../sync/regles'
@@ -25,6 +28,13 @@ type Vue = 'menu' | 'nouveau_chantier' | 'renommer' | 'supprimer'
 function texteSuppression(nb: number, quoi: 'domaine' | 'chantier'): string {
   if (nb === 0) return quoi === 'domaine' ? 'Ce domaine ne contient aucun relevé.' : 'Ce chantier ne contient aucun relevé.'
   return `${pluriel(nb, 'relevé sera supprimé', 'relevés seront supprimés')} avec lui, sur ce téléphone. Cette action est définitive.`
+}
+
+/** Items of the ⋯ of a work site for the account's right (6.8). Empty: no ⋯ at all. */
+export function itemsChantier(droit: Droit): ('partager' | 'acces' | 'sauvegarde' | 'renommer' | 'supprimer')[] {
+  if (droit === 'proprietaire') return ['partager', 'acces', ...(ouvrirSauvegarde ? (['sauvegarde'] as const) : []), 'renommer', 'supprimer']
+  if (droit === 'relever') return ouvrirSauvegarde ? ['sauvegarde'] : []
+  return []
 }
 
 export async function exporterTout(ids: string[]): Promise<void> {
@@ -47,27 +57,40 @@ export function MenuTerrain({ cible, onFermer }: { cible: CibleMenu; onFermer: (
     } else setVue('supprimer')
   }
 
+  const droitChantier = estDomaine ? 'proprietaire' : depot.droitLocal(cible.chantier, null)
+  const vers = (chemin: string) => () => {
+    onFermer()
+    naviguer(chemin)
+  }
   const elements: ElementMenu[] = estDomaine
     ? [
         { libelle: '+ Nouveau chantier', onClick: () => setVue('nouveau_chantier') },
+        { libelle: 'Partager ce domaine', onClick: vers(`/d/${cible.domaine.id}/partager`) },
+        { libelle: 'Qui a accès', onClick: vers(`/d/${cible.domaine.id}/acces`) },
         { libelle: 'Renommer le domaine', onClick: () => setVue('renommer') },
         { libelle: 'Supprimer le domaine', onClick: () => void demanderSuppression(), danger: true },
       ]
-    : [
-        { libelle: 'Renommer le chantier', onClick: () => setVue('renommer') },
-        ...(ouvrirSauvegarde
-          ? [
-              {
-                libelle: 'Ouvrir une sauvegarde ici',
-                onClick: () => {
-                  onFermer()
-                  void executer(async () => ouvrirSauvegarde?.(cible.chantier.id))
-                },
+    : itemsChantier(droitChantier).map((item): ElementMenu => {
+        const c = cible.chantier
+        switch (item) {
+          case 'partager':
+            return { libelle: 'Partager ce chantier', onClick: vers(`/d/${c.domaine_id}/partager?chantier=${c.id}`) }
+          case 'acces':
+            return { libelle: 'Qui a accès', onClick: vers(`/d/${c.domaine_id}/acces`) }
+          case 'sauvegarde':
+            return {
+              libelle: 'Ouvrir une sauvegarde ici',
+              onClick: () => {
+                onFermer()
+                void executer(async () => ouvrirSauvegarde?.(c.id))
               },
-            ]
-          : []),
-        { libelle: 'Supprimer le chantier', onClick: () => void demanderSuppression(), danger: true },
-      ]
+            }
+          case 'renommer':
+            return { libelle: 'Renommer le chantier', onClick: () => setVue('renommer') }
+          case 'supprimer':
+            return { libelle: 'Supprimer le chantier', onClick: () => void demanderSuppression(), danger: true }
+        }
+      })
 
   const supprimer = async () => {
     const ok = await executer(() => (estDomaine ? depot.supprimerDomaine(cible.domaine.id) : depot.supprimerChantier(cible.chantier.id)).then(() => true))

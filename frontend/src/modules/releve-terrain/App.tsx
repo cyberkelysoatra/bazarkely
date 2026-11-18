@@ -13,6 +13,10 @@ import { lireRetourConnexion, retourDeConnexion, useSession } from './sync/sessi
 
 const Chantier = lazy(() => import('./ecrans/Chantier'))
 const Connexion = lazy(() => import('./ecrans/Connexion'))
+const Partager = lazy(() => import('./ecrans/partage/Partager'))
+const Acces = lazy(() => import('./ecrans/partage/Acces'))
+const Invitation = lazy(() => import('./ecrans/partage/Invitation'))
+const RetourInvitation = lazy(() => import('./ecrans/partage/Invitation').then((m) => ({ default: m.RetourInvitation })))
 const Essai = import.meta.env.DEV ? lazy(() => import('./ecrans/Essai')) : null
 const CHEMIN_ESSAI = import.meta.env.DEV ? '/__essai' : '/'
 
@@ -46,7 +50,8 @@ export function Porte({ children }: { children: ReactNode }) {
   }, [retour])
   if (retour) return <div className="rt-ecran" />
   // The test page of the development server (D29) never asks; it does not exist in the build.
-  const libre = pathname === '/connexion' || (Essai !== null && pathname.startsWith(CHEMIN_ESSAI))
+  // Screen 18 shows the invitation without a session (anonymous preview, PRD section 8).
+  const libre = pathname === '/connexion' || pathname.startsWith('/i/') || (Essai !== null && pathname.startsWith(CHEMIN_ESSAI))
   if (!session && enLigne && !libre) return <Navigate to={`/connexion?retour=${encodeURIComponent(pathname + search)}`} replace />
   return <>{children}</>
 }
@@ -98,6 +103,10 @@ export default function App() {
             <Route path="/" element={<Accueil />} />
             <Route path="/connexion" element={<Connexion />} />
             <Route path="/c/:chantier" element={<Chantier />} />
+            <Route path="/d/:domaine/partager" element={<Partager />} />
+            <Route path="/d/:domaine/acces" element={<Acces />} />
+            <Route path="/i/:jeton" element={<Invitation />} />
+            <Route path="/invitation" element={<RetourInvitation />} />
             {ECRANS.map((e) => (
               <Route key={e.route} path={e.route} element={<e.composant />} />
             ))}

@@ -35,6 +35,15 @@ export function PastilleEtat({ couleur, mot, petite = false }: { couleur: Couleu
   )
 }
 
+/** Phase 4 (6.8): right of a share, « relever » green, « consulter » grey, always with its word. */
+export function PastilleDroit({ droit, petite = false }: { droit: 'relever' | 'consulter'; petite?: boolean }) {
+  return (
+    <span data-droit={droit}>
+      <PastilleEtat couleur={droit === 'relever' ? 'vert' : 'gris'} mot={droit} petite={petite} />
+    </span>
+  )
+}
+
 /** Phase 3b (6.10, D19): data sent by the old phone after the owner's take-over. */
 export const MOT_APRES_REPRISE = 'arrivé après reprise'
 

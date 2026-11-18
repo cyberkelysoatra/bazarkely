@@ -1,16 +1,18 @@
 // Screen 2: home (Main.dc.html, look of MODELE B B-Accueil). Block « Reprendre » (last relevé opened on
 // this phone), « Mes terrains » (domains, their work sites with the number of relevés, a ⋯ per domain and
-// per work site), empty state. No « Partagés avec moi » before phase 4.
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+// per work site), empty state, then « Partagés avec moi » (phase 4: owner, domain, work sites with their
+// right; address /#partages scrolls to it after an accepted invitation).
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Bandeau } from '../composants/Bandeau'
 import { Bouton } from '../composants/Bouton'
 import { EnTete } from '../composants/EnTete'
 import { Aide } from '../composants/Feuilles'
 import { FeuilleNom } from '../composants/Formulaires'
 import { Icone } from '../composants/Icones'
+import { PastilleDroit } from '../composants/Pastilles'
 import { creerDomaine } from '../db/depot'
-import { dernierReleve, listeTerrains, type DomaineListe } from '../db/lecture'
+import { dernierReleve, listePartages, listeTerrains, type DomaineListe, type DomainePartage } from '../db/lecture'
 import { executer } from '../etat/avis'
 import { lancerInstallation, useInstallationDisponible } from '../etat/pwa'
 import { useBandeauTelephone } from '../etat/useEnvoi'
@@ -19,7 +21,7 @@ import { calculerMesure } from '../etat/useReleve'
 import { useRequete } from '../etat/useRequete'
 import { REGLAGES_DEFAUT } from '../calcul'
 import { MenuHaut } from './MenuHaut'
-import { MenuTerrain, type CibleMenu } from './MenuTerrain'
+import { itemsChantier, MenuTerrain, type CibleMenu } from './MenuTerrain'
 
 function BoutonPoints({ libelle, onClick }: { libelle: string; onClick: () => void }) {
   return (
@@ -103,6 +105,59 @@ function Domaine({ d, onMenu }: { d: DomaineListe; onMenu: (c: CibleMenu) => voi
   )
 }
 
+function DomainePartage({ d, onMenu }: { d: DomainePartage; onMenu: (c: CibleMenu) => void }) {
+  const proprietaire = d.domaine.proprietaire_nom || 'compte'
+  return (
+    <section aria-labelledby={`part-${d.domaine.id}`} data-partage-domaine className="flex flex-col gap-2 rounded-rt border-[3px] border-encre bg-surface p-3">
+      <div className="flex flex-col">
+        <h3 id={`part-${d.domaine.id}`} className="rt-etroite m-0 truncate text-[24px] font-extrabold leading-tight">
+          {d.domaine.nom}
+        </h3>
+        <p className="m-0 text-[14px] text-encre2">
+          Propriétaire : {proprietaire}
+          {d.domaine.partage_entier ? ', tout le domaine' : ''}
+        </p>
+      </div>
+      {d.chantiers.length === 0 ? <p className="m-0 text-[15px] text-encre2">Aucun chantier pour le moment.</p> : null}
+      {d.chantiers.map(({ chantier, releves, droit }) => (
+        <div key={chantier.id} className="flex items-stretch gap-2">
+          <Link to={cheminChantier(chantier.id)} className="flex min-h-[64px] min-w-0 flex-1 items-center gap-2.5 rounded-rt border-2 border-encre bg-surface px-3 py-2 text-encre no-underline">
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="rt-etroite truncate text-[22px] font-bold leading-tight">{chantier.nom}</span>
+              <span className="flex flex-wrap items-center gap-2 text-[14px] text-encre2">
+                {pluriel(releves, 'relevé', 'relevés', 'aucun relevé')}
+                <PastilleDroit droit={droit} petite />
+              </span>
+            </span>
+            <Icone nom="chevron" taille={22} />
+          </Link>
+          {itemsChantier(droit).length > 0 ? <BoutonPoints libelle={`Plus d’actions sur ${chantier.nom}`} onClick={() => onMenu({ type: 'chantier', chantier, releves })} /> : null}
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function PartagesAvecMoi({ onMenu }: { onMenu: (c: CibleMenu) => void }) {
+  const partages = useRequete('partages', listePartages)
+  const { hash } = useLocation()
+  const pret = partages !== undefined
+  useEffect(() => {
+    if (pret && hash === '#partages') document.getElementById('partages')?.scrollIntoView({ block: 'start' })
+  }, [pret, hash])
+  if (!partages || partages.length === 0) return null
+  return (
+    <section id="partages" aria-labelledby="titre-partages" className="mt-2 flex scroll-mt-20 flex-col gap-2.5">
+      <h2 id="titre-partages" className="rt-etroite m-0 text-[28px] font-extrabold">
+        Partagés avec moi
+      </h2>
+      {partages.map((d) => (
+        <DomainePartage key={d.domaine.id} d={d} onMenu={onMenu} />
+      ))}
+    </section>
+  )
+}
+
 export default function Accueil() {
   const terrains = useRequete('terrains', listeTerrains)
   const [menu, setMenu] = useState<CibleMenu | null>(null)
@@ -130,11 +185,12 @@ export default function Accueil() {
             <div className="mt-2">
               <Aide titre="Ranger mes terrains">
                 <p className="m-0">Chaque domaine foncier est un tiroir, chaque chantier un classeur du tiroir, chaque relevé une liasse du classeur.</p>
-                <p className="m-0 mt-2">Nouveau domaine : menu du haut. Nouveau chantier, renommer, supprimer : bouton ⋯ du domaine ou du chantier.</p>
+                <p className="m-0 mt-2">Nouveau domaine : menu du haut. Nouveau chantier, partage, accès, sauvegarde : bouton ⋯ du domaine ou du chantier.</p>
               </Aide>
             </div>
           </>
         )}
+        <PartagesAvecMoi onMenu={(c) => setMenu(c)} />
         {installable ? (
           <Bouton variante="secondaire" grand={false} onClick={() => void lancerInstallation()} icone={<Icone nom="installer" />}>
             Installer sur mon téléphone

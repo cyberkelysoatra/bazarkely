@@ -16,8 +16,8 @@ export interface DomaineListe {
 const parCreation = <T extends { cree_at: string }>(a: T, b: T) => a.cree_at.localeCompare(b.cree_at)
 
 /**
- * Domains of this phone with their work sites and number of relevés (deleted ones left out). The
- * domains shared with the account (phase 3 reads them already) wait for « Partagés avec moi » (phase 4).
+ * Domains of the account on this phone with their work sites and number of relevés (deleted ones left
+ * out). The domains shared with the account are listed by listePartages (« Partagés avec moi »).
  */
 export async function listeTerrains(): Promise<DomaineListe[]> {
   const [domaines, chantiers, releves] = await Promise.all([db.domaines.toArray(), db.chantiers.toArray(), db.releves.toArray()])
@@ -33,6 +33,33 @@ export async function listeTerrains(): Promise<DomaineListe[]> {
         .map((chantier) => ({ chantier, releves: nb.get(chantier.id) ?? 0 }))
       return { domaine, chantiers: cs, releves: cs.reduce((s, c) => s + c.releves, 0) }
     })
+}
+
+export interface ChantierPartage extends ChantierListe {
+  /** Right of the account on this work site (the most precise share wins, 6.8). */
+  droit: 'relever' | 'consulter'
+}
+
+export interface DomainePartage {
+  domaine: Domaine
+  chantiers: ChantierPartage[]
+}
+
+/** Home « Partagés avec moi » (phase 4): domains shared with the account, their work sites and rights. */
+export async function listePartages(): Promise<DomainePartage[]> {
+  const [domaines, chantiers, releves] = await Promise.all([db.domaines.toArray(), db.chantiers.toArray(), db.releves.toArray()])
+  const nb = new Map<string, number>()
+  for (const r of releves) if (!r.supprime_at) nb.set(r.chantier_id, (nb.get(r.chantier_id) ?? 0) + 1)
+  return domaines
+    .filter((d) => !d.supprime_at && d.a_moi === false)
+    .sort((a, b) => a.nom.localeCompare(b.nom))
+    .map((domaine) => ({
+      domaine,
+      chantiers: chantiers
+        .filter((c) => c.domaine_id === domaine.id && !c.supprime_at)
+        .sort(parCreation)
+        .map((chantier) => ({ chantier, releves: nb.get(chantier.id) ?? 0, droit: chantier.droit === 'relever' ? ('relever' as const) : ('consulter' as const) })),
+    }))
 }
 
 export interface ChantierComplet {

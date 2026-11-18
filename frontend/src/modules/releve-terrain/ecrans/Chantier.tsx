@@ -1,7 +1,9 @@
 // Screen 4: a work site (Chantier.dc.html). « + Nouveau relevé » (sheet: name, date, operators, heights
 // 1,50 by default), list of relevés (name, date, author « ce téléphone », step, number of stations,
 // calibration pill, H01); a tap opens the step where it stopped; ⋯ per relevé (H03): « Dupliquer »,
-// « Supprimer le relevé ».
+// « Supprimer le relevé ». Phase 4 (6.8): « consulter » sees the list only (no « + Nouveau relevé », no
+// ⋯); « relever » creates and duplicates, deletes only the relevés it created; only the owner gets the ⋯ of
+// the work site with sharing, renaming and deleting (« relever »: « Ouvrir une sauvegarde ici »).
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { REGLAGES_DEFAUT } from '../calcul'
@@ -12,10 +14,10 @@ import { EnTete } from '../composants/EnTete'
 import { Aide, Confirmation, Feuille, FeuilleMenu } from '../composants/Feuilles'
 import { ChampTexte } from '../composants/Formulaires'
 import { Icone } from '../composants/Icones'
-import { PastilleEtat, type CouleurEtat } from '../composants/Pastilles'
+import { PastilleDroit, PastilleEtat, type CouleurEtat } from '../composants/Pastilles'
 import * as depot from '../db/depot'
 import { lireChantier } from '../db/lecture'
-import type { Releve } from '../db/types'
+import type { Droit, Releve } from '../db/types'
 import { executer, montrerAvis } from '../etat/avis'
 import { cheminEtape, dateFr, NOMS_ETAPES, pluriel } from '../etat/navigation'
 import type { ReleveCalcule } from '../etat/releveCalcule'
@@ -24,7 +26,7 @@ import { useBandeauTelephone } from '../etat/useEnvoi'
 import { useRequete } from '../etat/useRequete'
 import { refusSuppression } from '../sync/regles'
 import { MenuHaut } from './MenuHaut'
-import { MenuTerrain } from './MenuTerrain'
+import { itemsChantier, MenuTerrain } from './MenuTerrain'
 import { exporterSauvegarde } from './registre'
 
 const LIMITES_HAUTEUR = {
@@ -97,7 +99,14 @@ function FeuilleNouveauReleve({ ouvert, chantierId, onFermer }: { ouvert: boolea
   )
 }
 
-function LigneReleve({ releve, calcule, onMenu }: { releve: Releve; calcule: ReleveCalcule; onMenu: () => void }) {
+/** Items of the ⋯ of a relevé for the account's right (6.8). */
+export function itemsReleve(droit: Droit, releve: Pick<Releve, 'cree_par'>, compteId: string | undefined): ('dupliquer' | 'supprimer')[] {
+  if (droit === 'consulter') return []
+  const sien = releve.cree_par === 'local' || (!!compteId && releve.cree_par === compteId)
+  return droit === 'proprietaire' || sien ? ['dupliquer', 'supprimer'] : ['dupliquer']
+}
+
+function LigneReleve({ releve, calcule, onMenu }: { releve: Releve; calcule: ReleveCalcule; onMenu: (() => void) | null }) {
   const p = pastilleCalage(calcule)
   const n = calcule.stations.length
   return (
@@ -115,9 +124,11 @@ function LigneReleve({ releve, calcule, onMenu }: { releve: Releve; calcule: Rel
         </span>
         <Icone nom="chevron" taille={22} />
       </Link>
-      <button type="button" aria-label={`Plus d’actions sur ${releve.nom}`} onClick={onMenu} className="flex w-12 flex-none items-center justify-center rounded-rt border-[3px] border-encre">
-        <Icone nom="points" taille={22} />
-      </button>
+      {onMenu ? (
+        <button type="button" aria-label={`Plus d’actions sur ${releve.nom}`} onClick={onMenu} className="flex w-12 flex-none items-center justify-center rounded-rt border-[3px] border-encre">
+          <Icone nom="points" taille={22} />
+        </button>
+      ) : null}
     </li>
   )
 }
@@ -131,6 +142,7 @@ export default function Chantier() {
   const [menuReleve, setMenuReleve] = useState<Releve | null>(null)
   const [aSupprimer, setASupprimer] = useState<Releve | null>(null)
   const envoi = useBandeauTelephone()
+  const compte = useRequete('cle:compte', () => depot.lireCle('compte'))
 
   const releves = useMemo(
     () => (donnees ? donnees.releves.map(({ releve, objets }) => ({ releve, calcule: calculerMesure(releve.entete, objets, REGLAGES_DEFAUT) })) : []),
@@ -151,6 +163,9 @@ export default function Chantier() {
   }
 
   const { chantier, domaine } = donnees
+  const droit = depot.droitLocal(chantier, domaine)
+  const menuChantierPossible = itemsChantier(droit).length > 0
+  const items = menuReleve ? itemsReleve(droit, menuReleve, compte?.user_id) : []
   return (
     <div className="rt-ecran">
       <EnTete titre={chantier.nom} sousTitre={domaine ? domaine.nom : null} droite={<MenuHaut />} />
@@ -158,30 +173,41 @@ export default function Chantier() {
       <main className="flex flex-1 flex-col gap-3 px-4 pb-6 pt-3.5">
         <div className="flex items-center gap-2">
           <h2 className="rt-etroite m-0 flex-1 text-[24px] font-extrabold">Relevés</h2>
-          <button type="button" aria-label={`Plus d’actions sur le chantier ${chantier.nom}`} onClick={() => setMenuChantier(true)} className="flex h-12 w-12 flex-none items-center justify-center rounded-rt border-[3px] border-encre">
-            <Icone nom="points" taille={22} />
-          </button>
+          {droit !== 'proprietaire' ? <PastilleDroit droit={droit} /> : null}
+          {menuChantierPossible ? (
+            <button type="button" aria-label={`Plus d’actions sur le chantier ${chantier.nom}`} onClick={() => setMenuChantier(true)} className="flex h-12 w-12 flex-none items-center justify-center rounded-rt border-[3px] border-encre">
+              <Icone nom="points" taille={22} />
+            </button>
+          ) : null}
         </div>
-        <Bouton onClick={() => setNouveau(true)}>+ Nouveau relevé</Bouton>
-        <p className="m-0 text-[15px] text-encre2">Le relevé s'enregistre sur ce téléphone, même sans réseau.</p>
+        {droit === 'consulter' ? (
+          <p data-consulter className="m-0 rounded-rt border-2 border-encre bg-surface px-3.5 py-3 text-[16px] font-semibold leading-snug">
+            Vous consultez ce chantier : voir les relevés, la carte, les courbes et les exporter.
+          </p>
+        ) : (
+          <>
+            <Bouton onClick={() => setNouveau(true)}>+ Nouveau relevé</Bouton>
+            <p className="m-0 text-[15px] text-encre2">Le relevé s'enregistre sur ce téléphone, même sans réseau.</p>
+          </>
+        )}
         {releves.length === 0 ? (
           <p className="m-0 rounded-rt border-2 border-dashed border-encre2 p-4 text-[17px] text-encre2">Aucun relevé dans ce chantier pour le moment.</p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {releves.map(({ releve, calcule }) => (
-              <LigneReleve key={releve.id} releve={releve} calcule={calcule} onMenu={() => setMenuReleve(releve)} />
+              <LigneReleve key={releve.id} releve={releve} calcule={calcule} onMenu={itemsReleve(droit, releve, compte?.user_id).length > 0 ? () => setMenuReleve(releve) : null} />
             ))}
           </ul>
         )}
       </main>
-      <FeuilleNouveauReleve key={nouveau ? 'ouvert' : 'ferme'} ouvert={nouveau} chantierId={chantier.id} onFermer={() => setNouveau(false)} />
-      {menuChantier ? <MenuTerrain cible={{ type: 'chantier', chantier, releves: releves.length }} onFermer={() => setMenuChantier(false)} /> : null}
+      <FeuilleNouveauReleve key={nouveau ? 'ouvert' : 'ferme'} ouvert={nouveau && droit !== 'consulter'} chantierId={chantier.id} onFermer={() => setNouveau(false)} />
+      {menuChantier && menuChantierPossible ? <MenuTerrain cible={{ type: 'chantier', chantier, releves: releves.length }} onFermer={() => setMenuChantier(false)} /> : null}
       <FeuilleMenu
         ouvert={menuReleve !== null}
         titre={menuReleve?.nom ?? ''}
         onFermer={() => setMenuReleve(null)}
         elements={[
-          {
+          ...(items.includes('dupliquer') ? [{
             libelle: 'Dupliquer',
             onClick: async () => {
               const r = menuReleve
@@ -190,8 +216,8 @@ export default function Chantier() {
               const copie = await executer(() => depot.dupliquerReleve(r.id))
               if (copie) montrerAvis(`Copie créée : « ${copie.nom} ».`)
             },
-          },
-          {
+          }] : []),
+          ...(items.includes('supprimer') ? [{
             libelle: 'Supprimer le relevé',
             danger: true,
             onClick: async () => {
@@ -203,7 +229,7 @@ export default function Chantier() {
               if (refus) montrerAvis(refus, 'alerte')
               else setASupprimer(r)
             },
-          },
+          }] : []),
         ]}
       />
       <Confirmation

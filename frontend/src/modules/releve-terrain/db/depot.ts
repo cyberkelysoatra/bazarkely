@@ -81,6 +81,49 @@ export class SaisieNonTenue extends Error {
   }
 }
 
+export const MESSAGE_RESERVE_PROPRIETAIRE = 'Réservé au propriétaire du domaine.'
+export const MESSAGE_CONSULTER_SEULEMENT = 'Vous pouvez consulter ce chantier, pas y relever.'
+export const MESSAGE_SUPPRIMER_SIEN = 'Vous ne pouvez supprimer que les relevés que vous avez créés.'
+
+/** Phase 4 (6.8): an action the account's right does not allow (the server refuses it anyway). */
+export class DroitInsuffisant extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DroitInsuffisant'
+  }
+}
+
+/**
+ * Right of the account on a work site, as the phone knows it (6.8). A domain made here, or owned, is
+ * 'proprietaire'; a shared one carries the right returned by the server (the most precise share wins),
+ * 'consulter' when unknown.
+ */
+export function droitLocal(chantier: Pick<Chantier, 'droit'> | null | undefined, domaine: Pick<Domaine, 'a_moi'> | null | undefined): Droit {
+  if (domaine && domaine.a_moi === false) return chantier?.droit === 'relever' ? 'relever' : 'consulter'
+  return chantier?.droit ?? 'proprietaire'
+}
+
+/** Right on a work site read from the phone (missing work site: no right, the caller refuses). */
+async function droitSurChantier(chantierId: string): Promise<Droit | null> {
+  const c = await db.chantiers.get(chantierId)
+  if (!c) return null
+  return droitLocal(c, await db.domaines.get(c.domaine_id))
+}
+
+async function exigerProprietaireDomaine(domaineId: string): Promise<void> {
+  const d = await db.domaines.get(domaineId)
+  if (d && d.a_moi === false) throw new DroitInsuffisant(MESSAGE_RESERVE_PROPRIETAIRE)
+}
+
+async function exigerProprietaireChantier(chantierId: string): Promise<void> {
+  const c = await db.chantiers.get(chantierId)
+  if (c && droitLocal(c, await db.domaines.get(c.domaine_id)) !== 'proprietaire') throw new DroitInsuffisant(MESSAGE_RESERVE_PROPRIETAIRE)
+}
+
+async function exigerRelever(chantierId: string): Promise<void> {
+  if ((await droitSurChantier(chantierId)) === 'consulter') throw new DroitInsuffisant(MESSAGE_CONSULTER_SEULEMENT)
+}
+
 /**
  * The input of a relevé is held by this phone: created here and not yet known by the server (null,
  * phase 2 relevés included), held ('ici'), or finished but not yet released ('fin_en_attente', H28).
@@ -257,6 +300,7 @@ export async function creerDomaine(nom: string): Promise<Domaine> {
 
 export async function renommerDomaine(id: string, nom: string): Promise<void> {
   const n = nomPropre(nom)
+  await exigerProprietaireDomaine(id)
   await proteger(() => db.domaines.update(id, { nom: n, maj_at: maintenant(), envoi: 'a_envoyer' }))
   annoncer({ type: 'terrains' })
 }
@@ -274,6 +318,7 @@ async function supprimerRelevesDe(chantierIds: string[], t: string): Promise<voi
 /** Soft delete of a domain, with its work sites and their relevés. */
 export async function supprimerDomaine(id: string): Promise<void> {
   const t = maintenant()
+  await exigerProprietaireDomaine(id)
   await proteger(() =>
     db.transaction('rw', db.domaines, db.chantiers, db.releves, async () => {
       await db.domaines.update(id, { supprime_at: t, maj_at: t, envoi: 'a_envoyer' })
@@ -291,6 +336,7 @@ export async function supprimerDomaine(id: string): Promise<void> {
 export async function creerChantier(domaineId: string, nom: string): Promise<Chantier> {
   const t = maintenant()
   const c: Chantier = { id: nouvelId(), domaine_id: domaineId, nom: nomPropre(nom), cree_at: t, maj_at: t, supprime_at: null, envoi: 'a_envoyer' }
+  await exigerProprietaireDomaine(domaineId)
   await proteger(() =>
     db.transaction('rw', db.domaines, db.chantiers, async () => {
       const d = await db.domaines.get(domaineId)
@@ -304,6 +350,7 @@ export async function creerChantier(domaineId: string, nom: string): Promise<Cha
 
 export async function renommerChantier(id: string, nom: string): Promise<void> {
   const n = nomPropre(nom)
+  await exigerProprietaireChantier(id)
   await proteger(() => db.chantiers.update(id, { nom: n, maj_at: maintenant(), envoi: 'a_envoyer' }))
   annoncer({ type: 'terrains' })
 }
@@ -311,6 +358,7 @@ export async function renommerChantier(id: string, nom: string): Promise<void> {
 /** Soft delete of a work site, with its relevés. */
 export async function supprimerChantier(id: string): Promise<void> {
   const t = maintenant()
+  await exigerProprietaireChantier(id)
   await proteger(() =>
     db.transaction('rw', db.chantiers, db.releves, async () => {
       await db.chantiers.update(id, { supprime_at: t, maj_at: t, envoi: 'a_envoyer' })
@@ -389,6 +437,7 @@ export async function creerReleve(chantierId: string, n: NouveauReleve): Promise
     serveur_connu: false,
   }
   const bornes = [bornePrincipale('A', 1), bornePrincipale('B', 2), bornePrincipale('C', 3)].map((d) => objetNeuf(r.id, 'borne', d, t))
+  await exigerRelever(chantierId)
   await proteger(() =>
     db.transaction('rw', db.chantiers, db.releves, db.objets, async () => {
       const c = await db.chantiers.get(chantierId)
@@ -443,6 +492,16 @@ export async function renommerReleve(releveId: string, nom: string, revEcran: nu
  */
 export async function supprimerReleve(releveId: string, revEcran: number): Promise<number> {
   const t = maintenant()
+  // 6.8: the owner deletes any relevé of his work sites, « relever » only the relevés it created.
+  const l = await db.releves.get(releveId)
+  if (l) {
+    const droit = await droitSurChantier(l.chantier_id)
+    if (droit === 'consulter') throw new DroitInsuffisant(MESSAGE_CONSULTER_SEULEMENT)
+    if (droit === 'relever') {
+      const compte = (await lireCle('compte'))?.user_id
+      if (l.cree_par !== 'local' && l.cree_par !== compte) throw new DroitInsuffisant(MESSAGE_SUPPRIMER_SIEN)
+    }
+  }
   const { rev } = await ecrireDansReleve(releveId, revEcran, async () => ({ patch: { supprime_at: t }, retour: null }), true)
   annoncer({ type: 'terrains' })
   return rev
@@ -578,6 +637,8 @@ function remapper<T extends { id: string; type: TypeObjet; donnees: unknown }>(o
 /** H03: copy of a relevé in the same work site, « <nom> (copie) », new ids, links kept. */
 export async function dupliquerReleve(releveId: string): Promise<Releve> {
   const t = maintenant()
+  const source = await db.releves.get(releveId)
+  if (source) await exigerRelever(source.chantier_id)
   const res = await proteger(() =>
     db.transaction('rw', db.releves, db.objets, async () => {
       const r = await db.releves.get(releveId)
@@ -637,6 +698,8 @@ export async function importerReleve(chantierId: string, sauvegarde: SauvegardeR
   const t = maintenant()
   const entete: EnteteReleve = fusionProfonde(enteteVide(s.releve.nom, dateMadagascar(), '', HAUTEUR_DEFAUT, HAUTEUR_DEFAUT), s.releve.entete)
   entete.schema = 1
+  // 6.8: re-import into a work site needs the right to create relevés.
+  await exigerRelever(chantierId)
   const res = await proteger(() =>
     db.transaction('rw', db.chantiers, db.releves, db.objets, async () => {
       const c = await db.chantiers.get(chantierId)
@@ -758,6 +821,8 @@ export interface DomaineServeur {
   nom: string
   a_moi: boolean
   proprietaire_nom?: string
+  /** Phase 4: right of a whole-domain share received (null otherwise). */
+  partage_entier?: 'consulter' | 'relever' | null
 }
 
 export interface ChantierServeur {
@@ -920,12 +985,13 @@ export async function appliquerServeur(donnees: DonneesServeur): Promise<BilanSe
       for (const d of donnees.domaines ?? []) {
         const l = await db.domaines.get(d.id)
         const proprietaire = d.a_moi ? (donnees.compteId ?? l?.proprietaire ?? 'local') : 'partage'
+        const partage_entier = d.a_moi ? null : (d.partage_entier ?? null)
         if (!l) {
-          await db.domaines.add({ id: d.id, nom: d.nom, proprietaire, a_moi: d.a_moi, cree_at: t, maj_at: t, supprime_at: null, envoi: 'envoye', proprietaire_nom: d.proprietaire_nom })
+          await db.domaines.add({ id: d.id, nom: d.nom, proprietaire, a_moi: d.a_moi, cree_at: t, maj_at: t, supprime_at: null, envoi: 'envoye', proprietaire_nom: d.proprietaire_nom, partage_entier })
         } else if (l.envoi === 'a_envoyer') {
           await db.domaines.update(d.id, { proprietaire_nom: d.proprietaire_nom })
         } else {
-          await db.domaines.update(d.id, { nom: d.nom, a_moi: d.a_moi, proprietaire, proprietaire_nom: d.proprietaire_nom, supprime_at: null })
+          await db.domaines.update(d.id, { nom: d.nom, a_moi: d.a_moi, proprietaire, proprietaire_nom: d.proprietaire_nom, supprime_at: null, partage_entier })
         }
       }
 

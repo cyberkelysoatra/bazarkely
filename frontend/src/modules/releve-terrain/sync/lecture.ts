@@ -87,7 +87,8 @@ export function analyserTerrains(rep: unknown): Terrains {
       t.complete = false
       continue
     }
-    t.domaines.push({ id: d.id as string, nom: d.nom as string, a_moi: d.a_moi === true, proprietaire_nom: texte(d.proprietaire_nom) ?? undefined })
+    const entier = d.domaine_entier === 'relever' || d.domaine_entier === 'consulter' ? d.domaine_entier : null
+    t.domaines.push({ id: d.id as string, nom: d.nom as string, a_moi: d.a_moi === true, proprietaire_nom: texte(d.proprietaire_nom) ?? undefined, partage_entier: d.a_moi === true ? null : entier })
     for (const c of d.chantiers as unknown[]) {
       if (!estObjet(c) || !texte(c.id) || !texte(c.nom) || !Array.isArray(c.releves)) {
         t.complete = false
@@ -106,11 +107,17 @@ export function analyserTerrains(rep: unknown): Terrains {
 }
 
 /** What the phone holds that the server did not return (only rows already sent, never 'local' ones). */
-async function aRetirer(t: Terrains): Promise<depot.IdsTerrains> {
+async function aRetirer(t: Terrains, partagesSeulement = false): Promise<depot.IdsTerrains> {
   const domainesServeur = new Set(t.domaines.map((d) => d.id))
   const chantiersServeur = new Set(t.chantiers.map((c) => c.id))
   const relevesServeur = new Set(t.releves.map((r) => r.id))
   const [domaines, chantiers, releves] = await Promise.all([db.domaines.toArray(), db.chantiers.toArray(), db.releves.toArray()])
+  if (partagesSeulement) {
+    // An empty answer never removes the account's own domains; a domain shared with it that is no longer
+    // returned is gone (DR11 for an account whose only domains were shared ones).
+    const ids = domaines.filter((d) => d.a_moi === false && d.envoi === 'envoye' && !d.supprime_at).map((d) => d.id)
+    return { domaines: ids }
+  }
   return {
     domaines: domaines.filter((d) => d.envoi === 'envoye' && d.proprietaire !== 'local' && !domainesServeur.has(d.id)).map((d) => d.id),
     chantiers: chantiers.filter((c) => c.envoi === 'envoye' && domainesServeur.has(c.domaine_id) && !chantiersServeur.has(c.id)).map((c) => c.id),
@@ -160,7 +167,7 @@ export async function lireReleve(ctx: ContexteSync, releveId: string): Promise<b
 export async function lireServeur(ctx: ContexteSync): Promise<BilanLecture> {
   const rep = await ctx.rpc('rt_mes_terrains', {})
   const t = analyserTerrains(rep)
-  const retirer = t.complete && t.domaines.length > 0 ? await aRetirer(t) : undefined
+  const retirer = !t.complete ? undefined : t.domaines.length > 0 ? await aRetirer(t) : await aRetirer(t, true)
   const b = await depot.appliquerServeur({ compteId: ctx.compteId, appareilId: ctx.appareil.id, domaines: t.domaines, chantiers: t.chantiers, releves: t.releves, retirer })
   const lus: string[] = []
   for (const s of t.releves) {

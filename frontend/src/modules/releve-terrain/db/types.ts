@@ -19,6 +19,8 @@ export interface Domaine {
   envoi: Envoi
   /** Phase 3: name of the owner account, as returned by the server. */
   proprietaire_nom?: string
+  /** Phase 4: right of a whole-domain share received by the account (null: only some work sites). */
+  partage_entier?: 'consulter' | 'relever' | null
 }
 
 /** Right of the account on a work site, as returned by the server (phase 3). */

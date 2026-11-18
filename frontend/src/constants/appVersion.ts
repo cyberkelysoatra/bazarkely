@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.156.1';
-export const APP_VERSION_NAME = 'Relevé terrain : un téléphone à la fois, reprise, données tardives, sélecteur de modules (RELEVE-CC-09)';
-export const LAST_UPDATED = '2026-11-18';
-export const APP_BUILD_DATE = '2026-11-18';
+export const APP_VERSION = '3.157.0';
+export const APP_VERSION_NAME = 'Relevé terrain : partage par WhatsApp, qui a accès, droits (RELEVE-CC-10)';
+export const LAST_UPDATED = '2026-11-19';
+export const APP_BUILD_DATE = '2026-11-19';
 export const VERSION_HISTORY = [
+  {
+    version: '3.157.0',
+    date: '2026-11-19',
+    description: 'Relevé terrain : partage par WhatsApp, qui a accès, droits (RELEVE-CC-10)',
+    changes: [
+      'Partager un domaine entier ou des chantiers, droit « consulter » ou « relever », par un lien WhatsApp à usage unique',
+      'Qui a accès : changer le droit, retirer un partage, retirer une invitation en attente',
+      'Invitation reçue : aperçu sans connexion, puis acceptation après la connexion Google',
+      'Accueil : rubrique « Partagés avec moi », droits appliqués dans tous les écrans (règle 6.8)'
+    ]
+  },
   {
     version: '3.156.1',
     date: '2026-11-18',
