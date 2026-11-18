@@ -1,0 +1,187 @@
+{
+ "c1": {
+  "lu": {
+   "AB distance": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+   "AB dénivelé": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+   "AB écart": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+   "AB biais": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+   "BC distance": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+   "BC dénivelé": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+   "BC écart": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+   "BC biais": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+   "AC distance": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+   "AC dénivelé": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+   "AC écart": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+   "AC biais": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+   "AB couleur": "A vers B VERT 52,468 +0,016 −11,245",
+   "BC couleur": "B vers C ORANGE 45,457 −0,124 −5,489",
+   "AC couleur": "A vers C VERT 71,310 +0,011 −16,723",
+   "boucle": "Boucle des dénivelés : −0,011 m VERT",
+   "A": "A 0,000 0,000 38,110",
+   "B": "B 47,312 22,681 26,865",
+   "C": "C 69,217 −17,150 21,382",
+   "position B": "Position de B 0,025 m VERT",
+   "position C": "Position de C 0,182 m ORANGE",
+   "altitude B": "Altitude de B +0,035 m VERT",
+   "altitude C": "Altitude de C +0,052 m VERT",
+   "cap": "Cap A vers B (plan 64,4°) écart 0,0° VERT",
+   "cap corrigé": "Cap lu 74,4° ; déclinaison 10° ; cap corrigé 64,4° saisi à la main",
+   "calage": "Résultat du calage ORANGE",
+   "orientation": "Résultat du calage ORANGE Côté Distance Écart déca Dénivelé A vers B VERT 52,468 +0,016 −11,245 B vers C ORANGE 45,457 −0,124 −5,489 A vers C VERT 71,310 +0,011 −16,723 Boucle des dénivelés : −0,011 m VERT Borne X Y Altitude A 0,000 0,000 38,110 B 47,312 22,681 26,865 C 69,217 −17,150 21,382 Orienté par le plan"
+  },
+  "attendu": {
+   "AB distance": "Distance retenue52,468 m",
+   "AB dénivelé": "Dénivelé−11,245 m",
+   "AB écart": "Écart décamètre et appareil+0,016 m",
+   "AB biais": "Biais de l'appareil−0,017 m",
+   "BC distance": "Distance retenue45,457 m",
+   "BC dénivelé": "Dénivelé−5,489 m",
+   "BC écart": "Écart décamètre et appareil−0,124 m",
+   "BC biais": "Biais de l'appareil+0,125 m",
+   "AC distance": "Distance retenue71,310 m",
+   "AC dénivelé": "Dénivelé−16,723 m",
+   "AC écart": "Écart décamètre et appareil+0,011 m",
+   "AC biais": "Biais de l'appareil−0,012 m",
+   "AB couleur": "A vers BVERT 52,468 +0,016 −11,245",
+   "BC couleur": "B vers CORANGE 45,457 −0,124 −5,489",
+   "AC couleur": "A vers CVERT 71,310 +0,011 −16,723",
+   "boucle": "Boucle des dénivelés : −0,011 m VERT",
+   "A": "A 0,000 0,000 38,110",
+   "B": "B 47,312 22,681 26,865",
+   "C": "C 69,217 −17,150 21,382",
+   "position B": "Position de B 0,025 m VERT",
+   "position C": "Position de C 0,182 m ORANGE",
+   "altitude B": "Altitude de B +0,035 m VERT",
+   "altitude C": "Altitude de C +0,052 m VERT",
+   "cap": "Cap A vers B (plan 64,4°) écart 0,0° VERT",
+   "cap corrigé": "Cap lu 74,4° ; déclinaison 10° ; cap corrigé 64,4°",
+   "calage": "Résultat du calage ORANGE",
+   "orientation": "Orienté par le plan"
+  },
+  "ecarts": [],
+  "messageModeAffichage": 0,
+  "apresValidation": "/releve/r/banc4-calage-a/saisir",
+  "etatCalage": "valide"
+ },
+ "c5": {
+  "nomVideEtapeSuivante": true,
+  "lettre": "La lettre B est déjà portée par Borne nord",
+  "nomVide": true,
+  "nomGarde": "Borne ouest",
+  "distance0": true,
+  "distance1200": true,
+  "pente95": true
+ },
+ "c6": {
+  "url": "/releve/r/banc4-bornes-verifiees/saisir",
+  "saisirOuvert": true,
+  "etat": {
+   "calage": "saute",
+   "verifiees": 3,
+   "journal": [
+    "calage_saute"
+   ]
+  },
+  "bandeEtapes": "Étape 1 sur 4 : bornesvoir les étapes",
+  "etape2": "✓Calage"
+ },
+ "c8": {
+  "mesures": {
+   "6-bornes-vide": {
+    "largeur": 412,
+    "defilement": 412
+   },
+   "6-bornes-rempli": {
+    "largeur": 412,
+    "defilement": 412
+   },
+   "7-calage-vide": {
+    "largeur": 412,
+    "defilement": 412
+   },
+   "7-calage-rempli": {
+    "largeur": 412,
+    "defilement": 412
+   },
+   "6-saute": {
+    "largeur": 412,
+    "defilement": 412
+   }
+  }
+ },
+ "contrastes": {
+  "paires": [
+   {
+    "paire": "#7C2D12 sur #FFEDD5",
+    "ratio": 8.18,
+    "exemple": "Pas de boussole sur ce téléphone : saisi",
+    "ecran": "7-resultat"
+   },
+   {
+    "paire": "#14532D sur #DCFCE7",
+    "ratio": 8.3,
+    "exemple": "VERT",
+    "ecran": "7-resultat"
+   },
+   {
+    "paire": "#1E3A8A sur #DBEAFE",
+    "ratio": 8.49,
+    "exemple": "Orienté par le plan",
+    "ecran": "7-resultat"
+   },
+   {
+    "paire": "#3F3F3A sur #F4F4F1",
+    "ratio": 9.61,
+    "exemple": "Tant que le calage n'est ni fait ni saut",
+    "ecran": "7-haut"
+   },
+   {
+    "paire": "#3F3F3A sur #FFFFFF",
+    "ratio": 10.59,
+    "exemple": "Nom du relevé",
+    "ecran": "6-bornes"
+   },
+   {
+    "paire": "#000000 sur #FACC15",
+    "ratio": 13.71,
+    "exemple": "A",
+    "ecran": "6-bornes"
+   },
+   {
+    "paire": "#000000 sur #FFD100",
+    "ratio": 14.37,
+    "exemple": "Saisir",
+    "ecran": "7-resultat"
+   },
+   {
+    "paire": "#D9D9D9 sur #000000",
+    "ratio": 14.84,
+    "exemple": "Premier chantier, Domaine A",
+    "ecran": "6-bornes"
+   },
+   {
+    "paire": "#000000 sur #F4F4F1",
+    "ratio": 19.06,
+    "exemple": "Étape 1 : les bornes",
+    "ecran": "6-bornes"
+   },
+   {
+    "paire": "#FFFFFF sur #000000",
+    "ratio": 21,
+    "exemple": "Calage A",
+    "ecran": "6-bornes"
+   },
+   {
+    "paire": "#000000 sur #FFFFFF",
+    "ratio": 21,
+    "exemple": "Enregistré sur ce téléphone",
+    "ecran": "6-bornes"
+   }
+  ],
+  "minimum": 8.18
+ },
+ "erreurs": [],
+ "veille": true,
+ "sansBoussole": true,
+ "dureeSaisieCalageS": 8
+}
