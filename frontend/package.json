@@ -46,6 +46,7 @@
         "@types/node": "^24.4.0",
         "@types/react-router-dom": "^5.3.3",
         "clsx": "^2.1.1",
+        "d3-delaunay": "^6.0.6",
         "dexie": "^4.2.0",
         "dompurify": "^3.4.17",
         "html2canvas": "^1.4.1",
