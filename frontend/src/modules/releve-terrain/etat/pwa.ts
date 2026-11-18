@@ -1,0 +1,296 @@
+// Installed-app side of the page (same as the /plan/ light entry): own service worker (/releve/sw.js), "ready for airplane mode"
+// status, "new version" banner, install offer, persistent storage. Production build only for the worker.
+import { useEffect, useState, useSyncExternalStore } from 'react';
+
+interface InvitationInstallation extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: string }>;
+}
+
+let invitation: InvitationInstallation | null = null;
+let attente: ServiceWorker | null = null;
+const abonnes = new Set<() => void>();
+const notifier = () => abonnes.forEach((f) => f());
+const suivre = (f: () => void) => {
+  abonnes.add(f);
+  return () => {
+    abonnes.delete(f);
+  };
+};
+
+/** Name of the entry file of this build: a new deploy gives a new name, so a new worker. */
+function versionDuCode(): string {
+  try {
+    return new URL(import.meta.url).pathname.split('/').pop() || 'local';
+  } catch {
+    return 'local';
+  }
+}
+
+function surveiller(reg: ServiceWorkerRegistration) {
+  const verifier = () => {
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      attente = reg.waiting;
+      notifier();
+    }
+  };
+  verifier();
+  reg.addEventListener('updatefound', () => {
+    const nouveau = reg.installing;
+    nouveau?.addEventListener('statechange', () => {
+      if (nouveau.state === 'installed') verifier();
+      if (nouveau.state === 'activated') notifier();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------
+// As on the /plan/ entry: the app updates itself without a tap.
+// The worker address carries the entry file name of the build (?v=), so reg.update() alone never sees
+// a new deploy: the check also reads /releve/ from the network (never answered from the cache) and, when
+// its entry file differs from ours, registers the new worker address. The new worker installs, waits,
+// then is applied by itself at the first safe moment (page hidden, route change, or no input for a
+// while), after the last typed answer is saved locally.
+// Test only: localStorage `releve.test.majVerif` (check period, ms) and `releve.test.majInactif` (idle and
+// typing delay, ms) shorten the delays; read once at start, ignored when absent or invalid.
+// ---------------------------------------------------------------------------------------------------
+
+function delaiTest(cle: string, defaut: number): number {
+  try {
+    const v = Number(localStorage.getItem(cle));
+    return Number.isFinite(v) && v >= 1000 ? v : defaut;
+  } catch {
+    return defaut;
+  }
+}
+
+let delaiVerif = 10 * 60 * 1000;
+let delaiInactif = 60 * 1000;
+let enregistrement: ServiceWorkerRegistration | null = null;
+let dernierGeste = Date.now();
+let derniereFrappe = 0;
+let verificationEnCours = false;
+let applicationEnCours = false;
+
+/** Local saves to finish before the page reloads. */
+const sauvegardes = new Set<() => Promise<void>>();
+const sauvegardesEnVol = new Set<Promise<unknown>>();
+
+/** A screen with a value not yet written: flush called before an automatic update. Returns the unsubscribe. */
+export function inscrireSauvegarde(f: () => Promise<void>): () => void {
+  sauvegardes.add(f);
+  return () => {
+    sauvegardes.delete(f);
+  };
+}
+
+/** A local write in progress, awaited before an automatic update. */
+export function suivreSauvegarde(p: Promise<unknown>): void {
+  sauvegardesEnVol.add(p);
+  void p.finally(() => sauvegardesEnVol.delete(p)).catch(() => undefined);
+}
+
+async function toutSauver(): Promise<void> {
+  await Promise.all([...sauvegardes].map((f) => f().catch(() => undefined)));
+  await Promise.all([...sauvegardesEnVol].map((p) => p.catch(() => undefined)));
+}
+
+function champActif(): boolean {
+  const e = document.activeElement as HTMLElement | null;
+  if (!e) return false;
+  return e.tagName === 'INPUT' || e.tagName === 'TEXTAREA' || e.tagName === 'SELECT' || e.isContentEditable;
+}
+
+/** Never while a field has focus and was typed in less than the delay ago. */
+function saisieEnCours(): boolean {
+  return champActif() && Date.now() - derniereFrappe < delaiInactif;
+}
+
+/** Entry file of the build served now at /releve/ (network only), or null. */
+async function versionEnLigne(): Promise<string | null> {
+  const r = await fetch(`/releve/?maj=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+  if (!r.ok) return null;
+  const html = await r.text();
+  const m = /<script[^>]*\bsrc="([^"]*\/assets\/releve\/c\/[^"]+\.js)"/i.exec(html);
+  return m ? m[1].split('/').pop() || null : null;
+}
+
+async function chercherMiseAJour(): Promise<void> {
+  const reg = enregistrement;
+  if (!reg || verificationEnCours || attente || !navigator.onLine) return;
+  verificationEnCours = true;
+  try {
+    const enLigne = await versionEnLigne().catch(() => null);
+    const ici = versionDuCode();
+    if (enLigne && enLigne !== ici && enLigne !== reg.installing?.scriptURL.split('v=')[1]) {
+      await navigator.serviceWorker.register('/releve/sw.js?v=' + encodeURIComponent(enLigne), { scope: '/releve/' });
+    } else {
+      await reg.update();
+    }
+  } catch {
+    // No network or server error: tried again at the next occasion.
+  } finally {
+    verificationEnCours = false;
+  }
+}
+
+/** Applies the waiting worker by itself, when nothing is being typed; the typed answers are saved first. */
+export async function appliquerSiSur(): Promise<void> {
+  if (!attente || applicationEnCours || saisieEnCours()) return;
+  applicationEnCours = true;
+  try {
+    await toutSauver();
+    if (!attente || saisieEnCours()) return;
+    appliquerMiseAJour();
+  } finally {
+    applicationEnCours = false;
+  }
+}
+
+/** Banner « Nouvelle version disponible »: immediate, the local writes finished first. */
+export async function mettreAJourMaintenant(): Promise<void> {
+  if (!attente) return;
+  await toutSauver();
+  appliquerMiseAJour();
+}
+
+/** App: the route changed (a safe moment). */
+export function signalerChangementDePage(): void {
+  void appliquerSiSur();
+}
+
+function suivreAutoMaj(reg: ServiceWorkerRegistration): void {
+  enregistrement = reg;
+  delaiVerif = delaiTest('releve.test.majVerif', delaiVerif);
+  delaiInactif = delaiTest('releve.test.majInactif', delaiInactif);
+  const geste = () => {
+    dernierGeste = Date.now();
+  };
+  const frappe = () => {
+    dernierGeste = Date.now();
+    derniereFrappe = dernierGeste;
+  };
+  window.addEventListener('keydown', frappe, true);
+  window.addEventListener('input', frappe, true);
+  window.addEventListener('pointerdown', geste, true);
+  window.addEventListener('touchstart', geste, { capture: true, passive: true });
+  window.addEventListener('online', () => void chercherMiseAJour());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void chercherMiseAJour();
+    else void appliquerSiSur();
+  });
+  let derniereVerif = Date.now();
+  // One light tick: periodic check while visible, and the idle rule when a worker is waiting.
+  window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const maintenant = Date.now();
+    if (maintenant - derniereVerif >= delaiVerif) {
+      derniereVerif = maintenant;
+      void chercherMiseAJour();
+    }
+    if (attente && maintenant - dernierGeste >= delaiInactif) void appliquerSiSur();
+  }, Math.min(5000, delaiVerif, delaiInactif));
+  void chercherMiseAJour();
+}
+
+export function demarrerPwa(): void {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    invitation = e as InvitationInstallation;
+    notifier();
+  });
+  window.addEventListener('appinstalled', () => {
+    invitation = null;
+    notifier();
+  });
+  // Ask the browser to keep the data even when the phone is short of space.
+  try {
+    void navigator.storage?.persist?.();
+  } catch {
+    // Not available: the data stays, only without the guarantee.
+  }
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    let rechargement = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (rechargement) return;
+      if (sessionStorage.getItem('releve.maj') === '1') {
+        rechargement = true;
+        sessionStorage.removeItem('releve.maj');
+        window.location.reload();
+      }
+      notifier();
+    });
+    const enregistrer = () => {
+      navigator.serviceWorker
+        .register('/releve/sw.js?v=' + encodeURIComponent(versionDuCode()), { scope: '/releve/' })
+        .then((reg) => {
+          surveiller(reg);
+          suivreAutoMaj(reg);
+        })
+        .catch(() => undefined);
+    };
+    if (document.readyState === 'complete') enregistrer();
+    else window.addEventListener('load', enregistrer);
+  }
+}
+
+export function useMiseAJourDisponible(): boolean {
+  return useSyncExternalStore(suivre, () => attente !== null, () => false);
+}
+
+/** The waiting worker takes over, then the page reloads. */
+export function appliquerMiseAJour(): void {
+  const w = attente;
+  if (!w) return;
+  sessionStorage.setItem('releve.maj', '1');
+  w.postMessage({ type: 'SKIP_WAITING' });
+  // Safety net if controllerchange never comes.
+  window.setTimeout(() => window.location.reload(), 4000);
+}
+
+export function useInstallationDisponible(): boolean {
+  return useSyncExternalStore(suivre, () => invitation !== null, () => false);
+}
+
+export async function lancerInstallation(): Promise<void> {
+  const e = invitation;
+  if (!e) return;
+  invitation = null;
+  notifier();
+  try {
+    await e.prompt();
+    await e.userChoice;
+  } catch {
+    // Dismissed.
+  }
+}
+
+/** True once every file listed by the worker (precache.json) is in the cache. */
+async function toutEstEnCache(): Promise<boolean> {
+  if (!('caches' in window)) return false;
+  const liste = await caches.match('/releve/precache.json');
+  if (!liste) return false;
+  const { files } = (await liste.json()) as { files: string[] };
+  for (const f of files) if (!(await caches.match(f))) return false;
+  return true;
+}
+
+export function usePretModeAvion(): boolean {
+  const [pret, setPret] = useState(false);
+  useEffect(() => {
+    let fin = false;
+    let minuterie = 0;
+    const essayer = async () => {
+      const ok = await toutEstEnCache().catch(() => false);
+      if (fin) return;
+      if (ok) setPret(true);
+      else minuterie = window.setTimeout(essayer, 2000);
+    };
+    void essayer();
+    return () => {
+      fin = true;
+      window.clearTimeout(minuterie);
+    };
+  }, []);
+  return pret;
+}

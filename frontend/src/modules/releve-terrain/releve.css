@@ -1,0 +1,107 @@
+@config "../../../tailwind.releve.config.js";
+
+/* Barlow and Barlow Condensed bundled with the page (latin subset only): works offline, never loaded online. */
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../../../node_modules/@fontsource/barlow/files/barlow-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../../../node_modules/@fontsource/barlow/files/barlow-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../../../node_modules/@fontsource/barlow/files/barlow-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../../../node_modules/@fontsource/barlow/files/barlow-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url('../../../node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-800-normal.woff2') format('woff2');
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 16px;
+}
+/* Never `overflow: hidden` on an ancestor of a sticky element (memento 30): `clip` only. */
+html,
+body {
+  overflow-x: clip;
+}
+body {
+  @apply bg-fond text-encre font-barlow;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Page column: full width on a phone, centred on a computer. */
+.rt-ecran {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.rt-etroite {
+  font-family: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+}
+/* Visible focus ring for the keyboard (black on light, yellow on the black header). */
+:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+.rt-sombre :focus-visible {
+  outline-color: #ffd100;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rt-feuille {
+    animation: rt-monte 160ms ease-out;
+  }
+}
+@keyframes rt-monte {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

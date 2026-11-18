@@ -43,9 +43,9 @@ self.addEventListener('activate', (event: any) => {
         const names = await caches.keys();
         // NAVY ay island map kept for offline use (navy-map-<date>): replaced by the app
         // itself when map-version.json changes, never purged by an app update.
-        // Light entries /plan, /pudi, /validation own their caches (airplane mode): each of their
+        // Light entries /plan, /pudi, /validation, /releve own their caches (airplane mode): each of their
         // service workers removes its own old versions, the host never touches them.
-        const autresModules = ['navy-map-', 'plan-', 'pudi-', 'validation-'];
+        const autresModules = ['navy-map-', 'plan-', 'pudi-', 'validation-', 'releve-'];
         await Promise.all(names.filter((n) => !keep.has(n) && !autresModules.some((p) => n.startsWith(p))).map((n) => caches.delete(n)));
       } catch (e) {
         console.warn('[SW] ⚠️ Purge des caches obsolètes échouée (non bloquant):', e);
@@ -586,7 +586,9 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
     // Validation client (VALIDCLIENT-CC-02) : idem, page légère /validation avec son propre SW.
     /^\/validation(\/|$|\?)/,
     // Mon business plan (NEC-CC-01) : idem, page légère /plan avec son propre SW.
-    /^\/plan(\/|$|\?)/
+    /^\/plan(\/|$|\?)/,
+    // Relevé terrain (RELEVE-CC-03) : idem, page légère /releve avec son propre SW.
+    /^\/releve(\/|$|\?)/
   ]
 });
 registerRoute(navigationRoute);

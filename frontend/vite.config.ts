@@ -113,6 +113,42 @@ function planEntry(): Plugin {
   }
 }
 
+/**
+ * "Relevé terrain" light entry (frontend/releve/index.html, served under /releve), built separately
+ * by vite.releve.config.ts (RELEVE-CC-03). Same rules as planEntry(): no host manifest /
+ * registerSW.js in its page; dev and preview servers serve the page for /releve and /releve/<route>
+ * (same behaviour as functions/releve/_middleware.ts).
+ */
+function releveEntry(): Plugin {
+  const isReleveRoute = (url: string) => {
+    const path = url.split('?')[0]
+    return path === '/releve' || (path.startsWith('/releve/') && !/\.[a-z0-9]+$/i.test(path))
+  }
+  const rewrite = (req: { url?: string }, _res: unknown, next: () => void) => {
+    if (req.url && isReleveRoute(req.url)) req.url = '/releve/index.html'
+    next()
+  }
+  return {
+    name: 'releve-entry',
+    enforce: 'post',
+    configureServer(server) {
+      server.middlewares.use(rewrite)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite)
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!/[\\/]releve[\\/]index\.html$/.test(ctx.filename) && !ctx.path.startsWith('/releve/')) return html
+        return html
+          .replace(/<link[^>]+rel="manifest"[^>]+href="\/manifest\.webmanifest"[^>]*>\s*/g, '')
+          .replace(/<script[^>]+id="vite-plugin-pwa:register-sw"[^>]*><\/script>\s*/g, '')
+      }
+    }
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
   // `vite build` always ships the production React, whatever NODE_ENV says. The Cloudflare
@@ -139,7 +175,8 @@ export default defineConfig(({ command }) => {
         // PUDi (/pudi) has its own service worker: its folder stays out of the host precache.
         // Validation client (/validation, VALIDCLIENT-CC-02): same, own service worker.
         // Mon business plan (/plan, NEC-CC-01): same, own service worker.
-        globIgnores: ['**/node_modules/**/*', 'pudi/**', 'validation/**', 'plan/**'],
+        // Relevé terrain (/releve, RELEVE-CC-03): same, own service worker.
+        globIgnores: ['**/node_modules/**/*', 'pudi/**', 'validation/**', 'plan/**', 'releve/**'],
         rollupFormat: 'iife',
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB (cœur Tesseract simd-lstm ~3.9 MB)
       },
@@ -226,7 +263,8 @@ export default defineConfig(({ command }) => {
     }),
     pudiEntry(),
     validationEntry(),
-    planEntry()
+    planEntry(),
+    releveEntry()
   ],
   base: '/',
         server: {

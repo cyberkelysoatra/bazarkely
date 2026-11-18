@@ -31,6 +31,17 @@
   to = "/pudi/index.html"
   status = 200
 
+# Relevé terrain (RELEVE-CC-03) : page légère séparée (dist/releve/index.html), avant le repli de l'hôte.
+[[redirects]]
+  from = "/releve"
+  to = "/releve/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/releve/*"
+  to = "/releve/index.html"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

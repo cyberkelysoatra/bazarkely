@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.152.0';
-export const APP_VERSION_NAME = 'Logos NAVY ay gris clair, sous-titres Eau sur une ligne, garde du service worker et reprise de page blanche (MICRO-CC-01)';
-export const LAST_UPDATED = '2026-11-15';
-export const APP_BUILD_DATE = '2026-11-16';
+export const APP_VERSION = '3.153.0';
+export const APP_VERSION_NAME = 'Relevé terrain : entrée /releve/, données sur le téléphone, accueil et chantiers (RELEVE-CC-03)';
+export const LAST_UPDATED = '2026-11-18';
+export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.153.0',
+    date: '2026-11-18',
+    description: 'Relevé terrain : entrée /releve/, données sur le téléphone, accueil et chantiers (RELEVE-CC-03)',
+    changes: [
+      'Nouvelle page légère /releve/ (adresse directe, hors du sélecteur), installable, entièrement utilisable en mode avion après une première visite',
+      'Domaines fonciers, chantiers et relevés enregistrés sur le téléphone, sans compte ; un ancien onglet ne peut plus écraser un relevé plus récent',
+      'Accueil avec « Reprendre », menus ⋯ des domaines et des chantiers, écran Chantier (nouveau relevé, dupliquer, supprimer), menu du haut avec l’aide du principe de mesure',
+      'Habillage MODÈLE B « Instrument » (noir et jaune, polices Barlow embarquées) ; écrans des bornes, du calage, des stations et des résultats à venir'
+    ]
+  },
   {
     version: '3.152.0',
     date: '2026-11-16',
