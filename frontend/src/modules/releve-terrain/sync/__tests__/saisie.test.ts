@@ -207,6 +207,39 @@ describe('DR8 : reprise par le propriétaire', () => {
   })
 })
 
+describe('DR8 côté propriétaire (écran 15)', () => {
+  it('après la reprise, les stations tardives de R arrivent sur le téléphone de P, marquées, et P écrit toujours', async () => {
+    const { C1 } = await partage()
+    const r = await autre(R, 'Téléphone R')
+    const R1 = U()
+    await r.rpc('rt_releve_creer', { p_id: R1, p_chantier: C1, p_appareil: r.ap, p_nom: 'R1', p_entete: {} })
+    const tP = await telephone(P)
+    await lireServeur(tP.ctx)
+    expect(await reprendreSaisie(tP.ctx, R1)).toEqual({ ok: true })
+    expect((await db.releves.get(R1))!.saisie).toBe('ici')
+    // R's phone comes back with two stations typed without network.
+    const tard = ['S04', 'S05'].map((numero) => ({ id: U(), type: 'station', donnees: station(numero).donnees, supprime: false, saisi_at: new Date().toISOString() }))
+    const rep = (await r.rpc('rt_envoyer', { p_releve: R1, p_appareil: r.ap, p_objets: tard, p_entete: null })) as { apres_reprise: boolean }
+    expect(rep.apres_reprise).toBe(true)
+    await r.rpc('rt_reprise_accuser', { p_releve: R1, p_appareil: r.ap })
+    // P's next cycle reads them although P holds the relevé.
+    await cycle(tP.rpc, tP.ouvert)
+    const locales = (await db.objets.where('releve_id').equals(R1).toArray()).filter((o) => o.type === 'station')
+    expect(locales.map((o) => [(o.donnees as { numero: string }).numero, o.apres_reprise]).sort()).toEqual([
+      ['S04', true],
+      ['S05', true],
+    ])
+    expect((await db.releves.get(R1))!.saisie).toBe('ici')
+    await saisir(R1, 'S06')
+    await cycle(tP.rpc, tP.ouvert)
+    expect(await stationsServeur(R1)).toEqual([
+      { numero: 'S04', apres_reprise: true },
+      { numero: 'S05', apres_reprise: true },
+      { numero: 'S06', apres_reprise: false },
+    ])
+  })
+})
+
 describe('DR8b : seul le propriétaire reprend', () => {
   it('R ne peut pas reprendre la saisie de R1 tenue par P', async () => {
     const { C1 } = await partage()

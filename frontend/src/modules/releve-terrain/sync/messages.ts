@@ -60,7 +60,8 @@ export function messageReprise(repriseAt: string | null | undefined): string {
 export function avertissementReprise(det: Detenteur | null | undefined): string {
   const qui = det ? nomTelephone(det) : 'un autre téléphone'
   const quand = det ? leJourHeure(det.depuis) : null
-  return `La saisie est tenue par ${qui}${quand ? ` depuis ${quand}` : ''} ; ce qu'il n'a pas encore envoyé arrivera plus tard. La reprendre ?`
+  const virgule = det?.moi ? ',' : ''
+  return `La saisie est tenue par ${qui}${quand ? `${virgule} depuis ${quand}` : ''} ; ce qu'il n'a pas encore envoyé arrivera plus tard. La reprendre ?`
 }
 
 /** « dernière donnée reçue à HH:MM » (H29). */

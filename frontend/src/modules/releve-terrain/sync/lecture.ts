@@ -165,7 +165,10 @@ export async function lireServeur(ctx: ContexteSync): Promise<BilanLecture> {
   const lus: string[] = []
   for (const s of t.releves) {
     const l = await db.releves.get(s.id)
-    if (!l || l.saisie === 'ici' || l.saisie === 'fin_en_attente') continue
+    if (!l) continue
+    // A relevé held here is not read, except after a take-over: the old phone's late data (D19) reaches
+    // the new holder this way (rows waiting to be sent are never overwritten).
+    if ((l.saisie === 'ici' || l.saisie === 'fin_en_attente') && !s.reprise_at) continue
     const aJour = l.lu_donnee_at !== undefined && l.lu_donnee_at === (s.derniere_donnee_at ?? null)
     if (aJour) continue
     if (await lireReleve(ctx, s.id)) lus.push(s.id)

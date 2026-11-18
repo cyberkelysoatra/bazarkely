@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.156.0';
+export const APP_VERSION = '3.156.1';
 export const APP_VERSION_NAME = 'Relevé terrain : un téléphone à la fois, reprise, données tardives, sélecteur de modules (RELEVE-CC-09)';
 export const LAST_UPDATED = '2026-11-18';
 export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.156.1',
+    date: '2026-11-18',
+    description: 'Relevé terrain : le propriétaire qui a repris la saisie reçoit les stations tardives de l’ancien téléphone (RELEVE-CC-09)',
+    changes: [
+      'Après une reprise, les stations envoyées ensuite par l’ancien téléphone arrivent sur le téléphone du propriétaire, marquées « arrivé après reprise »',
+      'Avertissement de reprise : virgule après le nom de l’autre téléphone du même compte'
+    ]
+  },
   {
     version: '3.156.0',
     date: '2026-11-18',
