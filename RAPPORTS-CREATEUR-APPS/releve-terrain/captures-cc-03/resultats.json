@@ -1,0 +1,212 @@
+{
+ "mesures": {},
+ "c2": {
+  "2-accueil-vide": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "6-a-12-cadre-releve": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "2-accueil": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "3-menu-domaine": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "5-menu-haut": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "4-chantier": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "4-nouveau-releve": {
+   "largeur": 412,
+   "defilement": 412
+  },
+  "4-chantier-final": {
+   "largeur": 412,
+   "defilement": 412
+  }
+ },
+ "c3": {
+  "ouvreHorsLigne": true,
+  "apresRechargement": true,
+  "horsLigne": true,
+  "profil": "C:\\Users\\ACER\\AppData\\Local\\Temp\\releve-profil-GyFAjR",
+  "profilApresFermeture": true,
+  "serveurArrete": true
+ },
+ "c5": {
+  "style": {
+   "fondEnTete": "rgb(0, 0, 0)",
+   "policeTitre": "\"Barlow Condensed\", Barlow, system-ui, sans-serif",
+   "graisseTitre": "800",
+   "tailleTitre": "26px",
+   "bandeReprendre": "rgb(255, 209, 0)",
+   "cadreReprendre": "3px rgb(0, 0, 0)",
+   "fondPage": "rgb(244, 244, 241)",
+   "chiffres": "tabular-nums"
+  },
+  "paires": [
+   {
+    "paire": "#FFFFFF sur #B91C1C",
+    "ratio": 6.47,
+    "exemple": "1",
+    "ecran": "cadre-releve",
+    "taille": "14px"
+   },
+   {
+    "paire": "#991B1B sur #FFFFFF",
+    "ratio": 8.31,
+    "exemple": "Supprimer le domaine",
+    "ecran": "3-menu-domaine",
+    "taille": "21px"
+   },
+   {
+    "paire": "#3F3F3A sur #F4F4F1",
+    "ratio": 9.61,
+    "exemple": "Sur ce téléphone,",
+    "ecran": "2-accueil",
+    "taille": "14px"
+   },
+   {
+    "paire": "#3F3F3A sur #FFFFFF",
+    "ratio": 10.59,
+    "exemple": "Un domaine foncier range vos chantiers, ",
+    "ecran": "2-accueil-vide",
+    "taille": "17px"
+   },
+   {
+    "paire": "#2F302C sur #E9EAE6",
+    "ratio": 11,
+    "exemple": "calage sauté",
+    "ecran": "4-chantier",
+    "taille": "13px"
+   },
+   {
+    "paire": "#000000 sur #FFD100",
+    "ratio": 14.37,
+    "exemple": "+ Nouveau domaine foncier",
+    "ecran": "2-accueil-vide",
+    "taille": "21px"
+   },
+   {
+    "paire": "#D9D9D9 sur #000000",
+    "ratio": 14.84,
+    "exemple": "Mes terrains",
+    "ecran": "2-accueil-vide",
+    "taille": "14px"
+   },
+   {
+    "paire": "#000000 sur #F4F4F1",
+    "ratio": 19.06,
+    "exemple": "Saisir une station",
+    "ecran": "cadre-releve",
+    "taille": "30px"
+   },
+   {
+    "paire": "#FFFFFF sur #000000",
+    "ratio": 21,
+    "exemple": "Relevé terrain",
+    "ecran": "2-accueil-vide",
+    "taille": "26px"
+   },
+   {
+    "paire": "#000000 sur #FFFFFF",
+    "ratio": 21,
+    "exemple": "Enregistré sur ce téléphone",
+    "ecran": "2-accueil-vide",
+    "taille": "16px"
+   }
+  ],
+  "minimum": 6.47
+ },
+ "c7": {
+  "premiereVisite": [
+   {
+    "fichier": "/releve/",
+    "gzip": 719
+   },
+   {
+    "fichier": "/assets/releve/c/releve-DoVem-Rn.css",
+    "gzip": 3873
+   },
+   {
+    "fichier": "/assets/releve/c/releve-CNHngodo.js",
+    "gzip": 122790
+   }
+  ],
+  "totalSansPolicesGzip": 127382,
+  "polices": [
+   {
+    "fichier": "/assets/releve/c/barlow-condensed-latin-600-normal-DepVgxBB.woff2",
+    "octets": 22308
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-condensed-latin-700-normal-v1xN8_Wq.woff2",
+    "octets": 22444
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-condensed-latin-800-normal-BKzMuPgK.woff2",
+    "octets": 22464
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-latin-400-normal-qiz4-Cze.woff2",
+    "octets": 22196
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-latin-500-normal-BPAOfeC8.woff2",
+    "octets": 22008
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-latin-600-normal-DILqtrty.woff2",
+    "octets": 22772
+   },
+   {
+    "fichier": "/assets/releve/c/barlow-latin-700-normal-A9pxMQ4z.woff2",
+    "octets": 22788
+   }
+  ],
+  "totalPolices": 156980,
+  "precacheTotalGzip": 315263,
+  "policesChargees": [
+   "Barlow 400",
+   "Barlow 500",
+   "Barlow 600",
+   "Barlow Condensed 800"
+  ]
+ },
+ "perf": {
+  "mesures": 5,
+  "mediane": 1.800000011920929,
+  "max": 2.600000023841858
+ },
+ "erreurs": [],
+ "nomVide": true,
+ "badge": true,
+ "confirmation": "Supprimer le domaine « Domaine A » ?\n\n1 relevé sera supprimé avec lui, sur ce téléphone. Cette action est définitive.\n\nSes chantiers sont supprimés avec lui.\n\nAnnuler\nSupprimer le domaine",
+ "menuChantier": [
+  "Renommer le chantier",
+  "Supprimer le chantier"
+ ],
+ "menuHaut": [
+  "Mes terrains",
+  "+ Nouveau domaine foncier",
+  "Aide : le principe de mesure",
+  "Version de l'outil"
+ ],
+ "version": "Version de l'outil\n\nRelevé terrain, version 3.153.1\n\nPrêt pour le mode avion\n\nVos relevés sont enregistrés sur ce téléphone. Rien n'est envoyé pour le moment.",
+ "paveRefus": true,
+ "hauteurSaisie": "1,55\nm",
+ "signe": "−1,5\nm",
+ "apresCreation": "/releve/r/dce85334-b05e-44ba-a82f-fda1ab8cb717/bornes",
+ "ligneReleve": "Accès nord\n18/11/2026, étape 1 Bornes, aucune station\nce téléphone\ncalage à faire",
+ "hoteControle": "http://127.0.0.1:4110/sw-custom.js",
+ "fausseNouvelleVersion": false
+}
