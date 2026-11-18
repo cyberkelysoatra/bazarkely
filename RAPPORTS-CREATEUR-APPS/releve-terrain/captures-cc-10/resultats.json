@@ -1,0 +1,61 @@
+{
+ "parties": {
+  "1": {
+   "partages": "Partagés avec moiDomaine BPropriétaire : RadoChantier du basaucun relevéreleverDomaine CPropriétaire : Mamy, tout le domaineVilla 4aucun relevéconsulter",
+   "pastilles": [
+    "relever",
+    "consulter"
+   ],
+   "boutonsPoints": 1,
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\01-accueil-partages-avec-moi.png"
+  },
+  "2": {
+   "captureAvant": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\02-ecran-16-partager.png",
+   "partage": "*RELEVÉ TERRAIN : INVITATION*\n\nJe vous partage Deuxième chantier (Domaine A), droit « relever ». Ouvrez ce lien et connectez-vous à 1sakely.org :\nhttps://1sakely.org/releve/i/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "message": "*RELEVÉ TERRAIN : INVITATION*\n\nJe vous partage Deuxième chantier (Domaine A), droit « relever ». Ouvrez ce lien et connectez-vous à 1sakely.org :\nhttps://1sakely.org/releve/i/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "appel": {
+    "p_domaine": "d0000000-0000-4000-8000-0000000000a1",
+    "p_chantiers": "{c0000000-0000-4000-8000-0000000000a2}",
+    "p_droit": "relever"
+   },
+   "tirets": false,
+   "jetonStocke": {
+    "dansLocal": false,
+    "bases": [
+     "ReleveTerrainDB"
+    ]
+   },
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\03-ecran-16-message-prepare.png"
+  },
+  "3": {
+   "comptes": "Qui a accèsCompte de RadoTout le domaine Domaine AreleverChanger le droitRetirerPremier chantierconsulterChanger le droitRetirerSur Premier chantier, Rado ne fait que consulter : le partage du chantier passe avant celui du domaine.Compte de MamyTout le domaine Domaine AconsulterChanger le droitRetirerInvitation en attenteParkingreleverEnvoyée le 18/11/2026 à 10:05, pas encore acceptée.Retirer l’invitation+ Partager encoreRetirer un partage : la personne ne voit plus ces chantiers à sa prochaine connexion. Ce qu’elle a déjà envoyé reste dans les relevés. Si elle tenait une saisie, elle la perd.",
+   "precisions": [
+    "Sur Premier chantier, Rado ne fait que consulter : le partage du chantier passe avant celui du domaine."
+   ],
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\04-ecran-17-qui-a-acces.png",
+   "captureBas": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\05-ecran-17-invitation-en-attente.png",
+   "confirmation": "Passer Rado en « consulter » ?Sa saisie en cours sera libérée et ses saisies non envoyées n'entreront pas.AnnulerChanger le droit",
+   "captureConfirmation": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\06-ecran-17-changer-le-droit.png"
+  },
+  "4": {
+   "url": "/releve/i/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "carte": "DeJoël bancDomaineDomaine AChantierDeuxième chantierDroitrelever",
+   "bouton": "Se connecter et accepter",
+   "appels": [
+    "rt_invitation_apercu",
+    "rt_invitation_apercu",
+    "rt_invitation_apercu"
+   ],
+   "defilement": 412,
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\07-ecran-18-invitation.png",
+   "plusValable": "Invitation plus valable : elle a déjà été acceptée ou elle a été retirée. Demandez-en une nouvelle au propriétaire.",
+   "capturePlusValable": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-10\\08-ecran-18-plus-valable.png",
+   "apresClic": "/releve/connexion?retour=%2Finvitation",
+   "jetonGarde": true
+  }
+ },
+ "erreurs": []
+}
