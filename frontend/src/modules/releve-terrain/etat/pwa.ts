@@ -28,8 +28,12 @@ function versionDuCode(): string {
 }
 
 function surveiller(reg: ServiceWorkerRegistration) {
+  // RELEVE-CC-03: a new version waits only behind an older /releve/ worker that controls this page. On the
+  // first visit the page is controlled by the host worker (scope /), and the first /releve/ worker passes
+  // through « waiting » for an instant before activating by itself: no banner, no automatic reload then.
+  const controleParReleve = () => /\/releve\/sw\.js/.test(navigator.serviceWorker.controller?.scriptURL ?? '');
   const verifier = () => {
-    if (reg.waiting && navigator.serviceWorker.controller) {
+    if (reg.waiting && reg.active && controleParReleve()) {
       attente = reg.waiting;
       notifier();
     }
@@ -39,7 +43,11 @@ function surveiller(reg: ServiceWorkerRegistration) {
     const nouveau = reg.installing;
     nouveau?.addEventListener('statechange', () => {
       if (nouveau.state === 'installed') verifier();
-      if (nouveau.state === 'activated') notifier();
+      if (nouveau.state === 'activated') {
+        // Activated without waiting for the page (first install): nothing left to apply.
+        if (attente === nouveau) attente = null;
+        notifier();
+      }
     });
   });
 }

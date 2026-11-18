@@ -322,6 +322,20 @@ async function executer(banc) {
     void contexte
   }
 
+  // ---------------- First visit after the host: no false « Nouvelle version disponible » (host worker of scope /)
+  {
+    const { page, fermer } = await banc.ouvrir()
+    await page.goto(banc.url('/'))
+    await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, undefined, { timeout: 30000 }).catch(() => undefined)
+    res.hoteControle = await page.evaluate(() => (navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : null))
+    await page.goto(banc.url('/releve/'))
+    await banc.attendreHorsLigne(page)
+    await page.waitForTimeout(1500)
+    res.fausseNouvelleVersion = await texteVisible(page, 'Nouvelle version disponible : toucher pour mettre à jour')
+    if (res.fausseNouvelleVersion) res.erreurs.push('bannière Nouvelle version affichée à la première visite')
+    await fermer()
+  }
+
   // ---------------- C3: airplane mode in an ordinary context (setOffline)
   {
     const { page, contexte, fermer } = await banc.ouvrir()

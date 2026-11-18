@@ -1,8 +1,16 @@
-export const APP_VERSION = '3.153.0';
-export const APP_VERSION_NAME = 'Relevé terrain : entrée /releve/, données sur le téléphone, accueil et chantiers (RELEVE-CC-03)';
+export const APP_VERSION = '3.153.1';
+export const APP_VERSION_NAME = 'Relevé terrain : plus de fausse « nouvelle version » à la première visite (RELEVE-CC-03)';
 export const LAST_UPDATED = '2026-11-18';
 export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.153.1',
+    date: '2026-11-18',
+    description: 'Relevé terrain : plus de fausse « Nouvelle version disponible » ni de rechargement à la première visite (RELEVE-CC-03)',
+    changes: [
+      'Une nouvelle version n’est annoncée que si une ancienne version de Relevé terrain tient déjà la page ; à la première visite après le reste de 1sakely.org, rien ne s’affiche et la page ne se recharge plus toute seule'
+    ]
+  },
   {
     version: '3.153.0',
     date: '2026-11-18',
