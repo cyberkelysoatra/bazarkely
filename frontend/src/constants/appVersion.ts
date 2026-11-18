@@ -1,8 +1,20 @@
-export const APP_VERSION = '3.153.1';
-export const APP_VERSION_NAME = 'Relevé terrain : plus de fausse « nouvelle version » à la première visite (RELEVE-CC-03)';
+export const APP_VERSION = '3.154.0';
+export const APP_VERSION_NAME = 'Relevé terrain : bornes, calage, stations, bornes éphémères, carte, résultats et exports, sur le téléphone (RELEVE-CC-07)';
 export const LAST_UPDATED = '2026-11-18';
 export const APP_BUILD_DATE = '2026-11-18';
 export const VERSION_HISTORY = [
+  {
+    version: '3.154.0',
+    date: '2026-11-18',
+    description: 'Relevé terrain : bornes, calage, stations, bornes éphémères, carte, résultats et exports, sur le téléphone (RELEVE-CC-07)',
+    changes: [
+      'Écrans 6 Bornes et 7 Calage : lettres et noms des bornes, plan facultatif, 3 lectures et décamètre par côté, cap à la boussole ou à la main, contrôle du plan, bornes déjà calées saisies comme vérifiées',
+      'Écrans 8 Saisir, 9 Station rouge et 10 Borne éphémère : saisie au pavé, résultat en moins d’une seconde, visée suspecte nommée, borne éphémère proposée, contrôlée et retirée',
+      'Écrans 11 Carte et 12 Résultats : courbes de niveau, comparaison au plan, tableau des points, plan en PDF, sauvegarde exportée et rouverte, réglage des seuils',
+      'Recette des jeux A à G du PRD faite dans les vrais écrans, sur la version de production, y compris en mode avion',
+      'Une erreur d’écran affiche « Un problème est survenu » avec « Recharger » au lieu d’une page vide'
+    ]
+  },
   {
     version: '3.153.1',
     date: '2026-11-18',

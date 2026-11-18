@@ -1,0 +1,1786 @@
+{
+ "tableNumeros": [
+  {
+   "releve": "Défauts C",
+   "prd": "E1",
+   "ecran": "S01"
+  },
+  {
+   "releve": "Défauts C",
+   "prd": "E2",
+   "ecran": "S02"
+  },
+  {
+   "releve": "Défauts C",
+   "prd": "E4",
+   "ecran": "S03"
+  },
+  {
+   "releve": "Défauts C",
+   "prd": "E5",
+   "ecran": "S04"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S01",
+   "ecran": "S01"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S02",
+   "ecran": "S02"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S03",
+   "ecran": "S03"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S04",
+   "ecran": "S04"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S05",
+   "ecran": "S05"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S06",
+   "ecran": "S06"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S07",
+   "ecran": "S07"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S08",
+   "ecran": "S08"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "E4 (jeu F)",
+   "ecran": "S09"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S10",
+   "ecran": "S10"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S11",
+   "ecran": "S11"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S12",
+   "ecran": "S12"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S13",
+   "ecran": "S13"
+  },
+  {
+   "releve": "Stations B F G",
+   "prd": "S14 (station visant E de rang 2)",
+   "ecran": "S14"
+  }
+ ],
+ "jeux": {
+  "A": [
+   {
+    "cle": "A vers B distance retenue",
+    "attendu": "Distance retenue52,468 m",
+    "lu": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers B écart décamètre et appareil",
+    "attendu": "Écart décamètre et appareil+0,016 m",
+    "lu": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers B biais",
+    "attendu": "Biais de l'appareil−0,017 m",
+    "lu": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers B dénivelé",
+    "attendu": "Dénivelé−11,245 m",
+    "lu": "Distance retenue 52,468 m Dénivelé −11,245 m Écart décamètre et appareil +0,016 m Biais de l'appareil −0,017 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers B couleur",
+    "attendu": "A vers BVERT",
+    "lu": "A vers B VERT 52,468 +0,016 −11,245",
+    "ok": true
+   },
+   {
+    "cle": "B vers C distance retenue",
+    "attendu": "Distance retenue45,457 m",
+    "lu": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+    "ok": true
+   },
+   {
+    "cle": "B vers C écart décamètre et appareil",
+    "attendu": "Écart décamètre et appareil−0,124 m",
+    "lu": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+    "ok": true
+   },
+   {
+    "cle": "B vers C biais",
+    "attendu": "Biais de l'appareil+0,125 m",
+    "lu": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+    "ok": true
+   },
+   {
+    "cle": "B vers C dénivelé",
+    "attendu": "Dénivelé−5,489 m",
+    "lu": "Distance retenue 45,457 m Dénivelé −5,489 m Écart décamètre et appareil −0,124 m Biais de l'appareil +0,125 m",
+    "ok": true
+   },
+   {
+    "cle": "B vers C couleur",
+    "attendu": "B vers CORANGE",
+    "lu": "B vers C ORANGE 45,457 −0,124 −5,489",
+    "ok": true
+   },
+   {
+    "cle": "A vers C distance retenue",
+    "attendu": "Distance retenue71,310 m",
+    "lu": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers C écart décamètre et appareil",
+    "attendu": "Écart décamètre et appareil+0,011 m",
+    "lu": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers C biais",
+    "attendu": "Biais de l'appareil−0,012 m",
+    "lu": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers C dénivelé",
+    "attendu": "Dénivelé−16,723 m",
+    "lu": "Distance retenue 71,310 m Dénivelé −16,723 m Écart décamètre et appareil +0,011 m Biais de l'appareil −0,012 m",
+    "ok": true
+   },
+   {
+    "cle": "A vers C couleur",
+    "attendu": "A vers CVERT",
+    "lu": "A vers C VERT 71,310 +0,011 −16,723",
+    "ok": true
+   },
+   {
+    "cle": "fermeture de la boucle",
+    "attendu": "Boucle des dénivelés : −0,011 m VERT",
+    "lu": "Boucle des dénivelés : −0,011 m VERT",
+    "ok": true
+   },
+   {
+    "cle": "borne A",
+    "attendu": "A 0,000 0,000 38,110",
+    "lu": "A 0,000 0,000 38,110",
+    "ok": true
+   },
+   {
+    "cle": "borne B",
+    "attendu": "B 47,312 22,681 26,865",
+    "lu": "B 47,312 22,681 26,865",
+    "ok": true
+   },
+   {
+    "cle": "borne C",
+    "attendu": "C 69,217 −17,150 21,382",
+    "lu": "C 69,217 −17,150 21,382",
+    "ok": true
+   },
+   {
+    "cle": "écart au plan B",
+    "attendu": "Position de B 0,025 m VERT",
+    "lu": "Position de B 0,025 m VERT",
+    "ok": true
+   },
+   {
+    "cle": "écart au plan C",
+    "attendu": "Position de C 0,182 m ORANGE",
+    "lu": "Position de C 0,182 m ORANGE",
+    "ok": true
+   },
+   {
+    "cle": "écart d'altitude B",
+    "attendu": "Altitude de B +0,035 m VERT",
+    "lu": "Altitude de B +0,035 m VERT",
+    "ok": true
+   },
+   {
+    "cle": "écart d'altitude C",
+    "attendu": "Altitude de C +0,052 m VERT",
+    "lu": "Altitude de C +0,052 m VERT",
+    "ok": true
+   },
+   {
+    "cle": "cap corrigé",
+    "attendu": "Cap lu 74,4° ; déclinaison 10° ; cap corrigé 64,4°",
+    "lu": "Cap lu 74,4° ; déclinaison 10° ; cap corrigé 64,4° saisi à la main",
+    "ok": true
+   },
+   {
+    "cle": "écart de cap",
+    "attendu": "Cap A vers B (plan 64,4°) écart 0,0° VERT",
+    "lu": "Cap A vers B (plan 64,4°) écart 0,0° VERT",
+    "ok": true
+   },
+   {
+    "cle": "couleur du calage",
+    "attendu": "Résultat du calage ORANGE",
+    "lu": "Résultat du calage ORANGE",
+    "ok": true
+   },
+   {
+    "cle": "pas de message sur le mode d’affichage",
+    "attendu": "absent",
+    "lu": "absent",
+    "ok": true
+   },
+   {
+    "cle": "calage orange validé, Saisir ouvert",
+    "attendu": "/saisir",
+    "lu": "/saisir",
+    "ok": true
+   }
+  ],
+  "A3": [
+   {
+    "cle": "cap 254,4 corrigé",
+    "attendu": "Cap lu 254,4° ; déclinaison 10° ; cap corrigé 244,4°",
+    "lu": "Cap lu 254,4° ; déclinaison 10° ; cap corrigé 244,4° saisi à la main",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : écart de cap",
+    "attendu": "écart 180,0° ROUGE",
+    "lu": "Cap A vers B (plan 64,4°) écart 180,0° ROUGE",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : message",
+    "attendu": "Le plan et le terrain ne concordent pas",
+    "lu": "Contrôle du plan de masse Position de B 0,025 m VERT Position de C 0,182 m ORANGE Altitude de B +0,035 m VERT Altitude de C +0,052 m VERT Cap A vers B (plan 64,4°) écart 180,0° ROUGE Le plan et le terrain ne concordent pas Le terrain fait foi pour les distances et les altitudes ; le plan donne l'origine et l'orientation.",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : positions identiques (B)",
+    "attendu": "B 47,312 22,681 26,865",
+    "lu": "B 47,312 22,681 26,865",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : positions identiques (C)",
+    "attendu": "C 69,217 −17,150 21,382",
+    "lu": "C 69,217 −17,150 21,382",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : calage rouge",
+    "attendu": "Résultat du calage ROUGE",
+    "lu": "Résultat du calage ROUGE",
+    "ok": true
+   },
+   {
+    "cle": "cap 254,4 : dialogue avant validation",
+    "attendu": "Le plan et le terrain ne concordent pas : vérifier la borne A ou B ou le plan",
+    "lu": "Calage rouge Le plan et le terrain ne concordent pas : vérifier la borne A ou B ou le plan Refaire Continuer quand même",
+    "ok": true
+   },
+   {
+    "cle": "altitude du plan de C 22,33 : écart",
+    "attendu": "Altitude de C −0,948 m ROUGE",
+    "lu": "Altitude de C −0,948 m ROUGE",
+    "ok": true
+   },
+   {
+    "cle": "altitude du plan de C 22,33 : calage rouge",
+    "attendu": "Résultat du calage ROUGE",
+    "lu": "Résultat du calage ROUGE",
+    "ok": true
+   },
+   {
+    "cle": "altitude du plan de C 22,33 : altitude calculée de C inchangée",
+    "attendu": "C 69,217 −17,150 21,382",
+    "lu": "C 69,217 −17,150 21,382",
+    "ok": true
+   },
+   {
+    "cle": "altitude du plan de C 22,33 : altitude calculée de B inchangée",
+    "attendu": "B 47,312 22,681 26,865",
+    "lu": "B 47,312 22,681 26,865",
+    "ok": true
+   },
+   {
+    "cle": "sans cap : mention « cap non contrôlé » (alerte de la carte Contrôle)",
+    "attendu": "cap non contrôlé",
+    "lu": "cap non contrôlé | Le terrain fait foi pour les distances et les altitudes ; le plan donne l'origine et l'orientation.",
+    "ok": true
+   },
+   {
+    "cle": "sans cap : calage orange (inchangé)",
+    "attendu": "Résultat du calage ORANGE",
+    "lu": "Résultat du calage ORANGE",
+    "ok": true
+   }
+  ],
+  "A2": [
+   {
+    "cle": "question du côté de C posée (jamais de côté par défaut)",
+    "attendu": "posée",
+    "lu": "posée",
+    "ok": true
+   },
+   {
+    "cle": "avec cap : B",
+    "attendu": {
+     "x": 47.317,
+     "y": 22.671
+    },
+    "lu": {
+     "x": 47.317,
+     "y": 22.671
+    },
+    "ok": true
+   },
+   {
+    "cle": "avec cap : C",
+    "attendu": {
+     "x": 69.213,
+     "y": -17.165
+    },
+    "lu": {
+     "x": 69.213,
+     "y": -17.165
+    },
+    "ok": true
+   },
+   {
+    "cle": "avec cap : C au sud de la droite A vers B",
+    "attendu": "sud",
+    "lu": "sud",
+    "ok": true
+   },
+   {
+    "cle": "A vers B : couleur et distance identiques au jeu A",
+    "attendu": "A vers BVERT 52,468",
+    "lu": "A vers B VERT 52,468 +0,016 −11,245",
+    "ok": true
+   },
+   {
+    "cle": "A vers B : dénivelé identique au jeu A",
+    "attendu": "−11,245",
+    "lu": "A vers B VERT 52,468 +0,016 −11,245",
+    "ok": true
+   },
+   {
+    "cle": "B vers C : couleur et distance identiques au jeu A",
+    "attendu": "B vers CORANGE 45,457",
+    "lu": "B vers C ORANGE 45,457 −0,124 −5,489",
+    "ok": true
+   },
+   {
+    "cle": "B vers C : dénivelé identique au jeu A",
+    "attendu": "−5,489",
+    "lu": "B vers C ORANGE 45,457 −0,124 −5,489",
+    "ok": true
+   },
+   {
+    "cle": "A vers C : couleur et distance identiques au jeu A",
+    "attendu": "A vers CVERT 71,310",
+    "lu": "A vers C VERT 71,310 +0,011 −16,723",
+    "ok": true
+   },
+   {
+    "cle": "A vers C : dénivelé identique au jeu A",
+    "attendu": "−16,723",
+    "lu": "A vers C VERT 71,310 +0,011 −16,723",
+    "ok": true
+   },
+   {
+    "cle": "fermeture identique",
+    "attendu": "−0,011 m VERT",
+    "lu": "Boucle des dénivelés : −0,011 m VERT",
+    "ok": true
+   },
+   {
+    "cle": "avec cap : mention",
+    "attendu": "Nord approximatif",
+    "lu": "Résultat du calage ORANGE Côté Distance Écart déca Dénivelé A vers B VERT 52,468 +0,016 −11,245 B vers C ORANGE 45,457 −0,124 −5,489 A vers C VERT 71,310 +0,011 −16,723 Boucle des dénivelés : −0,011 m VERT Borne X Y Altitude A 0,000 0,000 38,110 B 47,317 22,671 26,865 C 69,213 −17,165 21,382 Nord approximatif",
+    "ok": true
+   },
+   {
+    "cle": "avec cap : mention sur la carte",
+    "attendu": "Nord approximatif",
+    "lu": "Nord approximatif",
+    "ok": true
+   },
+   {
+    "cle": "sans cap : B",
+    "attendu": {
+     "x": 52.468,
+     "y": 0
+    },
+    "lu": {
+     "x": 52.468,
+     "y": 0
+    },
+    "ok": true
+   },
+   {
+    "cle": "sans cap : mention",
+    "attendu": "Orientation libre (axe A vers B)",
+    "lu": "Résultat du calage ORANGE Côté Distance Écart déca Dénivelé A vers B VERT 52,468 +0,016 −11,245 B vers C ORANGE 45,457 −0,124 −5,489 A vers C VERT 71,310 +0,011 −16,723 Boucle des dénivelés : −0,011 m VERT Borne X Y Altitude A 0,000 0,000 38,110 B 52,468 0,000 26,865 C 55,002 −45,386 21,382 Orientation libre (axe A vers B)",
+    "ok": true
+   },
+   {
+    "cle": "sans cap : mention sur la carte",
+    "attendu": "orientation libre (axe A vers B)",
+    "lu": "présente",
+    "ok": true
+   },
+   {
+    "cle": "sans cap : pas de flèche du nord",
+    "attendu": 0,
+    "lu": 0,
+    "ok": true
+   }
+  ],
+  "D (stations B)": [
+   {
+    "cle": "S01",
+    "attendu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert",
+     "numero": "S01"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S02",
+    "attendu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert",
+     "numero": "S02"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S03",
+    "attendu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert",
+     "numero": "S03"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S04",
+    "attendu": {
+     "x": 45,
+     "y": -8.001,
+     "altitude": 27.211,
+     "ecartAltitude": 0.014,
+     "indice": 1.24,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 45,
+     "y": -8.001,
+     "altitude": 27.211,
+     "ecartAltitude": 0.014,
+     "indice": 1.24,
+     "couleur": "vert",
+     "numero": "S04"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S05",
+    "attendu": {
+     "x": 54.993,
+     "y": -0.005,
+     "altitude": 24.843,
+     "ecartAltitude": 0.055,
+     "indice": 1.36,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 54.993,
+     "y": -0.005,
+     "altitude": 24.843,
+     "ecartAltitude": 0.055,
+     "indice": 1.36,
+     "couleur": "vert",
+     "numero": "S05"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S06",
+    "attendu": {
+     "x": 35,
+     "y": 11.999,
+     "altitude": 29.728,
+     "ecartAltitude": 0.049,
+     "indice": 1.27,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 35,
+     "y": 11.999,
+     "altitude": 29.728,
+     "ecartAltitude": 0.049,
+     "indice": 1.27,
+     "couleur": "vert",
+     "numero": "S06"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S07",
+    "attendu": {
+     "x": 24.998,
+     "y": -3.007,
+     "altitude": 32.052,
+     "ecartAltitude": 0.03,
+     "indice": 1.38,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 24.998,
+     "y": -3.007,
+     "altitude": 32.052,
+     "ecartAltitude": 0.03,
+     "indice": 1.38,
+     "couleur": "vert",
+     "numero": "S07"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S08",
+    "attendu": {
+     "x": 49.988,
+     "y": 7.993,
+     "altitude": 26.093,
+     "ecartAltitude": 0.05,
+     "indice": 1.23,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 49.988,
+     "y": 7.993,
+     "altitude": 26.093,
+     "ecartAltitude": 0.05,
+     "indice": 1.23,
+     "couleur": "vert",
+     "numero": "S08"
+    },
+    "ok": true
+   }
+  ],
+  "D": [
+   {
+    "cle": "confirmation avant recalcul",
+    "attendu": "Tous les résultats seront recalculés. Continuer ?",
+    "lu": "Modifier les seuils Tous les résultats seront recalculés. Continuer ? Annuler Continuer",
+    "ok": true
+   },
+   {
+    "cle": "11 points, 17 triangles gardés sur 17",
+    "attendu": "11 points, 17 triangles gardés sur 17 (coupure 100 m)",
+    "lu": "11 points, 17 triangles gardés sur 17 (coupure 100 m).",
+    "ok": true
+   },
+   {
+    "cle": "altitude en P1 (30 ; 0)",
+    "attendu": 30.872,
+    "lu": "30,872",
+    "ok": true
+   },
+   {
+    "cle": "altitude en P2 (40 ; 5)",
+    "attendu": 28.483,
+    "lu": "28,483",
+    "ok": true
+   },
+   {
+    "cle": "altitude en P3 (20 ; -5)",
+    "attendu": 33.257,
+    "lu": "33,257",
+    "ok": true
+   },
+   {
+    "cle": "courbe 35 sur Y = 0",
+    "attendu": 12.86,
+    "lu": [
+     12.856
+    ],
+    "ok": true
+   },
+   {
+    "cle": "courbe 30 sur Y = 0",
+    "attendu": 33.61,
+    "lu": [
+     33.608
+    ],
+    "ok": true
+   },
+   {
+    "cle": "courbe 25 sur Y = 0",
+    "attendu": 54.34,
+    "lu": [
+     54.34
+    ],
+    "ok": true
+   }
+  ],
+  "D2": [
+   {
+    "cle": "8 triangles gardés sur 17",
+    "attendu": "8 triangles gardés sur 17 (coupure 20 m)",
+    "lu": "11 points, 8 triangles gardés sur 17 (coupure 20 m).",
+    "ok": true
+   },
+   {
+    "cle": "altitude en P1 (30 ; 0)",
+    "attendu": 30.872,
+    "lu": "30,872",
+    "ok": true
+   },
+   {
+    "cle": "altitude en P2 (40 ; 5)",
+    "attendu": 28.483,
+    "lu": "28,483",
+    "ok": true
+   },
+   {
+    "cle": "P3 (20 ; −5)",
+    "attendu": "non couvert",
+    "lu": "non couvert",
+    "ok": true
+   },
+   {
+    "cle": "pas de courbe 35 sur Y = 0",
+    "attendu": [],
+    "lu": [],
+    "ok": true
+   },
+   {
+    "cle": "courbe 30 sur Y = 0",
+    "attendu": 33.61,
+    "lu": [
+     33.608
+    ],
+    "ok": true
+   },
+   {
+    "cle": "courbe 25 sur Y = 0",
+    "attendu": 54.34,
+    "lu": [
+     54.34
+    ],
+    "ok": true
+   }
+  ],
+  "D2 (15 m)": [
+   {
+    "cle": "altitude en P4 (25 ; 0)",
+    "attendu": 32.076,
+    "lu": "32,076",
+    "ok": true
+   },
+   {
+    "cle": "P1 non couvert",
+    "attendu": "non couvert",
+    "lu": "non couvert",
+    "ok": true
+   },
+   {
+    "cle": "P2 non couvert",
+    "attendu": "non couvert",
+    "lu": "non couvert",
+    "ok": true
+   },
+   {
+    "cle": "P3 non couvert",
+    "attendu": "non couvert",
+    "lu": "non couvert",
+    "ok": true
+   }
+  ],
+  "C": [
+   {
+    "cle": "E1 couleur",
+    "attendu": "rouge",
+    "lu": "rouge",
+    "ok": true
+   },
+   {
+    "cle": "E1 X ; Y ; altitude",
+    "attendu": [
+     29.569,
+     3.238,
+     31.072
+    ],
+    "lu": [
+     "29,569m",
+     "3,238m",
+     "31,072m"
+    ],
+    "ok": true
+   },
+   {
+    "cle": "E1 altitudes par borne",
+    "attendu": "30,919",
+    "lu": "30,919 (A), 31,248 (B), 30,908 (C)",
+    "ok": true
+   },
+   {
+    "cle": "E1 altitudes par borne (B)",
+    "attendu": "31,248",
+    "lu": "30,919 (A), 31,248 (B), 30,908 (C)",
+    "ok": true
+   },
+   {
+    "cle": "E1 altitudes par borne (C)",
+    "attendu": "30,908",
+    "lu": "30,919 (A), 31,248 (B), 30,908 (C)",
+    "ok": true
+   },
+   {
+    "cle": "E1 écart altitude",
+    "attendu": 0.339,
+    "lu": "0,339 m",
+    "ok": true
+   },
+   {
+    "cle": "E1 écart position",
+    "attendu": 0.676,
+    "lu": "0,676 m",
+    "ok": true
+   },
+   {
+    "cle": "E1 visée suspecte B",
+    "attendu": "Refaire la visée vers B, Borne nord",
+    "lu": "Refaire la visée vers B, Borne nord",
+    "ok": true
+   },
+   {
+    "cle": "E2 couleur",
+    "attendu": "rouge",
+    "lu": "rouge",
+    "ok": true
+   },
+   {
+    "cle": "E2 X ; Y ; altitude",
+    "attendu": [
+     29.797,
+     5.352,
+     30.561
+    ],
+    "lu": [
+     "29,797m",
+     "5,352m",
+     "30,561m"
+    ],
+    "ok": true
+   },
+   {
+    "cle": "E2 altitudes par borne (C)",
+    "attendu": "28,537",
+    "lu": "30,919 (A), 30,921 (B), 28,537 (C)",
+    "ok": true
+   },
+   {
+    "cle": "E2 écart altitude",
+    "attendu": 2.384,
+    "lu": "2,384 m",
+    "ok": true
+   },
+   {
+    "cle": "E2 écart position",
+    "attendu": 0.147,
+    "lu": "0,147 m",
+    "ok": true
+   },
+   {
+    "cle": "E2 visée suspecte C",
+    "attendu": "Refaire la visée vers C, Borne sud-est",
+    "lu": "Refaire la visée vers C, Borne sud-est",
+    "ok": true
+   },
+   {
+    "cle": "E4 couleur",
+    "attendu": "orange",
+    "lu": "orange",
+    "ok": true
+   },
+   {
+    "cle": "E4 X ; Y ; altitude",
+    "attendu": [
+     149.994,
+     -0.017,
+     1.928
+    ],
+    "lu": [
+     "149,994m",
+     "−0,017m",
+     "1,928m"
+    ],
+    "ok": true
+   },
+   {
+    "cle": "E4 indice",
+    "attendu": 3.38,
+    "lu": "3,38",
+    "ok": true
+   },
+   {
+    "cle": "E4 visées de plus de 60 m (orange)",
+    "attendu": 3,
+    "lu": 3,
+    "ok": true
+   },
+   {
+    "cle": "E5 pas de calcul, station en attente",
+    "attendu": "incomplete",
+    "lu": "incomplete",
+    "ok": true
+   },
+   {
+    "cle": "E5 message",
+    "attendu": "Station incomplète : il manque la borne C.",
+    "lu": "Station incomplète : il manque la borne C.",
+    "ok": true
+   },
+   {
+    "cle": "E5 proposition (H11)",
+    "attendu": "Ajouter une borne éphémère",
+    "lu": "Ajouter une borne éphémère",
+    "ok": true
+   },
+   {
+    "cle": "E5 pastille D22",
+    "attendu": "1 station incomplète",
+    "lu": "1 station incomplète",
+    "ok": true
+   }
+  ],
+  "B": [
+   {
+    "cle": "S01",
+    "attendu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert",
+     "numero": "S01"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S02",
+    "attendu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert",
+     "numero": "S02"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S03",
+    "attendu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert",
+     "numero": "S03"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S04",
+    "attendu": {
+     "x": 45,
+     "y": -8.001,
+     "altitude": 27.211,
+     "ecartAltitude": 0.014,
+     "indice": 1.24,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 45,
+     "y": -8.001,
+     "altitude": 27.211,
+     "ecartAltitude": 0.014,
+     "indice": 1.24,
+     "couleur": "vert",
+     "numero": "S04"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S05",
+    "attendu": {
+     "x": 54.993,
+     "y": -0.005,
+     "altitude": 24.843,
+     "ecartAltitude": 0.055,
+     "indice": 1.36,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 54.993,
+     "y": -0.005,
+     "altitude": 24.843,
+     "ecartAltitude": 0.055,
+     "indice": 1.36,
+     "couleur": "vert",
+     "numero": "S05"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S06",
+    "attendu": {
+     "x": 35,
+     "y": 11.999,
+     "altitude": 29.728,
+     "ecartAltitude": 0.049,
+     "indice": 1.27,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 35,
+     "y": 11.999,
+     "altitude": 29.728,
+     "ecartAltitude": 0.049,
+     "indice": 1.27,
+     "couleur": "vert",
+     "numero": "S06"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S07",
+    "attendu": {
+     "x": 24.998,
+     "y": -3.007,
+     "altitude": 32.052,
+     "ecartAltitude": 0.03,
+     "indice": 1.38,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 24.998,
+     "y": -3.007,
+     "altitude": 32.052,
+     "ecartAltitude": 0.03,
+     "indice": 1.38,
+     "couleur": "vert",
+     "numero": "S07"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S08",
+    "attendu": {
+     "x": 49.988,
+     "y": 7.993,
+     "altitude": 26.093,
+     "ecartAltitude": 0.05,
+     "indice": 1.23,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 49.988,
+     "y": 7.993,
+     "altitude": 26.093,
+     "ecartAltitude": 0.05,
+     "indice": 1.23,
+     "couleur": "vert",
+     "numero": "S08"
+    },
+    "ok": true
+   }
+  ],
+  "F": [
+   {
+    "cle": "E4 refusée comme borne éphémère",
+    "attendu": "refuse",
+    "lu": "refuse",
+    "ok": true
+   },
+   {
+    "cle": "E4 message (H13 étape 3)",
+    "attendu": "Position trop fragile : choisissez un endroit plus au centre des bornes",
+    "lu": "Position trop fragile : choisissez un endroit plus au centre des bornes",
+    "ok": true
+   },
+   {
+    "cle": "S06 acceptée, rang 1",
+    "attendu": "accepte 1",
+    "lu": "accepte 1",
+    "ok": true
+   },
+   {
+    "cle": "D lettre proposée",
+    "attendu": "D",
+    "lu": "D",
+    "ok": true
+   },
+   {
+    "cle": "D en (35,000 ; 11,999 ; 29,728)",
+    "attendu": "Depuis la station S06 : X 35,000 ; Y 11,999 ; altitude 29,728",
+    "lu": "Depuis la station S06 : X 35,000 ; Y 11,999 ; altitude 29,728",
+    "ok": true
+   },
+   {
+    "cle": "S10",
+    "attendu": {
+     "x": 54.993,
+     "y": 11.995,
+     "altitude": 24.906,
+     "ecartAltitude": 0.033,
+     "indice": 1.41,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 54.993,
+     "y": 11.995,
+     "altitude": 24.906,
+     "ecartAltitude": 0.033,
+     "indice": 1.41,
+     "couleur": "vert",
+     "numero": "S10"
+    },
+    "ok": true
+   },
+   {
+    "cle": "pas de proposition H15 après S10",
+    "attendu": 0,
+    "lu": 0,
+    "ok": true
+   },
+   {
+    "cle": "S11",
+    "attendu": {
+     "x": 45.001,
+     "y": 14.998,
+     "altitude": 27.335,
+     "ecartAltitude": 0.026,
+     "indice": 1.16,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 45.001,
+     "y": 14.998,
+     "altitude": 27.335,
+     "ecartAltitude": 0.026,
+     "indice": 1.16,
+     "couleur": "vert",
+     "numero": "S11"
+    },
+    "ok": true
+   },
+   {
+    "cle": "proposition H15 après S11",
+    "attendu": "Ajouter une borne éphémère pour cette zone ?",
+    "lu": "La borne A n'est pas visible sur deux stations de suite.Ajouter une borne éphémère pour cette zone ?OuiNon",
+    "ok": true
+   },
+   {
+    "cle": "S12",
+    "attendu": {
+     "x": 54.996,
+     "y": 11.998,
+     "altitude": 24.906,
+     "ecartAltitude": 0.033,
+     "indice": 1.1,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 54.996,
+     "y": 11.998,
+     "altitude": 24.906,
+     "ecartAltitude": 0.033,
+     "indice": 1.1,
+     "couleur": "vert",
+     "numero": "S12"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S13 rouge",
+    "attendu": "rouge",
+    "lu": "rouge",
+    "ok": true
+   },
+   {
+    "cle": "S13 calcul à 4",
+    "attendu": [
+     54.964,
+     13.194,
+     24.926
+    ],
+    "lu": [
+     "54,964m",
+     "13,194m",
+     "24,926m"
+    ],
+    "ok": true
+   },
+   {
+    "cle": "S13 visée suspecte C",
+    "attendu": "Refaire la visée vers C, Borne sud-est",
+    "lu": "Refaire la visée vers C, Borne sud-est",
+    "ok": true
+   },
+   {
+    "cle": "S13 retraits",
+    "attendu": "sans C : 0,003 m | sans A : 0,953 m | sans B : 0,186 m | sans D : 0,966 m",
+    "lu": "sans C : 0,003 m | sans A : 0,953 m | sans B : 0,186 m | sans D : 0,966 m",
+    "ok": true
+   },
+   {
+    "cle": "S13 résultat gardé sans C",
+    "attendu": [
+     54.996,
+     12.002,
+     24.904
+    ],
+    "lu": {
+     "x": "54,996m",
+     "y": "12,002m",
+     "altitude": "24,904m"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S14 : borne E créée depuis S10, rang 2",
+    "attendu": "E 2",
+    "lu": "E 2",
+    "ok": true
+   },
+   {
+    "cle": "S14 : borne depuis une station visant E (rang 3) refusée",
+    "attendu": "trop de reports, précision insuffisante",
+    "lu": "Station S14 ROUGE trop de reports, précision insuffisante X 59,999m Y 5,000m Altitude du sol 25,505m Altitudes calculées, une par borne 25,499 (B), 25,497 (C),",
+    "ok": true
+   },
+   {
+    "cle": "E retirée, D seule active",
+    "attendu": "D",
+    "lu": "D",
+    "ok": true
+   }
+  ],
+  "G": [
+   {
+    "cle": "prochain panneau libre (A, B, C, D actives)",
+    "attendu": "E",
+    "lu": "E",
+    "ok": true
+   },
+   {
+    "cle": "doublon B refusé",
+    "attendu": "La lettre B est déjà portée par Borne nord",
+    "lu": "La lettre B est déjà portée par Borne nord",
+    "ok": true
+   },
+   {
+    "cle": "réemploi : lettre D, rang 1",
+    "attendu": "D 1",
+    "lu": "D 1",
+    "ok": true
+   },
+   {
+    "cle": "réemploi : position",
+    "attendu": "Depuis la station S01 : X 19,993 ; Y 0,006 ; altitude 33,274",
+    "lu": "Depuis la station S01 : X 19,993 ; Y 0,006 ; altitude 33,274",
+    "ok": true
+   },
+   {
+    "cle": "écran Station : une seule ligne D, usage 2, « Angle sud du parking »",
+    "attendu": [
+     {
+      "usage": "2",
+      "nom": "Angle sud du parking"
+     }
+    ],
+    "lu": [
+     {
+      "usage": "2",
+      "nom": "Angle sud du parking"
+     }
+    ],
+    "ok": true
+   },
+   {
+    "cle": "S10 garde son résultat et renvoie à D (1)",
+    "attendu": {
+     "x": 54.993,
+     "y": 11.995,
+     "altitude": 24.906,
+     "visee": "Visée vers D (1), Piquet du manguier, retirée"
+    },
+    "lu": {
+     "x": "54,993m",
+     "y": "11,995m",
+     "altitude": "24,906m",
+     "visees": [
+      "Visée vers D (1), Piquet du manguier, retirée",
+      "Visée vers D (2), Angle sud du parking"
+     ]
+    },
+    "ok": true
+   },
+   {
+    "cle": "S11 garde son résultat et renvoie à D (1)",
+    "attendu": {
+     "x": 45.001,
+     "y": 14.998,
+     "altitude": 27.335,
+     "visee": "Visée vers D (1), Piquet du manguier, retirée"
+    },
+    "lu": {
+     "x": "45,001m",
+     "y": "14,998m",
+     "altitude": "27,335m",
+     "visees": [
+      "Visée vers D (1), Piquet du manguier, retirée",
+      "Visée vers D (2), Angle sud du parking"
+     ]
+    },
+    "ok": true
+   },
+   {
+    "cle": "S12 garde son résultat et renvoie à D (1)",
+    "attendu": {
+     "x": 54.996,
+     "y": 11.998,
+     "altitude": 24.906,
+     "visee": "Visée vers D (1), Piquet du manguier, retirée"
+    },
+    "lu": {
+     "x": "54,996m",
+     "y": "11,998m",
+     "altitude": "24,906m",
+     "visees": [
+      "Visée vers D (1), Piquet du manguier, retirée",
+      "Visée vers D (2), Angle sud du parking"
+     ]
+    },
+    "ok": true
+   },
+   {
+    "cle": "S13 garde son résultat et renvoie à D (1)",
+    "attendu": {
+     "x": 54.964,
+     "y": 13.194,
+     "altitude": 24.926,
+     "visee": "Visée vers D (1), Piquet du manguier, retirée"
+    },
+    "lu": {
+     "x": "54,964m",
+     "y": "13,194m",
+     "altitude": "24,926m",
+     "visees": [
+      "Visée vers D (1), Piquet du manguier, retirée",
+      "Visée vers D (2), Angle sud du parking"
+     ]
+    },
+    "ok": true
+   },
+   {
+    "cle": "CSV : D (1)",
+    "attendu": "D (1);Piquet du manguier;borne éphémère;1;retirée",
+    "lu": "D (1);Piquet du manguier;borne éphémère;1;retirée",
+    "ok": true
+   },
+   {
+    "cle": "CSV : D (2)",
+    "attendu": "D (2);Angle sud du parking;borne éphémère;1;active",
+    "lu": "D (2);Angle sud du parking;borne éphémère;1;active",
+    "ok": true
+   },
+   {
+    "cle": "CSV : S10 renvoie à D (1)",
+    "attendu": "B, C, D (1)",
+    "lu": "B, C, D (1)",
+    "ok": true
+   },
+   {
+    "cle": "CSV : BOM, virgule décimale, aucun tiret long ni point médian",
+    "attendu": true,
+    "lu": true,
+    "ok": true
+   },
+   {
+    "cle": "PDF du plan",
+    "attendu": "%PDF-, Releve_Stations-B-F-G_<date>.pdf",
+    "lu": "Releve_Stations-B-F-G_2026-11-18.pdf (10347 octets)",
+    "ok": true
+   },
+   {
+    "cle": "sauvegarde rouverte « Garder les deux »",
+    "attendu": "Stations B F G (2)",
+    "lu": "Stations B F G (2)",
+    "ok": true
+   },
+   {
+    "cle": "mêmes résultats après réimportation (CSV identique)",
+    "attendu": "22 lignes identiques",
+    "lu": "identique",
+    "ok": true
+   },
+   {
+    "cle": "carte : bornes A, B, C dessinées",
+    "attendu": 3,
+    "lu": 3,
+    "ok": true
+   },
+   {
+    "cle": "carte : D (1) grise (retirée)",
+    "attendu": "#8A8A82",
+    "lu": "Borne D (1), Piquet du manguier, retirée #8A8A82",
+    "ok": true
+   },
+   {
+    "cle": "carte : D (2) active",
+    "attendu": "#000000",
+    "lu": "Borne D (2), Angle sud du parking #000000",
+    "ok": true
+   },
+   {
+    "cle": "carte : stations dessinées",
+    "attendu": "≥ 13",
+    "lu": 14,
+    "ok": true
+   },
+   {
+    "cle": "carte : courbes à 1 m",
+    "attendu": "1 m",
+    "lu": "1 m ; 25 26 27 28 29 30 31 32 33",
+    "ok": true
+   }
+  ],
+  "Mode avion": [
+   {
+    "cle": "S01 saisie hors réseau",
+    "attendu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 19.993,
+     "y": 0.006,
+     "altitude": 33.274,
+     "ecartAltitude": 0.01,
+     "indice": 1.55,
+     "couleur": "vert",
+     "numero": "S01"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S02 saisie hors réseau",
+    "attendu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 30.006,
+     "y": 5.006,
+     "altitude": 30.918,
+     "ecartAltitude": 0.013,
+     "indice": 1.34,
+     "couleur": "vert",
+     "numero": "S02"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S03 saisie hors réseau",
+    "attendu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": 39.998,
+     "y": -0.002,
+     "altitude": 28.455,
+     "ecartAltitude": 0.041,
+     "indice": 1.19,
+     "couleur": "vert",
+     "numero": "S03"
+    },
+    "ok": true
+   },
+   {
+    "cle": "navigateur relancé hors réseau : domaine et chantier là",
+    "attendu": "Domaine avion, Chantier avion",
+    "lu": "présents",
+    "ok": true
+   },
+   {
+    "cle": "S01 retrouvée après relance (H02)",
+    "attendu": {
+     "x": "19,993m",
+     "y": "0,006m",
+     "altitude": "33,274m",
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": "19,993m",
+     "y": "0,006m",
+     "altitude": "33,274m",
+     "couleur": "vert"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S02 retrouvée après relance (H02)",
+    "attendu": {
+     "x": "30,006m",
+     "y": "5,006m",
+     "altitude": "30,918m",
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": "30,006m",
+     "y": "5,006m",
+     "altitude": "30,918m",
+     "couleur": "vert"
+    },
+    "ok": true
+   },
+   {
+    "cle": "S03 retrouvée après relance (H02)",
+    "attendu": {
+     "x": "39,998m",
+     "y": "−0,002m",
+     "altitude": "28,455m",
+     "couleur": "vert"
+    },
+    "lu": {
+     "x": "39,998m",
+     "y": "−0,002m",
+     "altitude": "28,455m",
+     "couleur": "vert"
+    },
+    "ok": true
+   },
+   {
+    "cle": "station incomplète : pastille (D22)",
+    "attendu": "1 station incomplète",
+    "lu": "1 station incomplète",
+    "ok": true
+   }
+  ]
+ },
+ "avion": {
+  "profil": "C:\\Users\\ACER\\AppData\\Local\\Temp\\rp-cc07-passe2-1837251418",
+  "visiteEnLigne": true,
+  "navigateurHorsLigne": true
+ },
+ "durees": {
+  "h08": [
+   {
+    "station": "S01 (B F G)",
+    "calculerAResultatMs": 11.3,
+    "premierChiffreAResultatMs": 804
+   },
+   {
+    "station": "S02 (B F G)",
+    "calculerAResultatMs": 10.2,
+    "premierChiffreAResultatMs": 719
+   },
+   {
+    "station": "S03 (B F G)",
+    "calculerAResultatMs": 9.6,
+    "premierChiffreAResultatMs": 795
+   },
+   {
+    "station": "S04 (B F G)",
+    "calculerAResultatMs": 25.3,
+    "premierChiffreAResultatMs": 778
+   },
+   {
+    "station": "S05 (B F G)",
+    "calculerAResultatMs": 8.5,
+    "premierChiffreAResultatMs": 685
+   },
+   {
+    "station": "S06 (B F G)",
+    "calculerAResultatMs": 8.4,
+    "premierChiffreAResultatMs": 740
+   },
+   {
+    "station": "S07 (B F G)",
+    "calculerAResultatMs": 15.7,
+    "premierChiffreAResultatMs": 694
+   },
+   {
+    "station": "S08 (B F G)",
+    "calculerAResultatMs": 24.4,
+    "premierChiffreAResultatMs": 708
+   },
+   {
+    "station": "S10 (B F G)",
+    "calculerAResultatMs": 9,
+    "premierChiffreAResultatMs": 768
+   },
+   {
+    "station": "S11 (B F G)",
+    "calculerAResultatMs": 31.6,
+    "premierChiffreAResultatMs": 863
+   },
+   {
+    "station": "S12 (B F G)",
+    "calculerAResultatMs": 16.4,
+    "premierChiffreAResultatMs": 966
+   },
+   {
+    "station": "S13 (B F G)",
+    "calculerAResultatMs": 19.8,
+    "premierChiffreAResultatMs": 953
+   }
+  ],
+  "ouvertureAccueilPremiereVisiteMs": 403,
+  "h08Resume": {
+   "n": 12,
+   "mediane": 13.5,
+   "pire": 31.6
+  },
+  "stationPremierChiffreAResultat": {
+   "mediane": 778,
+   "pire": 966,
+   "note": "saisie automatique de 6 valeurs au pavé, délai de frappe 5 ms par touche"
+  },
+  "ouvertureSaisirMs": {
+   "mesures": [
+    428,
+    856,
+    869,
+    879,
+    934
+   ],
+   "mediane": 869,
+   "pire": 934
+  }
+ },
+ "captures": [
+  "0-chantier.png",
+  "1-calage-a-bornes.png",
+  "1-calage-a-resultat.png",
+  "1-calage-a-controle.png",
+  "1-a3-cap-inverse.png",
+  "1-a3-dialogue-rouge.png",
+  "1-a3-altitude-c.png",
+  "1-a3-sans-cap.png",
+  "2-a2-avec-cap.png",
+  "2-a2-carte-nord-approximatif.png",
+  "2-a2-sans-cap.png",
+  "2-a2-carte-sans-nord.png",
+  "3-d-comparaison-100.png",
+  "3-d-carte-100.png",
+  "3-d2-comparaison-20.png",
+  "3-d2-carte-20.png",
+  "3-d2-comparaison-15.png",
+  "4-c-e1-rouge.png",
+  "4-c-e2-rouge.png",
+  "4-c-e4-orange.png",
+  "4-c-e5-incomplete.png",
+  "5-b-s01-vert.png",
+  "5-f-e4-refusee.png",
+  "5-f-d-creation.png",
+  "5-f-h15.png",
+  "5-f-s13-rouge.png",
+  "5-f-s13-garde-sans-c.png",
+  "5-f-s14-rang-3-refuse.png",
+  "5-g-doublon-b.png",
+  "5-g-ligne-d2.png",
+  "5-sauvegarde-garder-les-deux.png",
+  "5-carte.png",
+  "6-avion-incomplete.png",
+  "6-avion-rouvert-accueil.png",
+  "6-avion-rouvert-pastille.png"
+ ],
+ "erreurs": [],
+ "csvExtrait": [
+  "Point;Endroit;Type;Rang;État;X;Y;Altitude;Couleur;Écart altitude;Écart position;Indice géométrie;Bornes visées;Heure;Note",
+  "A;Borne ouest;borne principale;0;active;0,000;0,000;38,110;;;;;;;",
+  "B;Borne nord;borne principale;0;active;47,290;22,670;26,830;;;;;;;",
+  "C;Borne sud-est;borne principale;0;active;69,150;-17,320;21,330;;;;;;;",
+  "D (1);Piquet du manguier;borne éphémère;1;retirée;35,000;11,999;29,728;;;;;;;",
+  "D (2);Angle sud du parking;borne éphémère;1;active;19,993;0,006;33,274;;;;;;;",
+  "S10;;station;;normale;54,993;11,995;24,906;vert;0,033;0,003;1,41;B, C, D (1);20:51;",
+  "S11;;station;;normale;45,001;14,998;27,335;vert;0,026;0,002;1,16;B, C, D (1);20:51;",
+  "S12;;station;;normale;54,996;11,998;24,906;vert;0,033;0,003;1,10;A, B, C, D (1);20:51;",
+  "S13;;station;;gardée;54,996;12,002;24,904;rouge;0,019;0,003;1,39;A, B, C, D (1);20:51;Résultat gardé sans la visée vers C",
+  "S14;;station;;normale, reportée;59,999;5,000;25,505;rouge;0,011;0,003;5,30;B, C, E (1);20:51;"
+ ],
+ "carte": {
+  "bornes": [
+   {
+    "label": "Borne A, Borne ouest",
+    "trait": "#000000"
+   },
+   {
+    "label": "Borne B, Borne nord",
+    "trait": "#000000"
+   },
+   {
+    "label": "Borne C, Borne sud-est",
+    "trait": "#000000"
+   },
+   {
+    "label": "Borne D (1), Piquet du manguier, retirée",
+    "trait": "#8A8A82"
+   },
+   {
+    "label": "Borne D (2), Angle sud du parking",
+    "trait": "#000000"
+   },
+   {
+    "label": "Borne E (1), Piquet du talus, retirée",
+    "trait": "#8A8A82"
+   }
+  ],
+  "stations": 14,
+  "courbes": [
+   25,
+   26,
+   27,
+   28,
+   29,
+   30,
+   31,
+   32,
+   33
+  ],
+  "intervalle": "1 m"
+ },
+ "ids": {
+  "calageA": "ee70cc1c-403a-4393-8e70-cdad0fbe98fc",
+  "calageA2": "bea24bf8-5862-4b4a-a6a6-0d2c038c13db",
+  "courbesD": "43bf7fd0-bfde-4c5e-b9a0-6c308d180407",
+  "defautsC": "4f42dd9d-bdc5-467b-8a88-ccf7999c8fce",
+  "bfg": "36545e71-2872-48c6-beac-4c1721bf1aef"
+ },
+ "bilan": {
+  "A": "28/28",
+  "A3": "13/13",
+  "A2": "17/17",
+  "D (stations B)": "8/8",
+  "D": "8/8",
+  "D2": "7/7",
+  "D2 (15 m)": "4/4",
+  "C": "22/22",
+  "B": "8/8",
+  "F": "18/18",
+  "G": "21/21",
+  "Mode avion": "8/8"
+ }
+}

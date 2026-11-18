@@ -303,8 +303,8 @@ function CarteBorne({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <ChampNombre libelle={`X de ${lettre}`} valeur={plan.x} unite="m" autoriserVide onChange={(v) => poser('x', v)} />
-        <ChampNombre libelle={`Y de ${lettre}`} valeur={plan.y} unite="m" autoriserVide onChange={(v) => poser('y', v)} />
+        <ChampNombre libelle={`X de ${lettre}`} valeur={plan.x} unite="m" vide="Saisir" autoriserVide onChange={(v) => poser('x', v)} />
+        <ChampNombre libelle={`Y de ${lettre}`} valeur={plan.y} unite="m" vide="Saisir" autoriserVide onChange={(v) => poser('y', v)} />
       </div>
       <ChampNombre libelle={`Altitude de ${lettre}`} valeur={plan.z} unite="m" autoriserVide onChange={(v) => poser('z', v)} />
     </div>

@@ -1,0 +1,21 @@
+﻿Point;Endroit;Type;Rang;État;X;Y;Altitude;Couleur;Écart altitude;Écart position;Indice géométrie;Bornes visées;Heure;Note
+A;Borne ouest;borne principale;0;active;0,000;0,000;38,110;;;;;;;
+B;Borne nord;borne principale;0;active;47,290;22,670;26,830;;;;;;;
+C;Borne sud-est;borne principale;0;active;69,150;-17,320;21,330;;;;;;;
+D (1);Piquet du manguier;borne éphémère;1;retirée;35,000;11,999;29,728;;;;;;;
+D (2);Angle sud du parking;borne éphémère;1;active;19,993;0,006;33,274;;;;;;;
+E (1);Piquet du talus;borne éphémère;2;retirée;54,993;11,995;24,906;;;;;;;
+S01;;station;;normale;19,993;0,006;33,274;vert;0,010;0,000;1,55;A, B, C;20:51;
+S02;;station;;normale;30,006;5,006;30,918;vert;0,013;0,001;1,34;A, B, C;20:51;
+S03;;station;;normale;39,998;-0,002;28,455;vert;0,041;0,002;1,19;A, B, C;20:51;
+S04;;station;;normale;45,000;-8,001;27,211;vert;0,014;0,005;1,24;A, B, C;20:51;
+S05;;station;;normale;54,993;-0,005;24,843;vert;0,055;0,002;1,36;A, B, C;20:51;
+S06;;station;;normale;35,000;11,999;29,728;vert;0,049;0,003;1,27;A, B, C;20:51;
+S07;;station;;normale;24,998;-3,007;32,052;vert;0,030;0,006;1,38;A, B, C;20:51;
+S08;;station;;normale;49,988;7,993;26,093;vert;0,050;0,001;1,23;A, B, C;20:51;
+S09;;station;;normale;149,994;-0,017;1,928;orange;0,136;0,021;3,38;A, B, C;20:51;
+S10;;station;;normale;54,993;11,995;24,906;vert;0,033;0,003;1,41;B, C, D (1);20:51;
+S11;;station;;normale;45,001;14,998;27,335;vert;0,026;0,002;1,16;B, C, D (1);20:51;
+S12;;station;;normale;54,996;11,998;24,906;vert;0,033;0,003;1,10;A, B, C, D (1);20:51;
+S13;;station;;gardée;54,996;12,002;24,904;rouge;0,019;0,003;1,39;A, B, C, D (1);20:51;Résultat gardé sans la visée vers C
+S14;;station;;normale, reportée;59,999;5,000;25,505;rouge;0,011;0,003;5,30;B, C, E (1);20:51;

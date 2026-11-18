@@ -53,6 +53,7 @@ function Ligne({ ligne, saisie, longue, refaire }: { ligne: LigneVisee; saisie: 
               libelle={`Distance vers ${lettre}`}
               valeur={visee?.distance ?? null}
               unite="m"
+              vide="Saisir"
               {...LIMITES_DISTANCE}
               onChange={(v) => saisie.modifier(borne.id, { champ: 'distance', valeur: v })}
             />
@@ -60,6 +61,7 @@ function Ligne({ ligne, saisie, longue, refaire }: { ligne: LigneVisee; saisie: 
               libelle={`Pente vers ${lettre}`}
               valeur={visee?.pente ?? null}
               unite="°"
+              vide="Saisir"
               {...LIMITES_PENTE}
               onChange={(v) => saisie.modifier(borne.id, { champ: 'pente', valeur: v })}
             />

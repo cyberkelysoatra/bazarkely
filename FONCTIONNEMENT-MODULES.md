@@ -1672,6 +1672,30 @@ Faire valider par un client de CyberKELY, depuis son téléphone, chaque documen
 
 ---
 
+## MODULE RELEVÉ TERRAIN (relevé topographique au télémètre, projet ITAMPOLO) · phase 2, v3.154.0 (RELEVE-CC-01 à 07)
+
+### 🎯 Objectif
+Relever une parcelle d’environ 0,25 ha sans géomètre, avec un télémètre qui donne une distance et une pente : trois bornes principales calées entre elles, puis des stations placées par leurs distances aux bornes, des bornes éphémères quand une borne est cachée, une carte avec les courbes de niveau, et les exports (tableau des points, plan en PDF, sauvegarde).
+
+### 📍 Adresse et construction
+- Adresse directe **`https://1sakely.org/releve/`**, entrée légère à part (`frontend/releve/index.html`, `vite.releve.config.ts`), son propre service hors ligne (`/releve/sw.js`, liste `/releve/precache.json`), installable en icône. **Hors du sélecteur de modules** jusqu’à la phase 3.
+- Code dans `frontend/src/modules/releve-terrain/` : `calcul/` (règles du PRD, pur et testé), `db/` (données), `etat/` (relevé calculé), `ecrans/` (écrans 2 à 12, trois registres), `exports/` (CSV, PDF chargé au toucher, sauvegarde `.releve.json`).
+
+### 👤 Qui peut l’utiliser
+- **Sans compte (D28)** : tout ce qui est saisi reste sur le téléphone. Aucun appel au serveur, aucun Supabase dans ce module pour l’instant (phase 3, RELEVE-CC-08 : compte, partage, envoi au serveur).
+
+### 🗄️ Où vivent les données
+- Base IndexedDB **`ReleveTerrainDB`** du téléphone (domaines, chantiers, relevés, objets, clés), écrite par un seul écrivain `db/depot.ts` (numéro de révision, refus d’une écriture d’un autre onglet périmée).
+- Rien n’est envoyé : le seul moyen de déplacer un relevé est la sauvegarde exportée puis rouverte (« Remplacer » ou « Garder les deux »).
+- Le service hors ligne de l’hôte épargne les caches `releve-` et ne sert jamais la navigation de `/releve/`.
+
+### 🔄 Parcours
+Accueil (domaines, chantiers, « Reprendre ») → chantier → « + Nouveau relevé » → étape 1 Bornes (lettres, noms, plan facultatif, ou « Bornes déjà calées » qui saute le calage) → étape 2 Calage (3 lectures et décamètre par côté, cap à la boussole ou à la main, contrôle du plan) → étape 3 Stations (saisie au pavé, résultat en moins d’une seconde, station rouge, bornes éphémères) → étape 4 Résultats (courbes, comparaison au plan, exports, réglages des seuils). Carte : stations, bornes, courbes, zones à éviter pour une borne éphémère.
+
+### ❌ Ce qui N’est PAS le comportement attendu
+- Une page vide sur le terrain : une erreur d’écran affiche « Un problème est survenu » avec « Recharger » (les mesures restent sur le téléphone).
+- Un relevé perdu en mode avion, téléphone éteint ou navigateur fermé.
+
 ## 🔄 PROCÉDURE DE MISE À JOUR DE CE DOCUMENT
 
 **Obligatoire quand :**

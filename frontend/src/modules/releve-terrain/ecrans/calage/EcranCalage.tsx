@@ -8,7 +8,7 @@ import { modeAffichageSuspect, type EntreeCote } from '../../calcul'
 import { Bouton } from '../../composants/Bouton'
 import { Aide, Confirmation } from '../../composants/Feuilles'
 import { maintenant } from '../../db/depot'
-import type { ObjetCote } from '../../db/types'
+import type { LectureCote, ObjetCote } from '../../db/types'
 import type { BorneCalculee } from '../../etat/releveCalcule'
 import { useReleve } from '../../etat/useReleve'
 import { CadreReleve, type ResultatUseReleve } from '../CadreReleve'
@@ -32,7 +32,7 @@ function entreesMode(cotes: (ObjetCote | null)[]): EntreeCote[] {
   return cotes
     .filter((o): o is ObjetCote => !!o)
     .map((o) => ({
-      lectures: (o.donnees.lectures ?? []).filter((l) => nombre(l.distance) && l.distance > 0 && nombre(l.pente)),
+      lectures: (o.donnees.lectures ?? []).filter((l): l is LectureCote & { distance: number; pente: number } => nombre(l.distance) && l.distance > 0 && nombre(l.pente)),
       decametre: o.donnees.decametre,
       hi: 0,
       ht: 0,

@@ -192,10 +192,12 @@ export interface PropsChampNombre extends Limites {
   /** Decimals shown (the stored value is never rounded). */
   decimales?: number
   id?: string
+  /** Text shown while the field is empty (short in a half-width field). */
+  vide?: string
 }
 
 /** Field of 64 px: value 42 px, unit on the right; a touch opens the keypad. */
-export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, ...limites }: PropsChampNombre) {
+export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, vide = "Toucher pour saisir", ...limites }: PropsChampNombre) {
   const [ouvert, setOuvert] = useState(false)
   const ref = useRef<HTMLButtonElement>(null)
   const idAuto = useId()
@@ -223,7 +225,7 @@ export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, .
         className={`flex min-h-[64px] w-full items-center rounded-rt px-3 text-left ${ouvert ? 'border-4 border-encre bg-champActif' : 'border-[3px] border-encre bg-surface'}`}
       >
         <span id={`${idLibelle}-v`} className="rt-etroite min-w-0 flex-1 truncate text-[42px] font-bold leading-none">
-          {valeur === null ? <span className="text-[20px] font-semibold text-encre2">Toucher pour saisir</span> : formaterNombre(valeur, decimales)}
+          {valeur === null ? <span className="text-[20px] font-semibold text-encre2">{vide}</span> : formaterNombre(valeur, decimales)}
         </span>
         {unite ? <span className="ml-2 text-[22px] font-semibold text-encre2">{unite}</span> : null}
       </button>

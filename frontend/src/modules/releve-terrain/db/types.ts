@@ -101,8 +101,9 @@ export interface DonneesBorne {
 }
 
 export interface LectureCote {
-  distance: number
-  pente: number
+  /** null while the reading is being typed (distance typed, slope not yet). */
+  distance: number | null
+  pente: number | null
   sens: 'aller' | 'retour'
 }
 

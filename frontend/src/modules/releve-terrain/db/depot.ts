@@ -422,7 +422,8 @@ export function fusionProfonde<T>(base: T, patch: unknown): T {
   if (!estObjetSimple(base) || !estObjetSimple(patch)) return (patch === undefined ? base : patch) as T
   const out: Record<string, unknown> = { ...base }
   for (const [k, v] of Object.entries(patch)) {
-    if (v === undefined) continue
+    // A backup file is untrusted: never let a key reach the prototype chain.
+    if (v === undefined || k === '__proto__' || k === 'constructor' || k === 'prototype') continue
     out[k] = estObjetSimple(v) && estObjetSimple(out[k]) ? fusionProfonde(out[k], v) : v
   }
   return out as T

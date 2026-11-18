@@ -57,7 +57,7 @@ export function saisieDe(o: ObjetCote | null, p: string): SaisieCote {
  */
 export function donneesDe(s: SaisieCote, p: string, q: string): DonneesCote {
   const decametre = s.aller === null && s.retour === null ? null : { aller: s.aller, retour: s.retour }
-  return { de: p, vers: q, lectures: s.lectures as unknown as LectureCote[], decametre }
+  return { de: p, vers: q, lectures: s.lectures, decametre }
 }
 
 export interface PropsCarteCote {
@@ -84,8 +84,8 @@ export function CarteCote({ nom, lettreP, lettreQ, saisie, resultat, onChange }:
       {saisie.lectures.map((l, i) => (
         <div key={i} className="flex flex-col gap-2 border-t-2 border-trait pt-2" data-lecture={i + 1}>
           <div className="grid grid-cols-2 gap-2">
-            <ChampNombre libelle={`Lecture ${i + 1} : distance`} valeur={l.distance} unite="m" {...LIMITES_DISTANCE} onChange={(v) => v !== l.distance && lecture(i, { distance: v })} />
-            <ChampNombre libelle={`Lecture ${i + 1} : pente`} valeur={l.pente} unite="°" {...LIMITES_PENTE} onChange={(v) => v !== l.pente && lecture(i, { pente: v })} />
+            <ChampNombre libelle={`Lecture ${i + 1} : distance`} valeur={l.distance} unite="m" vide="Saisir" {...LIMITES_DISTANCE} onChange={(v) => v !== l.distance && lecture(i, { distance: v })} />
+            <ChampNombre libelle={`Lecture ${i + 1} : pente`} valeur={l.pente} unite="°" vide="Saisir" {...LIMITES_PENTE} onChange={(v) => v !== l.pente && lecture(i, { pente: v })} />
           </div>
           <div role="group" aria-label={`Sens de la lecture ${i + 1}`} className="grid grid-cols-2 gap-2">
             {(['aller', 'retour'] as const).map((sens) => {
@@ -106,8 +106,8 @@ export function CarteCote({ nom, lettreP, lettreQ, saisie, resultat, onChange }:
         </div>
       ))}
       <div className="grid grid-cols-2 gap-2 border-t-2 border-trait pt-2">
-        <ChampNombre libelle="Décamètre aller" valeur={saisie.aller} unite="m" autoriserVide {...LIMITES_DISTANCE} onChange={(v) => v !== saisie.aller && onChange({ ...saisie, aller: v })} />
-        <ChampNombre libelle="Décamètre retour" valeur={saisie.retour} unite="m" autoriserVide {...LIMITES_DISTANCE} onChange={(v) => v !== saisie.retour && onChange({ ...saisie, retour: v })} />
+        <ChampNombre libelle="Décamètre aller" valeur={saisie.aller} unite="m" vide="Saisir" autoriserVide {...LIMITES_DISTANCE} onChange={(v) => v !== saisie.aller && onChange({ ...saisie, aller: v })} />
+        <ChampNombre libelle="Décamètre retour" valeur={saisie.retour} unite="m" vide="Saisir" autoriserVide {...LIMITES_DISTANCE} onChange={(v) => v !== saisie.retour && onChange({ ...saisie, retour: v })} />
       </div>
       {resultat ? (
         <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-2 rounded-rt bg-fond p-3" aria-label={`Résultat du côté ${nom}`}>

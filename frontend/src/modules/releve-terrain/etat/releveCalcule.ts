@@ -2,7 +2,7 @@
 // number order, points of the contour lines (rule 6.5). Pure function, uses only calcul/.
 import { REGLAGES_DEFAUT, calculerStation, calerBornes, calerCote, etiquetteBorne } from '../calcul'
 import type { BorneConnue, Couleur, EntreeCote, Lecture, Point3, PointCote, Reglages, ResultatCalage, ResultatCote, ResultatPosition, ResultatStation, Seuil, Visee } from '../calcul'
-import type { DonneesBorne, DonneesCote, DonneesStation, EnteteReleve, EtatCalage, Objet, ObjetBorne, ObjetCote, ObjetStation } from '../db/types'
+import type { DonneesBorne, DonneesCote, DonneesStation, EnteteReleve, EtatCalage, LectureCote, Objet, ObjetBorne, ObjetCote, ObjetStation } from '../db/types'
 
 export interface BorneCalculee {
   id: string
@@ -94,7 +94,7 @@ function entreeCote(cotes: ObjetCote[], p: string, q: string, hi: number, ht: nu
   const d: DonneesCote = c.donnees
   const direct = d.de === p
   const lectures: Lecture[] = (d.lectures ?? [])
-    .filter((l) => nombre(l.distance) && l.distance > 0 && nombre(l.pente))
+    .filter((l): l is LectureCote & { distance: number; pente: number } => nombre(l.distance) && l.distance > 0 && nombre(l.pente))
     .map((l) => ({ distance: l.distance, pente: l.pente, sens: direct ? l.sens : l.sens === 'aller' ? 'retour' : 'aller' }))
   if (!lectures.length) return null
   const dec = d.decametre

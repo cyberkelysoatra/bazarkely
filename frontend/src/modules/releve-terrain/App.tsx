@@ -1,10 +1,11 @@
 // Routes of "Relevé terrain" (/releve). Home and work site in the entry; every screen of a relevé loaded
 // on demand from the three registries (ecrans/registre.ts). The test page /__essai exists only on the
 // development server (D29).
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AvisGlobal } from './composants/Avis'
 import { Icone } from './composants/Icones'
+import { LimiteErreur } from './composants/LimiteErreur'
 import { mettreAJourMaintenant, signalerChangementDePage, useMiseAJourDisponible } from './etat/pwa'
 import Accueil from './ecrans/Accueil'
 import { ECRANS } from './ecrans/registre'
@@ -24,6 +25,12 @@ function SuiviPages() {
     signalerChangementDePage()
   }, [pathname])
   return null
+}
+
+/** The error boundary, reset on every new address. */
+function Ecrans({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation()
+  return <LimiteErreur cle={pathname}>{children}</LimiteErreur>
 }
 
 function BandeauMiseAJour() {
@@ -46,17 +53,19 @@ export default function App() {
       <BandeauMiseAJour />
       <AvisGlobal />
       <SuiviPages />
-      <Suspense fallback={<div className="rt-ecran" />}>
-        <Routes>
-          <Route path="/" element={<Accueil />} />
-          <Route path="/c/:chantier" element={<Chantier />} />
-          {ECRANS.map((e) => (
-            <Route key={e.route} path={e.route} element={<e.composant />} />
-          ))}
-          {Essai ? <Route path="/__essai" element={<Essai />} /> : null}
-          <Route path="*" element={<Accueil />} />
-        </Routes>
-      </Suspense>
+      <Ecrans>
+        <Suspense fallback={<div className="rt-ecran" />}>
+          <Routes>
+            <Route path="/" element={<Accueil />} />
+            <Route path="/c/:chantier" element={<Chantier />} />
+            {ECRANS.map((e) => (
+              <Route key={e.route} path={e.route} element={<e.composant />} />
+            ))}
+            {Essai ? <Route path="/__essai" element={<Essai />} /> : null}
+            <Route path="*" element={<Accueil />} />
+          </Routes>
+        </Suspense>
+      </Ecrans>
     </BrowserRouter>
   )
 }
