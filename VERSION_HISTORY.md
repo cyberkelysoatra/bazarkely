@@ -6,6 +6,8 @@ Historique complet des versions et changements de l'application BazarKELY.
 
 ---
 
+## Version 3.158.1 - 2026-11-19 (FICHE-CC-01 · Fiches fournisseur en ligne) : fiches HTML privées servies sur `/f/<clé>.html` depuis le stockage Cloudflare KV `fiches-1sakely` (jamais dans le dépôt public), non indexées ; dépôt et retrait par double-clic (`scripts/DEPOSER-FICHE.ps1`, `scripts/RETIRER-FICHE.ps1`).
+
 ## Version 3.121.2 - 2026-11-03 (ELEC-CC-03 · Factures en attente hors des totaux)
 
 - Totaux du cycle, carte « Factures du cycle » et export CSV : une facture en attente de relevé n'a plus de montant (son forfait seul n'était plus à additionner).

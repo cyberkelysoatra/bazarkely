@@ -1,8 +1,17 @@
-export const APP_VERSION = '3.158.0';
-export const APP_VERSION_NAME = 'Relevé terrain : installation partout, retour après Google, exemples dans les champs (RELEVE-CC-11)';
+export const APP_VERSION = '3.158.1';
+export const APP_VERSION_NAME = 'Fiches fournisseur en ligne, adresse privée (FICHE-CC-01)';
 export const LAST_UPDATED = '2026-11-19';
 export const APP_BUILD_DATE = '2026-11-19';
 export const VERSION_HISTORY = [
+  {
+    version: '3.158.1',
+    date: '2026-11-19',
+    description: 'Fiches fournisseur en ligne, adresse privée (FICHE-CC-01)',
+    changes: [
+      'Adresse privée 1sakely.org/f/<clé>.html : fiche HTML servie depuis un stockage Cloudflare, jamais depuis le dépôt public, non indexée',
+      'Dépôt et retrait d’une fiche par un double-clic sur le Bureau, sans build'
+    ]
+  },
   {
     version: '3.158.0',
     date: '2026-11-19',

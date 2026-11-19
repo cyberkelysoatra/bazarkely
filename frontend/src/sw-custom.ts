@@ -588,7 +588,9 @@ const navigationRoute = new NavigationRoute(navigationHandler, {
     // Mon business plan (NEC-CC-01) : idem, page légère /plan avec son propre SW.
     /^\/plan(\/|$|\?)/,
     // Relevé terrain (RELEVE-CC-03) : idem, page légère /releve avec son propre SW.
-    /^\/releve(\/|$|\?)/
+    /^\/releve(\/|$|\?)/,
+    // Supplier sheets (FICHE-CC-01): served by functions/f from KV, never by the host shell.
+    /^\/f(\/|$|\?)/
   ]
 });
 registerRoute(navigationRoute);
