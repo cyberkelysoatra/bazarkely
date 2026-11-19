@@ -1,6 +1,7 @@
 // Installed-app side of the page (same as the /plan/ light entry): own service worker (/releve/sw.js), "ready for airplane mode"
 // status, "new version" banner, install offer, persistent storage. Production build only for the worker.
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { estAppliInstallee } from './installation';
 
 interface InvitationInstallation extends Event {
   prompt: () => Promise<void>;
@@ -8,6 +9,8 @@ interface InvitationInstallation extends Event {
 }
 
 let invitation: InvitationInstallation | null = null;
+/** `appinstalled` received in this page (the app now exists on the phone). */
+let installeeIci = false;
 let attente: ServiceWorker | null = null;
 const abonnes = new Set<() => void>();
 const notifier = () => abonnes.forEach((f) => f());
@@ -209,6 +212,7 @@ export function demarrerPwa(): void {
   });
   window.addEventListener('appinstalled', () => {
     invitation = null;
+    installeeIci = true;
     notifier();
   });
   // Ask the browser to keep the data even when the phone is short of space.
@@ -258,6 +262,35 @@ export function appliquerMiseAJour(): void {
 
 export function useInstallationDisponible(): boolean {
   return useSyncExternalStore(suivre, () => invitation !== null, () => false);
+}
+
+/** RELEVE-CC-11 (D33): the page runs as the installed app (display-mode standalone, navigator.standalone). */
+export function useAppliInstallee(): boolean {
+  return useSyncExternalStore(
+    (f) => {
+      const arret = suivre(f);
+      let mq: MediaQueryList | null = null;
+      try {
+        mq = window.matchMedia?.('(display-mode: standalone)') ?? null;
+        mq?.addEventListener?.('change', f);
+      } catch {
+        mq = null;
+      }
+      return () => {
+        arret();
+        mq?.removeEventListener?.('change', f);
+      };
+    },
+    estAppliInstallee,
+    () => false,
+  );
+}
+
+/** RELEVE-CC-11 (D33): the « Installer sur mon téléphone » entry is shown everywhere outside the installed app. */
+export function useEntreeInstallation(): boolean {
+  const installee = useAppliInstallee();
+  const ici = useSyncExternalStore(suivre, () => installeeIci, () => false);
+  return !installee && !ici;
 }
 
 export async function lancerInstallation(): Promise<void> {

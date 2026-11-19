@@ -47,6 +47,15 @@ function Tuile({ id }: { id: IdModule }) {
       </span>
     );
   if (id === 'pudi') return <TuilePudi base={base} />;
+  // Relevé terrain (RELEVE-CC-11): black square, yellow mountain (module logo, MODELE B), as the host tile.
+  if (id === 'releve')
+    return (
+      <span className={`${base} bg-black`}>
+        <svg viewBox="0 0 20 20" className="w-7 h-7" aria-hidden="true">
+          <path d="M3.5 15.5l4.5-7 2.6 3.8 1.9-2.6 4 5.8z" fill="#FACC15" />
+        </svg>
+      </span>
+    );
   return <span className={`${base} bg-[#FACC15] text-[#1F2937] font-extrabold text-[20px]`}>N</span>;
 }
 

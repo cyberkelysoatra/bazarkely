@@ -100,41 +100,57 @@ export function useReleve(releveId: string | undefined): { etat: EtatReleve; rev
     if (typeof rev === 'number' && rev > revConnue.current) revConnue.current = rev
   }, [])
 
+  // RELEVE-CC-11: the writes of this tab run one after the other, each with the rev the previous one
+  // produced. Two writes started together (a name confirmed, then a number typed at once) used to carry
+  // the same rev, and the second was refused as if another tab had written.
+  const file = useRef<Promise<unknown>>(Promise.resolve())
+  const enFile = useCallback(<T,>(f: () => Promise<T>): Promise<T> => {
+    const p = file.current.then(f, f)
+    file.current = p.catch(() => undefined)
+    return p
+  }, [])
+
   const actions = useMemo<ActionsReleve>(() => {
     const id = releveId ?? ''
     return {
-      ecrireObjets: async (objets) => {
-        const r = await executer(() => depot.ecrireObjets(id, objets, revConnue.current))
-        apres(r?.rev)
-        return r?.objets ?? null
-      },
-      ecrireObjet: async (objet) => {
-        const r = await executer(() => depot.ecrireObjet(id, objet, revConnue.current))
-        apres(r?.rev)
-        return r?.objet ?? null
-      },
-      supprimerObjets: async (ids) => {
-        const r = await executer(() => depot.supprimerObjets(id, ids, revConnue.current))
-        apres(r)
-        return r !== null
-      },
-      modifierEntete: async (patch) => {
-        const r = await executer(() => depot.modifierEntete(id, patch, revConnue.current))
-        apres(r)
-        return r !== null
-      },
-      renommer: async (nom) => {
-        const r = await executer(() => depot.renommerReleve(id, nom, revConnue.current))
-        apres(r)
-        return r !== null
-      },
-      supprimer: async () => {
-        const r = await executer(() => depot.supprimerReleve(id, revConnue.current))
-        apres(r)
-        return r !== null
-      },
+      ecrireObjets: (objets) =>
+        enFile(async () => {
+          const r = await executer(() => depot.ecrireObjets(id, objets, revConnue.current))
+          apres(r?.rev)
+          return r?.objets ?? null
+        }),
+      ecrireObjet: (objet) =>
+        enFile(async () => {
+          const r = await executer(() => depot.ecrireObjet(id, objet, revConnue.current))
+          apres(r?.rev)
+          return r?.objet ?? null
+        }),
+      supprimerObjets: (ids) =>
+        enFile(async () => {
+          const r = await executer(() => depot.supprimerObjets(id, ids, revConnue.current))
+          apres(r)
+          return r !== null
+        }),
+      modifierEntete: (patch) =>
+        enFile(async () => {
+          const r = await executer(() => depot.modifierEntete(id, patch, revConnue.current))
+          apres(r)
+          return r !== null
+        }),
+      renommer: (nom) =>
+        enFile(async () => {
+          const r = await executer(() => depot.renommerReleve(id, nom, revConnue.current))
+          apres(r)
+          return r !== null
+        }),
+      supprimer: () =>
+        enFile(async () => {
+          const r = await executer(() => depot.supprimerReleve(id, revConnue.current))
+          apres(r)
+          return r !== null
+        }),
     }
-  }, [releveId, apres])
+  }, [releveId, apres, enFile])
 
   const etat: EtatReleve = !releveId
     ? { statut: 'absent' }

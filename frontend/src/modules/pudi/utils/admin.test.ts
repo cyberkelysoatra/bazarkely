@@ -167,8 +167,17 @@ describe('preparerSynthese', () => {
 
 describe('modulesDuCompte', () => {
   const ids = (c: Parameters<typeof modulesDuCompte>[0]) => modulesDuCompte(c)?.map((m) => m.id) ?? null;
-  it('admin: the four host modules (+ validation, VALIDCLIENT-CC-02)', () => {
-    expect(ids({ role: 'admin', preferences: {} })).toEqual(['bazarkely', 'construction', 'gestion-eau', 'navy-ay', 'validation']);
+  it('admin: the four host modules (+ validation, VALIDCLIENT-CC-02, + releve, RELEVE-CC-11)', () => {
+    expect(ids({ role: 'admin', preferences: {} })).toEqual(['bazarkely', 'construction', 'gestion-eau', 'navy-ay', 'validation', 'releve']);
+  });
+  it("D27 (RELEVE-CC-11): a list made only of light modules shows neither NAVY ay nor PUDi", () => {
+    expect(ids({ role: 'user', preferences: { modules: ['validation', 'releve'] } })).toEqual(['validation', 'releve']);
+    expect(ids({ role: 'user', preferences: { modules: ['releve'] } })).toEqual(['releve']);
+    expect(modulesDuCompte({ role: 'user', preferences: { modules: ['releve'] } })![0]).toEqual({ id: 'releve', nom: 'Relevé terrain', adresse: '/releve/' });
+  });
+  it("lists ['pudi', 'releve'] and ['releve', 'bazarkely']: NAVY ay kept, Relevé terrain added", () => {
+    expect(ids({ role: 'user', preferences: { modules: ['pudi', 'releve'] } })).toEqual(['navy-ay', 'releve']);
+    expect(ids({ role: 'user', preferences: { modules: ['releve', 'bazarkely'] } })).toEqual(['bazarkely', 'navy-ay', 'releve']);
   });
   it('validation only: no NAVY ay (VC-02); validation listed when present', () => {
     expect(ids({ role: 'user', preferences: { modules: ['validation'] } })).toEqual(['validation']);
@@ -186,7 +195,8 @@ describe('modulesDuCompte', () => {
       'gestion-eau',
       'bazarkely',
       'construction',
-      'validation'
+      'validation',
+      'releve'
     ]);
   });
   it('unknown list: a missing modules key counts as empty (host rule), an unknown row is not a refusal', () => {

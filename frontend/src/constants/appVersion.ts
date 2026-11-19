@@ -1,8 +1,19 @@
-export const APP_VERSION = '3.157.0';
-export const APP_VERSION_NAME = 'Relevé terrain : partage par WhatsApp, qui a accès, droits (RELEVE-CC-10)';
+export const APP_VERSION = '3.158.0';
+export const APP_VERSION_NAME = 'Relevé terrain : installation partout, retour après Google, exemples dans les champs (RELEVE-CC-11)';
 export const LAST_UPDATED = '2026-11-19';
 export const APP_BUILD_DATE = '2026-11-19';
 export const VERSION_HISTORY = [
+  {
+    version: '3.158.0',
+    date: '2026-11-19',
+    description: 'Relevé terrain : installation partout, retour après Google, exemples dans les champs (RELEVE-CC-11)',
+    changes: [
+      '« Installer sur mon téléphone » toujours proposé hors de l’application installée, avec le geste de chaque navigateur (Chrome, Brave, Samsung Internet, iPhone) et « Ouvrir dans Chrome »',
+      'Connexion Google lancée depuis l’application : la page de retour dit de revenir dans l’application, qui relit la session au premier plan',
+      'Un exemple en gris dans chaque champ, une ligne d’aide là où le sens n’est pas évident',
+      'Menus des modules Validation et PUDi : Relevé terrain connu (D27) ; bandeau d’envoi visible après « Station suivante »'
+    ]
+  },
   {
     version: '3.157.0',
     date: '2026-11-19',

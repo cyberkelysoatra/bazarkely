@@ -13,6 +13,7 @@ import { montrerAvis } from '../../etat/avis'
 import type { ActionsReleve } from '../../etat/useReleve'
 import { lirePointsPlan, type LigneRefusee } from '../../exports/pointsPlan'
 import { comparerPlan, SEUIL_ECART_PLAN } from '../carte/modele'
+import { EXEMPLES } from '../exemples'
 
 const LIMITE_COORD = { min: -100000, max: 100000, messageHorsLimites: 'Valeur refusée : elle doit être comprise entre −100 000 et 100 000 m.' }
 const LIMITE_ALT = { min: -1000, max: 10000, messageHorsLimites: 'Altitude refusée : elle doit être comprise entre −1 000 et 10 000 m.' }
@@ -46,10 +47,10 @@ function FeuillePoint({ edition, onFermer, actions }: { edition: Edition; onFerm
           if (ok) onFermer()
         }}
       >
-        <ChampTexte libelle="Nom du point" valeur={e.nom} onChange={(nom) => { setE({ ...e, nom }); setErreur(null) }} erreur={erreur} autoComplete="off" maxLength={80} />
-        <ChampNombre libelle="X (m)" valeur={e.x} onChange={(x) => setE({ ...e, x })} unite="m" {...LIMITE_COORD} />
-        <ChampNombre libelle="Y (m)" valeur={e.y} onChange={(y) => setE({ ...e, y })} unite="m" {...LIMITE_COORD} />
-        <ChampNombre libelle="Altitude du plan (m)" valeur={e.z} onChange={(z) => setE({ ...e, z })} unite="m" {...LIMITE_ALT} />
+        <ChampTexte libelle="Nom du point" valeur={e.nom} onChange={(nom) => { setE({ ...e, nom }); setErreur(null) }} erreur={erreur} exemple={EXEMPLES.pointPlan} autoComplete="off" maxLength={80} />
+        <ChampNombre libelle="X (m)" valeur={e.x} onChange={(x) => setE({ ...e, x })} unite="m" exemple={EXEMPLES.xPlan} {...LIMITE_COORD} />
+        <ChampNombre libelle="Y (m)" valeur={e.y} onChange={(y) => setE({ ...e, y })} unite="m" exemple={EXEMPLES.yPlan} {...LIMITE_COORD} />
+        <ChampNombre libelle="Altitude du plan (m)" valeur={e.z} onChange={(z) => setE({ ...e, z })} unite="m" exemple={EXEMPLES.altitudePlan} {...LIMITE_ALT} />
         <Bouton type="submit" variante="principal">
           Enregistrer le point
         </Bouton>

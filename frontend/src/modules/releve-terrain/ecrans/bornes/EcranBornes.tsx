@@ -1,7 +1,7 @@
 // Screen 6, step 1 « Bornes » (H04, H06, P1): the relevé (name, date, operators, heights) and the 3
 // principal targets (letter, place name, optional X, Y, altitude of the site plan). Writes only through
 // useReleve (db/depot.ts); every result comes from useReleve and calcul/.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { verifierLettre } from '../../calcul'
 import { Bouton } from '../../composants/Bouton'
@@ -14,6 +14,7 @@ import type { DonneesBorne, ValeursPlanBorne } from '../../db/types'
 import type { BorneCalculee } from '../../etat/releveCalcule'
 import { useReleve } from '../../etat/useReleve'
 import { CadreReleve, type ResultatUseReleve } from '../CadreReleve'
+import { AIDES, EXEMPLES } from '../exemples'
 import { FeuilleLettre } from './FeuilleLettre'
 
 export const MESSAGE_NOM_ENDROIT = "Donnez le nom de l'endroit."
@@ -86,7 +87,24 @@ function Contenu({ r }: { r: ResultatUseReleve }) {
     else void appliquerHauteur(cle, valeur)
   }
 
-  const ecrireBorne = (b: BorneCalculee, donnees: Partial<DonneesBorne>) => actions.ecrireObjet({ id: b.id, type: 'borne', donnees: { ...b.donnees, ...donnees } })
+  // RELEVE-CC-11: writes now run one after the other (useReleve); a change made right after another one
+  // (place name confirmed, then X typed at once) merges on the last values written, not on the display
+  // that has not caught up yet, so the name is never overwritten by its old value.
+  const ecrites = useRef(new Map<string, DonneesBorne>())
+  useEffect(() => {
+    for (const b of principales) {
+      const e = ecrites.current.get(b.id)
+      if (e && JSON.stringify(e) === JSON.stringify(b.donnees)) ecrites.current.delete(b.id)
+    }
+  })
+  const ecrireBorne = async (b: BorneCalculee, donnees: Partial<DonneesBorne>, planPartiel?: Partial<ValeursPlanBorne>) => {
+    const base = ecrites.current.get(b.id) ?? b.donnees
+    const suivantes: DonneesBorne = { ...base, ...donnees, ...(planPartiel ? { plan: { ...planDe(base), ...planPartiel } } : {}) }
+    ecrites.current.set(b.id, suivantes)
+    const o = await actions.ecrireObjet({ id: b.id, type: 'borne', donnees: suivantes })
+    if (!o && ecrites.current.get(b.id) === suivantes) ecrites.current.delete(b.id)
+    return o
+  }
 
   const nomsManquants = () => {
     const e: Record<string, string | null> = {}
@@ -143,6 +161,7 @@ function Contenu({ r }: { r: ResultatUseReleve }) {
           libelle="Nom du relevé"
           valeur={nomReleve}
           erreur={erreurNom}
+          exemple={EXEMPLES.nomReleve}
           maxLength={120}
           autoComplete="off"
           onChange={(v) => {
@@ -157,7 +176,7 @@ function Contenu({ r }: { r: ResultatUseReleve }) {
             if (nomReleve.trim() !== releve.nom) void actions.renommer(nomReleve.trim())
           }}
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 items-end gap-3">
           <ChampTexte
             libelle="Date"
             type="date"
@@ -169,6 +188,8 @@ function Contenu({ r }: { r: ResultatUseReleve }) {
           <ChampTexte
             libelle="Opérateurs"
             valeur={operateurs}
+            exemple={EXEMPLES.operateurs}
+            aide={AIDES.operateurs}
             autoComplete="off"
             maxLength={120}
             onChange={setOperateurs}
@@ -177,9 +198,9 @@ function Contenu({ r }: { r: ResultatUseReleve }) {
             }}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <ChampNombre libelle="Hauteur de l'appareil" valeur={entete.hi} unite="m" decimales={2} {...LIMITES_HAUTEUR} onChange={(v) => changerHauteur('hi', v)} />
-          <ChampNombre libelle="Hauteur des cibles" valeur={entete.ht} unite="m" decimales={2} {...LIMITES_HAUTEUR} onChange={(v) => changerHauteur('ht', v)} />
+        <div className="grid grid-cols-2 items-end gap-3">
+          <ChampNombre libelle="Hauteur de l'appareil" valeur={entete.hi} unite="m" decimales={2} exemple={EXEMPLES.hauteur} aide={AIDES.hauteurAppareil} {...LIMITES_HAUTEUR} onChange={(v) => changerHauteur('hi', v)} />
+          <ChampNombre libelle="Hauteur des cibles" valeur={entete.ht} unite="m" decimales={2} exemple={EXEMPLES.hauteur} aide={AIDES.hauteurCibles} {...LIMITES_HAUTEUR} onChange={(v) => changerHauteur('ht', v)} />
         </div>
       </section>
 
@@ -262,7 +283,7 @@ function CarteBorne({
   erreurNom: string | null
   onErreurNom: (m: string | null) => void
   onLettre: () => void
-  ecrire: (b: BorneCalculee, d: Partial<DonneesBorne>) => Promise<unknown>
+  ecrire: (b: BorneCalculee, d: Partial<DonneesBorne>, planPartiel?: Partial<ValeursPlanBorne>) => Promise<unknown>
 }) {
   const [nom, setNom] = useState(b.donnees.nom)
   useEffect(() => setNom(b.donnees.nom), [b.donnees.nom])
@@ -270,7 +291,8 @@ function CarteBorne({
   const lettre = b.donnees.lettre
   const poser = (cle: keyof ValeursPlanBorne, v: number | null) => {
     if (v === plan[cle]) return
-    void ecrire(b, { plan: { ...plan, [cle]: v } })
+    // Only the value typed: merged on the last values written (RELEVE-CC-11).
+    void ecrire(b, {}, { [cle]: v })
   }
   return (
     <div className="flex flex-col gap-2 border-t-2 border-encre pt-3" data-borne={lettre}>
@@ -283,6 +305,7 @@ function CarteBorne({
             libelle={`Nom de l'endroit de ${lettre}`}
             valeur={nom}
             erreur={erreurNom}
+            exemple={EXEMPLES.endroitBorne}
             autoComplete="off"
             maxLength={120}
             onChange={(v) => {
@@ -302,11 +325,11 @@ function CarteBorne({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <ChampNombre libelle={`X de ${lettre}`} valeur={plan.x} unite="m" vide="Saisir" autoriserVide onChange={(v) => poser('x', v)} />
-        <ChampNombre libelle={`Y de ${lettre}`} valeur={plan.y} unite="m" vide="Saisir" autoriserVide onChange={(v) => poser('y', v)} />
+      <div className="grid grid-cols-2 items-end gap-2">
+        <ChampNombre libelle={`X de ${lettre}`} valeur={plan.x} unite="m" exemple={EXEMPLES.xyBorne} aide={AIDES.xyBorne} autoriserVide onChange={(v) => poser('x', v)} />
+        <ChampNombre libelle={`Y de ${lettre}`} valeur={plan.y} unite="m" exemple={EXEMPLES.xyBorne} autoriserVide onChange={(v) => poser('y', v)} />
       </div>
-      <ChampNombre libelle={`Altitude de ${lettre}`} valeur={plan.z} unite="m" autoriserVide onChange={(v) => poser('z', v)} />
+      <ChampNombre libelle={`Altitude de ${lettre}`} valeur={plan.z} unite="m" exemple={EXEMPLES.altitudeBorne} aide={AIDES.altitudeBorne} autoriserVide onChange={(v) => poser('z', v)} />
     </div>
   )
 }

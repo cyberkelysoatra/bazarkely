@@ -151,7 +151,15 @@ function EcranVert({ r, station }: { r: Pret; station: StationCalculee }) {
         releve={r}
         pied={
           <>
-            <Bouton data-suivante onClick={() => naviguer(`${base}/saisir`)}>
+            <Bouton
+              data-suivante
+              onClick={() => {
+                naviguer(`${base}/saisir`)
+                // RELEVE-CC-11 (CC-08 rec. 4): back to the top, so the sync band is not left under the sticky header.
+                window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+                window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 0)
+              }}
+            >
               Station suivante
             </Bouton>
             <Bouton variante="secondaire" grand={false} className="text-[18px]" onClick={() => naviguer(`${base}/ephemere?etape=3&station=${station.id}`)}>

@@ -14,6 +14,7 @@ import type { BorneCalculee, StationCalculee } from '../../etat/releveCalcule'
 import { CadreStations, type ResultatUseReleve } from '../saisir/Cadre'
 import { Chiffres, MOT_COULEUR, altitudesParBorne } from '../saisir/Chiffres'
 import { m3 } from '../saisir/logique'
+import { EXEMPLES } from '../exemples'
 
 type Pret = ResultatUseReleve & { etat: Extract<ResultatUseReleve['etat'], { statut: 'pret' }> }
 
@@ -193,7 +194,7 @@ export default function StationRouge({ r, station, onRefaire, onSuivante }: Prop
           }}
         >
           <p className="m-0 text-[16px] leading-snug">La station {station.numero} entre dans les courbes avec sa couleur. Notez pourquoi elle est gardée.</p>
-          <ChampTexte libelle="Note (obligatoire)" valeur={note} onChange={(v) => { setNote(v); setErreurNote(null) }} erreur={erreurNote} autoComplete="off" maxLength={300} />
+          <ChampTexte libelle="Note (obligatoire)" valeur={note} onChange={(v) => { setNote(v); setErreurNote(null) }} erreur={erreurNote} exemple={EXEMPLES.noteRouge} autoComplete="off" maxLength={300} />
           <Bouton type="submit" disabled={envoi}>
             Garder la station
           </Bouton>

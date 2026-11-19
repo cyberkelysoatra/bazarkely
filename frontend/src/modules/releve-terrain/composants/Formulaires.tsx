@@ -9,24 +9,35 @@ export interface PropsChampTexte extends Omit<InputHTMLAttributes<HTMLInputEleme
   valeur: string
   onChange: (v: string) => void
   erreur?: string | null
+  /** Example shown in grey while the field is empty (placeholder), RELEVE-CC-11 (D35): « ex. Villa V14 ». */
+  exemple?: string
+  /** One short help line, always visible, under the label. */
+  aide?: string
 }
 
 /** Text field: white surface, black 3 px frame (4 px and `champ-actif` when focused), label above. */
-export function ChampTexte({ libelle, valeur, onChange, erreur, id, ...rest }: PropsChampTexte) {
+export function ChampTexte({ libelle, valeur, onChange, erreur, id, exemple, aide, placeholder, ...rest }: PropsChampTexte) {
   const auto = useId()
   const ident = id ?? auto
+  const decrit = [aide ? `${ident}-a` : '', erreur ? `${ident}-e` : ''].filter(Boolean).join(' ')
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={ident} className="text-[15px] font-semibold text-encre2">
         {libelle}
       </label>
+      {aide ? (
+        <span id={`${ident}-a`} className="-mt-0.5 text-[14px] leading-snug text-encre2" data-aide="">
+          {aide}
+        </span>
+      ) : null}
       <input
         id={ident}
         value={valeur}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={erreur ? true : undefined}
-        aria-describedby={erreur ? `${ident}-e` : undefined}
-        className="min-h-[56px] w-full rounded-rt border-[3px] border-encre bg-surface px-3 text-[20px] font-semibold text-encre outline-none focus:border-4 focus:bg-champActif"
+        aria-describedby={decrit || undefined}
+        placeholder={placeholder ?? exemple}
+        className="min-h-[56px] w-full rounded-rt border-[3px] border-encre bg-surface px-3 text-[20px] font-semibold text-encre outline-none placeholder:font-medium placeholder:text-encre2 focus:border-4 focus:bg-champActif"
         {...rest}
       />
       {erreur ? (
@@ -47,10 +58,13 @@ export interface PropsFeuilleNom {
   onFermer: () => void
   /** Returns true when written (the sheet closes). */
   onValider: (nom: string) => Promise<boolean>
+  /** Example and help line of the name field (RELEVE-CC-11, D35). */
+  exemple?: string
+  aide?: string
 }
 
 /** Sheet with one name field. A blank name is refused (« Donnez un nom. »). */
-export function FeuilleNom({ ouvert, titre, libelle, valeurInitiale = '', bouton, onFermer, onValider }: PropsFeuilleNom) {
+export function FeuilleNom({ ouvert, titre, libelle, valeurInitiale = '', bouton, onFermer, onValider, exemple, aide }: PropsFeuilleNom) {
   const [nom, setNom] = useState(valeurInitiale)
   const [erreur, setErreur] = useState<string | null>(null)
   const [envoi, setEnvoi] = useState(false)
@@ -77,7 +91,7 @@ export function FeuilleNom({ ouvert, titre, libelle, valeurInitiale = '', bouton
           if (ok) onFermer()
         }}
       >
-        <ChampTexte libelle={libelle} valeur={nom} onChange={(v) => { setNom(v); setErreur(null) }} erreur={erreur} autoComplete="off" enterKeyHint="done" maxLength={120} />
+        <ChampTexte libelle={libelle} valeur={nom} onChange={(v) => { setNom(v); setErreur(null) }} erreur={erreur} exemple={exemple} aide={aide} autoComplete="off" enterKeyHint="done" maxLength={120} />
         <Bouton type="submit" disabled={envoi}>
           {bouton}
         </Bouton>

@@ -3,6 +3,7 @@
 // client. Pattern of src/modules/validation/appels/session.ts. The token itself is never read here
 // beyond its presence.
 import { useSyncExternalStore } from 'react'
+import { estAppliInstallee } from '../etat/installation'
 import { avecDelai, getSupabase, SESSION_STORAGE_KEY } from './client'
 
 export interface SessionLocale {
@@ -81,14 +82,109 @@ export function lireRetourConnexion(): Promise<void> {
           .then((sb) => avecDelai(sb.auth.getSession()))
           .then(() => undefined)
           .catch(() => undefined)
-          .finally(signalerSession)
+          .finally(() => {
+            // Back inside the app itself: the mark of D34 has no use any more.
+            if (lire() && estAppliInstallee()) oublierMarque()
+            signalerSession()
+          })
       : Promise.resolve()
   }
   return retourEnCours
 }
 
+// ---------------------------------------------------------------------------------------------------
+// RELEVE-CC-11 (D34): a Google sign-in started from the installed app often comes back in a browser
+// tab, not in the app. The app leaves a mark (time only, never a token) before leaving; the return page
+// opened outside the app reads it and tells the person to go back to the app; the app re-reads the
+// session (same storage origin) when it comes back to the foreground.
+// ---------------------------------------------------------------------------------------------------
+
+/** localStorage key of the mark: time (ms) the sign-in started from the installed app. */
+export const MARQUE_CONNEXION_APP = 'releve.connexion.depuisApp'
+/** A mark older than this is ignored. */
+export const DUREE_MARQUE_MS = 15 * 60 * 1000
+
+function oublierMarque(): void {
+  try {
+    localStorage.removeItem(MARQUE_CONNEXION_APP)
+  } catch {
+    /* no storage */
+  }
+}
+
+let retourDepuisApp: boolean | null = null
+
+/**
+ * Read once at the opening of the page (the mark is removed once read): true when the page runs outside
+ * the installed app and the sign-in was started from the app less than 15 minutes ago.
+ */
+export function retenirRetourDepuisApp(maintenant: number = Date.now()): boolean {
+  if (retourDepuisApp !== null) return retourDepuisApp
+  let brutMarque: string | null = null
+  try {
+    brutMarque = localStorage.getItem(MARQUE_CONNEXION_APP)
+  } catch {
+    brutMarque = null
+  }
+  if (estAppliInstallee()) {
+    // In the app the mark is removed only once the session is there (relireSession).
+    retourDepuisApp = false
+    return false
+  }
+  const t = Number(brutMarque)
+  retourDepuisApp = brutMarque !== null && Number.isFinite(t) && maintenant - t >= 0 && maintenant - t < DUREE_MARQUE_MS
+  if (brutMarque !== null) oublierMarque()
+  return retourDepuisApp
+}
+
+/** Tests only: forget what was read at the opening. */
+export function oublierRetourDepuisApp(): void {
+  retourDepuisApp = null
+}
+
+let relectureEnCours: Promise<void> | null = null
+/** Re-reads the session from the shared storage (getSession, never getUser: works without network). */
+export function relireSession(): Promise<void> {
+  if (!relectureEnCours) {
+    relectureEnCours = getSupabase()
+      .then((sb) => avecDelai(sb.auth.getSession()))
+      .then(() => undefined)
+      .catch(() => undefined)
+      .finally(() => {
+        relectureEnCours = null
+        if (lire()) oublierMarque()
+        signalerSession()
+      })
+  }
+  return relectureEnCours
+}
+
+/**
+ * In the installed app: back to the foreground (visibilitychange to visible, focus), the session is read
+ * again, so a sign-in finished in a browser tab is picked up without restarting. Returns the stop.
+ */
+export function demarrerRelectureSession(): () => void {
+  const relire = () => {
+    if (document.visibilityState === 'visible' && estAppliInstallee()) void relireSession()
+  }
+  document.addEventListener('visibilitychange', relire)
+  window.addEventListener('focus', relire)
+  return () => {
+    document.removeEventListener('visibilitychange', relire)
+    window.removeEventListener('focus', relire)
+  }
+}
+
 /** Google sign-in, back to `retour` (a path inside /releve, the page asked before). */
 export async function connexionGoogle(retour: string): Promise<void> {
+  // D34: from the installed app, leave the mark before leaving for Google.
+  if (estAppliInstallee()) {
+    try {
+      localStorage.setItem(MARQUE_CONNEXION_APP, String(Date.now()))
+    } catch {
+      /* no storage: no card on the return page */
+    }
+  }
   const sb = await avecDelai(getSupabase())
   const chemin = retour.startsWith('/') && !retour.startsWith('//') ? retour : '/'
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/releve${chemin}` } })

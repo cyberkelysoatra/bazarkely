@@ -50,12 +50,14 @@ export interface PropsPave extends Limites {
   titre: string
   valeurInitiale: number | null
   unite?: string
+  /** Example shown in grey in the display while nothing is typed (RELEVE-CC-11, D35). */
+  exemple?: string
   onValider: (v: number | null) => void
   onAnnuler: () => void
 }
 
 /** Keypad fixed at the bottom of the screen (portal), with the value being typed and the refusal message. */
-export function PaveNumerique({ titre, valeurInitiale, unite, onValider, onAnnuler, ...limites }: PropsPave) {
+export function PaveNumerique({ titre, valeurInitiale, unite, exemple, onValider, onAnnuler, ...limites }: PropsPave) {
   const [texte, setTexte] = useState(() => formaterNombre(valeurInitiale).replace('−', '-'))
   const [erreur, setErreur] = useState<string | null>(null)
   const texteRef = useRef(texte)
@@ -146,7 +148,9 @@ export function PaveNumerique({ titre, valeurInitiale, unite, onValider, onAnnul
           </button>
         </div>
         <div className="mb-2 flex min-h-[64px] items-center rounded-rt border-4 border-encre bg-champActif px-3" aria-live="polite">
-          <span className="rt-etroite min-w-0 flex-1 truncate text-[42px] font-bold leading-none">{affiche || ' '}</span>
+          <span className="rt-etroite min-w-0 flex-1 truncate text-[42px] font-bold leading-none" data-affichage-pave="">
+            {affiche ? affiche : exemple ? <span className="block truncate text-[28px] font-semibold leading-tight text-encre2" data-exemple="">{exemple}</span> : ' '}
+          </span>
           {unite ? <span className="ml-2 text-[22px] font-semibold text-encre2">{unite}</span> : null}
         </div>
         {erreur ? (
@@ -194,10 +198,14 @@ export interface PropsChampNombre extends Limites {
   id?: string
   /** Text shown while the field is empty (short in a half-width field). */
   vide?: string
+  /** Example shown in grey while the field is empty, in place of `vide` (RELEVE-CC-11, D35): « ex. 1,50 ». */
+  exemple?: string
+  /** One short help line, always visible, under the label. */
+  aide?: string
 }
 
 /** Field of 64 px: value 42 px, unit on the right; a touch opens the keypad. */
-export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, vide = "Toucher pour saisir", ...limites }: PropsChampNombre) {
+export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, vide = "Toucher pour saisir", exemple, aide, ...limites }: PropsChampNombre) {
   const [ouvert, setOuvert] = useState(false)
   const ref = useRef<HTMLButtonElement>(null)
   const idAuto = useId()
@@ -214,18 +222,30 @@ export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, v
       <span id={idLibelle} className="text-[15px] font-semibold text-encre2">
         {libelle}
       </span>
+      {aide ? (
+        <span id={`${idLibelle}-a`} className="-mt-0.5 text-[14px] leading-snug text-encre2" data-aide="">
+          {aide}
+        </span>
+      ) : null}
       <button
         ref={ref}
         type="button"
         aria-labelledby={idLibelle}
-        aria-describedby={`${idLibelle}-v`}
+        aria-describedby={aide ? `${idLibelle}-v ${idLibelle}-a` : `${idLibelle}-v`}
+        data-champ-nombre=""
         aria-haspopup="dialog"
         aria-expanded={ouvert}
         onClick={() => setOuvert(true)}
         className={`flex min-h-[64px] w-full items-center rounded-rt px-3 text-left ${ouvert ? 'border-4 border-encre bg-champActif' : 'border-[3px] border-encre bg-surface'}`}
       >
         <span id={`${idLibelle}-v`} className="rt-etroite min-w-0 flex-1 truncate text-[42px] font-bold leading-none">
-          {valeur === null ? <span className="text-[20px] font-semibold text-encre2">{vide}</span> : formaterNombre(valeur, decimales)}
+          {valeur === null ? (
+            <span className="block truncate text-[20px] font-semibold leading-tight text-encre2" data-exemple={exemple ? '' : undefined}>
+              {exemple ?? vide}
+            </span>
+          ) : (
+            formaterNombre(valeur, decimales)
+          )}
         </span>
         {unite ? <span className="ml-2 text-[22px] font-semibold text-encre2">{unite}</span> : null}
       </button>
@@ -234,6 +254,7 @@ export function ChampNombre({ libelle, valeur, onChange, unite, decimales, id, v
           titre={libelle}
           valeurInitiale={valeur}
           unite={unite}
+          exemple={exemple}
           {...limites}
           onAnnuler={fermer}
           onValider={(v) => {

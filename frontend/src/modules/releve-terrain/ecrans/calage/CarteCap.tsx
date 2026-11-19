@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Bouton } from '../../composants/Bouton'
 import { ChampNombre } from '../../composants/ChampNombre'
 import { boussoleAnnoncee, capCorrige, ecouterBoussole } from './boussole'
+import { AIDES, EXEMPLES } from '../exemples'
 import { degres, nombreLibre } from './format'
 
 export const MESSAGE_SANS_BOUSSOLE = 'Pas de boussole sur ce téléphone : saisissez le cap lu sur une boussole.'
@@ -100,6 +101,8 @@ export function CarteCap({ lettreA, lettreB, capLu, source, declinaison, onCap }
         <ChampNombre
           libelle={`Cap ${lettreA} vers ${lettreB} lu sur une boussole`}
           valeur={source === 'saisi' ? capLu : null}
+          exemple={EXEMPLES.cap}
+          aide={AIDES.cap(lettreA, lettreB)}
           unite="°"
           {...LIMITES_CAP}
           onChange={(v) => {

@@ -16,6 +16,7 @@ import type { Chantier, Domaine, Droit } from '../db/types'
 import { executer, montrerAvis } from '../etat/avis'
 import { cheminChantier, pluriel } from '../etat/navigation'
 import { refusSuppression } from '../sync/regles'
+import { AIDES, EXEMPLES } from './exemples'
 import { exporterSauvegarde, ouvrirSauvegarde } from './registre'
 
 export type CibleMenu = ({ type: 'domaine'; domaine: Domaine; releves: number } | { type: 'chantier'; chantier: Chantier; releves: number }) & {
@@ -108,6 +109,8 @@ export function MenuTerrain({ cible, onFermer }: { cible: CibleMenu; onFermer: (
         ouvert={vue === 'nouveau_chantier'}
         titre="Nouveau chantier"
         libelle="Nom du chantier"
+        exemple={EXEMPLES.chantier}
+        aide={AIDES.chantier}
         bouton="Créer le chantier"
         onFermer={onFermer}
         onValider={async (n) => {
@@ -121,6 +124,8 @@ export function MenuTerrain({ cible, onFermer }: { cible: CibleMenu; onFermer: (
         ouvert={vue === 'renommer'}
         titre={estDomaine ? 'Renommer le domaine' : 'Renommer le chantier'}
         libelle={estDomaine ? 'Nom du domaine' : 'Nom du chantier'}
+        exemple={estDomaine ? EXEMPLES.domaine : EXEMPLES.chantier}
+        aide={estDomaine ? AIDES.domaine : AIDES.chantier}
         valeurInitiale={nom}
         bouton="Enregistrer"
         onFermer={onFermer}

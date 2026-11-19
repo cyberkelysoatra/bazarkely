@@ -11,8 +11,10 @@ import { creerDomaine } from '../db/depot'
 import { executer, montrerAvis } from '../etat/avis'
 import { verifierDeconnexion } from '../sync/regles'
 import { deconnexion, useSession } from '../sync/session'
-import { lancerInstallation, useInstallationDisponible, usePretModeAvion } from '../etat/pwa'
+import { usePretModeAvion } from '../etat/pwa'
+import { LIBELLE_INSTALLATION, useInstallation } from '../composants/Installation'
 import { VERSION_RELEVE } from '../version'
+import { AIDES, EXEMPLES } from './exemples'
 
 type Vue = null | 'menu' | 'domaine' | 'aide' | 'version'
 
@@ -47,7 +49,8 @@ export function MenuHaut() {
   const naviguer = useNavigate()
   const { pathname } = useLocation()
   const pret = usePretModeAvion()
-  const installable = useInstallationDisponible()
+  // RELEVE-CC-11 (D33): always offered outside the installed app (browser offer or gesture sheet).
+  const installation = useInstallation()
   const session = useSession()
   const fermer = () => setVue(null)
   const compte = session
@@ -90,6 +93,17 @@ export function MenuHaut() {
           { libelle: '+ Nouveau domaine foncier', onClick: () => setVue('domaine') },
           { libelle: 'Aide : le principe de mesure', onClick: () => setVue('aide') },
           { libelle: "Version de l'outil", onClick: () => setVue('version') },
+          ...(installation.visible
+            ? [
+                {
+                  libelle: LIBELLE_INSTALLATION,
+                  onClick: () => {
+                    fermer()
+                    installation.ouvrir()
+                  },
+                },
+              ]
+            : []),
           compte,
         ]}
       />
@@ -97,6 +111,7 @@ export function MenuHaut() {
         ouvert={vue === 'domaine'}
         titre="Nouveau domaine foncier"
         libelle="Nom du domaine"
+        exemple={EXEMPLES.domaine} aide={AIDES.domaine}
         bouton="Créer le domaine"
         onFermer={fermer}
         onValider={async (nom) => {
@@ -122,10 +137,13 @@ export function MenuHaut() {
               ? `Vos relevés sont enregistrés sur ce téléphone et partent au serveur de 1sakely.org dès qu'il y a du réseau. Compte : ${session.nomGoogle || session.email}.`
               : "Vos relevés sont enregistrés sur ce téléphone. Connectez-vous pour les retrouver sur tout téléphone."}
           </p>
-          {installable ? (
+          {installation.visible ? (
             <button
               type="button"
-              onClick={() => void lancerInstallation()}
+              onClick={() => {
+                fermer()
+                installation.ouvrir()
+              }}
               className="rt-etroite flex min-h-[56px] items-center justify-center gap-2 rounded-rt border-[3px] border-encre bg-surface text-[20px] font-extrabold"
             >
               <Icone nom="installer" /> Installer sur mon téléphone
@@ -133,6 +151,7 @@ export function MenuHaut() {
           ) : null}
         </div>
       </Feuille>
+      {installation.feuille}
     </>
   )
 }

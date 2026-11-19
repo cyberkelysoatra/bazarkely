@@ -2,7 +2,7 @@
 // bottom bar). Rewrite of the host rules (resolveAccessibleModules, orderModules), never
 // imported: PUDi loads nothing from the host. Display only, never a security boundary.
 
-export type IdModule = 'bazarkely' | 'construction' | 'gestion-eau' | 'navy-ay' | 'validation';
+export type IdModule = 'bazarkely' | 'construction' | 'gestion-eau' | 'navy-ay' | 'validation' | 'releve';
 
 export interface ModuleHote {
   id: IdModule;
@@ -18,8 +18,18 @@ export const MODULES_HOTE: readonly ModuleHote[] = [
   { id: 'gestion-eau', nom: 'Gestion Eau', adresse: '/gestion-eau' },
   { id: 'navy-ay', nom: 'NAVY ay', adresse: '/navy' },
   // Validation client (VALIDCLIENT-CC-02): external light page, full-page navigation like PUDi.
-  { id: 'validation', nom: 'Validation', adresse: '/validation/' }
+  { id: 'validation', nom: 'Validation', adresse: '/validation/' },
+  // Relevé terrain (RELEVE-CC-11, D27): light entry like Validation, full page navigation.
+  { id: 'releve', nom: 'Relevé terrain', adresse: '/releve/' }
 ];
+
+/** Light-entry modules (host LIGHT_ENTRY_MODULE_IDS). */
+export const MODULES_LEGERS: readonly string[] = ['validation', 'releve'];
+
+/** True when the list is non-empty and made only of light-entry modules (D27). */
+export function listeLegere(liste: unknown[]): boolean {
+  return liste.length > 0 && liste.every((id) => typeof id === 'string' && MODULES_LEGERS.includes(id));
+}
 
 /** Columns of the account's own `users` row needed by the rules. */
 export interface CompteModules {
@@ -36,11 +46,12 @@ export interface CompteModules {
 export function modulesDuCompte(compte: CompteModules | null | undefined): ModuleHote[] | null {
   if (!compte) return null;
   const liste = Array.isArray(compte.preferences?.modules) ? (compte.preferences!.modules as unknown[]) : [];
-  // VALIDCLIENT-CC-02 (VC-02): an account with only « validation » sees no NAVY ay (nor PUDi).
-  const validationSeule = compte.role !== 'admin' && liste.length === 1 && liste[0] === 'validation';
-  const ouverts = new Set<IdModule>(validationSeule ? [] : ['navy-ay']);
+  // VALIDCLIENT-CC-02 (VC-02), widened by D27 (RELEVE-CC-11): an account whose list is made only of
+  // light-entry modules (['validation'], ['releve'], ['validation', 'releve']) sees no NAVY ay (nor PUDi).
+  const legere = compte.role !== 'admin' && listeLegere(liste);
+  const ouverts = new Set<IdModule>(legere ? [] : ['navy-ay']);
   if (compte.role === 'admin') MODULES_HOTE.forEach((m) => ouverts.add(m.id));
-  else for (const id of ['bazarkely', 'gestion-eau', 'construction', 'validation'] as const) if (liste.includes(id)) ouverts.add(id);
+  else for (const id of ['bazarkely', 'gestion-eau', 'construction', 'validation', 'releve'] as const) if (liste.includes(id)) ouverts.add(id);
   const accessibles = MODULES_HOTE.filter((m) => ouverts.has(m.id));
   const ordre = Array.isArray(compte.preferences?.moduleOrder) ? (compte.preferences!.moduleOrder as unknown[]) : [];
   if (!ordre.length) return accessibles;

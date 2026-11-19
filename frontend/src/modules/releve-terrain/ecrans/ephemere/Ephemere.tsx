@@ -20,6 +20,7 @@ import { m3 } from '../saisir/logique'
 import { useSaisieStation } from '../saisir/useSaisieStation'
 import { useVerrouEcran } from '../saisir/useVerrouEcran'
 import { EtapeControle } from './EtapeControle'
+import { AIDES, EXEMPLES } from '../exemples'
 import { controlerStation, lettreProposee, lettresLibres, objetsCreation, objetsRetrait, stationsQuiVisent, verifierCreation } from './logique'
 
 type Pret = ResultatUseReleve & { etat: Extract<ResultatUseReleve['etat'], { statut: 'pret' }> }
@@ -270,6 +271,8 @@ function Etape4({ r, aller }: { r: Pret; aller: Aller }) {
             <ChampTexte
               libelle="Lettre du panneau"
               valeur={lettre}
+              exemple={EXEMPLES.lettreEphemere}
+              aide={AIDES.lettreEphemere}
               onChange={(v) => {
                 setLettre(v.toUpperCase().slice(0, 1))
                 setErreurs((x) => ({ ...x, lettre: null }))
@@ -297,7 +300,7 @@ function Etape4({ r, aller }: { r: Pret; aller: Aller }) {
             setErreurs((x) => ({ ...x, nom: null }))
           }}
           erreur={erreurs.nom}
-          placeholder="Piquet du manguier"
+          exemple={EXEMPLES.endroitEphemere}
           autoComplete="off"
           maxLength={120}
           data-champ-nom

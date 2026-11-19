@@ -8,6 +8,7 @@ import { PastilleEtat, PastilleLettre } from '../../composants/Pastilles'
 import { heureMadagascar } from '../../etat/navigation'
 import { LIMITES_DISTANCE, LIMITES_PENTE, texteRemplacement, type LigneVisee } from './logique'
 import type { SaisieStation } from './useSaisieStation'
+import { EXEMPLES } from '../exemples'
 
 function OeilBarre({ couleur }: { couleur: string }) {
   return (
@@ -53,7 +54,7 @@ function Ligne({ ligne, saisie, longue, refaire }: { ligne: LigneVisee; saisie: 
               libelle={`Distance vers ${lettre}`}
               valeur={visee?.distance ?? null}
               unite="m"
-              vide="Saisir"
+              exemple={EXEMPLES.distanceStation}
               {...LIMITES_DISTANCE}
               onChange={(v) => saisie.modifier(borne.id, { champ: 'distance', valeur: v })}
             />
@@ -61,7 +62,7 @@ function Ligne({ ligne, saisie, longue, refaire }: { ligne: LigneVisee; saisie: 
               libelle={`Pente vers ${lettre}`}
               valeur={visee?.pente ?? null}
               unite="°"
-              vide="Saisir"
+              exemple={EXEMPLES.penteStation}
               {...LIMITES_PENTE}
               onChange={(v) => saisie.modifier(borne.id, { champ: 'pente', valeur: v })}
             />

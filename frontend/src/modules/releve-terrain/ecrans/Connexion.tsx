@@ -7,6 +7,7 @@ import { Bouton } from '../composants/Bouton'
 import { EnTete } from '../composants/EnTete'
 import { ChampTexte } from '../composants/Formulaires'
 import { connexionEmail, connexionGoogle, useSession } from '../sync/session'
+import { EXEMPLES } from './exemples'
 
 function LogoGoogle() {
   return (
@@ -51,7 +52,7 @@ function FormulaireEmail({ retour }: { retour: string }) {
         }
       }}
     >
-      <ChampTexte libelle="E-mail" valeur={email} onChange={setEmail} type="email" autoComplete="email" inputMode="email" />
+      <ChampTexte libelle="E-mail" valeur={email} onChange={setEmail} exemple={EXEMPLES.email} type="email" autoComplete="email" inputMode="email" />
       <ChampTexte libelle="Mot de passe" valeur={motDePasse} onChange={setMotDePasse} type="password" autoComplete="current-password" erreur={erreur} />
       <Bouton type="submit" disabled={envoi}>
         Se connecter

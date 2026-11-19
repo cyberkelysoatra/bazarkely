@@ -27,6 +27,7 @@ import { useRequete } from '../etat/useRequete'
 import { refusSuppression } from '../sync/regles'
 import { MenuHaut } from './MenuHaut'
 import { itemsChantier, MenuTerrain } from './MenuTerrain'
+import { AIDES, EXEMPLES } from './exemples'
 import { exporterSauvegarde } from './registre'
 
 const LIMITES_HAUTEUR = {
@@ -70,7 +71,7 @@ function FeuilleNouveauReleve({ ouvert, chantierId, onFermer }: { ouvert: boolea
           }
         }}
       >
-        <ChampTexte libelle="Nom du relevé" valeur={nom} onChange={(v) => { setNom(v); setErreur(null) }} erreur={erreur} autoComplete="off" maxLength={120} />
+        <ChampTexte libelle="Nom du relevé" valeur={nom} onChange={(v) => { setNom(v); setErreur(null) }} erreur={erreur} exemple={EXEMPLES.nomReleve} autoComplete="off" maxLength={120} />
         <div className="flex flex-col gap-1">
           <label htmlFor="rt-date" className="text-[15px] font-semibold text-encre2">
             Date
@@ -83,10 +84,10 @@ function FeuilleNouveauReleve({ ouvert, chantierId, onFermer }: { ouvert: boolea
             className="min-h-[56px] w-full rounded-rt border-[3px] border-encre bg-surface px-3 text-[20px] font-semibold outline-none focus:border-4 focus:bg-champActif"
           />
         </div>
-        <ChampTexte libelle="Opérateurs" valeur={operateurs} onChange={setOperateurs} autoComplete="off" maxLength={120} />
-        <div className="grid grid-cols-2 gap-3">
-          <ChampNombre libelle="Hauteur de l'appareil" valeur={hi} onChange={setHi} unite="m" decimales={2} {...LIMITES_HAUTEUR} />
-          <ChampNombre libelle="Hauteur des cibles" valeur={ht} onChange={setHt} unite="m" decimales={2} {...LIMITES_HAUTEUR} />
+        <ChampTexte libelle="Opérateurs" valeur={operateurs} onChange={setOperateurs} exemple={EXEMPLES.operateurs} aide={AIDES.operateurs} autoComplete="off" maxLength={120} />
+        <div className="grid grid-cols-2 items-end gap-3">
+          <ChampNombre libelle="Hauteur de l'appareil" valeur={hi} onChange={setHi} unite="m" decimales={2} exemple={EXEMPLES.hauteur} aide={AIDES.hauteurAppareil} {...LIMITES_HAUTEUR} />
+          <ChampNombre libelle="Hauteur des cibles" valeur={ht} onChange={setHt} unite="m" decimales={2} exemple={EXEMPLES.hauteur} aide={AIDES.hauteurCibles} {...LIMITES_HAUTEUR} />
         </div>
         <Aide titre="Les deux hauteurs">
           <p className="m-0">Hauteur de l'appareil : la baguette sur laquelle vous posez le télémètre. Hauteur des cibles : la hauteur du centre des cibles au-dessus du sol. Toutes deux valent 1,50 m d'habitude.</p>

@@ -63,7 +63,9 @@ async function attendreBandeau(page, attendu, delai = 20000) {
   const fin = Date.now() + delai
   for (;;) {
     const t = await texteBandeau(page).catch(() => '')
-    if (t === attendu) return t
+    // RELEVE-CC-11: since CC-09 the band of a relevé reads « Vous tenez la saisie, tout est envoyé » (+ the
+    // « Terminer » button): the expected text is looked for inside it, case aside.
+    if (t === attendu || t.toLowerCase().includes(attendu.toLowerCase())) return t
     if (Date.now() > fin) throw new Error(`Bandeau « ${t} » au lieu de « ${attendu} »`)
     await page.waitForTimeout(200)
   }

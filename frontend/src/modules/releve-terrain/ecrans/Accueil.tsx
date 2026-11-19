@@ -10,16 +10,18 @@ import { EnTete } from '../composants/EnTete'
 import { Aide } from '../composants/Feuilles'
 import { FeuilleNom } from '../composants/Formulaires'
 import { Icone } from '../composants/Icones'
+import { BoutonInstallation } from '../composants/Installation'
+import { CarteRetourConnexion } from '../composants/RetourConnexion'
 import { PastilleDroit } from '../composants/Pastilles'
 import { creerDomaine } from '../db/depot'
 import { dernierReleve, listePartages, listeTerrains, type DomaineListe, type DomainePartage } from '../db/lecture'
 import { executer } from '../etat/avis'
-import { lancerInstallation, useInstallationDisponible } from '../etat/pwa'
 import { useBandeauTelephone } from '../etat/useEnvoi'
 import { cheminChantier, cheminEtape, heureMadagascar, pluriel } from '../etat/navigation'
 import { calculerMesure } from '../etat/useReleve'
 import { useRequete } from '../etat/useRequete'
 import { REGLAGES_DEFAUT } from '../calcul'
+import { AIDES, EXEMPLES } from './exemples'
 import { MenuHaut } from './MenuHaut'
 import { itemsChantier, MenuTerrain, type CibleMenu } from './MenuTerrain'
 
@@ -162,7 +164,6 @@ export default function Accueil() {
   const terrains = useRequete('terrains', listeTerrains)
   const [menu, setMenu] = useState<CibleMenu | null>(null)
   const [nouveauDomaine, setNouveauDomaine] = useState(false)
-  const installable = useInstallationDisponible()
   const envoi = useBandeauTelephone()
 
   return (
@@ -170,6 +171,7 @@ export default function Accueil() {
       <EnTete titre="Relevé terrain" sousTitre="Mes terrains" droite={<MenuHaut />} />
       <Bandeau {...envoi} />
       <main className="flex flex-1 flex-col gap-3 px-4 pb-6 pt-3.5">
+        <CarteRetourConnexion />
         <Reprendre />
         {terrains === undefined ? null : terrains.length === 0 ? (
           <div className="mt-6 flex flex-col items-stretch gap-4 rounded-rt border-[3px] border-encre bg-surface p-4">
@@ -191,17 +193,14 @@ export default function Accueil() {
           </>
         )}
         <PartagesAvecMoi onMenu={(c) => setMenu(c)} />
-        {installable ? (
-          <Bouton variante="secondaire" grand={false} onClick={() => void lancerInstallation()} icone={<Icone nom="installer" />}>
-            Installer sur mon téléphone
-          </Bouton>
-        ) : null}
+        <BoutonInstallation />
       </main>
       {menu ? <MenuTerrain key={menu.type === 'domaine' ? menu.domaine.id : menu.chantier.id} cible={menu} onFermer={() => setMenu(null)} /> : null}
       <FeuilleNom
         ouvert={nouveauDomaine}
         titre="Nouveau domaine foncier"
         libelle="Nom du domaine"
+        exemple={EXEMPLES.domaine} aide={AIDES.domaine}
         bouton="Créer le domaine"
         onFermer={() => setNouveauDomaine(false)}
         onValider={async (nom) => (await executer(() => creerDomaine(nom))) !== null}

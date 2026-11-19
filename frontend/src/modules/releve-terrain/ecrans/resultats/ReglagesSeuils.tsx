@@ -138,6 +138,7 @@ export function ReglagesSeuils({ reglages, actions }: { reglages: Reglages; acti
                       key={n}
                       libelle={n === 'orange' ? 'Orange au-delà de' : 'Rouge au-delà de'}
                       valeur={edition[l.cle][n] ?? null}
+                      exemple={`ex. ${formaterNombre(REGLAGES_DEFAUT[l.cle][n])}`}
                       onChange={(v) => changerSeuil(l.cle, n, v)}
                       unite={l.unite}
                       min={0}
@@ -154,6 +155,7 @@ export function ReglagesSeuils({ reglages, actions }: { reglages: Reglages; acti
                 <ChampNombre
                   libelle={n.libelle}
                   valeur={edition[n.cle]}
+                  exemple={`ex. ${formaterNombre(REGLAGES_DEFAUT[n.cle])}`}
                   onChange={(v) => {
                     if (v === null) return
                     setErreur(null)

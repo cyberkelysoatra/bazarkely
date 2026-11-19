@@ -120,6 +120,16 @@ const lireBase = (page, table) =>
     table,
   )
 
+/** RELEVE-CC-11: since CC-08 (H23) the first opening with network and no session asks to sign in. The
+ * bench keeps its local-only path: a fabricated session (never a real token) and every Supabase call cut,
+ * so nothing leaves the phone, as in CC-07. */
+async function sessionLocale(contexte) {
+  await contexte.route('https://ofzmwrzatcztoekrpvkj.supabase.co/**', (r) => r.abort())
+  await contexte.addInitScript((valeur) => {
+    if (!localStorage.getItem('sb-ofzmwrzatcztoekrpvkj-auth-token')) localStorage.setItem('sb-ofzmwrzatcztoekrpvkj-auth-token', valeur)
+  }, JSON.stringify({ access_token: 'jeton-fabrique-par-le-banc', refresh_token: 'faux', token_type: 'bearer', expires_in: 604800, expires_at: Math.floor(Date.now() / 1000) + 7 * 24 * 3600, user: { id: '00000000-0000-0000-0000-0000000000c7', aud: 'authenticated', role: 'authenticated', email: 'banc@exemple.invalid', user_metadata: { full_name: 'Banc CC07' }, app_metadata: { provider: 'email' } } }))
+}
+
 async function creerDomaine(page, nom) {
   const premier = page.getByRole('button', { name: '+ Nouveau domaine foncier' }).first()
   if (await premier.isVisible().catch(() => false)) await premier.click()
@@ -392,6 +402,7 @@ async function executer(banc) {
   }
 
   const { page, contexte } = await banc.ouvrir()
+  await sessionLocale(contexte)
   page.setDefaultTimeout(20000)
   const requetes = []
   page.on('request', (r) => requetes.push(r.url()))
@@ -921,6 +932,7 @@ async function executer(banc) {
     const profil = process.env.BANC_PROFIL || fs.mkdtempSync(path.join(os.tmpdir(), 'releve-profil-cc07-'))
     res.avion.profil = profil
     let o = await banc.ouvrir({ profil })
+    await sessionLocale(o.contexte)
     o.page.setDefaultTimeout(20000)
     await o.page.goto(banc.url('/releve/'))
     await banc.attendreHorsLigne(o.page, 120000)
@@ -945,6 +957,7 @@ async function executer(banc) {
     await capture(o.page, '6-avion-incomplete')
     await o.fermer()
     o = await banc.ouvrir({ profil })
+    await sessionLocale(o.contexte)
     o.page.setDefaultTimeout(20000)
     await o.contexte.setOffline(true)
     await o.page.goto(banc.url(`/releve/`))
