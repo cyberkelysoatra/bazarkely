@@ -1,0 +1,234 @@
+{
+ "parties": {
+  "1": {
+   "mesure": {
+    "largeur": 412,
+    "defilement": 412
+   },
+   "standalone": false,
+   "brave": true,
+   "captureAccueil": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\01-accueil-bouton-installer.png",
+   "menu": [
+    "Mes terrains",
+    "+ Nouveau domaine foncier",
+    "Aide : le principe de mesure",
+    "Version de l'outil",
+    "Installer sur mon téléphone",
+    "Se déconnecter"
+   ],
+   "captureMenu": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\02-menu-entree-installer.png",
+   "navigateurDetecte": "brave-android",
+   "etapes": [
+    "1Touchez ⋮ en bas à droite.",
+    "2Puis « Ajouter à l'écran d'accueil »."
+   ],
+   "note": "Pour une installation complète, ouvrez cette page dans Chrome.",
+   "ouvrirDansChrome": "intent://127.0.0.1:4112/releve/#Intent;scheme=https;package=com.android.chrome;end",
+   "captureFeuilleBrave": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\03-feuille-installer-brave.png",
+   "contrastesFeuille": [],
+   "chrome": {
+    "navigateurDetecte": "chrome-android",
+    "etapes": [
+     "1Touchez ⋮ en haut à droite.",
+     "2Puis « Installer l'application » ou « Ajouter à l'écran d'accueil »."
+    ],
+    "ouvrirDansChrome": 0,
+    "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\04-feuille-installer-chrome.png"
+   }
+  },
+  "2": {
+   "mesures": {
+    "bornes": {
+     "largeur": 412,
+     "defilement": 412
+    },
+    "calage": {
+     "largeur": 412,
+     "defilement": 412
+    },
+    "saisir": {
+     "largeur": 412,
+     "defilement": 412
+    }
+   },
+   "domaine": {
+    "placeholder": "ex. ITAMPOLO BeFefiky",
+    "aide": "Le terrain ou la propriété où vous travaillez."
+   },
+   "placeholdersDomaine": [
+    {
+     "exemple": "ex. ITAMPOLO BeFefiky",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 249, 219)",
+     "ratio": 10
+    }
+   ],
+   "captureDomaine": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\05-formulaire-domaine.png",
+   "captureChantier": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\06-formulaire-chantier.png",
+   "captureReleve": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\07-formulaire-releve.png",
+   "captureBornes": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\08-bornes-haut.png",
+   "captureBorneA": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\09-bornes-borne-a.png",
+   "contrastesBornes": [
+    {
+     "texte": "ex. 47,312",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. 47,312",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. 38,110",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    }
+   ],
+   "placeholdersBornes": [
+    {
+     "exemple": "ex. Implantation V14, matin",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 255, 255)",
+     "ratio": 10.59
+    },
+    {
+     "exemple": "ex. Joël, Rado",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 255, 255)",
+     "ratio": 10.59
+    },
+    {
+     "exemple": "ex. Borne ouest, angle du mur",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 255, 255)",
+     "ratio": 10.59
+    },
+    {
+     "exemple": "ex. Borne ouest, angle du mur",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 255, 255)",
+     "ratio": 10.59
+    },
+    {
+     "exemple": "ex. Borne ouest, angle du mur",
+     "couleur": "rgb(63, 63, 58)",
+     "fond": "rgb(255, 255, 255)",
+     "ratio": 10.59
+    }
+   ],
+   "exemplePave": "ex. 47,312",
+   "contrastesPave": [
+    {
+     "texte": "ex. 47,312",
+     "couleur": "#3F3F3A",
+     "fond": "#FFF9DB",
+     "ratio": 10,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. 47,312",
+     "couleur": "#3F3F3A",
+     "fond": "#FFF9DB",
+     "ratio": 10,
+     "taille": "28px",
+     "graisse": "600"
+    }
+   ],
+   "capturePave": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\10-pave-exemple.png",
+   "captureCalageCap": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\11-calage-cap.png",
+   "captureCalageLectures": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\12-calage-lectures.png",
+   "contrastesCalage": [
+    {
+     "texte": "ex. 52,47",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. −12,1",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. 52,47",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. −12,1",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. 52,47",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    },
+    {
+     "texte": "ex. −12,1",
+     "couleur": "#3F3F3A",
+     "fond": "#FFFFFF",
+     "ratio": 10.59,
+     "taille": "20px",
+     "graisse": "600"
+    }
+   ],
+   "captureSaisir": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\13-saisir-station.png",
+   "exemplesSaisir": [
+    "ex. 36,06",
+    "ex. −10,3",
+    "ex. 36,06",
+    "ex. −10,3",
+    "ex. 36,06",
+    "ex. −10,3"
+   ]
+  },
+  "3": {
+   "station": "S01",
+   "defilementAvant": 47,
+   "defilementApres": 0,
+   "bandeau": {
+    "texte": "Vous tenez la saisie, 5 saisies en attente d'envoiTerminer",
+    "haut": 76,
+    "bas": 126,
+    "basEnTete": 76,
+    "visible": true
+   },
+   "capture": "C:\\bazarkely-2\\RAPPORTS-CREATEUR-APPS\\releve-terrain\\captures-cc-11\\14-apres-station-suivante-bandeau.png",
+   "appels": [
+    "rt_ouvrir",
+    "rt_mes_terrains",
+    "rt_domaine_enregistrer",
+    "rt_chantier_enregistrer",
+    "rt_releve_creer",
+    "rt_envoyer"
+   ]
+  }
+ },
+ "erreurs": []
+}
